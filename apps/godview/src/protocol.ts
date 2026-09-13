@@ -7,7 +7,6 @@ import type {
   AgentProfile,
   AgentProviderDescriptor,
   DistributionProvider,
-  MonitorArtifactReadResult,
   ProfileFailure,
   ProfileIdentity,
   ProfileProvider,
@@ -27,7 +26,6 @@ import type {
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
-  ReadAgentMonitorArtifactRequest,
 } from './main/monitor-ipc.js';
 import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
 
@@ -41,7 +39,6 @@ export type {
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
-  ReadAgentMonitorArtifactRequest,
 } from './main/monitor-ipc.js';
 export type {
   AgentInstallation,
@@ -297,7 +294,6 @@ export interface PuppeteerBridge {
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;
   onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
-  readAgentMonitorArtifact(request: ReadAgentMonitorArtifactRequest): Promise<MonitorArtifactReadResult>;
   workspaceDiff(runtimeSessionId: string): Promise<WorkspaceDiff | null>;
   onWorkspaceFinal(cb: (event: WorkspaceFinalEvent) => void): () => void;
   accountUsage(): Promise<AccountUsageBatch>;

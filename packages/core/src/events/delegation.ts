@@ -13,18 +13,8 @@ export const SubagentStoppedEventSchema = z.strictObject({
 });
 export type SubagentStoppedEvent = z.infer<typeof SubagentStoppedEventSchema>;
 
-export const TeammateIdleEventSchema = z.strictObject({
-  type: z.literal('delegation:teammate-idle'),
-  membershipId: z.string().trim().min(1).optional(),
-  teamId: z.string().trim().min(1).optional(),
-  teamName: z.string().trim().min(1).optional(),
-  teammateName: z.string().trim().min(1),
-});
-export type TeammateIdleEvent = z.infer<typeof TeammateIdleEventSchema>;
-
-export type DelegationEvent = SubagentStartedEvent | SubagentStoppedEvent | TeammateIdleEvent;
+export type DelegationEvent = SubagentStartedEvent | SubagentStoppedEvent;
 export const DelegationEventSchema = z.discriminatedUnion('type', [
   SubagentStartedEventSchema,
   SubagentStoppedEventSchema,
-  TeammateIdleEventSchema,
 ]);

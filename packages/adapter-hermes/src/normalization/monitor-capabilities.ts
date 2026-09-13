@@ -94,19 +94,6 @@ export const HERMES_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: [
       'Stable subagent and child-session identity, parentage, activity, model, and completion totals exist in the exact release source.',
       'The subagent event family was not exercised by the pinned runtime census.',
-      'Hermes exposes no verified agent-team identity or membership contract.',
-    ],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'none-in-hermes-tui-gateway-0.20.0',
-    contractVersion: HERMES_CONTRACT,
-    limitations: [
-      'Goals, background prompts, cron jobs, kanban items, and delegations have no shared verified workflow-run identity.',
-      'No bounded workflow-definition artifact contract exists on the side-observation rail.',
     ],
   },
   {

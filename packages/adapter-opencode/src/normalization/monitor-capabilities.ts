@@ -29,7 +29,7 @@ export const OPENCODE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: OPENCODE_CONTRACT,
     limitations: [
       'Canonical burn is emitted at native step/assistant response boundaries, not estimated from context occupancy.',
-      'Child usage is available after native parent/child identity is established; OpenCode exposes no agent-team aggregate.',
+      'Child usage is available after native parent/child identity is established.',
     ],
   },
   {
@@ -84,21 +84,7 @@ export const OPENCODE_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     latency: 'response',
     source: 'opencode-child-session-lifecycle-and-history',
     contractVersion: OPENCODE_CONTRACT,
-    limitations: [
-      'Stable child session IDs, parentage, state, model, and response usage are observable.',
-      'No verified agent-team identity or membership surface exists, so team creation and team-member aggregation remain unavailable.',
-    ],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'none-in-opencode-1.18.16-census',
-    contractVersion: OPENCODE_CONTRACT,
-    limitations: [
-      'No verified workflow-run identity, workflow membership, or bounded workflow artifact contract exists.',
-    ],
+    limitations: ['Stable child session IDs, parentage, state, model, and response usage are observable.'],
   },
   {
     family: 'compaction',

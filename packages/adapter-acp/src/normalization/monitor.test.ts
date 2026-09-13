@@ -42,24 +42,13 @@ function project(batches: AdapterMonitorObservationBatch[]) {
 describe('AcpMonitorEvidence', () => {
   it('declares all checklist families without treating context occupancy as burn', () => {
     expect(ACP_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(ACP_MONITOR_CAPABILITIES.find(({ family }) => family === 'context')).toMatchObject({
       support: 'supported',
       actorScope: 'root',
     });
-    for (const family of ['usage', 'delegation', 'workflow', 'compaction'] as const) {
+    for (const family of ['usage', 'delegation', 'compaction'] as const) {
       expect(ACP_MONITOR_CAPABILITIES.find((capability) => capability.family === family)).toMatchObject({
         support: 'unsupported',
       });

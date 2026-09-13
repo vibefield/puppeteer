@@ -395,14 +395,15 @@ export class KimiMonitorEvidence {
               cacheCreationTokens,
             }),
           );
-          updates.push(
-            upsert('context', metricKey, {
-              kind: 'context',
-              ...(actor ? { actor } : {}),
-              usedTokens: inputTokens + cacheReadTokens + cacheCreationTokens,
-              percentageSource: 'unavailable',
-            }),
-          );
+          if (!actor)
+            updates.push(
+              upsert('context', metricKey, {
+                kind: 'context',
+                ...(actor ? { actor } : {}),
+                usedTokens: inputTokens + cacheReadTokens + cacheCreationTokens,
+                percentageSource: 'unavailable',
+              }),
+            );
         }
         if (actor) childState('active', 'Responding');
         break;

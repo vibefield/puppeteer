@@ -30,7 +30,6 @@ import type {
   AgentMonitorState,
   AgentAdapterBinding,
   ExternalRef,
-  MonitorArtifactReadResult,
   MonitorNotification,
   NativeSessionRef,
   ObservationLevel,
@@ -599,11 +598,6 @@ export interface AgentRuntime {
   onMonitorNotification(listener: (notice: MonitorNotification) => void): () => void;
   onMonitorRemoved(listener: (runtimeRunId: RuntimeRunId) => void): () => void;
   acknowledgeFailureBlocker(runtimeRunId: RuntimeRunId, blockerId: string): Promise<boolean>;
-  readMonitorArtifact(
-    runtimeRunId: RuntimeRunId,
-    artifactId: string,
-    options?: { maxBytes?: number | undefined },
-  ): Promise<MonitorArtifactReadResult>;
   /** Best-effort audit-log health; undefined when recording is not configured. */
   recordingStatus(): ActionRecorderStatus | undefined;
   onRecordingStatus(listener: (status: ActionRecorderStatus) => void): () => void;

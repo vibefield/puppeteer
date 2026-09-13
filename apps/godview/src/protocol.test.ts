@@ -6,7 +6,6 @@ import type {
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
   PuppeteerBridge,
-  ReadAgentMonitorArtifactRequest,
 } from './protocol.js';
 
 function state(): AgentMonitorState {
@@ -20,8 +19,9 @@ function state(): AgentMonitorState {
     blockers: [{ id: 'failure-1', kind: 'failure', since: '2026-08-17T00:00:00.000Z' }],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: { nativeSessionId: 'native-1' },
@@ -57,23 +57,16 @@ describe('Godview monitor IPC protocol', () => {
     expect(JSON.parse(JSON.stringify(messages))).toEqual(messages);
   });
 
-  it('exposes only scoped acknowledgment and bounded artifact operations', () => {
+  it('exposes monitor subscriptions and scoped failure acknowledgment', () => {
     const acknowledgment: AcknowledgeAgentFailureRequest = { runtimeRunId: 'run-1', blockerId: 'failure-1' };
-    const artifactRead: ReadAgentMonitorArtifactRequest = {
-      runtimeRunId: 'run-1',
-      artifactId: 'workflow-1',
-      maxBytes: 4096,
-    };
     const bridgeMethods: (keyof PuppeteerBridge)[] = [
       'listAgentMonitors',
       'onAgentMonitorState',
       'onAgentMonitorNotification',
       'onAgentMonitorRemoved',
       'acknowledgeAgentFailure',
-      'readAgentMonitorArtifact',
     ];
-    expect(JSON.parse(JSON.stringify({ acknowledgment, artifactRead }))).toEqual({ acknowledgment, artifactRead });
-    expect(bridgeMethods).toHaveLength(6);
-    expect(artifactRead).not.toHaveProperty('path');
+    expect(JSON.parse(JSON.stringify({ acknowledgment }))).toEqual({ acknowledgment });
+    expect(bridgeMethods).toHaveLength(5);
   });
 });

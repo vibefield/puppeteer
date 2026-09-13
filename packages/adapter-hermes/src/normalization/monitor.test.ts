@@ -41,20 +41,9 @@ function project(batches: AdapterMonitorObservationBatch[]) {
 }
 
 describe('HermesMonitorEvidence', () => {
-  it('declares every checklist family without claiming teams or workflows', () => {
+  it('declares every unified monitor family', () => {
     expect(HERMES_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(HERMES_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'degraded',
@@ -62,9 +51,6 @@ describe('HermesMonitorEvidence', () => {
     });
     expect(HERMES_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
       support: 'degraded',
-    });
-    expect(HERMES_MONITOR_CAPABILITIES.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
     });
     expect(HERMES_MONITOR_CAPABILITIES.find(({ family }) => family === 'mode')?.limitations.join(' ')).toContain(
       'Plan',
@@ -259,7 +245,7 @@ describe('HermesMonitorEvidence', () => {
     const state = project([capabilities, root, started, completed]);
     expect(state.usage.cumulativeTokens).toBe(100);
     expect(state.subagents).toMatchObject([
-      { id: 'child-1', active: false, cumulativeTokens: 27, modelId: 'child-model' },
+      { id: 'child-1', working: false, cumulativeTokens: 27, modelId: 'child-model' },
     ]);
   });
 
@@ -283,9 +269,6 @@ describe('HermesMonitorEvidence', () => {
     const unavailable = projector.railUnavailableBatch(T0, 'test disconnect');
     expect(unavailable).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
     expect(unavailable.capabilities?.find(({ family }) => family === 'usage')).toMatchObject({ support: 'degraded' });
-    expect(unavailable.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
-    });
     expect(projector.recordBatch(frame('workflow.started', { id: 'unsupported' }), T0)).toBeNull();
   });
 });

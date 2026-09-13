@@ -126,7 +126,7 @@ import type {
   CreationRequestTerminalOutcome,
 } from './identity/creation-registry.js';
 import { createSystemMonitorClock } from './monitor/clock.js';
-import { AgentMonitorService, type MonitorArtifactAudit } from './services/monitor-service.js';
+import { AgentMonitorService } from './services/monitor-service.js';
 
 interface ManagedSession {
   session: AgentAdapterBinding;
@@ -798,19 +798,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
   }
 
-  function recordArtifactAudit(run: ManagedRun, audit: MonitorArtifactAudit): Promise<void> {
-    const attemptId = randomUUID();
-    return recordAction({
-      ...actionBase(run, `artifact-read:${run.identity.runtimeEpoch}:${attemptId}`, monitorClock.now().toISOString()),
-      type: 'artifact.read',
-      artifactId: audit.artifactId,
-      maxBytes: audit.maxBytes,
-      outcome: audit.outcome,
-      ...(audit.returnedBytes === undefined ? {} : { returnedBytes: audit.returnedBytes }),
-      ...(audit.mediaType === undefined ? {} : { mediaType: audit.mediaType }),
-    });
-  }
-
   function installRunMonitor(run: ManagedRun): void {
     if (run.monitor) return;
     const provider = providers.get(run.identity.providerId);
@@ -828,7 +815,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         : { notificationCapacity: options.monitorNotificationCapacity }),
       onState: fanOutMonitorState,
       onNotification: fanOutMonitorNotification,
-      onArtifactAudit: (audit) => recordArtifactAudit(run, audit),
       onError: report,
     });
   }
@@ -1629,7 +1615,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         sessionsByRunId.delete(managed.run.identity.runtimeRunId);
       }
       managed.unsubscribe();
-      managed.run.monitor?.detachSession();
       managed.gitObserver?.stop();
       // RELEASED, not closed: the binding keeps every file the running
       // process depends on (its staged settings and hook forwarders) and
@@ -1662,7 +1647,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       rememberTombstone(managed.preparationId, { kind: 'cancelled', run: managed.run });
     }
     managed.unsubscribe();
-    managed.run.monitor?.detachSession();
     managed.gitObserver?.stop();
     const terminalOutcome: CreationRequestTerminalOutcome = !exit
       ? { kind: 'closed', reason: 'runtime-disposed' }
@@ -1882,7 +1866,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       alive: true,
       nativeSession: initialNativeClaim.value,
     });
-    run.monitor?.attachSession(session);
     let deliverySequence = 0;
     const seenSourceEventIds = new Set<string>();
     let gitObserver: GitStateObserver | undefined;
@@ -2049,7 +2032,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     } catch (error) {
       sessionsByRunId.delete(run.identity.runtimeRunId);
       sessionsByTerminalId.delete(info.terminalSessionId);
-      run.monitor?.detachSession();
       throw error;
     }
 
@@ -3261,14 +3243,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
       removeTerminalFailure(runtimeRunId);
       return true;
-    },
-    readMonitorArtifact(runtimeRunId, artifactId, readOptions) {
-      const agent = sessionsByRunId.get(runtimeRunId)?.agent;
-      if (agent) return agent.readMonitorArtifact(artifactId, readOptions);
-      const monitor = runs.get(runtimeRunId)?.monitor ?? terminalFailuresByRunId.get(runtimeRunId)?.monitor;
-      return monitor
-        ? monitor.readArtifact(artifactId, readOptions)
-        : Promise.resolve({ status: 'unavailable', message: 'monitor is not available' });
     },
     recordingStatus: (): ActionRecorderStatus | undefined => options.recorder?.status(),
     onRecordingStatus(listener) {

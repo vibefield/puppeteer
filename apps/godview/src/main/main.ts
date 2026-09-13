@@ -83,12 +83,7 @@ import {
   resolveHistoryOrigin,
 } from './history-search.js';
 import { createHistorySettingsStore } from './history-settings.js';
-import {
-  acknowledgeAgentFailureForIpc,
-  connectMonitorIpcRelay,
-  MonitorIpcRelay,
-  readAgentMonitorArtifactForIpc,
-} from './monitor-ipc.js';
+import { acknowledgeAgentFailureForIpc, connectMonitorIpcRelay, MonitorIpcRelay } from './monitor-ipc.js';
 import {
   APPEARANCE_BLOCK_START,
   appearanceBlock,
@@ -1892,11 +1887,6 @@ function registerIpc(): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || !tabs.get(window)) return Promise.resolve(false);
     return acknowledgeAgentFailureForIpc(agentRuntime, monitorRelay, input);
-  });
-  ipcMain.handle('puppeteer:read-agent-monitor-artifact', async (event, input: unknown) => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !tabs.get(window)) return { status: 'denied' as const };
-    return readAgentMonitorArtifactForIpc(agentRuntime, monitorRelay, input);
   });
   ipcMain.handle(
     'puppeteer:submit-prompt',

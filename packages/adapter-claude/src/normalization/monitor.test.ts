@@ -10,37 +10,19 @@ function family(batch: AdapterMonitorObservationBatch, name: MonitorFamilyUpdate
 }
 
 describe('ClaudeMonitorEvidence', () => {
-  it('declares workflow identity without claiming worker membership or completion', () => {
+  it('declares the unified monitor families', () => {
     const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => SESSION_ID, epoch: 'status-epoch' });
     const capabilities = evidence.capabilitiesBatch(AT).capabilities ?? [];
     expect(capabilities.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
-    expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'degraded',
-      actorScope: 'session',
-      latency: 'response',
-      source: 'claude-otlp-logs',
-      limitations: ['OTLP identifies workflow runs and names only; worker membership and completion are unavailable.'],
-    });
     expect(capabilities.find(({ family }) => family === 'model')).toMatchObject({
       support: 'degraded',
       source: 'claude-hooks-status-and-otlp',
     });
   });
 
-  it('reports only child status estimates when OTLP request usage is unavailable', () => {
+  it('reports usage unavailable when OTLP request evidence is unavailable', () => {
     const evidence = new ClaudeMonitorEvidence({
       nativeSessionId: () => SESSION_ID,
       otelUsageEnabled: false,
@@ -48,18 +30,13 @@ describe('ClaudeMonitorEvidence', () => {
     });
     expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'degraded',
-      latency: 'sample',
-      source: 'claude-child-status-samples',
-      contractVersion: 'claude-status-channel@1',
+      latency: 'response',
+      source: 'none',
+      contractVersion: 'claude-code-api-request@1',
       limitations: expect.arrayContaining([
         'known old provider version',
-        'Settled request usage is unavailable; only visible child status estimates may be observed.',
+        'Settled request usage is unavailable until OTLP request evidence is available.',
       ]),
-    });
-    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
-      source: 'none',
-      limitations: expect.arrayContaining(['known old provider version']),
     });
     expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'model')).toMatchObject({
       support: 'degraded',
@@ -79,11 +56,6 @@ describe('ClaudeMonitorEvidence', () => {
     });
     expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'usage')).toMatchObject({
       support,
-      source,
-      latency: 'response',
-    });
-    expect(evidence.capabilitiesBatch(AT).capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'degraded',
       source,
       latency: 'response',
     });
@@ -108,10 +80,7 @@ describe('ClaudeMonitorEvidence', () => {
     expect(unavailable.capabilities?.find(({ family }) => family === 'status')).toMatchObject({
       support: 'degraded',
     });
-    expect(unavailable.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'degraded',
-    });
-    expect(unavailable.coverage).toHaveLength(10);
+    expect(unavailable.coverage).toHaveLength(9);
     expect(unavailable.coverage?.every(({ completeness }) => completeness === 'unavailable')).toBe(true);
   });
 
@@ -246,15 +215,9 @@ describe('ClaudeMonitorEvidence', () => {
     };
     const unjoined = evidence.childStatusBatch(payload, AT, 'child-1');
     if (!unjoined) throw new Error('expected a child batch');
-    const unjoinedContext = family(unjoined, 'context');
-    expect(unjoinedContext).toMatchObject({
-      operation: 'replace',
-      values: [{ value: { actor: { runKey: `${SESSION_ID}:status-task:agent-7` }, usedPercentage: 21 } }],
-    });
-    expect(family(unjoined, 'usage')).toMatchObject({
-      operation: 'replace',
-      values: [{ value: { canonical: false, boundary: 'sample', cumulativeTokens: 42_000 } }],
-    });
+    expect(family(unjoined, 'context')).toBeUndefined();
+    expect(family(unjoined, 'usage')).toBeUndefined();
+    expect(family(unjoined, 'delegation')).toBeUndefined();
     expect(family(unjoined, 'status')).toMatchObject({
       operation: 'upsert',
       value: {
@@ -267,26 +230,15 @@ describe('ClaudeMonitorEvidence', () => {
 
     evidence.observeNativeAgent('agent-7', 'Explore');
     const joined = evidence.childStatusBatch(payload, '2026-08-16T20:00:01.000Z', 'child-2');
-    const joinedContext = family(joined!, 'context');
-    expect(joinedContext).toMatchObject({
-      values: [
-        {
-          value: {
-            actor: {
-              runKey: `${SESSION_ID}:actor:agent-7`,
-              nativeAgentId: 'agent-7',
-              nativeAgentType: 'Explore',
-            },
-          },
-        },
-      ],
+    expect(family(joined!, 'model')).toMatchObject({
+      values: [{ value: { actor: { nativeAgentId: 'agent-7' }, providerModelId: 'claude-sonnet-4-6' } }],
     });
-    const joinedUsage = family(joined!, 'usage');
-    if (joinedUsage?.operation !== 'replace' || joinedUsage.family !== 'usage') {
-      throw new Error('expected child usage replacement');
-    }
-    expect(joinedUsage.values).toHaveLength(2);
-    expect(joinedUsage.values.every(({ value }) => value.actor?.runKey === `${SESSION_ID}:actor:agent-7`)).toBe(true);
+    expect(family(joined!, 'effort')).toMatchObject({ values: [{ value: { value: 'high' } }] });
+    expect(family(joined!, 'delegation')).toMatchObject({
+      value: { actor: { runKey: `${SESSION_ID}:actor:agent-7`, nativeAgentId: 'agent-7' }, state: 'active' },
+    });
+    expect(family(joined!, 'context')).toBeUndefined();
+    expect(family(joined!, 'usage')).toBeUndefined();
   });
 
   it('does not let a stale running status snapshot reopen a hook-stopped child', () => {
@@ -343,6 +295,7 @@ describe('ClaudeMonitorEvidence', () => {
     expect(rotatedChild).toMatchObject({ phase: 'resync', producer: { sequence: 1 } });
     expect(rotatedRoot.producer.epoch).not.toBe(firstRoot.producer.epoch);
     expect(rotatedChild.producer.epoch).not.toBe(firstChild.producer.epoch);
-    expect(family(rotatedChild, 'usage')).toMatchObject({ operation: 'replace', values: [] });
+    expect(family(rotatedChild, 'model')).toMatchObject({ operation: 'replace', values: [] });
+    expect(family(rotatedChild, 'usage')).toBeUndefined();
   });
 });

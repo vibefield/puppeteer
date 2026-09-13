@@ -12,9 +12,6 @@ import {
   isNewerAgentMonitorStateMessage,
   MonitorIpcRelay,
   parseAcknowledgeAgentFailureRequest,
-  readAgentMonitorArtifactForIpc,
-  sanitizeMonitorArtifactReadResult,
-  validateReadAgentMonitorArtifactRequest,
   type AgentMonitorNotificationMessage,
   type AgentMonitorRemovedMessage,
   type AgentMonitorStateMessage,
@@ -31,8 +28,9 @@ function monitorState(overrides: Partial<AgentMonitorState> = {}): AgentMonitorS
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},
@@ -47,7 +45,7 @@ function notice(overrides: Partial<MonitorNotification> = {}): MonitorNotificati
     notificationId: 'notice-1',
     runtimeRunId: 'run-1',
     at: '2026-08-17T00:00:00.000Z',
-    type: 'delegation:subagent-started',
+    type: 'blocked.entered',
     ...overrides,
   };
 }
@@ -141,7 +139,6 @@ describe('MonitorIpcRelay', () => {
       notifications: (async function* () {})(),
       ready: Promise.resolve(initial),
       current: () => initial,
-      readArtifact: async () => ({ status: 'unavailable' }),
       close: async () => undefined,
     };
     let stateListener: ((state: AgentMonitorState) => void) | undefined;
@@ -158,7 +155,6 @@ describe('MonitorIpcRelay', () => {
       onMonitorNotification: () => () => undefined,
       onMonitorRemoved: () => () => undefined,
       acknowledgeFailureBlocker: async () => false,
-      readMonitorArtifact: async () => ({ status: 'unavailable' as const }),
     };
     const relay = new MonitorIpcRelay({ onState: () => order.push('snapshot') });
     const connection = connectMonitorIpcRelay(runtime, relay);
@@ -181,79 +177,9 @@ describe('monitor IPC request boundary', () => {
     expect(parseAcknowledgeAgentFailureRequest({ runtimeRunId: '../run', blockerId: 'failure' })).toBeUndefined();
   });
 
-  it('rejects paths and oversized artifact requests before runtime access', () => {
-    expect(
-      validateReadAgentMonitorArtifactRequest({
-        runtimeRunId: 'run-1',
-        artifactId: '/tmp/workflow.md',
-        maxBytes: 1024,
-      }),
-    ).toEqual({ ok: false, result: { status: 'denied' } });
-    expect(
-      validateReadAgentMonitorArtifactRequest({
-        runtimeRunId: 'run-1',
-        artifactId: 'workflow-1',
-        maxBytes: 1024 * 1024 + 1,
-      }),
-    ).toEqual({ ok: false, result: { status: 'too-large' } });
-    expect(
-      validateReadAgentMonitorArtifactRequest({
-        runtimeRunId: 'run-1',
-        artifactId: 'opaque:workflow-1',
-        maxBytes: 1024,
-      }),
-    ).toEqual({
-      ok: true,
-      request: { runtimeRunId: 'run-1', artifactId: 'opaque:workflow-1', maxBytes: 1024 },
-    });
-  });
-
-  it('strips provider-authored failure text that could reveal a locator', () => {
-    const result = sanitizeMonitorArtifactReadResult({
-      status: 'unavailable',
-      message: 'failed to read /Users/private/.claude/workflow.md',
-      artifact: {
-        artifactId: 'workflow-1',
-        family: 'workflow-definition',
-        availability: 'metadata-only',
-      },
-    });
-    expect(result).toEqual({
-      status: 'unavailable',
-      artifact: {
-        artifactId: 'workflow-1',
-        family: 'workflow-definition',
-        availability: 'metadata-only',
-      },
-    });
-    expect(JSON.stringify(result)).not.toContain('/Users/private');
-  });
-
-  it('rejects unknown runs and sanitizes provider failures', async () => {
-    const readMonitorArtifact = vi.fn().mockResolvedValue({
-      status: 'unavailable',
-      message: 'unsupported at /Users/private/.claude/team.json',
-      artifact: { artifactId: 'team-1', family: 'team-config', availability: 'metadata-only' },
-    });
-    const runtime = { acknowledgeFailureBlocker: vi.fn().mockResolvedValue(false), readMonitorArtifact };
-    const relay = new MonitorIpcRelay();
-    const request = { runtimeRunId: 'run-1', artifactId: 'team-1', maxBytes: 4096 };
-
-    await expect(readAgentMonitorArtifactForIpc(runtime, relay, request)).resolves.toEqual({ status: 'unavailable' });
-    expect(readMonitorArtifact).not.toHaveBeenCalled();
-
-    relay.acceptState(monitorState());
-    const result = await readAgentMonitorArtifactForIpc(runtime, relay, request);
-    expect(result).toEqual({
-      status: 'unavailable',
-      artifact: { artifactId: 'team-1', family: 'team-config', availability: 'metadata-only' },
-    });
-    expect(JSON.stringify(result)).not.toContain('/Users/private');
-  });
-
   it('does not dispatch invalid or non-live failure acknowledgments', async () => {
     const acknowledgeFailureBlocker = vi.fn().mockResolvedValue(true);
-    const runtime = { acknowledgeFailureBlocker, readMonitorArtifact: vi.fn() };
+    const runtime = { acknowledgeFailureBlocker };
     const relay = new MonitorIpcRelay();
 
     await expect(

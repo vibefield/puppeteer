@@ -200,15 +200,6 @@ export interface InjectionReceiptActionV2 extends OwnActionV2Base {
   turnId?: string;
 }
 
-export interface ArtifactReadActionV2 extends OwnActionV2Base {
-  type: 'artifact.read';
-  artifactId: string;
-  maxBytes: number;
-  outcome: 'ok' | 'denied' | 'unavailable' | 'too-large';
-  returnedBytes?: number;
-  mediaType?: string;
-}
-
 export interface PolicyConflictActionV2 extends OwnActionV2Base {
   type: 'policy.conflict';
   code: string;
@@ -226,7 +217,6 @@ export type OwnActionV2 =
   | WorkspaceFinalizedActionV2
   | WorkspaceFinalizationFailedActionV2
   | InjectionReceiptActionV2
-  | ArtifactReadActionV2
   | PolicyConflictActionV2;
 
 type ToInput<T> = T extends OwnActionV2
@@ -774,19 +764,6 @@ export function normalizeOwnActionV2Input(
           ? {}
           : { reasonPresent: booleanValue(input.reasonPresent, 'reasonPresent') }),
         ...(input.turnId === undefined ? {} : { turnId: boundedString(input.turnId, 'turnId', 512) }),
-      };
-    }
-    case 'artifact.read': {
-      const returnedBytes =
-        input.returnedBytes === undefined ? undefined : nonnegativeInteger(input.returnedBytes, 'returnedBytes');
-      return {
-        ...common,
-        type: input.type,
-        artifactId: boundedString(input.artifactId, 'artifactId', 512),
-        maxBytes: nonnegativeInteger(input.maxBytes, 'maxBytes'),
-        outcome: enumValue(input.outcome, 'outcome', ['ok', 'denied', 'unavailable', 'too-large']),
-        ...(returnedBytes === undefined ? {} : { returnedBytes }),
-        ...(input.mediaType === undefined ? {} : { mediaType: boundedString(input.mediaType, 'mediaType', 128) }),
       };
     }
     case 'policy.conflict':

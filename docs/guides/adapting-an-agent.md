@@ -52,15 +52,15 @@ Until the last item is complete, use `baseline-pending` or `unsupported`. Do not
 
 ### The formal stages
 
-| Stage                    | Purpose                                                       | Primary output                                                                   | Exit gate                                                                        |
-| ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 0. Scope and bootstrap   | Choose the native integration and establish repository seams  | vendor identity, package/persona/support scaffolding plan                        | no unresolved ownership or transport question blocks the design                  |
-| 1. Survey                | Observe the exact vendor artifact                             | raw private captures, sanitized tracked captures, `findings.md`, `upstream.json` | every relied-on channel has admissible evidence and privacy passes               |
-| 2. Model                 | Formalize pinned native truth                                 | versioned ASM v3 inputs plus vendor-root `groundtruth.json`                      | model, evidence, behavior, capture, workflow, and vendor audit gates pass        |
+| Stage                    | Purpose                                                       | Primary output                                                                   | Exit gate                                                                                       |
+| ------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 0. Scope and bootstrap   | Choose the native integration and establish repository seams  | vendor identity, package/persona/support scaffolding plan                        | no unresolved ownership or transport question blocks the design                                 |
+| 1. Survey                | Observe the exact vendor artifact                             | raw private captures, sanitized tracked captures, `findings.md`, `upstream.json` | every relied-on channel has admissible evidence and privacy passes                              |
+| 2. Model                 | Formalize pinned native truth                                 | versioned ASM v3 inputs plus vendor-root `groundtruth.json`                      | model, evidence, behavior, capture, workflow, and vendor audit gates pass                       |
 | 3. Emulate               | Reproduce the native surface independently                    | Imposter persona, behavior pack, scenarios, runflows, optional server table      | persona loads, scenarios validate, replay honors capture fidelity, native devkit view is honest |
-| 4. Adapt and normalize   | Build the real native integration and portable interpretation | adapter normalizer, driver, detection/launch projections, focused fixtures       | mapping is evidence-traceable; adapter unit and devkit review gates pass         |
-| 5. Conform and integrate | Prove the product contract                                    | shared conformance, Imposter E2E, runtime provider, package wiring               | hermetic/full tests and packaging pass; no resources are orphaned                |
-| 6. Reconcile and promote | Bind the candidate to real artifacts and declare support      | reconciliation report, platform reports, protected ledger transaction            | every promotion gate passes on exact reacquired bytes                            |
+| 4. Adapt and normalize   | Build the real native integration and portable interpretation | adapter normalizer, driver, detection/launch projections, focused fixtures       | mapping is evidence-traceable; adapter unit and devkit review gates pass                        |
+| 5. Conform and integrate | Prove the product contract                                    | shared conformance, Imposter E2E, runtime provider, package wiring               | hermetic/full tests and packaging pass; no resources are orphaned                               |
+| 6. Reconcile and promote | Bind the candidate to real artifacts and declare support      | reconciliation report, platform reports, protected ledger transaction            | every promotion gate passes on exact reacquired bytes                                           |
 
 Do these in order. In particular, never derive Surface from adapter code, and never derive the adapter from authored Imposter scenarios. That makes both projections agree with each other while being wrong about the vendor.
 
@@ -789,7 +789,7 @@ The driver owns the complete live composition:
 - native session creation and resume/load;
 - one normalized candidate stream containing honest `source`, `confidence`, `promptId`, `turnId`, `replay`, and `nativeEvent` fields;
 - category normalization delegated to `normalization/<category>.ts`, not embedded in the driver;
-- named `services/<capability>.ts` for prompt, approval, artifact, and other commands;
+- named `services/<capability>.ts` for prompt, approval, and other commands;
 - native control and approval decisions;
 - programmatic prompt submission with a truthful `confirmed`, `rejected`, or `uncertain` receipt;
 - idempotent disposal of observation/control resources;

@@ -35,11 +35,11 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
     family: 'context',
     support: 'supported',
-    actorScope: 'current-actors',
+    actorScope: 'root',
     latency: 'sample',
     source: 'codex-thread-token-usage-and-rollout-tail',
     contractVersion: CODEX_CONTRACT,
-    limitations: ['Per-child context requires child-thread notification visibility.'],
+    limitations: ['Only root context is projected; child occupancy stays in native evidence.'],
   },
   {
     family: 'model',
@@ -78,19 +78,7 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     latency: 'response',
     source: 'codex-collaboration-thread-items',
     contractVersion: CODEX_CONTRACT,
-    limitations: [
-      'Child thread/item shapes are vendor-schema-backed but not present in the pinned runtime census.',
-      'No verified agent-team identity or membership surface is exposed.',
-    ],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'codex-app-server',
-    contractVersion: CODEX_CONTRACT,
-    limitations: ['No verified workflow identity or bounded workflow-artifact contract is exposed.'],
+    limitations: ['Child thread/item shapes are vendor-schema-backed but not present in the pinned runtime census.'],
   },
   {
     family: 'compaction',

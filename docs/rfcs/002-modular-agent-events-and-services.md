@@ -15,7 +15,7 @@ envelope.type === envelope.event.type;
 
 Provider-native names belong only in retained source evidence. Dotted aliases and a synthetic `state` event namespace are not public identities.
 
-The catalog currently contains 39 routes in 20 categories: `session`, `turn`, `reasoning`, `tool`, `interaction`, `delegation`, `compaction`, `context-window`, `conversation`, `usage`, `workflow`, `environment`, `model`, `effort`, `mode`, `workspace`, `process`, `notification`, `monitor`, and `adapter`.
+The catalog currently contains 37 routes in 19 categories: `session`, `turn`, `reasoning`, `tool`, `interaction`, `delegation`, `compaction`, `context-window`, `conversation`, `usage`, `environment`, `model`, `effort`, `mode`, `workspace`, `process`, `notification`, `monitor`, and `adapter`.
 
 ## Vocabulary and ownership
 
@@ -23,7 +23,7 @@ Three concepts remain separate:
 
 1. An **event category** is a stable public namespace and owns the schemas for its events.
 2. A **projection service** is an Agent-owned consumer such as state or monitor. It may consume several event categories.
-3. An **adapter capability service** implements an upper-level port such as event observation, prompt submission, approval handling, or bounded artifact reading.
+3. An **adapter capability service** implements an upper-level port such as event observation, prompt submission, approval handling.
 
 Category names do not imply exclusive projection ownership. For example, the monitor projection consumes conversation, tool and reasoning events, while the state projection consumes session, turn, environment, model, process, and context-window events.
 
@@ -96,7 +96,6 @@ packages/core/src/
     context-window.ts
     conversation.ts
     usage.ts
-    workflow.ts
     environment.ts
     model.ts
     effort.ts
@@ -115,7 +114,6 @@ packages/core/src/
     account-usage.ts
     event-source.ts
     prompt.ts
-    artifacts.ts
 
 packages/runtime/src/
   events/
@@ -157,7 +155,6 @@ src/
     context-window.ts
     conversation.ts
     usage.ts
-    workflow.ts
     environment.ts
     model.ts
     effort.ts
@@ -171,18 +168,17 @@ src/
     event-source.ts
     prompt.ts
     approvals.ts
-    artifacts.ts
     account-usage.ts
 ```
 
 Only supported categories and capabilities need files. An adapter may delegate a capability instead of copying normalization logic. One native record may produce several candidates; the pipeline owns shared correlation and composes focused category normalizers.
 
-Every adapter returns one `AgentAdapterBinding`. Its `events.onCandidate(...)` source is the only normalized observation rail, while `services.prompt` and optional capabilities such as `services.artifacts` are named command ports. Adapters never publish a stamped `AgentEventEnvelope`; the private per-Agent bus lives in Runtime.
+Every adapter returns one `AgentAdapterBinding`. Its `events.onCandidate(...)` source is the only normalized observation rail, while `services.prompt` is a named command port. Adapters never publish a stamped `AgentEventEnvelope`; the private per-Agent bus lives in Runtime.
 
 Account usage is provider-scoped rather than session-scoped, so it is composed as `AgentProvider.accountUsage`, not as
 an `AgentAdapterBinding` service. Its implementation still follows the one-capability-per-file adapter convention.
 
-Observation-source code may be organized by native transport when that is the clearest boundary, but normalized event construction still lives in the category module. Artifact readers must be incremental and bounded, and independent evidence rails must fail independently.
+Observation-source code may be organized by native transport when that is the clearest boundary, but normalized event construction still lives in the category module. Native evidence readers must be incremental and bounded, and independent evidence rails must fail independently.
 
 ## Required invariants
 

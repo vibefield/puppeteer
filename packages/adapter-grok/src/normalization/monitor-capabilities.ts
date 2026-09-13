@@ -41,7 +41,6 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'grok-update-metadata-model-cache-signals-json-and-acp-usage-update',
     contractVersion: GROK_CONTRACT,
     limitations: [
-      'Per-child context is source-backed but absent from the pinned runtime census.',
       'Before signals.json exists, context capacity requires the selected model in the native model cache.',
     ],
   },
@@ -83,18 +82,7 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: GROK_CONTRACT,
     limitations: [
       'Subagent lifecycle is official-source-backed but not pinned-runtime verified.',
-      'Child tool calls are not streamed on the parent connection and no agent-team membership identity is verified.',
-    ],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'grok-workflow-extension',
-    contractVersion: GROK_CONTRACT,
-    limitations: [
-      'workflow_updated and goal_updated stay raw until fixtures prove identity, replacement, and artifact semantics.',
+      'Child tool calls are not streamed on the parent connection.',
     ],
   },
   {

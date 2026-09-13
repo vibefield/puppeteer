@@ -67,15 +67,6 @@ export const ANTIGRAVITY_MONITOR_CAPABILITIES: readonly ObservationCapability[] 
     limitations: ['No stable child-agent lifecycle identity is present.'],
   },
   {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'none-in-antigravity-transcript',
-    contractVersion: ANTIGRAVITY_CONTRACT,
-    limitations: ['No workflow-run identity exists.'],
-  },
-  {
     family: 'compaction',
     support: 'unsupported',
     actorScope: 'session',

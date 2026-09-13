@@ -125,27 +125,13 @@ describe('GrokMonitorEvidence', () => {
     });
   });
 
-  it('declares every checklist family without claiming unverified workflow parity', () => {
+  it('declares every unified monitor family', () => {
     expect(GROK_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'supported',
       actorScope: 'root',
-    });
-    expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
     });
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
       support: 'degraded',
@@ -361,7 +347,7 @@ describe('GrokMonitorEvidence', () => {
     });
   });
 
-  it('tracks source-backed subagent activity and context without inventing child burn', () => {
+  it('tracks source-backed subagent activity without treating context as burn', () => {
     const projector = evidence();
     const spawned = projector.observedBatch(
       observed(
@@ -417,15 +403,12 @@ describe('GrokMonitorEvidence', () => {
     expect(progress?.updates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ family: 'delegation', value: expect.objectContaining({ state: 'active' }) }),
-        expect.objectContaining({
-          family: 'context',
-          value: expect.objectContaining({ usedTokens: 1_234, capacityTokens: 131_072 }),
-        }),
       ]),
     );
     expect(
       [spawned, progress, finished].flatMap((batch) => batch?.updates ?? []).some(({ family }) => family === 'usage'),
     ).toBe(false);
+    expect(progress?.updates.some(({ family }) => family === 'context')).toBe(false);
     const serialized = JSON.stringify([spawned, progress, finished]);
     expect(serialized).not.toContain('private task description');
     expect(serialized).not.toContain('private-tool-name');

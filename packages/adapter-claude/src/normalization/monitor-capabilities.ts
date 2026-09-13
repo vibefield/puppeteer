@@ -20,16 +20,16 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
       'Settled requests are exact; Claude exposes no sanctioned intra-response token delta.',
       'Request totals cover observed API completions; historical transcript usage is not imported.',
       'Per-child attribution is present only when Claude emits a native agent id.',
-      'Claude tokenSamples omit timestamps, so only callback-time tokenCount is used for child burn rate.',
+      'Child context occupancy and untimed status samples are not token consumption; usage comes only from OTLP requests.',
     ],
   },
   {
     family: 'context',
     support: 'degraded',
-    actorScope: 'current-actors',
+    actorScope: 'root',
     latency: 'sample',
     source: 'claude-status-channels',
-    limitations: ['Root is provider-calculated; child values exist only for visible tasks with a resolved model.'],
+    limitations: ['Root context is provider-calculated; child context stays in native evidence.'],
   },
   {
     family: 'model',
@@ -65,14 +65,6 @@ const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
     latency: 'hook',
     source: 'claude-hooks-and-child-status',
     limitations: ['Task-row IDs are not merged with hook agent IDs without verified equality.'],
-  },
-  {
-    family: 'workflow',
-    support: 'degraded',
-    actorScope: 'session',
-    latency: 'response',
-    source: 'claude-otlp-logs',
-    limitations: ['OTLP identifies workflow runs and names only; worker membership and completion are unavailable.'],
   },
   {
     family: 'compaction',
@@ -111,33 +103,20 @@ export function claudeMonitorCapabilities(
         ],
       };
     }
-    if (capability.family === 'workflow') {
-      return {
-        ...capability,
-        support: otelUsageEnabled ? ('degraded' as const) : ('unsupported' as const),
-        source: otelUsageEnabled ? 'claude-otlp-probe' : 'none',
-        limitations: [
-          ...capability.limitations,
-          otelUsageEnabled
-            ? 'The provider version is unknown; OTLP workflow identity is safely probed.'
-            : unavailableReason,
-        ],
-      };
-    }
     return capability.family === 'usage'
       ? {
           ...capability,
           support: 'degraded' as const,
-          latency: otelUsageEnabled ? ('response' as const) : ('sample' as const),
-          source: otelUsageEnabled ? 'claude-otlp-probe' : 'claude-child-status-samples',
-          contractVersion: otelUsageEnabled ? capability.contractVersion : 'claude-status-channel@1',
+          latency: 'response' as const,
+          source: otelUsageEnabled ? 'claude-otlp-probe' : 'none',
+          contractVersion: capability.contractVersion,
           limitations: [
             ...capability.limitations,
             otelUsageEnabled
               ? 'The provider version is unknown; OTLP request logs are safely probed.'
               : unavailableReason,
             ...(!otelUsageEnabled
-              ? ['Settled request usage is unavailable; only visible child status estimates may be observed.']
+              ? ['Settled request usage is unavailable until OTLP request evidence is available.']
               : []),
           ],
         }

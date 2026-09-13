@@ -13,7 +13,6 @@
     "permission.completed",
     "permission.requested",
     "session.auto_mode_resolved",
-    "session.autopilot_objective_changed",
     "session.compaction_complete",
     "session.compaction_start",
     "session.context_changed",
@@ -25,7 +24,6 @@
     "session.resume",
     "session.shutdown",
     "session.start",
-    "session.task_complete",
     "session.truncation",
     "session.workspace_file_changed",
     "subagent.completed",
@@ -37,13 +35,13 @@
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 70,
-    "sha256": "f264f790ea9c4f303607b74b1a66076f9a02fef8a66b24c57c422a661ef4b3d7",
+    "count": 72,
+    "sha256": "8ee488df8bfbba152285fe4e3f1582a03ca2998b990b585a1a7365ed428c8670",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 99,
-    "semantic": 29,
+    "semantic": 27,
     "observedOrControlled": 0
   }
 }

@@ -16,8 +16,9 @@ function monitorState(runtimeRunId: string, overrides: Partial<AgentMonitorState
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},
@@ -38,7 +39,7 @@ function plainText(markup: string): string {
 }
 
 describe('AgentMonitorInspector', () => {
-  it('renders the complete fleet-observation checklist from monitor state', () => {
+  it('renders run details and the narrow subagent view', () => {
     const root = monitorState('run-root', {
       status: 'blocked',
       alive: false,
@@ -95,56 +96,16 @@ describe('AgentMonitorInspector', () => {
           intent: 'observed',
         },
       },
+      subagentCount: 4,
       subagents: [
         {
           id: 'child-1',
-          actorRunKey: 'actor-child-1',
-          type: 'reviewer',
-          active: true,
+          working: true,
           activity: 'Reviewing runtime code',
           cumulativeTokens: 2_000,
           burnRatePerMin: 50,
-          contextPercent: 20,
           modelId: 'claude-sonnet-5',
-          modelIntent: 'observed',
           effort: 'medium',
-          effortIntent: 'observed',
-        },
-      ],
-      team: {
-        id: 'team-1',
-        name: 'Runtime team',
-        teammates: [
-          { id: 'member-1', name: 'Peer', runtimeRunId: 'run-peer', idle: true },
-          {
-            id: 'member-2',
-            name: 'Local reviewer',
-            actorRunKey: 'actor-child-1',
-            idle: false,
-            activity: 'Reviewing runtime code',
-            cumulativeTokens: 2_000,
-            burnRatePerMin: 50,
-            contextPercent: 20,
-            modelId: 'claude-sonnet-5',
-            modelIntent: 'observed',
-            effort: 'medium',
-            effortIntent: 'observed',
-          },
-        ],
-      },
-      workflows: [
-        {
-          id: 'workflow-1',
-          name: 'Observation audit',
-          active: true,
-          actorRunKeys: ['actor-child-1'],
-          artifactRefs: [
-            {
-              artifactId: 'opaque:workflow-1',
-              family: 'workflow-definition',
-              availability: 'readable',
-            },
-          ],
         },
       ],
       compaction: { active: true, count: 2 },
@@ -156,24 +117,11 @@ describe('AgentMonitorInspector', () => {
           status: { support: 'supported', availability: 'loading' },
           usage: { support: 'supported', availability: 'available', asOf: OBSERVED_AT },
           context: { support: 'degraded', availability: 'partial', asOf: OBSERVED_AT },
-          workflow: { support: 'unsupported', availability: 'unavailable' },
         },
       },
       omitted: { subagents: 3 },
     });
-    const peer = monitorState('run-peer', {
-      status: 'working',
-      activity: { kind: 'tool', line: 'Running peer tests', since: OBSERVED_AT },
-      usage: { cumulativeTokens: 100, burnRatePerMin: 2, samples: [] },
-      context: { usedPercent: 10, percentageSource: 'provider', asOf: OBSERVED_AT },
-      model: { id: 'claude-haiku-5', displayName: 'Haiku 5', asOf: OBSERVED_AT },
-      effort: { value: 'low', asOf: OBSERVED_AT },
-      team: { id: 'team-1', teammates: [] },
-    });
-
-    const markup = renderToStaticMarkup(
-      <AgentMonitorInspector state={root} allStates={[root, peer]} nowMs={Date.parse(OBSERVED_AT)} />,
-    );
+    const markup = renderToStaticMarkup(<AgentMonitorInspector state={root} nowMs={Date.parse(OBSERVED_AT)} />);
     const content = plainText(markup);
 
     expect(content).toContain(
@@ -190,25 +138,21 @@ describe('AgentMonitorInspector', () => {
     expect(content).toContain('run total · blocked 12,345 tokens · 321 tok/min');
     expect(content).toContain('root agent 10,345 tokens · 271 tok/min');
     expect(content).toContain(
-      'reviewer · active · Reviewing runtime code 2,000 tokens · 50 tok/min · 20% ctx · claude-sonnet-5 · effort medium',
+      'child-1 · working · Reviewing runtime code 2,000 tokens · 50 tok/min · claude-sonnet-5 · effort medium',
     );
-    expect(content).toContain('Runtime team 2 runs · 12,445 tokens · 323 tok/min');
-    expect(content).toContain('Peer Running peer tests · 100 tokens · 2 tok/min · 10% ctx · Haiku 5 · effort low');
-    expect(content).toContain(
-      'Local reviewer active · Reviewing runtime code · 2,000 tokens · 50 tok/min · 20% ctx · claude-sonnet-5 · effort medium',
-    );
-    expect(content).toContain('Observation audit · active actor-child-1 READ workflow-definition');
+    expect(content).toContain('Subagents · 4');
+    expect(content).not.toContain('Workflows');
+    expect(content).not.toContain('READ workflow');
     expect(content).toContain('compaction active · 2 cwd /project/puppeteer worktrees /project/worktree-1');
     expect(content).toContain('status loading');
     expect(content).toContain('context partial');
-    expect(content).toContain('workflow unsupported');
     expect(content).toContain('subagents: 3 omitted');
   });
 
   it('keeps unavailable usage unknown instead of presenting zero', () => {
     const empty = monitorState('run-empty');
     const content = plainText(
-      renderToStaticMarkup(<AgentMonitorInspector state={empty} allStates={[empty]} nowMs={Date.parse(OBSERVED_AT)} />),
+      renderToStaticMarkup(<AgentMonitorInspector state={empty} nowMs={Date.parse(OBSERVED_AT)} />),
     );
 
     expect(content).toContain('run total · idle usage unavailable');

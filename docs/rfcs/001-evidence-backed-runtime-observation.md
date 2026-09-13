@@ -2,7 +2,7 @@
 
 - **Status:** Accepted and implemented
 - **Created:** 2026-08-16
-- **Revised:** 2026-08-26
+- **Revised:** 2026-09-12
 - **Owners:** Core, Runtime, adapter, and monitor maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md), [`003-native-observation-sources.md`](./003-native-observation-sources.md), [`004-layered-agent-runtime.md`](./004-layered-agent-runtime.md), [`agent-api.html`](../agent-api.html)
 - **History:** The [original proposal and rollout design](../archive/RFC-001-EVIDENCE-BACKED-RUNTIME-OBSERVATION.md) is archived.
@@ -44,16 +44,18 @@ There is no shared semantic-database or external observer dependency in the live
 - status, blockers, and current activity;
 - usage and short-window burn rate;
 - context, model, effort, and provider modes;
-- subagents, teams, and workflows;
+- known child count and each child’s model, effort, token usage, and observed activity;
 - compaction, environment, native-session identity, freshness, and liveness.
 
-Source epochs, corrections, replacement ledgers, raw provider records, and privacy-safe workspace provenance remain private. Content-bearing artifacts cross the boundary only through a bounded `readArtifact()` capability.
+Source epochs, corrections, replacement ledgers, raw provider records, and privacy-safe workspace provenance remain private. There is no monitor artifact-read capability.
 
 `MonitorNotification` reports notification-worthy transitions. It is not another state store and cannot be replayed to reconstruct the complete monitor.
 
 Monitor schema generation 2 removes plan steps and task collections, their bounded-collection counters, and task/plan notifications. Task management belongs to native agents or an external product; provider plan-mode and agent/subagent execution remain operational observations. See RFC 004 for the boundary and consumer migration.
 
-`AgentMonitorHandle` provides a race-free initial snapshot, ordered state and notification iterables, current state, bounded artifact reads, and consumer-local closure. Closing a handle never closes the Agent.
+`AgentMonitorHandle` provides a race-free initial snapshot, ordered state and notification iterables, current state and consumer-local closure. Closing a handle never closes the Agent.
+
+Monitor schema generation 3 removes artifact reads, team/workflow types, memberships and notifications, child context, duplicate session-state child maps, and child lifecycle notifications. `subagentCount` includes completed children before display bounds. Child rows retain usage after completion; `working: false` means no work is observed, not proof of termination. Team/workflow identities alone remain native evidence and never create children.
 
 ## Evidence semantics
 
@@ -73,7 +75,8 @@ Private-only evidence does not trigger a public state publication. In particular
 
 Status is projected in one place:
 
-- any unresolved blocker produces `blocked`;
+- any currently working child produces `working`;
+- otherwise any unresolved blocker produces `blocked`;
 - otherwise current activity produces `working`;
 - otherwise the Agent is `idle`.
 
@@ -109,22 +112,21 @@ A frozen failure monitor retains only its bounded public projection. Acknowledgi
 
 - Raw prompts, artifact bodies, local paths, credentials, and raw diffs are excluded from monitor state and default action records.
 - Workspace file identities use keyed fingerprints when durable correlation is authorized.
-- Artifact reads have per-request and hard byte limits and produce metadata-only audit records.
 - Recorder, observer, listener, and projection failures are diagnostic; they do not reject prompts or kill a live process.
 - Listener faults do not interrupt ingestion or other listeners.
 
 ## Implementation map
 
-| Responsibility | Location |
-| --- | --- |
-| Public monitor types and pure projection | `packages/core/src/monitor/` |
-| Version-locked accumulator SPI | `packages/core/src/monitor-spi.ts` |
-| Adapter evidence schema/event | `packages/core/src/events/monitor.ts` |
-| Runtime monitor orchestration | `packages/runtime/src/services/monitor-service.ts` |
-| Race-free handle and scheduling primitives | `packages/runtime/src/monitor/` |
-| Transport-neutral external store | `packages/monitor/` |
-| React hooks and view contract | `packages/react/` |
-| Product-specific IPC and rendering | `apps/godview/` |
+| Responsibility                             | Location                                           |
+| ------------------------------------------ | -------------------------------------------------- |
+| Public monitor types and pure projection   | `packages/core/src/monitor/`                       |
+| Version-locked accumulator SPI             | `packages/core/src/monitor-spi.ts`                 |
+| Adapter evidence schema/event              | `packages/core/src/events/monitor.ts`              |
+| Runtime monitor orchestration              | `packages/runtime/src/services/monitor-service.ts` |
+| Race-free handle and scheduling primitives | `packages/runtime/src/monitor/`                    |
+| Transport-neutral external store           | `packages/monitor/`                                |
+| React hooks and view contract              | `packages/react/`                                  |
+| Product-specific IPC and rendering         | `apps/godview/`                                    |
 
 ## Completed migration
 

@@ -1,9 +1,4 @@
-import type {
-  AgentMonitorHandle,
-  AgentMonitorState,
-  MonitorArtifactReadResult,
-  MonitorNotification,
-} from '@vibecook/puppeteer-core';
+import type { AgentMonitorHandle, AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
 
 export class MonitorNotificationGapError extends Error {
   readonly code = 'MONITOR_NOTIFICATION_GAP';
@@ -129,7 +124,6 @@ export interface MonitorHandleSource {
   readonly runtimeRunId: string;
   current(): AgentMonitorState;
   subscribe(subscriber: MonitorHandleSubscriber): () => void;
-  readArtifact(artifactId: string, options?: { maxBytes?: number | undefined }): Promise<MonitorArtifactReadResult>;
 }
 
 export function createMonitorHandle(source: MonitorHandleSource, notificationCapacity: number): AgentMonitorHandle {
@@ -174,7 +168,6 @@ export function createMonitorHandle(source: MonitorHandleSource, notificationCap
     notifications,
     ready: Promise.resolve(snapshot),
     current: () => current,
-    readArtifact: (artifactId, options) => source.readArtifact(artifactId, options),
     async close() {
       if (closed) return;
       closed = true;

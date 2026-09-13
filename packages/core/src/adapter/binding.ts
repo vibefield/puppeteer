@@ -7,7 +7,7 @@
  */
 
 import type { ObservationLevel } from '../events/index.js';
-import type { AgentAdapterEventSource, AgentArtifactService, AgentPromptService } from '../services/index.js';
+import type { AgentAdapterEventSource, AgentPromptService } from '../services/index.js';
 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
@@ -31,7 +31,6 @@ export interface AgentAdapterBinding {
   /** Explicit upper-level capabilities; commands never travel inside event payloads. */
   readonly services: {
     readonly prompt: AgentPromptService;
-    readonly artifacts?: AgentArtifactService;
   };
   /**
    * Tear down observation/control. Process lifecycle stays with the host.

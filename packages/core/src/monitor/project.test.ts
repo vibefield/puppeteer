@@ -68,7 +68,7 @@ describe('projectAgentMonitorState', () => {
   it('increments revisions only when the public full state changes', () => {
     const accumulator = initial();
     const first = projectAgentMonitorState(accumulator);
-    expect(first.schemaVersion).toBe(2);
+    expect(first.schemaVersion).toBe(3);
     expect(first).not.toHaveProperty('plan');
     expect(first).not.toHaveProperty('tasks');
     expect(first.freshness.families).not.toHaveProperty('planning');
@@ -285,6 +285,7 @@ describe('projectAgentMonitorState', () => {
     const child = {
       rootSessionKey: 'native-1',
       runKey: 'native-1:child',
+      nativeAgentId: 'child',
       role: 'child' as const,
       parentRunKey: root.runKey,
     };
@@ -327,7 +328,7 @@ describe('projectAgentMonitorState', () => {
       context: { usedPercent: 42 },
       model: { id: 'root-model', intent: 'observed' },
       effort: { value: 'xhigh', intent: 'observed' },
-      subagents: [{ actorRunKey: 'native-1:child', modelId: 'child-model' }],
+      subagents: [{ id: 'child', modelId: 'child-model', working: false }],
     });
   });
 
@@ -495,29 +496,19 @@ describe('projectAgentMonitorState', () => {
     });
   });
 
-  it('keeps blockable hook transitions visibly provisional', () => {
-    let state = reduceMonitorAccumulator(
+  it('keeps blockable compaction hooks visibly provisional', () => {
+    const state = reduceMonitorAccumulator(
       initial(),
-      runtimeEnvelope(
-        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
-        2,
-        'inferred',
-      ),
-    ).state;
-    state = reduceMonitorAccumulator(
-      state,
       runtimeEnvelope({ type: 'compaction:started', compactionId: 'compact-p' }, 3, 'inferred'),
     ).state;
-    expect(projectAgentMonitorState(state)).toMatchObject({
-      team: { teammates: [{ id: 'researcher', idle: true, provisional: true }] },
-      compaction: { active: true, provisional: true },
-    });
+    expect(projectAgentMonitorState(state)).toMatchObject({ compaction: { active: true, provisional: true } });
   });
 
   it('projects leased child activity without requiring it to own child lifecycle', () => {
     const actor = {
       rootSessionKey: 'native-1',
-      runKey: 'native-1:status-task:task-7',
+      runKey: 'native-1:actor:task-7',
+      nativeAgentId: 'task-7',
       role: 'child' as const,
       parentRunKey: 'native-1:root',
     };
@@ -560,8 +551,8 @@ describe('projectAgentMonitorState', () => {
       status: 'working',
       subagents: [
         {
-          actorRunKey: 'native-1:status-task:task-7',
-          active: true,
+          id: 'task-7',
+          working: true,
           activity: 'Editing file',
         },
       ],
@@ -610,7 +601,7 @@ describe('projectAgentMonitorState', () => {
     const projected = projectAgentMonitorState(state);
     expect(projected).toMatchObject({
       status: 'idle',
-      subagents: [{ id: 'agent-7', type: 'Explore', active: false }],
+      subagents: [{ id: 'agent-7', working: false }],
     });
     expect(projected.activity).toBeUndefined();
     expect(projected.subagents[0]?.activity).toBeUndefined();
@@ -678,373 +669,6 @@ describe('projectAgentMonitorState', () => {
       ),
     ).state;
     expect(projectAgentMonitorState(state).usage.cumulativeTokens).toBe(60);
-  });
-
-  it('aggregates an actor once regardless of affiliation arrival order', () => {
-    const actor = {
-      rootSessionKey: 'session-1',
-      runKey: 'child-1',
-      role: 'child' as const,
-      parentRunKey: 'session-1:root',
-      nativeAgentId: 'child-1',
-    };
-    const facts: MonitorFamilyUpdate[] = [
-      {
-        family: 'delegation',
-        operation: 'upsert',
-        key: 'actor:child-1',
-        value: { kind: 'actor', actor, state: 'active' },
-      },
-      {
-        family: 'delegation',
-        operation: 'upsert',
-        key: 'team:team-1',
-        value: { kind: 'team', teamId: 'team-1', name: 'Research team' },
-      },
-      {
-        family: 'delegation',
-        operation: 'upsert',
-        key: 'team-member:child-1',
-        value: {
-          kind: 'team-member',
-          membershipId: 'researcher',
-          teamId: 'team-1',
-          actor,
-          state: 'unknown',
-        },
-      },
-      {
-        family: 'usage',
-        operation: 'upsert',
-        key: 'response-child-1',
-        value: {
-          kind: 'usage',
-          usageId: 'response-child-1',
-          actor,
-          boundary: 'response',
-          canonical: true,
-          deltaTokens: 25,
-        },
-      },
-      {
-        family: 'delegation',
-        operation: 'upsert',
-        key: 'affiliation:child-1',
-        value: { kind: 'affiliation', actor, affiliation: { kind: 'team', id: 'team-1' } },
-      },
-    ];
-    const forward = facts.reduce(
-      (state, update, index) =>
-        reduceMonitorAccumulator(state, semantic(`forward-${index}`, 'live', [update], index + 1)).state,
-      initial(),
-    );
-    const reverse = [...facts]
-      .reverse()
-      .reduce(
-        (state, update, index) =>
-          reduceMonitorAccumulator(state, semantic(`reverse-${index}`, 'live', [update], index + 1)).state,
-        initial(),
-      );
-    const forwardProjection = projectAgentMonitorState(forward);
-    const reverseProjection = projectAgentMonitorState(reverse);
-    expect(forwardProjection.usage.cumulativeTokens).toBe(25);
-    expect(forwardProjection.subagents[0]?.cumulativeTokens).toBe(25);
-    expect(forwardProjection.subagents[0]?.burnRatePerMin).toBe(25);
-    expect(forwardProjection.team?.teammates[0]).toMatchObject({
-      id: 'researcher',
-      actorRunKey: 'child-1',
-      idle: false,
-      cumulativeTokens: 25,
-      burnRatePerMin: 25,
-    });
-    expect(reverseProjection.usage.cumulativeTokens).toBe(25);
-    expect(reverseProjection.subagents[0]?.cumulativeTokens).toBe(25);
-    expect(reverseProjection.team?.teammates[0]).toMatchObject({
-      id: 'researcher',
-      actorRunKey: 'child-1',
-      idle: false,
-      cumulativeTokens: 25,
-      burnRatePerMin: 25,
-    });
-  });
-
-  it('reconciles canonical team membership with native hook activity without losing actor telemetry', () => {
-    const actor = {
-      rootSessionKey: 'session-1',
-      runKey: 'child-team-1',
-      role: 'child' as const,
-      parentRunKey: 'session-1:root',
-      nativeAgentId: 'agent-1',
-      nativeAgentType: 'researcher',
-    };
-    let state = reduceMonitorAccumulator(
-      initial(),
-      semantic(
-        'team-semantic',
-        'live',
-        [
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'team:canonical-team',
-            value: {
-              kind: 'team',
-              teamId: 'canonical-team',
-              nativeTeamId: 'alpha',
-              name: 'alpha',
-            },
-          },
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'member:canonical-member',
-            value: {
-              kind: 'team-member',
-              membershipId: 'researcher',
-              teamId: 'canonical-team',
-              nativeTeamId: 'alpha',
-              nativeMemberId: 'researcher',
-              actor,
-              name: 'researcher',
-              membershipState: 'present',
-              state: 'unknown',
-            },
-          },
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'actor:child-team-1',
-            value: { kind: 'actor', actor, state: 'unknown' },
-          },
-          {
-            family: 'usage',
-            operation: 'upsert',
-            key: 'usage:child-team-1',
-            value: {
-              kind: 'usage',
-              usageId: 'usage:child-team-1',
-              actor,
-              boundary: 'response',
-              canonical: true,
-              deltaTokens: 40,
-            },
-          },
-          {
-            family: 'context',
-            operation: 'upsert',
-            key: 'context:child-team-1',
-            value: {
-              kind: 'context',
-              actor,
-              usedTokens: 50_000,
-              capacityTokens: 200_000,
-              percentageSource: 'derived',
-            },
-          },
-          {
-            family: 'model',
-            operation: 'upsert',
-            key: 'model-configured:child-team-1',
-            value: {
-              kind: 'model',
-              actor,
-              providerModelId: 'haiku',
-              intent: 'configured',
-            },
-          },
-          {
-            family: 'model',
-            operation: 'upsert',
-            key: 'model:child-team-1',
-            value: {
-              kind: 'model',
-              actor,
-              providerModelId: 'claude-haiku-4-5',
-              intent: 'observed',
-            },
-          },
-          {
-            family: 'effort',
-            operation: 'upsert',
-            key: 'effort-configured:child-team-1',
-            value: { kind: 'effort', actor, value: 'low', intent: 'configured' },
-          },
-          {
-            family: 'effort',
-            operation: 'upsert',
-            key: 'effort:child-team-1',
-            value: { kind: 'effort', actor, value: 'medium', intent: 'observed' },
-          },
-        ],
-        1,
-      ),
-    ).state;
-    state = reduceMonitorAccumulator(
-      state,
-      runtimeEnvelope(
-        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
-        20,
-        'inferred',
-      ),
-    ).state;
-
-    expect(projectAgentMonitorState(state).team).toMatchObject({
-      id: 'canonical-team',
-      name: 'alpha',
-      teammates: [
-        {
-          id: 'researcher',
-          actorRunKey: 'child-team-1',
-          idle: true,
-          cumulativeTokens: 40,
-          burnRatePerMin: 40,
-          contextPercent: 25,
-          modelId: 'claude-haiku-4-5',
-          modelIntent: 'observed',
-          effort: 'medium',
-          effortIntent: 'observed',
-          activityProvisional: true,
-        },
-      ],
-    });
-    expect(projectAgentMonitorState(state).team?.teammates[0]).not.toHaveProperty('provisional');
-
-    const active = semantic(
-      'team-active',
-      'live',
-      [
-        {
-          family: 'status',
-          operation: 'upsert',
-          key: 'activity:child-team-1',
-          value: {
-            kind: 'activity',
-            actor,
-            activityKind: 'tool',
-            active: true,
-            line: 'Running team tests',
-          },
-        },
-      ],
-      30,
-    );
-    active.effectiveAt = '2026-08-16T12:00:30.000Z';
-    state = reduceMonitorAccumulator(state, active).state;
-    expect(projectAgentMonitorState(state).team?.teammates).toEqual([
-      expect.objectContaining({
-        id: 'researcher',
-        idle: false,
-        activity: 'Running team tests',
-        modelId: 'claude-haiku-4-5',
-      }),
-    ]);
-    expect(projectAgentMonitorState(state).team?.teammates[0]).not.toHaveProperty('activityProvisional');
-
-    state = reduceMonitorAccumulator(
-      state,
-      semantic(
-        'team-removed',
-        'live',
-        [
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'member:canonical-member',
-            value: {
-              kind: 'team-member',
-              membershipId: 'researcher',
-              teamId: 'canonical-team',
-              nativeTeamId: 'alpha',
-              nativeMemberId: 'researcher',
-              actor,
-              name: 'researcher',
-              membershipState: 'removed',
-              state: 'unknown',
-            },
-          },
-        ],
-        31,
-      ),
-    ).state;
-    expect(projectAgentMonitorState(state).team?.teammates).toEqual([]);
-  });
-
-  it('selects the root-affiliated team and separates the current member from teammates', () => {
-    const root = {
-      rootSessionKey: 'session-1',
-      runKey: 'session-1:root',
-      role: 'root' as const,
-      nativeAgentId: 'lead-agent',
-    };
-    const child = {
-      rootSessionKey: 'session-1',
-      runKey: 'session-1:child',
-      role: 'child' as const,
-      parentRunKey: root.runKey,
-      nativeAgentId: 'child-agent',
-    };
-    const state = reduceMonitorAccumulator(
-      initial(),
-      semantic(
-        'root-team',
-        'live',
-        [
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'team:000-unrelated',
-            value: { kind: 'team', teamId: 'unrelated', nativeTeamId: 'other', name: 'other' },
-          },
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'team:zzz-alpha',
-            value: { kind: 'team', teamId: 'canonical-alpha', nativeTeamId: 'alpha', name: 'alpha' },
-          },
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'member:lead',
-            value: {
-              kind: 'team-member',
-              membershipId: 'team-lead',
-              teamId: 'canonical-alpha',
-              nativeTeamId: 'alpha',
-              nativeMemberId: 'team-lead',
-              actor: root,
-              name: 'team-lead',
-              membershipState: 'present',
-              state: 'active',
-            },
-          },
-          {
-            family: 'delegation',
-            operation: 'upsert',
-            key: 'member:child',
-            value: {
-              kind: 'team-member',
-              membershipId: 'researcher',
-              teamId: 'canonical-alpha',
-              nativeTeamId: 'alpha',
-              nativeMemberId: 'researcher',
-              actor: child,
-              name: 'researcher',
-              membershipState: 'present',
-              state: 'idle',
-            },
-          },
-        ],
-        1,
-      ),
-    ).state;
-
-    expect(projectAgentMonitorState(state).team).toMatchObject({
-      id: 'canonical-alpha',
-      name: 'alpha',
-      memberId: 'team-lead',
-      memberName: 'team-lead',
-      teammates: [{ id: 'researcher', actorRunKey: 'session-1:child', idle: true }],
-    });
   });
 
   it('accepts a semantic correction to the native-session claim without changing run identity', () => {

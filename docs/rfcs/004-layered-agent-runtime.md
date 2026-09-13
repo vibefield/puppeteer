@@ -70,7 +70,6 @@ interface AgentAdapterBinding {
   readonly events: AgentAdapterEventSource;
   readonly services: {
     readonly prompt: AgentPromptService;
-    readonly artifacts?: AgentArtifactService;
   };
   dispose(): Promise<void>;
 }
@@ -87,9 +86,8 @@ agents or a separate product own that domain. Adapters retain provider evidence
 on the existing `adapter:native-event` and generic tool rails without parsing
 todo lists, extracting Markdown plan steps, or producing a portable task model.
 
-Agent/subagent lifecycle, team and workflow membership, permission requests, and
-provider plan-mode controls remain in scope. Native names do not determine this
-boundary: Claude's `subagentStatusLine.tasks` carries child usage/context facts,
+Agent/subagent activity, permission requests, and provider plan-mode controls remain in scope. Native names do not determine this
+boundary: Claude's `subagentStatusLine.tasks` carries child model/effort/activity facts,
 Kimi's agent-task records carry child lifecycle, and OpenCode's task tool metadata
 can identify a child session. Those execution facts still feed agent monitoring.
 Provider-native schemas, captures, generated registries, and Imposter behavior
@@ -99,9 +97,13 @@ This is a breaking contract reduction. Consumers must remove subscriptions to
 `planning:updated` and `delegation:task-{created,updated,completed}`, uses of
 `SessionRuntimeState.tasks`, and monitor `plan`, `tasks`, planning-family freshness,
 task/plan bounds, and notifications. Monitor snapshots now report schema
-generation 2. All Puppeteer packages remain version-locked; no compatibility
+generation 3. All Puppeteer packages remain version-locked; no compatibility
 task store or replacement package is added. External task tools may interpret
 retained native evidence independently of the live runtime.
+
+### Minimal child execution surface
+
+Monitor generation 3 also removes artifacts, public team/workflow models, membership joins, child context and lifecycle notices. `subagentCount` and minimal child rows expose only count, model/effort, token usage and observed activity. Provider team/workflow data can contribute through these unified facts only when exact child identity is known; the remaining native detail stays at ground-truth level. Working children keep their main agent working, and usage is aggregated once per contribution or independent actor counter.
 
 ### Workspace mutation boundary
 
@@ -163,7 +165,7 @@ Each live `Agent` owns:
 - the orthogonal three-state operational machine `status: 'idle' | 'working' | 'blocked'`;
 - a deeply immutable `monitor` snapshot and race-free `observeMonitor()` handle;
 - typed `on(exact | category:* | *)` subscriptions;
-- explicit controls such as `submitPrompt()` and bounded artifact reads.
+- explicit controls such as `submitPrompt()` and retained failure acknowledgment.
 
 The eight-state session lifecycle is not collapsed into the three-state operational status. For example, a live process can be operationally blocked while its session lifecycle remains running.
 

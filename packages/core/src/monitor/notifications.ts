@@ -50,14 +50,6 @@ function notification(
   };
 }
 
-function byId<T extends { id: string }>(values: readonly T[]): Map<string, T> {
-  return new Map(values.map((value) => [value.id, value]));
-}
-
-function same(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 function compareState(
   previous: AgentMonitorState,
   next: AgentMonitorState,
@@ -68,61 +60,6 @@ function compareState(
   const provisionalInput = input.kind !== 'lease-expired' && input.provisional;
   if (previous.status !== 'blocked' && next.status === 'blocked') {
     result.push(notification(runtimeRunId, input, 'blocked.entered', next.blockers[0]?.id ?? 'blocked'));
-  }
-
-  const priorSubagents = byId(previous.subagents);
-  const nextSubagents = byId(next.subagents);
-  for (const subagent of next.subagents) {
-    const prior = priorSubagents.get(subagent.id);
-    if (provisionalInput) continue;
-    if (!prior && !subagent.active) {
-      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
-    } else if ((!prior || !prior.active) && subagent.active) {
-      result.push(notification(runtimeRunId, input, 'delegation:subagent-started', subagent.id, subagent.type));
-    } else if (prior?.active && !subagent.active) {
-      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
-    }
-  }
-  for (const subagent of previous.subagents) {
-    if (!provisionalInput && subagent.active && !nextSubagents.has(subagent.id)) {
-      result.push(notification(runtimeRunId, input, 'delegation:subagent-stopped', subagent.id, subagent.type));
-    }
-  }
-
-  if (!provisionalInput && (!previous.team || (previous.team.provisional && !next.team?.provisional)) && next.team)
-    result.push(notification(runtimeRunId, input, 'team.observed', next.team.id ?? 'team', next.team.name));
-  const priorMembers = byId(previous.team?.teammates ?? []);
-  const nextMembers = byId(next.team?.teammates ?? []);
-  for (const member of next.team?.teammates ?? []) {
-    const prior = priorMembers.get(member.id);
-    if (provisionalInput) continue;
-    if (!prior || (prior.provisional && !member.provisional)) {
-      result.push(notification(runtimeRunId, input, 'team.member-added', member.id, member.name));
-    }
-    if (
-      member.idle &&
-      !member.activityProvisional &&
-      (!prior || !prior.idle || (prior.activityProvisional && !member.activityProvisional))
-    ) {
-      result.push(notification(runtimeRunId, input, 'team.member-idle', member.id, member.name));
-    }
-  }
-  for (const member of previous.team?.teammates ?? []) {
-    if (!provisionalInput && !member.provisional && !nextMembers.has(member.id)) {
-      result.push(notification(runtimeRunId, input, 'team.member-removed', member.id, member.name));
-    }
-  }
-
-  const priorWorkflows = byId(previous.workflows);
-  for (const workflow of next.workflows) {
-    const prior = priorWorkflows.get(workflow.id);
-    if (!prior && !workflow.active) {
-      result.push(notification(runtimeRunId, input, 'workflow.completed', workflow.id, workflow.name));
-    } else if ((!prior || !prior.active) && workflow.active) {
-      result.push(notification(runtimeRunId, input, 'workflow.started', workflow.id, workflow.name));
-    } else if (prior?.active && !workflow.active) {
-      result.push(notification(runtimeRunId, input, 'workflow.completed', workflow.id, workflow.name));
-    }
   }
 
   if (!provisionalInput && !previous.compaction.active && next.compaction.active) {

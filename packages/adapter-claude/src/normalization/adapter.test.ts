@@ -460,7 +460,7 @@ describe('tool, team, and compaction semantics', () => {
     expect(
       normalizer.normalize(fakeClaudeHookPayload('TeammateIdle', { team_name: 'alpha', teammate_name: 'researcher' }))
         .events,
-    ).toEqual([{ type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' }]);
+    ).toEqual([{ type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'TeammateIdle' }]);
   });
 
   it('correlates PreCompact and PostCompact and closes a blocked attempt at the turn boundary', () => {

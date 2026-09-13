@@ -44,7 +44,6 @@ import {
   locateClaudeTranscript,
   type PreparedClaudeSession,
 } from './launch/prepare.js';
-import { createClaudeArtifactService } from './services/artifacts.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
 import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
@@ -54,7 +53,6 @@ import {
   isClaudeOtelLogsVerified,
   normalizeClaudeOtelModel,
   normalizeClaudeOtelUsage,
-  normalizeClaudeOtelWorkflow,
   otelString,
   supportsClaudeOtelLogs,
 } from './observation/otel/index.js';
@@ -70,7 +68,6 @@ import type {
 const TOKEN_ENV_VAR = 'PUPPETEER_HOOK_TOKEN';
 const MAX_OTEL_USAGE_FINGERPRINTS = 20_000;
 const MAX_OTEL_ACTOR_FINGERPRINTS = 4_096;
-const MAX_OTEL_WORKFLOW_FINGERPRINTS = 1_024;
 
 function rememberFingerprint(
   fingerprints: Map<string, string>,
@@ -94,7 +91,6 @@ function hookEventConfidence(
 ): AgentEventConfidence {
   if (
     event.type === 'interaction:question-requested' ||
-    event.type === 'delegation:teammate-idle' ||
     (hookEventName === 'PreCompact' && event.type === 'compaction:started') ||
     (['Stop', 'StopFailure', 'SessionEnd', 'PreCompact', 'UserPromptSubmit'].includes(hookEventName) &&
       event.type === 'compaction:completed') ||
@@ -465,7 +461,6 @@ function createClaudeObservation(
   let observedStatusContextKey: string | undefined;
   const observedOtelUsage = new Map<string, string>();
   const observedOtelModels = new Map<string, string>();
-  const observedOtelWorkflows = new Map<string, string>();
 
   const injector: PromptInjector = createPromptInjector({
     automate: (operation) => {
@@ -615,8 +610,7 @@ function createClaudeObservation(
 
       const usage = normalizeClaudeOtelUsage(record);
       const model = normalizeClaudeOtelModel(record);
-      const workflow = normalizeClaudeOtelWorkflow(record);
-      if (!usage && !model && !workflow) {
+      if (!usage && !model) {
         apply(
           {
             type: 'adapter:native-event',
@@ -677,26 +671,6 @@ function createClaudeObservation(
             agentType: model.agentType,
             actorKey: model.actorKey,
             actorRole: model.actorRole,
-            providerVersion: record.providerVersion ?? options.providerVersion,
-            confidence: 'authoritative',
-            native: record,
-          });
-        }
-      }
-
-      if (workflow) {
-        const fingerprint = JSON.stringify(workflow.event);
-        if (observedOtelWorkflows.get(workflow.event.workflowId) !== fingerprint) {
-          rememberFingerprint(
-            observedOtelWorkflows,
-            workflow.event.workflowId,
-            fingerprint,
-            MAX_OTEL_WORKFLOW_FINGERPRINTS,
-          );
-          apply(workflow.event, {
-            source: 'native-telemetry',
-            timestamp: workflow.timestamp,
-            promptId: otelString(record, 'prompt.id'),
             providerVersion: record.providerVersion ?? options.providerVersion,
             confidence: 'authoritative',
             native: record,
@@ -975,7 +949,6 @@ function createClaudeObservation(
         },
         services: {
           prompt: { submit: (submission) => injector.submit(submission) },
-          artifacts: createClaudeArtifactService(() => semanticAttachment),
         },
         pollTranscript: async () => {
           const handle = await semanticAttachment;

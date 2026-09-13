@@ -95,7 +95,6 @@ export function runAgentAdapterConformance(label: string, createHarness: () => P
         expect(projection.state.activeReasoning).toBeUndefined();
         expect(projection.state.tools.size).toBe(0);
         expect(projection.state.permissions.size).toBe(0);
-        expect(projection.state.subagents.size).toBe(0);
       } finally {
         projection.dispose();
         await h.binding.dispose();
@@ -190,7 +189,6 @@ const MONITOR_FAMILIES: MonitorMetricFamily[] = [
   'effort',
   'mode',
   'delegation',
-  'workflow',
   'compaction',
   'environment',
 ];

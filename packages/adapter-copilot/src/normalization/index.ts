@@ -12,7 +12,6 @@ export * from './interaction.js';
 export * from './compaction.js';
 export * from './usage.js';
 export * from './delegation.js';
-export * from './workflow.js';
 export * from './adapter.js';
 export * from './pipeline.js';
 export * from './monitor-capabilities.js';

@@ -33,7 +33,6 @@ import type {
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   PromptReceipt,
-  ReadAgentMonitorArtifactRequest,
   ReleaseCheckResult,
   PaneRehydrationRequest,
   SetProfileDefaultRequest,
@@ -117,8 +116,6 @@ const puppeteer: PuppeteerBridge = {
     onIpcMessage('puppeteer:agent-monitor-removed', callback),
   acknowledgeAgentFailure: (request: AcknowledgeAgentFailureRequest): Promise<boolean> =>
     ipcRenderer.invoke('puppeteer:acknowledge-agent-failure', request),
-  readAgentMonitorArtifact: (request: ReadAgentMonitorArtifactRequest) =>
-    ipcRenderer.invoke('puppeteer:read-agent-monitor-artifact', request),
   workspaceDiff: (runtimeSessionId: string): Promise<WorkspaceDiff | null> =>
     ipcRenderer.invoke('puppeteer:workspace-diff', runtimeSessionId),
   installations: (request?: InstallationsRequest): Promise<AgentInstallationsSnapshot> =>

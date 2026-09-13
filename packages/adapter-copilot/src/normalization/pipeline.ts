@@ -12,7 +12,6 @@ import { normalizeCopilotReasoning } from './reasoning.js';
 import { normalizeCopilotSession } from './session.js';
 import { copilotToolCompleted, copilotToolRequested, copilotToolStarted, type CopilotToolFact } from './tool.js';
 import { normalizeCopilotMessageUsage, normalizeCopilotShutdownUsage } from './usage.js';
-import { normalizeCopilotWorkflow } from './workflow.js';
 import { copilotWorkspaceOperation, normalizeCopilotWorkspace } from './workspace.js';
 import { copilotErrorText, copilotRecord, copilotString, type CopilotNormalizedRecord } from './types.js';
 
@@ -92,8 +91,7 @@ export class CopilotSessionNormalizer {
       normalizeCopilotWorkspace(type, data) ??
       normalizeCopilotInteraction(type, entryId, data) ??
       normalizeCopilotCompaction(type, data) ??
-      normalizeCopilotDelegation(type, data) ??
-      normalizeCopilotWorkflow(type, data);
+      normalizeCopilotDelegation(type, data);
     if (direct) return finish(direct, direct.length ? 'mapped' : 'no-output');
     const model = normalizeCopilotModel(type, data);
     const effort = normalizeCopilotEffort(type, data);

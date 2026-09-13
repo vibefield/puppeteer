@@ -25,11 +25,7 @@ import { normalizeClaudeNativeEvent } from './adapter.js';
 import { normalizeClaudeCompactionCompleted, normalizeClaudeCompactionStarted } from './compaction.js';
 import { normalizeClaudeAssistantMessage } from './conversation.js';
 import { normalizeClaudeContextInvalidated } from './context-window.js';
-import {
-  normalizeClaudeSubagentStarted,
-  normalizeClaudeSubagentStopped,
-  normalizeClaudeTeammateIdle,
-} from './delegation.js';
+import { normalizeClaudeSubagentStarted, normalizeClaudeSubagentStopped } from './delegation.js';
 import { ClaudeEffortNormalizer } from './effort.js';
 import { normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
 import {
@@ -530,10 +526,6 @@ export class ClaudeHookNormalizer {
         }
         break;
       }
-
-      case 'TeammateIdle':
-        result.events.push(normalizeClaudeTeammateIdle(body));
-        break;
 
       case 'Notification':
         result.events.push(normalizeClaudeNotification(body));

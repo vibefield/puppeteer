@@ -68,15 +68,6 @@ export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: ['Forks are conversation branches, not delegated child-agent runs.'],
   },
   {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'none-in-pi-session-v3',
-    contractVersion: PI_CONTRACT,
-    limitations: ['No durable workflow-run identity exists.'],
-  },
-  {
     family: 'compaction',
     support: 'degraded',
     actorScope: 'session',

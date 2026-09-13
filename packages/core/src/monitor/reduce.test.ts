@@ -114,12 +114,12 @@ describe('monitor accumulator', () => {
       runtime({ type: 'model:updated', model: { id: 'root-model' } }, 1),
       runtime({ type: 'effort:updated', effort: 'high' }, 2),
       runtime({ type: 'model:updated', model: { id: 'child-model' } }, 3, {
-        actorKey: 'workflow:worker',
+        agentId: 'worker',
         actorRole: 'child',
         agentType: 'worker',
       }),
       runtime({ type: 'effort:updated', effort: 'low' }, 4, {
-        actorKey: 'workflow:worker',
+        agentId: 'worker',
         actorRole: 'child',
         agentType: 'worker',
       }),
@@ -135,7 +135,7 @@ describe('monitor accumulator', () => {
 
   it('keeps root and child lifecycle activities independent when native ids overlap', () => {
     const child = {
-      actorKey: 'workflow:worker',
+      agentId: 'worker',
       actorRole: 'child' as const,
       agentType: 'worker',
     };
@@ -172,7 +172,7 @@ describe('monitor accumulator', () => {
   });
 
   it('does not let actor-scoped process or session events terminate the root run', () => {
-    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const child = { agentId: 'worker', actorRole: 'child' as const };
     const state = apply(initial(), [
       runtime({ type: 'session:ready' }, 1),
       runtime({ type: 'session:exited', reason: 'child-finished' }, 2, child),
@@ -184,7 +184,7 @@ describe('monitor accumulator', () => {
   });
 
   it('resolves interactions only for the actor that owns the request', () => {
-    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const child = { agentId: 'worker', actorRole: 'child' as const };
     let state = apply(initial(), [
       runtime({ type: 'session:ready' }, 1),
       runtime({ type: 'interaction:permission-requested', requestId: 'shared', presentation: 'native-tui' }, 2),
@@ -204,7 +204,7 @@ describe('monitor accumulator', () => {
   });
 
   it('retains actor-local compactions with overlapping ids', () => {
-    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const };
+    const child = { agentId: 'worker', actorRole: 'child' as const };
     let state = apply(initial(), [
       runtime({ type: 'compaction:started', compactionId: 'shared' }, 5),
       runtime({ type: 'compaction:started', compactionId: 'shared' }, 6, child),
@@ -237,34 +237,6 @@ describe('monitor accumulator', () => {
       usedPercent: 19.5,
       percentageSource: 'provider',
     });
-  });
-
-  it('preserves journal workflow members across later identity-only telemetry', () => {
-    const state = apply(initial(), [
-      runtime(
-        {
-          type: 'workflow:updated',
-          workflowId: 'workflow-1',
-          active: false,
-          members: [{ agentId: 'worker-a', agentType: 'researcher', state: 'completed' }],
-        },
-        1,
-        { source: 'native-transcript' },
-      ),
-      runtime({ type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true }, 2, {
-        source: 'native-telemetry',
-      }),
-    ]);
-
-    expect(projectAgentMonitorState(state).workflows).toEqual([
-      {
-        id: 'workflow-1',
-        name: 'research',
-        active: false,
-        actorRunKeys: ['native-1:actor:worker-a'],
-        artifactRefs: [],
-      },
-    ]);
   });
 
   it('keeps raw native evidence informational while projecting exact activity priority', () => {
@@ -840,7 +812,7 @@ describe('monitor accumulator', () => {
 
 describe('assistant message', () => {
   it("keeps the root agent's latest reply, bounded, and never a child's", () => {
-    const child = { actorKey: 'workflow:worker', actorRole: 'child' as const, agentType: 'worker' };
+    const child = { agentId: 'worker', actorRole: 'child' as const, agentType: 'worker' };
     const state = apply(initial(), [
       runtime({ type: 'session:ready' }, 1),
       runtime({ type: 'conversation:assistant-message', text: 'Looking at the tests', final: false }, 2),

@@ -47,11 +47,6 @@ export interface PermissionRuntimeState {
   tool?: string | undefined;
 }
 
-export interface SubagentRuntimeState {
-  subagentId: string;
-  agentType?: string | undefined;
-}
-
 export interface ReducerDiagnostic {
   sequence: number;
   code: string;
@@ -100,7 +95,6 @@ export interface SessionRuntimeState {
   settledTools: Map<string, 'completed' | 'failed'>;
   /** Pending permission requests. Resolved requests leave this map. */
   permissions: Map<string, PermissionRuntimeState>;
-  subagents: Map<string, SubagentRuntimeState>;
   /** Absent until measured, and while invalidated after compaction/history changes. */
   contextWindow?: ContextWindowRuntimeState | undefined;
   /** Live provider/runtime facts about where and how the agent is executing. */
@@ -127,7 +121,6 @@ export function createInitialSessionState(): SessionRuntimeState {
     tools: new Map(),
     settledTools: new Map(),
     permissions: new Map(),
-    subagents: new Map(),
     environment: {},
     counters: { toolsCompleted: 0, toolsFailed: 0, unknownEvents: 0 },
     lastSequence: 0,
@@ -194,7 +187,6 @@ function diagnoseOrphansOnExit(state: SessionRuntimeState, sequence: number): Se
   const collections: Array<[{ size: number }, string, string]> = [
     [next.tools, 'tools', 'tool(s) in flight'],
     [next.permissions, 'permissions', 'permission request(s) pending'],
-    [next.subagents, 'subagents', 'subagent(s) active'],
   ];
   for (const [collection, code, label] of collections) {
     if (collection.size > 0) {
@@ -241,7 +233,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
           tools: new Map(),
           settledTools: new Map(),
           permissions: new Map(),
-          subagents: new Map(),
           contextWindow: undefined,
           exit: undefined,
         };
@@ -553,27 +544,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
       break;
     }
 
-    case 'delegation:subagent-started': {
-      const rejected = rejectResourceAfterExit(next, seq, event.type);
-      if (rejected) {
-        next = rejected;
-        break;
-      }
-      const subagents = new Map(next.subagents);
-      subagents.set(event.subagentId, { subagentId: event.subagentId, agentType: event.agentType });
-      next = { ...next, subagents };
-      break;
-    }
-
-    case 'delegation:subagent-stopped': {
-      if (next.subagents.has(event.subagentId)) {
-        const subagents = new Map(next.subagents);
-        subagents.delete(event.subagentId);
-        next = { ...next, subagents };
-      }
-      break;
-    }
-
     case 'session:exited': {
       next = diagnoseOrphansOnExit(next, seq);
       next = {
@@ -583,7 +553,6 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         activeReasoning: undefined,
         tools: new Map(),
         permissions: new Map(),
-        subagents: new Map(),
         exit: next.exit ?? { reason: event.reason },
       };
       break;
@@ -599,20 +568,19 @@ export function reduceSessionState(state: SessionRuntimeState, envelope: AgentEv
         activeReasoning: undefined,
         tools: new Map(),
         permissions: new Map(),
-        subagents: new Map(),
         exit: { exitCode: event.exitCode, signal: event.signal, reason: event.reason },
       };
       break;
     }
 
+    case 'delegation:subagent-started':
+    case 'delegation:subagent-stopped':
     case 'workspace:file-operation':
     case 'workspace:file-changed':
     case 'notification:received':
     case 'usage:tokens-used':
-    case 'workflow:updated':
     case 'compaction:started':
     case 'compaction:completed':
-    case 'delegation:teammate-idle':
     case 'interaction:question-requested':
     case 'interaction:question-resolved':
       break;

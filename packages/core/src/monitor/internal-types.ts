@@ -1,7 +1,6 @@
 import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events/index.js';
 import type {
   ActorRunRef,
-  ArtifactRef,
   EvidenceCompleteness,
   EvidenceQuality,
   MonitorActivityKind,
@@ -190,12 +189,6 @@ export interface MonitorModeFamilyValue {
   intent?: 'configured' | 'observed' | undefined;
 }
 
-export interface AffiliationRef {
-  kind: 'team' | 'workflow';
-  id: string;
-  name?: string | undefined;
-}
-
 export interface MonitorActorFamilyValue {
   kind: 'actor';
   actor: ActorRunRef;
@@ -203,48 +196,7 @@ export interface MonitorActorFamilyValue {
   activity?: string | undefined;
 }
 
-export interface MonitorAffiliationFamilyValue {
-  kind: 'affiliation';
-  actor: ActorRunRef;
-  affiliation: AffiliationRef;
-  role?: string | undefined;
-}
-
-export interface MonitorTeamFamilyValue {
-  kind: 'team';
-  /** Provider-neutral/canonical identity used for durable affiliation joins. */
-  teamId: string;
-  /** Provider-native identity used to reconcile low-latency hook claims. */
-  nativeTeamId?: string | undefined;
-  name?: string | undefined;
-}
-
-export interface MonitorTeamMemberFamilyValue {
-  kind: 'team-member';
-  membershipId: string;
-  teamId: string;
-  /** Provider-native aliases used only to reconcile complementary evidence rails. */
-  nativeTeamId?: string | undefined;
-  nativeMemberId?: string | undefined;
-  actor?: ActorRunRef | undefined;
-  runtimeRunId?: RuntimeRunId | undefined;
-  name?: string | undefined;
-  /** Membership presence is independent from the member's current activity. */
-  membershipState?: 'present' | 'removed' | 'unknown' | undefined;
-  state: 'active' | 'idle' | 'removed' | 'unknown';
-}
-
-export type MonitorDelegationFamilyValue =
-  MonitorActorFamilyValue | MonitorAffiliationFamilyValue | MonitorTeamFamilyValue | MonitorTeamMemberFamilyValue;
-
-export interface MonitorWorkflowFamilyValue {
-  kind: 'workflow';
-  workflowId: string;
-  name?: string | undefined;
-  active: boolean;
-  actorRunKeys: string[];
-  artifactRefs: ArtifactRef[];
-}
+export type MonitorDelegationFamilyValue = MonitorActorFamilyValue;
 
 export interface MonitorCompactionFamilyValue {
   kind: 'compaction';
@@ -271,7 +223,6 @@ export interface MonitorFamilyValueMap {
   effort: MonitorEffortFamilyValue;
   mode: MonitorModeFamilyValue;
   delegation: MonitorDelegationFamilyValue;
-  workflow: MonitorWorkflowFamilyValue;
   compaction: MonitorCompactionFamilyValue;
   environment: MonitorEnvironmentFamilyValue;
   conversation: MonitorMessageFamilyValue;

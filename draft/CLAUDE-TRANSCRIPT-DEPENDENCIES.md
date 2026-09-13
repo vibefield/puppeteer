@@ -118,6 +118,8 @@ The observer never scans exact-session or shared child transcript directories, i
 
 ## Step 7: remove workflow journal observation
 
+Follow-up on 2026-09-12: the remaining public workflow/team and monitor-artifact APIs were removed. OTLP workflow identity stays native evidence; child status no longer publishes context occupancy as usage. See the [subagent cleanup](WORKFLOW-TEAM-SUBAGENT-AUDIT.md). The step history below describes its earlier boundary.
+
 Completed on 2026-09-11, replacing the original proposal to retain a separate journal observer. Deleted the workflow journal reader, its public exports and tests, directory discovery, per-worker state, idle-timeout completion inference, provider polling and replay, fingerprints and journal capability declarations.
 
 The transcript observer no longer enters workflow directories or reads `journal.jsonl`, during attachment or subsequent polls. Existing journals, later appends and malformed workflow paths cannot publish workflow events or affect transcript observation.

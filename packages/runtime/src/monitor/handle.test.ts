@@ -21,8 +21,9 @@ function state(revision: number): AgentMonitorState {
       : {}),
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},
@@ -36,7 +37,7 @@ function notification(index: number): MonitorNotification {
     notificationId: `notice-${index}`,
     runtimeRunId: 'run-1',
     at: '2026-08-16T12:00:00.000Z',
-    type: 'delegation:subagent-started',
+    type: 'blocked.entered',
   };
 }
 
@@ -52,9 +53,6 @@ function source(
       subscribers.add(subscriber);
       onSubscribe?.();
       return () => subscribers.delete(subscriber);
-    },
-    async readArtifact() {
-      return { status: 'unavailable' };
     },
     emitState(value) {
       current = value;

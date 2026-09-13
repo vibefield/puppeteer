@@ -1304,7 +1304,7 @@
                 <svg
                   viewBox="0 0 1260 760"
                   role="img"
-                  aria-label="Three evidence planes enter one runtime AgentMonitorService. It publishes immutable monitor states and notifications through Agent handles and a Godview IPC relay. The renderer store feeds a product projection and pure React views, while bounded acknowledgment and artifact-read actions return through IPC."
+                  aria-label="Three evidence planes enter one runtime AgentMonitorService. It publishes immutable monitor states and notifications through Agent handles and a Godview IPC relay. The renderer store feeds a product projection and pure React views, while failure acknowledgments return through IPC."
                 >
                   <defs>
                     <marker
@@ -1680,7 +1680,7 @@
                       font-size="10"
                       font-family="Source Sans 3"
                     >
-                      ack failure · read opaque artifact
+                      acknowledge retained failure
                     </text>
                   </g>
 
@@ -1713,7 +1713,7 @@
                       .monitor · .status · .alive
                     </text>
                     <text x="692" y="176" fill="var(--muted)" font-size="11" font-family="Source Sans 3">
-                      observe · artifact · acknowledge
+                      observe · acknowledge
                     </text>
                   </g>
 
@@ -2114,7 +2114,7 @@
                       font-family="JetBrains Mono"
                       transform="rotate(-90 930 565)"
                     >
-                      ack / artifact read
+                      acknowledge failure
                     </text>
                   </g>
                 </svg>
@@ -2378,11 +2378,7 @@ await handle.close();</code></pre>
                     <td class="mono">AgentMonitorHandle</td>
                     <td><p>Race-free state and notification streams for one run.</p></td>
                   </tr>
-                  <tr>
-                    <td class="route">readMonitorArtifact()</td>
-                    <td class="mono">Promise&lt;MonitorArtifactReadResult&gt;</td>
-                    <td><p>Bounded read through an adapter-issued opaque reference.</p></td>
-                  </tr>
+
                   <tr>
                     <td class="route">acknowledgeFailureBlocker()</td>
                     <td class="mono">boolean</td>
@@ -2398,10 +2394,6 @@ await handle.close();</code></pre>
   notifications: AsyncIterable&lt;MonitorNotification&gt;;
   ready: Promise&lt;AgentMonitorState&gt;;
   current(): AgentMonitorState | undefined;
-  readArtifact(
-    artifactId: string,
-    options?: { maxBytes?: number },
-  ): Promise&lt;MonitorArtifactReadResult&gt;;
   close(): Promise&lt;void&gt;;
 }</code></pre>
 
@@ -2454,21 +2446,14 @@ onMonitorRemoved(listener): () =&gt; void;</code></pre>
               </details>
               <details class="api-card">
                 <summary>
-                  <span class="api-title"
-                    ><strong>bounded actions</strong><span>Failure retention and artifact content</span></span
-                  >
+                  <span class="api-title"><strong>bounded actions</strong><span>Failure retention</span></span>
                 </summary>
                 <div class="api-body">
                   <pre><code>acknowledgeFailureBlocker(
   runtimeRunId,
   blockerId,
 ): Promise&lt;boolean&gt;;
-
-readMonitorArtifact(
-  runtimeRunId,
-  artifactId,
-  options?,
-): Promise&lt;MonitorArtifactReadResult&gt;;</code></pre>
+</code></pre>
                 </div>
               </details>
             </div>
@@ -2606,7 +2591,7 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                   <span class="ui-chip">BLOCK 1 · WORK 2 · IDLE 3</span>
                   <span class="ui-chip">TUNE · THEME</span>
                 </div>
-                <div class="ui-notice">delegation:subagent-started · bounded notification feed ×</div>
+                <div class="ui-notice">blocked.entered · bounded notification feed ×</div>
                 <div class="ui-stage">
                   <div class="ui-usage">ACCOUNT USAGE · separate provider rail</div>
                   <div class="ui-view">
@@ -2618,8 +2603,8 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                     <strong>RUNTIME OBSERVATION</strong>
                     <span>metrics · model · effort · modes</span>
                     <span>blockers · questions · failure ack</span>
-                    <span>actors · team</span>
-                    <span>workflows · artifact preview</span>
+                    <span>subagents · count</span>
+                    <span>model · effort · usage · activity</span>
                     <span>environment · readiness · omitted</span>
                   </aside>
                 </div>
@@ -2678,11 +2663,6 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                     <td>renderer → main</td>
                     <td><p>Opaque run/blocker ids; only retained dead failures may be acknowledged.</p></td>
                   </tr>
-                  <tr>
-                    <td class="route">readAgentMonitorArtifact</td>
-                    <td>renderer → main</td>
-                    <td><p>Opaque run/artifact ids plus explicit byte cap; result is sanitized.</p></td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -2706,7 +2686,6 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
     branch?: string;
     contextWindow?: MonitorContextState;
     monitor: AgentMonitorState;
-    teamAggregate?: AgentMonitorTeamAggregate;
     recency: 'fresh' | 'stale' | 'unknown';
     info: AgentSessionInfo;
   };
@@ -2738,14 +2717,14 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
               <article class="card">
                 <h3>rain</h3>
                 <p>
-                  Canvas matrix stream ported from vibe-field. One column pair per agent spells its project, branch, model and
-                  context; working streams run, blocked streams crawl and stay legible, idle streams drift. Hover reads a column and
-                  click selects it; the offscreen button list is the keyboard path.
+                  Canvas matrix stream ported from vibe-field. One column pair per agent spells its project, branch,
+                  model and context; working streams run, blocked streams crawl and stay legible, idle streams drift.
+                  Hover reads a column and click selects it; the offscreen button list is the keyboard path.
                 </p>
                 <h3>inspector</h3>
                 <p>
                   Shell-owned detail for the active agent: metrics, blockers and structured questions, actors,
-                  teams, workflows, artifact previews, environment, readiness, and bounded omissions.
+                  environment, readiness, and bounded omissions.
                 </p>
               </article>
               <article class="card">
@@ -2778,12 +2757,12 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
             <h2>Current state contract</h2>
             <p class="section-note">
               This is the complete renderer-facing shape in the current Core source. It includes fields omitted from the
-              older summary in <span class="mono">agent-api.html</span>: effort, modes, team, bounded omission counts,
-              and session identity/timing.
+              older summary in <span class="mono">agent-api.html</span>: effort, modes, bounded omission counts, and
+              session identity/timing.
             </p>
 
             <pre><code>interface AgentMonitorState {
-  schemaVersion: number;
+  schemaVersion: number; // 3
   runtimeEpoch: number;
   revision: number;
   runtimeRunId: string;
@@ -2792,6 +2771,7 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   statusSince: string;
   blockers: MonitorBlocker[];
   activity?: MonitorActivity;
+  lastAssistantMessage?: MonitorAssistantMessageState;
 
   usage: MonitorUsageState;
   context?: MonitorContextState;
@@ -2799,9 +2779,8 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   effort?: MonitorEffortState;
   modes: MonitorModesState;
 
+  subagentCount: number; // known distinct children before truncation
   subagents: MonitorSubagentState[];
-  team?: MonitorTeamState;
-  workflows: MonitorWorkflowState[];
 
   omitted?: Partial&lt;Record&lt;MonitorBoundedCollection, number&gt;&gt;;
   compaction: MonitorCompactionState;
@@ -2810,6 +2789,31 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   freshness: MonitorFreshnessState;
   alive: boolean;
 }</code></pre>
+
+            <h3>Subagents</h3>
+            <pre><code>interface MonitorSubagentState {
+  id: string;
+  working: boolean;
+  activity?: string;
+  modelId?: string;
+  effort?: string;
+  cumulativeTokens?: number;
+  burnRatePerMin?: number;
+}</code></pre>
+            <p>
+              Schema version 3 exposes only identifiable children. The count includes completed children and is computed
+              before the 256-row display cap. Missing model, effort, or usage stays unavailable. A false working flag
+              means no current work is observed; it does not assert termination. Any working child keeps the main Agent
+              working, including while another participant needs input. Idle, stopped, and process-exit evidence closes
+              child activity. Completed children retain usage.
+            </p>
+            <p>
+              Claude team and workflow metadata stays in native evidence. Only a proven child identity can join the
+              unified subagent view; names and workflow IDs do not create children or cross-run membership. Request
+              usage is deduplicated once across the run. Independent per-thread counters are summed; an already
+              aggregated run counter is never added to its child counters. Claude child context occupancy is not billed
+              consumption and does not contribute to burn rate.
+            </p>
 
             <h3>Metric families</h3>
             <div class="table-wrap">
@@ -2854,14 +2858,10 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                   </tr>
                   <tr>
                     <td class="route">delegation</td>
-                    <td>actor · affiliation · team · team-member</td>
-                    <td><p>Subagents, current team, teammates, cross-run joins, actor metrics.</p></td>
+                    <td>actor</td>
+                    <td><p>Identifiable child count, model, effort, usage, and observed activity.</p></td>
                   </tr>
-                  <tr>
-                    <td class="route">workflow</td>
-                    <td>workflow</td>
-                    <td><p>Active state, actor keys, and opaque bounded artifact references.</p></td>
-                  </tr>
+
                   <tr>
                     <td class="route">compaction</td>
                     <td>compaction</td>
@@ -2884,13 +2884,13 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
               </article>
               <article class="status-card working">
                 <strong>working</strong>
-                <p>No blocker and an active projected activity, selected by deterministic priority.</p>
+                <p>Any working child, or root activity without an unresolved blocker.</p>
               </article>
               <article class="status-card blocked">
                 <strong>blocked</strong>
                 <p>
-                  At least one pending permission/question or active failure. Failure outranks question, then
-                  permission.
+                  At least one pending permission/question or active failure, with no child currently working. Failure
+                  outranks question, then permission.
                 </p>
               </article>
               <article class="status-card freshness">
@@ -2923,18 +2923,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
                   <tr>
                     <td class="route">subagents</td>
                     <td>256</td>
-                    <td class="route">teammates</td>
-                    <td>256</td>
-                  </tr>
-                  <tr>
-                    <td class="route">workflows</td>
-                    <td>128</td>
-                    <td class="route">artifactRefs</td>
-                    <td>32</td>
-                  </tr>
-                  <tr>
-                    <td class="route">workflowActorRunKeys</td>
-                    <td>256</td>
                     <td class="route">worktrees</td>
                     <td>256</td>
                   </tr>
@@ -2957,7 +2945,7 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
             <h3>Transition notifications</h3>
             <p class="section-note">
               Notifications are attention hints, not a second source of truth. Current types cover blocker entry,
-              subagents, teams, workflows, compaction, cwd/worktrees, and session end.
+              compaction, cwd/worktrees, and session end. Child lifecycle only updates state.
             </p>
             <pre><code>type MonitorNotification = {
   notificationId: string; // stable from run + input identity + type + entity key
@@ -2965,9 +2953,6 @@ const MONITOR_VIEWS = [swarmMonitorView, listMonitorView];</code></pre>
   at: string;
   type:
     | 'blocked.entered'
-    | 'delegation:subagent-started' | 'delegation:subagent-stopped'
-    | 'team.observed' | 'team.member-added' | 'team.member-removed' | 'team.member-idle'
-    | 'workflow.started' | 'workflow.completed'
     | 'compaction:started' | 'compaction:completed'
     | 'cwd.changed' | 'worktree.created' | 'worktree.removed'
     | 'session.ended';
@@ -3239,9 +3224,8 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
           <section id="security">
             <h2>Trust, safety, and privacy boundaries</h2>
             <p class="section-note">
-              Monitor state is intended for renderers, but artifact content and renderer-issued actions cross a stronger
-              boundary. Godview validates the sender, treats identities as opaque labels, imposes hard byte limits, and
-              removes provider-authored failure text from unsuccessful reads before returning it to the renderer.
+              Godview relays immutable monitor state to registered renderers. Failure acknowledgments validate the
+              sender and opaque run/blocker identities, and only dismiss retained dead-run failures.
             </p>
 
             <div class="cards">
@@ -3262,17 +3246,11 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               <article class="card">
                 <h3>Opaque identifiers</h3>
                 <p>
-                  Run, blocker, and artifact ids are trimmed labels up to 512 characters—not paths, file URLs, drive
-                  paths, or NUL-bearing values.
+                  Run and blocker ids are trimmed labels up to 512 characters—not paths, file URLs, drive paths, or
+                  NUL-bearing values.
                 </p>
               </article>
-              <article class="card">
-                <h3>Bounded artifacts</h3>
-                <p>
-                  Runtime default is 256 KiB, hard maximum is 1 MiB, and the inspector asks for 64 KiB. Every attempted
-                  read is auditable.
-                </p>
-              </article>
+
               <article class="card">
                 <h3>Narrow acknowledgment</h3>
                 <p>
@@ -3295,18 +3273,6 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               not enter the monitor snapshot by default; detailed normalized Agent events remain a separate authorized
               rail.
             </div>
-
-            <h3>Artifact action path</h3>
-            <pre><code>React inspector
-  → PuppeteerBridge.readAgentMonitorArtifact({ runId, artifactId, maxBytes })
-  → sender + opaque-id + safe-integer + 1 MiB validation
-  → relay confirms the run is currently known
-  → Runtime resolves the projected ArtifactRef
-  → adapter services.artifacts.read(opaqueId, { maxBytes })
-  → returned bytes checked again
-  → audit record
-  → unsuccessful provider message stripped at IPC boundary
-  → React renders content as text in &lt;pre&gt;</code></pre>
           </section>
 
           <section id="sources">
@@ -3318,7 +3284,7 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
             <div class="source-list">
               <a class="source-link" href="../packages/core/src/monitor/types.ts"
                 ><strong>core/monitor/types.ts</strong
-                ><span>Public state, notifications, handle and artifact result contracts.</span></a
+                ><span>Public state, notifications, and handle contracts.</span></a
               >
               <a class="source-link" href="../packages/core/src/monitor/internal-types.ts"
                 ><strong>core/monitor/internal-types.ts</strong
@@ -3326,7 +3292,7 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               >
               <a class="source-link" href="../packages/core/src/monitor/project.ts"
                 ><strong>core/monitor/project.ts</strong
-                ><span>Status, metrics, team/workflow/environment and bounded projection.</span></a
+                ><span>Status, metrics, subagent aggregation, environment and bounded projection.</span></a
               >
               <a class="source-link" href="../packages/core/src/monitor/ordering.ts"
                 ><strong>core/monitor/ordering.ts</strong><span>Shared epoch/revision and removal-seal rules.</span></a
@@ -3340,8 +3306,7 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
                 ><span>Race-free conflated state and FIFO notification streams.</span></a
               >
               <a class="source-link" href="../packages/runtime/src/agent.ts"
-                ><strong>runtime/agent.ts</strong
-                ><span>Per-Agent getters, monitor handle, artifact and failure APIs.</span></a
+                ><strong>runtime/agent.ts</strong><span>Per-Agent getters, monitor handle and failure APIs.</span></a
               >
               <a class="source-link" href="../packages/monitor/src/store.ts"
                 ><strong>monitor/store.ts</strong><span>Transport-neutral external store and source connector.</span></a
@@ -3391,7 +3356,7 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               >
               <a class="source-link" href="../apps/godview/src/renderer/AgentMonitorInspector.tsx"
                 ><strong>godview/AgentMonitorInspector.tsx</strong
-                ><span>Active-run metrics, blockers, teams, artifacts and readiness.</span></a
+                ><span>Active-run metrics, blockers, child metrics and readiness.</span></a
               >
               <a class="source-link" href="rfcs/004-layered-agent-runtime.md"
                 ><strong>RFC 004</strong><span>Accepted layer and presentation-boundary decision.</span></a

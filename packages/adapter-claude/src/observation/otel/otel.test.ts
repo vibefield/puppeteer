@@ -4,7 +4,6 @@ import {
   isClaudeOtelLogsVerified,
   normalizeClaudeOtelModel,
   normalizeClaudeOtelUsage,
-  normalizeClaudeOtelWorkflow,
   supportsClaudeOtelLogs,
 } from './index.js';
 
@@ -83,10 +82,7 @@ describe('Claude OTLP log normalization', () => {
       actorKey: 'workflow:workflow-1:unknown',
       event: { type: 'model:updated', model: { id: 'claude-haiku-4-5' } },
     });
-    expect(normalizeClaudeOtelWorkflow(records[0]!)).toMatchObject({
-      event: { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
-    });
-    expect(normalizeClaudeOtelWorkflow(records[0]!)?.event).not.toHaveProperty('members');
+    expect(records[0]!.attributes['workflow.run_id']).toBe('workflow-1');
   });
 
   it('keeps explicit root requests actorless and isolates auxiliary requests', () => {

@@ -373,19 +373,6 @@ export class GrokMonitorEvidence {
             activity: 'Subagent active',
           }),
         );
-        const usedTokens = finiteNonNegative(update.tokens_used ?? update.tokensUsed);
-        const capacityTokens = finiteNonNegative(update.context_window_tokens ?? update.contextWindowTokens);
-        if (usedTokens !== undefined && capacityTokens !== undefined && capacityTokens > 0) {
-          updates.push(
-            upsert('context', `actor:${actor.runKey}`, {
-              kind: 'context',
-              actor,
-              usedTokens,
-              capacityTokens,
-              percentageSource: 'derived',
-            }),
-          );
-        }
       }
       quality = 'unknown';
       provisional = true;

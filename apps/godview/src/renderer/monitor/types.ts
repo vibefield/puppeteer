@@ -7,7 +7,6 @@ import type {
 import type {
   AgentProviderDescriptor,
   AgentMonitorState,
-  AgentMonitorTeamAggregate,
   MonitorContextState,
   MonitorRecency,
 } from '@vibecook/puppeteer-core';
@@ -31,7 +30,6 @@ export interface MonitorAgentFacet {
    * and the burn per step. Views read this, never `monitor.usage`, which is
    * Core's corrected estimate and moves with every source. */
   usage?: UsageHistory | undefined;
-  teamAggregate?: AgentMonitorTeamAggregate | undefined;
   recency: MonitorRecency;
   /** The runtime identity and canonical monitor projection behind this view row. */
   info: AgentSessionInfo;

@@ -7,10 +7,7 @@ describe('monitor collection bounds', () => {
       blockers: 64,
       usageSamples: 256,
       subagents: 256,
-      teammates: 256,
-      workflows: 128,
-      artifactRefs: 32,
-      workflowActorRunKeys: 256,
+
       worktrees: 256,
       questions: 64,
       questionOptions: 128,

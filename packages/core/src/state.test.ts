@@ -259,7 +259,6 @@ describe('reduceSessionState transitions', () => {
     });
     expect(state.lastAssistantMessage).toBeUndefined();
     expect([...state.tools.keys()]).toEqual(['root-tool']);
-    expect([...state.subagents.keys()]).toEqual(['worker-1']);
   });
 
   it('does not mistake configured launch intent for an observed effective model', () => {
@@ -401,7 +400,6 @@ describe('reduceSessionState transitions', () => {
         { type: 'usage:tokens-used', usageId: 'response-1', boundary: 'response', canonical: true, deltaTokens: 20 },
         { type: 'compaction:started', compactionId: 'c1' },
         { type: 'compaction:completed', compactionId: 'c1' },
-        { type: 'delegation:teammate-idle', teammateName: 'researcher' },
         { type: 'interaction:question-requested', requestId: 'q1', questions: [{ prompt: 'Proceed?' }] },
         { type: 'interaction:question-resolved', requestId: 'q1', outcome: 'answered' },
       ]),
@@ -451,13 +449,11 @@ describe('reduceSessionState transitions', () => {
     expect(state.activeReasoning).toBeUndefined();
     expect(state.tools.size).toBe(0);
     expect(state.permissions.size).toBe(0);
-    expect(state.subagents.size).toBe(0);
     expect(state.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
       'turn-orphaned-on-exit',
       'reasoning-orphaned-on-exit',
       'tools-orphaned-on-exit',
       'permissions-orphaned-on-exit',
-      'subagents-orphaned-on-exit',
     ]);
   });
 
@@ -476,9 +472,7 @@ describe('reduceSessionState transitions', () => {
     expect(state.activeReasoning).toBeUndefined();
     expect(state.tools.size).toBe(0);
     expect(state.permissions.size).toBe(0);
-    expect(state.subagents.size).toBe(0);
     expect(state.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
-      'resource-after-exit',
       'resource-after-exit',
       'resource-after-exit',
       'resource-after-exit',

@@ -3,8 +3,6 @@ import type {
   AgentExecutionMode,
   AgentMonitorHandle,
   AgentMonitorState,
-  AgentAdapterBinding,
-  MonitorArtifactReadResult,
   MonitorNotification,
   NativeSessionRef,
   ObservationLevel,
@@ -31,17 +29,6 @@ import type { AgentProjectionService } from './projection-service.js';
 export const DEFAULT_MONITOR_COALESCE_MS = 100;
 export const DEFAULT_MONITOR_ACTIVITY_LEASE_MS = 5_000;
 export const DEFAULT_MONITOR_NOTIFICATION_CAPACITY = 256;
-export const DEFAULT_MONITOR_ARTIFACT_MAX_BYTES = 256 * 1024;
-export const MONITOR_ARTIFACT_HARD_MAX_BYTES = 1024 * 1024;
-
-export interface MonitorArtifactAudit {
-  artifactId: string;
-  maxBytes: number;
-  outcome: 'ok' | 'denied' | 'unavailable' | 'too-large';
-  returnedBytes?: number;
-  mediaType?: string;
-}
-
 export interface AgentMonitorServiceOptions {
   runtimeRunId: string;
   runtimeEpoch: number;
@@ -57,7 +44,6 @@ export interface AgentMonitorServiceOptions {
   notificationCapacity?: number;
   onState?: (state: AgentMonitorState) => void;
   onNotification?: (notification: MonitorNotification) => void;
-  onArtifactAudit?: (audit: MonitorArtifactAudit) => void | Promise<void>;
   onError?: (error: Error) => void;
 }
 
@@ -85,14 +71,6 @@ function isUrgentTransition(
 
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
-}
-
-function byteLength(content: string, encoding: 'utf8' | 'base64'): number {
-  return Buffer.byteLength(content, encoding);
-}
-
-function artifactRefs(state: AgentMonitorState) {
-  return state.workflows.flatMap((workflow) => workflow.artifactRefs);
 }
 
 function freezeMonitorState(state: AgentMonitorState): AgentMonitorState {
@@ -125,7 +103,6 @@ export class AgentMonitorService
   private rateTask: MonitorScheduledTask | undefined;
   private freshnessTask: MonitorScheduledTask | undefined;
   private readonly publishedFreshnessBoundaries = new Set<string>();
-  private artifactSession: AgentAdapterBinding | undefined;
   private runtimeInputSequence = 0;
   private started = false;
   private frozen = false;
@@ -226,16 +203,6 @@ export class AgentMonitorService
       terminalSessionId: metadata.terminalSessionId,
     };
     this.scheduleFlush();
-  }
-
-  attachSession(session: AgentAdapterBinding): void {
-    if (this.closed || this.frozen) return;
-    this.detachSession();
-    this.artifactSession = session;
-  }
-
-  detachSession(): void {
-    this.artifactSession = undefined;
   }
 
   acceptAgentEvent(
@@ -376,76 +343,10 @@ export class AgentMonitorService
     return this.accept(this.runtimeInput(`failure-acknowledged:${blockerId}`, [update]), true);
   }
 
-  async readArtifact(
-    artifactId: string,
-    options: { maxBytes?: number | undefined } = {},
-  ): Promise<MonitorArtifactReadResult> {
-    const requested = options.maxBytes ?? DEFAULT_MONITOR_ARTIFACT_MAX_BYTES;
-    if (!Number.isSafeInteger(requested) || requested <= 0) {
-      return { status: 'denied', message: 'maxBytes must be positive' };
-    }
-    if (requested > MONITOR_ARTIFACT_HARD_MAX_BYTES) {
-      return {
-        status: 'too-large',
-        message: 'artifact read exceeds the host limit',
-      };
-    }
-
-    const projected = projectAgentMonitorState(this.accumulator, {
-      previous: this.published,
-      asOf: this.options.clock.now().toISOString(),
-      burnRateWindowMs: this.burnRateWindowMs,
-    });
-    const reference = artifactRefs(projected).find((candidate) => candidate.artifactId === artifactId);
-    if (!reference) {
-      return {
-        status: 'unavailable',
-        message: 'artifact is not available for this run',
-      };
-    }
-    const artifactService = this.artifactSession?.services.artifacts;
-    if (reference.availability !== 'readable' || !artifactService) {
-      return this.auditedArtifactResult(artifactId, requested, {
-        status: 'unavailable',
-        artifact: reference,
-        message: 'artifact content is unavailable',
-      });
-    }
-    if (reference.byteLength !== undefined && reference.byteLength > requested) {
-      return this.auditedArtifactResult(artifactId, requested, { status: 'too-large', artifact: reference });
-    }
-
-    let result: MonitorArtifactReadResult;
-    try {
-      result = await artifactService.read(artifactId, { maxBytes: requested });
-    } catch (error) {
-      this.report(error);
-      result = { status: 'unavailable', artifact: reference, message: 'artifact read failed' };
-    }
-    if (result.status !== 'ok') {
-      return this.auditedArtifactResult(artifactId, requested, {
-        ...result,
-        artifact: result.artifact ?? reference,
-      });
-    }
-    const returnedBytes = byteLength(result.content, result.encoding);
-    if (returnedBytes > requested || returnedBytes > MONITOR_ARTIFACT_HARD_MAX_BYTES) {
-      return this.auditedArtifactResult(artifactId, requested, { status: 'too-large', artifact: reference });
-    }
-    const safeResult: MonitorArtifactReadResult = {
-      status: 'ok',
-      artifact: reference,
-      encoding: result.encoding,
-      content: result.content,
-    };
-    return this.auditedArtifactResult(artifactId, requested, safeResult, returnedBytes);
-  }
-
   /** Releases provider/scheduler resources while retaining the final public monitor. */
   freeze(): void {
     if (this.closed || this.frozen) return;
     this.flush();
-    this.detachSession();
     this.cancelScheduledWork();
     // Retain the bounded public projection, not potentially large private
     // source ledgers, after all process/workspace resources are gone.
@@ -465,7 +366,6 @@ export class AgentMonitorService
     if (this.closed) return;
     if (!this.frozen) this.flush();
     this.closed = true;
-    this.detachSession();
     this.cancelScheduledWork();
     for (const subscriber of this.subscribers) subscriber.close();
     this.subscribers.clear();
@@ -683,27 +583,6 @@ export class AgentMonitorService
     for (const task of this.leaseTasks.values()) task.cancel();
     this.leaseTasks.clear();
     this.leaseTokens.clear();
-  }
-
-  private async auditedArtifactResult(
-    artifactId: string,
-    maxBytes: number,
-    result: MonitorArtifactReadResult,
-    returnedBytes?: number,
-  ): Promise<MonitorArtifactReadResult> {
-    const audit: MonitorArtifactAudit = {
-      artifactId,
-      maxBytes,
-      outcome: result.status,
-      ...(returnedBytes === undefined ? {} : { returnedBytes }),
-      ...(result.artifact?.mediaType ? { mediaType: result.artifact.mediaType } : {}),
-    };
-    try {
-      await this.options.onArtifactAudit?.(audit);
-    } catch (error) {
-      this.report(error);
-    }
-    return result;
   }
 
   private report(error: unknown): void {

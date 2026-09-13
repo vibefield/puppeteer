@@ -25,6 +25,7 @@ Unfinished vendor adaptation plans live in [`../draft/`](../draft/). Canonical g
 
 - [`../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md`](../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) tracks the Claude transcript dependency audit and removal of transcript-derived live usage, conversation replay, model observation, child transcript scans, workflow journal observation and unused metadata events.
 - [`../draft/TRANSCRIPT-SERVICE-NEEDS.md`](../draft/TRANSCRIPT-SERVICE-NEEDS.md) inventories transcript and indexed-history needs across every adapter, Godview and Vibefield, and tracks the keep/remove decisions before designing an app-provided service interface.
+- [`../draft/WORKFLOW-TEAM-SUBAGENT-AUDIT.md`](../draft/WORKFLOW-TEAM-SUBAGENT-AUDIT.md) records the completed artifact/team/workflow removal, minimal subagent API, usage/activity aggregation and retained provider sources.
 
 ## Historical material
 

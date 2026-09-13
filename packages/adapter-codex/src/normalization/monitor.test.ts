@@ -37,25 +37,46 @@ function project(batches: AdapterMonitorObservationBatch[], asOf: string) {
 }
 
 describe('CodexMonitorEvidence', () => {
+  it('adds independent root and child thread counters once without burning bootstrap history', () => {
+    const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });
+    const child = evidence.notificationBatch(
+      {
+        method: 'thread/started',
+        params: {
+          thread: { id: CHILD, parentThreadId: THREAD, status: { type: 'idle' } },
+        },
+      },
+      T0,
+    )!;
+    const sample = (threadId: string, totalTokens: number, seconds: number, phase: 'bootstrap' | 'live') =>
+      evidence.notificationBatch(
+        { method: 'thread/tokenUsage/updated', params: { threadId, tokenUsage: { total: { totalTokens } } } },
+        new Date(Date.parse(T0) + seconds * 1000).toISOString(),
+        phase,
+      )!;
+    const baseline = [child, sample(THREAD, 100, 0, 'bootstrap'), sample(CHILD, 40, 0, 'bootstrap')];
+    expect(project(baseline, T0).usage).toMatchObject({ cumulativeTokens: 140 });
+    expect(project(baseline, T0).usage.burnRatePerMin).toBeUndefined();
+    const result = project(
+      [...baseline, sample(THREAD, 160, 30, 'live'), sample(CHILD, 70, 30, 'live')],
+      '2026-08-16T12:00:30.000Z',
+    );
+    expect(result.usage).toMatchObject({
+      cumulativeTokens: 230,
+      burnRatePerMin: 180,
+      rootActor: { cumulativeTokens: 160, burnRatePerMin: 120 },
+    });
+    expect(result.subagentCount).toBe(1);
+    expect(result.subagents).toEqual([{ id: CHILD, working: false, cumulativeTokens: 70, burnRatePerMin: 60 }]);
+  });
+
   it('declares every family and keeps schema-only or absent surfaces honest', () => {
     const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });
     const capabilities = evidence.capabilitiesBatch(T0).capabilities ?? [];
     expect(capabilities.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(capabilities.find(({ family }) => family === 'usage')).toMatchObject({ support: 'supported' });
-    expect(capabilities.find(({ family }) => family === 'workflow')).toMatchObject({ support: 'unsupported' });
   });
 
   it('uses captured cumulative total for burn and last for context pressure', () => {
@@ -245,11 +266,9 @@ describe('CodexMonitorEvidence', () => {
     expect(monitor.subagents).toMatchObject([
       {
         id: CHILD,
-        actorRunKey: `${THREAD}:codex-thread:${CHILD}`,
-        active: true,
+        working: true,
         cumulativeTokens: 100,
         burnRatePerMin: 0,
-        contextPercent: 20,
         modelId: 'gpt-5.6-sol',
         effort: 'high',
       },
@@ -302,8 +321,11 @@ describe('CodexMonitorEvidence', () => {
       '2026-08-16T12:00:04.000Z',
     )!;
     const running = project([capabilities, spawned, childTurn, childReasoning], '2026-08-16T12:00:04.000Z');
-    expect(running).toMatchObject({ status: 'working', activity: { kind: 'reasoning' } });
-    expect(running.subagents).toMatchObject([{ id: CHILD, active: true, activity: 'Subagent reasoning' }]);
+    expect(running).toMatchObject({
+      status: 'working',
+      activity: { kind: 'delegating', line: 'Subagent: Subagent reasoning' },
+    });
+    expect(running.subagents).toMatchObject([{ id: CHILD, working: true, activity: 'Subagent reasoning' }]);
 
     const reasoningDone = evidence.notificationBatch(
       {
@@ -325,7 +347,7 @@ describe('CodexMonitorEvidence', () => {
       [capabilities, spawned, childTurn, childReasoning, reasoningDone, turnDone, closed],
       '2026-08-16T12:00:08.000Z',
     );
-    expect(final.subagents).toMatchObject([{ id: CHILD, active: false }]);
+    expect(final.subagents).toMatchObject([{ id: CHILD, working: false }]);
   });
 
   it('preserves unknown future strings without turning missing values into zero', () => {
@@ -374,7 +396,6 @@ describe('CodexMonitorEvidence', () => {
     const lost = evidence.railUnavailableBatch('2026-08-16T12:01:00.000Z', 'transport closed');
     expect(lost).toMatchObject({ readiness: 'degraded', completeness: 'unavailable', updates: [] });
     expect(lost.capabilities?.find(({ family }) => family === 'usage')).toMatchObject({ support: 'degraded' });
-    expect(lost.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({ support: 'unsupported' });
     expect(lost.coverage?.every(({ completeness }) => completeness === 'unavailable')).toBe(true);
   });
 });

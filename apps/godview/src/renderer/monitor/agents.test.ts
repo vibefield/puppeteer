@@ -34,8 +34,9 @@ function monitorState(
       : {}),
     usage: { samples: [] },
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},
@@ -310,29 +311,22 @@ describe('monitor agent assembly', () => {
     expect(agent?.agent?.monitor?.blockers[0]).toMatchObject({ kind: 'question' });
   });
 
-  it('uses the shared distinct-run team aggregate without adding child rows', () => {
+  it('uses the run usage total without adding the displayed child breakdown again', () => {
     const root = agentRecord('runtime-a', 'terminal-a');
-    const peer = agentRecord('runtime-b', 'terminal-b');
-    const rootState = monitorState('run-runtime-a', 'working', {
-      usage: { cumulativeTokens: 100, burnRatePerMin: 10, samples: [] },
-      subagents: [{ id: 'child-1', active: true, cumulativeTokens: 40 }],
-      team: { id: 'team-1', teammates: [{ id: 'peer', runtimeRunId: 'run-runtime-b' }] },
-    });
-    const peerState = monitorState('run-runtime-b', 'idle', {
-      usage: { cumulativeTokens: 20, burnRatePerMin: 2, samples: [] },
-      team: { id: 'team-1', teammates: [] },
-    });
-    root.monitor = monitorMessage(rootState, 'terminal-a');
-    peer.monitor = monitorMessage(peerState, 'terminal-b');
-
+    root.monitor = monitorMessage(
+      monitorState('run-runtime-a', 'working', {
+        usage: { cumulativeTokens: 100, burnRatePerMin: 10, samples: [] },
+        subagentCount: 1,
+        subagents: [{ id: 'child-1', working: true, cumulativeTokens: 40, burnRatePerMin: 4 }],
+      }),
+      'terminal-a',
+    );
     const [agent] = assembleMonitorAgents({
-      agents: [root, peer],
+      agents: [root],
       terminals: [],
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
-    expect(agent?.agent?.teamAggregate).toMatchObject({
-      totalRuns: 2,
-      usage: { cumulativeTokens: 120, burnRatePerMin: 12 },
-    });
+    expect(agent?.agent?.monitor.usage).toMatchObject({ cumulativeTokens: 100, burnRatePerMin: 10 });
+    expect(agent?.detail).toContain('100 tokens · 10 tok/min');
   });
 });

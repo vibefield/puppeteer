@@ -77,20 +77,9 @@ function project(batches: readonly AdapterMonitorObservationBatch[], asOf = '202
 }
 
 describe('OpenCodeMonitorEvidence', () => {
-  it('declares the complete checklist matrix without claiming teams or workflows', () => {
+  it('declares the complete unified monitor matrix', () => {
     expect(OPENCODE_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(OPENCODE_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'supported',
@@ -101,9 +90,6 @@ describe('OpenCodeMonitorEvidence', () => {
         support: 'degraded',
       });
     }
-    expect(OPENCODE_MONITOR_CAPABILITIES.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
-    });
   });
 
   it('maps captured response burn, context pressure, applied model, and provider mode', () => {
@@ -395,8 +381,5 @@ describe('OpenCodeMonitorEvidence', () => {
     const batch = projector('ses_root').railUnavailableBatch(T0, 'test disconnect');
     expect(batch).toMatchObject({ readiness: 'degraded', completeness: 'unavailable' });
     expect(batch.capabilities?.find(({ family }) => family === 'usage')).toMatchObject({ support: 'degraded' });
-    expect(batch.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
-    });
   });
 });

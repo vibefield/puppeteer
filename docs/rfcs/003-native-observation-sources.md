@@ -24,19 +24,18 @@ provider hook / OTLP log / transcript / journal / status
 
 ## Claude source ownership
 
-| Category     | Primary live source                                   | Durable or degraded source                                     |
-| ------------ | ----------------------------------------------------- | -------------------------------------------------------------- |
-| conversation | `MessageDisplay` and `Stop` hooks                     | live assistant transcript changes; no conversation replay      |
-| interaction  | permission/question hooks                             | transcript is not lifecycle truth                              |
-| tool         | tool hooks                                            | none required for lifecycle                                    |
-| model        | session hooks, status channels and OTLP request model | configured launch intent; no transcript model import           |
-| effort       | hooks and status channel                              | configured launch intent                                       |
-| mode         | hooks and status channel                              | configured launch intent                                       |
-| usage        | authenticated OTLP log `api_request`                  | child status samples are estimates; no transcript token import |
-| compaction   | native compact hooks                                  | none; transcript history is re-read after invalidation         |
-| reasoning    | reasoning hooks and child status                      | provider-specific activity evidence                            |
-| delegation   | subagent hooks and child status                       | no file-based workflow membership                              |
-| workflow     | OTLP `workflow.run_id` / `workflow.name`              | worker membership and completion unavailable                   |
+| Category     | Primary live source                                   | Durable or degraded source                                |
+| ------------ | ----------------------------------------------------- | --------------------------------------------------------- |
+| conversation | `MessageDisplay` and `Stop` hooks                     | live assistant transcript changes; no conversation replay |
+| interaction  | permission/question hooks                             | transcript is not lifecycle truth                         |
+| tool         | tool hooks                                            | none required for lifecycle                               |
+| model        | session hooks, status channels and OTLP request model | configured launch intent; no transcript model import      |
+| effort       | hooks and status channel                              | configured launch intent                                  |
+| mode         | hooks and status channel                              | configured launch intent                                  |
+| usage        | authenticated OTLP log `api_request`                  | unavailable without OTLP; no transcript token import      |
+| compaction   | native compact hooks                                  | none; transcript history is re-read after invalidation    |
+| reasoning    | reasoning hooks and child status                      | provider-specific activity evidence                       |
+| delegation   | subagent hooks and child status                       | no file-based workflow membership                         |
 
 These categories do not require a general semantic database. Search, cross-session history, and analytics can remain a separate data product that indexes provider files without being in the live process dependency graph.
 
@@ -46,7 +45,7 @@ The transcript provider reads only the root transcript and emits only live assis
 
 Transcript model projection and child transcript discovery, probes and reads were removed on 2026-09-12. `SessionStart` supplies the root model on launch/resume, root status supplies its current ID and display name, child status supplies visible task models, and OTLP supplies observed request models. Configured launch intent remains separate from observed models. Historical models are not imported; missing native evidence leaves the observed model unknown. Exact child attribution still requires matching native identity; OTLP keeps derived actor groups when exact IDs are absent. Model capabilities describe the available hook/status/OTLP sources, including unavailable or unverified OTLP.
 
-Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. OTLP supplies only observed run IDs and names. Workflow capability reporting states these limits and reports unsupported when the OTLP route is unavailable.
+Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. The public workflow and team models were also removed on 2026-09-12. OTLP workflow IDs/names and name-only teammate hints remain native evidence; proven child identities contribute only unified child metrics and activity.
 
 ## Usage rules learned from the burn-rate probe
 
@@ -64,7 +63,7 @@ OTLP is enabled only in the spawned process environment. The adapter does not mu
 
 OTLP requests use `claude-request:<request_id>`. A bounded fingerprint cache suppresses duplicate telemetry and permits corrections from the same source. Transcript records cannot contribute token amounts, historical totals or actor corrections to this stream. Request totals cover completions observed since attachment; full historical accounting is a separate follow-up.
 
-Child status callbacks still supply non-canonical `tokenCount` samples, which Core may use for estimated rates. Godview's burn bars separately track changes in cumulative totals. Their rate policy is tracked independently from transcript removal.
+Child status `tokenCount` and `tokenSamples` describe context occupancy, not consumption; they do not enter usage or burn calculations. Child status supplies model, effort and activity only after exact identity joins. OTLP child request usage is counted once in the run total and attributed to child rows where the native ID is present.
 
 ## Package layout
 
@@ -75,7 +74,6 @@ packages/adapter-claude/src/observation/
     actor.ts            # exact and derived actor attribution
     usage.ts            # usage:tokens-used
     model.ts            # model:updated
-    workflow.ts         # workflow:updated identity
     capability.ts       # supported-version gate
   transcript/
     wire.ts             # tolerant transcript rows
@@ -124,18 +122,18 @@ a turn boundary the user did not choose. Three additions make the bridge a stabl
   stays allocated, no `process:exited` is dispatched or recorded, and the host that comes back re-attaches. A plain
   `dispose` still closes the runs for good; `handleProcessExit` is unchanged.
 
-**Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** *A release keeps what the process depends on.* The
+**Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** _A release keeps what the process depends on._ The
 detach path disposes each binding with `{ release: true }` (`AdapterDisposeOptions`, core `binding.ts`): the Claude
 binding closes its bridge by DRAINING (in-flight posts complete, a bounded moment, then force) and leaves the staged
 settings file and hook/status-line forwarders in place — the running process execs them on every hook, and a plain
 dispose had been deleting them under it, which is what killed a TUI released within its first seconds and left the
 hook rail dead after every re-attach. A released run's staged files are cleaned by the close that eventually ends it;
 a run released and never re-attached leaves them behind in the temp dir (a few KB), which is the accepted cost.
-*Identity is validated before anything is bound.* `attach` reads the durable claim (`CreationRequestRegistry.lookup`,
+_Identity is validated before anything is bound._ `attach` reads the durable claim (`CreationRequestRegistry.lookup`,
 new) and refuses a run this runtime already manages, a missing or terminal claim, and a stale epoch — naming the
 claim's current epoch — BEFORE `attachSession` takes the live process's port or a workspace is built; a bind that then
 fails inside the restore no longer marks the live process's claim terminal (`RestoreAgentSessionOptions.attaching`),
-and a workspace the attach merely resumed is never destroyed. *A rotation the host missed is followed.* A `/clear`
+and a workspace the attach merely resumed is never destroyed. _A rotation the host missed is followed._ A `/clear`
 typed while no host listened rotates the id unheard; on attach the first authenticated hook under a new id — before
 the pinned id has spoken — is taken as that rotation when the new id already has a transcript under the same root,
 and the transcript is observed. Configured intent is not published for an attached process (it is a launch fact).

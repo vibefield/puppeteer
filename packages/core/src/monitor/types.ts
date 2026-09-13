@@ -1,7 +1,7 @@
 import type { AgentExecutionMode, AgentGitState, ObservationLevel } from '../events/index.js';
 
 /** Current wire/schema generation for the JSON-plain monitor projection. */
-export const AGENT_MONITOR_SCHEMA_VERSION = 2 as const;
+export const AGENT_MONITOR_SCHEMA_VERSION = 3 as const;
 
 /** One Puppeteer-managed provider invocation. */
 export type RuntimeRunId = string;
@@ -47,31 +47,6 @@ export interface ActorRunRef {
   nativeAgentId?: string | undefined;
   nativeAgentType?: string | undefined;
 }
-
-export type ArtifactFamily = 'workflow-definition' | 'workflow-journal' | 'team-config' | 'other';
-
-/** Opaque reference to content that is available only through a bounded host operation. */
-export interface ArtifactRef {
-  artifactId: string;
-  family: ArtifactFamily;
-  mediaType?: string | undefined;
-  byteLength?: number | undefined;
-  contentHash?: string | undefined;
-  availability: 'readable' | 'metadata-only' | 'unavailable';
-}
-
-export type MonitorArtifactReadResult =
-  | {
-      status: 'ok';
-      artifact: ArtifactRef;
-      encoding: 'utf8' | 'base64';
-      content: string;
-    }
-  | {
-      status: 'denied' | 'unavailable' | 'too-large';
-      artifact?: ArtifactRef | undefined;
-      message?: string | undefined;
-    };
 
 export type AgentMonitorStatus = 'idle' | 'working' | 'blocked';
 
@@ -139,22 +114,12 @@ export type MonitorMetricFamily =
   | 'effort'
   | 'mode'
   | 'delegation'
-  | 'workflow'
   | 'compaction'
   | 'environment'
   | 'conversation';
 
 export type MonitorBoundedCollection =
-  | 'blockers'
-  | 'usageSamples'
-  | 'subagents'
-  | 'teammates'
-  | 'workflows'
-  | 'artifactRefs'
-  | 'workflowActorRunKeys'
-  | 'worktrees'
-  | 'questions'
-  | 'questionOptions';
+  'blockers' | 'usageSamples' | 'subagents' | 'worktrees' | 'questions' | 'questionOptions';
 
 export interface MonitorUsageSample {
   at: string;
@@ -234,58 +199,16 @@ export interface MonitorModesState {
   asOf?: string | undefined;
 }
 
+/** A known child, exposing only identity, model/effort, usage and observed work. */
 export interface MonitorSubagentState {
   id: string;
-  actorRunKey?: string | undefined;
-  type?: string | undefined;
-  active: boolean;
+  /** True only while this child has observed work; false does not assert termination. */
+  working: boolean;
   activity?: string | undefined;
+  modelId?: string | undefined;
+  effort?: string | undefined;
   cumulativeTokens?: number | undefined;
   burnRatePerMin?: number | undefined;
-  contextPercent?: number | undefined;
-  modelId?: string | undefined;
-  modelIntent?: 'configured' | 'observed' | undefined;
-  effort?: string | undefined;
-  effortIntent?: 'configured' | 'observed' | undefined;
-}
-
-export interface MonitorTeammateState {
-  id: string;
-  name?: string | undefined;
-  /** Stable in-session actor identity when the provider can join membership to usage. */
-  actorRunKey?: string | undefined;
-  runtimeRunId?: RuntimeRunId | undefined;
-  idle?: boolean | undefined;
-  activity?: string | undefined;
-  cumulativeTokens?: number | undefined;
-  burnRatePerMin?: number | undefined;
-  contextPercent?: number | undefined;
-  modelId?: string | undefined;
-  modelIntent?: 'configured' | 'observed' | undefined;
-  effort?: string | undefined;
-  effortIntent?: 'configured' | 'observed' | undefined;
-  /** The current activity claim is low-latency evidence awaiting durable confirmation. */
-  activityProvisional?: boolean | undefined;
-  /** The membership itself is low-latency evidence awaiting durable confirmation. */
-  provisional?: boolean | undefined;
-}
-
-export interface MonitorTeamState {
-  id?: string | undefined;
-  name?: string | undefined;
-  memberId?: string | undefined;
-  memberName?: string | undefined;
-  teammates: MonitorTeammateState[];
-  /** The team identity is low-latency evidence awaiting durable confirmation. */
-  provisional?: boolean | undefined;
-}
-
-export interface MonitorWorkflowState {
-  id: string;
-  name?: string | undefined;
-  active: boolean;
-  actorRunKeys: string[];
-  artifactRefs: ArtifactRef[];
 }
 
 export interface MonitorCompactionState {
@@ -347,9 +270,9 @@ export interface AgentMonitorState {
   effort?: MonitorEffortState | undefined;
   modes: MonitorModesState;
 
+  /** Known distinct children in this run, including completed children; counted before display bounds. */
+  subagentCount: number;
   subagents: MonitorSubagentState[];
-  team?: MonitorTeamState | undefined;
-  workflows: MonitorWorkflowState[];
 
   /** Number omitted from deterministic bounded public collections. */
   omitted?: Partial<Record<MonitorBoundedCollection, number>> | undefined;
@@ -363,14 +286,6 @@ export interface AgentMonitorState {
 
 export type MonitorNotificationType =
   | 'blocked.entered'
-  | 'delegation:subagent-started'
-  | 'delegation:subagent-stopped'
-  | 'team.observed'
-  | 'team.member-added'
-  | 'team.member-removed'
-  | 'team.member-idle'
-  | 'workflow.started'
-  | 'workflow.completed'
   | 'compaction:started'
   | 'compaction:completed'
   | 'cwd.changed'
@@ -392,7 +307,6 @@ export interface AgentMonitorHandle {
   notifications: AsyncIterable<MonitorNotification>;
   ready: Promise<AgentMonitorState>;
   current(): AgentMonitorState | undefined;
-  readArtifact(artifactId: string, options?: { maxBytes?: number | undefined }): Promise<MonitorArtifactReadResult>;
   /** Closes this subscription, never the underlying provider session or shared source observer. */
   close(): Promise<void>;
 }

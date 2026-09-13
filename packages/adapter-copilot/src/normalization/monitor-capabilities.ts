@@ -69,15 +69,6 @@ export const COPILOT_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     limitations: ['The writer schema proves lifecycle fields; the pinned runtime fixtures did not exercise subagents.'],
   },
   {
-    family: 'workflow',
-    support: 'degraded',
-    actorScope: 'session',
-    latency: 'file-flush',
-    source: 'copilot-autopilot-objective-events',
-    contractVersion: COPILOT_CONTRACT,
-    limitations: ['Autopilot objective identity is source-schema-backed but not pinned-runtime exercised.'],
-  },
-  {
     family: 'compaction',
     support: 'degraded',
     actorScope: 'session',

@@ -452,7 +452,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       const restored = monitorFromEvents(projection.envelopes);
       expect(restored.status).toBe('idle');
       expect(restored.subagents).toMatchObject([
-        { id: 'child-old', active: false, modelId: 'gpt-5.6-sol', effort: 'high' },
+        { id: 'child-old', working: false, modelId: 'gpt-5.6-sol', effort: 'high' },
       ]);
       t.deliver({ method: 'turn/started', params: { threadId: 'child-old', turn: { id: 'child-live-turn' } } });
       expect(monitorFromEvents(projection.envelopes).status).toBe('working');

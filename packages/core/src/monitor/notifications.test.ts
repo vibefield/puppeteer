@@ -71,10 +71,13 @@ function observedChild(id: string, state: 'active' | 'stopped') {
 
 describe('monitor notifications', () => {
   it('uses stable IDs and does not repeat a duplicate transition', () => {
-    const input = runtime({ type: 'delegation:subagent-started', subagentId: 'child-1', agentType: 'reviewer' }, 1);
+    const input = runtime(
+      { type: 'interaction:question-requested', requestId: 'q1', questions: [{ prompt: 'Continue?' }] },
+      1,
+    );
     const first = reduceMonitorAccumulator(initial(), input);
     expect(first.notifications).toHaveLength(1);
-    expect(first.notifications[0]).toMatchObject({ type: 'delegation:subagent-started', summary: 'reviewer' });
+    expect(first.notifications[0]).toMatchObject({ type: 'blocked.entered' });
 
     const duplicate = reduceMonitorAccumulator(first.state, input);
     expect(duplicate.notifications).toEqual([]);
@@ -84,100 +87,7 @@ describe('monitor notifications', () => {
     expect(replayed.notifications[0]?.notificationId).toBe(first.notifications[0]?.notificationId);
   });
 
-  it('confirms team membership without promoting a provisional idle hook', () => {
-    const provisional = reduceMonitorAccumulator(
-      initial(),
-      runtime(
-        { type: 'delegation:teammate-idle', teamName: 'alpha', teammateName: 'researcher' },
-        1,
-        false,
-        'inferred',
-      ),
-    );
-    expect(provisional.notifications).toEqual([]);
-    expect(projectAgentMonitorState(provisional.state).team?.teammates[0]).toMatchObject({
-      idle: true,
-      provisional: true,
-      activityProvisional: true,
-    });
-
-    const confirmed = reduceMonitorAccumulator(
-      provisional.state,
-      semantic('team-confirmed', 'live', [
-        {
-          family: 'delegation',
-          operation: 'upsert',
-          key: 'team:canonical-alpha',
-          value: { kind: 'team', teamId: 'canonical-alpha', nativeTeamId: 'alpha', name: 'alpha' },
-        },
-        {
-          family: 'delegation',
-          operation: 'upsert',
-          key: 'member:researcher',
-          value: {
-            kind: 'team-member',
-            membershipId: 'researcher',
-            teamId: 'canonical-alpha',
-            nativeTeamId: 'alpha',
-            nativeMemberId: 'researcher',
-            membershipState: 'present',
-            state: 'unknown',
-          },
-        },
-      ]),
-    );
-    expect(confirmed.notifications.map(({ type }) => type)).toEqual(['team.observed', 'team.member-added']);
-    expect(projectAgentMonitorState(confirmed.state).team?.teammates[0]).toMatchObject({
-      idle: true,
-      activityProvisional: true,
-    });
-    expect(projectAgentMonitorState(confirmed.state).team?.teammates[0]).not.toHaveProperty('provisional');
-
-    const confirmedIdle = reduceMonitorAccumulator(
-      confirmed.state,
-      semantic('team-idle-confirmed', 'live', [
-        {
-          family: 'delegation',
-          operation: 'upsert',
-          key: 'member:researcher',
-          value: {
-            kind: 'team-member',
-            membershipId: 'researcher',
-            teamId: 'canonical-alpha',
-            nativeTeamId: 'alpha',
-            nativeMemberId: 'researcher',
-            membershipState: 'present',
-            state: 'idle',
-          },
-        },
-      ]),
-    );
-    expect(confirmedIdle.notifications.map(({ type }) => type)).toEqual(['team.member-idle']);
-    expect(projectAgentMonitorState(confirmedIdle.state).team?.teammates[0]).not.toHaveProperty('activityProvisional');
-
-    const removed = reduceMonitorAccumulator(
-      confirmedIdle.state,
-      semantic('team-member-removed', 'live', [
-        {
-          family: 'delegation',
-          operation: 'upsert',
-          key: 'member:researcher',
-          value: {
-            kind: 'team-member',
-            membershipId: 'researcher',
-            teamId: 'canonical-alpha',
-            nativeTeamId: 'alpha',
-            nativeMemberId: 'researcher',
-            membershipState: 'removed',
-            state: 'unknown',
-          },
-        },
-      ]),
-    );
-    expect(removed.notifications.map(({ type }) => type)).toEqual(['team.member-removed']);
-  });
-
-  it('derives entity transitions from unbounded logical state at the public collection cap', () => {
+  it('keeps child counts correct at the public cap without emitting lifecycle notices', () => {
     const values = Array.from({ length: 257 }, (_, index) => {
       const id = `child-${index.toString().padStart(3, '0')}`;
       return {
@@ -202,22 +112,21 @@ describe('monitor notifications', () => {
         },
       ]),
     );
-    expect(completed.notifications.map(({ type }) => type)).toEqual(['delegation:subagent-stopped']);
+    expect(completed.notifications).toEqual([]);
+    expect(projectAgentMonitorState(completed.state)).toMatchObject({ subagentCount: 257, omitted: { subagents: 1 } });
   });
 
   it('suppresses bootstrap, correction, resync, and replacement installation', () => {
     expect(
-      reduceMonitorAccumulator(
-        initial(),
-        runtime({ type: 'delegation:subagent-started', subagentId: 'history' }, 1, true),
-      ).notifications,
+      reduceMonitorAccumulator(initial(), runtime({ type: 'compaction:started', compactionId: 'history' }, 1, true))
+        .notifications,
     ).toEqual([]);
 
     const update: MonitorFamilyUpdate = {
-      family: 'delegation',
+      family: 'compaction',
       operation: 'upsert',
-      key: 'actor:1',
-      value: observedChild('1', 'active'),
+      key: 'compact:1',
+      value: { kind: 'compaction', active: true },
     };
     expect(reduceMonitorAccumulator(initial(), semantic('correction', 'correction', [update])).notifications).toEqual(
       [],
@@ -227,7 +136,7 @@ describe('monitor notifications', () => {
         initial(),
         semantic('replace', 'live', [
           {
-            family: 'delegation',
+            family: 'compaction',
             operation: 'replace',
             coverage: 'complete',
             values: [{ key: 'actor:1', value: update.value }],

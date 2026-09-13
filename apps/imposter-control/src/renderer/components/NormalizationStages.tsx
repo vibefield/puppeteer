@@ -5,7 +5,6 @@ const NORMALIZED_FACETS: ReadonlyArray<readonly [string, string]> = [
   ['activeReasoning', 'reasoning'],
   ['tools', 'tools in flight'],
   ['permissions', 'permissions'],
-  ['subagents', 'subagents'],
   ['tasks', 'tasks'],
   ['contextWindow', 'context window'],
   ['environment', 'environment'],

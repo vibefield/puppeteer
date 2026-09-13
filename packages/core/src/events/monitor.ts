@@ -17,7 +17,6 @@ const MonitorMetricFamilySchema = z.enum([
   'effort',
   'mode',
   'delegation',
-  'workflow',
   'compaction',
   'environment',
   'conversation',
@@ -176,57 +175,6 @@ const MonitorActorValueSchema = z.strictObject({
   state: z.enum(['active', 'idle', 'stopped', 'unknown']),
   activity: z.string().optional(),
 });
-const MonitorAffiliationValueSchema = z.strictObject({
-  kind: z.literal('affiliation'),
-  actor: ActorRunRefSchema,
-  affiliation: z.strictObject({
-    kind: z.enum(['team', 'workflow']),
-    id: NonEmptyStringSchema,
-    name: z.string().optional(),
-  }),
-  role: z.string().optional(),
-});
-const MonitorTeamValueSchema = z.strictObject({
-  kind: z.literal('team'),
-  teamId: NonEmptyStringSchema,
-  nativeTeamId: NonEmptyStringSchema.optional(),
-  name: z.string().optional(),
-});
-const MonitorTeamMemberValueSchema = z.strictObject({
-  kind: z.literal('team-member'),
-  membershipId: NonEmptyStringSchema,
-  teamId: NonEmptyStringSchema,
-  nativeTeamId: NonEmptyStringSchema.optional(),
-  nativeMemberId: NonEmptyStringSchema.optional(),
-  actor: ActorRunRefSchema.optional(),
-  runtimeRunId: NonEmptyStringSchema.optional(),
-  name: z.string().optional(),
-  membershipState: z.enum(['present', 'removed', 'unknown']).optional(),
-  state: z.enum(['active', 'idle', 'removed', 'unknown']),
-});
-const MonitorDelegationValueSchema = z.discriminatedUnion('kind', [
-  MonitorActorValueSchema,
-  MonitorAffiliationValueSchema,
-  MonitorTeamValueSchema,
-  MonitorTeamMemberValueSchema,
-]);
-
-const ArtifactRefSchema = z.strictObject({
-  artifactId: NonEmptyStringSchema,
-  family: z.enum(['workflow-definition', 'workflow-journal', 'team-config', 'other']),
-  mediaType: z.string().optional(),
-  byteLength: NonNegativeSafeIntegerSchema.optional(),
-  contentHash: z.string().optional(),
-  availability: z.enum(['readable', 'metadata-only', 'unavailable']),
-});
-const MonitorWorkflowValueSchema = z.strictObject({
-  kind: z.literal('workflow'),
-  workflowId: NonEmptyStringSchema,
-  name: z.string().optional(),
-  active: z.boolean(),
-  actorRunKeys: z.array(NonEmptyStringSchema),
-  artifactRefs: z.array(ArtifactRefSchema),
-});
 const MonitorCompactionValueSchema = z.strictObject({
   kind: z.literal('compaction'),
   actor: ActorRunRefSchema.optional(),
@@ -281,8 +229,7 @@ const MonitorFamilyUpdateSchema = z.union([
   familyUpdateSchema(z.literal('model'), MonitorModelValueSchema),
   familyUpdateSchema(z.literal('effort'), MonitorEffortValueSchema),
   familyUpdateSchema(z.literal('mode'), MonitorModeValueSchema),
-  familyUpdateSchema(z.literal('delegation'), MonitorDelegationValueSchema),
-  familyUpdateSchema(z.literal('workflow'), MonitorWorkflowValueSchema),
+  familyUpdateSchema(z.literal('delegation'), MonitorActorValueSchema),
   familyUpdateSchema(z.literal('compaction'), MonitorCompactionValueSchema),
   familyUpdateSchema(z.literal('environment'), MonitorEnvironmentValueSchema),
   familyUpdateSchema(z.literal('conversation'), MonitorMessageValueSchema),

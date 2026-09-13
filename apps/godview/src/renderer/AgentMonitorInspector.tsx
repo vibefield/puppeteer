@@ -1,11 +1,7 @@
-import { useState } from 'react';
 import {
-  aggregateAffiliatedAgentMonitorTeam,
   classifyMonitorFamilyFreshness,
-  isNewerMonitorRevision,
   monitorBlockerDetail,
   type AgentMonitorState,
-  type MonitorArtifactReadResult,
   type MonitorMetricFamily,
 } from '@vibecook/puppeteer-core';
 
@@ -17,12 +13,9 @@ const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'effort',
   'mode',
   'delegation',
-  'workflow',
   'compaction',
   'environment',
 ];
-
-const ARTIFACT_PREVIEW_MAX_BYTES = 64 * 1024;
 
 function number(value: number | undefined): string {
   return value === undefined ? '—' : Math.round(value).toLocaleString();
@@ -70,45 +63,14 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export function AgentMonitorInspector({
   state,
-  allStates,
   nowMs,
   account,
 }: {
   state: AgentMonitorState;
-  allStates: readonly AgentMonitorState[];
   nowMs: number;
   /** Label of the account this run is bound to, when it is a registered one. */
   account?: string;
 }) {
-  const [artifactResults, setArtifactResults] = useState<Record<string, MonitorArtifactReadResult>>({});
-  const [busyArtifact, setBusyArtifact] = useState<string>();
-  const team = state.team ? aggregateAffiliatedAgentMonitorTeam(state, allStates) : undefined;
-  const latestStatesByRun = new Map<string, AgentMonitorState>();
-  for (const candidate of allStates) {
-    const current = latestStatesByRun.get(candidate.runtimeRunId);
-    if (!current || isNewerMonitorRevision(candidate, current))
-      latestStatesByRun.set(candidate.runtimeRunId, candidate);
-  }
-
-  const readArtifact = async (artifactId: string): Promise<void> => {
-    setBusyArtifact(artifactId);
-    try {
-      const result = await window.puppeteer.readAgentMonitorArtifact({
-        runtimeRunId: state.runtimeRunId,
-        artifactId,
-        maxBytes: ARTIFACT_PREVIEW_MAX_BYTES,
-      });
-      setArtifactResults((current) => ({ ...current, [artifactId]: result }));
-    } catch {
-      setArtifactResults((current) => ({
-        ...current,
-        [artifactId]: { status: 'unavailable', message: 'Artifact read failed' },
-      }));
-    } finally {
-      setBusyArtifact((current) => (current === artifactId ? undefined : current));
-    }
-  };
-
   return (
     <aside className="vf-godview-monitor-inspector" aria-label="Agent runtime details">
       <header>
@@ -224,7 +186,7 @@ export function AgentMonitorInspector({
       ) : null}
 
       <section>
-        <h4>Actors &amp; team</h4>
+        <h4>Subagents · {state.subagentCount}</h4>
         <ul>
           <li>
             <span>run total · {state.activity?.line ?? state.status}</span>
@@ -237,105 +199,19 @@ export function AgentMonitorInspector({
             </li>
           ) : null}
           {state.subagents.map((actor) => (
-            <li key={actor.actorRunKey ?? actor.id}>
+            <li key={actor.id}>
               <span>
-                {actor.type ?? actor.id} · {actor.active ? 'active' : 'stopped'}
+                {actor.id} · {actor.working ? 'working' : 'no activity observed'}
                 {actor.activity ? ` · ${actor.activity}` : ''}
               </span>
               <small>
-                {usageLine(actor.cumulativeTokens, actor.burnRatePerMin)} · {percent(actor.contextPercent)} ctx
-                {actor.modelId ? ` · ${actor.modelId}${actor.modelIntent === 'configured' ? ' (configured)' : ''}` : ''}
-                {actor.effort
-                  ? ` · effort ${actor.effort}${actor.effortIntent === 'configured' ? ' (configured)' : ''}`
-                  : ''}
+                {usageLine(actor.cumulativeTokens, actor.burnRatePerMin)}
+                {actor.modelId ? ` · ${actor.modelId}` : ''}
+                {actor.effort ? ` · effort ${actor.effort}` : ''}
               </small>
             </li>
           ))}
         </ul>
-        {state.team && team ? (
-          <>
-            <strong>
-              {state.team.name ?? state.team.id ?? 'team'}
-              {(state.team.memberName ?? state.team.memberId)
-                ? ` · local ${state.team.memberName ?? state.team.memberId}`
-                : ''}
-              {state.team.provisional ? ' · provisional' : ''}
-            </strong>
-            <small>
-              {team.totalRuns} runs · {number(team.usage.cumulativeTokens)} tokens · {number(team.usage.burnRatePerMin)}
-              {' tok/min'}
-              {team.usage.cumulativeComplete && team.usage.burnRateComplete ? '' : ' · partial'}
-            </small>
-            <ul>
-              {state.team.teammates.map((member) => {
-                const memberState = member.runtimeRunId ? latestStatesByRun.get(member.runtimeRunId) : undefined;
-                const memberTokens = memberState?.usage.cumulativeTokens ?? member.cumulativeTokens;
-                const memberBurnRate = memberState?.usage.burnRatePerMin ?? member.burnRatePerMin;
-                return (
-                  <li key={member.id}>
-                    <span>{member.name ?? member.id}</span>
-                    {memberState ? (
-                      <small>
-                        {memberState.activity?.line ?? memberState.status} · {usageLine(memberTokens, memberBurnRate)} ·{' '}
-                        {percent(memberState.context?.usedPercent)} ctx
-                        {memberState.model ? ` · ${memberState.model.displayName ?? memberState.model.id}` : ''}
-                        {memberState.effort
-                          ? ` · effort ${memberState.effort.value}${memberState.effort.intent === 'configured' ? ' (configured)' : ''}`
-                          : ''}
-                      </small>
-                    ) : (
-                      <small>
-                        {member.idle === undefined ? 'activity unknown' : member.idle ? 'idle' : 'active'}
-                        {member.activity ? ` · ${member.activity}` : ''} · {usageLine(memberTokens, memberBurnRate)}
-                        {member.contextPercent !== undefined ? ` · ${percent(member.contextPercent)} ctx` : ''}
-                        {member.modelId
-                          ? ` · ${member.modelId}${member.modelIntent === 'configured' ? ' (configured)' : ''}`
-                          : ''}
-                        {member.effort
-                          ? ` · effort ${member.effort}${member.effortIntent === 'configured' ? ' (configured)' : ''}`
-                          : ''}
-                        {member.activityProvisional ? ' · provisional activity' : ''}
-                        {member.provisional ? ' · provisional membership' : ''}
-                      </small>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : null}
-      </section>
-
-      <section>
-        <h4>Workflows</h4>
-        {state.workflows.length ? (
-          state.workflows.map((workflow) => (
-            <article key={workflow.id}>
-              <strong>
-                {workflow.name ?? workflow.id} · {workflow.active ? 'active' : 'complete'}
-              </strong>
-              {workflow.actorRunKeys.length ? <small>{workflow.actorRunKeys.join(', ')}</small> : null}
-              {workflow.artifactRefs.map((artifact) => {
-                const result = artifactResults[artifact.artifactId];
-                return (
-                  <div key={artifact.artifactId}>
-                    <button
-                      type="button"
-                      disabled={artifact.availability !== 'readable' || busyArtifact === artifact.artifactId}
-                      onClick={() => void readArtifact(artifact.artifactId)}
-                    >
-                      {busyArtifact === artifact.artifactId ? 'READING…' : `READ ${artifact.family}`}
-                    </button>
-                    {result?.status === 'ok' ? <pre>{result.content}</pre> : null}
-                    {result && result.status !== 'ok' ? <small>{result.status}</small> : null}
-                  </div>
-                );
-              })}
-            </article>
-          ))
-        ) : (
-          <small>No workflow observed</small>
-        )}
       </section>
 
       <section>

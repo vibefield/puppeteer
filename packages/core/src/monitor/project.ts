@@ -15,9 +15,6 @@ import type {
   MonitorModelState,
   MonitorProviderMode,
   MonitorSubagentState,
-  MonitorTeammateState,
-  MonitorTeamState,
-  MonitorWorkflowState,
 } from './types.js';
 import { AGENT_MONITOR_SCHEMA_VERSION } from './types.js';
 import type {
@@ -31,9 +28,6 @@ import type {
   MonitorModeFamilyValue,
   MonitorRunStatusObservation,
   MonitorStoredEntry,
-  MonitorTeamFamilyValue,
-  MonitorTeamMemberFamilyValue,
-  MonitorWorkflowFamilyValue,
 } from './internal-types.js';
 import { boundMonitorCollection } from './bounds.js';
 import { DEFAULT_MONITOR_BURN_RATE_WINDOW_MS, projectMonitorUsageLedger } from './rate.js';
@@ -86,11 +80,14 @@ function planePriority(entry: MonitorStoredEntry): number {
 function compareEntryPreference(a: MonitorStoredEntry, b: MonitorStoredEntry): number {
   const provisional = Number(!b.provisional) - Number(!a.provisional);
   if (provisional !== 0) return provisional;
-  // Model, effort, and context have two complementary owners: provider
+  // Metrics and child state have complementary owners: provider
   // samples give the first live boundary and semantic responses make it
   // durable. Equal-quality claims therefore advance by evidence time instead
   // of allowing an older plane to mask a newer transition.
-  if (a.family === b.family && ['model', 'effort', 'context'].includes(a.family)) {
+  if (
+    a.family === b.family &&
+    (['model', 'effort', 'context'].includes(a.family) || (a.value.kind === 'actor' && b.value.kind === 'actor'))
+  ) {
     return (
       QUALITY_PRIORITY[b.quality] - QUALITY_PRIORITY[a.quality] ||
       time(b.effectiveAt ?? b.observedAt) - time(a.effectiveAt ?? a.observedAt) ||
@@ -150,20 +147,6 @@ function logicalEntryKey(entry: MonitorStoredEntry): string {
       return JSON.stringify([entry.family, entry.value.modeKind, entry.value.intent ?? 'observed', actor || 'root']);
     case 'actor':
       return JSON.stringify([entry.family, 'actor', entry.value.actor.runKey]);
-    case 'affiliation':
-      return JSON.stringify([
-        entry.family,
-        'affiliation',
-        entry.value.actor.runKey,
-        entry.value.affiliation.kind,
-        entry.value.affiliation.id,
-      ]);
-    case 'team':
-      return JSON.stringify([entry.family, 'team', entry.value.teamId]);
-    case 'team-member':
-      return JSON.stringify([entry.family, 'team-member', entry.value.teamId, entry.value.membershipId]);
-    case 'workflow':
-      return JSON.stringify([entry.family, entry.value.workflowId]);
     case 'activity':
     case 'compaction':
       return JSON.stringify([entry.family, actor ? actorLocalSourceKey(entry, actor) : entry.key, actor]);
@@ -207,13 +190,8 @@ function actorOf(value: MonitorFamilyValue): ActorRunRef | undefined {
     case 'message':
       return value.actor;
     case 'actor':
-    case 'affiliation':
-      return value.actor;
-    case 'team-member':
       return value.actor;
     case 'run':
-    case 'team':
-    case 'workflow':
       return undefined;
   }
 }
@@ -228,9 +206,11 @@ function maybeBound<T>(
 
 function projectBlockers(
   entries: readonly MonitorStoredEntry[],
+  actors: ReadonlyMap<string, ChildActor>,
   unbounded: boolean,
 ): {
   blockers: MonitorBlocker[];
+  blockedActorRunKeys: Set<string>;
   omittedBlockers: number;
   omittedQuestions: number;
   omittedQuestionOptions: number;
@@ -243,6 +223,7 @@ function projectBlockers(
     const since = entry.effectiveAt ?? entry.observedAt;
     if (entry.value.kind === 'interaction' && entry.value.state === 'pending') {
       const interaction = entry.value as MonitorInteractionObservation;
+      if (interaction.actor && actors.get(interaction.actor.runKey)?.state?.value.state === 'stopped') continue;
       if (interaction.interactionKind === 'permission') {
         blockers.push({
           id: interaction.interactionId,
@@ -299,6 +280,7 @@ function projectBlockers(
   const bounded = maybeBound('blockers', blockers, unbounded);
   return {
     blockers: bounded.values,
+    blockedActorRunKeys: new Set(blockers.flatMap((blocker) => (blocker.actorRunKey ? [blocker.actorRunKey] : []))),
     omittedBlockers: bounded.omitted,
     omittedQuestions,
     omittedQuestionOptions,
@@ -347,25 +329,14 @@ function preferActivity(candidate: ActiveActorActivity, current: ActiveActorActi
 function projectActivity(
   entries: readonly MonitorStoredEntry[],
   run: { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined,
+  children: ReadonlyMap<string, MonitorActivity>,
 ) {
-  // A terminal host observation seals activity even if a provider disappears
-  // while a tool/turn is open and cannot emit its matching terminal record.
   if (run && !run.value.alive) return undefined;
-  const stoppedActors = new Set(
-    entries
-      .filter(
-        (entry): entry is MonitorStoredEntry & { value: MonitorActorFamilyValue } =>
-          entry.value.kind === 'actor' && entry.value.state === 'stopped',
-      )
-      .map((entry) => entry.value.actor.runKey),
-  );
   const candidates: ActivityCandidate[] = [];
   for (const entry of entries) {
-    if (
-      entry.value.kind === 'compaction' &&
-      entry.value.active &&
-      (!entry.value.actor || !stoppedActors.has(entry.value.actor.runKey))
-    ) {
+    const actor = actorOf(entry.value);
+    if (actor && actor.role !== 'root') continue;
+    if (entry.value.kind === 'compaction' && entry.value.active) {
       candidates.push({
         kind: 'compacting',
         line: 'Compacting context',
@@ -373,11 +344,7 @@ function projectActivity(
         priority: 1,
         key: entry.key,
       });
-    } else if (
-      entry.value.kind === 'activity' &&
-      entry.value.active &&
-      (!entry.value.actor || !stoppedActors.has(entry.value.actor.runKey))
-    ) {
+    } else if (entry.value.kind === 'activity' && entry.value.active) {
       candidates.push({
         kind: entry.value.activityKind,
         line: entry.value.line ?? 'Working',
@@ -385,15 +352,10 @@ function projectActivity(
         priority: activityPriority(entry.value.activityKind),
         key: entry.key,
       });
-    } else if (entry.value.kind === 'actor' && entry.value.actor.role === 'child' && entry.value.state === 'active') {
-      candidates.push({
-        kind: 'delegating',
-        line: entry.value.activity ?? `Delegating to ${entry.value.actor.nativeAgentType ?? 'subagent'}`,
-        since: entry.effectiveAt ?? entry.observedAt,
-        priority: 5,
-        key: entry.key,
-      });
     }
+  }
+  for (const [key, activity] of children) {
+    candidates.push({ ...activity, kind: 'delegating', line: `Subagent: ${activity.line}`, priority: 5, key });
   }
   if (run && ['allocated', 'preparing', 'starting'].includes(run.value.lifecycle)) {
     candidates.push({
@@ -552,315 +514,89 @@ function actorMetric<T extends 'context' | 'model' | 'effort'>(
     })[0];
 }
 
-function contextPercentage(value: MonitorContextFamilyValue): number | undefined {
-  return (
-    value.usedPercentage ??
-    (value.usedTokens !== undefined && value.capacityTokens !== undefined && value.capacityTokens > 0
-      ? Math.min(100, Math.max(0, (value.usedTokens / value.capacityTokens) * 100))
-      : undefined)
-  );
+interface ChildActor {
+  actor: ActorRunRef;
+  entries: MonitorStoredEntry[];
+  state?: { value: MonitorActorFamilyValue; at: string };
+}
+
+function childActors(entries: readonly MonitorStoredEntry[]): Map<string, ChildActor> {
+  const actors = new Map<string, ChildActor>();
+  for (const entry of entries) {
+    const actor = actorOf(entry.value);
+    // Attribution groups and unjoined status tasks are not proven child identities.
+    if (!actor || actor.role !== 'child' || !actor.nativeAgentId) continue;
+    const current: ChildActor = actors.get(actor.runKey) ?? { actor, entries: [] };
+    current.entries.push(entry);
+    if (entry.value.kind === 'actor') {
+      current.actor = actor;
+      current.state = { value: entry.value, at: entry.effectiveAt ?? entry.observedAt };
+    }
+    actors.set(actor.runKey, current);
+  }
+  return actors;
+}
+
+function childActivities(
+  actors: ReadonlyMap<string, ChildActor>,
+  alive: boolean,
+  blocked: ReadonlySet<string>,
+): Map<string, MonitorActivity> {
+  const activities = new Map<string, MonitorActivity>();
+  if (!alive) return activities;
+  for (const [key, { state, entries }] of actors) {
+    if (blocked.has(key) || state?.value.state === 'stopped') continue;
+    let selected: ActiveActorActivity | undefined;
+    for (const entry of entries) {
+      if (actorOf(entry.value)?.runKey !== key) continue;
+      const value = entry.value;
+      if ((value.kind !== 'activity' && value.kind !== 'compaction') || !value.active) continue;
+      const since = (value.kind === 'activity' ? value.since : undefined) ?? entry.effectiveAt ?? entry.observedAt;
+      // An idle/unknown observation closes older work even if its tool/turn never emitted an end.
+      if (state && state.value.state !== 'active' && time(since) <= time(state.at)) continue;
+      const candidate: ActiveActorActivity = {
+        entry,
+        activityKind: value.kind === 'compaction' ? 'compacting' : value.activityKind,
+        line: value.kind === 'compaction' ? 'Compacting context' : (value.line ?? 'Working'),
+        since,
+      };
+      if (!selected || preferActivity(candidate, selected)) selected = candidate;
+    }
+    if (selected) {
+      activities.set(key, { kind: selected.activityKind, line: selected.line, since: selected.since });
+    } else if (state?.value.state === 'active') {
+      activities.set(key, { kind: 'delegating', line: state.value.activity ?? 'Working', since: state.at });
+    }
+  }
+  return activities;
 }
 
 function projectSubagents(
-  entries: readonly MonitorStoredEntry[],
+  actors: ReadonlyMap<string, ChildActor>,
+  activities: ReadonlyMap<string, MonitorActivity>,
   actorTotals: ReadonlyMap<string, number>,
   actorBurnRates: ReadonlyMap<string, number>,
   omitted: Partial<Record<MonitorBoundedCollection, number>>,
   unbounded: boolean,
-) {
-  const actors = new Map<string, { actor: ActorRunRef; state?: MonitorActorFamilyValue }>();
-  const activities = new Map<string, ActiveActorActivity>();
-  for (const entry of entries) {
-    const actor = actorOf(entry.value);
-    if (!actor || actor.role !== 'child') continue;
-    const current = actors.get(actor.runKey);
-    if (entry.value.kind === 'actor') actors.set(actor.runKey, { actor, state: entry.value });
-    else if (!current) actors.set(actor.runKey, { actor });
-    if (entry.value.kind === 'activity' && entry.value.active) {
-      const currentActivity = activities.get(actor.runKey);
-      const candidate: ActiveActorActivity = {
-        entry,
-        activityKind: entry.value.activityKind,
-        line: entry.value.line ?? 'Working',
-        since: entry.value.since ?? entry.effectiveAt ?? entry.observedAt,
-      };
-      if (!currentActivity || preferActivity(candidate, currentActivity)) {
-        activities.set(actor.runKey, candidate);
-      }
-    } else if (entry.value.kind === 'compaction' && entry.value.active) {
-      const currentActivity = activities.get(actor.runKey);
-      const candidate: ActiveActorActivity = {
-        entry,
-        activityKind: 'compacting',
-        line: 'Compacting context',
-        since: entry.effectiveAt ?? entry.observedAt,
-      };
-      if (!currentActivity || preferActivity(candidate, currentActivity)) {
-        activities.set(actor.runKey, candidate);
-      }
-    }
-  }
+): MonitorSubagentState[] {
   const values = [...actors.values()]
-    .map(({ actor, state }): MonitorSubagentState => {
-      const context = actorMetric(entries, actor.runKey, 'context');
+    .map(({ actor, entries }): MonitorSubagentState => {
       const model = actorMetric(entries, actor.runKey, 'model');
       const effort = actorMetric(entries, actor.runKey, 'effort');
       const activity = activities.get(actor.runKey);
-      const contextPercent = context ? contextPercentage(context.value) : undefined;
-      const active =
-        state?.state === 'stopped'
-          ? false
-          : state?.state === 'active' || state?.state === 'idle' || activity !== undefined;
       return {
-        id: actor.nativeAgentId ?? actor.runKey,
-        actorRunKey: actor.runKey,
-        ...(actor.nativeAgentType ? { type: actor.nativeAgentType } : {}),
-        active,
-        ...(active && (state?.activity || activity?.line) ? { activity: state?.activity ?? activity?.line } : {}),
+        id: actor.nativeAgentId!,
+        working: activity !== undefined,
+        ...(activity ? { activity: activity.line } : {}),
+        ...(model ? { modelId: model.value.providerModelId } : {}),
+        ...(effort ? { effort: effort.value.value } : {}),
         ...(actorTotals.has(actor.runKey) ? { cumulativeTokens: actorTotals.get(actor.runKey) } : {}),
         ...(actorBurnRates.has(actor.runKey) ? { burnRatePerMin: actorBurnRates.get(actor.runKey) } : {}),
-        ...(contextPercent !== undefined ? { contextPercent } : {}),
-        ...(model ? { modelId: model.value.providerModelId } : {}),
-        ...(model ? { modelIntent: model.value.intent } : {}),
-        ...(effort ? { effort: effort.value.value } : {}),
-        ...(effort ? { effortIntent: effort.value.intent } : {}),
       };
     })
-    .sort((a, b) => Number(b.active) - Number(a.active) || a.id.localeCompare(b.id));
+    .sort((a, b) => Number(b.working) - Number(a.working) || a.id.localeCompare(b.id));
   const bounded = maybeBound('subagents', values, unbounded);
   if (bounded.omitted > 0) omitted.subagents = bounded.omitted;
-  return bounded.values;
-}
-
-type TeamEntry = MonitorStoredEntry & { value: MonitorTeamFamilyValue };
-type TeamMemberEntry = MonitorStoredEntry & { value: MonitorTeamMemberFamilyValue };
-
-function aliases(...values: Array<string | undefined>): Set<string> {
-  return new Set(values.filter((value): value is string => value !== undefined && value.length > 0));
-}
-
-function sharesIdentity(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
-  for (const value of left) {
-    if (right.has(value)) return true;
-  }
-  return false;
-}
-
-function teamAliases(value: MonitorTeamFamilyValue): Set<string> {
-  return aliases(value.teamId, value.nativeTeamId);
-}
-
-function memberTeamAliases(value: MonitorTeamMemberFamilyValue): Set<string> {
-  return aliases(value.teamId, value.nativeTeamId);
-}
-
-function memberAliases(value: MonitorTeamMemberFamilyValue): Set<string> {
-  return aliases(value.membershipId, value.nativeMemberId);
-}
-
-function groupMemberClaims(entries: readonly TeamMemberEntry[]): TeamMemberEntry[][] {
-  const groups: TeamMemberEntry[][] = [];
-  for (const entry of entries) {
-    const identity = memberAliases(entry.value);
-    const matching: number[] = [];
-    for (let index = 0; index < groups.length; index += 1) {
-      if (groups[index]!.some((candidate) => sharesIdentity(identity, memberAliases(candidate.value)))) {
-        matching.push(index);
-      }
-    }
-    if (matching.length === 0) {
-      groups.push([entry]);
-      continue;
-    }
-    const combined = [entry, ...matching.flatMap((index) => groups[index]!)];
-    for (const index of [...matching].sort((a, b) => b - a)) groups.splice(index, 1);
-    groups.push(combined);
-  }
-  return groups;
-}
-
-function membershipState(entry: TeamMemberEntry): 'present' | 'removed' | 'unknown' {
-  if (entry.value.membershipState) return entry.value.membershipState;
-  if (entry.value.state === 'removed') return 'removed';
-  if (entry.value.state === 'active' || entry.value.state === 'idle') return 'present';
-  return 'unknown';
-}
-
-interface TeammateActivityClaim {
-  state: 'active' | 'idle' | 'stopped';
-  entry: MonitorStoredEntry;
-  at: number;
-  line?: string;
-}
-
-function compareTeammateActivity(a: TeammateActivityClaim, b: TeammateActivityClaim): number {
-  return (
-    b.at - a.at || Number(a.entry.provisional) - Number(b.entry.provisional) || compareEntryPreference(a.entry, b.entry)
-  );
-}
-
-function projectTeam(
-  claims: readonly MonitorStoredEntry[],
-  entries: readonly MonitorStoredEntry[],
-  actorTotals: ReadonlyMap<string, number>,
-  actorBurnRates: ReadonlyMap<string, number>,
-  omitted: Partial<Record<MonitorBoundedCollection, number>>,
-  unbounded: boolean,
-) {
-  const allMemberClaims = claims.filter((entry): entry is TeamMemberEntry => entry.value.kind === 'team-member');
-  const rootTeamAliases = allMemberClaims
-    .filter((entry) => entry.value.actor?.role === 'root' && membershipState(entry) !== 'removed')
-    .reduce((values, entry) => new Set([...values, ...memberTeamAliases(entry.value)]), new Set<string>());
-  const teams = claims
-    .filter((entry): entry is TeamEntry => entry.value.kind === 'team')
-    .sort(
-      (a, b) =>
-        Number(!sharesIdentity(rootTeamAliases, teamAliases(a.value))) -
-          Number(!sharesIdentity(rootTeamAliases, teamAliases(b.value))) || compareEntryPreference(a, b),
-    );
-  const selected = teams[0];
-  if (!selected) return undefined;
-  const selectedTeamAliases = teamAliases(selected.value);
-  const relatedTeams = teams.filter((entry) => sharesIdentity(selectedTeamAliases, teamAliases(entry.value)));
-  const namedTeam = relatedTeams.filter((entry) => entry.value.name).sort(compareEntryPreference)[0];
-  const memberClaims = allMemberClaims.filter((entry) =>
-    sharesIdentity(selectedTeamAliases, memberTeamAliases(entry.value)),
-  );
-  const teammates = groupMemberClaims(memberClaims)
-    .map((group): MonitorTeammateState | undefined => {
-      const preferred = [...group].sort(compareEntryPreference);
-      const identity = preferred[0]!;
-      const presenceClaims = preferred.filter((entry) => membershipState(entry) !== 'unknown');
-      const presence = presenceClaims[0] ?? identity;
-      if (membershipState(presence) === 'removed') return undefined;
-
-      const actorClaim = preferred.find((entry) => entry.value.actor);
-      const runtimeClaim = preferred.find((entry) => entry.value.runtimeRunId);
-      const nameClaim = preferred.find((entry) => entry.value.name);
-      const actor = actorClaim?.value.actor;
-      const actorRunKey = actor?.runKey;
-      const activityClaims: TeammateActivityClaim[] = group.flatMap((entry) =>
-        entry.value.state === 'active' || entry.value.state === 'idle'
-          ? [
-              {
-                state: entry.value.state,
-                entry,
-                at: time(entry.effectiveAt ?? entry.observedAt),
-              } satisfies TeammateActivityClaim,
-            ]
-          : [],
-      );
-      if (actorRunKey) {
-        for (const entry of entries) {
-          if (actorOf(entry.value)?.runKey !== actorRunKey) continue;
-          if (
-            entry.value.kind === 'actor' &&
-            (entry.value.state === 'active' || entry.value.state === 'idle' || entry.value.state === 'stopped')
-          ) {
-            activityClaims.push({
-              state: entry.value.state,
-              entry,
-              at: time(entry.effectiveAt ?? entry.observedAt),
-              ...(entry.value.activity ? { line: entry.value.activity } : {}),
-            });
-          } else if (entry.value.kind === 'activity' && entry.value.active) {
-            activityClaims.push({
-              state: 'active',
-              entry,
-              at: time(entry.value.since ?? entry.effectiveAt ?? entry.observedAt),
-              ...(entry.value.line ? { line: entry.value.line } : {}),
-            });
-          } else if (entry.value.kind === 'compaction' && entry.value.active) {
-            activityClaims.push({
-              state: 'active',
-              entry,
-              at: time(entry.effectiveAt ?? entry.observedAt),
-              line: 'Compacting context',
-            });
-          }
-        }
-      }
-      const activity = activityClaims.sort(compareTeammateActivity)[0];
-      const idle = activity?.state === 'idle' ? true : activity?.state === 'active' ? false : undefined;
-      const context = actorRunKey ? actorMetric(entries, actorRunKey, 'context') : undefined;
-      const model = actorRunKey ? actorMetric(entries, actorRunKey, 'model') : undefined;
-      const effort = actorRunKey ? actorMetric(entries, actorRunKey, 'effort') : undefined;
-      const contextPercent = context ? contextPercentage(context.value) : undefined;
-      return {
-        id: identity.value.membershipId,
-        ...(nameClaim?.value.name ? { name: nameClaim.value.name } : {}),
-        ...(actorRunKey ? { actorRunKey } : {}),
-        ...(runtimeClaim?.value.runtimeRunId ? { runtimeRunId: runtimeClaim.value.runtimeRunId } : {}),
-        ...(idle === undefined ? {} : { idle }),
-        ...(activity?.state === 'active' && activity.line ? { activity: activity.line } : {}),
-        ...(actorRunKey && actorTotals.has(actorRunKey) ? { cumulativeTokens: actorTotals.get(actorRunKey) } : {}),
-        ...(actorRunKey && actorBurnRates.has(actorRunKey) ? { burnRatePerMin: actorBurnRates.get(actorRunKey) } : {}),
-        ...(contextPercent !== undefined ? { contextPercent } : {}),
-        ...(model ? { modelId: model.value.providerModelId } : {}),
-        ...(model ? { modelIntent: model.value.intent } : {}),
-        ...(effort ? { effort: effort.value.value } : {}),
-        ...(effort ? { effortIntent: effort.value.intent } : {}),
-        ...(activity?.entry.provisional ? { activityProvisional: true } : {}),
-        ...(presence.provisional ? { provisional: true } : {}),
-      };
-    })
-    .filter((value): value is MonitorTeammateState => value !== undefined)
-    .sort((a, b) => {
-      const activityRank = (value: MonitorTeammateState) =>
-        value.idle === false ? 0 : value.idle === undefined ? 1 : 2;
-      return activityRank(a) - activityRank(b) || a.id.localeCompare(b.id);
-    });
-  const rootActorRunKeys = new Set(
-    memberClaims
-      .filter((entry) => entry.value.actor?.role === 'root')
-      .map((entry) => entry.value.actor?.runKey)
-      .filter((value): value is string => value !== undefined),
-  );
-  const currentMember = teammates.find(
-    (teammate) => teammate.actorRunKey !== undefined && rootActorRunKeys.has(teammate.actorRunKey),
-  );
-  const peerTeammates = currentMember ? teammates.filter((teammate) => teammate !== currentMember) : teammates;
-  const bounded = maybeBound('teammates', peerTeammates, unbounded);
-  if (bounded.omitted > 0) omitted.teammates = bounded.omitted;
-  return {
-    id: selected.value.teamId,
-    ...(namedTeam?.value.name ? { name: namedTeam.value.name } : {}),
-    ...(currentMember ? { memberId: currentMember.id } : {}),
-    ...(currentMember?.name ? { memberName: currentMember.name } : {}),
-    teammates: bounded.values,
-    ...(selected.provisional ? { provisional: true } : {}),
-  } satisfies MonitorTeamState;
-}
-
-function projectWorkflows(
-  entries: readonly MonitorStoredEntry[],
-  omitted: Partial<Record<MonitorBoundedCollection, number>>,
-  unbounded: boolean,
-) {
-  let omittedArtifacts = 0;
-  let omittedActorRunKeys = 0;
-  const workflows = entries
-    .filter(
-      (entry): entry is MonitorStoredEntry & { value: MonitorWorkflowFamilyValue } => entry.value.kind === 'workflow',
-    )
-    .map((entry): MonitorWorkflowState => {
-      const artifacts = maybeBound('artifactRefs', entry.value.artifactRefs, unbounded);
-      const actorRunKeys = maybeBound('workflowActorRunKeys', [...entry.value.actorRunKeys].sort(), unbounded);
-      omittedArtifacts += artifacts.omitted;
-      omittedActorRunKeys += actorRunKeys.omitted;
-      return {
-        id: entry.value.workflowId,
-        ...(entry.value.name ? { name: entry.value.name } : {}),
-        active: entry.value.active,
-        actorRunKeys: actorRunKeys.values,
-        artifactRefs: artifacts.values,
-      };
-    })
-    .sort((a, b) => Number(b.active) - Number(a.active) || a.id.localeCompare(b.id));
-  const bounded = maybeBound('workflows', workflows, unbounded);
-  if (bounded.omitted > 0) omitted.workflows = bounded.omitted;
-  if (omittedArtifacts > 0) omitted.artifactRefs = omittedArtifacts;
-  if (omittedActorRunKeys > 0) omitted.workflowActorRunKeys = omittedActorRunKeys;
   return bounded.values;
 }
 
@@ -974,12 +710,16 @@ export function projectAgentMonitorState(
   const unbounded = options.unboundedCollections ?? false;
   const omitted: Partial<Record<MonitorBoundedCollection, number>> = {};
   const run = latestRun(entries);
-  const blockerProjection = projectBlockers(entries, unbounded);
+  const actors = childActors(entries);
+  const blockerProjection = projectBlockers(entries, actors, unbounded);
   if (blockerProjection.omittedBlockers > 0) omitted.blockers = blockerProjection.omittedBlockers;
   if (blockerProjection.omittedQuestions > 0) omitted.questions = blockerProjection.omittedQuestions;
   if (blockerProjection.omittedQuestionOptions > 0) omitted.questionOptions = blockerProjection.omittedQuestionOptions;
-  const activity = projectActivity(entries, run);
-  const status: AgentMonitorStatus = blockerProjection.blockers.length > 0 ? 'blocked' : activity ? 'working' : 'idle';
+  const children = childActivities(actors, run?.value.alive ?? true, blockerProjection.blockedActorRunKeys);
+  const activity = projectActivity(entries, run, children);
+  // A runnable child keeps the main run working even if another participant needs input.
+  const status: AgentMonitorStatus =
+    children.size > 0 ? 'working' : blockerProjection.blockers.length > 0 ? 'blocked' : activity ? 'working' : 'idle';
   const evidenceAsOf = latestTimestamp([
     accumulator.runtime.lastAcceptedAt,
     accumulator.semantic.lastAcceptedAt,
@@ -1000,21 +740,13 @@ export function projectAgentMonitorState(
   const model = projectModel(entries);
   const effort = projectEffort(entries);
   const subagents = projectSubagents(
-    entries,
+    actors,
+    children,
     usageProjection.actorTotals,
     usageProjection.actorBurnRates,
     omitted,
     unbounded,
   );
-  const team = projectTeam(
-    allEntries(accumulator),
-    entries,
-    usageProjection.actorTotals,
-    usageProjection.actorBurnRates,
-    omitted,
-    unbounded,
-  );
-  const workflows = projectWorkflows(entries, omitted, unbounded);
   // Project before spreading `omitted`; worktree truncation is discovered here.
   const environment = projectEnvironment(entries, omitted, unbounded);
   const compactions = entries.filter(
@@ -1058,7 +790,6 @@ export function projectAgentMonitorState(
     'effort',
     'mode',
     'delegation',
-    'workflow',
     'compaction',
     'environment',
     'conversation',
@@ -1101,9 +832,8 @@ export function projectAgentMonitorState(
         : {}),
       ...(modeAsOf ? { asOf: modeAsOf } : {}),
     },
+    subagentCount: actors.size,
     subagents,
-    ...(team ? { team } : {}),
-    workflows,
     ...(Object.keys(omitted).length > 0 ? { omitted } : {}),
     compaction: {
       active: activeCompaction,

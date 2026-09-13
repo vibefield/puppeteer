@@ -636,7 +636,6 @@ function Godview() {
           <AgentMonitorInspector
             key={activeAgent.agent.monitor.runtimeRunId}
             state={activeAgent.agent.monitor}
-            allStates={agents.flatMap((agent) => (agent.agent?.monitor ? [agent.agent.monitor] : []))}
             nowMs={Date.now()}
             {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
           />

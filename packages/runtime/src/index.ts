@@ -13,8 +13,4 @@ export * from './identity/runtime-identity.js';
 export * from './identity/creation-registry.js';
 export * from './monitor/clock.js';
 export { MonitorNotificationGapError } from './monitor/handle.js';
-export {
-  AgentMonitorService,
-  DEFAULT_MONITOR_ARTIFACT_MAX_BYTES,
-  MONITOR_ARTIFACT_HARD_MAX_BYTES,
-} from './services/monitor-service.js';
+export { AgentMonitorService } from './services/monitor-service.js';

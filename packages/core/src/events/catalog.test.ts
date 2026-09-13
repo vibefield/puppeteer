@@ -20,7 +20,7 @@ describe('agentEventCatalog', () => {
       [AgentEventType, (typeof agentEventCatalog)[AgentEventType]]
     >;
 
-    expect(entries).toHaveLength(39);
+    expect(entries).toHaveLength(37);
     expect(new Set(entries.map(([, definition]) => definition.eventType)).size).toBe(entries.length);
 
     for (const [type, definition] of entries) {
@@ -150,24 +150,8 @@ describe('agentEventCatalog', () => {
         deltaTokens: 1.5,
       }).success,
     ).toBe(false);
-    expect(
-      safeParseAgentEvent('workflow:updated', {
-        type: 'workflow:updated',
-        workflowId: '   ',
-        active: true,
-      }).success,
-    ).toBe(false);
-    expect(
-      safeParseAgentEvent('workflow:updated', {
-        type: 'workflow:updated',
-        workflowId: 'workflow-1',
-        active: true,
-        members: [
-          { agentId: 'worker-1', state: 'active' },
-          { agentId: 'worker-1', state: 'completed' },
-        ],
-      }).success,
-    ).toBe(false);
+    expect(isAgentEventType('workflow:updated')).toBe(false);
+    expect(isAgentEventType('delegation:teammate-idle')).toBe(false);
     expect(
       safeParseAgentEvent('interaction:question-requested', {
         type: 'interaction:question-requested',

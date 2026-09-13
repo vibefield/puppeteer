@@ -27,7 +27,7 @@ The workbench is deliberately three-stage rather than a direct left/right compar
 
 1. **Native evidence** shows the versioned Surface partial-order graph, exact native names and payloads, observed order, channel controls, and raw log.
 2. **Folding ledger** gives every native record an explicit disposition and correlates it with zero or more portable events. This is where abstraction decisions are reviewed.
-3. **Normalized session facets** shows the portable envelopes and their effect on Core lifecycle, turn, reasoning, tools, permissions, subagents, tasks, context, environment, counters, and diagnostics.
+3. **Normalized session facets** shows the portable envelopes and their effect on Core lifecycle, turn, reasoning, tools, permissions, context, environment, counters, and diagnostics.
 
 Selecting a visible ledger row time-travels all three stages to that native sequence. “Live” returns to the newest projection. The normalized side is a set of orthogonal facets, not a fabricated claim that every vendor has one exclusive state machine.
 

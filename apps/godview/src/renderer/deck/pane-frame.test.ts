@@ -42,8 +42,9 @@ function monitor(overrides: Partial<AgentMonitorState> = {}): AgentMonitorState 
     blockers: [],
     usage: { samples: [] },
     modes: { execution: 'native-tui' } as unknown as AgentMonitorState['modes'],
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},

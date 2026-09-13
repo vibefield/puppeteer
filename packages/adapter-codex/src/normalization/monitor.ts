@@ -412,7 +412,12 @@ export class CodexMonitorEvidence {
             upsert('usage', usageKey, {
               kind: 'usage',
               usageId: usageKey,
-              ...(actor ? { actor } : {}),
+              actor: actor ?? {
+                rootSessionKey: this.rootSessionId()!,
+                runKey: `${this.rootSessionId()}:root`,
+                role: 'root',
+                nativeSessionId: this.rootSessionId()!,
+              },
               boundary: 'sample',
               canonical: false,
               cumulativeTokens,
@@ -423,7 +428,7 @@ export class CodexMonitorEvidence {
             if (removed) updates.push(retract('usage', removed));
           }
         }
-        if (usedTokens !== undefined && capacityTokens !== undefined) {
+        if (root && usedTokens !== undefined && capacityTokens !== undefined) {
           updates.push(
             upsert('context', metricKey, {
               kind: 'context',
@@ -433,7 +438,7 @@ export class CodexMonitorEvidence {
               percentageSource: 'derived',
             }),
           );
-        } else if (usage && usage.modelContextWindow === null) {
+        } else if (root && usage && usage.modelContextWindow === null) {
           updates.push(retract('context', metricKey));
         }
         break;

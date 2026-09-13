@@ -102,19 +102,6 @@ function mergeStoredValue(existing: MonitorStoredEntry | undefined, value: Monit
     if (value.cwd !== undefined && value.cwd !== existing.value.cwd && value.git === undefined) delete merged.git;
     return merged;
   }
-  if (existing.value.kind === 'workflow' && value.kind === 'workflow') {
-    const preserveJournalSnapshot = value.actorRunKeys.length === 0 && existing.value.actorRunKeys.length > 0;
-    return {
-      ...existing.value,
-      ...value,
-      name: value.name ?? existing.value.name,
-      // Identity-only OTLP observations intentionally carry no members. Do
-      // not erase or reopen a more complete journal snapshot when another
-      // request ends; journals own membership and completion.
-      active: preserveJournalSnapshot ? existing.value.active : value.active,
-      actorRunKeys: preserveJournalSnapshot ? existing.value.actorRunKeys : value.actorRunKeys,
-    };
-  }
   return value;
 }
 
@@ -1034,65 +1021,6 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
         }),
       );
       break;
-    case 'delegation:teammate-idle':
-      updates.push(
-        upsert('delegation', `team:${event.teamId ?? event.teamName ?? 'current'}`, {
-          kind: 'team',
-          teamId: event.teamId ?? event.teamName ?? 'current',
-          nativeTeamId: event.teamId ?? event.teamName,
-          name: event.teamName,
-        }),
-        upsert('delegation', `member:${event.membershipId ?? event.teammateName}`, {
-          kind: 'team-member',
-          membershipId: event.membershipId ?? event.teammateName,
-          teamId: event.teamId ?? event.teamName ?? 'current',
-          nativeTeamId: event.teamId ?? event.teamName,
-          nativeMemberId: event.membershipId ?? event.teammateName,
-          name: event.teammateName,
-          membershipState: 'present',
-          state: 'idle',
-        }),
-      );
-      break;
-    case 'workflow:updated': {
-      const rootSessionKey = envelope.nativeSessionId ?? envelope.sessionId;
-      const members = event.members ?? [];
-      const actorRunKeys = members.map(({ agentId }) => `${rootSessionKey}:actor:${agentId}`);
-      updates.push(
-        upsert('workflow', `workflow:${event.workflowId}`, {
-          kind: 'workflow',
-          workflowId: event.workflowId,
-          ...(event.name ? { name: event.name } : {}),
-          active: event.active,
-          actorRunKeys,
-          artifactRefs: [],
-        }),
-      );
-      for (const member of members) {
-        const memberActor: ActorRunRef = {
-          rootSessionKey,
-          runKey: `${rootSessionKey}:actor:${member.agentId}`,
-          role: 'child',
-          parentRunKey: `${rootSessionKey}:root`,
-          ...(envelope.nativeSessionId ? { nativeSessionId: envelope.nativeSessionId } : {}),
-          nativeAgentId: member.agentId,
-          ...(member.agentType ? { nativeAgentType: member.agentType } : {}),
-        };
-        updates.push(
-          upsert('delegation', `actor:${memberActor.runKey}`, {
-            kind: 'actor',
-            actor: memberActor,
-            state: member.state === 'active' ? 'active' : 'stopped',
-          }),
-          upsert('delegation', `workflow:${event.workflowId}:member:${member.agentId}`, {
-            kind: 'affiliation',
-            actor: memberActor,
-            affiliation: { kind: 'workflow', id: event.workflowId, ...(event.name ? { name: event.name } : {}) },
-          }),
-        );
-      }
-      break;
-    }
     case 'environment:updated':
       updates.push(...environmentUpdates(event, actor));
       break;

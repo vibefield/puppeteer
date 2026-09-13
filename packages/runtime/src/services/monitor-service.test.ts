@@ -1,7 +1,6 @@
 import type {
   AgentMonitorState,
   AgentAdapterBinding,
-  MonitorArtifactReadResult,
   MonitorNotification,
   ObservationLevel,
 } from '@vibecook/puppeteer-core';
@@ -11,7 +10,7 @@ import * as monitorProjection from '@vibecook/puppeteer-core/monitor-spi';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RuntimeAgentEventEnvelope } from '../types.js';
 import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
-import { AgentMonitorService, MONITOR_ARTIFACT_HARD_MAX_BYTES, type MonitorArtifactAudit } from './monitor-service.js';
+import { AgentMonitorService } from './monitor-service.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -89,7 +88,6 @@ function hub(
     clock?: FakeClock;
     states?: AgentMonitorState[];
     notifications?: MonitorNotification[];
-    audits?: MonitorArtifactAudit[];
     errors?: Error[];
   } = {},
 ) {
@@ -104,44 +102,10 @@ function hub(
     clock,
     onState: (state) => options.states?.push(state),
     onNotification: (notice) => options.notifications?.push(notice),
-    onArtifactAudit: (audit) => {
-      options.audits?.push(audit);
-    },
     onError: (error) => options.errors?.push(error),
   });
   result.start();
   return { clock, hub: result };
-}
-
-function semanticSession(
-  options: {
-    onRead?: (artifactId: string, maxBytes: number) => Promise<MonitorArtifactReadResult>;
-    observationLevel?: () => ObservationLevel;
-  } = {},
-) {
-  let reads = 0;
-  const session = {
-    sessionId: 'native-1',
-    runtimeSessionId: 'terminal-1',
-    observationLevel: options.observationLevel ?? (() => 'native-log' as const),
-    events: { onCandidate: () => () => undefined },
-    services: {
-      prompt: { submit: async () => ({ status: 'confirmed' as const }) },
-      artifacts: {
-        async read(artifactId: string, readOptions: { maxBytes: number }) {
-          reads += 1;
-          return (
-            options.onRead?.(artifactId, readOptions.maxBytes) ?? Promise.resolve({ status: 'unavailable' as const })
-          );
-        },
-      },
-    },
-    dispose: async () => undefined,
-  } satisfies AgentAdapterBinding;
-  return {
-    session,
-    reads: () => reads,
-  };
 }
 
 describe('AgentMonitorService', () => {
@@ -301,8 +265,6 @@ describe('AgentMonitorService', () => {
 
   it('shares one semantic source across independent race-free handles', async () => {
     const { clock, hub: monitor } = hub();
-    const source = semanticSession();
-    monitor.attachSession(source.session);
     const first = monitor.observe();
     const second = monitor.observe();
     monitor.acceptSemantic(
@@ -389,8 +351,6 @@ describe('AgentMonitorService', () => {
   it('refreshes the public observation level when an attached rail changes state', () => {
     let level: ObservationLevel = 'terminal-only';
     const { clock, hub: monitor } = hub();
-    const source = semanticSession({ observationLevel: () => level });
-    monitor.attachSession(source.session);
 
     level = 'native-log';
     monitor.updateSessionMetadata({
@@ -489,62 +449,5 @@ describe('AgentMonitorService', () => {
     expect(monitor.acknowledgeFailure('missing')).toBe(false);
     expect(monitor.acknowledgeFailure('run:runtime')).toBe(true);
     expect(monitor.current()).toMatchObject({ status: 'idle', alive: false, blockers: [] });
-  });
-
-  it('guards opaque artifact reads before delegation and audits metadata only', async () => {
-    const audits: MonitorArtifactAudit[] = [];
-    const read = vi.fn(async (artifactId: string): Promise<MonitorArtifactReadResult> => ({
-      status: 'ok',
-      artifact: { artifactId, family: 'workflow-definition', availability: 'readable' },
-      encoding: 'utf8',
-      content: 'workflow: test',
-    }));
-    const { hub: monitor } = hub({ audits });
-    const source = semanticSession({ onRead: (artifactId) => read(artifactId) });
-    monitor.attachSession(source.session);
-    monitor.acceptSemantic(
-      batch('batch-1', [
-        {
-          family: 'workflow',
-          operation: 'upsert',
-          key: 'workflow-1',
-          value: {
-            kind: 'workflow',
-            workflowId: 'workflow-1',
-            active: true,
-            actorRunKeys: [],
-            artifactRefs: [
-              {
-                artifactId: 'opaque:workflow-1',
-                family: 'workflow-definition',
-                mediaType: 'text/yaml',
-                availability: 'readable',
-              },
-            ],
-          },
-        },
-      ]),
-    );
-
-    await expect(monitor.readArtifact('/tmp/workflow.yaml')).resolves.toMatchObject({ status: 'unavailable' });
-    await expect(
-      monitor.readArtifact('opaque:workflow-1', { maxBytes: MONITOR_ARTIFACT_HARD_MAX_BYTES + 1 }),
-    ).resolves.toMatchObject({ status: 'too-large' });
-    expect(source.reads()).toBe(0);
-
-    await expect(monitor.readArtifact('opaque:workflow-1')).resolves.toMatchObject({
-      status: 'ok',
-      artifact: { artifactId: 'opaque:workflow-1' },
-      content: 'workflow: test',
-    });
-    expect(source.reads()).toBe(1);
-    expect(audits.at(-1)).toEqual({
-      artifactId: 'opaque:workflow-1',
-      maxBytes: 256 * 1024,
-      outcome: 'ok',
-      returnedBytes: 14,
-      mediaType: 'text/yaml',
-    });
-    expect(JSON.stringify(audits)).not.toContain('workflow: test');
   });
 });

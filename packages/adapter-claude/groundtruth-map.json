@@ -25,7 +25,6 @@
     "StopFailure",
     "SubagentStart",
     "SubagentStop",
-    "TeammateIdle",
     "UserPromptSubmit"
   ],
   "observedOrControlledEvents": [
@@ -35,6 +34,7 @@
     "Setup",
     "TaskCompleted",
     "TaskCreated",
+    "TeammateIdle",
     "UserPromptExpansion",
     "WorktreeCreate",
     "WorktreeRemove"
@@ -46,7 +46,7 @@
   },
   "totals": {
     "groundTruth": 31,
-    "semantic": 22,
-    "observedOrControlled": 9
+    "semantic": 21,
+    "observedOrControlled": 10
   }
 }

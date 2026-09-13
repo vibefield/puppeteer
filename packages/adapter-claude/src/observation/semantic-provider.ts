@@ -2,12 +2,10 @@
  * Adapter-local semantic observation boundary.
  *
  * Implementations own provider files and polling. Only normalized events,
- * optional correction-aware monitor batches, capabilities, and opaque artifact
- * reads cross this boundary.
+ * optional correction-aware monitor batches and capabilities cross this boundary.
  */
 
 import type { AgentEvent } from '@vibecook/puppeteer-core';
-import type { MonitorArtifactReadResult } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
 
 export interface SemanticObservationPollHint {
@@ -42,7 +40,6 @@ export interface SemanticObservationHandle {
   onBatch(listener: (batch: AdapterMonitorObservationBatch) => void): () => void;
   onError(listener: (error: Error) => void): () => void;
   poll(hint?: SemanticObservationPollHint): Promise<void>;
-  readArtifact(artifactId: string, options: { maxBytes: number }): Promise<MonitorArtifactReadResult>;
   dispose(): Promise<void>;
 }
 

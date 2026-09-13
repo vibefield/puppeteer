@@ -85,16 +85,7 @@ export const ACP_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     latency: 'historical',
     source: 'none-in-acp-1.2.1',
     contractVersion: ACP_CONTRACT,
-    limitations: ['ACP 1.2.1 defines no subagent identity, parentage, team membership, or child activity stream.'],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'none-in-acp-1.2.1',
-    contractVersion: ACP_CONTRACT,
-    limitations: ['ACP 1.2.1 defines no workflow-run identity, membership, or bounded workflow artifact contract.'],
+    limitations: ['ACP 1.2.1 defines no subagent identity, parentage, or child activity stream.'],
   },
   {
     family: 'compaction',

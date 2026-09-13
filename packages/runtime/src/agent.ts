@@ -7,7 +7,6 @@ import {
   type AgentMonitorHandle,
   type AgentMonitorState,
   type AgentMonitorStatus,
-  type MonitorArtifactReadResult,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
@@ -144,13 +143,6 @@ export class Agent {
 
   observeMonitor(): AgentMonitorHandle {
     return internals(this).monitor.observe();
-  }
-
-  readMonitorArtifact(
-    artifactId: string,
-    options?: { maxBytes?: number | undefined },
-  ): Promise<MonitorArtifactReadResult> {
-    return internals(this).monitor.readArtifact(artifactId, options);
   }
 
   acknowledgeFailureBlocker(blockerId: string): boolean {

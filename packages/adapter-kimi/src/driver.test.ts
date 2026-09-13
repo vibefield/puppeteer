@@ -136,7 +136,7 @@ describe('Kimi native TUI session', () => {
     expect(candidates.every(({ type }) => type.includes(':'))).toBe(true);
     expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
     expect(session.observationLevel()).toBe('native-log');
-    expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toHaveLength(10);
+    expect(monitor.flatMap((batch) => batch.capabilities ?? [])).toHaveLength(9);
     expect(monitor).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

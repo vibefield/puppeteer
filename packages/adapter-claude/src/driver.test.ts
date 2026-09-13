@@ -596,74 +596,6 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
   });
 
-  it('observes workflow identity only from authenticated OTLP despite journal changes', async () => {
-    const { session, projection, prepared, events, token, hook } = await startSession({ providerVersion: '2.1.245' });
-    const dir = mkdtempSync(join(tmpdir(), 'driver-workflow-otlp-'));
-    try {
-      const transcript = join(dir, `${session.sessionId}.jsonl`);
-      writeFileSync(transcript, '');
-      const workflowDirectory = join(dir, session.sessionId, 'subagents', 'workflows', 'workflow-1');
-      mkdirSync(workflowDirectory, { recursive: true });
-      const journal = join(workflowDirectory, 'journal.jsonl');
-      writeFileSync(journal, JSON.stringify({ type: 'started', agentId: 'journal-worker' }) + '\n');
-      await hook('SessionStart', { transcript_path: transcript });
-      await session.pollTranscript();
-      const workflows = () => events.filter(({ event }) => event.type === 'workflow:updated');
-      expect(workflows()).toEqual([]);
-
-      const post = (nativeSessionId = session.sessionId, name = 'research') =>
-        fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            resourceLogs: [
-              {
-                scopeLogs: [
-                  {
-                    logRecords: [
-                      {
-                        body: { stringValue: 'claude_code.api_request' },
-                        attributes: Object.entries({
-                          'event.name': 'api_request',
-                          'session.id': nativeSessionId,
-                          'workflow.run_id': 'workflow-1',
-                          'workflow.name': name,
-                        }).map(([key, value]) => ({ key, value: { stringValue: value } })),
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          }),
-        });
-      expect((await post('foreign-session')).status).toBe(200);
-      expect(workflows()).toEqual([]);
-      expect((await post()).status).toBe(200);
-      expect(workflows()).toEqual([
-        expect.objectContaining({
-          source: 'native-telemetry',
-          event: { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
-        }),
-      ]);
-
-      appendFileSync(journal, JSON.stringify({ type: 'result', agentId: 'journal-worker' }) + '\n');
-      await session.pollTranscript();
-      expect((await post()).status).toBe(200);
-      expect(workflows()).toHaveLength(1);
-      expect((await post(session.sessionId, 'review')).status).toBe(200);
-      expect(workflows().map(({ event }) => event)).toEqual([
-        { type: 'workflow:updated', workflowId: 'workflow-1', name: 'research', active: true },
-        { type: 'workflow:updated', workflowId: 'workflow-1', name: 'review', active: true },
-      ]);
-      expect(workflows().every(({ source }) => source === 'native-telemetry')).toBe(true);
-    } finally {
-      projection.dispose();
-      await session.dispose();
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
   it('ignores root and child transcript metadata and models while observing live root text', async () => {
     const { session, projection, events, hook } = await startSession();
     const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));
@@ -830,7 +762,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           onBatch: () => () => undefined,
           onError: () => () => undefined,
           poll: () => Promise.resolve(),
-          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+
           dispose: () => Promise.resolve(),
         }),
     };
@@ -871,7 +803,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
             polls += 1;
             return Promise.resolve();
           },
-          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+
           dispose: () => Promise.resolve(),
         });
       },
@@ -912,7 +844,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
             return () => undefined;
           },
           poll: () => Promise.resolve(),
-          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+
           dispose: () => Promise.resolve(),
         }),
     };
@@ -1031,22 +963,12 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(child?.updates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          family: 'usage',
-          values: [
-            expect.objectContaining({
-              value: expect.objectContaining({
-                canonical: false,
-                actor: expect.objectContaining({ nativeAgentId: 'agent-7' }),
-              }),
-            }),
-          ],
-        }),
-        expect.objectContaining({
           family: 'status',
           value: expect.objectContaining({ active: true, line: 'Reviewing patch' }),
         }),
       ]),
     );
+    expect(child?.updates.some(({ family }) => family === 'usage' || family === 'context')).toBe(false);
   });
 
   it('dispose tears down the bridge and removes the generated settings', async () => {
@@ -1317,7 +1239,7 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
           onBatch: () => () => undefined,
           onError: () => () => undefined,
           poll: () => (++reads === 1 ? initialRead : Promise.resolve()),
-          readArtifact: () => Promise.resolve({ status: 'unavailable', message: 'not exposed' }),
+
           dispose: () => Promise.resolve(),
         }),
     };

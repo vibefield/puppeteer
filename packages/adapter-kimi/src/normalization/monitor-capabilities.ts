@@ -28,7 +28,7 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {
     family: 'context',
     support: 'degraded',
-    actorScope: 'current-actors',
+    actorScope: 'root',
     latency: 'response',
     source: 'kimi-usage-record',
     contractVersion: KIMI_CONTRACT,
@@ -77,20 +77,8 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'kimi-child-wire-journals',
     contractVersion: KIMI_CONTRACT,
     limitations: [
-      'Child journal presence, activity, model, effort, context input, and usage are observable.',
-      'A universal child-stop record and stable team membership identity are not verified.',
-    ],
-  },
-  {
-    family: 'workflow',
-    support: 'unsupported',
-    actorScope: 'session',
-    latency: 'historical',
-    source: 'kimi-wire-journals',
-    contractVersion: KIMI_CONTRACT,
-    limitations: [
-      'No verified workflow-run identity or bounded workflow-definition artifact exists.',
-      'Goals, cron tasks, plans, and swarm mode are not reclassified as workflows.',
+      'Child journal presence, activity, model, effort, and usage are observable.',
+      'A universal child-stop record is not verified.',
     ],
   },
   {

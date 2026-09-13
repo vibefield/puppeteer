@@ -9,7 +9,6 @@ export * from './compaction.js';
 export * from './context-window.js';
 export * from './conversation.js';
 export * from './usage.js';
-export * from './workflow.js';
 export * from './environment.js';
 export * from './model.js';
 export * from './effort.js';

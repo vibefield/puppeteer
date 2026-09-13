@@ -3,10 +3,8 @@ import {
   isNewerMonitorRevision,
   type AgentMonitorHandle,
   type AgentMonitorState,
-  type MonitorArtifactReadResult,
   type MonitorNotification,
 } from '@vibecook/puppeteer-core';
-import { MONITOR_ARTIFACT_HARD_MAX_BYTES } from '@vibecook/puppeteer-runtime';
 
 export interface AgentMonitorStateMessage {
   runtimeRunId: string;
@@ -31,12 +29,6 @@ export interface AgentMonitorRemovedMessage {
 export interface AcknowledgeAgentFailureRequest {
   runtimeRunId: string;
   blockerId: string;
-}
-
-export interface ReadAgentMonitorArtifactRequest {
-  runtimeRunId: string;
-  artifactId: string;
-  maxBytes: number;
 }
 
 /** Shared renderer ordering rule for full replacement messages. */
@@ -82,63 +74,8 @@ export function parseAcknowledgeAgentFailureRequest(value: unknown): Acknowledge
   return { runtimeRunId: value.runtimeRunId, blockerId: value.blockerId };
 }
 
-export type ReadAgentMonitorArtifactValidation =
-  { ok: true; request: ReadAgentMonitorArtifactRequest } | { ok: false; result: MonitorArtifactReadResult };
-
-export function validateReadAgentMonitorArtifactRequest(value: unknown): ReadAgentMonitorArtifactValidation {
-  if (!isRecord(value)) return { ok: false, result: { status: 'denied' } };
-  if (!isOpaqueMonitorIdentifier(value.runtimeRunId) || !isOpaqueMonitorIdentifier(value.artifactId)) {
-    return { ok: false, result: { status: 'denied' } };
-  }
-  if (!Number.isSafeInteger(value.maxBytes) || (value.maxBytes as number) <= 0) {
-    return { ok: false, result: { status: 'denied' } };
-  }
-  if ((value.maxBytes as number) > MONITOR_ARTIFACT_HARD_MAX_BYTES) {
-    return { ok: false, result: { status: 'too-large' } };
-  }
-  return {
-    ok: true,
-    request: {
-      runtimeRunId: value.runtimeRunId,
-      artifactId: value.artifactId,
-      maxBytes: value.maxBytes as number,
-    },
-  };
-}
-
-function publicArtifact(result: MonitorArtifactReadResult['artifact']): MonitorArtifactReadResult['artifact'] {
-  if (!result) return undefined;
-  return {
-    artifactId: result.artifactId,
-    family: result.family,
-    ...(result.mediaType === undefined ? {} : { mediaType: result.mediaType }),
-    ...(result.byteLength === undefined ? {} : { byteLength: result.byteLength }),
-    ...(result.contentHash === undefined ? {} : { contentHash: result.contentHash }),
-    availability: result.availability,
-  };
-}
-
-/** Removes provider-authored error text before it crosses the renderer trust boundary. */
-export function sanitizeMonitorArtifactReadResult(result: MonitorArtifactReadResult): MonitorArtifactReadResult {
-  const artifact = publicArtifact(result.artifact);
-  if (result.status === 'ok') {
-    return {
-      status: 'ok',
-      artifact: artifact!,
-      encoding: result.encoding,
-      content: result.content,
-    };
-  }
-  return { status: result.status, ...(artifact === undefined ? {} : { artifact }) };
-}
-
 export interface MonitorIpcRuntimeActions {
   acknowledgeFailureBlocker(runtimeRunId: string, blockerId: string): Promise<boolean>;
-  readMonitorArtifact(
-    runtimeRunId: string,
-    artifactId: string,
-    options: { maxBytes: number },
-  ): Promise<MonitorArtifactReadResult>;
 }
 
 export interface MonitorIpcRunLookup {
@@ -155,20 +92,6 @@ export function acknowledgeAgentFailureForIpc(
   // The runtime accepts only retained, dead failure blockers. Permission and
   // question blockers cannot be dismissed through this operation.
   return runtime.acknowledgeFailureBlocker(request.runtimeRunId, request.blockerId);
-}
-
-export async function readAgentMonitorArtifactForIpc(
-  runtime: MonitorIpcRuntimeActions,
-  runs: MonitorIpcRunLookup,
-  input: unknown,
-): Promise<MonitorArtifactReadResult> {
-  const validation = validateReadAgentMonitorArtifactRequest(input);
-  if (!validation.ok) return validation.result;
-  if (!runs.hasRun(validation.request.runtimeRunId)) return { status: 'unavailable' };
-  const result = await runtime.readMonitorArtifact(validation.request.runtimeRunId, validation.request.artifactId, {
-    maxBytes: validation.request.maxBytes,
-  });
-  return sanitizeMonitorArtifactReadResult(result);
 }
 
 export interface MonitorIpcRelayOptions {

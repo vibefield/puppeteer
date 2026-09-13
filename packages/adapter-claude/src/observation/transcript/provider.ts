@@ -1,4 +1,3 @@
-import type { MonitorArtifactReadResult } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
 import type {
   SemanticObservationAttachRequest,
@@ -22,10 +21,6 @@ function notify<T>(listeners: ReadonlySet<(value: T) => void>, value: T): void {
       // Observers are isolated from transcript polling and from each other.
     }
   }
-}
-
-function unavailableArtifact(artifactId: string): MonitorArtifactReadResult {
-  return { status: 'unavailable', message: `Claude transcript observer does not expose artifact ${artifactId}` };
 }
 
 export class ClaudeTranscriptObservationProvider implements SemanticObservationProvider {
@@ -131,7 +126,6 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
         return () => errorListeners.delete(listener);
       },
       poll,
-      readArtifact: (artifactId) => Promise.resolve(unavailableArtifact(artifactId)),
       async dispose() {
         if (disposed) return;
         disposed = true;

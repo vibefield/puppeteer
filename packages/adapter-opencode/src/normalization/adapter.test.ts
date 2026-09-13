@@ -1,3 +1,9 @@
+import {
+  createMonitorAccumulatorState,
+  projectAgentMonitorState,
+  reduceMonitorAccumulator,
+  translateAgentEventEnvelope,
+} from '@vibecook/puppeteer-core/monitor-spi';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -39,24 +45,37 @@ function normalizeFixture(name: string, capacity?: number): OpenCodeNormalizedEv
 function reduce(events: OpenCodeNormalizedEvent[]) {
   const stamper = createEnvelopeStamper();
   let state = createInitialSessionState();
+  let monitor = createMonitorAccumulatorState({
+    runtimeRunId: 'test',
+    runtimeEpoch: 1,
+    executionMode: 'native-tui',
+    observationLevel: 'structured',
+    allocatedAt: events[0]!.timestamp,
+  });
   for (const normalized of events) {
-    state = reduceSessionState(
-      state,
-      stamper.next({
-        sessionId: 'session',
-        nativeSessionId: 'session',
-        ...(normalized.promptId ? { promptId: normalized.promptId } : {}),
-        ...(normalized.turnId ? { turnId: normalized.turnId } : {}),
-        timestamp: normalized.timestamp,
-        monotonicTime: 0,
-        source: normalized.source,
-        confidence: normalized.confidence,
-        event: normalized.event,
-        nativeEvent: normalized.nativeEvent,
-      }) as AgentEventEnvelope,
-    );
+    const envelope = stamper.next({
+      sessionId: 'session',
+      nativeSessionId: 'session',
+      ...(normalized.promptId ? { promptId: normalized.promptId } : {}),
+      ...(normalized.turnId ? { turnId: normalized.turnId } : {}),
+      timestamp: normalized.timestamp,
+      monotonicTime: 0,
+      source: normalized.source,
+      confidence: normalized.confidence,
+      event: normalized.event,
+      nativeEvent: normalized.nativeEvent,
+    }) as AgentEventEnvelope;
+    state = reduceSessionState(state, envelope);
+    monitor = reduceMonitorAccumulator(
+      monitor,
+      translateAgentEventEnvelope({
+        runtimeRunId: 'test',
+        runtimeEpoch: 1,
+        envelope,
+      }),
+    ).state;
   }
-  return state;
+  return { ...state, monitor: projectAgentMonitorState(monitor) };
 }
 
 describe('OpenCode normalizer over Surface-owned captures', () => {
@@ -265,7 +284,7 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     expect(types.indexOf('delegation:subagent-stopped')).toBeLessThan(types.lastIndexOf('turn:completed'));
 
     const state = reduce(events);
-    expect(state.subagents.size).toBe(0);
+    expect(state.monitor.subagents).toMatchObject([{ working: false }]);
     expect(state.activeTurn).toBeUndefined();
     expect(state.tools.size).toBe(0);
   });
@@ -289,9 +308,10 @@ describe('OpenCode normalizer over Surface-owned captures', () => {
     expect(events.filter((entry) => entry.event.type === 'turn:completed')).toHaveLength(2);
 
     const mid = reduce(events.slice(0, firstParentIdle + 1));
-    expect(mid.subagents.size).toBe(1);
-    expect(mid.subagents.has('ses_a11a5ed0f25364ecd57ac53f24')).toBe(true);
-    expect(reduce(events).subagents.size).toBe(0);
+    expect(mid.monitor.subagentCount).toBe(1);
+    expect(mid.monitor.status).toBe('working');
+    expect(mid.monitor.subagents).toMatchObject([{ id: 'ses_a11a5ed0f25364ecd57ac53f24', working: true }]);
+    expect(reduce(events).monitor.subagents).toMatchObject([{ working: false }]);
   });
 
   it('does not treat a captured fork as a subagent', () => {

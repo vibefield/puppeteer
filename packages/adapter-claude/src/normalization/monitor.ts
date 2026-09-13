@@ -6,7 +6,6 @@ import type {
   EvidenceRef,
   MonitorFamilyUpdate,
   MonitorFamilyValueMap,
-  MonitorUsageFamilyValue,
   ObservationCapability,
   ObservationCoverage,
 } from '@vibecook/puppeteer-core/monitor-spi';
@@ -22,7 +21,6 @@ import { claudeMonitorCapabilities } from './monitor-capabilities.js';
 export { CLAUDE_MONITOR_CAPABILITIES, claudeMonitorCapabilities } from './monitor-capabilities.js';
 
 const STATUS_CONTRACT = 'claude-status-channel@1';
-const MAX_STATUS_SAMPLES = 256;
 
 function nativeAgentActor(nativeSessionId: string, agentId: string, agentType?: string): ActorRunRef {
   return {
@@ -76,11 +74,6 @@ function hookEvidence(id: string): EvidenceRef[] {
   return [{ namespace: 'claude-native-hook', id }];
 }
 
-interface ChildSample {
-  key: string;
-  value: MonitorUsageFamilyValue;
-}
-
 export interface ClaudeMonitorEvidenceOptions {
   nativeSessionId: () => string;
   epoch?: string | undefined;
@@ -100,7 +93,6 @@ export class ClaudeMonitorEvidence {
   private capabilitySequence = 0;
   private rootSequence = 0;
   private childSequence = 0;
-  private readonly childSamples = new Map<string, ChildSample[]>();
   private readonly nativeAgentTypes = new Map<string, string | undefined>();
   private readonly stoppedNativeAgents = new Set<string>();
   private readonly capabilities: readonly ObservationCapability[];
@@ -195,7 +187,6 @@ export class ClaudeMonitorEvidence {
     this.childSequence = 0;
     this.rootNeedsResync = true;
     this.childNeedsResync = true;
-    this.childSamples.clear();
     this.nativeAgentTypes.clear();
     this.stoppedNativeAgents.clear();
   }
@@ -203,10 +194,6 @@ export class ClaudeMonitorEvidence {
   /** Hook `agent_id` is the join proof for otherwise task-scoped status rows. */
   observeNativeAgent(agentId: string, agentType?: string): void {
     this.nativeAgentTypes.set(agentId, agentType);
-    const samples = this.childSamples.get(agentId);
-    if (!samples) return;
-    const actor = nativeAgentActor(this.options.nativeSessionId(), agentId, agentType);
-    for (const sample of samples) sample.value = { ...sample.value, actor };
   }
 
   observeNativeAgentStarted(agentId: string, agentType?: string): void {
@@ -344,13 +331,7 @@ export class ClaudeMonitorEvidence {
     if (metadata.nativeSessionId) this.observeNativeSession(metadata.nativeSessionId);
     const nativeSessionId = metadata.nativeSessionId ?? this.options.nativeSessionId();
     const tasks = claudeSubagentStatusTasks(payload);
-    const visibleIds = new Set(tasks.map((task) => task.id));
-    for (const id of this.childSamples.keys()) {
-      if (!visibleIds.has(id)) this.childSamples.delete(id);
-    }
-
     const statuses: MonitorFamilyUpdate[] = [];
-    const contexts: Array<{ key: string; value: MonitorFamilyValueMap['context'] }> = [];
     const models: Array<{ key: string; value: MonitorFamilyValueMap['model'] }> = [];
     const efforts: Array<{ key: string; value: MonitorFamilyValueMap['effort'] }> = [];
     for (const task of tasks) {
@@ -359,11 +340,25 @@ export class ClaudeMonitorEvidence {
         : unverifiedStatusTaskActor(nativeSessionId, task.id, task.type ?? task.name);
       const status = task.status?.toLowerCase();
       const stoppedByHook = this.stoppedNativeAgents.has(task.id);
+      if (actor.nativeAgentId) {
+        statuses.push(
+          upsert('delegation', `actor:${actor.runKey}`, {
+            kind: 'actor',
+            actor,
+            state:
+              stoppedByHook || (status !== undefined && TERMINAL_CHILD_STATUSES.has(status))
+                ? 'stopped'
+                : status === 'idle'
+                  ? 'idle'
+                  : 'active',
+          }),
+        );
+      }
       statuses.push(
         upsert('status', `child-activity:${task.id}`, {
           kind: 'activity',
           activityKind: 'delegating',
-          active: !stoppedByHook && (status === undefined || !TERMINAL_CHILD_STATUSES.has(status)),
+          active: !stoppedByHook && status !== 'idle' && (status === undefined || !TERMINAL_CHILD_STATUSES.has(status)),
           line: childActivityLine(task),
           actor,
           leaseId: `claude-child-status:${nativeSessionId}:${task.id}`,
@@ -391,42 +386,9 @@ export class ClaudeMonitorEvidence {
           },
         });
       }
-      if (task.tokenCount !== undefined && task.contextWindowSize !== undefined && task.contextWindowSize > 0) {
-        contexts.push({
-          key: `actor:${actor.runKey}`,
-          value: {
-            kind: 'context',
-            actor,
-            usedTokens: task.tokenCount,
-            capacityTokens: task.contextWindowSize,
-            usedPercentage: Math.min(100, Math.max(0, (task.tokenCount / task.contextWindowSize) * 100)),
-            percentageSource: 'derived',
-          },
-        });
-      }
-      if (task.tokenCount !== undefined) {
-        const samples = this.childSamples.get(task.id) ?? [];
-        samples.push({
-          key: `child:${task.id}:sample:${this.childSequence + 1}`,
-          value: {
-            kind: 'usage',
-            usageId: `child:${task.id}:sample:${this.childSequence + 1}`,
-            actor,
-            boundary: 'sample',
-            canonical: false,
-            cumulativeTokens: task.tokenCount,
-          },
-        });
-        if (samples.length > MAX_STATUS_SAMPLES) samples.splice(0, samples.length - MAX_STATUS_SAMPLES);
-        this.childSamples.set(task.id, samples);
-      }
     }
 
     this.childSequence += 1;
-    const usages = [...this.childSamples.values()].flat().map((sample) => ({
-      key: sample.key,
-      value: sample.value,
-    }));
     const batch: AdapterMonitorObservationBatch = {
       schemaVersion: 1,
       batchId: `child:${this.childSequence}`,
@@ -443,13 +405,7 @@ export class ClaudeMonitorEvidence {
       provisional: false,
       readiness: 'ready',
       scope: { nativeSessionId },
-      updates: [
-        ...statuses,
-        replace('context', contexts),
-        replace('model', models),
-        replace('effort', efforts),
-        replace('usage', usages),
-      ],
+      updates: [...statuses, replace('model', models), replace('effort', efforts)],
       sourceWatermarks: [],
       evidence: statusEvidence(evidenceId),
     };

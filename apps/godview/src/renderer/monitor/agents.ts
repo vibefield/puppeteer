@@ -1,10 +1,5 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import {
-  aggregateAffiliatedAgentMonitorTeam,
-  classifyMonitorRecency,
-  presentAgentMonitorHeadline,
-  type AgentMonitorState,
-} from '@vibecook/puppeteer-core';
+import { classifyMonitorRecency, presentAgentMonitorHeadline, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
 import { folderName } from '../folder-name.js';
@@ -95,7 +90,6 @@ function sessionColour(project: { seq: number } | undefined, colours: MonitorCol
 export function monitorAgentFromSession(
   record: MonitorAgentRecord,
   options: {
-    allMonitorStates?: readonly AgentMonitorState[] | undefined;
     nowMs?: number | undefined;
     colours?: MonitorColours | undefined;
     usage?: UsageHistory | undefined;
@@ -120,9 +114,6 @@ export function monitorAgentFromSession(
     .filter((value): value is string => Boolean(value))
     .join(' · ');
   const recency = classifyMonitorRecency(current.freshness.lastEvidenceAt, options.nowMs ?? Number.NaN).recency;
-  const teamAggregate = current.team
-    ? aggregateAffiliatedAgentMonitorTeam(current, options.allMonitorStates ?? [current])
-    : undefined;
   return {
     id: info.session.id,
     session: info.session,
@@ -140,7 +131,6 @@ export function monitorAgentFromSession(
       ...(current.context ? { contextWindow: current.context } : {}),
       monitor: current,
       ...(options.usage ? { usage: options.usage } : {}),
-      ...(teamAggregate ? { teamAggregate } : {}),
       recency,
       info,
     },
@@ -171,11 +161,9 @@ export function monitorAgentFromTerminal(record: MonitorTerminalRecord, colours?
  * shell owns. Pure, so the seam is testable without a renderer.
  */
 export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readonly MonitorAgent[] {
-  const allMonitorStates = input.agents.flatMap((record) => (record.monitor ? [record.monitor.state] : []));
   const agents = input.agents
     .map((record) =>
       monitorAgentFromSession(record, {
-        allMonitorStates,
         nowMs: input.nowMs,
         ...(input.colours ? { colours: input.colours } : {}),
         ...(input.usage?.has(monitorIdentity(record.info.session.id, input.identities))

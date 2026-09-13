@@ -7,12 +7,7 @@ import {
   type ContextWindowEvent,
 } from './context-window.js';
 import { AssistantMessageEventSchema, type ConversationEvent } from './conversation.js';
-import {
-  SubagentStartedEventSchema,
-  SubagentStoppedEventSchema,
-  TeammateIdleEventSchema,
-  type DelegationEvent,
-} from './delegation.js';
+import { SubagentStartedEventSchema, SubagentStoppedEventSchema, type DelegationEvent } from './delegation.js';
 import { EffortUpdatedEventSchema, type EffortEvent } from './effort.js';
 import { EnvironmentUpdatedEventSchema, type EnvironmentEvent } from './environment.js';
 import type { AgentEventContract } from './contract.js';
@@ -50,7 +45,6 @@ import {
 } from './tool.js';
 import { TurnCompletedEventSchema, TurnFailedEventSchema, TurnStartedEventSchema, type TurnEvent } from './turn.js';
 import { TokensUsedEventSchema, type UsageEvent } from './usage.js';
-import { WorkflowUpdatedEventSchema, type WorkflowEvent } from './workflow.js';
 import {
   WorkspaceFileChangedEventSchema,
   WorkspaceFileOperationEventSchema,
@@ -69,7 +63,6 @@ export type AgentEvent =
   | ContextWindowEvent
   | ConversationEvent
   | UsageEvent
-  | WorkflowEvent
   | EnvironmentEvent
   | ModelEvent
   | EffortEvent
@@ -92,7 +85,6 @@ export type AgentEventCategory =
   | 'context-window'
   | 'conversation'
   | 'usage'
-  | 'workflow'
   | 'environment'
   | 'model'
   | 'effort'
@@ -218,12 +210,6 @@ export const agentEventCatalog = {
     SubagentStoppedEventSchema,
     'A delegated subagent stopped.',
   ),
-  'delegation:teammate-idle': defineAgentEvent(
-    'delegation',
-    'delegation:teammate-idle',
-    TeammateIdleEventSchema,
-    'A provider teammate became idle.',
-  ),
   'compaction:started': defineAgentEvent(
     'compaction',
     'compaction:started',
@@ -259,12 +245,6 @@ export const agentEventCatalog = {
     'usage:tokens-used',
     TokensUsedEventSchema,
     'The provider reported token consumption.',
-  ),
-  'workflow:updated': defineAgentEvent(
-    'workflow',
-    'workflow:updated',
-    WorkflowUpdatedEventSchema,
-    'A provider workflow and its observed worker membership changed.',
   ),
   'environment:updated': defineAgentEvent(
     'environment',

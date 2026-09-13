@@ -499,11 +499,6 @@
         color: var(--amber);
       }
 
-      .category-workflow {
-        background: var(--purple-bg);
-        color: var(--purple);
-      }
-
       .category-environment,
       .category-model,
       .category-effort,
@@ -934,8 +929,8 @@
 
         <div class="stats" aria-label="API summary">
           <div class="stat"><strong>1</strong><span>Agent object per runtime run</span></div>
-          <div class="stat"><strong>20</strong><span>top-level event categories</span></div>
-          <div class="stat"><strong>39</strong><span>normalized event routes</span></div>
+          <div class="stat"><strong>19</strong><span>top-level event categories</span></div>
+          <div class="stat"><strong>37</strong><span>normalized event routes</span></div>
           <div class="stat"><strong>3</strong><span>selector forms</span></div>
         </div>
       </header>
@@ -954,7 +949,7 @@
           <a class="sub-link" href="#category-context-window">context-window</a>
           <a class="sub-link" href="#category-conversation">conversation</a>
           <a class="sub-link" href="#category-usage">usage</a>
-          <a class="sub-link" href="#category-workflow">workflow</a>
+
           <a class="sub-link" href="#category-environment">environment</a>
           <a class="sub-link" href="#category-model">model</a>
           <a class="sub-link" href="#category-effort">effort</a>
@@ -1388,10 +1383,6 @@ offAll();</code></pre>
 
   submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
   observeMonitor(): AgentMonitorHandle;
-  readMonitorArtifact(
-    artifactId: string,
-    options?: { maxBytes?: number },
-  ): Promise&lt;MonitorArtifactReadResult&gt;;
   acknowledgeFailureBlocker(blockerId: string): boolean;
 }</code></pre>
           </section>
@@ -1526,11 +1517,7 @@ offAll();</code></pre>
                     <td class="native-type">Promise&lt;boolean&gt;</td>
                     <td><p>Acknowledges an operational failure blocker.</p></td>
                   </tr>
-                  <tr>
-                    <td class="route">readMonitorArtifact(…)</td>
-                    <td class="native-type">Promise&lt;MonitorArtifactReadResult&gt;</td>
-                    <td><p>Performs a bounded read of an adapter-issued opaque artifact.</p></td>
-                  </tr>
+
                   <tr>
                     <td class="route">workspaceDiff(terminalId)</td>
                     <td class="native-type">Promise&lt;WorkspaceDiff | null&gt;</td>
@@ -1756,7 +1743,7 @@ unsubscribe();</code></pre>
           <section id="catalog">
             <h2>Complete event catalog</h2>
             <p class="section-note">
-              All 39 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
+              All 37 public routes are listed below. Expand a row to see the exact normalized payload. Search matches
               routes, native payload types, descriptions, and field names.
             </p>
 
@@ -1776,17 +1763,17 @@ unsubscribe();</code></pre>
               <button class="filter-button" type="button" data-filter="other">Other</button>
               <button class="small-button" id="expand-visible" type="button">Expand visible</button>
               <button class="small-button" id="collapse-all" type="button">Collapse</button>
-              <span class="result-count" id="event-count">39 / 39 routes</span>
+              <span class="result-count" id="event-count">37 / 37 routes</span>
             </div>
 
             <div id="event-sections">
               <section class="category-section" id="category-behavior" data-section-category="behavior">
                 <div class="category-header">
                   <h3>Behavior event domains</h3>
-                  <span class="badge category-session">23 routes</span>
+                  <span class="badge category-session">22 routes</span>
                   <p>
-                    Seven independent categories for lifecycle, turns, reasoning, tools, interactions, delegation,
-                    and compaction.
+                    Seven independent categories for lifecycle, turns, reasoning, tools, interactions, delegation, and
+                    compaction.
                   </p>
                 </div>
                 <div class="event-list">
@@ -2125,7 +2112,8 @@ unsubscribe();</code></pre>
   agentType?: string;
 }</code></pre>
                       <div class="projection-row">
-                        <span class="chip">subagents map</span><span class="chip">delegation activity</span>
+                        <span class="chip">subagent count and activity</span
+                        ><span class="chip">delegation activity</span>
                       </div>
                     </div>
                   </details>
@@ -2148,10 +2136,6 @@ unsubscribe();</code></pre>
                       </div>
                     </div>
                   </details>
-
-
-
-
 
                   <details class="event-card" data-category="compaction">
                     <summary>
@@ -2192,26 +2176,6 @@ unsubscribe();</code></pre>
                       <div class="projection-row">
                         <span class="chip">compaction inactive</span><span class="chip">monitor projection</span>
                       </div>
-                    </div>
-                  </details>
-
-                  <details class="event-card" data-category="delegation">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">delegation:teammate-idle</span
-                        ><span class="native-type">delegation:teammate-idle</span></span
-                      ><span class="badge category-delegation">delegation</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>A team member became idle. Membership and activity remain separate claims.</p>
-                      <pre><code>interface TeammateIdleEvent {
-  type: 'delegation:teammate-idle';
-  membershipId?: string;
-  teamId?: string;
-  teamName?: string;
-  teammateName: string;
-}</code></pre>
-                      <div class="projection-row"><span class="chip">delegation monitor</span></div>
                     </div>
                   </details>
 
@@ -2383,41 +2347,6 @@ unsubscribe();</code></pre>
 }</code></pre>
                       <div class="projection-row">
                         <span class="chip">monitor usage</span><span class="chip">burn-rate input</span>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </section>
-
-              <section class="category-section" id="category-workflow" data-section-category="workflow">
-                <div class="category-header">
-                  <h3>Workflow category</h3>
-                  <span class="badge category-workflow">1 route</span>
-                  <p>Provider workflow identity, activity, and exact known member state.</p>
-                </div>
-                <div class="event-list">
-                  <details class="event-card" data-category="workflow">
-                    <summary>
-                      <span class="event-title"
-                        ><span class="route">workflow:updated</span
-                        ><span class="native-type">workflow:updated</span></span
-                      ><span class="badge category-workflow">workflow</span>
-                    </summary>
-                    <div class="event-body">
-                      <p>Repeated workflow ids update the same run; omitted members preserve identity-only evidence.</p>
-                      <pre><code>interface WorkflowUpdatedEvent {
-  type: 'workflow:updated';
-  workflowId: string;
-  name?: string;
-  active: boolean;
-  members?: Array&lt;{
-    agentId: string;
-    agentType?: string;
-    state: 'active' | 'completed';
-  }&gt;;
-}</code></pre>
-                      <div class="projection-row">
-                        <span class="chip">monitor workflow</span><span class="chip">actor affiliations</span>
                       </div>
                     </div>
                   </details>
@@ -2646,18 +2575,27 @@ interface WorkspaceFileOperationEvent {
                     <tbody>
                       <tr>
                         <td class="route">Codex</td>
-                        <td><p>Native fileChange lifecycle; full add/delete content, update diff, and move target.</p></td>
+                        <td>
+                          <p>Native fileChange lifecycle; full add/delete content, update diff, and move target.</p>
+                        </td>
                         <td><p>No current general watcher for shell- or process-owned edits.</p></td>
                       </tr>
                       <tr>
                         <td class="route">Claude</td>
                         <td><p>Write/Edit input and outcome; optional FileChanged path/kind observation.</p></td>
-                        <td><p>FileChanged exists only when the caller supplies Claude’s required filename matcher.</p></td>
+                        <td>
+                          <p>FileChanged exists only when the caller supplies Claude’s required filename matcher.</p>
+                        </td>
                       </tr>
                       <tr>
                         <td class="route">OpenCode</td>
                         <td><p>Tool intent/result plus independent add/change/unlink watcher observations.</p></td>
-                        <td><p>Result patches are indentation-normalized previews; metadata.truncated describes tool output only.</p></td>
+                        <td>
+                          <p>
+                            Result patches are indentation-normalized previews; metadata.truncated describes tool output
+                            only.
+                          </p>
+                        </td>
                       </tr>
                       <tr>
                         <td class="route">Kimi</td>
@@ -2667,11 +2605,17 @@ interface WorkspaceFileOperationEvent {
                       <tr>
                         <td class="route">Hermes</td>
                         <td><p>Completion-only bounded inline preview for source-proven write_file and patch.</p></td>
-                        <td><p>The inline preview route is source-defined but not runtime-verified; no general watcher.</p></td>
+                        <td>
+                          <p>
+                            The inline preview route is source-defined but not runtime-verified; no general watcher.
+                          </p>
+                        </td>
                       </tr>
                       <tr>
                         <td class="route">ACP / Grok</td>
-                        <td><p>Protocol-native before/after content or file locations, according to the ACP server.</p></td>
+                        <td>
+                          <p>Protocol-native before/after content or file locations, according to the ACP server.</p>
+                        </td>
                         <td><p>Detail and lifecycle precision depend on the server; no separate watcher route.</p></td>
                       </tr>
                       <tr>
@@ -2878,8 +2822,8 @@ interface AgentMonitorState {
   usage: MonitorUsageState;
   context?: MonitorContextState;
   model?: MonitorModelState;
+  subagentCount: number; // known distinct children, including completed children
   subagents: MonitorSubagentState[];
-  workflows: MonitorWorkflowState[];
   compaction: MonitorCompactionState;
   environment: MonitorEnvironmentState;
   freshness: MonitorFreshnessState;
@@ -2923,7 +2867,6 @@ interface SessionRuntimeState {
     toolCallId?: string;
     tool?: string;
   }&gt;;
-  subagents: Map&lt;string, { subagentId: string; agentType?: string }&gt;;
   contextWindow?: {
     usedTokens: number;
     capacityTokens: number;
@@ -3169,7 +3112,7 @@ interface AgentProviderMode {
             </p>
             <pre><code>type MonitorMetricFamily =
   | 'status' | 'usage' | 'context' | 'model' | 'effort' | 'mode'
-  | 'delegation' | 'workflow' | 'compaction' | 'environment';
+  | 'delegation' | 'compaction' | 'environment';
 
 type MonitorFamilyUpdate =
   | {
@@ -3232,14 +3175,10 @@ type MonitorFamilyUpdate =
                   </tr>
                   <tr>
                     <td class="route">delegation</td>
-                    <td>actor · affiliation · team · team-member</td>
-                    <td><p>Root/child actors, memberships, teams, state, runtime/native joins.</p></td>
+                    <td>actor</td>
+                    <td><p>Known child count, model, effort, token usage, and current activity.</p></td>
                   </tr>
-                  <tr>
-                    <td class="route">workflow</td>
-                    <td>workflow</td>
-                    <td><p>Workflow identity, active state, actor run keys, opaque artifact refs.</p></td>
-                  </tr>
+
                   <tr>
                     <td class="route">compaction</td>
                     <td>compaction</td>
@@ -3269,9 +3208,6 @@ type MonitorFamilyUpdate =
   readonly services: {
     prompt: {
       submit(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
-    };
-    artifacts?: {
-      read(artifactId: string, options: { maxBytes: number }): Promise&lt;MonitorArtifactReadResult&gt;;
     };
   };
   dispose(): Promise&lt;void&gt;;

@@ -75,20 +75,9 @@ function capturedBatches(
 }
 
 describe('KimiMonitorEvidence', () => {
-  it('declares the full checklist without claiming context percentage, teams, or workflows', () => {
+  it('declares the unified families without claiming context percentage', () => {
     expect(KIMI_MONITOR_CAPABILITIES.map(({ family }) => family).sort()).toEqual(
-      [
-        'status',
-        'usage',
-        'context',
-        'model',
-        'effort',
-        'mode',
-        'delegation',
-        'workflow',
-        'compaction',
-        'environment',
-      ].sort(),
+      ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'supported',
@@ -99,9 +88,6 @@ describe('KimiMonitorEvidence', () => {
     });
     expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
       support: 'degraded',
-    });
-    expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'workflow')).toMatchObject({
-      support: 'unsupported',
     });
     expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'context')?.limitations.join(' ')).toContain(
       'maxTokens',
@@ -318,17 +304,10 @@ describe('KimiMonitorEvidence', () => {
             actor: expect.objectContaining({ runKey: `${SESSION}:actor:agent-0`, nativeAgentId: 'agent-0' }),
           }),
         }),
-        expect.objectContaining({
-          family: 'context',
-          value: expect.objectContaining({
-            actor: expect.objectContaining({ runKey: `${SESSION}:actor:agent-0` }),
-            usedTokens: 23,
-            percentageSource: 'unavailable',
-          }),
-        }),
       ]),
     });
 
+    expect(child?.updates.some(({ family }) => family === 'context')).toBe(false);
     const monitor = project([root!, child!]);
     expect(monitor.usage).toMatchObject({ cumulativeTokens: 85, burnRatePerMin: 27, burnRateBoundary: 'response' });
     expect(monitor.context).toMatchObject({ usedTokens: 48, percentageSource: 'unavailable' });
@@ -422,12 +401,14 @@ describe('KimiMonitorEvidence', () => {
       ]),
     );
     expect(
-      [profile, request, ended].flatMap((batch) => batch?.updates ?? []).some(({ family }) => family === 'workflow'),
+      [profile, request, ended]
+        .flatMap((batch) => batch?.updates ?? [])
+        .some(({ family }) => String(family) === 'workflow'),
     ).toBe(false);
     expect(
       [profile, request, ended]
         .flatMap((batch) => batch?.updates ?? [])
-        .some((update) => update.operation === 'upsert' && update.value.kind === 'team'),
+        .some((update) => update.operation === 'upsert' && String(update.value.kind) === 'team'),
     ).toBe(false);
     expect(JSON.stringify([profile, request, ended])).not.toContain('/private/cwd');
   });
@@ -627,7 +608,6 @@ describe('KimiMonitorEvidence', () => {
     });
     expect(batch.coverage?.every(({ completeness }) => completeness === 'unavailable')).toBe(true);
     expect(batch.capabilities?.find(({ family }) => family === 'status')).toMatchObject({ support: 'degraded' });
-    expect(batch.capabilities?.find(({ family }) => family === 'workflow')).toMatchObject({ support: 'unsupported' });
     expect(JSON.stringify(batch)).not.toContain('sensitive provider failure');
   });
 });

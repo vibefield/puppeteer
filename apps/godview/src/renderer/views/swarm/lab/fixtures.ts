@@ -136,8 +136,9 @@ function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
     ...(spec.model ? { model: { id: spec.model.toLowerCase().replace(/\s+/g, '-'), displayName: spec.model } } : {}),
     ...(spec.effort ? { effort: { value: spec.effort, intent: spec.effortIntent ?? 'observed' } } : {}),
     modes: { execution: 'native-tui' },
+    subagentCount: 0,
     subagents: [],
-    workflows: [],
+
     compaction: { active: false, count: 0 },
     environment: { worktrees: [] },
     session: {},
