@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { ProjectTint } from '../colour/project-tint.js';
 
@@ -84,33 +84,37 @@ function readToken(name: string, fallback: string): string {
 }
 
 /** The Godview root carries the theme class, so the §2.7 aliases (`--idle-bg`
- * and friends) resolve only there. Without a mounted root the document root is
- * read, which yields the fallbacks and therefore a visibly wrong swarm. */
-function readScopedToken(name: string, fallback: string): string {
+ * and friends) resolve only there: the root a reader names, else the
+ * document's first. Without a mounted root the document root is read, which
+ * yields the fallbacks and therefore a visibly wrong swarm. */
+function scopedRoot(root: Element | null | undefined): Element {
+  return root ?? document.querySelector('.vf-godview') ?? document.documentElement;
+}
+
+function readScopedToken(name: string, fallback: string, root?: Element | null): string {
   if (typeof document === 'undefined') return fallback;
-  const root = document.querySelector('.vf-godview') ?? document.documentElement;
-  const value = getComputedStyle(root).getPropertyValue(name).trim();
+  const value = getComputedStyle(scopedRoot(root)).getPropertyValue(name).trim();
   return value === '' ? fallback : value;
 }
 
-function readScopedNumber(name: string, fallback: number): number {
-  const value = Number.parseFloat(readScopedToken(name, ''));
+function readScopedNumber(name: string, fallback: number, root?: Element | null): number {
+  const value = Number.parseFloat(readScopedToken(name, '', root));
   return Number.isFinite(value) ? value : fallback;
 }
 
-function readSwarmPalette(): SwarmPalette {
+function readSwarmPalette(root?: Element | null): SwarmPalette {
   return {
-    idleBg: readScopedToken('--idle-bg', '#000000'),
-    idleText: readScopedToken('--idle-text', '#000000'),
-    workingBg: readScopedToken('--working-bg', '#000000'),
-    workingText: readScopedToken('--working-text', '#000000'),
-    workingBorder: readScopedToken('--working-border', '#000000'),
-    blockedBg: readScopedToken('--blocked-bg', '#000000'),
-    blockedText: readScopedToken('--blocked-text', '#000000'),
-    gridLine: readScopedToken('--grid-line', 'rgba(0, 0, 0, 0)'),
-    textMain: readScopedToken('--text-main', '#000000'),
-    textMuted: readScopedToken('--text-muted', '#000000'),
-    panelBg: readScopedToken('--panel-bg', '#000000'),
+    idleBg: readScopedToken('--idle-bg', '#000000', root),
+    idleText: readScopedToken('--idle-text', '#000000', root),
+    workingBg: readScopedToken('--working-bg', '#000000', root),
+    workingText: readScopedToken('--working-text', '#000000', root),
+    workingBorder: readScopedToken('--working-border', '#000000', root),
+    blockedBg: readScopedToken('--blocked-bg', '#000000', root),
+    blockedText: readScopedToken('--blocked-text', '#000000', root),
+    gridLine: readScopedToken('--grid-line', 'rgba(0, 0, 0, 0)', root),
+    textMain: readScopedToken('--text-main', '#000000', root),
+    textMuted: readScopedToken('--text-muted', '#000000', root),
+    panelBg: readScopedToken('--panel-bg', '#000000', root),
     orange: readToken('--vf-orange', '#000000'),
     green: readToken('--vf-godview-rain-green', '#000000'),
     blue: readToken('--vf-select', '#000000'),
@@ -135,7 +139,7 @@ export function hexToRgb255(hex: string): string {
  * showing. The tint falls back to no lightness for the same reason: every
  * project black, obviously wrong, cheap to notice.
  */
-export function readMonitorPalette(): MonitorPalette {
+export function readMonitorPalette(root?: Element | null): MonitorPalette {
   const stage = readToken('--vf-card-deep', '#000000');
   const status = {
     working: readToken('--vf-green', '#000000'),
@@ -143,8 +147,8 @@ export function readMonitorPalette(): MonitorPalette {
     idle: TEXT_TERTIARY,
   } as const;
   return {
-    tint: { l: readScopedNumber('--tint-l', 0), c: readScopedNumber('--tint-c', 0) },
-    neutral: readScopedToken('--text-faint', '#000000'),
+    tint: { l: readScopedNumber('--tint-l', 0, root), c: readScopedNumber('--tint-c', 0, root) },
+    neutral: readScopedToken('--text-faint', '#000000', root),
     status,
     statusRgb: {
       working: hexToRgb255(status.working),
@@ -154,7 +158,7 @@ export function readMonitorPalette(): MonitorPalette {
     },
     stage,
     text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, tertiary: TEXT_TERTIARY },
-    swarm: readSwarmPalette(),
+    swarm: readSwarmPalette(root),
     rain: {
       stage: readToken('--vf-card-deep', '#000000'),
       activeHead: readToken('--vf-godview-rain-working-head', '#ffffff'),
@@ -186,22 +190,30 @@ export function readMonitorPalette(): MonitorPalette {
  * The project tint has a lightness per theme, so every bubble's colour moves
  * with the switch; §2.5's states are theme-invariant today, and the observer
  * is what lets them gain a dark variant without anyone remembering it exists.
+ *
+ * A page with more than one Godview root (a catalog showing the bodies in
+ * their own theme beside the stage in another) passes the ref of the root
+ * its view sits in: the theme-scoped tokens are then read from, and watched
+ * on, that root rather than the document's first.
  */
-export function useMonitorPalette(): MonitorPalette {
-  const [palette, setPalette] = useState(readMonitorPalette);
+export function useMonitorPalette(root?: RefObject<Element | null>): MonitorPalette {
+  const [palette, setPalette] = useState(() => readMonitorPalette(root?.current));
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return;
-    const observer = new MutationObserver(() => setPalette(readMonitorPalette()));
+    const scoped = root?.current ?? null;
+    const read = (): void => setPalette(readMonitorPalette(scoped));
+    const observer = new MutationObserver(read);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
     // The swarm's tokens are theme-scoped on the Godview root, whose class is
     // what actually changes; watch it too so the swarm never reads a stale theme.
-    const root = document.querySelector('.vf-godview');
-    if (root) observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    const watched = scoped ?? document.querySelector('.vf-godview');
+    if (watched) observer.observe(watched, { attributes: true, attributeFilter: ['class'] });
     // The first read happened during the initial state, which for the very first
-    // mount can precede the stylesheet. Re-read once on commit so a monitor that
-    // opened mid-load does not keep the fallbacks it was born with.
-    setPalette(readMonitorPalette());
+    // mount can precede the stylesheet (and precedes the ref). Re-read once on
+    // commit so a monitor that opened mid-load does not keep the fallbacks it
+    // was born with.
+    read();
     return () => observer.disconnect();
-  }, []);
+  }, [root]);
   return palette;
 }
