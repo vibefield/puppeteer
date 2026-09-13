@@ -39,7 +39,9 @@ The numbered product layers are:
 - Event routes retain the `category:event-name` convention. Runtime validates payloads with Core Zod schemas and uses TypeScript for callback narrowing.
 - Commands travel through named services; they are not represented as events or callback-bearing payloads.
 - Unknown meaningful native events are retained as `adapter:native-event` instead of silently dropped.
-- Launch environments may contain bearer tokens. Never log or persist them.
+- Launch environments may contain bearer tokens. Never log or persist them. The one exception is the host's own
+  stable-ingress record (RFC 003): a host that pins or learns a session's `{port, token}` may persist it, owner-only,
+  beside its session records — it is the host's credential to keep, and the adapter still never logs it.
 
 ## Repository layout
 

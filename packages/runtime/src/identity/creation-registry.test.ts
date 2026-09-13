@@ -97,6 +97,35 @@ describe('file creation request registry', () => {
     ).resolves.toMatchObject({ advanced: false, claim: { runtimeEpoch: 2 } });
   });
 
+  it('answers a lookup with the claim as it stands, and nothing for a foreign run or an unknown request', async () => {
+    const directory = await registryDirectory();
+    const registry = createFileCreationRequestRegistry({ directory });
+    const input = {
+      creationRequestId: 'request-lookup',
+      canonicalFingerprint: '{"agent":"claude"}',
+      operation: 'create' as const,
+    };
+    expect(await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-x' })).toBeUndefined();
+    const claimed = await registry.claim({ ...input, proposedRuntimeRunId: 'run-x' });
+    expect(await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-x' })).toMatchObject({
+      runtimeRunId: 'run-x',
+      runtimeEpoch: 1,
+      state: 'allocated',
+      ref: claimed.claim.ref,
+    });
+    // a restore that advanced the epoch is what a returning host reads back
+    await registry.incrementRuntimeEpoch({
+      creationRequestId: 'request-lookup',
+      runtimeRunId: 'run-x',
+      expectedRuntimeEpoch: 1,
+    });
+    expect(
+      (await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-x' }))?.runtimeEpoch,
+    ).toBe(2);
+    // another run's record never learns this claim
+    expect(await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-y' })).toBeUndefined();
+  });
+
   it('persists a bounded terminal outcome and refuses later epoch restoration', async () => {
     const directory = await registryDirectory();
     const registry = createFileCreationRequestRegistry({ directory });

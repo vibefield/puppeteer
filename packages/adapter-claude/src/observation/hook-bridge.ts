@@ -73,7 +73,12 @@ export interface HookBridge {
   onOtelLogs(listener: (envelope: NativeOtelLogsEnvelope) => void): () => void;
   /** Unexpected listener/server failure; intentional dispose does not fire it. */
   onUnavailable(listener: (reason: string) => void): () => void;
-  dispose(): Promise<void>;
+  /**
+   * Close the listener. With `drain` (a host releasing a live process) the
+   * connections are not reset: a post in flight from the process completes,
+   * and the close waits a bounded moment for it before forcing.
+   */
+  dispose(options?: { drain?: boolean | undefined }): Promise<void>;
 }
 
 const HOST = '127.0.0.1';
@@ -86,6 +91,9 @@ function tokenMatches(header: string | undefined, token: string): boolean {
   const expected = Buffer.from(token);
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }
+
+/** How long a releasing close lets an in-flight post finish before forcing. */
+const DRAIN_MS = 500;
 
 export function createHookBridge(options: HookBridgeOptions): HookBridge {
   const token = options.token ?? randomUUID();
@@ -283,7 +291,7 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       return () => unavailableListeners.delete(listener);
     },
 
-    dispose(): Promise<void> {
+    dispose(options): Promise<void> {
       intentionalClose = true;
       listeners.clear();
       statusLineListeners.clear();
@@ -294,6 +302,18 @@ export function createHookBridge(options: HookBridgeOptions): HookBridge {
       server = null;
       if (!s) return Promise.resolve();
       return new Promise((resolve) => {
+        if (options?.drain) {
+          // idle keep-alive connections would hold the close open; in-flight
+          // posts get a bounded moment, then everything is forced
+          s.closeIdleConnections?.();
+          const force = setTimeout(() => s.closeAllConnections?.(), DRAIN_MS);
+          force.unref();
+          s.close(() => {
+            clearTimeout(force);
+            resolve();
+          });
+          return;
+        }
         s.closeAllConnections?.();
         s.close(() => resolve());
       });

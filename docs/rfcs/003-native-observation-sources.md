@@ -124,6 +124,22 @@ a turn boundary the user did not choose. Three additions make the bridge a stabl
   stays allocated, no `process:exited` is dispatched or recorded, and the host that comes back re-attaches. A plain
   `dispose` still closes the runs for good; `handleProcessExit` is unchanged.
 
+**Amended 2026-09-13 (PU-1b, after VibeField's AR-4 review).** *A release keeps what the process depends on.* The
+detach path disposes each binding with `{ release: true }` (`AdapterDisposeOptions`, core `binding.ts`): the Claude
+binding closes its bridge by DRAINING (in-flight posts complete, a bounded moment, then force) and leaves the staged
+settings file and hook/status-line forwarders in place — the running process execs them on every hook, and a plain
+dispose had been deleting them under it, which is what killed a TUI released within its first seconds and left the
+hook rail dead after every re-attach. A released run's staged files are cleaned by the close that eventually ends it;
+a run released and never re-attached leaves them behind in the temp dir (a few KB), which is the accepted cost.
+*Identity is validated before anything is bound.* `attach` reads the durable claim (`CreationRequestRegistry.lookup`,
+new) and refuses a run this runtime already manages, a missing or terminal claim, and a stale epoch — naming the
+claim's current epoch — BEFORE `attachSession` takes the live process's port or a workspace is built; a bind that then
+fails inside the restore no longer marks the live process's claim terminal (`RestoreAgentSessionOptions.attaching`),
+and a workspace the attach merely resumed is never destroyed. *A rotation the host missed is followed.* A `/clear`
+typed while no host listened rotates the id unheard; on attach the first authenticated hook under a new id — before
+the pinned id has spoken — is taken as that rotation when the new id already has a transcript under the same root,
+and the transcript is observed. Configured intent is not published for an attached process (it is a launch fact).
+
 What stays with the host: choosing to pin, persisting what was bound (owner-only, like every other credential the
 host keeps), knowing which terminals are still alive after it returns, and the resume fallback for providers with no
 attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would

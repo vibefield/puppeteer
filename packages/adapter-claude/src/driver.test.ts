@@ -19,6 +19,7 @@ import {
 import { projectAgentEvents } from '@vibecook/puppeteer-testing';
 import { attachClaudeTuiSession, createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
+import { cleanupClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
 import type { HookBridge, NativeHookEnvelope } from './observation/hook-bridge.js';
 import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
@@ -1705,8 +1706,13 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     expect(prepared!.env.PUPPETEER_HOOK_TOKEN).toBe(bound!.token);
     const sessionId = launched.sessionId;
 
-    // The host dies: its bridge goes with it, the process and its transcript stay.
-    await launched.dispose();
+    // The host RELEASES (stable ingress): its bridge goes, the process and
+    // everything it reads stay — the staged settings and the hook forwarder in
+    // particular, which the running process execs on every hook. A plain
+    // dispose is the close that removes them.
+    await launched.dispose({ release: true });
+    expect(existsSync(prepared!.settingsPath)).toBe(true);
+    expect(existsSync(prepared!.hookForwarderPath)).toBe(true);
     const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-root-'));
     const project = join(configDir, 'projects', '-tmp');
     mkdirSync(project, { recursive: true });
@@ -1827,6 +1833,92 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     expect(receipt.status).not.toBe('rejected');
     expect(automations.at(-1)).toMatchObject({ kind: 'paste', text: 'hello again' });
     rmSync(configDir, { recursive: true, force: true });
+    // the released launch files are the close's to remove
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('follows a /clear typed while no host listened: the first hook under a new id that has a transcript rotates the attached session, once', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-rotate' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const pinned = launched.sessionId;
+    const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    await launched.dispose({ release: true });
+    const configDir = mkdtempSync(join(tmpdir(), 'driver-rotate-root-'));
+    const project = join(configDir, 'projects', '-tmp');
+    mkdirSync(project, { recursive: true });
+    const rotated = '11111111-1111-4111-8111-111111111111';
+    const line = (sessionId: string, uuid: string): string =>
+      `${JSON.stringify({
+        parentUuid: null,
+        type: 'assistant',
+        uuid,
+        timestamp: '2026-09-12T00:00:00.000Z',
+        sessionId,
+        cwd: '/tmp',
+        version: '1',
+        gitBranch: 'main',
+        isSidechain: false,
+        userType: 'external',
+        requestId: `request-${uuid}`,
+        message: {
+          id: `msg_${uuid}`,
+          type: 'message',
+          role: 'assistant',
+          model: 'm',
+          content: [{ type: 'text', text: 'x' }],
+          stop_reason: null,
+          usage: { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        },
+      })}\n`;
+    writeFileSync(join(project, `${pinned}.jsonl`), line(pinned, 'u-pinned'));
+    writeFileSync(join(project, `${rotated}.jsonl`), line(rotated, 'u-rotated'));
+    const attached = await attachClaudeTuiSession({
+      sessionId: pinned,
+      runtimeSessionId: 'rt-rotate',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    projectAgentEvents(attached);
+    expect(attached.transcriptPath()).toBe(join(project, `${pinned}.jsonl`));
+    const post = (sessionId: string): Promise<Response> =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+        body: JSON.stringify({
+          session_id: sessionId,
+          cwd: '/tmp',
+          hook_event_name: 'UserPromptSubmit',
+          prompt: 'after /clear',
+          prompt_id: `p-${sessionId.slice(0, 4)}`,
+        }),
+      });
+    // an id with no transcript under the root is a stranger, rotation or not
+    expect((await post('22222222-2222-4222-8222-222222222222')).status).toBe(403);
+    // the rotation: the new id has a transcript, and nothing has spoken since the attach
+    expect((await post(rotated)).status).toBe(200);
+    await vi.waitFor(() => expect(attached.transcriptPath()).toBe(join(project, `${rotated}.jsonl`)));
+    // once heard, the selection is final: the old id does not rotate back
+    expect((await post(pinned)).status).toBe(403);
+    expect((await post(rotated)).status).toBe(200);
+    rmSync(configDir, { recursive: true, force: true });
+    await cleanupClaudeSession(prepared!);
   });
 
   it('fails an attach before adopting anything when the pinned port is taken', async () => {

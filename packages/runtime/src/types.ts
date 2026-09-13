@@ -524,6 +524,13 @@ export interface RestoreAgentSessionOptions {
   session: AgentAdapterBinding;
   workspace: Workspace;
   externalRefs?: readonly ExternalRef[];
+  /**
+   * The process behind the binding is ALIVE (an attach, stable ingress): a
+   * bind failure must not mark its durable claim terminal — the claim stays
+   * allocated at the advanced epoch for the host to re-sync from — and only
+   * this runtime's provisional run is dropped.
+   */
+  attaching?: boolean | undefined;
 }
 
 /** The single application-facing surface for every agent provider. */

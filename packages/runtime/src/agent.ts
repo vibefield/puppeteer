@@ -13,6 +13,7 @@ import {
   type PromptSubmission,
   type SessionLifecycle,
   type SessionRuntimeState,
+  type AdapterDisposeOptions,
 } from '@vibecook/puppeteer-core';
 import { AgentEventBus } from './events/event-bus.js';
 import { AgentConversationService, type AgentConversationSnapshot } from './services/conversation-service.js';
@@ -176,7 +177,7 @@ export interface AgentController {
       hostProcessEvidence?: boolean | undefined;
     },
   ): AgentIngestResult;
-  dispose(): Promise<void>;
+  dispose(options?: AdapterDisposeOptions): Promise<void>;
 }
 
 /** @internal Runtime-only ingress kept off the application-facing Agent class. */
@@ -195,12 +196,12 @@ export function createAgentController(options: AgentOptions): AgentController {
       if (acceptOptions.publish !== false) internal.events.emit(envelope);
       return { previousState, state: internal.state.currentState() };
     },
-    async dispose() {
+    async dispose(options) {
       const internal = internals(agent);
       if (internal.disposed) return;
       internal.disposed = true;
       internal.events.clear();
-      await internal.adapter.dispose();
+      await internal.adapter.dispose(options);
     },
   };
 }

@@ -53,6 +53,14 @@ export interface CreationRequestRegistry {
     runtimeRunId: RuntimeRunId;
     expectedRuntimeEpoch: number;
   }): Promise<{ advanced: boolean; claim: CreationRequestClaim }>;
+  /**
+   * The claim as it stands (stable ingress): the authority on a run's epoch for
+   * a host that persisted the run and comes back after a restore that failed
+   * AFTER advancing it. Undefined when no claim exists for the request, or when
+   * the claim belongs to a different run — a host never learns another run's
+   * claim through its own record.
+   */
+  lookup(input: { creationRequestId: string; runtimeRunId: RuntimeRunId }): Promise<CreationRequestClaim | undefined>;
 }
 
 export class CreationRequestRegistryError extends Error {
@@ -284,6 +292,22 @@ export function createFileCreationRequestRegistry(
   const statePath = (requestDigest: string) => join(claimsDirectory, `${requestDigest}.state.json`);
   const lockPath = (requestDigest: string) => join(claimsDirectory, `${requestDigest}.lock`);
 
+  async function lookupClaim(input: {
+    creationRequestId: string;
+    runtimeRunId: RuntimeRunId;
+  }): Promise<CreationRequestClaim | undefined> {
+    const { requestDigest } = await digests(input.creationRequestId);
+    let current: StoredClaim;
+    try {
+      current = await readClaim(requestDigest);
+    } catch (error) {
+      if (isNodeError(error, 'ENOENT')) return undefined;
+      throw error;
+    }
+    if (current.runtimeRunId !== input.runtimeRunId) return undefined;
+    return publicClaim(current);
+  }
+
   async function readClaim(requestDigest: string): Promise<StoredClaim> {
     const allocation = parseStoredClaim(await readFile(allocationPath(requestDigest), 'utf8'), requestDigest);
     if (allocation.runtimeEpoch !== 1 || allocation.state !== 'allocated') {
@@ -434,6 +458,7 @@ export function createFileCreationRequestRegistry(
       });
     },
 
+    lookup: lookupClaim,
     async incrementRuntimeEpoch(input): Promise<{ advanced: boolean; claim: CreationRequestClaim }> {
       if (!Number.isSafeInteger(input.expectedRuntimeEpoch) || input.expectedRuntimeEpoch < 1) {
         throw new RangeError('expectedRuntimeEpoch must be a positive safe integer');

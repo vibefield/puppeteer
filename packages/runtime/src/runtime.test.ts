@@ -1498,6 +1498,7 @@ describe('createAgentRuntime', () => {
       },
       markTerminal: (input) => backingRegistry.markTerminal(input),
       incrementRuntimeEpoch: (input) => backingRegistry.incrementRuntimeEpoch(input),
+      lookup: (input) => backingRegistry.lookup(input),
     };
     const recorder = createActionRecorder({ path: recordPath });
     const runtime = createAgentRuntime({
@@ -3458,18 +3459,25 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
         return { ...binding, dispose: async () => void (disposed += 1) };
       },
     };
+    const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
+    // a run that really exists — identity is validated before any binding,
+    // so the mismatch can only be reached through a claimed run
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [plain, mismatched], creationRegistry: registry() });
+    const created = await first.createSession({ agent: 'mismatched', creationRequestId: 'attach-refuse', cwd: root });
+    if ('error' in created) throw new Error('unexpected create failure');
+    await first.dispose({ detach: true });
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
       providers: [plain, mismatched],
-      creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+      creationRegistry: registry(),
     });
     const base = {
       creationRequestId: 'attach-refuse',
-      runtimeRunId: 'run-refuse',
-      expectedRuntimeEpoch: 1,
-      sessionId: 'native-refuse',
-      terminalSessionId: 'terminal-refuse',
+      runtimeRunId: created.runtimeRunId,
+      expectedRuntimeEpoch: created.runtimeEpoch,
+      sessionId: created.nativeSession.id,
+      terminalSessionId: created.terminalSessionId,
       cwd: root,
     };
     const unsupported = await runtime.attach({ ...base, agent: 'plain' });
@@ -3479,6 +3487,10 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     expect(disposed).toBe(1);
     const unknown = await runtime.attach({ ...base, agent: 'nope' });
     expect('error' in unknown && unknown.error.code).toBe('AGENT_NOT_FOUND');
+    // a run nobody ever claimed is refused before the provider is asked
+    const unclaimed = await runtime.attach({ ...base, agent: 'mismatched', creationRequestId: 'never-claimed', runtimeRunId: 'run-never' });
+    expect('error' in unclaimed && unclaimed.error.code).toBe('RUNTIME_RESTORE_FAILED');
+    expect(disposed).toBe(1);
     await runtime.dispose();
   });
 });
@@ -3488,12 +3500,22 @@ describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-'));
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-registry-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const disposals: Array<{ release?: boolean | undefined } | undefined> = [];
+    const attaches: string[] = [];
     const provider = (): AgentProvider => ({
       ...fakeProvider('one', handles),
       async createSession(options) {
-        return standaloneSession(options.resume ?? 'native-detach', `terminal-${options.title ?? 'x'}`);
+        const binding = standaloneSession(options.resume ?? 'native-detach', `terminal-${options.title ?? 'x'}`);
+        return {
+          ...binding,
+          async dispose(disposeOptions) {
+            disposals.push(disposeOptions);
+            await binding.dispose(disposeOptions);
+          },
+        };
       },
       async attachSession(options) {
+        attaches.push(options.runtimeRunId ?? 'unknown');
         return standaloneSession(options.sessionId, options.runtimeSessionId);
       },
     });
@@ -3506,6 +3528,9 @@ describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
     await first.handleProcessExit(closed.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
     const finals = await first.dispose({ detach: true });
     expect(finals).toEqual([]);
+    // the closed run's binding was disposed plainly by its exit; the kept
+    // run's was RELEASED — the host leaving, the process not
+    expect(disposals).toEqual([undefined, { release: true }]);
 
     const second = createAgentRuntime({
       host,
@@ -3525,8 +3550,42 @@ describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
       });
     const restored = await attach(kept, 'kept-run');
     expect('error' in restored ? restored.error.code : restored.runtimeEpoch).toBe(2);
+    expect(attaches).toEqual([kept.runtimeRunId]);
+    // identity is validated BEFORE the provider binds: a terminal claim, a
+    // stale epoch and a run already managed here never reach attachSession —
+    // the live process's port is never taken only to be refused
     const refused = await attach(closed, 'closed-run');
     expect('error' in refused && refused.error.code).toBe('RUNTIME_RESTORE_FAILED');
-    await second.dispose();
+    // a run this runtime already manages is answered as it stands, unbound again
+    const again = await attach(kept, 'kept-run');
+    expect('error' in again ? again.error.code : again.runtimeEpoch).toBe(2);
+    expect(attaches).toEqual([kept.runtimeRunId]);
+    await second.dispose({ detach: true });
+    // the next host: a stale epoch is refused naming the claim's — before the
+    // provider is asked — and the claim's own epoch attaches
+    const third = createAgentRuntime({ host, defaultCwd: root, providers: [provider()], creationRegistry: registry() });
+    const stale = await third.attach({
+      agent: 'one',
+      creationRequestId: 'kept-run',
+      runtimeRunId: kept.runtimeRunId,
+      expectedRuntimeEpoch: 1,
+      sessionId: kept.nativeSession.id,
+      terminalSessionId: kept.terminalSessionId,
+      cwd: root,
+    });
+    expect('error' in stale ? stale.error.message : 'attached').toMatch(/already advanced to 2/);
+    expect(attaches).toEqual([kept.runtimeRunId]);
+    const current = await third.attach({
+      agent: 'one',
+      creationRequestId: 'kept-run',
+      runtimeRunId: kept.runtimeRunId,
+      expectedRuntimeEpoch: 2,
+      sessionId: kept.nativeSession.id,
+      terminalSessionId: kept.terminalSessionId,
+      cwd: root,
+    });
+    expect('error' in current ? current.error.code : current.runtimeEpoch).toBe(3);
+    expect(attaches).toEqual([kept.runtimeRunId, kept.runtimeRunId]);
+    await third.dispose();
   });
 });

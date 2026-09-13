@@ -32,6 +32,7 @@ import {
   type ObservationLevel,
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
+  type AdapterDisposeOptions,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
@@ -419,7 +420,7 @@ interface ClaudeObservation {
 }
 
 function createClaudeObservation(
-  options: PrepareClaudeTuiSessionOptions,
+  options: PrepareClaudeTuiSessionOptions & { attached?: boolean | undefined },
   bridge: HookBridge,
   bound: ClaudeBoundIdentity,
   nativeSessionId: () => string = () => bound.sessionId,
@@ -446,8 +447,9 @@ function createClaudeObservation(
   let adoptedSession: ClaudeSession | undefined;
   let disposed = false;
   // A transcript known before anyone listens (a re-attach) is armed at the
-  // first subscription, like configured intent and capabilities: events
-  // published into an empty room are lost, and the first read replays.
+  // first subscription, like configured intent and capabilities: the event
+  // source buffers early candidates, so nothing is lost by waiting — the wait
+  // ORDERS the baseline read after the intent and capability batches.
   let pendingTranscript: string | undefined;
   let subscribed = false;
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
@@ -921,12 +923,20 @@ function createClaudeObservation(
     });
   }
 
-  async function dispose(): Promise<void> {
+  async function dispose(disposeOptions?: AdapterDisposeOptions): Promise<void> {
     if (disposed) return;
     disposed = true;
     events.close();
     const attached = await semanticAttachment?.catch(() => undefined);
     await attached?.dispose();
+    if (disposeOptions?.release) {
+      // The host leaves, the process stays: the bridge drains rather than
+      // resets, and the staged settings and forwarders the process execs on
+      // every hook are NOT removed — a host that comes back rebinds the same
+      // port and the hooks keep landing.
+      await bridge.dispose({ drain: true });
+      return;
+    }
     await bridge.dispose();
     await bound.cleanup();
   }
@@ -950,7 +960,10 @@ function createClaudeObservation(
           onCandidate(listener) {
             const unsubscribe = events.onCandidate(listener);
             subscribed = true;
-            publishConfiguredIntent();
+            // configured intent is a LAUNCH fact (the model, effort and mode
+            // this host asked for); an attached process was asked by someone
+            // else, and its next hook or status line says what it is
+            if (!options.attached) publishConfiguredIntent();
             void publishCapabilities();
             if (pendingTranscript !== undefined) {
               const path = pendingTranscript;
@@ -991,24 +1004,50 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     throw new Error('Claude attach needs the ingress the process was launched against (a positive port and a token)');
   }
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
+  const configDir = (options.configDir ?? options.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR)?.trim();
+  const root =
+    options.env?.PUPPETEER_IMPOSTER_HOME ??
+    (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
   let selectedSessionId = options.sessionId;
+  let heardPinned = false;
+  let observation: ClaudeObservation | undefined;
   const bridge: HookBridge = (options.hookBridgeFactory ?? createHookBridge)({
     port: options.ingress.port,
     token: options.ingress.token,
     allowSession: (id, kind, body) => {
+      if (id === selectedSessionId) {
+        if (kind === 'hook') heardPinned = true;
+        return true;
+      }
       // `/clear` rotates the native identity in-process; the attached session
       // follows it exactly as a spawned one does.
       if (kind === 'hook' && body.hook_event_name === 'SessionStart' && body.source === 'clear') {
         selectedSessionId = id;
+        heardPinned = true;
         return true;
       }
-      return id === selectedSessionId;
+      // A `/clear` typed while no host was listening rotated the id unheard.
+      // The first authenticated hook under a new id — before the selected id
+      // has spoken since the attach — is that rotation, when the new id
+      // already has a transcript under the same root (a subagent's or a
+      // stranger's id has none there). Once heard, the selection is final
+      // until the next in-process `/clear`.
+      if (kind === 'hook' && !heardPinned) {
+        const rotated = locateClaudeTranscript(id, root);
+        if (rotated !== undefined) {
+          selectedSessionId = id;
+          heardPinned = true;
+          observation?.observeTranscript(rotated);
+          return true;
+        }
+      }
+      return false;
     },
   });
   await bridge.start();
   try {
-    const observation = createClaudeObservation(
-      { ...options, ingress: undefined },
+    observation = createClaudeObservation(
+      { ...options, ingress: undefined, attached: true },
       bridge,
       { sessionId: options.sessionId, cleanup: async () => undefined },
       () => selectedSessionId,
@@ -1018,10 +1057,6 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
     );
     // The durable rail first: a quiet session announces nothing until its next
     // hook, and its transcript already says where it stands.
-    const configDir = (options.configDir ?? options.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR)?.trim();
-    const root =
-      options.env?.PUPPETEER_IMPOSTER_HOME ??
-      (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
     const transcript = locateClaudeTranscript(options.sessionId, root);
     if (transcript !== undefined) observation.observeTranscript(transcript);
     return await observation.adopt(options.runtimeSessionId);

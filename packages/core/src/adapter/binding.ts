@@ -33,6 +33,18 @@ export interface AgentAdapterBinding {
     readonly prompt: AgentPromptService;
     readonly artifacts?: AgentArtifactService;
   };
-  /** Tear down observation/control. Process lifecycle stays with the host. */
-  dispose(): Promise<void>;
+  /**
+   * Tear down observation/control. Process lifecycle stays with the host.
+   * With `release` (stable ingress) the HOST is leaving and the process is
+   * not: the binding closes what the host holds — listeners, tails — and
+   * keeps everything the running process depends on (the staged launch files
+   * it execs on every hook) exactly where the process reads them.
+   */
+  dispose(options?: AdapterDisposeOptions): Promise<void>;
+}
+
+/** How a binding is being torn down (stable ingress). */
+export interface AdapterDisposeOptions {
+  /** The host leaves; the process stays. Nothing the process depends on is removed. */
+  readonly release?: boolean | undefined;
 }

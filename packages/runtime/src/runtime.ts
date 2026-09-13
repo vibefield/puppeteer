@@ -1631,7 +1631,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       managed.unsubscribe();
       managed.run.monitor?.detachSession();
       managed.gitObserver?.stop();
-      await managed.agentController.dispose().catch(report);
+      // RELEASED, not closed: the binding keeps every file the running
+      // process depends on (its staged settings and hook forwarders) and
+      // lets in-flight posts drain; only the host's listeners and tails go.
+      await managed.agentController.dispose({ release: true }).catch(report);
       managed.releaseClaim();
       removeRunMonitor(managed.run);
       releaseTerminalRun(managed.run);
@@ -3013,6 +3016,20 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       } catch (error) {
         await restore.session.dispose().catch(report);
         report(error);
+        if (restore.attaching) {
+          // The process is alive: its claim stays allocated (at the epoch this
+          // restore advanced it to — the host re-syncs from the claim), and
+          // only this runtime's provisional run and monitor are dropped.
+          await recordRunStartFailure(run, 'restore', 'RUNTIME_RESTORE_FAILED');
+          await finalizeWorkspace(run, lease, 'preparation-failure');
+          removeRunMonitor(run);
+          runs.delete(run.identity.runtimeRunId);
+          return sessionFailure(
+            run,
+            'RUNTIME_RESTORE_FAILED',
+            'attached agent session could not be bound; the claim stays allocated for the live process',
+          );
+        }
         await markRunTerminal(run, { kind: 'failed', code: 'RUNTIME_RESTORE_FAILED' }, { deferFailureRetention: true });
         await recordRunStartFailure(run, 'restore', 'RUNTIME_RESTORE_FAILED');
         await finalizeWorkspace(run, lease, 'preparation-failure');
@@ -3050,6 +3067,46 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         const resolved = await resolveSessionProfile(request.agent, request.profile);
         if ('error' in resolved) return sessionFailure(provisional, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
         profile = resolved.profile;
+      }
+      // Identity is validated BEFORE anything is bound: a stale epoch, a
+      // foreign or terminal claim, or a run this runtime already manages must
+      // not take the live process's ingress port or build a workspace only to
+      // be refused inside the restore.
+      const already = sessionsByRunId.get(request.runtimeRunId);
+      if (already) return cloneAgentSessionInfo(already.info);
+      if (!options.creationRegistry) {
+        return sessionFailure(
+          provisional,
+          'CREATION_CLAIM_STORE_UNAVAILABLE',
+          'attach requires the durable creation registry the run was claimed in',
+        );
+      }
+      let claim: CreationRequestClaim | undefined;
+      try {
+        claim = await options.creationRegistry.lookup({
+          creationRequestId: request.creationRequestId,
+          runtimeRunId: request.runtimeRunId,
+        });
+      } catch (error) {
+        report(error);
+        return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'durable runtime-run claim could not be read');
+      }
+      if (!claim) {
+        return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'no durable claim exists for this run');
+      }
+      if (claim.state === 'terminal') {
+        return sessionFailure(
+          provisional,
+          'RUNTIME_RESTORE_FAILED',
+          'the durable runtime-run claim is terminal; it cannot be re-attached',
+        );
+      }
+      if (claim.runtimeEpoch !== request.expectedRuntimeEpoch) {
+        return sessionFailure(
+          provisional,
+          'RUNTIME_RESTORE_FAILED',
+          `runtime epoch has already advanced to ${claim.runtimeEpoch}; restore from that state instead`,
+        );
       }
       let session: AgentAdapterBinding;
       try {
@@ -3104,13 +3161,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         agent: request.agent,
         session,
         workspace,
+        attaching: true,
         ...(request.externalRefs === undefined ? {} : { externalRefs: request.externalRefs }),
       });
       if ('error' in restored) {
         // Bindings are idempotent to dispose; a failure inside the bind path
-        // already released it, every earlier refusal did not.
-        await session.dispose().catch(report);
-        await workspace.destroy().catch(report);
+        // already released it, every earlier refusal did not. A workspace this
+        // attach materialized goes with it; one it merely resumed (an existing
+        // worktree the live process may be working in) is never destroyed.
+        await session.dispose({ release: true }).catch(report);
+        if (request.workspace?.resumeRoot === undefined) await workspace.destroy().catch(report);
         return restored;
       }
       if (profile !== undefined) {
