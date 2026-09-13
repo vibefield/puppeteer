@@ -173,7 +173,10 @@ export function UsageColumn({ port }: UsageColumnProps) {
       window.clearInterval(timer);
       unsubscribe();
     };
-  }, []);
+    // Keyed on the port: a host rebuilds it when its door changes (a runtime
+    // replaced after a fault, a bridge that resolves after the first open),
+    // and a column bound to the first port would stay on a dead one silently.
+  }, [port]);
 
   const tiles = useMemo(() => usageTiles(batch, nowMs), [batch, nowMs]);
   const openTile = open ? tiles.find((tile) => tile.key === open.key) : undefined;

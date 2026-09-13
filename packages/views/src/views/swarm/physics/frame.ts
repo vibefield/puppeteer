@@ -21,12 +21,6 @@ export interface BubbleState {
   previousX: number;
   previousY: number;
   radius: number;
-  /** What was last WRITTEN to the DOM, so a frame that changed nothing writes
-   * nothing (GT-D15.3). Nine bubbles × three properties × 120Hz is 3,240 style
-   * writes a second to say the same thing when the swarm has settled. */
-  writtenX: number;
-  writtenY: number;
-  writtenRadius: number;
 }
 
 /** The id table the frames arriving now are addressed by. */
@@ -72,12 +66,6 @@ export function readSwarmFrame(frame: Float32Array, table: SwarmIdTable, states:
         previousX: x,
         previousY: y,
         radius,
-        // Deliberately NaN rather than the spawn position: the damage gate's
-        // first comparison must be guaranteed to fail so the opening write
-        // happens, and every comparison against NaN is false.
-        writtenX: Number.NaN,
-        writtenY: Number.NaN,
-        writtenRadius: Number.NaN,
       });
     }
   }

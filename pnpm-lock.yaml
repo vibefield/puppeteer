@@ -537,6 +537,9 @@ importers:
       '@vibecook/puppeteer-react':
         specifier: workspace:*
         version: link:../react
+      '@webgpu/types':
+        specifier: 0.1.72
+        version: 0.1.72
       matter-js:
         specifier: 0.19.0
         version: 0.19.0
@@ -550,9 +553,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
-      '@webgpu/types':
-        specifier: 0.1.72
-        version: 0.1.72
       react:
         specifier: ^19.2.7
         version: 19.2.7

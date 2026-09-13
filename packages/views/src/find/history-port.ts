@@ -47,10 +47,13 @@ export interface HistorySearchRequest {
   prefix?: boolean;
 }
 
-/** One transcript row the history daemon matched, attributed to its navigable root. */
+/** One transcript row the history daemon matched, attributed to its navigable root
+ * when the daemon could name one. */
 export interface HistorySearchHit {
   sessionId: string;
-  rootSessionId: string;
+  /** The root this row rolls up to; ABSENT when the daemon could not attribute
+   * it — a hit is never its own root by default, that would be a guess. */
+  rootSessionId?: string;
   /** The root's provider-native id: the join key to a live run. */
   nativeSessionId?: string;
   title?: string;

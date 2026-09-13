@@ -8,4 +8,6 @@ export * from './protocol.js';
 export * from './host.js';
 export * from './frame.js';
 export * from './inline-driver.js';
-export * from './context.js';
+// `context.js` (the React provider) is the MAIN entry's: this subpath is what a
+// host imports inside its physics WORKER, and a barrel that carried React into
+// that graph would pull a renderer into a thread that has none.

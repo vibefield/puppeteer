@@ -4,6 +4,12 @@
 // port the host injects (`HistoryPort`, `AccountUsagePort`, `UsageHistoryStore`,
 // the swarm's physics driver). Nothing here dials a daemon, reads a file or
 // names a provider except as data.
+//
+// Consumers of the EMITTED declarations: the swarm's renderer types name WebGPU's
+// globals (`GPUDevice`, `GPUTexture`, `GPUDeviceLostInfo`), so `@webgpu/types` is a
+// dependency — and since tsc does not carry a reference directive into a `.d.ts`,
+// a consumer typechecking against `dist` names it in its own tsconfig `types`
+// (or checks with `skipLibCheck`). A consumer compiling the source needs nothing.
 export * from './monitor/types.js';
 export * from './monitor/agent-status.js';
 export * from './monitor/agents.js';

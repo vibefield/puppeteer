@@ -201,7 +201,14 @@ export function useMonitorPalette(root?: RefObject<Element | null>): MonitorPale
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return;
     const scoped = root?.current ?? null;
-    const read = (): void => setPalette(readMonitorPalette(scoped));
+    // Diffed before it is published: the document root's class is watched, so
+    // any host class toggle on <html> would otherwise re-render every palette
+    // consumer and make the swarm re-resolve its theme and drop its colour cache.
+    const read = (): void =>
+      setPalette((current) => {
+        const next = readMonitorPalette(scoped);
+        return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+      });
     const observer = new MutationObserver(read);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
     // The swarm's tokens are theme-scoped on the Godview root, whose class is
