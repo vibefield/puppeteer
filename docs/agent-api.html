@@ -903,6 +903,37 @@
           display: none;
         }
       }
+
+      .reference-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0;
+      }
+      .reference-nav a {
+        padding: 7px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .reference-nav a:hover,
+      .reference-nav a:focus-visible {
+        border-color: var(--teal);
+        color: var(--teal);
+      }
+      .reference-nav a[aria-current='page'] {
+        border-color: var(--teal);
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+      @media print {
+        .reference-nav {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -920,6 +951,12 @@
           </div>
           <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
         </div>
+
+        <nav class="reference-nav" aria-label="Reference library">
+          <a href="architecture.html">Architecture</a><a href="agent-api.html" aria-current="page">Agent API</a
+          ><a href="agent-monitor.html">Monitor</a><a href="agent-management-api.html">Management</a
+          ><a href="agent-aggregation-api.html">Aggregation</a>
+        </nav>
 
         <div class="pipeline" aria-label="Agent event pipeline">
           provider-native evidence&nbsp; → &nbsp;<b class="adapter">category normalizers</b>&nbsp; →
@@ -1395,6 +1432,18 @@ offAll();</code></pre>
               owns host lifecycle, workspace, monitor, and compatibility operations.
             </p>
 
+            <div class="callout">
+              <strong>Provider management.</strong> The companion
+              <a href="agent-management-api.html">Agent Management API</a> defines
+              <a href="agent-management-api.html#distribution">installation and release methods</a>,
+              <a href="agent-management-api.html#profiles">profiles and native login</a>,
+              <a href="agent-management-api.html#binding">launch and history-root binding</a>,
+              <a href="agent-management-api.html#usage">quota usage</a> and
+              <a href="agent-management-api.html#configuration">host configuration and prewarming</a>. These are methods
+              on this same runtime. App-level history search is documented in the
+              <a href="agent-aggregation-api.html">Aggregation API</a>.
+            </div>
+
             <div class="table-wrap">
               <table>
                 <thead>
@@ -1435,10 +1484,23 @@ offAll();</code></pre>
                     <td><p>Enumerates adapter-owned usage capabilities, labels, and refresh policies.</p></td>
                   </tr>
                   <tr>
-                    <td class="route">accountUsage(providerId)</td>
+                    <td class="route">accountUsage(providerId, profileId?)</td>
                     <td class="native-type">Promise&lt;AccountUsageFetchResult&gt;</td>
                     <td>
-                      <p>Fetches provider account-wide, adapter-normalized metrics; separate from per-agent state.</p>
+                      <p>
+                        Fetches normalized account quota for a provider or registered profile. See the
+                        <a href="agent-management-api.html#usage">management usage contract</a>.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="route">onAccountUsage(listener)</td>
+                    <td class="native-type">() =&gt; void</td>
+                    <td>
+                      <p>
+                        Provider push updates, separate from run events. See
+                        <a href="agent-management-api.html#usage">account usage</a>.
+                      </p>
                     </td>
                   </tr>
                   <tr>
@@ -1562,6 +1624,8 @@ offAll();</code></pre>
   externalRefs?: readonly ExternalRef[];
   workspace?: AgentWorkspaceRequest;
   agentOptions?: unknown;
+  profile?: string; // registered profile ID
+  ingress?: HostIngress; // host-owned loopback endpoint preferences
 }</code></pre>
               </article>
               <article class="type-card">
@@ -1580,7 +1644,11 @@ interface ResumeAgentOptions {
   continuation: AgentContinuation;
   cwd?: string;
   title?: string;
+  creationRequestId?: string;
+  externalRefs?: readonly ExternalRef[];
   workspace?: AgentWorkspaceRequest;
+  profile?: string; // persist beside the continuation
+  ingress?: HostIngress;
 }</code></pre>
               </article>
               <article class="type-card">
@@ -2960,6 +3028,7 @@ interface AgentSessionInfo {
   preparationId?: string;
   processId?: number;
   workspace: AgentWorkspaceInfo;
+  profileId?: string; // selected or observed account binding
 }</code></pre>
               </article>
 
@@ -3024,6 +3093,7 @@ type EvidenceQuality =
   | 'WORKSPACE_CONFLICT'
   | 'WORKSPACE_DIRTY'
   | 'AGENT_NOT_FOUND'
+  | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'

@@ -906,6 +906,37 @@
           position: static;
         }
       }
+
+      .reference-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0;
+      }
+      .reference-nav a {
+        padding: 7px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .reference-nav a:hover,
+      .reference-nav a:focus-visible {
+        border-color: var(--teal);
+        color: var(--teal);
+      }
+      .reference-nav a[aria-current='page'] {
+        border-color: var(--teal);
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+      @media print {
+        .reference-nav {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -926,6 +957,12 @@
             <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
           </div>
         </div>
+
+        <nav class="reference-nav" aria-label="Reference library">
+          <a href="architecture.html" aria-current="page">Architecture</a><a href="agent-api.html">Agent API</a
+          ><a href="agent-monitor.html">Monitor</a><a href="agent-management-api.html">Management</a
+          ><a href="agent-aggregation-api.html">Aggregation</a>
+        </nav>
 
         <div class="pipeline" aria-label="Top-level architecture flow">
           <b class="native">provider evidence → Surface</b>&nbsp; · &nbsp;<b class="contract">Core contracts</b>&nbsp; →
@@ -2070,6 +2107,8 @@
   index.ts                      <span class="comment"># canonical exports only</span>
   events/event-bus.ts           <span class="comment"># private per-Agent typed fan-out</span>
   identity/                     <span class="comment"># allocation, creation claims, epochs, native joins</span>
+  distribution/                 <span class="comment"># installation inventory, release checks, update execution</span>
+  profiles/                     <span class="comment"># account registry, root allocation, native onboarding</span>
   host/                         <span class="comment"># launch environment and host policy</span>
   observation/                  <span class="comment"># Runtime-owned facts such as Git state</span>
   monitor/                      <span class="comment"># clocks and race-free delivery handles</span>
@@ -2219,17 +2258,43 @@ await runtime.dispose();</code></pre>
                 </p>
               </article>
               <article class="api-card">
-                <h3>runtime.accountUsage(providerId)</h3>
+                <h3>runtime.accountUsage(providerId, profileId?)</h3>
                 <div class="signature">Promise&lt;AccountUsageFetchResult&gt;</div>
                 <p>
-                  Returns Zod-validated, adapter-ranked semantic metrics. Native bucket meanings and provider-specific
-                  naming rules never require consumer interpretation.
+                  Returns validated account quota metrics for a provider or profile. See the
+                  <a href="agent-management-api.html#usage">management API</a> for fetch, push updates and attribution.
                 </p>
               </article>
               <article class="api-card">
                 <h3>runtime.dispose()</h3>
                 <div class="signature">Promise&lt;AgentWorkspaceFinal[]&gt;</div>
                 <p>Closes observation/control and finalizes every owned workspace exactly once.</p>
+              </article>
+            </div>
+
+            <p>
+              Runtime management implementation lives in
+              <code>packages/runtime/src/distribution/{inventory,releases,update}.ts</code> and
+              <code>packages/runtime/src/profiles/{registry,roots,onboarding}.ts</code>. Godview’s history client lives
+              in <code>apps/godview/src/main/history-search.ts</code>.
+            </p>
+            <h3>Provider management and application aggregation</h3>
+            <div class="cards">
+              <article class="card">
+                <h3>Providers and accounts</h3>
+                <p>
+                  Runtime owns installation inventory, release execution, profile registry and quota validation.
+                  Adapters supply native commands, root bindings and evidence interpretation. Hosts inject persistence
+                  and scheduling. See <a href="agent-management-api.html#architecture">Agent Management API</a>.
+                </p>
+              </article>
+              <article class="card">
+                <h3>History and live discovery</h3>
+                <p>
+                  Godview’s Find sheet calls its history bridge and main-process client. An external Rosetta-compatible
+                  daemon owns transcript indexing; native session IDs join results to live runs. Search feeds
+                  navigation. See <a href="agent-aggregation-api.html#ownership">Agent Aggregation API</a>.
+                </p>
               </article>
             </div>
 
@@ -2255,6 +2320,10 @@ interface AgentProvider {
   prepareSession?(options: AgentProviderSessionOptions): Promise&lt;PreparedProviderSession&gt;;
   readonly launch?: AgentProviderLaunchService;
   readonly accountUsage?: AccountUsageService;
+  readonly distribution?: DistributionService;
+  readonly profiles?: ProfileService;
+  prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;
+  attachSession?(options: AttachProviderSessionOptions): Promise&lt;AgentAdapterBinding&gt;;
   dispose?(): void | Promise&lt;void&gt;;
 }
 
@@ -2271,39 +2340,15 @@ interface AgentProviderLaunchService {
     capture(options: AgentProviderSessionOptions): string | undefined;
     restore(state: string | undefined, options: { cwd: string }): unknown;
   };
-}
-
-interface AccountUsageService {
-  readonly provider: {
-    id: string;
-    label: string;
-    refresh: {
-      pollIntervalMs: number;
-      pushUpdatePollIntervalMs?: number;
-    };
-  };
-  fetch(): Promise&lt;AccountUsageFetchResult&gt;;
-  subscribe?(listener: (result: AccountUsageFetchResult) =&gt; void): () =&gt; void;
-}
-
-interface AccountUsageMetric {
-  id: string;                 <span class="comment">// opaque canonical identity</span>
-  label: string;              <span class="comment">// adapter-normalized semantic label</span>
-  description?: string;
-  kind: 'window' | 'budget';
-  usedPercent: number;
-  durationMinutes?: number;
-  startsAt?: string;
-  resetsAt?: string;
-}
-
-interface AccountUsageSnapshot {
-  provider: string;
-  fetchedAt: string;
-  scope: 'subscription' | 'api' | 'workspace' | 'unknown';
-  source: AccountUsageSource;
-  metrics: AccountUsageMetric[]; <span class="comment">// preserve adapter-ranked order</span>
 }</code></pre>
+
+            <p>
+              Provider management is defined in the
+              <a href="agent-management-api.html#provider-spi"
+                >DistributionService, ProfileService and AccountUsageService contracts</a
+              >. The management reference owns their DTOs, native evidence rules, profile-scoped fetch and account
+              snapshot shapes.
+            </p>
 
             <div class="callout">
               <strong>Host contract.</strong> <span class="mono">AgentHost</span> is deliberately tiny:
@@ -2694,8 +2739,10 @@ pnpm surface:audit                <span class="comment"># provider-native drift;
 
             <div class="callout">
               <strong>Companion documents.</strong> Use <a href="agent-api.html">Agent API &amp; Event Catalog</a> for
-              the exact runtime surface, <a href="guides/adapting-an-agent.md">Adapting an agent</a> for the end-to-end
-              workflow, <a href="guides/surface-adaptation.md">Surface adaptation</a> for evidence and promotion, and
+              the run/event surface, <a href="agent-management-api.html">Agent Management API</a> for provider and
+              account operations, <a href="agent-aggregation-api.html">Agent Aggregation API</a> for app history/search,
+              and <a href="guides/adapting-an-agent.md">Adapting an agent</a> for the end-to-end workflow,
+              <a href="guides/surface-adaptation.md">Surface adaptation</a> for evidence and promotion, and
               <a href="rfcs/004-layered-agent-runtime.md">RFC 004</a> for the accepted layer decision.
             </div>
           </section>

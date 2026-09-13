@@ -1,0 +1,2411 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Installations, release updates, account profiles and quota usage through one provider-neutral runtime. Native commands and account layouts stay with adapters; applications own persistence, scheduling and terminal policy."
+    />
+    <title>Puppeteer Agent Management API</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&amp;family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f6f2;
+        --paper: #ffffff;
+        --paper-2: #f1f0eb;
+        --ink: #202328;
+        --muted: #666c73;
+        --faint: #8c9197;
+        --line: #dcd9d1;
+        --line-strong: #c8c4ba;
+        --copper: #9f4c28;
+        --copper-bg: rgba(159, 76, 40, 0.09);
+        --teal: #176b61;
+        --teal-bg: rgba(23, 107, 97, 0.09);
+        --blue: #355b8c;
+        --blue-bg: rgba(53, 91, 140, 0.09);
+        --purple: #6b4f8f;
+        --purple-bg: rgba(107, 79, 143, 0.09);
+        --amber: #8a6418;
+        --amber-bg: rgba(138, 100, 24, 0.1);
+        --red: #a13f45;
+        --red-bg: rgba(161, 63, 69, 0.09);
+        --shadow: 0 10px 35px rgba(35, 38, 43, 0.055);
+        --code-bg: #20242a;
+        --code-ink: #e7e5df;
+        --code-muted: #aeb4bc;
+      }
+
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171a;
+        --paper: #1d2024;
+        --paper-2: #25292e;
+        --ink: #e8e6e0;
+        --muted: #a1a6ad;
+        --faint: #838991;
+        --line: #34383e;
+        --line-strong: #464b52;
+        --copper: #da815a;
+        --copper-bg: rgba(218, 129, 90, 0.12);
+        --teal: #63b7a9;
+        --teal-bg: rgba(99, 183, 169, 0.12);
+        --blue: #83a8da;
+        --blue-bg: rgba(131, 168, 218, 0.12);
+        --purple: #b69adc;
+        --purple-bg: rgba(182, 154, 220, 0.12);
+        --amber: #d2ad58;
+        --amber-bg: rgba(210, 173, 88, 0.12);
+        --red: #df858a;
+        --red-bg: rgba(223, 133, 138, 0.12);
+        --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+        --code-bg: #101216;
+        --code-ink: #e8e6df;
+        --code-muted: #9ca4ae;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --bg: #15171a;
+          --paper: #1d2024;
+          --paper-2: #25292e;
+          --ink: #e8e6e0;
+          --muted: #a1a6ad;
+          --faint: #838991;
+          --line: #34383e;
+          --line-strong: #464b52;
+          --copper: #da815a;
+          --copper-bg: rgba(218, 129, 90, 0.12);
+          --teal: #63b7a9;
+          --teal-bg: rgba(99, 183, 169, 0.12);
+          --blue: #83a8da;
+          --blue-bg: rgba(131, 168, 218, 0.12);
+          --purple: #b69adc;
+          --purple-bg: rgba(182, 154, 220, 0.12);
+          --amber: #d2ad58;
+          --amber-bg: rgba(210, 173, 88, 0.12);
+          --red: #df858a;
+          --red-bg: rgba(223, 133, 138, 0.12);
+          --shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+          --code-bg: #101216;
+          --code-ink: #e8e6df;
+          --code-muted: #9ca4ae;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 28px;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15.5px;
+        line-height: 1.58;
+      }
+
+      a {
+        color: var(--teal);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      code,
+      pre,
+      .mono {
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      }
+
+      code:not(pre code) {
+        padding: 0.08em 0.32em;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--paper-2);
+        font-size: 0.84em;
+      }
+
+      .shell {
+        width: min(1460px, 100%);
+        margin: 0 auto;
+        padding: 42px 28px 90px;
+      }
+
+      .hero {
+        max-width: 1180px;
+        margin: 0 auto 26px;
+      }
+
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex: none;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        color: var(--copper);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4 {
+        text-wrap: balance;
+      }
+
+      h1 {
+        margin: 10px 0 9px;
+        font-family: Spectral, Georgia, serif;
+        font-size: clamp(36px, 5vw, 56px);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.04;
+      }
+
+      .subtitle {
+        max-width: 78ch;
+        margin: 0;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .theme-button,
+      .reference-link {
+        padding: 8px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1.4;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .theme-button:hover,
+      .reference-link:hover {
+        border-color: var(--line-strong);
+        color: var(--ink);
+      }
+
+      .pipeline {
+        margin-top: 24px;
+        padding: 14px 17px;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .pipeline b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .pipeline .native {
+        color: var(--copper);
+      }
+
+      .pipeline .contract {
+        color: var(--blue);
+      }
+
+      .pipeline .product {
+        color: var(--teal);
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .stat {
+        padding: 13px 15px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--paper) 76%, transparent);
+      }
+
+      .stat strong {
+        display: block;
+        font-family: Spectral, Georgia, serif;
+        font-size: 25px;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 34px;
+        align-items: start;
+      }
+
+      .toc {
+        position: sticky;
+        top: 20px;
+        max-height: calc(100vh - 40px);
+        padding: 16px;
+        overflow-y: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .toc-title {
+        margin: 0 0 9px;
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .toc a {
+        display: block;
+        padding: 5px 7px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+
+      .toc a:hover {
+        background: var(--paper-2);
+        color: var(--ink);
+      }
+
+      .toc .sub-link {
+        padding-left: 18px;
+        font-size: 12px;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      section {
+        margin-bottom: 64px;
+      }
+
+      h2 {
+        margin: 0 0 7px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+
+      h3 {
+        margin: 28px 0 8px;
+        font-family: Spectral, Georgia, serif;
+        font-size: 21px;
+        font-weight: 600;
+      }
+
+      h4 {
+        margin: 18px 0 5px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .section-note {
+        max-width: 84ch;
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .section-note .mono,
+      .callout .mono,
+      .card .mono,
+      .api-card .mono,
+      .decision-card .mono,
+      .contract-row .mono {
+        overflow-wrap: anywhere;
+      }
+
+      .callout {
+        margin: 18px 0;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--teal);
+        border-radius: 8px;
+        background: var(--teal-bg);
+        color: var(--muted);
+      }
+
+      .callout strong {
+        color: var(--ink);
+      }
+
+      .callout.warning {
+        border-left-color: var(--amber);
+        background: var(--amber-bg);
+      }
+
+      .callout.foundation {
+        border-left-color: var(--blue);
+        background: var(--blue-bg);
+      }
+
+      pre {
+        position: relative;
+        margin: 14px 0;
+        padding: 17px 19px;
+        overflow-x: auto;
+        border-radius: 9px;
+        background: var(--code-bg);
+        color: var(--code-ink);
+        font-size: 12.5px;
+        line-height: 1.65;
+        tab-size: 2;
+      }
+
+      pre .comment {
+        color: var(--code-muted);
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccd2da;
+        font-family: 'Source Sans 3', sans-serif;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      .copy-button:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .diagram {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .diagram svg {
+        display: block;
+        width: 100%;
+        min-width: 980px;
+        height: auto;
+      }
+
+      figcaption {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .cards,
+      .api-grid,
+      .decision-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+
+      .card,
+      .api-card,
+      .decision-card {
+        min-width: 0;
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .card h3,
+      .api-card h3,
+      .decision-card h3 {
+        margin: 0 0 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+      }
+
+      .card p,
+      .api-card p,
+      .decision-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .card ul,
+      .api-card ul,
+      .decision-card ul,
+      .layer-body ul {
+        margin: 10px 0 0;
+        padding-left: 19px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .card li + li,
+      .api-card li + li,
+      .decision-card li + li,
+      .layer-body li + li {
+        margin-top: 5px;
+      }
+
+      .signature {
+        margin: 8px 0 7px;
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11.5px;
+        font-weight: 500;
+        overflow-wrap: anywhere;
+      }
+
+      .badge,
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        font-weight: 600;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      .badge {
+        padding: 2px 7px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .chip {
+        padding: 2px 6px;
+        background: var(--paper-2);
+        color: var(--muted);
+      }
+
+      .tone-native {
+        background: var(--copper-bg);
+        color: var(--copper);
+      }
+
+      .tone-contract {
+        background: var(--blue-bg);
+        color: var(--blue);
+      }
+
+      .tone-runtime {
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+
+      .tone-product {
+        background: var(--purple-bg);
+        color: var(--purple);
+      }
+
+      .tone-support {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+
+      .tone-boundary {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+
+      .layer-stack {
+        display: grid;
+        gap: 11px;
+        margin: 20px 0;
+      }
+
+      .layer-card {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr) auto;
+        gap: 15px;
+        align-items: center;
+        padding: 15px 17px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .layer-number {
+        color: var(--faint);
+        font-family: Spectral, Georgia, serif;
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .layer-number small {
+        display: block;
+        margin-bottom: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 8.5px;
+        font-weight: 600;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .layer-card h3 {
+        margin: 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+      }
+
+      .layer-card p {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .layer-detail {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 18px;
+        margin: 18px 0 34px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .layer-marker {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+        padding: 12px 9px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        color: var(--faint);
+        font-family: Spectral, Georgia, serif;
+        font-size: 25px;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .layer-marker small {
+        display: block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .layer-body > h3 {
+        margin-top: 0;
+      }
+
+      .ownership-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 11px 0 0;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+        font-size: 13.5px;
+      }
+
+      th {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--line);
+        color: var(--faint);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+
+      td {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      td:first-child {
+        white-space: nowrap;
+      }
+
+      td p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .route {
+        color: var(--ink);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .native-type {
+        color: var(--muted);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+      }
+
+      .flow-list {
+        display: grid;
+        gap: 10px;
+        margin: 18px 0;
+        counter-reset: flow;
+      }
+
+      .flow-step {
+        position: relative;
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 11px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .flow-step::before {
+        counter-increment: flow;
+        content: counter(flow);
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--teal-bg);
+        color: var(--teal);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .flow-step strong {
+        display: block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+
+      .flow-step p {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .tree-note {
+        display: inline-block;
+        color: var(--code-muted);
+      }
+
+      .contract-list {
+        display: grid;
+        gap: 9px;
+      }
+
+      .contract-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.6fr);
+        gap: 16px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+
+      .contract-row strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+
+      .contract-row p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      footer {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding-top: 19px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          display: block;
+        }
+
+        .toc {
+          position: relative;
+          top: auto;
+          display: flex;
+          gap: 3px;
+          margin-bottom: 32px;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+
+        .toc-title,
+        .toc .sub-link {
+          display: none;
+        }
+
+        .toc a {
+          flex: none;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .shell {
+          padding: 28px 16px 64px;
+        }
+
+        .hero-top {
+          display: block;
+        }
+
+        .hero-actions {
+          margin-top: 14px;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .layer-card {
+          grid-template-columns: 52px minmax(0, 1fr);
+        }
+
+        .layer-card > .badge {
+          display: none;
+        }
+
+        .layer-detail {
+          display: block;
+        }
+
+        .layer-marker {
+          position: static;
+          width: 72px;
+          margin-bottom: 12px;
+        }
+
+        .contract-row {
+          grid-template-columns: 1fr;
+          gap: 5px;
+        }
+
+        h2 {
+          font-size: 26px;
+        }
+      }
+
+      @media print {
+        :root {
+          color-scheme: light;
+          --bg: #fff;
+          --paper: #fff;
+          --paper-2: #f5f5f2;
+          --ink: #16181b;
+          --muted: #51555b;
+          --line: #d3d0c8;
+          --shadow: none;
+        }
+
+        .theme-button,
+        .reference-link,
+        .toc,
+        .copy-button {
+          display: none !important;
+        }
+
+        .layout {
+          display: block;
+        }
+
+        .layer-detail,
+        .card,
+        .api-card,
+        .decision-card,
+        .flow-step {
+          break-inside: avoid;
+        }
+
+        .layer-marker {
+          position: static;
+        }
+      }
+
+      .reference-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0;
+      }
+      .reference-nav a {
+        padding: 7px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .reference-nav a:hover,
+      .reference-nav a:focus-visible {
+        border-color: var(--teal);
+        color: var(--teal);
+      }
+      .reference-nav a[aria-current='page'] {
+        border-color: var(--teal);
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+      @media print {
+        .reference-nav {
+          display: none;
+        }
+      }
+
+      figure {
+        margin: 20px 0;
+      }
+      .cards {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+      }
+      .card h3,
+      td code {
+        overflow-wrap: anywhere;
+      }
+      .reference-table {
+        min-width: 600px;
+      }
+      .reference-table td:first-child {
+        white-space: normal;
+        width: 30%;
+      }
+      .cards + .table-wrap,
+      .table-wrap + .table-wrap {
+        margin-top: 18px;
+      }
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+        gap: 10px;
+      }
+      .source-link {
+        display: block;
+        padding: 13px 15px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+      }
+      .source-link strong {
+        display: block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+      .source-link span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .source-link:hover {
+        border-color: var(--teal);
+      }
+      details.contract-details {
+        margin: 18px 0;
+        padding: 12px 16px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--paper);
+      }
+      details.contract-details summary {
+        cursor: pointer;
+        color: var(--teal);
+        font-weight: 600;
+      }
+      .toc a[aria-current='location'] {
+        background: var(--teal-bg);
+        color: var(--teal);
+      }
+      .contract-caption {
+        margin: 18px 0 0;
+        color: var(--faint);
+        font-size: 12px;
+      }
+      pre {
+        padding-top: 38px;
+      }
+      pre code {
+        white-space: pre;
+      }
+      .scope-label {
+        display: inline-block;
+        margin-bottom: 10px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero" id="top">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">puppeteer · providers &amp; accounts · canonical reference</div>
+            <h1>Agent Management API</h1>
+            <p class="subtitle">
+              Installations, release updates, account profiles and quota usage through one provider-neutral runtime.
+              Native commands and account layouts stay with adapters; applications own persistence, scheduling and
+              terminal policy.
+            </p>
+          </div>
+          <div class="hero-actions">
+            <button class="theme-button" id="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
+          </div>
+        </div>
+        <nav class="reference-nav" aria-label="Reference library">
+          <a href="architecture.html">Architecture</a><a href="agent-api.html">Agent API</a
+          ><a href="agent-monitor.html">Monitor</a><a href="agent-management-api.html" aria-current="page">Management</a
+          ><a href="agent-aggregation-api.html">Aggregation</a>
+        </nav>
+        <div class="pipeline" aria-label="API flow">
+          <b class="product">application</b> → <b>AgentRuntime</b> → <b class="contract">provider services</b> →
+          <b class="native">native commands + evidence</b>
+        </div>
+        <div class="stats" aria-label="Reference summary">
+          <div class="stat"><strong>4</strong><span>distribution methods</span></div>
+          <div class="stat"><strong>10</strong><span>profile methods</span></div>
+          <div class="stat"><strong>3</strong><span>account usage methods</span></div>
+          <div class="stat"><strong>1</strong><span>optional prewarm operation</span></div>
+        </div>
+      </header>
+      <div class="layout">
+        <nav class="toc" aria-label="Contents">
+          <p class="toc-title">Contents</p>
+          <a href="#architecture">Architecture &amp; ownership</a><a href="#quick-start">Read the management surface</a
+          ><a href="#distribution">Installations &amp; releases</a><a href="#profiles">Profiles &amp; native identity</a
+          ><a href="#binding">Launch binding &amp; observation roots</a
+          ><a href="#usage">Account usage &amp; push updates</a
+          ><a href="#configuration">Host configuration &amp; prewarming</a
+          ><a href="#provider-spi">Provider service contracts</a><a href="#godview">Godview management bridge</a
+          ><a href="#usage-history">Godview usage persistence</a
+          ><a href="#sources">Source map &amp; related references</a>
+        </nav>
+        <main>
+          <section id="architecture">
+            <h2>Architecture &amp; ownership</h2>
+            <p class="section-note">
+              Management capabilities belong to providers and accounts. A runtime exposes one normalized surface across
+              its composed adapters; a live Agent remains the per-run control and observation object.
+            </p>
+            <figure>
+              <div class="diagram">
+                <svg
+                  viewBox="0 0 1080 215"
+                  role="img"
+                  aria-labelledby="management-flow-title"
+                  style="
+                    font-family:
+                      Source Sans 3,
+                      sans-serif;
+                  "
+                >
+                  <title id="management-flow-title">
+                    Applications call the runtime. Adapters own native commands and interpretation; the runtime returns
+                    normalized management results.
+                  </title>
+                  <defs>
+                    <marker
+                      id="management-flow-arrow"
+                      viewBox="0 0 10 10"
+                      refX="9"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto"
+                    >
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--teal)" />
+                    </marker>
+                  </defs>
+                  <rect x="24" y="35" width="228" height="150" rx="10" fill="var(--paper-2)" stroke="var(--line)" />
+                  <rect x="24" y="35" width="228" height="4" rx="2" fill="var(--purple)" />
+                  <text x="40" y="72" fill="var(--purple)" font-size="16" font-weight="600">Application host</text>
+                  <text x="40" y="101" fill="var(--muted)" font-size="13">Agents drawer / other UI</text>
+                  <text x="40" y="124" fill="var(--muted)" font-size="13">Persistence and scheduling</text>
+                  <text x="40" y="147" fill="var(--muted)" font-size="13">Explicit user operations</text>
+                  <path
+                    d="M 256 110 H 284"
+                    stroke="var(--teal)"
+                    stroke-width="1.5"
+                    marker-end="url(#management-flow-arrow)"
+                  />
+                  <rect x="292" y="35" width="228" height="150" rx="10" fill="var(--paper-2)" stroke="var(--line)" />
+                  <rect x="292" y="35" width="228" height="4" rx="2" fill="var(--teal)" />
+                  <text x="308" y="72" fill="var(--teal)" font-size="16" font-weight="600">AgentRuntime</text>
+                  <text x="308" y="101" fill="var(--muted)" font-size="13">Distribution inventory</text>
+                  <text x="308" y="124" fill="var(--muted)" font-size="13">Profile registry + binding</text>
+                  <text x="308" y="147" fill="var(--muted)" font-size="13">Account usage validation</text>
+                  <path
+                    d="M 524 110 H 552"
+                    stroke="var(--teal)"
+                    stroke-width="1.5"
+                    marker-end="url(#management-flow-arrow)"
+                  />
+                  <rect x="560" y="35" width="228" height="150" rx="10" fill="var(--paper-2)" stroke="var(--line)" />
+                  <rect x="560" y="35" width="228" height="4" rx="2" fill="var(--blue)" />
+                  <text x="576" y="72" fill="var(--blue)" font-size="16" font-weight="600">Provider services</text>
+                  <text x="576" y="101" fill="var(--muted)" font-size="13">Classify + update recipes</text>
+                  <text x="576" y="124" fill="var(--muted)" font-size="13">Login + native identity</text>
+                  <text x="576" y="147" fill="var(--muted)" font-size="13">Quota fetch + push</text>
+                  <path
+                    d="M 792 110 H 820"
+                    stroke="var(--teal)"
+                    stroke-width="1.5"
+                    marker-end="url(#management-flow-arrow)"
+                  />
+                  <rect x="828" y="35" width="228" height="150" rx="10" fill="var(--paper-2)" stroke="var(--line)" />
+                  <rect x="828" y="35" width="228" height="4" rx="2" fill="var(--copper)" />
+                  <text x="844" y="72" fill="var(--copper)" font-size="16" font-weight="600">Native evidence</text>
+                  <text x="844" y="101" fill="var(--muted)" font-size="13">Executables and versions</text>
+                  <text x="844" y="124" fill="var(--muted)" font-size="13">Account roots and auth</text>
+                  <text x="844" y="147" fill="var(--muted)" font-size="13">Status / protocol / APIs</text>
+                </svg>
+              </div>
+              <figcaption>
+                Applications call the runtime. Adapters own native commands and interpretation; the runtime returns
+                normalized management results.
+              </figcaption>
+            </figure>
+            <div class="cards">
+              <article class="card">
+                <h3>Distribution</h3>
+                <p>Discover installed executables, compare releases and run an adapter-declared update recipe.</p>
+              </article>
+              <article class="card">
+                <h3>Profiles</h3>
+                <p>
+                  Allocate account roots, launch native login, verify identity and bind a selected root to a process.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Account usage</h3>
+                <p>
+                  Fetch normalized account quota metrics and receive provider push updates independently of live runs.
+                </p>
+              </article>
+            </div>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Layer</th>
+                    <th scope="col">Owns</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Core</td>
+                    <td>
+                      Validated DTOs and <code>DistributionService</code>, <code>ProfileService</code>,
+                      <code>AccountUsageService</code> contracts.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Runtime</td>
+                    <td>
+                      Discovery/cache, release detector execution, updater receipts, registry persistence, profile
+                      resolution and result validation.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Provider adapter</td>
+                    <td>
+                      Native layout, executable classification, update/login commands, environment binding and
+                      identity/quota interpretation.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Godview</td>
+                    <td>
+                      Agents drawer, login tabs, per-provider tab defaults and account-usage polling/backoff. Other
+                      hosts supply their own policy.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Scope.</strong> This page documents the implemented management API. Run lifecycle and host
+              recovery remain in the <a href="agent-api.html#runtime">Agent API</a>; indexed search is in the
+              <a href="agent-aggregation-api.html">Aggregation API</a>.
+            </div>
+          </section>
+          <section id="quick-start">
+            <h2>Read the management surface</h2>
+            <p class="section-note">
+              Both createAgentRuntime() and createBuiltinAgentRuntime() expose the same management methods. Capability
+              lists identify which composed providers support each family.
+            </p>
+            <pre><code>import type { AgentHost } from '@vibecook/puppeteer-core';
+import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+
+declare const host: AgentHost; // Supplied by the application.
+const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
+
+const installations = await runtime.inspectInstallations();
+const profileProviders = runtime.profileProviders();
+const accounts = await runtime.profiles();
+const usageProviders = runtime.accountUsageProviders();
+
+for (const account of accounts) {
+  if (!usageProviders.some((provider) =&gt; provider.id === account.provider)) continue;
+  const usage = await runtime.accountUsage(account.provider, account.id);
+  if (usage.status === 'available') {
+    console.log(account.label, usage.snapshot.metrics);
+  }
+}
+
+await runtime.dispose();</code></pre>
+            <p>
+              Management DTOs are exported from <code>@vibecook/puppeteer-core</code>; runtime request/configuration
+              types are exported from <code>@vibecook/puppeteer-runtime</code>. Provider IDs are opaque outside the
+              adapter. A profile uses <code>provider</code>; management requests commonly use <code>providerId</code>.
+            </p>
+          </section>
+          <section id="distribution">
+            <h2>Installations &amp; releases</h2>
+            <p class="section-note">
+              Inventory reports what the host can find and which executable the runtime would select. Release checks and
+              updates are separate operations.
+            </p>
+            <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
+  distributionProviders(): readonly DistributionProvider[];
+  inspectInstallations(options?: InspectInstallationsOptions): Promise&lt;AgentInstallation[]&gt;;
+  checkReleases(options: CheckReleasesOptions): Promise&lt;ReleaseCheckResult&gt;;
+  updateInstallation(options: UpdateInstallationOptions): Promise&lt;UpdateReceipt&gt;;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="runtime-distributionProviders">distributionProviders()</code></td>
+                    <td>
+                      Returns adapter-declared commands, package-manager names and release detectors. This is capability
+                      discovery; it does not inspect executables.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-inspectInstallations">inspectInstallations()</code></td>
+                    <td>
+                      Optional provider filter. Results are cached per provider until <code>refresh: true</code>.
+                      Configured absolute executables, PATH matches, npm roots and Homebrew entries are classified and
+                      deduplicated by real path. Unknown providers return an empty inventory.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-checkReleases">checkReleases()</code></td>
+                    <td>
+                      Compares the active installation with native update-oracle and detector results.
+                      <code>network: true</code> enables declared outbound detectors; an available native oracle may run
+                      regardless. Failures accompany successful releases in the result.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-updateInstallation">updateInstallation()</code></td>
+                    <td>
+                      Selects the active installation unless <code>executable</code> is supplied. Executes the adapter
+                      recipe, then refreshes inventory and returns an update receipt. It does not restart existing agent
+                      sessions.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="InspectInstallationsOptions,CheckReleasesOptions,ReleaseCheckResult,UpdateInstallationOptions">interface InspectInstallationsOptions {
+  providerId?: string;
+  /** Discard the cached inventory before inspecting. */
+  refresh?: boolean;
+}
+
+interface CheckReleasesOptions {
+  providerId: string;
+  /** Permit outbound requests to declared detectors; native oracles run regardless. */
+  network?: boolean;
+}
+
+interface ReleaseCheckResult {
+  provider: string;
+  checkedAt: string;
+  installed?: AgentInstallation;
+  releases: ReleaseSnapshot[];
+  /** Newest release per channel that is newer than the active install. */
+  behind: { channel: ReleaseChannel; version: string }[];
+  failures: DistributionFailure[];
+}
+
+interface UpdateInstallationOptions {
+  providerId: string;
+  /** Defaults to the active install. */
+  executable?: string;
+}</code></pre>
+            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="InstallMethod,InstallCandidateOrigin,AutoUpdateState,InstalledAgent,AgentInstallation">type InstallMethod = 'native-installer' | 'vendor-downloader' | 'npm-global'
+  | 'brew' | 'standalone-binary' | 'source-checkout' | 'unknown';
+type InstallCandidateOrigin = 'configured' | 'path' | 'npm-global' | 'brew';
+type AutoUpdateState = 'enabled' | 'disabled' | 'unknown';
+
+interface InstalledAgent {
+  provider: string;
+  executable: string;
+  realPath: string;
+  version?: string;
+  method: InstallMethod;
+  packageName?: string;
+  location?: string;
+  autoUpdate: AutoUpdateState;
+  channel?: string;
+  detectedAt: string;
+  warnings: string[];
+}
+
+interface AgentInstallation extends InstalledAgent {
+  origin: InstallCandidateOrigin;
+  active: boolean;
+}</code></pre>
+            <p>
+              <code>active</code> selects a configured installation first, otherwise the first classified PATH match. An
+              inventory can contain no active entry. Missing versions and <code>autoUpdate: "unknown"</code> preserve
+              unavailable native facts; callers should display that uncertainty.
+            </p>
+            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="ReleaseChannel,ReleaseSourceKind,ReleaseSnapshot,DistributionFailure,UpdateRecipe,UpdateReceipt">type ReleaseChannel = 'stable' | 'preview';
+type ReleaseSourceKind = 'native-oracle' | 'text' | 'github-release' | 'npm-registry';
+
+interface ReleaseSnapshot {
+  provider: string;
+  channel: ReleaseChannel;
+  version: string;
+  publishedAt?: string;
+  url?: string;
+  fetchedAt: string;
+  source: { kind: ReleaseSourceKind; id: string };
+}
+
+interface DistributionFailure {
+  status: 'unsupported' | 'unavailable';
+  provider: string;
+  message: string;
+  retryable: boolean;
+}
+
+type UpdateRecipe =
+  | { kind: 'native-self-update'; argv: string[] }
+  | { kind: 'npm-global'; package: string; version?: string }
+  | { kind: 'brew'; name: string; cask: boolean }
+  | { kind: 'manual'; instructions: string };
+
+interface UpdateReceipt {
+  provider: string;
+  status: 'updated' | 'already-current' | 'failed' | 'unsupported';
+  recipe?: UpdateRecipe;
+  before?: InstalledAgent;
+  after?: InstalledAgent;
+  startedAt: string;
+  finishedAt: string;
+  exitCode?: number;
+  transcriptPath?: string;
+  message?: string;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Receipt status</th>
+                    <th scope="col">Current classification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>updated</code></td>
+                    <td>
+                      Re-inspection returned an installation whose version differs from the previous version, even if
+                      the command exit code is nonzero.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>already-current</code></td>
+                    <td>
+                      The command exited with zero and no version change was observed. <code>after</code> can be absent
+                      when re-inspection fails; this status alone does not prove a remote release comparison.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>failed</code></td>
+                    <td>
+                      No observed version change and command failure, missing target, invalid recipe or failed receipt
+                      construction.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>unsupported</code></td>
+                    <td>Provider lacks distribution support, or its recipe requires manual instructions.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Updater output.</strong> <code>transcriptPath</code> points to an optional file containing opaque
+              updater command output. This file is not an agent conversation transcript or a monitor artifact. Native
+              output is not parsed to derive semantic results.
+            </div>
+          </section>
+          <section id="profiles">
+            <h2>Profiles &amp; native identity</h2>
+            <p class="section-note">
+              A managed profile is a persistent native data root bound to a launch. Creating it and authenticating it
+              are separate operations.
+            </p>
+            <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
+  profileProviders(): readonly ProfileProvider[];
+  profiles(providerId?: string): Promise&lt;AgentProfile[]&gt;;
+  profile(profileId: string): Promise&lt;AgentProfile | undefined&gt;;
+  createProfile(options: CreateProfileOptions): Promise&lt;AgentProfile | ProfileFailure&gt;;
+  removeProfile(profileId: string): Promise&lt;boolean&gt;;
+  startProfileLogin(options: StartProfileLoginOptions): Promise&lt;ProfileLoginResult&gt;;
+  verifyProfile(profileId: string): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
+  onProfilesChanged(listener: (profiles: AgentProfile[]) =&gt; void): () =&gt; void;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="runtime-profileProviders">profileProviders()</code></td>
+                    <td>
+                      Returns profile descriptors, including <code>support.supported</code>, identity capability and
+                      shared native surfaces. Advertising a descriptor does not imply login support.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-profiles">profiles()</code></td>
+                    <td>
+                      Lists registered profiles and synthetic native-default entries for supporting providers with a
+                      declared default root. Optional provider filter.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-profile">profile()</code></td>
+                    <td>
+                      Looks up a registered or synthetic profile by ID; unknown IDs return <code>undefined</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-createProfile">createProfile()</code></td>
+                    <td>
+                      Validates a trimmed 1–64 character label, allocates a managed root, optionally initializes native
+                      config and persists the registry entry. Returns a profile or typed failure; it does not
+                      authenticate the account.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-removeProfile">removeProfile()</code></td>
+                    <td>
+                      Unregisters a managed profile. Returns <code>false</code> for unknown or native-default profiles.
+                      The root and its native data remain on disk.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-startProfileLogin">startProfileLogin()</code></td>
+                    <td>
+                      Spawns the provider’s native login in an application host terminal bound to that profile. The
+                      returned terminal ID reports launch, not authentication success.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-verifyProfile">verifyProfile()</code></td>
+                    <td>
+                      Reads native identity and attempts to persist it on the profile. A returned identity can have
+                      <code>loggedIn: false</code>. Persistence failure is reported through <code>onError</code> while
+                      the observed identity is still returned.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-onProfilesChanged">onProfilesChanged()</code></td>
+                    <td>
+                      Subscribes to profile-list changes; returns an unsubscribe function. Read
+                      <code>profiles()</code> for the initial list.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="CreateProfileOptions,StartProfileLoginOptions,ProfileLoginResult">interface CreateProfileOptions {
+  providerId: string;
+  label: string;
+}
+
+interface StartProfileLoginOptions {
+  profileId: string;
+  cwd?: string;
+}
+
+type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;</code></pre>
+            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileIdentity,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
+type AgentProfileKind = 'native-default' | 'managed';
+
+interface AgentProfile {
+  id: AgentProfileId;
+  provider: string;
+  label: string;
+  kind: AgentProfileKind;
+  dataRoot: string;
+  createdAt: string;
+  identity?: ProfileIdentity;
+}
+
+interface ProfileIdentity {
+  loggedIn: boolean;
+  method?: string;
+  email?: string;
+  organization?: string;
+  plan?: string;
+  verifiedAt: string;
+  source: {
+    kind: 'native-status' | 'native-protocol';
+    stability: 'documented' | 'experimental';
+  };
+}
+
+interface ProfileSupport {
+  supported: boolean;
+  identity: 'native-status' | 'native-protocol' | 'none';
+  sharedSurfaces: string[];
+  nativeDefaultRoot?: string;
+}
+
+interface ProfileProvider {
+  id: string;
+  label: string;
+  support: ProfileSupport;
+}
+
+interface ProfileFailure {
+  status: 'unsupported' | 'unavailable' | 'not-found' | 'invalid';
+  provider?: string;
+  message: string;
+  retryable: boolean;
+}</code></pre>
+            <div class="flow-list">
+              <div class="flow-step">
+                <div>
+                  <strong>Allocate</strong>
+                  <p>Call createProfile({ providerId, label }); render ProfileFailure if returned.</p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
+                  <strong>Authenticate</strong>
+                  <p>
+                    Call startProfileLogin({ profileId }); let the user complete the provider’s own login in the
+                    returned terminal.
+                  </p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
+                  <strong>Verify</strong>
+                  <p>
+                    When the host observes login completion, call verifyProfile(profileId). Inspect loggedIn and
+                    identity metadata.
+                  </p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
+                  <strong>Bind a run</strong>
+                  <p>
+                    Pass the profile ID to spawn() or resume(). Persist AgentSessionInfo.profileId beside the opaque
+                    continuation.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="callout">
+              <strong>Native root semantics.</strong> Managed roots are immutable because native credential stores may
+              key on their path. Profiles bind process environments; they are not machine-wide account switches or
+              isolation boundaries. <code>sharedSurfaces</code> declares native resources that profiles still share.
+            </div>
+          </section>
+          <section id="binding">
+            <h2>Launch binding &amp; observation roots</h2>
+            <p class="section-note">
+              Applications select a profile by ID. The runtime resolves it and the adapter maps it onto its own native
+              environment and history layout.
+            </p>
+            <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
+  profileBindingEnvironment(profileIds: readonly string[]): Promise&lt;Record&lt;string, string&gt;&gt;;
+  profileObservationRoot(profileId: string): Promise&lt;string | undefined&gt;;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="runtime-profileBindingEnvironment">profileBindingEnvironment()</code></td>
+                    <td>
+                      Returns merged environment overrides for terminal seeding. Unknown IDs, duplicate providers or
+                      unavailable profile services throw. Supply at most one profile per provider; a native-default
+                      profile normally adds no overrides.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-profileObservationRoot">profileObservationRoot()</code></td>
+                    <td>
+                      Returns the adapter-owned native history layout root. Unknown profile or provider returns
+                      <code>undefined</code>. Use this when configuring an external history indexer.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code>// runtime is the host's AgentRuntime; account is a selected AgentProfile.
+const spawned = await runtime.spawn({
+  agent: account.provider,
+  cwd: projectDirectory,
+  profile: account.id,
+});
+if ('error' in spawned) throw new Error(spawned.error.message);
+
+// Persist both values if the host will later resume this run.
+const saved = {
+  continuation: spawned.info.continuation,
+  profileId: spawned.info.profileId,
+};
+const resumed = await runtime.resume({
+  continuation: saved.continuation,
+  profile: saved.profileId,
+});</code></pre>
+            <p>
+              A profile that cannot be resolved for the selected provider produces
+              <code>AGENT_PROFILE_NOT_FOUND</code> on spawn/resume. A host handling native invocations can seed the
+              terminal environment with <code>profileBindingEnvironment()</code>; supported adapters preserve and
+              attribute the binding through invocation normalization.
+            </p>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Value</th>
+                    <th scope="col">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>AgentProfile.dataRoot</code></td>
+                    <td>The profile’s allocated native binding root.</td>
+                  </tr>
+                  <tr>
+                    <td><code>profileBindingEnvironment()</code></td>
+                    <td>Provider-owned environment overrides that make a process use that profile.</td>
+                  </tr>
+                  <tr>
+                    <td><code>profileObservationRoot()</code></td>
+                    <td>
+                      The directory to which an external indexer applies that provider’s native history layout. Pi and
+                      OpenCode derive this at a different level from dataRoot.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>AgentSessionInfo.profileId</code></td>
+                    <td>Account attribution for the live run. The host can persist it alongside the continuation.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <strong>Indexer handoff.</strong> The runtime supplies a layout root; it does not register that root with
+              Rosetta or start an indexer. The application owns that integration. See
+              <a href="agent-aggregation-api.html#ownership">aggregation ownership</a>.
+            </div>
+          </section>
+          <section id="usage">
+            <h2>Account usage &amp; push updates</h2>
+            <p class="section-note">
+              Account quotas are shared by sessions using the same account. Per-run token totals and burn rate remain on
+              the Agent monitor.
+            </p>
+            <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
+  accountUsageProviders(): readonly AccountUsageProvider[];
+  accountUsage(providerId: string, profileId?: string): Promise&lt;AccountUsageFetchResult&gt;;
+  onAccountUsage(listener: (provider: AccountUsageProvider, result: AccountUsageFetchResult) =&gt; void): () =&gt; void;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="runtime-accountUsageProviders">accountUsageProviders()</code></td>
+                    <td>
+                      Returns provider identity and recommended polling cadence. It does not start a polling loop.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-accountUsage">accountUsage()</code></td>
+                    <td>
+                      Fetches the native-default account when no profile ID is supplied, or resolves the named profile.
+                      Concurrent calls coalesce per provider/profile target. Managed profiles reach
+                      <code>fetch({ profile })</code>; native-default profiles use <code>fetch()</code>. Valid available
+                      results are attributed to a supplied profile ID.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-onAccountUsage">onAccountUsage()</code></td>
+                    <td>
+                      Receives push updates from providers that implement <code>AccountUsageService.subscribe()</code>.
+                      Separate from <code>agent.on()</code>; not every provider pushes. It is not an automatic broadcast
+                      of every explicit fetch.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code data-source="packages/core/src/services/account-usage.ts" data-types="AccountUsageScope,AccountUsageMetricKind,AccountUsageSource,AccountUsageMetric,AccountUsageCredits,AccountUsageSnapshot,AccountUsageAvailable,AccountUsageFailure,AccountUsageFetchResult,AccountUsageProvider">type AccountUsageScope = 'subscription' | 'api' | 'workspace' | 'unknown';
+type AccountUsageMetricKind = 'window' | 'budget';
+
+interface AccountUsageSource {
+  kind: 'native-protocol' | 'native-statusline' | 'oauth-endpoint';
+  stability: 'documented' | 'experimental';
+}
+
+interface AccountUsageMetric {
+  id: string;
+  label: string;
+  description?: string;
+  kind: AccountUsageMetricKind;
+  usedPercent: number;
+  durationMinutes?: number;
+  startsAt?: string;
+  resetsAt?: string;
+}
+
+interface AccountUsageCredits {
+  balance?: string;
+  hasCredits?: boolean;
+  unlimited?: boolean;
+  resetCreditsAvailable?: number;
+}
+
+interface AccountUsageSnapshot {
+  provider: string;
+  fetchedAt: string;
+  scope: AccountUsageScope;
+  source: AccountUsageSource;
+  metrics: AccountUsageMetric[];
+  credits?: AccountUsageCredits;
+  profileId?: string;
+}
+
+interface AccountUsageAvailable {
+  status: 'available';
+  snapshot: AccountUsageSnapshot;
+}
+
+interface AccountUsageFailure {
+  status: 'unsupported' | 'unauthenticated' | 'unavailable';
+  provider: string;
+  message: string;
+  retryable: boolean;
+  code?: 'rate-limited';
+  retryAt?: string;
+}
+
+type AccountUsageFetchResult = AccountUsageAvailable | AccountUsageFailure;
+
+interface AccountUsageProvider {
+  id: string;
+  label: string;
+  refresh: { pollIntervalMs: number; pushUpdatePollIntervalMs?: number };
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Rule</th>
+                    <th scope="col">Consumer behavior</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Metric order and IDs</td>
+                    <td>
+                      Preserve adapter-ranked order and render the supplied label. Metric IDs are opaque; duplicate IDs
+                      are rejected by the schema.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Percentages and credits</td>
+                    <td>
+                      usedPercent is nonnegative and can exceed 100. Credits, when present, contain at least one value.
+                      Preserve provider-formatted balance strings and optional fields.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Failures and attribution</td>
+                    <td>
+                      Unsupported provider/profile requests return typed failures; native fetch errors normalize to
+                      unavailable. Failures identify the provider, while the caller retains its requested profile
+                      association.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Polling and push</td>
+                    <td>
+                      Use pollIntervalMs and optional pushUpdatePollIntervalMs as provider recommendations. The
+                      application owns scheduling, caching and display policy. Honor retryAt when provided.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Lifetime</td>
+                    <td>
+                      Unsubscribe when the consumer is released. Async management operations generally reject after
+                      runtime disposal; data failures do not make every API non-throwing.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="cards">
+              <article class="card">
+                <h3>Account quota</h3>
+                <p>runtime.accountUsage(): normalized subscription/API/workspace limits and credits.</p>
+              </article>
+              <article class="card">
+                <h3>Live burn rate</h3>
+                <p>
+                  agent.monitor.usage: the run’s normalized token accounting, including supported child usage. See the
+                  monitor reference.
+                </p>
+              </article>
+              <article class="card">
+                <h3>Restored usage bars</h3>
+                <p>
+                  Godview persists its UI ledger by provider/native session. This is an app cache of observed usage, not
+                  a transcript-based recalculation.
+                </p>
+              </article>
+            </div>
+            <p>
+              The <a href="agent-monitor.html#state-contract">monitor state contract</a> owns live usage and subagent
+              aggregation. Search results and quota percentages do not become token samples.
+            </p>
+          </section>
+          <section id="configuration">
+            <h2>Host configuration &amp; prewarming</h2>
+            <p class="section-note">
+              The host can inject profile persistence, choose root/output directories and supply release-fetch policy
+              when constructing either runtime factory.
+            </p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="ProfileStore,ProfileRegistrySnapshot,ProfileRuntimeOptions,DistributionRuntimeOptions">interface ProfileStore {
+  load(): Promise&lt;ProfileRegistrySnapshot | undefined&gt;;
+  save(snapshot: ProfileRegistrySnapshot): Promise&lt;void&gt;;
+}
+
+interface ProfileRegistrySnapshot {
+  version: 1;
+  profiles: AgentProfile[];
+}
+
+interface ProfileRuntimeOptions {
+  /** Defaults to ~/.puppeteer/profiles.json with atomic 0600 writes. */
+  store?: ProfileStore;
+  /** Defaults to ~/.puppeteer/profiles; managed roots are &lt;dir&gt;/&lt;providerId&gt;/&lt;uuid&gt; created 0700. */
+  rootsDirectory?: string;
+}
+
+interface DistributionRuntimeOptions {
+  /** Where opaque update transcripts are written 0600. Defaults to ~/.puppeteer/updates. */
+  transcriptsDirectory?: string;
+  /** Injectable fetch for release detectors; defaults to globalThis.fetch. */
+  fetch?: typeof fetch;
+  /** PATH-style list searched for candidates; defaults to process.env.PATH. */
+  searchPath?: string;
+}</code></pre>
+            <pre><code>import type { AgentRuntimeOptions } from '@vibecook/puppeteer-runtime';
+
+// The same options are accepted by createBuiltinAgentRuntime().
+type ManagementRuntimeOptions = Pick&lt;AgentRuntimeOptions, 'profiles' | 'distribution'&gt;;</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Default</th>
+                    <th scope="col">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>~/.puppeteer/profiles.json</code></td>
+                    <td>Version 1 registry; atomic file writes with mode 0600.</td>
+                  </tr>
+                  <tr>
+                    <td><code>~/.puppeteer/profiles/&lt;provider&gt;/&lt;uuid&gt;</code></td>
+                    <td>Managed roots are allocated with mode 0700.</td>
+                  </tr>
+                  <tr>
+                    <td><code>~/.puppeteer/updates</code></td>
+                    <td>Opaque native updater output, mode 0600 where created.</td>
+                  </tr>
+                  <tr>
+                    <td><code>globalThis.fetch</code> / <code>process.env.PATH</code></td>
+                    <td>Default release transport and executable search path.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
+  prewarm(providerId: string, profileId?: string): Promise&lt;void&gt;;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="runtime-prewarm">prewarm()</code></td>
+                    <td>
+                      Optional provider/profile cache warming without creating a session or sending model input.
+                      Unsupported providers are a no-op; concurrent calls coalesce and successful warming is reused for
+                      60 seconds. Disposal aborts in-flight warming. Invalid profile selection or a native warm-up
+                      failure can reject.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section id="provider-spi">
+            <h2>Provider service contracts</h2>
+            <p class="section-note">
+              Adapters implement native behavior behind these Core contracts. Runtime composition attaches the services
+              to AgentProvider; applications consume the normalized runtime methods.
+            </p>
+            <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentProvider">// AgentProvider excerpt; capability families are optional.
+interface AgentProvider {
+  readonly distribution?: DistributionService;
+  readonly profiles?: ProfileService;
+  readonly accountUsage?: AccountUsageService;
+  prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;
+}</code></pre>
+            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="DistributionService">interface DistributionService {
+  readonly provider: DistributionProvider;
+  /** Classify one host-discovered candidate and read its version; undefined when it is not this agent. */
+  inspect(candidate: InstallCandidate): Promise&lt;InstalledAgent | undefined&gt;;
+  recipeFor(install: InstalledAgent): UpdateRecipe;
+  /** The agent's own update oracle, such as a `--check --json` subcommand. */
+  checkUpdate?(install: InstalledAgent): Promise&lt;ReleaseSnapshot | DistributionFailure&gt;;
+}</code></pre>
+            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="InstallCandidate,ReleaseDetector,DistributionProvider">interface InstallCandidate {
+  executable: string;
+  realPath: string;
+  origin: InstallCandidateOrigin;
+  packageRoot?: string;
+}
+
+type ReleaseDetector =
+  | { kind: 'text'; id: string; channel: ReleaseChannel; url: string; versionPattern: string }
+  | {
+      kind: 'github-release'; id: string; channel: ReleaseChannel; url: string;
+      tagPattern: string; titlePattern?: string; prerelease: boolean;
+    }
+  | { kind: 'npm-registry'; id: string; channel: ReleaseChannel; package: string; distTag: string };
+
+interface DistributionProvider {
+  id: string;
+  label: string;
+  commands: string[];
+  npmPackages: string[];
+  brewNames: string[];
+  detectors: ReleaseDetector[];
+  nativeUpdateCheck: boolean;
+}</code></pre>
+            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="ProfileService">interface ProfileService {
+  readonly provider: ProfileProvider;
+  /**
+   * Variables that bind a child process to the profile root. Names must be a
+   * subset of the provider's launch allow-list; empty for the native default.
+   */
+  bindingEnvironment(profile: AgentProfile): Record&lt;string, string&gt;;
+  /**
+   * The directory whose provider-native layout holds this profile's durable
+   * history — transcripts and session stores — and therefore the directory an
+   * external history indexer applies the provider's layout to.
+   *
+   * A native-default profile answers with the provider's own layout root; a
+   * managed profile answers with a path derived from `dataRoot` by the same
+   * binding rule `bindingEnvironment` applies. It is not always `dataRoot`:
+   * Pi binds one level inside it and OpenCode's history sits under the
+   * `opencode` directory of the XDG data home it binds. The mapping is
+   * provider-specific, so it is an adapter-owned rule rather than a schema
+   * field a host could fill in.
+   */
+  observationRoot(profile: AgentProfile): string;
+  /** Prepare a freshly allocated managed root, for example by writing a minimal native config. */
+  initializeRoot?(profile: AgentProfile): Promise&lt;void&gt;;
+  /**
+   * The native interactive login for a host terminal. The host merges
+   * bindingEnvironment(profile) over spec.env and over its clean environment.
+   */
+  loginInvocation(profile: AgentProfile, options: { cwd: string }): TerminalSpec;
+  verify(profile: AgentProfile): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
+}</code></pre>
+            <pre><code data-source="packages/core/src/services/account-usage.ts" data-types="AccountUsageService">interface AccountUsageService {
+  readonly provider: AccountUsageProvider;
+  /** Read usage for the native default account, or for one profile's root when given. */
+  fetch(options?: { profile?: AgentProfile }): Promise&lt;AccountUsageFetchResult&gt;;
+  subscribe?(listener: (result: AccountUsageFetchResult) =&gt; void): () =&gt; void;
+}</code></pre>
+            <p>
+              The runtime validates declared descriptors and normalized results against Core schemas. Adapters determine
+              native commands and layout; the runtime executes declared release detectors and update recipes. Terminal
+              interaction goes through the application-owned <code>AgentHost</code>.
+            </p>
+          </section>
+          <section id="godview">
+            <h2>Godview management bridge</h2>
+            <p class="section-note">
+              These renderer methods are exposed on window.puppeteer. Their request shapes and scheduling policy belong
+              to Godview, even where they call similarly named runtime methods.
+            </p>
+            <p><span class="badge tone-runtime">PuppeteerBridge · excerpt</span></p>
+            <pre><code data-source="apps/godview/src/protocol.ts" data-members="PuppeteerBridge">interface PuppeteerBridge {
+  installations(request?: InstallationsRequest): Promise&lt;AgentInstallationsSnapshot&gt;;
+  checkReleases(request: CheckReleasesRequest): Promise&lt;ReleaseCheckResult&gt;;
+  updateInstallation(request: UpdateInstallationRequest): Promise&lt;UpdateReceipt&gt;;
+  profileProviders(): Promise&lt;ProfileProvider[]&gt;;
+  profiles(): Promise&lt;AgentProfile[]&gt;;
+  createProfile(request: CreateProfileRequest): Promise&lt;AgentProfile | ProfileFailure&gt;;
+  startProfileLogin(request: StartProfileLoginRequest): Promise&lt;ProfileLoginResult&gt;;
+  verifyProfile(profileId: string): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
+  removeProfile(profileId: string): Promise&lt;boolean&gt;;
+  onProfiles(cb: (profiles: AgentProfile[]) =&gt; void): () =&gt; void;
+  profileDefaults(): Promise&lt;ProfileDefaults&gt;;
+  setProfileDefault(request: SetProfileDefaultRequest): Promise&lt;ProfileDefaults&gt;;
+  newTerminalTab(request?: NewTerminalTabRequest): Promise&lt;boolean&gt;;
+  accountUsage(): Promise&lt;AccountUsageBatch&gt;;
+  refreshAccountUsage(): Promise&lt;AccountUsageBatch&gt;;
+  onAccountUsage(cb: (batch: AccountUsageBatch) =&gt; void): () =&gt; void;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="bridge-installations">installations()</code></td>
+                    <td>
+                      Returns descriptors plus inventory and inspection time. The app request exposes refresh only; it
+                      does not expose the runtime’s provider filter.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-checkReleases">checkReleases()</code></td>
+                    <td>
+                      Explicit app action forwards <code>network: true</code>. The bridge request contains only
+                      providerId.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-updateInstallation">updateInstallation()</code></td>
+                    <td>
+                      Updates the active installation. The bridge does not expose runtime’s explicit executable
+                      selector.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-profileProviders">profileProviders()</code></td>
+                    <td>Lists adapter profile support through IPC.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-profiles">profiles()</code></td>
+                    <td>Lists all profiles through IPC.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-createProfile">createProfile()</code></td>
+                    <td>Allocates a managed account via runtime.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-startProfileLogin">startProfileLogin()</code></td>
+                    <td>
+                      Opens the native login terminal in its own tab. Main tracks the terminal and verifies identity
+                      when it ends.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-verifyProfile">verifyProfile()</code></td>
+                    <td>Explicit identity refresh.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-removeProfile">removeProfile()</code></td>
+                    <td>Unregisters the managed account and prunes affected Godview defaults.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-onProfiles">onProfiles()</code></td>
+                    <td>Receives profile-list broadcasts.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-profileDefaults">profileDefaults()</code></td>
+                    <td>Reads Godview’s per-provider defaults for new terminals.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-setProfileDefault">setProfileDefault()</code></td>
+                    <td>Persists an app default; null clears it.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-newTerminalTab">newTerminalTab()</code></td>
+                    <td>
+                      Creates a terminal tab bound to the supplied profile IDs, or persisted defaults when omitted.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-accountUsage">accountUsage()</code></td>
+                    <td>Reads the app’s current usage batch, fetching initially if needed.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-refreshAccountUsage">refreshAccountUsage()</code></td>
+                    <td>Requests refresh through the app usage monitor.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-onAccountUsage">onAccountUsage()</code></td>
+                    <td>Receives app batches with per-account labels and retained stale readings.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code data-source="apps/godview/src/protocol.ts" data-types="AgentInstallationsSnapshot,InstallationsRequest,CheckReleasesRequest,UpdateInstallationRequest,CreateProfileRequest,StartProfileLoginRequest,ProfileDefaults,SetProfileDefaultRequest,NewTerminalTabRequest,AccountUsageEntry,AccountUsageBatch">interface AgentInstallationsSnapshot {
+  providers: DistributionProvider[];
+  installations: AgentInstallation[];
+  inspectedAt: string;
+}
+
+interface InstallationsRequest {
+  /** Discard the runtime's cached inventory before inspecting. */
+  refresh?: boolean;
+}
+
+interface CheckReleasesRequest {
+  providerId: string;
+}
+
+interface UpdateInstallationRequest {
+  providerId: string;
+}
+
+interface CreateProfileRequest {
+  providerId: string;
+  label: string;
+}
+
+interface StartProfileLoginRequest {
+  profileId: string;
+  cwd?: string;
+}
+
+type ProfileDefaults = Record&lt;string, string&gt;;
+
+interface SetProfileDefaultRequest {
+  providerId: string;
+  /** Null clears the default, so new terminals inherit nothing for that provider. */
+  profileId: string | null;
+}
+
+interface NewTerminalTabRequest {
+  cwd?: string;
+  /** At most one profile per provider; absent means the persisted defaults. */
+  profileIds?: string[];
+}
+
+interface AccountUsageEntry {
+  provider: AccountUsageProvider;
+  result: AccountUsageFetchResult;
+  /** The account this reading belongs to; absent while no registry answer exists. */
+  profileId?: string;
+  /** Registry label for that account, so a row can name it without a second lookup. */
+  profileLabel?: string;
+  /** The last good snapshot is retained when a later refresh fails. */
+  stale?: boolean;
+  refreshFailure?: AccountUsageFailure;
+}
+
+interface AccountUsageBatch {
+  refreshedAt: string;
+  entries: AccountUsageEntry[];
+}</code></pre>
+            <p>
+              The account usage monitor schedules reads per provider/profile, coalesces refreshes, incorporates pushes,
+              and applies retry/backoff policy. A failed refresh can retain the last successful result with
+              <code>stale: true</code> and <code>refreshFailure</code>; the renderer can show both the last known quota
+              and current refresh health. Profile defaults are app policy and do not change existing processes.
+            </p>
+          </section>
+          <section id="usage-history">
+            <h2>Godview usage persistence</h2>
+            <p class="section-note">
+              The renderer keeps held totals and step snapshots so a resumed conversation can restore its usage bars.
+              Main stores this ledger under the application cache directory.
+            </p>
+            <p><span class="badge tone-runtime">PuppeteerBridge · excerpt</span></p>
+            <pre><code data-source="apps/godview/src/protocol.ts" data-members="PuppeteerBridge">interface PuppeteerBridge {
+  loadUsageHistory(key: UsageHistoryKey): Promise&lt;UsageLedgerRecord | null&gt;;
+  saveUsageHistory(records: UsageLedgerRecord[]): Promise&lt;void&gt;;
+}</code></pre>
+            <div class="table-wrap">
+              <table class="reference-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Method</th>
+                    <th scope="col">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code id="bridge-loadUsageHistory">loadUsageHistory()</code></td>
+                    <td>Returns the saved ledger for a provider/native-session pair, or <code>null</code>.</td>
+                  </tr>
+                  <tr>
+                    <td><code id="bridge-saveUsageHistory">saveUsageHistory()</code></td>
+                    <td>
+                      Merges supplied ledger records by conversation key, then prunes and writes the cache. It does not
+                      ingest transcript content.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code data-source="apps/godview/src/protocol.ts" data-types="UsageSeriesRecord,UsageLedgerRecord,UsageHistoryKey">interface UsageSeriesRecord {
+  held?: number;
+  snapshots: number[];
+}
+
+interface UsageLedgerRecord {
+  providerId: string;
+  nativeSessionId: string;
+  /** ISO time of the save. */
+  savedAt: string;
+  /** The last step boundary snapshotted, in steps since the epoch. */
+  boundary: number;
+  total: UsageSeriesRecord;
+  output?: UsageSeriesRecord;
+  input?: UsageSeriesRecord;
+}
+
+interface UsageHistoryKey {
+  providerId: string;
+  nativeSessionId: string;
+}</code></pre>
+            <p>
+              On save, the store prunes records older than 30 days and retains at most 1,000 records. Its reader rejects
+              files larger than 4 MiB, and each series is bounded to 64 snapshots. These are current Godview cache
+              limits, not runtime token accounting semantics.
+            </p>
+          </section>
+          <section id="sources">
+            <h2>Source map &amp; related references</h2>
+            <p class="section-note">
+              TypeScript and strict Core schemas define the current implementation. These links locate each contract and
+              the code that consumes it.
+            </p>
+            <div class="source-grid">
+              <a class="source-link" href="../packages/runtime/src/types.ts"
+                ><strong>Runtime contracts</strong
+                ><span>Management methods, profile/configuration options and run attribution.</span></a
+              ><a class="source-link" href="../packages/runtime/src/runtime.ts"
+                ><strong>Runtime implementation</strong
+                ><span>Resolution, coalescing, validation, updates and subscriptions.</span></a
+              ><a class="source-link" href="../packages/core/src/services/distribution.ts"
+                ><strong>DistributionService</strong
+                ><span>Installation, detector, release, update and failure schemas.</span></a
+              ><a class="source-link" href="../packages/core/src/services/profiles.ts"
+                ><strong>ProfileService</strong
+                ><span>Profile roots, native identity, login and history layout mapping.</span></a
+              ><a class="source-link" href="../packages/core/src/services/account-usage.ts"
+                ><strong>AccountUsageService</strong
+                ><span>Quota metrics, credits, profile attribution and refresh hints.</span></a
+              ><a class="source-link" href="../apps/godview/src/protocol.ts"
+                ><strong>Godview bridge</strong><span>Renderer methods and app request/response DTOs.</span></a
+              ><a class="source-link" href="../apps/godview/src/main/account-usage-monitor.ts"
+                ><strong>Usage scheduling</strong
+                ><span>Polling, push ingestion, profile rows and retained stale results.</span></a
+              ><a class="source-link" href="../apps/godview/src/main/usage-history-store.ts"
+                ><strong>Usage persistence</strong
+                ><span>Bounded app cache for restored conversation usage bars.</span></a
+              ><a class="source-link" href="../apps/godview/src/renderer/AgentsDrawer.tsx"
+                ><strong>Agents drawer</strong><span>Current installs/accounts UI and management actions.</span></a
+              ><a class="source-link" href="rfcs/006-agent-distribution-and-account-profiles.md"
+                ><strong>RFC 006</strong
+                ><span>Accepted management decision; extension management remains an open track.</span></a
+              >
+            </div>
+          </section>
+        </main>
+      </div>
+      <footer>
+        Current implementation reference. Contracts live in Core and Runtime; Godview bridge contracts remain app-owned.
+        Reference date: 2026-09-13.
+      </footer>
+    </div>
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const themeButton = document.getElementById('theme-toggle');
+        let storedTheme;
+        try {
+          storedTheme = localStorage.getItem('puppeteer-agent-api-theme');
+        } catch {
+          storedTheme = undefined;
+        }
+        if (storedTheme === 'light' || storedTheme === 'dark') root.dataset.theme = storedTheme;
+
+        themeButton.addEventListener('click', () => {
+          const current = root.dataset.theme;
+          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const next = current === 'dark' || (!current && systemDark) ? 'light' : 'dark';
+          root.dataset.theme = next;
+          try {
+            localStorage.setItem('puppeteer-agent-api-theme', next);
+          } catch {
+            // File URLs may not expose persistent storage; the in-page theme still changes.
+          }
+        });
+
+        document.querySelectorAll('pre').forEach((pre) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'copy-button';
+          button.textContent = 'Copy';
+          button.addEventListener('click', async () => {
+            const code = pre.querySelector('code')?.textContent ?? pre.textContent;
+            try {
+              await navigator.clipboard.writeText(code);
+              button.textContent = 'Copied';
+              window.setTimeout(() => (button.textContent = 'Copy'), 1200);
+            } catch {
+              button.textContent = 'Select text';
+            }
+          });
+          pre.appendChild(button);
+        });
+      })();
+    </script>
+  </body>
+</html>
