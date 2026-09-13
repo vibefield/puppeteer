@@ -83,6 +83,9 @@ export function createClaudeTranscriptReader(
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') return snapshot();
         throw error;
       }
+      if (!metadata.isFile()) {
+        throw new Error(`Claude transcript path must be a regular file: ${path}`);
+      }
       if (
         metadata.size < offset ||
         (metadata.size === offset && lastMtimeMs !== undefined && metadata.mtimeMs !== lastMtimeMs)

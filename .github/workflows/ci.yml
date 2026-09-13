@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  merge_group:
 
 permissions:
   contents: read
@@ -15,67 +17,71 @@ concurrency:
 
 jobs:
   packages:
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          version: 10.34.5
-
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
           cache: pnpm
-
-      # The publishable library graph is intentionally independent of the
-      # private Electron applications and their UI dependencies.
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-
       - run: pnpm format:check
         if: runner.os == 'Linux'
       - run: pnpm packages:check
       - run: pnpm support:check
       - run: pnpm upstream:check
       - run: pnpm surface:audit
+      - name: Test repository automation
+        run: node --test scripts/*.test.mjs
       - run: pnpm -r --filter './packages/**' typecheck
-      - run: pnpm -r --filter './packages/**' test
+      # Process-backed adapter tests need enough CPU for their own deadlines.
+      # Real Git/process integration tests need a larger budget on hosted runners.
+      - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000
       - run: pnpm -r --filter './packages/**' build
       - run: node scripts/pack-check.mjs
 
   apps:
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          version: 10.34.5
-
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
           cache: pnpm
-
-      # The apps became registry-only consumers when Ghosttea started publishing
-      # the daemon and the native tabs addon, so they can finally be built here.
-      # Electron itself is never launched — no smoke run — so skip its download.
       - run: pnpm install --frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-
       - run: pnpm -r --filter './apps/**' typecheck
       - run: pnpm -r --filter './apps/**' test
-
-      # Linux has neither a native tabs prebuild nor a ghosttead one, so both
-      # stages are skipped and this gates the bundle graph, not what ships.
+      # Linux validates the bundle graph without unavailable native prebuilds.
       - run: pnpm godview:bundle
         if: runner.os == 'Linux'
+
+  ci:
+    name: CI required
+    if: ${{ always() }}
+    needs: [packages, apps]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every matrix job to pass
+        env:
+          PACKAGES_RESULT: ${{ needs.packages.result }}
+          APPS_RESULT: ${{ needs.apps.result }}
+        run: test "$PACKAGES_RESULT" = success && test "$APPS_RESULT" = success

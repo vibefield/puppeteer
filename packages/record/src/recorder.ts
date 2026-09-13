@@ -158,6 +158,9 @@ export function createActionRecorder(options: ActionRecorderOptions = {}): Actio
   }
 
   async function syncDirectory(directory: string): Promise<void> {
+    // Windows does not support fsync on directory handles. The key file itself
+    // is flushed before its atomic link is created on every platform.
+    if (process.platform === 'win32') return;
     const handle = await open(directory, 'r');
     try {
       await handle.sync();

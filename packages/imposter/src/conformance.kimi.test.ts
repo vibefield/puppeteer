@@ -5,7 +5,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach } from 'vitest';
+import { afterEach, expect } from 'vitest';
 import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
 import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
 import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
@@ -64,7 +64,9 @@ async function kimiImposterHarness(
   let child: ChildProcess | undefined;
   const host: AgentHost = {
     async spawnTerminal(spec) {
-      child = spawn(spec.command, spec.args, {
+      expect(spec.command).toBe(AI);
+      // The fixture is a Node script; Windows does not execute shebangs.
+      child = spawn(process.execPath, [spec.command, ...spec.args], {
         cwd: spec.cwd,
         env: {
           ...process.env,

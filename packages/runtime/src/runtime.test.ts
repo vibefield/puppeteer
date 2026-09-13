@@ -1271,6 +1271,8 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  // Two sessions each collect several Git snapshots; Windows process startup
+  // can exceed Vitest's default five-second budget on hosted runners.
   it('carries cooperative concurrency into shared-workspace quality and interference', async () => {
     const root = await makeRepo();
     const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-concurrency-records-'));
@@ -1300,7 +1302,7 @@ describe('createAgentRuntime', () => {
       interference: [expect.objectContaining({ kind: 'known-concurrent-claim', count: 1 })],
     });
     await runtime.dispose();
-  });
+  }, 15_000);
 
   it('does not let recorder degradation reject prompts or process cleanup', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-recorder-failure-'));

@@ -167,7 +167,8 @@ function parseStoredClaim(contents: string, expectedRequestDigest: string): Stor
 
 async function assertOwnerOnly(path: string, kind: string): Promise<void> {
   const metadata = await stat(path);
-  if ((metadata.mode & 0o077) !== 0) {
+  // Windows mode bits do not describe its inherited ACL permissions.
+  if (process.platform !== 'win32' && (metadata.mode & 0o077) !== 0) {
     throw new CreationRequestRegistryError(`${kind} must not be accessible by group or other users: ${path}`);
   }
 }
@@ -185,6 +186,8 @@ async function writeCompleteTemporaryFile(directory: string, targetName: string,
 }
 
 async function syncDirectory(directory: string): Promise<void> {
+  // The file contents are fsynced above; Windows cannot fsync directories.
+  if (process.platform === 'win32') return;
   const handle = await open(directory, 'r');
   try {
     await handle.sync();
@@ -222,7 +225,10 @@ async function pause(milliseconds: number): Promise<void> {
 }
 
 export interface FileCreationRequestRegistryOptions {
-  /** Per-install private registry directory. It is created with mode 0700. */
+  /**
+   * Per-install private registry directory, created with mode 0700 on POSIX.
+   * On Windows, use a private user directory with appropriate inherited ACLs.
+   */
   directory: string;
   lockTimeoutMs?: number;
   /** Unreadable or legacy locks are recoverable only after this conservative boundary. */
@@ -232,7 +238,8 @@ export interface FileCreationRequestRegistryOptions {
 /**
  * Atomic filesystem-backed request/run allocation registry. Claim documents
  * contain only HMAC digests and bounded lifecycle metadata. The HMAC key is
- * installed atomically beside them with owner-only permissions.
+ * installed atomically beside them with owner-only POSIX modes or inherited
+ * Windows ACLs. Windows callers must supply a private registry directory.
  */
 export function createFileCreationRequestRegistry(
   options: FileCreationRequestRegistryOptions,

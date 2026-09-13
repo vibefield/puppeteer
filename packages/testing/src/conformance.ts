@@ -128,6 +128,8 @@ export function runAgentAdapterConformance(label: string, createHarness: () => P
       }
     });
 
+    // Resume covers two complete process lifecycles plus history replay.
+    // Their bounded shutdown waits can consume most of a five-second test.
     it('resumes the same native session and remains usable', async () => {
       const original = await createHarness();
       const originalProjection = projectionFor(original);
@@ -164,7 +166,7 @@ export function runAgentAdapterConformance(label: string, createHarness: () => P
         originalProjection.dispose();
         await original.assertNoOrphans();
       }
-    });
+    }, 15_000);
 
     it('dispose() is idempotent and leaves no owned resources orphaned', async () => {
       const h = await createHarness();
