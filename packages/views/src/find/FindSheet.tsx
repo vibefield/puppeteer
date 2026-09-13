@@ -149,6 +149,7 @@ export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: F
   const [clock, setClock] = useState(() => nowMs ?? Date.now());
   const sequence = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const scope = useMemo(() => liveScope(agents), [agents]);
   const scopeKey = scope.nativeSessionIds.join('\n');
 
@@ -239,6 +240,21 @@ export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: F
     return () => window.cancelAnimationFrame(frame);
   }, [open, nowMs]);
 
+  // Focus goes back where it was when the sheet closes. The sheet is summoned
+  // over a stage whose active pane is usually a terminal, and a chord that
+  // left the cursor nowhere would cost a click per find. Only when focus is
+  // still the sheet's (or nobody's): a user who clicked elsewhere meanwhile
+  // has chosen, and a selection that mounted a pane keeps the pane's choice.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => {
+      const current = document.activeElement;
+      const orphaned = current === null || current === document.body || sheetRef.current?.contains(current) === true;
+      if (previous?.isConnected && orphaned) previous.focus();
+    };
+  }, [open]);
+
   // Escape puts the sheet away from anywhere in the window.
   useEffect(() => {
     if (!open) return;
@@ -292,7 +308,13 @@ export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: F
   };
 
   return (
-    <div className="vf-find-sheet" id="vf-find-sheet" role="dialog" aria-label="Find an agent by what was said">
+    <div
+      ref={sheetRef}
+      className="vf-find-sheet"
+      id="vf-find-sheet"
+      role="dialog"
+      aria-label="Find an agent by what was said"
+    >
       <div className="vf-find-field">
         <span>FIND</span>
         <input

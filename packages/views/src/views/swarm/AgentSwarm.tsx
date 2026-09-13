@@ -654,6 +654,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
                 aria-current={agent.active ? 'true' : undefined}
                 data-agent-bubble-status={agent.status}
                 data-agent-bubble-visual={model.state}
+                data-agent-bubble-source={agent.remote ? 'remote' : agent.agent ? 'agent' : 'terminal'}
                 onFocus={() => {
                   focusedIdRef.current = agent.id;
                 }}
