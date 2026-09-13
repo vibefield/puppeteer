@@ -68,9 +68,9 @@ import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
 import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
-import { DeckFrames } from '@vibecook/puppeteer-views';
+import { DECK_FRAMED_CLASS, DeckFrames } from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
-import { paneFrameAgents } from './deck/pane-frame.js';
+import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
 import '@vibecook/ghosttea-react/styles.css';
@@ -391,6 +391,7 @@ function Godview() {
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
+  const frameFallbackCwds = useMemo(() => paneFallbackCwds(agentsBySession), [agentsBySession]);
   const activeAgent = agents.find((agent) => agent.active);
 
   const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
@@ -702,7 +703,7 @@ function Godview() {
 
       <section
         ref={deckRef}
-        className="vf-godview-terminal-deck"
+        className={`vf-godview-terminal-deck ${DECK_FRAMED_CLASS}`}
         aria-label="Terminal panes"
         style={
           {
@@ -738,6 +739,7 @@ function Godview() {
           panes={workspace?.panes ?? []}
           agentsBySession={frameAgentsBySession}
           paneColors={paneColors}
+          fallbackCwdBySession={frameFallbackCwds}
           verbs={frameVerbs}
           frame={AppPaneFrame}
         />

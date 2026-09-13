@@ -15,6 +15,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./physics": "./src/views/swarm/physics/index.ts",
+    "./deck": "./src/deck/index.ts",
     "./lab": "./src/views/swarm/lab/main.ts",
     "./styles/views.css": "./src/styles/views.css",
     "./styles/lab.css": "./src/views/swarm/lab/lab.css",
@@ -38,6 +39,10 @@
       "./physics": {
         "types": "./dist/views/swarm/physics/index.d.ts",
         "import": "./dist/views/swarm/physics/index.js"
+      },
+      "./deck": {
+        "types": "./dist/deck/index.d.ts",
+        "import": "./dist/deck/index.js"
       },
       "./lab": {
         "types": "./dist/views/swarm/lab/main.d.ts",

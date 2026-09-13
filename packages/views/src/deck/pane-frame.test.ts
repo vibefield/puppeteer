@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatTurnElapsed, paneBadgeName, paneFrameModel, type PaneFrameAgent, type PaneFrameSession } from './pane-frame.js';
+import {
+  formatTurnElapsed,
+  paneBadgeName,
+  paneFrameModel,
+  type PaneFrameAgent,
+  type PaneFrameSession,
+} from './pane-frame.js';
 
 const NOW = Date.parse('2026-09-10T12:00:00.000Z');
 
@@ -31,6 +37,16 @@ describe('paneFrameModel', () => {
     expect(paneBadgeName(session({ cwd: '/elsewhere/stale' }), agent({ project: 'godview' }))).toBe('godview');
     expect(paneBadgeName(session({ cwd: 'C:\\Users\\james\\project' }))).toBe('project');
     expect(paneBadgeName(session({ cwd: null }), agent({ project: '', cwd: '/workspace/project' }))).toBe('project');
+  });
+
+  it("names a bare shell with no cwd yet by the host's remembered folder, and only then 'terminal'", () => {
+    expect(paneBadgeName(session({ cwd: null }), undefined, '/workspace/project')).toBe('project');
+    expect(
+      paneFrameModel({ session: session({ cwd: null }), fallbackCwd: '/Users/james/Projects/rosetta', nowMs: NOW }),
+    ).toEqual({
+      name: 'rosetta',
+    });
+    expect(paneFrameModel({ session: session({ cwd: null }), nowMs: NOW }).name).toBe('terminal');
   });
 
   it('carries the agent mark, the lowercase readout with effort intent, and the stop verb', () => {
@@ -74,12 +90,20 @@ describe('paneFrameModel', () => {
   });
 
   it('shows no meter while the provider cannot say, and resume once the process has ended', () => {
-    expect(paneFrameModel({ session: session(), agent: agent({ contextPercent: undefined }), nowMs: NOW }).context).toBeUndefined();
-    expect(paneFrameModel({ session: session(), agent: agent({ contextPercent: Number.NaN }), nowMs: NOW }).context).toBeUndefined();
-    expect(paneFrameModel({ session: session({ exited: true }), agent: agent({ alive: false }), nowMs: NOW }).verb).toEqual({
+    expect(
+      paneFrameModel({ session: session(), agent: agent({ contextPercent: undefined }), nowMs: NOW }).context,
+    ).toBeUndefined();
+    expect(
+      paneFrameModel({ session: session(), agent: agent({ contextPercent: Number.NaN }), nowMs: NOW }).context,
+    ).toBeUndefined();
+    expect(
+      paneFrameModel({ session: session({ exited: true }), agent: agent({ alive: false }), nowMs: NOW }).verb,
+    ).toEqual({
       kind: 'resume',
     });
-    expect(paneFrameModel({ session: session(), agent: agent({ alive: false }), nowMs: NOW }).verb).toEqual({ kind: 'resume' });
+    expect(paneFrameModel({ session: session(), agent: agent({ alive: false }), nowMs: NOW }).verb).toEqual({
+      kind: 'resume',
+    });
   });
 
   it('clamps the context share into the meter', () => {

@@ -62,6 +62,12 @@ export const NARROW_PANE_WIDTH = 220;
 export interface PaneFrameInput {
   session: PaneFrameSession;
   agent?: PaneFrameAgent | undefined;
+  /**
+   * The folder the host remembers for a session whose summary carries no cwd
+   * yet (a freshly split shell before its first prompt): the badge's last
+   * fallback, after the agent's project and the session's own cwd.
+   */
+  fallbackCwd?: string | undefined;
   /** The device name a remote session lives on; absent for a local session. */
   remoteDevice?: string | undefined;
   nowMs: number;
@@ -76,13 +82,13 @@ export function formatTurnElapsed(elapsedMs: number): string {
 }
 
 /** A pane badge is always a folder basename; terminal titles are deliberately ignored. */
-export function paneBadgeName(session: PaneFrameSession, agent?: PaneFrameAgent): string {
-  return folderName(agent?.project || session.cwd || agent?.cwd, 'terminal');
+export function paneBadgeName(session: PaneFrameSession, agent?: PaneFrameAgent, fallbackCwd?: string): string {
+  return folderName(agent?.project || session.cwd || agent?.cwd || fallbackCwd, 'terminal');
 }
 
-export function paneFrameModel({ session, agent, remoteDevice, nowMs }: PaneFrameInput): PaneFrameModel {
+export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowMs }: PaneFrameInput): PaneFrameModel {
   const model: PaneFrameModel = {
-    name: paneBadgeName(session, agent),
+    name: paneBadgeName(session, agent, fallbackCwd),
     ...(remoteDevice ? { remote: remoteDevice } : {}),
   };
   if (!agent) return model;

@@ -42,8 +42,24 @@ export function paneFrameAgent(agent: MonitorAgent): PaneFrameAgent | undefined 
   };
 }
 
+/**
+ * The folders the monitor remembers per session — the badge's last fallback for
+ * a shell whose summary has no cwd yet (a fresh split before its first prompt),
+ * which the frame would otherwise name "terminal". Every row carries one, facet
+ * or not.
+ */
+export function paneFallbackCwds(agentsBySession: ReadonlyMap<string, MonitorAgent>): ReadonlyMap<string, string> {
+  const cwds = new Map<string, string>();
+  for (const [sessionId, agent] of agentsBySession) {
+    if (agent.cwd) cwds.set(sessionId, agent.cwd);
+  }
+  return cwds;
+}
+
 /** The frame's agents, keyed like the monitor's rows: by the session a pane shows. */
-export function paneFrameAgents(agentsBySession: ReadonlyMap<string, MonitorAgent>): ReadonlyMap<string, PaneFrameAgent> {
+export function paneFrameAgents(
+  agentsBySession: ReadonlyMap<string, MonitorAgent>,
+): ReadonlyMap<string, PaneFrameAgent> {
   const frames = new Map<string, PaneFrameAgent>();
   for (const [sessionId, agent] of agentsBySession) {
     const frame = paneFrameAgent(agent);

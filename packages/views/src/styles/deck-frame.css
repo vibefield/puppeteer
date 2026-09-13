@@ -4,7 +4,8 @@
    Ghosttea owns the terminal; the frame owns what is drawn around it. The
    terminal sits on its theme's own ground with no card, no divider and no
    brackets. A 1px line in the pane colour and a soft inner glow mark the
-   selected pane, and only that pane rounds its corners. The name is a badge
+   selected pane (in the ink for a bare shell), and only that pane rounds its
+   corners. The name is a badge
    growing out of the top edge; the model and effort are a quiet readout at the
    top-left; the context share is a thick grey bar along the bottom edge with
    its figure in the corner; the verbs appear only under the pointer. The pane
@@ -18,7 +19,15 @@
    sets on the deck element it was given, so a host that mounts the frames
    gets the safe areas, the line and the glow with them — and a host that does
    not, gets none of it. The safe areas are tunables (`--vf-terminal-safe-*`)
-   with the record's bands as fallbacks. */
+   with the record's bands as fallbacks.
+
+   Host-supplied tokens this file reads (a host importing the frame WITHOUT
+   `views.css` must still define them): `--vf-godview-terminal-ink` (the ink
+   every figure is mixed from; `currentColor` if absent), `--ghostty-pane-color`
+   (set by Ghosttea on the pane — the project colour), `--vf-green` (the resume
+   verb, per the record's Spec: green after an exit — drawn in ink if absent),
+   and `--vf-terminal-safe-{top,right,bottom,left}` (the tunables; the bands
+   24 · 0 · 30 · 0 as fallbacks). */
 
 /* ── the ground and the safe areas ─────────────────────────────────────── */
 
@@ -50,24 +59,15 @@
   border-radius: 8px;
 }
 
-/* The line and the glow live on Ghosttea's own accent layer. */
-.vf-deck-framed .ghostty-pane[data-pane-accent]::before {
-  border-color: transparent;
-  box-shadow:
-    inset 0 0 34px -8px transparent,
-    inset 0 0 5px -1px transparent;
-  transition:
-    border-color 240ms ease,
-    box-shadow 320ms ease,
-    border-radius 240ms ease;
-}
-
+/* The line and the glow are the frame's own layer (`.vf-pane-frame::before`,
+   further down), so a bare shell gets them in the ink — the record's 30% for
+   the line, 20% and 10% for the glow — and an agent's pane in its project
+   colour. Ghosttea draws its accent layer only for a pane that was dealt a
+   colour, so its own 1px border is quieted here and the frame draws the one
+   line. */
+.vf-deck-framed .ghostty-pane[data-pane-accent]::before,
 .vf-deck-framed .ghostty-pane.is-active[data-pane-accent]::before {
-  border-color: var(--ghostty-pane-color);
-  border-radius: 8px;
-  box-shadow:
-    inset 0 0 34px -8px color-mix(in srgb, var(--ghostty-pane-color) 62%, transparent),
-    inset 0 0 5px -1px color-mix(in srgb, var(--ghostty-pane-color) 30%, transparent);
+  border-color: transparent;
 }
 
 /* Two resting panes meet with no visible edge; the divider keeps its grip. */
@@ -101,6 +101,40 @@
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   user-select: none;
+}
+
+/* the line and the glow: 1px flush with the pane's edges and an inset shadow,
+   the selected pane only, following its radius; the ink for a bare shell, the
+   project colour for an agent's pane. Painted before the badge, which sits out
+   of the line. */
+.vf-pane-frame::before {
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  box-shadow:
+    inset 0 0 34px -8px transparent,
+    inset 0 0 5px -1px transparent;
+  content: '';
+  pointer-events: none;
+  transition:
+    border-color 240ms ease,
+    box-shadow 320ms ease,
+    border-radius 240ms ease;
+}
+
+.vf-deck-framed .ghostty-pane.is-active .vf-pane-frame::before {
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 34px -8px color-mix(in srgb, var(--ink) 20%, transparent),
+    inset 0 0 5px -1px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.vf-deck-framed .ghostty-pane.is-active[data-pane-accent] .vf-pane-frame::before {
+  border-color: var(--ghostty-pane-color);
+  box-shadow:
+    inset 0 0 34px -8px color-mix(in srgb, var(--ghostty-pane-color) 62%, transparent),
+    inset 0 0 5px -1px color-mix(in srgb, var(--ghostty-pane-color) 30%, transparent);
 }
 
 /* one row along the top edge: readout · verbs · badge */
@@ -364,6 +398,7 @@
 @media (prefers-reduced-motion: reduce) {
   .vf-deck-framed .ghostty-pane,
   .vf-deck-framed .ghostty-pane::before,
+  .vf-pane-frame::before,
   .vf-pane-verbs,
   .vf-pane-badge,
   .vf-pane-meter::before {

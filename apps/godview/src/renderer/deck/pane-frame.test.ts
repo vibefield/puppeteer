@@ -3,7 +3,7 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState } from '@vibecook/puppeteer-core';
 import { paneFrameModel } from '@vibecook/puppeteer-views';
 import type { MonitorAgent, MonitorAgentFacet } from '../monitor/types.js';
-import { paneFrameAgent, paneFrameAgents, zoomKeyEvent } from './pane-frame.js';
+import { paneFallbackCwds, paneFrameAgent, paneFrameAgents, zoomKeyEvent } from './pane-frame.js';
 
 const NOW = Date.parse('2026-09-10T12:00:00.000Z');
 
@@ -97,14 +97,32 @@ describe('paneFrameAgent', () => {
   it('hands over the context share only when the provider could say', () => {
     const asOf = new Date(NOW).toISOString();
     expect(
-      paneFrameAgent(agent({ contextWindow: { usedPercent: 88.6, percentageSource: 'provider', asOf } }))?.contextPercent,
+      paneFrameAgent(agent({ contextWindow: { usedPercent: 88.6, percentageSource: 'provider', asOf } }))
+        ?.contextPercent,
     ).toBe(88.6);
-    expect(paneFrameAgent(agent({ contextWindow: { percentageSource: 'unavailable', asOf } }))?.contextPercent).toBeUndefined();
+    expect(
+      paneFrameAgent(agent({ contextWindow: { percentageSource: 'unavailable', asOf } }))?.contextPercent,
+    ).toBeUndefined();
   });
 
   it('is nothing for a bare terminal row', () => {
     expect(paneFrameAgent(agent({}, { agent: undefined }))).toBeUndefined();
     expect(paneFrameAgents(new Map([['term-1', agent({}, { agent: undefined })]])).size).toBe(0);
+  });
+
+  it('hands the frame the remembered folder of every row, facet or not, so a fresh split keeps its badge', () => {
+    const bare = agent({}, { agent: undefined, session: session({ cwd: null }) });
+    const cwds = paneFallbackCwds(
+      new Map([
+        ['term-1', bare],
+        ['term-2', agent({}, { cwd: undefined, agent: undefined })],
+      ]),
+    );
+    expect(cwds.get('term-1')).toBe('/Users/james/Projects/rosetta');
+    expect(cwds.has('term-2')).toBe(false);
+    expect(paneFrameModel({ session: session({ cwd: null }), fallbackCwd: cwds.get('term-1'), nowMs: NOW }).name).toBe(
+      'rosetta',
+    );
   });
 
   it('composes with the package model as the app frame does', () => {

@@ -29,6 +29,9 @@ export interface PaneFrameVerbs {
 /** How long the square stays hollow after a stop nobody has confirmed. */
 export const STOPPING_TIMEOUT_MS = 8_000;
 
+/** The attribute the portal sets on a pane at or under `NARROW_PANE_WIDTH`; the stylesheet and a host's rows select on it. */
+export const PANE_NARROW_ATTRIBUTE = 'data-vf-narrow';
+
 /** A pointer on a verb must not take the keyboard from the terminal; the pane still activates. */
 export function keepTerminalFocus(event: ReactPointerEvent<HTMLButtonElement>): void {
   event.preventDefault();
@@ -75,9 +78,10 @@ export interface PaneFrameChromeProps {
 /**
  * The chrome around one terminal, as MARKUP: the badge growing out of the top
  * edge, the model · effort readout, the ghost verbs under the pointer, the grey
- * meter along the bottom edge with its figure in the corner. The line, the glow
- * and the selected pane's radius are CSS on Ghosttea's own pane element
- * (`styles/deck-frame.css`). Pure over its props so a host's static tests and
+ * meter along the bottom edge with its figure in the corner. The line and the
+ * glow are the frame's own `::before`; the selected pane's radius is CSS on
+ * Ghosttea's own pane element (both in `styles/deck-frame.css`). Pure over its
+ * props so a host's static tests and
  * catalog can render it without a pane to portal into; `PaneFrame` below is the
  * portal.
  */
@@ -207,6 +211,8 @@ export interface PaneFrameProps {
   remote?: string | undefined;
   /** The pane colour the host dealt this pane. */
   color?: string | undefined;
+  /** The host's remembered folder for a session with no cwd yet (see `PaneFrameInput`). */
+  fallbackCwd?: string | undefined;
   zoomed: boolean;
   nowMs: number;
   verbs: PaneFrameVerbs;
@@ -218,11 +224,12 @@ export interface PaneFrameProps {
  * attribute on the pane so its own padding can tighten (the chrome reads the
  * width through container queries).
  */
-export function PaneFrame({ pane, session, agent, remote, color, zoomed, nowMs, verbs }: PaneFrameProps) {
+export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zoomed, nowMs, verbs }: PaneFrameProps) {
   const model = paneFrameModel({
     session,
     ...(agent ? { agent } : {}),
     ...(remote ? { remoteDevice: remote } : {}),
+    ...(fallbackCwd ? { fallbackCwd } : {}),
     nowMs,
   });
   const status = agent?.status;
@@ -243,7 +250,7 @@ export function PaneFrame({ pane, session, agent, remote, color, zoomed, nowMs, 
   // resize notifications until it is drawn again.
   useEffect(() => {
     const apply = (width: number): void => {
-      pane.toggleAttribute('data-vf-narrow', width <= NARROW_PANE_WIDTH);
+      pane.toggleAttribute(PANE_NARROW_ATTRIBUTE, width <= NARROW_PANE_WIDTH);
     };
     apply(pane.getBoundingClientRect().width);
     const observer = new ResizeObserver(([entry]) => {
@@ -252,7 +259,7 @@ export function PaneFrame({ pane, session, agent, remote, color, zoomed, nowMs, 
     observer.observe(pane);
     return () => {
       observer.disconnect();
-      pane.removeAttribute('data-vf-narrow');
+      pane.removeAttribute(PANE_NARROW_ATTRIBUTE);
     };
   }, [pane]);
 

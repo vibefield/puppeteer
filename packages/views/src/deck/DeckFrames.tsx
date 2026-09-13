@@ -16,6 +16,8 @@ export interface DeckFrameSlotProps {
   session: PaneFrameSession;
   agent?: PaneFrameAgent | undefined;
   color?: string | undefined;
+  /** The host's remembered folder for the pane's session when its summary has no cwd. */
+  fallbackCwd?: string | undefined;
   zoomed: boolean;
   nowMs: number;
   verbs: PaneFrameVerbs;
@@ -28,6 +30,12 @@ export interface DeckFramesProps {
   agentsBySession: ReadonlyMap<string, PaneFrameAgent>;
   /** The pane colours per PANE id (a pane owns its colour). */
   paneColors: ReadonlyMap<string, string>;
+  /**
+   * The folder the host remembers per SESSION id for a shell whose summary
+   * carries no cwd yet — the badge's last fallback (the reference host keeps
+   * one from the parent pane at a split).
+   */
+  fallbackCwdBySession?: ReadonlyMap<string, string> | undefined;
   verbs: PaneFrameVerbs;
   /**
    * The frame per pane; `PaneFrame` by default. A host whose facts need hooks
@@ -45,7 +53,14 @@ export interface DeckFramesProps {
   zoomedPaneId?: string | null | undefined;
 }
 
-/** The class `DeckFrames` sets on the deck element: `deck-frame.css` scopes its rules to it. */
+/**
+ * The class `deck-frame.css` scopes its pane rules to. `DeckFrames` sets it on
+ * the deck element it reads panes from, but a host should ALSO put it in the
+ * deck's static className: the pane padding, the active radius and the line
+ * are then present at the first style computation rather than arriving from
+ * an effect (a pane already laid out would animate its padding when the class
+ * lands — `transition: padding` is in the stylesheet).
+ */
 export const DECK_FRAMED_CLASS = 'vf-deck-framed';
 export const GHOSTTEA_PANE_SELECTOR = '.ghostty-pane[data-pane-id]';
 
@@ -90,6 +105,7 @@ export function DeckFrames({
   panes,
   agentsBySession,
   paneColors,
+  fallbackCwdBySession,
   verbs,
   frame: Frame = DefaultFrame,
   paneSelector = GHOSTTEA_PANE_SELECTOR,
@@ -101,13 +117,11 @@ export function DeckFrames({
   useEffect(() => {
     const deck = deckRef.current;
     if (!deck) return;
-    deck.classList.add(DECK_FRAMED_CLASS);
-    return () => deck.classList.remove(DECK_FRAMED_CLASS);
-  }, [deckRef]);
-
-  useEffect(() => {
-    const deck = deckRef.current;
-    if (!deck) return;
+    // The class rides the same effect as the observer, so a deck element that
+    // is replaced behind a stable ref is re-marked whenever the panes change —
+    // and a host that puts the class in its static className loses nothing.
+    const marked = !deck.classList.contains(DECK_FRAMED_CLASS);
+    if (marked) deck.classList.add(DECK_FRAMED_CLASS);
     let pending: number | undefined;
     const sync = (): void => {
       pending = undefined;
@@ -125,6 +139,7 @@ export function DeckFrames({
     return () => {
       observer.disconnect();
       if (pending !== undefined) window.clearTimeout(pending);
+      if (marked) deck.classList.remove(DECK_FRAMED_CLASS);
     };
   }, [deckRef, panes, paneSelector]);
 
@@ -144,6 +159,7 @@ export function DeckFrames({
         if (!element) return null;
         const agent = agentsBySession.get(pane.session.id);
         const color = paneColors.get(pane.id);
+        const fallbackCwd = fallbackCwdBySession?.get(pane.session.id);
         return (
           <Frame
             key={pane.id}
@@ -152,6 +168,7 @@ export function DeckFrames({
             session={pane.session}
             {...(agent ? { agent } : {})}
             {...(color ? { color } : {})}
+            {...(fallbackCwd ? { fallbackCwd } : {})}
             zoomed={(zoomedPaneId === undefined ? elements.zoomedPaneId : (zoomedPaneId ?? undefined)) === pane.id}
             nowMs={nowMs}
             verbs={verbs}
