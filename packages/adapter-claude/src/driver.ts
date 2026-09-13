@@ -310,9 +310,9 @@ export async function prepareClaudeTuiSession(
     },
   });
   await bridge.start();
-  reportBound(bridge, options.ingress);
 
   try {
+    reportBound(bridge, options.ingress);
     const prepared = await prepareClaudeSession({
       cwd: options.cwd,
       sessionId,
@@ -1006,8 +1006,7 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
   const { otelUsageEnabled, otelUsageUnavailableReason, otelUsageVerified } = otelUsagePolicy(options);
   const configDir = (options.configDir ?? options.env?.CLAUDE_CONFIG_DIR ?? process.env.CLAUDE_CONFIG_DIR)?.trim();
   const root =
-    options.env?.PUPPETEER_IMPOSTER_HOME ??
-    (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
+    options.env?.PUPPETEER_IMPOSTER_HOME ?? (configDir ? resolve(options.cwd, configDir) : join(homedir(), '.claude'));
   let selectedSessionId = options.sessionId;
   let heardPinned = false;
   let observation: ClaudeObservation | undefined;

@@ -393,7 +393,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           automate: host.automateTerminal,
         });
       },
-      async prepareSession({ cwd, resume, title, host, agentOptions, profile }) {
+      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
         const launch = withProfileBinding(
           'claude',
           cwd,
@@ -420,6 +420,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           automate: host.automateTerminal,
+          ingress,
         });
         const { command, args, cwd: launchCwd, env } = prepared.launch;
         return {

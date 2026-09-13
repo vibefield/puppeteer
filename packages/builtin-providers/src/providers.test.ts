@@ -956,6 +956,7 @@ describe('createBuiltinProviders launch options', () => {
       cwd: '/work/repo',
       title: 'review',
       host,
+      ingress: { port: 4242, token: 'prepared-ingress' },
       agentOptions: {
         model: 'sonnet',
         permissionMode: 'plan',
@@ -974,6 +975,7 @@ describe('createBuiltinProviders launch options', () => {
         configDir: '/work/claude-config',
         fileChangeMatcher: '.env',
         observeSubagentStatus: true,
+        ingress: { port: 4242, token: 'prepared-ingress' },
       }),
     );
     expect(claudePrepared.launch).toEqual({

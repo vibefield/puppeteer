@@ -119,6 +119,7 @@ async function imposterHarness(
     title: 'conformance-imposter',
     executable: AI,
     resume,
+    env: { AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposterHome },
     transcriptPollIntervalMs: 50,
     ports: {
       spawn: async (prepared) => {
@@ -126,7 +127,7 @@ async function imposterHarness(
         // self-contained; spawn it exactly as built.
         child = spawn(prepared.command, prepared.args, {
           cwd: prepared.cwd,
-          env: { ...process.env, ...prepared.env, AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposterHome },
+          env: { ...process.env, ...prepared.env },
           stdio: ['pipe', 'pipe', 'inherit'],
         });
         children.add(child);
@@ -148,15 +149,13 @@ async function imposterHarness(
   const projection = projectAgentEvents(session);
 
   await waitFor(() => projection.state.lifecycle === 'ready', 'imposter boot (SessionStart + InstructionsLoaded)');
-  if (resume) {
-    await waitFor(() => projection.state.lastAssistantMessage === BEHAVIOR.reply, 'resumed Claude transcript history');
-  }
   return {
     binding: session,
     projection,
     imposterHome,
     cwd,
     reply: BEHAVIOR.reply,
+    resumeHistory: 'identity-only',
     resume: () => imposterHarness(session.sessionId, { cwd, imposterHome }),
     assertNoOrphans: async () => {
       if (!child) throw new Error('Claude imposter process was never spawned');
@@ -167,11 +166,8 @@ async function imposterHarness(
       }
     },
     driveTurn: async (prompt) => {
-      // A resumed observer replays the prior transcript before tailing new
-      // records. Waiting for merely *any* turn:completed can therefore return
-      // on the old turn while the newly submitted turn is still running.
-      // Match the confirmed receipt and exclude replay traffic so the shared
-      // conformance assertion observes the state of this turn, not its history.
+      // Match completion to the confirmed prompt, so unrelated native events
+      // cannot satisfy the conformance assertion for this turn.
       const completedTurnIds = new Set<string | undefined>();
       const off = session.events.onCandidate((envelope: AdapterEventCandidate) => {
         if (!envelope.replay && envelope.event.type === 'turn:completed') {

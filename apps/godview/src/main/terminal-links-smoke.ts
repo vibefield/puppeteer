@@ -20,7 +20,8 @@ export async function runTerminalLinksSmoke(options: LinkSmokeOptions): Promise<
   if (!basename(profile).startsWith('godview-links-smoke-')) {
     throw new Error('link smoke requires its isolated temporary user-data profile');
   }
-  if (process.env.GODVIEW_LINK_SMOKE_CODEX === '1') return runCodexFooterLinksSmoke(options);
+  const nativeLaunch = process.env.GODVIEW_LINK_SMOKE_NATIVE_LAUNCH;
+  if (nativeLaunch) return runNativeFooterLinksSmoke(options, JSON.parse(nativeLaunch));
   const displayedCwd = options.cwd.startsWith(`${homedir()}/`)
     ? `~${options.cwd.slice(homedir().length)}`
     : options.cwd;
@@ -213,12 +214,15 @@ export async function runTerminalLinksSmoke(options: LinkSmokeOptions): Promise<
   );
 }
 
-/** Opt-in check against the installed Codex TUI; no agent prompt is submitted. */
-async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void> {
+/** Opt-in native TUI fixture supplied by the smoke launcher; no prompt is submitted. */
+async function runNativeFooterLinksSmoke(
+  options: LinkSmokeOptions,
+  launch: { executable: string; args: string[] },
+): Promise<void> {
   const { client, cwd, opened, profile } = options;
   const session = await client.createSession({
-    executable: 'codex',
-    args: ['-c', 'tui.status_line=["model-with-reasoning","current-dir"]'],
+    executable: launch.executable,
+    args: launch.args,
     cwd,
     environment: { mode: 'clean', variables: buildAgentEnvironment() },
     cols: 120,
@@ -240,14 +244,14 @@ async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void
       return r && {left:r.left, top:r.top, width:r.width, height:r.height};
     })()`);
     const current = await client.getSession(session.id);
-    if (current.exited) throw new Error(`Codex exited before its footer could be tested: ${current.exitCode}`);
+    if (current.exited) throw new Error(`Native TUI exited before its footer could be tested: ${current.exitCode}`);
     if (
       bounds?.width > 100 &&
       bounds.height > 100 &&
       current.cols === Math.floor((bounds.width - 4) / 7.83) &&
       current.rows === Math.floor((bounds.height - 4) / 19)
     ) {
-      // Codex's inline mode leaves blank rows below its footer. Search upward
+      // The native inline mode leaves blank rows below its footer. Search upward
       // so the status-bar directory wins over the duplicate in its header.
       for (let row = current.rows - 1; row >= Math.floor(current.rows / 2); row--) {
         for (let column = 0; column < current.cols; column += 5) {
@@ -262,14 +266,14 @@ async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void
           );
           if (hovered && !observed.has(hovered)) {
             observed.add(hovered);
-            console.log('Codex footer candidate:', { row, column, rows: current.rows, hovered });
+            console.log('Native TUI footer candidate:', { row, column, rows: current.rows, hovered });
           }
           if (hovered !== destination) continue;
           const underline = await contents.executeJavaScript(
             `document.querySelectorAll('.terminal-link-overlay > span').length`,
           );
-          if (underline === 0) throw new Error('Codex footer path has no underline');
-          writeFileSync(join(profile, 'codex-folder-link.png'), (await contents.capturePage()).toPNG());
+          if (underline === 0) throw new Error('Native TUI footer path has no underline');
+          writeFileSync(join(profile, 'native-folder-link.png'), (await contents.capturePage()).toPNG());
           for (const type of ['mouseDown', 'mouseUp'] as const) {
             contents.sendInputEvent({ type, ...point, button: 'left', clickCount: 1, modifiers: [modifier] });
           }
@@ -277,9 +281,9 @@ async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void
           while (Date.now() < openDeadline && opened.length === 0) {
             await new Promise((resolve) => setTimeout(resolve, 20));
           }
-          if (opened[0] !== destination) throw new Error('Codex footer click did not open its working directory');
+          if (opened[0] !== destination) throw new Error('Native TUI footer click did not open its working directory');
           console.log(
-            'CODEX LINKS SMOKE OK: Command-hover underline and Command-click on the real Codex footer directory',
+            'NATIVE LINKS SMOKE OK: Command-hover underline and Command-click on the real Native TUI footer directory',
           );
           return;
         }
@@ -287,6 +291,6 @@ async function runCodexFooterLinksSmoke(options: LinkSmokeOptions): Promise<void
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  writeFileSync(join(profile, 'codex-links-failure.png'), (await contents.capturePage()).toPNG());
-  throw new Error('Codex footer directory did not become a hoverable link');
+  writeFileSync(join(profile, 'native-links-failure.png'), (await contents.capturePage()).toPNG());
+  throw new Error('Native TUI footer directory did not become a hoverable link');
 }

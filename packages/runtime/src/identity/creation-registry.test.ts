@@ -137,9 +137,9 @@ describe('file creation request registry', () => {
       runtimeRunId: 'run-x',
       expectedRuntimeEpoch: 1,
     });
-    expect(
-      (await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-x' }))?.runtimeEpoch,
-    ).toBe(2);
+    expect((await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-x' }))?.runtimeEpoch).toBe(
+      2,
+    );
     // another run's record never learns this claim
     expect(await registry.lookup({ creationRequestId: 'request-lookup', runtimeRunId: 'run-y' })).toBeUndefined();
   });

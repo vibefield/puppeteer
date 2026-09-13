@@ -21,7 +21,7 @@ import { attachClaudeTuiSession, createClaudeSession, prepareClaudeTuiSession, t
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import { cleanupClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
-import type { HookBridge, NativeHookEnvelope } from './observation/hook-bridge.js';
+import { createHookBridge, type HookBridge, type NativeHookEnvelope } from './observation/hook-bridge.js';
 import type { SemanticObservationEvent, SemanticObservationProvider } from './observation/semantic-provider.js';
 
 let sessions: ClaudeSession[] = [];
@@ -1678,6 +1678,35 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
 });
 
 describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / PU-1)', () => {
+  it('releases the bound listener when the host cannot persist its ingress', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let bridge: HookBridge | undefined;
+    try {
+      await expect(
+        prepareClaudeTuiSession({
+          cwd: '/tmp',
+          automate: async () => ({ accepted: true }),
+          hookBridgeFactory: (options) => (bridge = createHookBridge(options)),
+          ingress: {
+            onBound(value) {
+              bound = value;
+              throw new Error('ingress persistence failed');
+            },
+          },
+        }),
+      ).rejects.toThrow('ingress persistence failed');
+      expect(bound).toBeDefined();
+      const replacement = createHookBridge({ ...bound!, allowSession: () => true });
+      try {
+        await replacement.start();
+      } finally {
+        await replacement.dispose();
+      }
+    } finally {
+      await bridge?.dispose();
+    }
+  });
+
   it('reports the bound ingress before launch, and an attach on the same port and token observes the running process', async () => {
     let bound: { port: number; token: string } | undefined;
     let prepared: PreparedClaudeSession | undefined;

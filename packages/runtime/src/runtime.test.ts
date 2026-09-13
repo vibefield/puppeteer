@@ -3445,7 +3445,184 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     // same epoch cannot be restored twice.
     expect(second.agent('terminal-attach')?.runtimeRunId).toBe(created.runtimeRunId);
     expect(second.runtimeRunInfo(created.runtimeRunId)).toMatchObject({ status: 'active' });
+    for (const mismatch of [
+      { sessionId: 'another-native-session' },
+      { terminalSessionId: 'another-terminal' },
+      { creationRequestId: 'another-request' },
+      { expectedRuntimeEpoch: 0 },
+    ]) {
+      const conflict = await second.attach({
+        agent: 'one',
+        creationRequestId: 'attach-run-one',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: root,
+        ...mismatch,
+      });
+      expect('error' in conflict && conflict.error.code).toBe('RUNTIME_RUN_CONFLICT');
+    }
+    expect(attachCalls).toHaveLength(1);
     await second.dispose();
+  });
+
+  it('preserves a live worktree and releases its binding after a failed attach, allowing a retry', async () => {
+    const repo = await makeRepo();
+    const storage = await mkdtemp(join(tmpdir(), 'puppeteer-attach-failure-'));
+    const registry = createFileCreationRequestRegistry({ directory: join(storage, 'claims') });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const disposeBinding = vi.fn(async () => undefined);
+    let failBinding = true;
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async attachSession(options) {
+        const binding = standaloneSession(options.sessionId, options.runtimeSessionId);
+        return failBinding
+          ? {
+              ...binding,
+              events: {
+                onCandidate: () => {
+                  throw new Error('cannot subscribe');
+                },
+              },
+              dispose: disposeBinding,
+            }
+          : binding;
+      },
+    };
+    const first = createAgentRuntime({ host, defaultCwd: repo, providers: [provider], creationRegistry: registry });
+    const second = createAgentRuntime({ host, defaultCwd: repo, providers: [provider], creationRegistry: registry });
+    try {
+      const created = await first.createSession({
+        agent: 'one',
+        creationRequestId: 'attach-failure',
+        workspace: { mode: 'worktree', path: repo, workspacesRoot: join(storage, 'worktrees') },
+      });
+      if ('error' in created) throw new Error(created.error.message);
+      await first.dispose({ detach: true });
+      const request = {
+        agent: 'one',
+        creationRequestId: 'attach-failure',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: created.workspace.root,
+        workspace: {
+          mode: 'worktree' as const,
+          path: repo,
+          resumeRoot: created.workspace.root,
+          resumeBranch: created.workspace.branch,
+        },
+      };
+      const failed = await second.attach(request);
+      expect('error' in failed && failed.error.code).toBe('RUNTIME_RESTORE_FAILED');
+      expect(existsSync(created.workspace.root)).toBe(true);
+      expect(disposeBinding).toHaveBeenCalledWith({ release: true });
+      expect(disposeBinding).not.toHaveBeenCalledWith(undefined);
+      expect(await registry.lookup(request)).toMatchObject({ state: 'allocated', runtimeEpoch: 2 });
+      expect(second.runtimeRunInfo(created.runtimeRunId)).toBeUndefined();
+      failBinding = false;
+      const retried = await second.attach({ ...request, expectedRuntimeEpoch: 2 });
+      expect('error' in retried ? retried.error.code : retried.runtimeEpoch).toBe(3);
+    } finally {
+      await first.dispose();
+      await second.dispose();
+      await rm(storage, { recursive: true, force: true });
+      await rm(repo, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the live creation claim allocated when attach encounters a workspace conflict', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-attach-conflict-'));
+    const registry = createFileCreationRequestRegistry({ directory: join(root, 'claims') });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async attachSession(options) {
+        return standaloneSession(options.sessionId, options.runtimeSessionId);
+      },
+    };
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry });
+    const second = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry });
+    try {
+      const created = await first.createSession({ agent: 'one', creationRequestId: 'attach-conflict' });
+      if ('error' in created) throw new Error(created.error.message);
+      await first.dispose({ detach: true });
+      const blocker = await second.createSession({ agent: 'one', workspace: { mode: 'exclusive', path: root } });
+      if ('error' in blocker) throw new Error(blocker.error.message);
+      const request = {
+        agent: 'one',
+        creationRequestId: 'attach-conflict',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: root,
+      };
+      const failed = await second.attach(request);
+      expect('error' in failed && failed.error.code).toBe('WORKSPACE_CONFLICT');
+      expect(await registry.lookup(request)).toMatchObject({ state: 'allocated', runtimeEpoch: 2 });
+      await second.handleProcessExit(blocker.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+      const retried = await second.attach({ ...request, expectedRuntimeEpoch: 2 });
+      expect('error' in retried ? retried.error.code : retried.runtimeEpoch).toBe(3);
+    } finally {
+      await first.dispose();
+      await second.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('waits for an in-flight attach to release its binding when the runtime shuts down', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-attach-shutdown-'));
+    const registry = createFileCreationRequestRegistry({ directory: join(root, 'claims') });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    let releaseAttach!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      releaseAttach = resolve;
+    });
+    const disposeBinding = vi.fn(async () => undefined);
+    const attachSession = vi.fn(async (options: Parameters<NonNullable<AgentProvider['attachSession']>>[0]) => {
+      await gate;
+      return { ...standaloneSession(options.sessionId, options.runtimeSessionId), dispose: disposeBinding };
+    });
+    const provider = { ...fakeProvider('one', handles), attachSession };
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry });
+    const second = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry });
+    try {
+      const created = await first.createSession({ agent: 'one', creationRequestId: 'attach-shutdown' });
+      if ('error' in created) throw new Error(created.error.message);
+      await first.dispose({ detach: true });
+      const request = {
+        agent: 'one',
+        creationRequestId: 'attach-shutdown',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: root,
+      };
+      const attaching = second.attach(request);
+      await vi.waitFor(() => expect(attachSession).toHaveBeenCalledOnce());
+      let disposed = false;
+      const shutdown = second.dispose({ detach: true }).then(() => {
+        disposed = true;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(disposed).toBe(false);
+      releaseAttach();
+      const result = await attaching;
+      expect('error' in result && result.error.code).toBe('ATTACH_FAILED');
+      await shutdown;
+      expect(disposeBinding).toHaveBeenCalledWith({ release: true });
+      expect(await registry.lookup(request)).toMatchObject({ state: 'allocated', runtimeEpoch: 1 });
+    } finally {
+      releaseAttach();
+      await first.dispose();
+      await second.dispose();
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('answers ATTACH_UNSUPPORTED for a provider without attachSession, ATTACH_FAILED for a binding that names another terminal, and disposes it', async () => {
@@ -3464,7 +3641,12 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
     // a run that really exists — identity is validated before any binding,
     // so the mismatch can only be reached through a claimed run
-    const first = createAgentRuntime({ host, defaultCwd: root, providers: [plain, mismatched], creationRegistry: registry() });
+    const first = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [plain, mismatched],
+      creationRegistry: registry(),
+    });
     const created = await first.createSession({ agent: 'mismatched', creationRequestId: 'attach-refuse', cwd: root });
     if ('error' in created) throw new Error('unexpected create failure');
     await first.dispose({ detach: true });
@@ -3490,7 +3672,12 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     const unknown = await runtime.attach({ ...base, agent: 'nope' });
     expect('error' in unknown && unknown.error.code).toBe('AGENT_NOT_FOUND');
     // a run nobody ever claimed is refused before the provider is asked
-    const unclaimed = await runtime.attach({ ...base, agent: 'mismatched', creationRequestId: 'never-claimed', runtimeRunId: 'run-never' });
+    const unclaimed = await runtime.attach({
+      ...base,
+      agent: 'mismatched',
+      creationRequestId: 'never-claimed',
+      runtimeRunId: 'run-never',
+    });
     expect('error' in unclaimed && unclaimed.error.code).toBe('RUNTIME_RESTORE_FAILED');
     expect(disposed).toBe(1);
     await runtime.dispose();

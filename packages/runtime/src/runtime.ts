@@ -3001,7 +3001,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           if (error.code === 'WORKSPACE_CONFLICT') {
             await recordPolicyConflict(run, error.code, 'workspace-isolation');
           }
-          await markRunTerminal(run, { kind: 'failed', code: error.code });
+          if (restore.attaching) {
+            removeRunMonitor(run);
+            runs.delete(run.identity.runtimeRunId);
+          } else {
+            await markRunTerminal(run, { kind: 'failed', code: error.code });
+          }
           await recordRunStartFailure(run, 'restore', error.code);
           return sessionFailure(run, error.code, error.message);
         }
@@ -3014,14 +3019,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           restored: true,
         });
       } catch (error) {
-        await restore.session.dispose().catch(report);
+        await restore.session.dispose(restore.attaching ? { release: true } : undefined).catch(report);
         report(error);
         if (restore.attaching) {
           // The process is alive: its claim stays allocated (at the epoch this
           // restore advanced it to — the host re-syncs from the claim), and
           // only this runtime's provisional run and monitor are dropped.
           await recordRunStartFailure(run, 'restore', 'RUNTIME_RESTORE_FAILED');
-          await finalizeWorkspace(run, lease, 'preparation-failure');
+          lease.releaseClaim();
           removeRunMonitor(run);
           runs.delete(run.identity.runtimeRunId);
           return sessionFailure(
@@ -3040,148 +3045,179 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     async attach(request: AttachAgentOptions): Promise<CreateAgentSessionResult> {
       if (disposed) throw new Error('agent runtime is disposed');
-      const provisional: ManagedRun = runs.get(request.runtimeRunId) ?? {
-        identity: {
-          runtimeRunId: request.runtimeRunId,
-          runtimeEpoch: request.expectedRuntimeEpoch,
-          providerId: request.agent,
-          creationRequestId: request.creationRequestId,
-          externalRefs: [...(request.externalRefs ?? [])],
-        },
-        operation: 'create',
-        status: 'allocated',
-      };
-      const provider = providers.get(request.agent);
-      if (!provider) {
-        return sessionFailure(provisional, 'AGENT_NOT_FOUND', `unknown agent provider: ${request.agent}`);
-      }
-      if (!provider.attachSession) {
-        return sessionFailure(
-          provisional,
-          'ATTACH_UNSUPPORTED',
-          `agent provider cannot attach to a running session: ${request.agent}`,
-        );
-      }
-      let profile: AgentProfile | undefined;
-      if (request.profile !== undefined) {
-        const resolved = await resolveSessionProfile(request.agent, request.profile);
-        if ('error' in resolved) return sessionFailure(provisional, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
-        profile = resolved.profile;
-      }
-      // Identity is validated BEFORE anything is bound: a stale epoch, a
-      // foreign or terminal claim, or a run this runtime already manages must
-      // not take the live process's ingress port or build a workspace only to
-      // be refused inside the restore.
-      const already = sessionsByRunId.get(request.runtimeRunId);
-      if (already) return cloneAgentSessionInfo(already.info);
-      if (!options.creationRegistry) {
-        return sessionFailure(
-          provisional,
-          'CREATION_CLAIM_STORE_UNAVAILABLE',
-          'attach requires the durable creation registry the run was claimed in',
-        );
-      }
-      let claim: CreationRequestClaim | undefined;
-      try {
-        claim = await options.creationRegistry.lookup({
-          creationRequestId: request.creationRequestId,
-          runtimeRunId: request.runtimeRunId,
-        });
-      } catch (error) {
-        report(error);
-        return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'durable runtime-run claim could not be read');
-      }
-      if (!claim) {
-        return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'no durable claim exists for this run');
-      }
-      if (claim.state === 'terminal') {
-        return sessionFailure(
-          provisional,
-          'RUNTIME_RESTORE_FAILED',
-          'the durable runtime-run claim is terminal; it cannot be re-attached',
-        );
-      }
-      if (claim.runtimeEpoch !== request.expectedRuntimeEpoch) {
-        return sessionFailure(
-          provisional,
-          'RUNTIME_RESTORE_FAILED',
-          `runtime epoch has already advanced to ${claim.runtimeEpoch}; restore from that state instead`,
-        );
-      }
-      let session: AgentAdapterBinding;
-      try {
-        session = await provider.attachSession({
-          runtimeRunId: request.runtimeRunId,
-          sessionId: request.sessionId,
-          runtimeSessionId: request.terminalSessionId,
-          cwd: request.cwd,
-          host: options.host,
-          ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
-          agentOptions: request.agentOptions,
-          ...(profile === undefined ? {} : { profile }),
-        });
-      } catch (error) {
-        report(error);
-        return sessionFailure(
-          provisional,
-          'ATTACH_FAILED',
-          `agent provider could not attach to the running session: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
-      if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
-        await session.dispose().catch(report);
-        return sessionFailure(
-          provisional,
-          'ATTACH_FAILED',
-          'agent provider attached a different native session or terminal than the host asked for',
-        );
-      }
-      let workspace: Workspace;
-      try {
-        workspace = await createWorkspace({
-          mode: request.workspace?.mode ?? 'direct',
-          path: request.workspace?.path ?? request.cwd,
-          baseRef: request.workspace?.baseRef,
-          branchName: request.workspace?.branchName,
-          resumeBranch: request.workspace?.resumeBranch,
-          resumeRoot: request.workspace?.resumeRoot,
-          workspacesRoot: request.workspace?.workspacesRoot,
-        });
-      } catch (error) {
-        await session.dispose().catch(report);
-        if (error instanceof WorkspaceError) return sessionFailure(provisional, error.code, error.message);
-        throw error;
-      }
-      const restored = await this.restoreSession({
-        creationRequestId: request.creationRequestId,
-        runtimeRunId: request.runtimeRunId,
-        expectedRuntimeEpoch: request.expectedRuntimeEpoch,
-        agent: request.agent,
-        session,
-        workspace,
-        attaching: true,
-        ...(request.externalRefs === undefined ? {} : { externalRefs: request.externalRefs }),
-      });
-      if ('error' in restored) {
-        // Bindings are idempotent to dispose; a failure inside the bind path
-        // already released it, every earlier refusal did not. A workspace this
-        // attach materialized goes with it; one it merely resumed (an existing
-        // worktree the live process may be working in) is never destroyed.
-        await session.dispose({ release: true }).catch(report);
-        if (request.workspace?.resumeRoot === undefined) await workspace.destroy().catch(report);
-        return restored;
-      }
-      if (profile !== undefined) {
-        const managed = sessionsByRunId.get(restored.runtimeRunId);
-        if (managed) {
-          managed.run.profileId = profile.id;
-          managed.info.profileId = profile.id;
-          return cloneAgentSessionInfo(managed.info);
+      const pending = (async (): Promise<CreateAgentSessionResult> => {
+        const provisional: ManagedRun = runs.get(request.runtimeRunId) ?? {
+          identity: {
+            runtimeRunId: request.runtimeRunId,
+            runtimeEpoch: request.expectedRuntimeEpoch,
+            providerId: request.agent,
+            creationRequestId: request.creationRequestId,
+            externalRefs: [...(request.externalRefs ?? [])],
+          },
+          operation: 'create',
+          status: 'allocated',
+        };
+        const provider = providers.get(request.agent);
+        if (!provider) {
+          return sessionFailure(provisional, 'AGENT_NOT_FOUND', `unknown agent provider: ${request.agent}`);
         }
-      }
-      return restored;
+        if (!provider.attachSession) {
+          return sessionFailure(
+            provisional,
+            'ATTACH_UNSUPPORTED',
+            `agent provider cannot attach to a running session: ${request.agent}`,
+          );
+        }
+        let profile: AgentProfile | undefined;
+        if (request.profile !== undefined) {
+          const resolved = await resolveSessionProfile(request.agent, request.profile);
+          if ('error' in resolved) return sessionFailure(provisional, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
+          profile = resolved.profile;
+        }
+        // Identity is validated BEFORE anything is bound: a stale epoch, a
+        // foreign or terminal claim, or a run this runtime already manages must
+        // not take the live process's ingress port or build a workspace only to
+        // be refused inside the restore.
+        const already = sessionsByRunId.get(request.runtimeRunId);
+        if (already) {
+          let compatibleRefs = false;
+          try {
+            compatibleRefs =
+              canonicalizeCreationFingerprint(already.run.identity.externalRefs) ===
+              canonicalizeCreationFingerprint(request.externalRefs ?? []);
+          } catch {
+            // Invalid refs cannot identify an existing attachment.
+          }
+          if (
+            already.run.identity.providerId === request.agent &&
+            already.run.identity.creationRequestId === request.creationRequestId &&
+            already.run.identity.runtimeEpoch === request.expectedRuntimeEpoch + 1 &&
+            already.info.terminalSessionId === request.terminalSessionId &&
+            already.info.nativeSession.id === request.sessionId &&
+            compatibleRefs
+          ) {
+            return cloneAgentSessionInfo(already.info);
+          }
+          return sessionFailure(provisional, 'RUNTIME_RUN_CONFLICT', 'runtime run already has a different attachment');
+        }
+        if (sessionsByTerminalId.has(request.terminalSessionId)) {
+          return sessionFailure(provisional, 'RUNTIME_RUN_CONFLICT', 'terminal already has an active agent session');
+        }
+        if (!options.creationRegistry) {
+          return sessionFailure(
+            provisional,
+            'CREATION_CLAIM_STORE_UNAVAILABLE',
+            'attach requires the durable creation registry the run was claimed in',
+          );
+        }
+        let claim: CreationRequestClaim | undefined;
+        try {
+          claim = await options.creationRegistry.lookup({
+            creationRequestId: request.creationRequestId,
+            runtimeRunId: request.runtimeRunId,
+          });
+        } catch (error) {
+          report(error);
+          return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'durable runtime-run claim could not be read');
+        }
+        if (!claim) {
+          return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', 'no durable claim exists for this run');
+        }
+        if (claim.state === 'terminal') {
+          return sessionFailure(
+            provisional,
+            'RUNTIME_RESTORE_FAILED',
+            'the durable runtime-run claim is terminal; it cannot be re-attached',
+          );
+        }
+        if (claim.runtimeEpoch !== request.expectedRuntimeEpoch) {
+          return sessionFailure(
+            provisional,
+            'RUNTIME_RESTORE_FAILED',
+            `runtime epoch has already advanced to ${claim.runtimeEpoch}; restore from that state instead`,
+          );
+        }
+        let session: AgentAdapterBinding;
+        try {
+          session = await provider.attachSession({
+            runtimeRunId: request.runtimeRunId,
+            sessionId: request.sessionId,
+            runtimeSessionId: request.terminalSessionId,
+            cwd: request.cwd,
+            host: options.host,
+            ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
+            agentOptions: request.agentOptions,
+            ...(profile === undefined ? {} : { profile }),
+          });
+        } catch (error) {
+          report(error);
+          return sessionFailure(
+            provisional,
+            'ATTACH_FAILED',
+            `agent provider could not attach to the running session: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+        if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
+          await session.dispose({ release: true }).catch(report);
+          return sessionFailure(
+            provisional,
+            'ATTACH_FAILED',
+            'agent provider attached a different native session or terminal than the host asked for',
+          );
+        }
+        let workspace: Workspace;
+        try {
+          workspace = await createWorkspace({
+            mode: request.workspace?.mode ?? 'direct',
+            path: request.workspace?.path ?? request.cwd,
+            baseRef: request.workspace?.baseRef,
+            branchName: request.workspace?.branchName,
+            resumeBranch: request.workspace?.resumeBranch,
+            resumeRoot: request.workspace?.resumeRoot,
+            workspacesRoot: request.workspace?.workspacesRoot,
+          });
+        } catch (error) {
+          await session.dispose({ release: true }).catch(report);
+          if (error instanceof WorkspaceError) return sessionFailure(provisional, error.code, error.message);
+          throw error;
+        }
+        const restored = disposed
+          ? sessionFailure(provisional, 'ATTACH_FAILED', 'runtime was disposed while attaching')
+          : await this.restoreSession({
+              creationRequestId: request.creationRequestId,
+              runtimeRunId: request.runtimeRunId,
+              expectedRuntimeEpoch: request.expectedRuntimeEpoch,
+              agent: request.agent,
+              session,
+              workspace,
+              attaching: true,
+              ...(request.externalRefs === undefined ? {} : { externalRefs: request.externalRefs }),
+            });
+        if ('error' in restored) {
+          // Bindings are idempotent to dispose; a failure inside the bind path
+          // already released it, every earlier refusal did not. A workspace this
+          // attach materialized goes with it; one it merely resumed (an existing
+          // worktree the live process may be working in) is never destroyed.
+          await session.dispose({ release: true }).catch(report);
+          if (request.workspace?.resumeRoot === undefined) await workspace.destroy().catch(report);
+          return restored;
+        }
+        if (profile !== undefined) {
+          const managed = sessionsByRunId.get(restored.runtimeRunId);
+          if (managed) {
+            managed.run.profileId = profile.id;
+            managed.info.profileId = profile.id;
+            return cloneAgentSessionInfo(managed.info);
+          }
+        }
+        return restored;
+      })();
+      pendingCreations.add(pending);
+      const clear = () => pendingCreations.delete(pending);
+      pending.then(clear, clear);
+      return pending;
     },
 
     cancelPrepared,

@@ -9,6 +9,12 @@ const appDirectory = dirname(fileURLToPath(import.meta.url));
 const electron = createRequire(import.meta.url)('electron');
 const profile = mkdtempSync(join(tmpdir(), 'godview-links-smoke-'));
 const environment = { ...process.env, GHOSTTEA_TRUFFLE_ENABLED: 'false' };
+if (process.env.GODVIEW_LINK_SMOKE_CODEX === '1') {
+  environment.GODVIEW_LINK_SMOKE_NATIVE_LAUNCH = JSON.stringify({
+    executable: 'codex',
+    args: ['-c', 'tui.status_line=["model-with-reasoning","current-dir"]'],
+  });
+}
 for (const key of [
   'GHOSTTEA_EXTERNAL_CONTROL_SOCKET',
   'GHOSTTEA_EXTERNAL_FRAME_SOCKET',
