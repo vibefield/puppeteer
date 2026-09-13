@@ -17,7 +17,8 @@
     "./physics": "./src/views/swarm/physics/index.ts",
     "./lab": "./src/views/swarm/lab/main.ts",
     "./styles/views.css": "./src/styles/views.css",
-    "./styles/lab.css": "./src/views/swarm/lab/lab.css"
+    "./styles/lab.css": "./src/views/swarm/lab/lab.css",
+    "./styles/deck-frame.css": "./src/styles/deck-frame.css"
   },
   "sideEffects": [
     "*.css",
@@ -43,7 +44,8 @@
         "import": "./dist/views/swarm/lab/main.js"
       },
       "./styles/views.css": "./dist/styles/views.css",
-      "./styles/lab.css": "./dist/views/swarm/lab/lab.css"
+      "./styles/lab.css": "./dist/views/swarm/lab/lab.css",
+      "./styles/deck-frame.css": "./dist/styles/deck-frame.css"
     }
   },
   "files": [

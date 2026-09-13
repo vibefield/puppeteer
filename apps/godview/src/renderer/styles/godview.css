@@ -520,7 +520,7 @@ body {
 /* The deck draws on the terminal theme's own ground, never on the window's
    glass (record §07): main.tsx publishes the live theme's background and ink
    as `--vf-godview-terminal-bg` and `--vf-godview-terminal-ink`, and the pane
-   frame (deck.css) mixes everything it draws from that ink. The ground is
+   frame (the views package's deck-frame.css) mixes everything it draws from that ink. The ground is
    what shows in a rounded pane's corners and between two panes. In VibeField
    the host lowers `--vf-godview-deck-opacity` to make the deck a sheet over
    its canvas; standalone it is the ground at 100%. */
@@ -599,7 +599,7 @@ body {
 }
 
 /* The pane's own chrome (badge, readout, verbs, meter, line and glow) is
-   deck.css; Ghosttea's badge is not asked for. */
+   the views package's deck-frame.css; Ghosttea's badge is not asked for. */
 .vf-godview-terminal-deck .ghostty-pane-access {
   color: var(--pane-access-text);
   border-color: var(--pane-access-border);

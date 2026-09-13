@@ -2,7 +2,7 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { classifyMonitorRecency, presentAgentMonitorHeadline, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
-import { folderName } from '../folder-name.js';
+import { folderName } from '@vibecook/puppeteer-views';
 import type { PaneAttachment } from '../pane-attachments.js';
 import { projectTint, type ProjectTint } from '@vibecook/puppeteer-views';
 import type { MonitorAgent } from './types.js';

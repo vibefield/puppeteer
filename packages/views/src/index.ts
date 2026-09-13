@@ -21,6 +21,7 @@ export * from './monitor/unread.js';
 export * from './monitor/usage-ledger.js';
 export * from './monitor/usage-history.js';
 export * from './monitor/remote-write.js';
+export * from './monitor/folder-name.js';
 export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';
 export * from './icons/AgentIcon.js';
@@ -51,3 +52,5 @@ export * from './views/list/list-parameters.js';
 export * from './views/rain/index.js';
 export * from './views/rain/rain-parameters.js';
 export * from './views/rain/rain-streams.js';
+// The deck's pane frame (record §07) behind a verbs port — PU-14.
+export * from './deck/index.js';

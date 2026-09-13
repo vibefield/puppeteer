@@ -68,7 +68,9 @@ import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
 import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
-import { DeckFrames } from './deck/DeckFrames.js';
+import { DeckFrames } from '@vibecook/puppeteer-views';
+import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
+import { paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
 import '@vibecook/ghosttea-react/styles.css';
@@ -76,7 +78,7 @@ import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
 import './styles/godview.css';
 import '@vibecook/puppeteer-views/styles/views.css';
-import './styles/deck.css';
+import '@vibecook/puppeteer-views/styles/deck-frame.css';
 import './styles/agents-drawer.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
@@ -387,6 +389,8 @@ function Godview() {
     profileLabels: profiles.labels,
   });
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
+  // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
+  const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
   const activeAgent = agents.find((agent) => agent.active);
 
   const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
@@ -495,7 +499,8 @@ function Godview() {
   }, []);
 
   // Only the pane's own colour: the badge and the rest of the frame are the
-  // deck's own (`deck/PaneFrame.tsx`), drawn into the pane Ghosttea lays out.
+  // package's (`@vibecook/puppeteer-views` DeckFrames, PU-14), drawn into the
+  // pane Ghosttea lays out.
   const decoratePane = useCallback(
     (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
       const color = paneColors.get(paneId);
@@ -508,6 +513,7 @@ function Godview() {
     (session: SessionSummary): void => workspace?.mountSession(session),
     [workspace],
   );
+  const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession);
 
   const updateParameter = useCallback(
     (key: string, value: number): void => {
@@ -730,9 +736,10 @@ function Godview() {
         <DeckFrames
           deckRef={deckRef}
           panes={workspace?.panes ?? []}
-          agentsBySession={agentsBySession}
+          agentsBySession={frameAgentsBySession}
           paneColors={paneColors}
-          onResume={mountResumedSession}
+          verbs={frameVerbs}
+          frame={AppPaneFrame}
         />
       </section>
     </div>

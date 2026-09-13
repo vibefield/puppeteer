@@ -1,18 +1,24 @@
-/* The deck's pane frame, decided 2026-09-10 (design-system record §07).
+/* The deck's pane frame, decided 2026-09-10 (design-system record §07) — the
+   package's copy since PU-14, imported by a host beside `views.css`.
 
-   Ghosttea owns the terminal; the skin owns what is drawn around it. The
-   terminal sits on its theme's own ground, One Half Light beside Ghostty's
-   dark default, with no card, no divider and no brackets. A 1px line in the
-   pane colour and a soft inner glow mark the selected pane, and only that
-   pane rounds its corners. The name is a badge growing out of the top edge;
-   the model and effort are a quiet readout at the top-left; the context share
-   is a thick grey bar along the bottom edge with its figure in the corner;
-   the verbs appear only under the pointer. The pane colour is the project
-   colour of the agent mounted in it (record §02), and a pane showing a bare
-   shell has none. Every other colour here is mixed from the terminal's own
-   ink (`--vf-godview-terminal-ink`), which main.tsx reads from the live
-   configuration, so a theme edited in Settings moves the frame with it. Nothing inside a pane has a ground of its own: in VibeField the
-   deck becomes a translucent sheet by `--vf-godview-deck-opacity` alone. */
+   Ghosttea owns the terminal; the frame owns what is drawn around it. The
+   terminal sits on its theme's own ground with no card, no divider and no
+   brackets. A 1px line in the pane colour and a soft inner glow mark the
+   selected pane, and only that pane rounds its corners. The name is a badge
+   growing out of the top edge; the model and effort are a quiet readout at the
+   top-left; the context share is a thick grey bar along the bottom edge with
+   its figure in the corner; the verbs appear only under the pointer. The pane
+   colour is the project colour of the agent mounted in it (record §02), and a
+   pane showing a bare shell has none. Every other colour here is mixed from
+   the terminal's own ink, which the HOST sets as `--vf-godview-terminal-ink`
+   on the deck (read from the live configuration, so a theme edited in
+   Settings moves the frame with it); the terminal ground is the host's too.
+
+   Scope: every pane rule keys on `.vf-deck-framed`, the class `DeckFrames`
+   sets on the deck element it was given, so a host that mounts the frames
+   gets the safe areas, the line and the glow with them — and a host that does
+   not, gets none of it. The safe areas are tunables (`--vf-terminal-safe-*`)
+   with the record's bands as fallbacks. */
 
 /* ── the ground and the safe areas ─────────────────────────────────────── */
 
@@ -25,7 +31,7 @@
    panel (monitor/stage-parameters.ts), fed in as a variable; the fallbacks are
    the bands, and a test keeps the two in step. Under 220px the sides tighten
    to 16px and 14px, or to the tuned inset when that is tighter still. */
-.vf-godview-terminal-deck .ghostty-pane {
+.vf-deck-framed .ghostty-pane {
   padding: var(--vf-terminal-safe-top, 24px) var(--vf-terminal-safe-right, 0px) var(--vf-terminal-safe-bottom, 30px)
     var(--vf-terminal-safe-left, 0px);
   transition:
@@ -33,19 +39,19 @@
     padding 160ms ease;
 }
 
-.vf-godview-terminal-deck .ghostty-pane[data-vf-narrow] {
+.vf-deck-framed .ghostty-pane[data-vf-narrow] {
   padding-right: min(var(--vf-terminal-safe-right, 0px), 12px);
   padding-left: min(var(--vf-terminal-safe-left, 0px), 14px);
 }
 
 /* Only the selected pane rounds; the line, the glow, the badge and the
    meter's ends follow because the pane clips its own box. */
-.vf-godview-terminal-deck .ghostty-pane.is-active {
+.vf-deck-framed .ghostty-pane.is-active {
   border-radius: 8px;
 }
 
 /* The line and the glow live on Ghosttea's own accent layer. */
-.vf-godview-terminal-deck .ghostty-pane[data-pane-accent]::before {
+.vf-deck-framed .ghostty-pane[data-pane-accent]::before {
   border-color: transparent;
   box-shadow:
     inset 0 0 34px -8px transparent,
@@ -56,7 +62,7 @@
     border-radius 240ms ease;
 }
 
-.vf-godview-terminal-deck .ghostty-pane.is-active[data-pane-accent]::before {
+.vf-deck-framed .ghostty-pane.is-active[data-pane-accent]::before {
   border-color: var(--ghostty-pane-color);
   border-radius: 8px;
   box-shadow:
@@ -65,12 +71,12 @@
 }
 
 /* Two resting panes meet with no visible edge; the divider keeps its grip. */
-.vf-godview-terminal-deck .ghostty-split-divider {
+.vf-deck-framed .ghostty-split-divider {
   background: transparent;
 }
 
 /* The view-only chip takes the middle of the top band, clear of the badge. */
-.vf-godview-terminal-deck .ghostty-pane-access {
+.vf-deck-framed .ghostty-pane-access {
   top: 8px;
   right: auto;
   left: 50%;
@@ -144,7 +150,7 @@
     display 120ms allow-discrete;
 }
 
-.vf-godview-terminal-deck .ghostty-pane:hover .vf-pane-verbs,
+.vf-deck-framed .ghostty-pane:hover .vf-pane-verbs,
 .vf-pane-frame.is-stopping .vf-pane-verbs {
   display: inline-flex;
   opacity: 1;
@@ -265,7 +271,7 @@
   text-overflow: ellipsis;
 }
 
-.vf-godview-terminal-deck .ghostty-pane.is-active .vf-pane-badge {
+.vf-deck-framed .ghostty-pane.is-active .vf-pane-badge {
   border-radius: 0 0 0 5px;
   color: #fff;
   background: var(--pane-color);
@@ -273,7 +279,7 @@
 
 /* A resting pane holding an agent shows its project colour once, as a 1px
    outline on the badge: the tab is marked, the pane stays quiet. */
-.vf-godview-terminal-deck .ghostty-pane[data-pane-accent]:not(.is-active) .vf-pane-badge {
+.vf-deck-framed .ghostty-pane[data-pane-accent]:not(.is-active) .vf-pane-badge {
   box-shadow: inset 0 0 0 1px var(--pane-color);
 }
 
@@ -330,7 +336,7 @@
 /* ── narrow panes: container queries on the frame, never on the window ─── */
 
 @container (max-width: 300px) {
-  .vf-godview-terminal-deck .ghostty-pane:hover .vf-pane-readout {
+  .vf-deck-framed .ghostty-pane:hover .vf-pane-readout {
     display: none;
   }
 }
@@ -356,8 +362,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vf-godview-terminal-deck .ghostty-pane,
-  .vf-godview-terminal-deck .ghostty-pane::before,
+  .vf-deck-framed .ghostty-pane,
+  .vf-deck-framed .ghostty-pane::before,
   .vf-pane-verbs,
   .vf-pane-badge,
   .vf-pane-meter::before {

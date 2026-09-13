@@ -1,5 +1,5 @@
 import type { AgentSessionInfo } from '../protocol.js';
-import { folderName } from './folder-name.js';
+import { folderName } from '@vibecook/puppeteer-views';
 
 export type { AgentVisualStatus } from '@vibecook/puppeteer-views';
 export { classifyTerminalStatus } from '@vibecook/puppeteer-views';

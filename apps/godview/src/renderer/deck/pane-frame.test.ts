@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import { paneFrameModel } from '@vibecook/puppeteer-views';
 import type { MonitorAgent, MonitorAgentFacet } from '../monitor/types.js';
-import { formatTurnElapsed, paneFrameModel, zoomKeyEvent } from './pane-frame.js';
+import { paneFrameAgent, paneFrameAgents, zoomKeyEvent } from './pane-frame.js';
 
 const NOW = Date.parse('2026-09-10T12:00:00.000Z');
 
@@ -78,68 +79,45 @@ function agent(facetOverrides: Partial<MonitorAgentFacet> = {}, overrides: Parti
   };
 }
 
-describe('paneFrameModel', () => {
-  it('draws a shell as its badge alone, named by the folder and never the title', () => {
-    expect(paneFrameModel({ session: session(), nowMs: NOW })).toEqual({ name: 'rosetta' });
-    expect(paneFrameModel({ session: session({ cwd: null }), nowMs: NOW })).toEqual({ name: 'terminal' });
-  });
-
-  it('carries the agent mark, the lowercase readout with effort intent, and the stop verb', () => {
-    const model = paneFrameModel({
-      session: session(),
-      agent: agent({ monitor: monitor({ effort: { value: 'high', intent: 'configured' } }) }),
-      nowMs: NOW,
+describe('paneFrameAgent', () => {
+  it('projects the facet into the frame facts: provider, status, liveness, the readout, the effort intent', () => {
+    expect(paneFrameAgent(agent({ monitor: monitor({ effort: { value: 'high', intent: 'configured' } }) }))).toEqual({
+      providerId: 'codex',
+      providerLabel: 'Codex',
+      status: 'idle',
+      alive: true,
+      statusSince: new Date(NOW - 42_000).toISOString(),
+      project: 'rosetta',
+      cwd: '/Users/james/Projects/rosetta',
+      model: 'gpt-5.3-codex',
+      effort: { value: 'high', configured: true },
     });
-    expect(model.providerId).toBe('codex');
-    expect(model.readout).toEqual({ model: 'gpt-5.3-codex', effort: 'high', configured: true });
-    expect(model.verb).toEqual({ kind: 'stop' });
-    expect(model.context).toBeUndefined();
   });
 
-  it('times the turn from the working status and says when the context runs hot', () => {
-    const model = paneFrameModel({
-      session: session(),
-      agent: agent({
-        monitor: monitor({
-          status: 'working',
-          statusSince: new Date(NOW - 4_320_000).toISOString(),
-          context: { usedPercent: 88.6, percentageSource: 'provider', asOf: new Date(NOW).toISOString() },
-        }),
+  it('hands over the context share only when the provider could say', () => {
+    const asOf = new Date(NOW).toISOString();
+    expect(
+      paneFrameAgent(agent({ contextWindow: { usedPercent: 88.6, percentageSource: 'provider', asOf } }))?.contextPercent,
+    ).toBe(88.6);
+    expect(paneFrameAgent(agent({ contextWindow: { percentageSource: 'unavailable', asOf } }))?.contextPercent).toBeUndefined();
+  });
+
+  it('is nothing for a bare terminal row', () => {
+    expect(paneFrameAgent(agent({}, { agent: undefined }))).toBeUndefined();
+    expect(paneFrameAgents(new Map([['term-1', agent({}, { agent: undefined })]])).size).toBe(0);
+  });
+
+  it('composes with the package model as the app frame does', () => {
+    const facts = paneFrameAgent(
+      agent({
+        monitor: monitor({ status: 'working', statusSince: new Date(NOW - 4_320_000).toISOString() }),
         contextWindow: { usedPercent: 88.6, percentageSource: 'provider', asOf: new Date(NOW).toISOString() },
       }),
-      nowMs: NOW,
-    });
+    );
+    const model = paneFrameModel({ session: session(), agent: facts, nowMs: NOW });
     expect(model.verb).toEqual({ kind: 'stop', elapsed: '1h 12m' });
     expect(model.context).toEqual({ percent: 88, hot: true });
-  });
-
-  it('shows no meter while the provider cannot say, and resume once the process has ended', () => {
-    const unavailable = paneFrameModel({
-      session: session(),
-      agent: agent({ contextWindow: { percentageSource: 'unavailable', asOf: new Date(NOW).toISOString() } }),
-      nowMs: NOW,
-    });
-    expect(unavailable.context).toBeUndefined();
-
-    const ended = paneFrameModel({
-      session: session({ exited: true }),
-      agent: agent({ monitor: monitor({ alive: false }) }),
-      nowMs: NOW,
-    });
-    expect(ended.verb).toEqual({ kind: 'resume' });
-  });
-
-  it('names the device a remote session lives on', () => {
-    expect(paneFrameModel({ session: session(), remoteDevice: 'studio', nowMs: NOW }).remote).toBe('studio');
-  });
-});
-
-describe('formatTurnElapsed', () => {
-  it('reads like a stopwatch under an hour and like a clock past it', () => {
-    expect(formatTurnElapsed(42_000)).toBe('0:42');
-    expect(formatTurnElapsed(725_000)).toBe('12:05');
-    expect(formatTurnElapsed(4_320_000)).toBe('1h 12m');
-    expect(formatTurnElapsed(-5)).toBe('0:00');
+    expect(model.name).toBe('rosetta');
   });
 });
 

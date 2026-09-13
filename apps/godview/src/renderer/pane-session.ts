@@ -1,5 +1,5 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import { folderName } from './folder-name.js';
+import { folderName } from '@vibecook/puppeteer-views';
 
 function usableCwd(value: string | null | undefined): string | undefined {
   const normalized = value?.trim();

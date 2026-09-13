@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { monitorParameterDefaults } from '@vibecook/puppeteer-views';
 import {
@@ -25,7 +26,12 @@ describe('terminal safe area', () => {
   it('keeps the same numbers as the deck stylesheet falls back to', () => {
     // The stylesheet must draw the decided frame on its own when no tuning has
     // been applied, so its fallbacks and the controls' defaults are one fact.
-    const css = readFileSync(new URL('../styles/deck.css', import.meta.url), 'utf8');
+    // The frame is the views package's since PU-14; its stylesheet is read
+    // through the package's own export, wherever the package resolves from.
+    const css = readFileSync(
+      createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/styles/deck-frame.css'),
+      'utf8',
+    );
     const defaults = monitorParameterDefaults(STAGE_PARAMETER_GROUPS);
     for (const [side, key] of SIDES) {
       expect(css).toContain(`var(--vf-terminal-safe-${side}, ${defaults[key]}px)`);
