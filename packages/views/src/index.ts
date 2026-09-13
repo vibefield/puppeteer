@@ -33,6 +33,8 @@ export * from './views/swarm/swarm-theme.js';
 export * from './views/swarm/text-layout.js';
 export * from './views/swarm/gpu/color.js';
 export * from './views/swarm/gpu/swarm-renderer.js';
+// The lab's fixture rows: every drawn state, for a host's own catalog.
+export * from './views/swarm/lab/fixtures.js';
 export * from './views/swarm/physics/index.js';
 export * from './views/list/index.js';
 export * from './views/list/list-parameters.js';

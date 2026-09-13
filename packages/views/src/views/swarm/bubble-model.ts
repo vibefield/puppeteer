@@ -124,7 +124,7 @@ export function workingShares(agents: readonly MonitorAgent[]): Map<string, numb
 
 /** The first line of the root agent's latest reply, whitespace collapsed. */
 function latestMessage(agent: MonitorAgent): string | undefined {
-  const text = agent.agent?.monitor.lastAssistantMessage?.text;
+  const text = agent.agent?.monitor?.lastAssistantMessage?.text;
   if (!text) return undefined;
   return text
     .split(/\r?\n/u)
@@ -142,7 +142,7 @@ function formatElapsed(sinceMs: number | undefined, nowMs: number): string | und
 }
 
 function effortLines(agent: MonitorAgent): { text: string; configured: boolean } | undefined {
-  const effort = agent.agent?.monitor.effort;
+  const effort = agent.agent?.monitor?.effort;
   if (!effort?.value) return undefined;
   // Launch intent is set in italics so a reading never mistakes it for
   // provider evidence; an older producer that omits the intent is read as observed.
@@ -155,7 +155,7 @@ function contextPercent(agent: MonitorAgent): number | undefined {
 }
 
 function blockerKind(agent: MonitorAgent): SwarmBlockerKind | undefined {
-  const first = agent.agent?.monitor.blockers[0];
+  const first = agent.agent?.monitor?.blockers[0];
   return first?.kind;
 }
 

@@ -55,7 +55,10 @@ export interface MonitorAgentFacet {
   account?: string | undefined;
   branch?: string | undefined;
   contextWindow?: MonitorContextState | undefined;
-  monitor: AgentMonitorState;
+  /** Core's projection for the run. Absent only before the first state has
+   * arrived — a host that knows a run exists (it spawned it) but has not heard
+   * from its monitor yet shows a starting row rather than inventing a state. */
+  monitor?: AgentMonitorState | undefined;
   /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
    * and the burn per step. Views read this, never `monitor.usage`, which is
    * Core's corrected estimate and moves with every source. */

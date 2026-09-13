@@ -144,6 +144,8 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   const [hovered, setHovered] = useState<{ agent: MonitorAgent; x: number; y: number } | undefined>(undefined);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'grabbing'>('default');
   const [failure, setFailure] = useState<string | undefined>(undefined);
+  /** What is painting: `starting` until the device answers, then `webgpu` or `unavailable`. */
+  const [rendererState, setRendererState] = useState<'starting' | 'webgpu' | 'unavailable'>('starting');
 
   useEffect(() => {
     agentsRef.current = agents;
@@ -189,11 +191,13 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       }
       if (!result.ok) {
         setFailure(result.reason);
+        setRendererState('unavailable');
         return;
       }
       current = result.renderer;
       rendererRef.current = current;
       setFailure(undefined);
+      setRendererState('webgpu');
       const container = containerRef.current;
       if (container) current.resize(container.clientWidth, container.clientHeight, window.devicePixelRatio || 1);
       void current.lost.then((info) => {
@@ -609,6 +613,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       className="vf-monitor-swarm"
       style={{ cursor }}
       aria-label="Running agent status field"
+      data-swarm-renderer={rendererState}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

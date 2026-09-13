@@ -1,4 +1,5 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
+import type { AgentMonitorState } from '@vibecook/puppeteer-core';
 import type {
   MonitorAgent as ViewsMonitorAgent,
   MonitorAgentFacet as ViewsMonitorAgentFacet,
@@ -18,6 +19,8 @@ export type {
 } from '@vibecook/puppeteer-views';
 
 export interface MonitorAgentFacet extends ViewsMonitorAgentFacet {
+  /** Always present here: a row is assembled only once its first state arrived. */
+  monitor: AgentMonitorState;
   /** The runtime identity and canonical monitor projection behind this view row. */
   info: AgentSessionInfo;
 }
