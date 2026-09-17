@@ -13,6 +13,7 @@ import {
   projectAgentMonitorState,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
+  liveUsageOrigin,
   type AdapterMonitorObservationBatch,
   type MonitorAccumulatorInput,
   type MonitorAccumulatorState,
@@ -25,6 +26,7 @@ import type { RuntimeAgentEventEnvelope } from '../types.js';
 import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
 import { createMonitorHandle, type MonitorHandleSource, type MonitorHandleSubscriber } from '../monitor/handle.js';
 import type { AgentProjectionService } from './projection-service.js';
+import { priceUsageUpdates } from './usage-pricing.js';
 
 export const DEFAULT_MONITOR_COALESCE_MS = 100;
 export const DEFAULT_MONITOR_ACTIVITY_LEASE_MS = 5_000;
@@ -170,7 +172,12 @@ export class AgentMonitorService
   consume(envelope: RuntimeAgentEventEnvelope, options: { hostProcessEvidence?: boolean | undefined } = {}): void {
     if (!this.accepts(envelope)) return;
     if (envelope.event.type === 'monitor:batch') {
-      this.acceptSemantic(envelope.event.batch);
+      const batch = envelope.event.batch;
+      this.acceptSemantic(
+        envelope.replay || !liveUsageOrigin(envelope.source)
+          ? { ...batch, updates: batch.updates.filter((update) => update.family !== 'usage') }
+          : batch,
+      );
       return;
     }
     this.acceptAgentEvent(envelope, options);
@@ -392,6 +399,9 @@ export class AgentMonitorService
 
   private accept(input: MonitorAccumulatorInput, forceUrgent = false, suppressNotifications = false): boolean {
     if (this.closed || this.frozen) return false;
+    if (input.kind === 'runtime' || input.kind === 'semantic') {
+      input = { ...input, updates: priceUsageUpdates(input.updates, input.phase) };
+    }
     let reduced;
     try {
       reduced = reduceMonitorAccumulator(this.accumulator, input);

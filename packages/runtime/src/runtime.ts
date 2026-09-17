@@ -60,7 +60,7 @@ import {
   type WorkspaceFinalizationRecord,
   type WorkspaceSessionMetadata,
 } from '@vibecook/puppeteer-workspaces';
-import type { MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
+import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
 import type {
   AdoptPreparedSessionOptions,
   AdoptPreparedSessionResult,
@@ -1901,6 +1901,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       reduceIntoState = true,
       hostProcessEvidence = false,
     ): void => {
+      if (event.type === 'usage:tokens-used' && (upstream?.replay || !liveUsageOrigin(source))) return;
       const sourceEventRef =
         upstream?.sourceEventRef ??
         (upstream?.eventId ? { namespace: provider.descriptor.id, eventId: upstream.eventId } : undefined);

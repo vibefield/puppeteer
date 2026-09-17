@@ -109,7 +109,59 @@ function hub(
 }
 
 describe('AgentMonitorService', () => {
-  it('calculates a replay baseline once per publication instead of once per historical event', () => {
+  it('prices native batches, keeps replay out of USD, and expires the live dollar rate', () => {
+    const { clock, hub: monitor } = hub();
+    const update: MonitorFamilyUpdate = {
+      family: 'usage',
+      operation: 'upsert',
+      key: 'native-request',
+      value: {
+        kind: 'usage',
+        usageId: 'native-request',
+        origin: 'protocol',
+        canonical: false,
+        boundary: 'sample',
+        cumulativeTokens: 150,
+        pricing: {
+          providerId: 'openai',
+          modelId: 'gpt-5.4',
+          inputTokens: 60,
+          cacheReadTokens: 40,
+          cacheCreationTokens: 0,
+          outputTokens: 50,
+          contextTokens: 100,
+        },
+      },
+    };
+    const live = batch('1', [update]);
+    monitor.consume({ ...envelope({ type: 'monitor:batch', batch: live }, 1), source: 'native-protocol' });
+    clock.advance(100);
+    const usd = (60 * 2.5 + 40 * 0.25 + 50 * 15) / 1_000_000;
+    expect(monitor.current().usage.costUsd).toBeCloseTo(usd);
+    expect(monitor.current().usage.costRatePerMin).toBeCloseTo(usd);
+    const old: MonitorFamilyUpdate = {
+      family: 'usage',
+      operation: 'upsert',
+      key: 'old',
+      value: {
+        kind: 'usage',
+        usageId: 'old',
+        origin: 'protocol',
+        canonical: true,
+        boundary: 'response',
+        costUsd: 999,
+      },
+    };
+    monitor.consume({
+      ...envelope({ type: 'monitor:batch', batch: batch('2', [old]) }, 2, true),
+      source: 'native-protocol',
+    });
+    clock.advance(60_001);
+    expect(monitor.current().usage.costUsd).toBeCloseTo(usd);
+    expect(monitor.current().usage.costRatePerMin).toBe(0);
+    expect(monitor.current().usage.pricedObservations).toBe(1);
+  });
+  it('ignores transcript replay usage without calculating or publishing a baseline', () => {
     const project = vi.spyOn(monitorProjection, 'projectAgentMonitorState');
     const states: AgentMonitorState[] = [];
     const notifications: MonitorNotification[] = [];
@@ -147,8 +199,8 @@ describe('AgentMonitorService', () => {
     expect(monitor.current()).toBe(before);
     expect(project).not.toHaveBeenCalled();
     clock.advance(100);
-    expect(project).toHaveBeenCalledTimes(1);
-    expect(monitor.current().usage.cumulativeTokens).toBe(10_000);
+    expect(project).not.toHaveBeenCalled();
+    expect(monitor.current().usage.cumulativeTokens).toBeUndefined();
     expect(monitor.current().usage.burnRatePerMin).toBeUndefined();
     expect(notifications).toEqual([]);
     monitor.remove();
@@ -199,7 +251,8 @@ describe('AgentMonitorService', () => {
         1_002,
       ),
     );
-    expect(monitor.current()).toMatchObject({ status: 'blocked', usage: { cumulativeTokens: 10 } });
+    expect(monitor.current()).toMatchObject({ status: 'blocked' });
+    expect(monitor.current().usage.cumulativeTokens).toBeUndefined();
     monitor.acceptAgentEvent(
       envelope(
         {
@@ -308,7 +361,14 @@ describe('AgentMonitorService', () => {
           family: 'usage',
           operation: 'upsert',
           key: 'usage-1',
-          value: { kind: 'usage', usageId: 'usage-1', boundary: 'response', canonical: true, deltaTokens: 60 },
+          value: {
+            kind: 'usage',
+            origin: 'protocol',
+            usageId: 'usage-1',
+            boundary: 'response',
+            canonical: true,
+            deltaTokens: 60,
+          },
         },
       ]),
     );
