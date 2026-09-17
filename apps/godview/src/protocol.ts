@@ -183,7 +183,7 @@ export type {
   HistorySessionFacts,
   UsageHistoryKey,
   UsageLedgerRecord,
-  UsageSeriesRecord,
+  UsageRunRecord,
 } from '@vibecook/puppeteer-views';
 
 export interface PuppeteerBridge {

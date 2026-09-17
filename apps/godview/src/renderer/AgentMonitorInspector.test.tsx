@@ -72,9 +72,12 @@ describe('AgentMonitorInspector', () => {
       ],
       usage: {
         cumulativeTokens: 12_345,
+        costUsd: 1.23,
+        costRatePerMin: 0.32,
+        costCoverage: 'partial',
         burnRatePerMin: 321,
         burnRateWindowMs: 60_000,
-        rootActor: { cumulativeTokens: 10_345, burnRatePerMin: 271 },
+        rootActor: { cumulativeTokens: 10_345, burnRatePerMin: 271, costUsd: 1.03, costRatePerMin: 0.27 },
         samples: [],
       },
       context: { usedPercent: 67.5, percentageSource: 'provider', asOf: OBSERVED_AT },
@@ -104,6 +107,8 @@ describe('AgentMonitorInspector', () => {
           activity: 'Reviewing runtime code',
           cumulativeTokens: 2_000,
           burnRatePerMin: 50,
+          costUsd: 0.2,
+          costRatePerMin: 0.05,
           modelId: 'claude-sonnet-5',
           effort: 'medium',
         },
@@ -125,7 +130,7 @@ describe('AgentMonitorInspector', () => {
     const content = plainText(markup);
 
     expect(content).toContain(
-      'run tokens 12,345 60s run burn/min 321 context 67.5% model Opus 5 (configured Sonnet 5) effort high (configured)',
+      'estimated API USD (this run) $1.23 cost coverage partial run tokens 12,345 60s run burn/min $0.32/min context 67.5% model Opus 5 (configured Sonnet 5) effort high (configured)',
     );
     expect(content).toContain(
       'execution native-tui session mode plan (configured) permission Accept Edits (configured manual) observation native-hooks',
@@ -135,10 +140,10 @@ describe('AgentMonitorInspector', () => {
     expect(content).toContain('failure · crash ACKNOWLEDGE');
     expect(content).not.toContain('Plan & tasks');
     expect(content).not.toContain('No plan observed');
-    expect(content).toContain('run total · blocked 12,345 tokens · 321 tok/min');
-    expect(content).toContain('root agent 10,345 tokens · 271 tok/min');
+    expect(content).toContain('run total · blocked ~$1.23 · $0.32/min');
+    expect(content).toContain('root agent ~$1.03 · $0.27/min');
     expect(content).toContain(
-      'child-1 · working · Reviewing runtime code 2,000 tokens · 50 tok/min · claude-sonnet-5 · effort medium',
+      'child-1 · working · Reviewing runtime code ~$0.20 · $0.05/min · claude-sonnet-5 · effort medium',
     );
     expect(content).toContain('Subagents · 4');
     expect(content).not.toContain('Workflows');

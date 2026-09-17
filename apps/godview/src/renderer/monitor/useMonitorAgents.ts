@@ -17,13 +17,13 @@ import type { MonitorActions, MonitorAgent } from './types.js';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from '@vibecook/puppeteer-views';
 import {
   EMPTY_USAGE_LEDGER,
-  exportUsage,
   reconcileUsage,
   seedUsage,
   USAGE_STEP_MS,
   type UsageLedger,
   type UsageLedgerKey,
 } from '@vibecook/puppeteer-views';
+import { createUsageHistoryPersistence } from './usage-history-persistence.js';
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext | undefined;
@@ -69,9 +69,21 @@ export function useMonitorAgents({
   const usageRef = useRef<UsageLedger>(EMPTY_USAGE_LEDGER);
   /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
   const [usageStep, setUsageStep] = useState(0);
-  /** Conversations whose persisted ledger has been asked for, so each is seeded once. */
-  const usageSeedsRef = useRef(new Set<string>());
   const [usageSeed, setUsageSeed] = useState(0);
+  const [usagePersistence] = useState(() =>
+    createUsageHistoryPersistence({
+      store: {
+        load: (key) => window.puppeteer.loadUsageHistory(key),
+        save: (records) => window.puppeteer.saveUsageHistory([...records]),
+      },
+      read: () => usageRef.current,
+      seed: (id, record) => {
+        usageRef.current = seedUsage(usageRef.current, id, record, Date.now());
+        setUsageSeed((seed) => seed + 1);
+      },
+      now: Date.now,
+    }),
+  );
 
   useEffect(() => {
     let alive = true;
@@ -90,7 +102,9 @@ export function useMonitorAgents({
       removed.delete(info.runtimeSessionId);
       const existing = current.get(info.runtimeSessionId);
       const monitor = monitorsByRun.get(info.runtimeRunId);
-      current.set(info.runtimeSessionId, { ...existing, info, ...(monitor ? { monitor } : {}) });
+      const retainedMonitor =
+        monitor ?? (existing?.info.runtimeRunId === info.runtimeRunId ? existing.monitor : undefined);
+      current.set(info.runtimeSessionId, { info, ...(retainedMonitor ? { monitor: retainedMonitor } : {}) });
       publish();
     };
     const forget = (runtimeSessionId: string): void => {
@@ -110,7 +124,7 @@ export function useMonitorAgents({
           .runtimeSessionId;
       if (!terminalSessionId) return;
       const record = current.get(terminalSessionId);
-      if (!record) return;
+      if (!record || record.info.runtimeRunId !== message.runtimeRunId) return;
       current.set(terminalSessionId, { ...record, monitor: message });
       publish();
     };
@@ -216,33 +230,19 @@ export function useMonitorAgents({
     [records, terminalIdentities],
   );
   useEffect(() => {
-    let alive = true;
-    for (const key of usageKeys) {
-      const seedKey = `${key.providerId} ${key.nativeSessionId}`;
-      if (usageSeedsRef.current.has(seedKey)) continue;
-      usageSeedsRef.current.add(seedKey);
-      void window.puppeteer
-        .loadUsageHistory({ providerId: key.providerId, nativeSessionId: key.nativeSessionId })
-        .then((record) => {
-          if (!alive || !record) return;
-          usageRef.current = seedUsage(usageRef.current, key.id, record, Date.now());
-          setUsageSeed((seed) => seed + 1);
-        })
-        .catch(() => undefined);
-    }
-    return () => {
-      alive = false;
-    };
-  }, [usageKeys]);
+    usagePersistence.sync(usageKeys);
+  }, [usageKeys, usagePersistence]);
   useEffect(() => {
-    const save = (): void => {
-      const records = exportUsage(usageRef.current, usageKeys, Date.now());
-      if (records.length > 0) void window.puppeteer.saveUsageHistory(records).catch(() => undefined);
+    usagePersistence.save();
+  }, [usageKeys, usageSeed, usageStep, usagePersistence]);
+  useEffect(() => {
+    window.addEventListener('pagehide', usagePersistence.save);
+    return () => {
+      usagePersistence.save();
+      usagePersistence.disconnect();
+      window.removeEventListener('pagehide', usagePersistence.save);
     };
-    save();
-    window.addEventListener('pagehide', save);
-    return () => window.removeEventListener('pagehide', save);
-  }, [usageKeys, usageStep]);
+  }, [usagePersistence]);
 
   useEffect(
     () =>
@@ -277,15 +277,20 @@ export function useMonitorAgents({
   );
 
   const agents = useMemo(() => {
-    // The usage ledger is folded before assembly so every view reads the held
-    // total and the stepped burn, never Core's moving estimate. `usageStep`
-    // is its clock; the fold itself reads the wall clock.
+    // Every view reads the same corrected USD total and observation buckets.
+    // The UI clock ages buckets; it never derives new spend from total changes.
     const usage = reconcileUsage(
       usageRef.current,
-      [...records.values()].map((record) => ({
-        id: monitorIdentity(record.info.session.id, terminalIdentities),
-        ...(record.monitor ? { usage: record.monitor.state.usage } : {}),
-      })),
+      [...records.values()].map((record) => {
+        const state = record.monitor?.state;
+        const nativeSessionId = state?.session.nativeSessionId ?? record.info.nativeSession?.id;
+        return {
+          id: monitorIdentity(record.info.session.id, terminalIdentities),
+          runId: `${state?.runtimeRunId ?? record.info.runtimeRunId}:${state?.runtimeEpoch ?? record.info.runtimeEpoch}`,
+          ...(nativeSessionId ? { session: { providerId: record.info.provider.id, nativeSessionId } } : {}),
+          ...(state ? { usage: state.usage, revision: state.revision } : {}),
+        };
+      }),
       Date.now(),
     );
     usageRef.current = usage;

@@ -258,7 +258,7 @@ describe('monitor agent assembly', () => {
       terminals: [],
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
-    expect(agent).toMatchObject({ status: 'idle', detail: 'idle · 120 tokens · 12 tok/min' });
+    expect(agent).toMatchObject({ status: 'idle', detail: 'idle · cost unavailable' });
   });
 
   it("reads the total from the shell's usage ledger when it keeps one, by stable identity", () => {
@@ -267,7 +267,7 @@ describe('monitor agent assembly', () => {
       usage: { cumulativeTokens: 120, burnRatePerMin: 12, burnRateWindowMs: 60_000, samples: [] },
     });
     record.monitor = monitorMessage(monitor, 'terminal-a');
-    const history = { total: 1_500, steps: [], stepMs: 30_000 };
+    const history = { total: 1.5, coverage: 'partial' as const, steps: [], stepMs: 30_000 };
 
     const [agent] = assembleMonitorAgents({
       agents: [record],
@@ -276,7 +276,7 @@ describe('monitor agent assembly', () => {
       usage: new Map([['stable-a', history]]),
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
-    expect(agent).toMatchObject({ id: 'stable-a', detail: 'idle · 1,500 tokens · 12 tok/min' });
+    expect(agent).toMatchObject({ id: 'stable-a', detail: 'idle · ~$1.50 estimated API cost (partial)' });
     expect(agent?.agent?.usage).toBe(history);
   });
 
@@ -304,7 +304,7 @@ describe('monitor agent assembly', () => {
     });
     expect(agent).toMatchObject({
       status: 'blocked',
-      detail: 'question · Choose a database · +1 blockers',
+      detail: 'question · Choose a database · +1 blockers · cost unavailable',
       stale: true,
     });
     expect(agent?.agent?.monitor?.blockers).toHaveLength(2);
@@ -315,9 +315,18 @@ describe('monitor agent assembly', () => {
     const root = agentRecord('runtime-a', 'terminal-a');
     root.monitor = monitorMessage(
       monitorState('run-runtime-a', 'working', {
-        usage: { cumulativeTokens: 100, burnRatePerMin: 10, samples: [] },
+        usage: {
+          cumulativeTokens: 100,
+          burnRatePerMin: 10,
+          costUsd: 0.5,
+          costRatePerMin: 0.1,
+          costCoverage: 'complete',
+          samples: [],
+        },
         subagentCount: 1,
-        subagents: [{ id: 'child-1', working: true, cumulativeTokens: 40, burnRatePerMin: 4 }],
+        subagents: [
+          { id: 'child-1', working: true, cumulativeTokens: 40, burnRatePerMin: 4, costUsd: 0.2, costRatePerMin: 0.04 },
+        ],
       }),
       'terminal-a',
     );
@@ -327,6 +336,6 @@ describe('monitor agent assembly', () => {
       nowMs: Date.parse('2026-08-17T00:00:01.000Z'),
     });
     expect(agent?.agent?.monitor.usage).toMatchObject({ cumulativeTokens: 100, burnRatePerMin: 10 });
-    expect(agent?.detail).toContain('100 tokens · 10 tok/min');
+    expect(agent?.detail).toContain('~$0.50 estimated API cost · $0.10/min');
   });
 });

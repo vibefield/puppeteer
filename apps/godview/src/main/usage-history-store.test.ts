@@ -27,10 +27,8 @@ function record(nativeSessionId: string, savedAt = new Date(NOW).toISOString()):
     providerId: 'claude',
     nativeSessionId,
     savedAt,
-    boundary: 1_000,
-    total: { held: 1_500, snapshots: [1_000, 1_200, 1_500] },
-    output: { held: 300, snapshots: [200, 250, 300] },
-    input: { held: 1_200, snapshots: [800, 950, 1_200] },
+    currency: 'USD',
+    runs: [{ runId: 'run-1', costUsd: 1.5, coverage: 'complete', buckets: [{ at: savedAt, costUsd: 0.3 }] }],
   };
 }
 
@@ -62,14 +60,17 @@ describe('usage history store', () => {
     const path = storePath();
     const store = createUsageHistoryStore(path, { now: () => new Date(NOW) });
     store.save([record('a'), { providerId: 'claude' }, 'nonsense', null]);
-    store.save([{ ...record('a'), total: { held: 2_000, snapshots: [1_500, 2_000] } }, record('b')]);
+    store.save([
+      { ...record('a'), runs: [{ runId: 'run-1', costUsd: 2, coverage: 'complete', buckets: [] }] },
+      record('b'),
+    ]);
     expect(
       store
         .list()
         .map((entry) => entry.nativeSessionId)
         .sort(),
     ).toEqual(['a', 'b']);
-    expect(store.load({ providerId: 'claude', nativeSessionId: 'a' })?.total.held).toBe(2_000);
+    expect(store.load({ providerId: 'claude', nativeSessionId: 'a' })?.runs[0]?.costUsd).toBe(2);
     const before = readFileSync(path, 'utf8');
     store.save(['still nonsense']);
     store.save('not even a list');
@@ -91,6 +92,46 @@ describe('usage history store', () => {
     expect(store.load({ providerId: 'claude', nativeSessionId: 's0' })).toBeDefined();
   });
 
+  it('merges independent runs and prevents late snapshots from undoing a correction', () => {
+    const path = storePath();
+    const store = createUsageHistoryStore(path, { now: () => new Date(NOW) });
+    store.save([record('a')]);
+    const second = {
+      ...record('a'),
+      runs: [{ runId: 'run-2', revision: 4, costUsd: 0.5, coverage: 'complete', buckets: [] }],
+    };
+    store.save([second]);
+    store.save([{ ...second, runs: [{ ...second.runs[0], revision: 3, costUsd: 9 }] }]);
+    expect(createUsageHistoryStore(path).load(record('a'))?.runs).toMatchObject([
+      { runId: 'run-1', costUsd: 1.5 },
+      { runId: 'run-2', costUsd: 0.5 },
+    ]);
+  });
+
+  it('caps the written file so a large cache remains readable on restart', () => {
+    const path = storePath();
+    const store = createUsageHistoryStore(path, { now: () => new Date(NOW) });
+    const many = Array.from({ length: 1_000 }, (_, index) => ({
+      ...record(`large-${index}`),
+      runs: [0, 1].map((runId) => ({
+        runId: String(runId),
+        costUsd: 64,
+        coverage: 'complete',
+        buckets: Array.from({ length: 64 }, (_, bucket) => ({
+          at: new Date(NOW - bucket * 30_000).toISOString(),
+          costUsd: 1,
+          inputUsd: 0.5,
+          outputUsd: 0.5,
+        })),
+      })),
+    }));
+    store.save(many);
+    expect(Buffer.byteLength(readFileSync(path))).toBeLessThanOrEqual(4 * 1024 * 1024);
+    const reopened = createUsageHistoryStore(path).list();
+    expect(reopened.length).toBeGreaterThan(0);
+    expect(reopened).toEqual(store.list());
+  });
+
   it('reads a damaged or foreign file as empty', () => {
     const path = storePath();
     mkdirSync(dirname(path), { recursive: true });
@@ -102,9 +143,15 @@ describe('usage history store', () => {
       parseUsageHistory({
         version: USAGE_HISTORY_VERSION,
         records: [
-          { ...record('a'), total: { snapshots: ['x'] } },
-          { ...record('b'), boundary: -1 },
+          { ...record('a'), runs: [{ runId: 'x', coverage: 'complete', costUsd: -1, buckets: [] }] },
+          { ...record('b'), currency: 'tokens' },
         ],
+      }),
+    ).toEqual([]);
+    expect(
+      parseUsageHistory({
+        version: 1,
+        records: [{ providerId: 'claude', nativeSessionId: 'legacy', total: { held: 5000, snapshots: [] } }],
       }),
     ).toEqual([]);
   });

@@ -167,7 +167,7 @@ describe('bubbleModel', () => {
     const model = bubbleModel({
       agent: agent(
         { status: 'working' },
-        { monitor, branch: 'swarm', contextWindow: monitor.context, usage: usageHistory(1_240_000) },
+        { monitor, branch: 'swarm', contextWindow: monitor.context, usage: usageHistory(1.24) },
       ),
       parameters,
       nowMs: NOW,
@@ -182,7 +182,7 @@ describe('bubbleModel', () => {
     expect(model.ring).toEqual({ percent: 62, hot: false });
     expect(model.figures).toEqual({
       top: { text: '62%', hot: false, none: false },
-      bottom: { text: '1.2M', hot: false, none: false },
+      bottom: { text: '~$1.24', hot: false, none: false },
     });
     // The ledger's figure, not Core's estimate, and the bars scaled to the tallest step.
     expect(model.graph?.up).toHaveLength(USAGE_STEP_COUNT);

@@ -2,7 +2,7 @@ import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { classifyMonitorRecency, presentAgentMonitorHeadline, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
-import { folderName } from '@vibecook/puppeteer-views';
+import { folderName, formatUsd } from '@vibecook/puppeteer-views';
 import type { PaneAttachment } from '../pane-attachments.js';
 import { projectTint, type ProjectTint } from '@vibecook/puppeteer-views';
 import type { MonitorAgent } from './types.js';
@@ -102,14 +102,17 @@ export function monitorAgentFromSession(
   const currentCwd = current.environment.cwd;
   const branch = current.environment.git?.branch ?? info.workspace.branch;
   const cwd = currentCwd || info.workspace.sourcePath || info.workspace.root || info.session.cwd || undefined;
-  // The ledger's held total where the shell keeps one; Core's estimate only for a caller without a ledger.
-  const cumulativeTokens = options.usage?.total ?? current.usage.cumulativeTokens;
-  const burn = current.usage.burnRatePerMin;
+  // Cached observed runs extend the estimate; the live rate always comes from Core.
+  const costUsd = options.usage?.total ?? current.usage.costUsd;
+  const coverage = options.usage?.coverage ?? current.usage.costCoverage;
+  const burn = current.usage.costRatePerMin;
   const detail = [
     headline.detail,
     headline.blockerCount > 1 ? `+${headline.blockerCount - 1} blockers` : undefined,
-    cumulativeTokens === undefined ? undefined : `${Math.round(cumulativeTokens).toLocaleString()} tokens`,
-    burn === undefined ? undefined : `${Math.round(burn).toLocaleString()} tok/min`,
+    costUsd === undefined
+      ? 'cost unavailable'
+      : `~${formatUsd(costUsd)} estimated API cost${coverage === 'partial' ? ' (partial)' : ''}`,
+    burn === undefined ? undefined : `${formatUsd(burn)}/min`,
   ]
     .filter((value): value is string => Boolean(value))
     .join(' · ');

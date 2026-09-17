@@ -4,6 +4,7 @@ import {
   type AgentMonitorState,
   type MonitorMetricFamily,
 } from '@vibecook/puppeteer-core';
+import { formatUsd } from '@vibecook/puppeteer-views';
 
 const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'status',
@@ -25,10 +26,10 @@ function percent(value: number | undefined): string {
   return value === undefined ? '—' : `${Math.round(value * 10) / 10}%`;
 }
 
-function usageLine(cumulativeTokens: number | undefined, burnRatePerMin: number | undefined): string {
+function usageLine(costUsd: number | undefined, costRatePerMin: number | undefined): string {
   const parts = [
-    cumulativeTokens === undefined ? undefined : `${number(cumulativeTokens)} tokens`,
-    burnRatePerMin === undefined ? undefined : `${number(burnRatePerMin)} tok/min`,
+    costUsd === undefined ? undefined : `~${formatUsd(costUsd)}`,
+    costRatePerMin === undefined ? undefined : `${formatUsd(costRatePerMin)}/min`,
   ].filter((value): value is string => value !== undefined);
   return parts.length ? parts.join(' · ') : 'usage unavailable';
 }
@@ -80,6 +81,8 @@ export function AgentMonitorInspector({
       </header>
 
       <div className="vf-godview-inspector-metrics">
+        <Metric label="estimated API USD (this run)" value={formatUsd(state.usage.costUsd)} />
+        <Metric label="cost coverage" value={state.usage.costCoverage ?? 'unavailable'} />
         <Metric label="run tokens" value={number(state.usage.cumulativeTokens)} />
         <Metric
           label={
@@ -87,7 +90,7 @@ export function AgentMonitorInspector({
               ? `${Math.round(state.usage.burnRateWindowMs / 1000)}s run burn/min`
               : 'run burn/min'
           }
-          value={number(state.usage.burnRatePerMin)}
+          value={`${formatUsd(state.usage.costRatePerMin)}/min`}
         />
         <Metric label="context" value={percent(state.context?.usedPercent)} />
         <Metric
@@ -190,12 +193,12 @@ export function AgentMonitorInspector({
         <ul>
           <li>
             <span>run total · {state.activity?.line ?? state.status}</span>
-            <small>{usageLine(state.usage.cumulativeTokens, state.usage.burnRatePerMin)}</small>
+            <small>{usageLine(state.usage.costUsd, state.usage.costRatePerMin)}</small>
           </li>
           {state.usage.rootActor ? (
             <li>
               <span>root agent</span>
-              <small>{usageLine(state.usage.rootActor.cumulativeTokens, state.usage.rootActor.burnRatePerMin)}</small>
+              <small>{usageLine(state.usage.rootActor.costUsd, state.usage.rootActor.costRatePerMin)}</small>
             </li>
           ) : null}
           {state.subagents.map((actor) => (
@@ -205,7 +208,7 @@ export function AgentMonitorInspector({
                 {actor.activity ? ` · ${actor.activity}` : ''}
               </span>
               <small>
-                {usageLine(actor.cumulativeTokens, actor.burnRatePerMin)}
+                {usageLine(actor.costUsd, actor.costRatePerMin)}
                 {actor.modelId ? ` · ${actor.modelId}` : ''}
                 {actor.effort ? ` · effort ${actor.effort}` : ''}
               </small>

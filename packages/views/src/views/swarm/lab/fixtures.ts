@@ -54,13 +54,19 @@ function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowM
 function usageHistory(shape: BurnShape, total: number | undefined): UsageHistory {
   const steps = Array.from(
     { length: USAGE_STEP_COUNT },
-    (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000,
+    (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000 / 1_000_000,
   );
   // The prompt side carries most of the burn, the completion side a swelling
   // fraction of it, so the two sides of the chart read differently.
   const output = steps.map((tokens, index) => tokens * (0.18 + 0.12 * Math.sin(index / 2)));
   const input = steps.map((tokens, index) => tokens - output[index]!);
-  return { ...(total === undefined ? {} : { total }), steps, sides: { output, input }, stepMs: USAGE_STEP_MS };
+  return {
+    ...(total === undefined ? {} : { total: total / 1_000_000 }),
+    coverage: 'complete',
+    steps,
+    sides: { output, input },
+    stepMs: USAGE_STEP_MS,
+  };
 }
 
 const wobble = (index: number, amount: number): number => 1 + amount * Math.sin(index * 1.7) * Math.cos(index * 0.6);
@@ -152,7 +158,14 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
       ? { usage: usageHistory(spec.burn, spec.tokens) }
       : spec.tokens === undefined
         ? {}
-        : { usage: { total: spec.tokens, steps: new Array<number>(USAGE_STEP_COUNT).fill(0), stepMs: USAGE_STEP_MS } }),
+        : {
+            usage: {
+              total: spec.tokens / 1_000_000,
+              coverage: 'complete',
+              steps: new Array<number>(USAGE_STEP_COUNT).fill(0),
+              stepMs: USAGE_STEP_MS,
+            },
+          }),
     recency: spec.stale ? 'stale' : 'fresh',
   };
   return {

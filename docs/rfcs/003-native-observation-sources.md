@@ -49,6 +49,10 @@ Workflow journal observation was removed on 2026-09-11. The adapter does not dis
 
 ## Usage rules learned from the burn-rate probe
 
+The shared live-only usage boundary and USD accounting path are specified in
+[RFC 008](008-live-usage-cost.md). Rosetta's historical transcript accounting is
+independent; it never feeds Puppeteer's live totals or rates.
+
 Claude OTLP logs are the sole settled-request usage source. Metrics and traces duplicate the same token facts and are not ingested. `api_request` arrives at request completion; there is no sanctioned intra-response output-token stream. Transcript token extraction and mixed-source usage reconciliation were removed on 2026-09-11; [the cleanup tracker](../../draft/CLAUDE-TRANSCRIPT-DEPENDENCIES.md) records the remaining work.
 
 For each request the adapter retains separate values:

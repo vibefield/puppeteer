@@ -14,7 +14,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { UsageHistoryKey, UsageLedgerRecord, UsageSeriesRecord } from '../protocol.js';
+import type { UsageHistoryKey, UsageLedgerRecord, UsageRunRecord } from '../protocol.js';
 
 /**
  * The UI's usage ledgers, persisted per conversation so a resumed session
@@ -22,12 +22,12 @@ import type { UsageHistoryKey, UsageLedgerRecord, UsageSeriesRecord } from '../p
  * (`renderer/monitor/usage-ledger.ts`); main only keeps them.
  *
  * This is cache, not state: it lives in the app's cache folder, every read
- * is tolerant, and losing it costs a resumed bubble nothing but its first
- * ten minutes of history. Records age out and the file is capped, so it
+ * is tolerant; losing it discards previously observed USD totals and charts,
+ * never triggers transcript reconstruction. Records age out and the file is capped, so it
  * never grows with a user's whole past.
  */
 
-export const USAGE_HISTORY_VERSION = 1 as const;
+export const USAGE_HISTORY_VERSION = 2 as const;
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_RECORDS = 1000;
@@ -60,7 +60,7 @@ export function appCacheDirectory(
 export interface UsageHistoryStore {
   path: string;
   load(key: UsageHistoryKey): UsageLedgerRecord | undefined;
-  /** Merge the given records in (the newest save of a conversation wins), prune, and write. Junk is dropped. */
+  /** Merge run snapshots, preserve corrections by revision, prune, and write. Junk is dropped. */
   save(records: unknown): void;
   /** Every record kept, newest save first. */
   list(): UsageLedgerRecord[];
@@ -82,47 +82,83 @@ function count(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
-function series(value: unknown): UsageSeriesRecord | undefined {
-  if (!isRecord(value) || !Array.isArray(value.snapshots) || value.snapshots.length > MAX_SNAPSHOTS) return undefined;
-  const snapshots: number[] = [];
-  for (const snapshot of value.snapshots) {
-    const number = count(snapshot);
-    if (number === undefined) return undefined;
-    snapshots.push(number);
+function usageRun(value: unknown): UsageRunRecord | undefined {
+  if (
+    !isRecord(value) ||
+    !usageId(value.runId) ||
+    !Array.isArray(value.buckets) ||
+    value.buckets.length > MAX_SNAPSHOTS
+  )
+    return undefined;
+  if (value.coverage !== 'complete' && value.coverage !== 'partial' && value.coverage !== 'unavailable')
+    return undefined;
+  const costUsd = value.costUsd === undefined ? undefined : count(value.costUsd);
+  if (value.costUsd !== undefined && costUsd === undefined) return undefined;
+  if (value.revision !== undefined && (!Number.isSafeInteger(value.revision) || (value.revision as number) < 0))
+    return undefined;
+  const buckets: UsageRunRecord['buckets'] = [];
+  const times = new Set<string>();
+  for (const bucket of value.buckets) {
+    if (
+      !isRecord(bucket) ||
+      typeof bucket.at !== 'string' ||
+      !Number.isFinite(Date.parse(bucket.at)) ||
+      times.has(bucket.at)
+    )
+      return undefined;
+    const amount = count(bucket.costUsd);
+    const inputUsd = bucket.inputUsd === undefined ? undefined : count(bucket.inputUsd);
+    const outputUsd = bucket.outputUsd === undefined ? undefined : count(bucket.outputUsd);
+    if (
+      amount === undefined ||
+      (bucket.inputUsd !== undefined && inputUsd === undefined) ||
+      (bucket.outputUsd !== undefined && outputUsd === undefined)
+    )
+      return undefined;
+    times.add(bucket.at);
+    buckets.push({
+      at: bucket.at,
+      costUsd: amount,
+      ...(inputUsd === undefined ? {} : { inputUsd }),
+      ...(outputUsd === undefined ? {} : { outputUsd }),
+    });
   }
-  const held = value.held === undefined ? undefined : count(value.held);
-  if (value.held !== undefined && held === undefined) return undefined;
-  return { ...(held !== undefined ? { held } : {}), snapshots };
+  return {
+    runId: value.runId as string,
+    ...(value.revision === undefined ? {} : { revision: value.revision as number }),
+    coverage: value.coverage,
+    buckets,
+    ...(costUsd === undefined ? {} : { costUsd }),
+  };
 }
 
 export function usageHistoryKey(key: UsageHistoryKey): string {
   return `${key.providerId} ${key.nativeSessionId}`;
 }
 
-/** One well-formed record, or nothing: ids present, a real save time, a whole boundary, readable series. */
+/** USD only: legacy token snapshots must never be interpreted as dollars. */
 export function parseUsageLedgerRecord(value: unknown): UsageLedgerRecord | undefined {
-  if (!isRecord(value)) return undefined;
+  if (!isRecord(value) || value.currency !== 'USD' || !Array.isArray(value.runs) || value.runs.length > MAX_RECORDS)
+    return undefined;
   const providerId = usageId(value.providerId);
   const nativeSessionId = usageId(value.nativeSessionId);
   const savedAt =
     typeof value.savedAt === 'string' && !Number.isNaN(Date.parse(value.savedAt)) ? value.savedAt : undefined;
-  const boundary =
-    typeof value.boundary === 'number' && Number.isSafeInteger(value.boundary) && value.boundary >= 0
-      ? value.boundary
-      : undefined;
-  const total = series(value.total);
-  if (!providerId || !nativeSessionId || !savedAt || boundary === undefined || !total) return undefined;
-  const output = value.output === undefined ? undefined : series(value.output);
-  const input = value.input === undefined ? undefined : series(value.input);
-  if ((value.output !== undefined && !output) || (value.input !== undefined && !input)) return undefined;
+  if (!providerId || !nativeSessionId || !savedAt) return undefined;
+  const runs: UsageRunRecord[] = [];
+  const ids = new Set<string>();
+  for (const candidate of value.runs) {
+    const run = usageRun(candidate);
+    if (!run || ids.has(run.runId)) return undefined;
+    ids.add(run.runId);
+    runs.push(run);
+  }
   return {
     providerId,
     nativeSessionId,
     savedAt,
-    boundary,
-    total,
-    ...(output ? { output } : {}),
-    ...(input ? { input } : {}),
+    currency: 'USD',
+    runs,
   };
 }
 
@@ -144,12 +180,38 @@ function newestFirst(records: readonly UsageLedgerRecord[]): UsageLedgerRecord[]
   return [...records].sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt));
 }
 
-/** Drop what has aged out, then keep the newest saves up to the cap. */
+/** Bound the actual bytes written, so the next read never rejects our own file. */
 export function pruneUsageHistory(records: readonly UsageLedgerRecord[], nowMs: number): UsageLedgerRecord[] {
-  return newestFirst(records.filter((record) => nowMs - Date.parse(record.savedAt) <= MAX_AGE_MS)).slice(
-    0,
-    MAX_RECORDS,
-  );
+  const kept: UsageLedgerRecord[] = [];
+  let bytes = Buffer.byteLength(serializeUsageHistory([]));
+  for (const record of newestFirst(records)) {
+    if (nowMs - Date.parse(record.savedAt) > MAX_AGE_MS) continue;
+    if (kept.length >= MAX_RECORDS) break;
+    const added = Buffer.byteLength(JSON.stringify(record)) + (kept.length > 0 ? 1 : 0);
+    if (bytes + added > MAX_FILE_BYTES) continue;
+    kept.push(record);
+    bytes += added;
+  }
+  return kept;
+}
+
+function mergeRecord(previous: UsageLedgerRecord | undefined, incoming: UsageLedgerRecord): UsageLedgerRecord {
+  if (!previous) return incoming;
+  const runs = new Map(previous.runs.map((run) => [run.runId, run]));
+  const newerSave = Date.parse(incoming.savedAt) >= Date.parse(previous.savedAt);
+  for (const run of incoming.runs) {
+    const old = runs.get(run.runId);
+    const newer =
+      old?.revision !== undefined || run.revision !== undefined
+        ? (run.revision ?? -1) >= (old?.revision ?? -1)
+        : newerSave;
+    if (!old || newer) runs.set(run.runId, run);
+  }
+  return {
+    ...incoming,
+    savedAt: newerSave ? incoming.savedAt : previous.savedAt,
+    runs: [...runs.values()].slice(-MAX_RECORDS),
+  };
 }
 
 export function serializeUsageHistory(records: readonly UsageLedgerRecord[]): string {
@@ -206,7 +268,7 @@ export function createUsageHistoryStore(path: string, options: UsageHistoryStore
       for (const entry of incoming) {
         const record = parseUsageLedgerRecord(entry);
         if (!record) continue;
-        current.set(usageHistoryKey(record), record);
+        current.set(usageHistoryKey(record), mergeRecord(current.get(usageHistoryKey(record)), record));
         changed = true;
       }
       if (!changed) return;

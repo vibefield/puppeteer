@@ -2382,7 +2382,7 @@ unsubscribe();</code></pre>
                 <div class="category-header">
                   <h3>Usage category</h3>
                   <span class="badge category-usage">1 route</span>
-                  <p>Session token burn, separate from context-window pressure and account quotas.</p>
+                  <p>Live usage and estimated API-equivalent USD, separate from context pressure and account quotas. Transcript and replay usage are excluded.</p>
                 </div>
                 <div class="event-list">
                   <details class="event-card" data-category="usage">
@@ -2393,12 +2393,15 @@ unsubscribe();</code></pre>
                       ><span class="badge category-usage">usage</span>
                     </summary>
                     <div class="event-body">
-                      <p>A response- or sample-bound usage fact with stable identity and canonicality.</p>
+                      <p>A response- or sample-bound fact from native telemetry, protocol, or hooks. USD is an estimate for observed work, not an invoice. Missing prices remain unavailable or partial.</p>
                       <pre><code>interface TokensUsedEvent {
   type: 'usage:tokens-used';
   usageId: string;
   boundary: 'response' | 'sample';
   canonical: boolean;
+  origin?: 'telemetry' | 'protocol' | 'hook';
+  pricing?: UsagePricing; // request model and disjoint billable buckets
+  cost?: UsageCostEstimate; // provider-reported or pinned catalog provenance
   totalTokens?: number; // full settled provider work
   meterTokens?: number; // operational burn meter
   cumulativeTokens?: number;

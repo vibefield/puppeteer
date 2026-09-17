@@ -1,5 +1,6 @@
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
+import { formatUsd } from '../../monitor/cost-format.js';
 import type { MonitorAgent } from '../../monitor/types.js';
 import { burnBars, type BurnBars } from './burn-bars.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
@@ -34,7 +35,7 @@ export interface SwarmBubbleModel {
   accent: string;
   copy: CopyLine[];
   copyMaxWidthRatio: number;
-  /** The context figure on the top chord and the session's total tokens on the bottom one, working bodies only. */
+  /** Context on the top chord and observed estimated USD on the bottom, working bodies only. */
   figures?: { top?: SwarmFigure; bottom?: SwarmFigure };
   /** The context ring on the rim in the ink, every agent body. */
   ring?: { percent: number; hot: boolean };
@@ -66,7 +67,7 @@ export interface BubbleModelInput {
   unread: boolean;
   /** When this terminal's foreground job was first seen, for the elapsed line. */
   runningSinceMs?: number;
-  /** This working session's place among the working sessions by total tokens, 0 (the least) to 1 (the most). */
+  /** This session's place among working sessions by estimated USD, 0 (least) to 1 (most). */
   workingShare?: number;
 }
 
@@ -105,7 +106,7 @@ export function formatTokens(count: number): string {
   return `${Math.round(count / 1_000_000)}M`;
 }
 
-/** Each working session's place among the working sessions by total tokens:
+/** Each working session's place among the working sessions by estimated USD:
  * 0 for the least, 1 for the most, everything else in between; all 0 when
  * they tie or there is only one. Terminals without an agent do not count. */
 export function workingShares(agents: readonly MonitorAgent[]): Map<string, number> {
@@ -233,7 +234,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   }
 
   const appearance: AgentVisualStatus = agent.status;
-  // A working body grows with its share of the working sessions' tokens, from
+  // A working body grows with its share of the working sessions' estimated USD, from
   // the working size for the least to the largest size for the most.
   const share = Math.max(0, Math.min(1, input.workingShare ?? 0));
   const radius =
@@ -256,7 +257,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const message = latestMessage(agent);
 
   if (appearance === 'working') {
-    // The UI's ledger, never Core's estimate: the held total and the stepped burn.
+    // Corrected USD totals and original observation buckets, including cached runs.
     const total = facet.usage?.total;
     const copy: CopyLine[] = [
       ...(facet.branch
@@ -295,7 +296,11 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           hot: percent !== undefined && percent >= 80,
           none: percent === undefined,
         },
-        bottom: { text: total === undefined ? '--' : formatTokens(total), hot: false, none: total === undefined },
+        bottom: {
+          text: total === undefined ? '—' : `~${formatUsd(total)}${facet.usage?.coverage === 'partial' ? '+' : ''}`,
+          hot: false,
+          none: total === undefined,
+        },
       },
       ...(ring ? { ring } : {}),
       ...(facet.usage ? { graph: burnBars(facet.usage) } : {}),
