@@ -153,13 +153,14 @@ describe('Kimi native TUI session', () => {
           phase: 'live',
           updates: expect.arrayContaining([
             expect.objectContaining({
-              family: 'usage',
-              value: expect.objectContaining({ canonical: true, inputTokens: 20, outputTokens: 4 }),
+              family: 'context',
+              value: expect.objectContaining({ usedTokens: 23, percentageSource: 'unavailable' }),
             }),
           ]),
         }),
       ]),
     );
+    expect(monitor.flatMap((batch) => batch.updates).some(({ family }) => family === 'usage')).toBe(false);
     offCandidate();
     projection.dispose();
     await session.dispose();

@@ -33,11 +33,11 @@ function contribution(usageId: string, usage: Usage): MonitorFamilyUpdate {
     family: 'usage',
     operation: 'upsert',
     key: usageId,
-    value: { kind: 'usage', usageId, boundary: 'response', canonical: true, ...usage },
+    value: { kind: 'usage', origin: 'protocol', usageId, boundary: 'response', canonical: true, ...usage },
   };
 }
 
-/** Response notifications are live; durable turn totals reconcile missed responses. */
+/** Live protocol response and turn notifications; never called for journal records. */
 export class GrokUsageEvidence {
   private readonly responses = new Map<string, Map<string, Usage>>();
   private readonly completed = new Set<string>();

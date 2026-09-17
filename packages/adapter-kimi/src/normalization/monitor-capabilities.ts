@@ -15,15 +15,12 @@ export const KIMI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   },
   {
     family: 'usage',
-    support: 'supported',
+    support: 'unsupported',
     actorScope: 'current-actors',
     latency: 'file-flush',
     source: 'kimi-usage-record',
     contractVersion: KIMI_CONTRACT,
-    limitations: [
-      'Usage arrives at response boundaries rather than token-stream boundaries.',
-      'A resumed journal larger than the bounded replay window reports partial historical coverage.',
-    ],
+    limitations: ['Wire journal usage is excluded. No independent live usage rail is integrated.'],
   },
   {
     family: 'context',

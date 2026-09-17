@@ -5,7 +5,6 @@
   "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
   "groundTruthSha256": "47b6eaf893037278acff5269bf0781b0e449e3da03ac093cf7b929ff9dd6cf17",
   "semanticEvents": [
-    "branch_summary",
     "compaction",
     "message",
     "model_change",
@@ -14,13 +13,13 @@
   ],
   "observedOrControlledEvents": [],
   "unmapped": {
-    "count": 36,
-    "sha256": "9d084b0ff0a12d456e7cc8bc63be9be823bc59a5ba6f92611a207054fa1df9b4",
+    "count": 37,
+    "sha256": "be11e00830b035800b74b222c1e108bd9bea9385254b29591e6837391a01a8d9",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 42,
-    "semantic": 6,
+    "semantic": 5,
     "observedOrControlled": 0
   }
 }

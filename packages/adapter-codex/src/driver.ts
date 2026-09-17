@@ -202,7 +202,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     const modelProvider = str(response?.modelProvider);
     emitMonitorBatch(
       monitorEvidence.bootstrapResponseBatch(
-        { ...response, cwd: currentCwd, ...(modelId ? { model: modelId } : {}) },
+        { ...response, cwd: currentCwd },
         new Date().toISOString(),
         options.resume ? 'thread/resume' : 'thread/start',
         {
@@ -210,6 +210,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
           approvalPolicy: options.approvalPolicy ?? 'on-request',
           sandboxPolicy: options.sandbox ?? 'workspace-write',
         },
+        !options.resume,
       ),
     );
     const bootstrapEvidence = { response: startResult, bootstrap: options.resume ? 'thread/resume' : 'thread/start' };

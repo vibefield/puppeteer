@@ -29,6 +29,7 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     contractVersion: CODEX_CONTRACT,
     limitations: [
       'Pinned captures prove total is cumulative and last is per-response context pressure.',
+      'USD uses observed counter deltas and actual model metadata; resumed baselines, unknown prices, and ambiguous intervals remain unpriced.',
       "Per-child usage requires the app-server connection to receive that child thread's notifications.",
     ],
   },

@@ -1,6 +1,7 @@
 import type { MonitorUsageFamilyValue, MonitorStoredEntry } from './internal-types.js';
 import { AGENT_MONITOR_COLLECTION_LIMITS } from './bounds.js';
 import type { MonitorUsageAggregate, MonitorUsageSample, MonitorUsageState } from './types.js';
+import { projectUsageCost } from './cost.js';
 
 export const DEFAULT_MONITOR_BURN_RATE_WINDOW_MS = 60_000;
 
@@ -8,6 +9,7 @@ export interface MonitorUsageLedgerProjection {
   usage: MonitorUsageState;
   actorTotals: ReadonlyMap<string, number>;
   actorBurnRates: ReadonlyMap<string, number>;
+  actorCosts: ReadonlyMap<string, ReturnType<typeof projectUsageCost>>;
   omittedSamples: number;
 }
 
@@ -199,9 +201,11 @@ function projectExplicitRootActorUsage(
   }
 
   const latest = rootEntries.at(-1);
+  const { costHistory: _history, ...cost } = projectUsageCost(rootEntries, asOfMs, windowMs);
   return {
     ...(cumulativeTokens !== undefined ? { cumulativeTokens } : {}),
     ...canonicalTotals(contributions),
+    ...cost,
     ...(burnRatePerMin !== undefined ? { burnRatePerMin, burnRateWindowMs: windowMs, burnRateBoundary } : {}),
     ...(latest ? { asOf: latest.observedAt } : {}),
   };
@@ -246,6 +250,7 @@ export function projectMonitorUsageLedger(
 
   const actorTotals = new Map<string, number>();
   const actorBurnRates = new Map<string, number>();
+  const actorCosts = new Map<string, ReturnType<typeof projectUsageCost>>();
   let cumulativeTokens: number | undefined;
   let projectedSamples: MonitorUsageSample[] = [];
 
@@ -323,6 +328,7 @@ export function projectMonitorUsageLedger(
     else byActor.set(value.actor.runKey, [entry]);
   }
   for (const [actorRunKey, actorEntries] of byActor) {
+    actorCosts.set(actorRunKey, projectUsageCost(actorEntries, asOfMs, windowMs));
     const contributions = actorEntries.filter((entry) => {
       const value = entry.value as MonitorUsageFamilyValue;
       return value.canonical && totalContribution(value) !== undefined;
@@ -380,6 +386,7 @@ export function projectMonitorUsageLedger(
     usage: {
       ...(cumulativeTokens !== undefined ? { cumulativeTokens } : {}),
       ...canonicalTotals(canonicalContributions),
+      ...projectUsageCost(usageEntries, asOfMs, windowMs),
       ...(burnRatePerMin !== undefined ? { burnRatePerMin, burnRateWindowMs: windowMs, burnRateBoundary } : {}),
       ...(rootActor ? { rootActor } : {}),
       samples: bounded.samples,
@@ -387,6 +394,7 @@ export function projectMonitorUsageLedger(
     },
     actorTotals,
     actorBurnRates,
+    actorCosts,
     omittedSamples: bounded.omitted,
   };
 }

@@ -289,6 +289,7 @@ export class HermesMonitorEvidence {
         updates.push(
           upsert('usage', usageId, {
             kind: 'usage',
+            origin: 'protocol',
             usageId,
             boundary: 'sample',
             canonical: false,
@@ -635,6 +636,7 @@ export class HermesMonitorEvidence {
             updates.push(
               upsert('usage', usageId, {
                 kind: 'usage',
+                origin: 'protocol',
                 usageId,
                 actor,
                 boundary: 'sample',

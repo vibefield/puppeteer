@@ -34,12 +34,15 @@ export function normalizeClaudeOtelUsage(record: ClaudeOtelLogRecord): ClaudeOte
   const outputTokens = otelNonNegativeNumber(record, 'output_tokens');
   const cacheReadTokens = otelNonNegativeNumber(record, 'cache_read_tokens');
   const cacheCreationTokens = otelNonNegativeNumber(record, 'cache_creation_tokens');
+  const costUsd = otelNonNegativeNumber(record, 'cost_usd');
   const buckets = [inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens];
-  if (buckets.every((value) => value === undefined)) return undefined;
+  const hasTokens = buckets.some((value) => value !== undefined);
+  if (!hasTokens && costUsd === undefined) return undefined;
 
   const totalTokens = buckets.reduce<number>((total, value) => total + (value ?? 0), 0);
   const meterTokens = (inputTokens ?? 0) + (outputTokens ?? 0);
-  const costUsd = otelNonNegativeNumber(record, 'cost_usd');
+  const modelId = otelString(record, 'model');
+  const speed = otelString(record, 'speed');
   const promptId = otelString(record, 'prompt.id');
   const actor = claudeOtelActor(record);
 
@@ -49,15 +52,31 @@ export function normalizeClaudeOtelUsage(record: ClaudeOtelLogRecord): ClaudeOte
       usageId: claudeRequestUsageId(record),
       boundary: 'response',
       canonical: true,
-      totalTokens,
-      meterTokens,
-      ...(costUsd === undefined ? {} : { costUsd }),
-      breakdown: {
-        ...(inputTokens === undefined ? {} : { inputTokens, freshInputTokens: inputTokens }),
+      origin: 'telemetry',
+      pricing: {
+        providerId: 'anthropic',
+        ...(modelId ? { modelId } : {}),
+        ...(speed ? { serviceTier: speed } : {}),
+        ...(inputTokens === undefined ? {} : { inputTokens }),
         ...(outputTokens === undefined ? {} : { outputTokens }),
         ...(cacheReadTokens === undefined ? {} : { cacheReadTokens }),
         ...(cacheCreationTokens === undefined ? {} : { cacheCreationTokens }),
+        ...(inputTokens !== undefined && cacheReadTokens !== undefined && cacheCreationTokens !== undefined
+          ? { contextTokens: inputTokens + cacheReadTokens + cacheCreationTokens }
+          : {}),
       },
+      ...(hasTokens ? { totalTokens, meterTokens } : {}),
+      ...(costUsd === undefined ? {} : { costUsd }),
+      ...(hasTokens
+        ? {
+            breakdown: {
+              ...(inputTokens === undefined ? {} : { inputTokens, freshInputTokens: inputTokens }),
+              ...(outputTokens === undefined ? {} : { outputTokens }),
+              ...(cacheReadTokens === undefined ? {} : { cacheReadTokens }),
+              ...(cacheCreationTokens === undefined ? {} : { cacheCreationTokens }),
+            },
+          }
+        : {}),
     },
     timestamp: claudeOtelEventTimestamp(record),
     sessionId,

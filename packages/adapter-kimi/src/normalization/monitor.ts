@@ -381,20 +381,7 @@ export class KimiMonitorEvidence {
           cacheReadTokens !== undefined &&
           cacheCreationTokens !== undefined
         ) {
-          const usageId = `kimi-response:${this.options.nativeSessionId()}:${observed.agentId}:${observed.cursorEnd}`;
-          updates.push(
-            upsert('usage', usageId, {
-              kind: 'usage',
-              usageId,
-              ...(actor ? { actor } : {}),
-              boundary: 'response',
-              canonical: true,
-              inputTokens,
-              outputTokens,
-              cacheReadTokens,
-              cacheCreationTokens,
-            }),
-          );
+          // Journal records can describe context, but never live consumption.
           if (!actor)
             updates.push(
               upsert('context', metricKey, {

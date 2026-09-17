@@ -15,6 +15,7 @@ import type {
   MonitorModelState,
   MonitorProviderMode,
   MonitorSubagentState,
+  MonitorUsageAggregate,
 } from './types.js';
 import { AGENT_MONITOR_SCHEMA_VERSION } from './types.js';
 import type {
@@ -576,6 +577,7 @@ function projectSubagents(
   activities: ReadonlyMap<string, MonitorActivity>,
   actorTotals: ReadonlyMap<string, number>,
   actorBurnRates: ReadonlyMap<string, number>,
+  actorCosts: ReadonlyMap<string, MonitorUsageAggregate>,
   omitted: Partial<Record<MonitorBoundedCollection, number>>,
   unbounded: boolean,
 ): MonitorSubagentState[] {
@@ -592,6 +594,13 @@ function projectSubagents(
         ...(effort ? { effort: effort.value.value } : {}),
         ...(actorTotals.has(actor.runKey) ? { cumulativeTokens: actorTotals.get(actor.runKey) } : {}),
         ...(actorBurnRates.has(actor.runKey) ? { burnRatePerMin: actorBurnRates.get(actor.runKey) } : {}),
+        ...(actorCosts.get(actor.runKey)?.costUsd !== undefined
+          ? { costUsd: actorCosts.get(actor.runKey)!.costUsd }
+          : {}),
+        ...(actorCosts.get(actor.runKey)?.costRatePerMin !== undefined
+          ? { costRatePerMin: actorCosts.get(actor.runKey)!.costRatePerMin }
+          : {}),
+        ...(actorCosts.has(actor.runKey) ? { costCoverage: actorCosts.get(actor.runKey)!.costCoverage } : {}),
       };
     })
     .sort((a, b) => Number(b.working) - Number(a.working) || a.id.localeCompare(b.id));
@@ -744,6 +753,7 @@ export function projectAgentMonitorState(
     children,
     usageProjection.actorTotals,
     usageProjection.actorBurnRates,
+    usageProjection.actorCosts,
     omitted,
     unbounded,
   );

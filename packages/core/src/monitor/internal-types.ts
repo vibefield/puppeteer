@@ -128,6 +128,10 @@ export type MonitorUsageBoundary = 'response' | 'sample';
 export interface MonitorUsageFamilyValue {
   kind: 'usage';
   usageId: string;
+  /** Required for admission to the live ledger. Absent legacy claims are ignored. */
+  origin?: 'telemetry' | 'protocol' | 'hook' | undefined;
+  pricing?: import('../events/usage.js').UsagePricing | undefined;
+  cost?: import('../events/usage.js').UsageCostEstimate | undefined;
   actor?: ActorRunRef | undefined;
   boundary: MonitorUsageBoundary;
   /** Response usage is canonical; samples are compatible low-latency estimates/cross-checks. */

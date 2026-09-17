@@ -106,7 +106,14 @@ describe('projectAgentMonitorState', () => {
           family: 'usage',
           operation: 'upsert',
           key: 'sample',
-          value: { kind: 'usage', usageId: 'sample', boundary: 'sample', canonical: false, cumulativeTokens: 10 },
+          value: {
+            kind: 'usage',
+            origin: 'protocol',
+            usageId: 'sample',
+            boundary: 'sample',
+            canonical: false,
+            cumulativeTokens: 10,
+          },
         },
       ],
       1,
@@ -154,21 +161,28 @@ describe('projectAgentMonitorState', () => {
       },
     ];
 
-    const transcript = semantic(
-      'transcript-usage',
+    const telemetry = semantic(
+      'telemetry-usage',
       'live',
       [
         {
           family: 'usage',
           operation: 'upsert',
           key: 'response',
-          value: { kind: 'usage', usageId: 'response', boundary: 'response', canonical: true, deltaTokens: 25 },
+          value: {
+            kind: 'usage',
+            origin: 'telemetry',
+            usageId: 'response',
+            boundary: 'response',
+            canonical: true,
+            deltaTokens: 25,
+          },
         },
       ],
       1,
     );
-    transcript.producer.id = 'transcript-rail';
-    transcript.capabilities = [
+    telemetry.producer.id = 'telemetry-rail';
+    telemetry.capabilities = [
       {
         family: 'usage',
         support: 'supported',
@@ -179,7 +193,7 @@ describe('projectAgentMonitorState', () => {
       },
     ];
 
-    const state = reduceMonitorAccumulator(reduceMonitorAccumulator(initial(), unavailable).state, transcript).state;
+    const state = reduceMonitorAccumulator(reduceMonitorAccumulator(initial(), unavailable).state, telemetry).state;
     expect(projectAgentMonitorState(state).freshness.families.usage).toMatchObject({
       support: 'supported',
       availability: 'partial',
@@ -196,7 +210,14 @@ describe('projectAgentMonitorState', () => {
           family: 'usage',
           operation: 'upsert',
           key: 'sample',
-          value: { kind: 'usage', usageId: 'sample', boundary: 'sample', canonical: false, cumulativeTokens: 10 },
+          value: {
+            kind: 'usage',
+            origin: 'protocol',
+            usageId: 'sample',
+            boundary: 'sample',
+            canonical: false,
+            cumulativeTokens: 10,
+          },
         },
       ],
       1,
@@ -612,7 +633,14 @@ describe('projectAgentMonitorState', () => {
       family: 'usage',
       operation: 'upsert',
       key: 'response-1',
-      value: { kind: 'usage', usageId: 'response-1', boundary: 'response', canonical: true, deltaTokens },
+      value: {
+        kind: 'usage',
+        origin: 'protocol',
+        usageId: 'response-1',
+        boundary: 'response',
+        canonical: true,
+        deltaTokens,
+      },
     });
     let state = reduceMonitorAccumulator(initial(), semantic('response', 'live', [usage(100)], 1)).state;
     expect(projectAgentMonitorState(state, { asOf: '2026-08-16T12:00:20.000Z' }).usage).toMatchObject({
@@ -651,6 +679,7 @@ describe('projectAgentMonitorState', () => {
             key: 'provider-specific-key',
             value: {
               kind: 'usage',
+              origin: 'protocol',
               usageId: 'response-shared',
               actor: {
                 rootSessionKey: 'session-1',

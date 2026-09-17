@@ -10,7 +10,7 @@ import type {
   ObservationCapability,
   ObservationCoverage,
 } from '@vibecook/puppeteer-core/monitor-spi';
-import type { OpenCodeMessage, OpenCodeModelSelection, OpenCodeSessionInfo } from '../transport/client.js';
+import type { OpenCodeModelSelection, OpenCodeSessionInfo } from '../transport/client.js';
 import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { OPENCODE_CONTRACT, OPENCODE_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 
@@ -144,6 +144,7 @@ function usageUpdate(
   const usageId = `opencode-response:${sessionID}:${messageID}`;
   return upsert('usage', usageId, {
     kind: 'usage',
+    origin: 'protocol',
     usageId,
     ...(actor ? { actor } : {}),
     boundary: 'response',
@@ -786,50 +787,6 @@ export class OpenCodeMonitorEvidence {
       provisional,
       actor,
       evidence: this.evidence(record),
-    });
-  }
-
-  /** Complete REST history closes usage gaps and retracts deleted response contributions. */
-  historySnapshotBatch(
-    messages: readonly OpenCodeMessage[],
-    observedAt: string,
-    phase: 'bootstrap' | 'resync',
-  ): AdapterMonitorObservationBatch {
-    const values: Array<{ key: string; value: MonitorFamilyValueMap['usage'] }> = [];
-    for (const message of messages) {
-      if (message.info.role !== 'assistant') continue;
-      const sessionID = text(message.info.sessionID);
-      const messageID = text(message.info.id);
-      if (!sessionID || !messageID) continue;
-      const actor = sessionID === this.root() ? undefined : this.actor(sessionID);
-      if (sessionID !== this.root() && !actor) continue;
-      const time = rec(message.info.time);
-      if (finiteNonNegative(time?.completed) === undefined && !text(message.info.finish)) continue;
-      const usage = tokenUsage(message.info.tokens);
-      if (!usage) continue;
-      const usageId = `opencode-response:${sessionID}:${messageID}`;
-      values.push({
-        key: usageId,
-        value: {
-          kind: 'usage',
-          usageId,
-          ...(actor ? { actor } : {}),
-          boundary: 'response',
-          canonical: true,
-          ...usage,
-        },
-      });
-    }
-    return this.batch('history-usage-snapshot', observedAt, [replace('usage', values)], {
-      phase,
-      completeness: 'complete',
-      evidence: [
-        {
-          namespace: 'opencode:durable-http',
-          id: `message-snapshot:${this.root() ?? 'pending'}`,
-          revisionKey: digest(messages.map((message) => message.info)),
-        },
-      ],
     });
   }
 

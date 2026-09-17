@@ -107,7 +107,7 @@ describe('HermesMonitorEvidence', () => {
 
     const state = project([capabilities, first, second]);
     expect(state).toMatchObject({
-      usage: { cumulativeTokens: 160, burnRatePerMin: 120 },
+      usage: { cumulativeTokens: 160 },
       context: { usedTokens: 60, capacityTokens: 200, usedPercent: 30, percentageSource: 'provider' },
       model: { id: 'anthropic/model-b' },
       effort: { value: 'high' },
@@ -243,7 +243,7 @@ describe('HermesMonitorEvidence', () => {
     );
 
     const state = project([capabilities, root, started, completed]);
-    expect(state.usage.cumulativeTokens).toBe(100);
+    expect(state.usage.cumulativeTokens).toBe(27);
     expect(state.subagents).toMatchObject([
       { id: 'child-1', working: false, cumulativeTokens: 27, modelId: 'child-model' },
     ]);

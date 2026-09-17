@@ -321,7 +321,7 @@ describe('OpenCodeMonitorEvidence', () => {
     expect(project([capabilities, high, max]).effort).toMatchObject({ value: 'max' });
   });
 
-  it('uses stable response identity for corrections and excludes bootstrap replay from burn rate', () => {
+  it('excludes bootstrap response usage from both totals and burn rate', () => {
     const evidence = projector('ses_root');
     const messages: OpenCodeMessage[] = [
       {
@@ -349,9 +349,8 @@ describe('OpenCodeMonitorEvidence', () => {
       T0,
       'bootstrap',
     )!;
-    const corrected = evidence.historySnapshotBatch(messages, '2026-01-01T00:00:02.000Z', 'bootstrap');
-    const state = project([first, corrected], '2026-01-01T00:00:03.000Z');
-    expect(state.usage.cumulativeTokens).toBe(12);
+    const state = project([first], '2026-01-01T00:00:03.000Z');
+    expect(state.usage.cumulativeTokens).toBeUndefined();
     expect(state.usage.burnRatePerMin).toBeUndefined();
   });
 

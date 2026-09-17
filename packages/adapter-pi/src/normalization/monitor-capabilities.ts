@@ -13,12 +13,12 @@ export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   },
   {
     family: 'usage',
-    support: 'supported',
+    support: 'unsupported',
     actorScope: 'root',
     latency: 'response',
     source: 'pi-assistant-message-usage',
     contractVersion: PI_CONTRACT,
-    limitations: ['Usage is response-scoped; bounded resume replay may omit old samples.'],
+    limitations: ['Session JSONL usage is excluded. No independent live usage rail is integrated.'],
   },
   {
     family: 'context',

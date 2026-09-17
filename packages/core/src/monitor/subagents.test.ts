@@ -234,6 +234,7 @@ describe('minimal subagent monitor', () => {
       key,
       value: {
         kind: 'usage',
+        origin: 'protocol',
         usageId: key,
         actor,
         boundary: 'response',
@@ -258,6 +259,8 @@ describe('minimal subagent monitor', () => {
       },
     ]);
     expect(m.value.usage).toMatchObject({ cumulativeTokens: 140, burnRatePerMin: 28 });
-    expect(m.value.subagents).toEqual([{ id: 'child', working: false, cumulativeTokens: 40, burnRatePerMin: 8 }]);
+    expect(m.value.subagents).toEqual([
+      { id: 'child', working: false, cumulativeTokens: 40, burnRatePerMin: 8, costCoverage: 'unavailable' },
+    ]);
   });
 });

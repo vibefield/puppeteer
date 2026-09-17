@@ -419,19 +419,24 @@ describe('monitor accumulator', () => {
     expect(semanticDuplicate.state).toBe(semanticFirst.state);
   });
 
-  it('does not restamp historical usage samples repeated by a live replacement', () => {
+  it('does not restamp live usage samples repeated by the provider', () => {
     const sample = (id: string, cumulativeTokens: number) => ({
       key: id,
-      value: { kind: 'usage' as const, usageId: id, boundary: 'sample' as const, canonical: false, cumulativeTokens },
+      value: {
+        kind: 'usage' as const,
+        origin: 'protocol' as const,
+        usageId: id,
+        boundary: 'sample' as const,
+        canonical: false,
+        cumulativeTokens,
+      },
     });
     let state = reduceMonitorAccumulator(
       initial(),
-      semantic(
-        'usage-1',
-        'live',
-        [{ family: 'usage', operation: 'replace', coverage: 'complete', values: [sample('sample-1', 0)] }],
-        { sequence: 1, observedAt: '2026-08-16T12:00:01.000Z' },
-      ),
+      semantic('usage-1', 'live', [{ family: 'usage', operation: 'upsert', ...sample('sample-1', 0) }], {
+        sequence: 1,
+        observedAt: '2026-08-16T12:00:01.000Z',
+      }),
     ).state;
     state = reduceMonitorAccumulator(
       state,
@@ -439,12 +444,8 @@ describe('monitor accumulator', () => {
         'usage-2',
         'live',
         [
-          {
-            family: 'usage',
-            operation: 'replace',
-            coverage: 'complete',
-            values: [sample('sample-1', 0), sample('sample-2', 100)],
-          },
+          { family: 'usage', operation: 'upsert', ...sample('sample-1', 0) },
+          { family: 'usage', operation: 'upsert', ...sample('sample-2', 100) },
         ],
         { sequence: 2, observedAt: '2026-08-16T12:00:11.000Z' },
       ),
@@ -464,7 +465,14 @@ describe('monitor accumulator', () => {
   it('runs the prompt and completion sides alongside the total on canonical usage samples', () => {
     const response = (id: string, breakdown: Record<string, number>) => ({
       key: id,
-      value: { kind: 'usage' as const, usageId: id, boundary: 'response' as const, canonical: true, ...breakdown },
+      value: {
+        kind: 'usage' as const,
+        origin: 'protocol' as const,
+        usageId: id,
+        boundary: 'response' as const,
+        canonical: true,
+        ...breakdown,
+      },
     });
     const state = reduceMonitorAccumulator(
       initial(),
@@ -474,12 +482,13 @@ describe('monitor accumulator', () => {
         [
           {
             family: 'usage',
-            operation: 'replace',
-            coverage: 'complete',
-            values: [
-              response('r1', { inputTokens: 200, cacheReadTokens: 50, outputTokens: 100 }),
-              response('r2', { inputTokens: 100, outputTokens: 40, reasoningTokens: 10 }),
-            ],
+            operation: 'upsert',
+            ...response('r1', { inputTokens: 200, cacheReadTokens: 50, outputTokens: 100 }),
+          },
+          {
+            family: 'usage',
+            operation: 'upsert',
+            ...response('r2', { inputTokens: 100, outputTokens: 40, reasoningTokens: 10 }),
           },
         ],
         { sequence: 1, observedAt: '2026-08-16T12:00:01.000Z' },

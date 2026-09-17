@@ -14,14 +14,12 @@ export const COPILOT_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   },
   {
     family: 'usage',
-    support: 'supported',
+    support: 'unsupported',
     actorScope: 'root',
     latency: 'response',
     source: 'copilot-assistant-and-shutdown-usage',
     contractVersion: COPILOT_CONTRACT,
-    limitations: [
-      'Per-response durable events are canonical but expose only output tokens; the shutdown sample is a non-canonical cumulative cross-check and fallback with the full breakdown.',
-    ],
+    limitations: ['Durable transcript usage is excluded. No independent live usage rail is integrated.'],
   },
   {
     family: 'context',

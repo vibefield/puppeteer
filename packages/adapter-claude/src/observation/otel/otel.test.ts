@@ -15,6 +15,43 @@ function attr(key: string, value: string | number) {
 }
 
 describe('Claude OTLP log normalization', () => {
+  it('retains a provider cost-only estimate without requiring transcript or token counts', () => {
+    const [record] = decodeClaudeOtelLogs(
+      {
+        resourceLogs: [
+          {
+            scopeLogs: [
+              {
+                logRecords: [
+                  {
+                    body: { stringValue: 'claude_code.api_request' },
+                    attributes: [
+                      attr('session.id', 'session-1'),
+                      attr('request_id', 'cost-only'),
+                      attr('model', 'claude-haiku-4-5'),
+                      { key: 'cost_usd', value: { doubleValue: 0.004 } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      '2026-09-16T00:00:00Z',
+    );
+    const usage = normalizeClaudeOtelUsage(record!)!;
+    expect(usage.event).toMatchObject({
+      costUsd: 0.004,
+      origin: 'telemetry',
+      pricing: {
+        providerId: 'anthropic',
+        modelId: 'claude-haiku-4-5',
+      },
+    });
+    expect(usage.event.totalTokens).toBeUndefined();
+    expect(usage.event.breakdown).toBeUndefined();
+  });
   it('projects exact settled usage while dropping account PII', () => {
     const payload = {
       resourceLogs: [

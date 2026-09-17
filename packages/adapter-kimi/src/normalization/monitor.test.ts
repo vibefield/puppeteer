@@ -80,7 +80,7 @@ describe('KimiMonitorEvidence', () => {
       ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
-      support: 'supported',
+      support: 'unsupported',
       actorScope: 'current-actors',
     });
     expect(KIMI_MONITOR_CAPABILITIES.find(({ family }) => family === 'context')).toMatchObject({
@@ -101,13 +101,9 @@ describe('KimiMonitorEvidence', () => {
     const rootUpdates = root.flatMap(({ updates }) => updates);
     const childUpdates = child.flatMap(({ updates }) => updates);
 
-    expect(rootUpdates.filter(({ family }) => family === 'usage')).toHaveLength(1);
+    expect(rootUpdates.filter(({ family }) => family === 'usage')).toHaveLength(0);
     expect(rootUpdates).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          family: 'usage',
-          value: expect.objectContaining({ inputTokens: 31, outputTokens: 9, canonical: true }),
-        }),
         expect.objectContaining({
           family: 'model',
           value: expect.objectContaining({ providerModelId: 'puppeteer-kimi-census', intent: 'observed' }),
@@ -118,21 +114,13 @@ describe('KimiMonitorEvidence', () => {
         }),
       ]),
     );
-    expect(childUpdates.filter(({ family }) => family === 'usage')).toHaveLength(2);
+    expect(childUpdates.filter(({ family }) => family === 'usage')).toHaveLength(0);
     expect(childUpdates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           family: 'delegation',
           value: expect.objectContaining({
             actor: expect.objectContaining({ nativeAgentId: 'agent-0', nativeAgentType: 'coder' }),
-          }),
-        }),
-        expect.objectContaining({
-          family: 'usage',
-          value: expect.objectContaining({
-            actor: expect.objectContaining({ nativeAgentId: 'agent-0' }),
-            inputTokens: 28,
-            outputTokens: 6,
           }),
         }),
       ]),
@@ -239,7 +227,7 @@ describe('KimiMonitorEvidence', () => {
     });
   });
 
-  it('maps each root and child usage record as replay-safe canonical burn and input-only context', () => {
+  it('keeps journal usage out of root and child burn while retaining input-only context', () => {
     const projector = evidence();
     const root = projector.recordBatch(
       observed(
@@ -258,20 +246,6 @@ describe('KimiMonitorEvidence', () => {
       effectiveAt: AT,
       evidence: [{ cursorStart: 400, cursorEnd: 500 }],
       updates: expect.arrayContaining([
-        {
-          family: 'usage',
-          operation: 'upsert',
-          key: `kimi-response:${SESSION}:main:500`,
-          value: expect.objectContaining({
-            usageId: `kimi-response:${SESSION}:main:500`,
-            boundary: 'response',
-            canonical: true,
-            inputTokens: 40,
-            outputTokens: 10,
-            cacheReadTokens: 5,
-            cacheCreationTokens: 3,
-          }),
-        },
         expect.objectContaining({
           family: 'context',
           value: expect.objectContaining({ usedTokens: 48, percentageSource: 'unavailable' }),
@@ -296,27 +270,18 @@ describe('KimiMonitorEvidence', () => {
     expect(child).toMatchObject({
       phase: 'live',
       scope: { actorRunKey: `${SESSION}:actor:agent-0` },
-      updates: expect.arrayContaining([
-        expect.objectContaining({
-          family: 'usage',
-          value: expect.objectContaining({
-            usageId: `kimi-response:${SESSION}:agent-0:900`,
-            actor: expect.objectContaining({ runKey: `${SESSION}:actor:agent-0`, nativeAgentId: 'agent-0' }),
-          }),
-        }),
-      ]),
     });
 
     expect(child?.updates.some(({ family }) => family === 'context')).toBe(false);
     const monitor = project([root!, child!]);
-    expect(monitor.usage).toMatchObject({ cumulativeTokens: 85, burnRatePerMin: 27, burnRateBoundary: 'response' });
+    expect(monitor.usage.cumulativeTokens).toBeUndefined();
+    expect(monitor.usage.burnRatePerMin).toBeUndefined();
+    expect([...root!.updates, ...child!.updates].some(({ family }) => family === 'usage')).toBe(false);
     expect(monitor.context).toMatchObject({ usedTokens: 48, percentageSource: 'unavailable' });
     expect(monitor.subagents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'agent-0',
-          cumulativeTokens: 27,
-          burnRatePerMin: 27,
         }),
       ]),
     );
@@ -590,7 +555,7 @@ describe('KimiMonitorEvidence', () => {
       updates: [],
       coverage: expect.arrayContaining([
         expect.objectContaining({
-          family: 'usage',
+          family: 'status',
           completeness: 'partial',
           actor: expect.objectContaining({ nativeAgentId: 'agent-0' }),
         }),

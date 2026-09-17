@@ -22,13 +22,13 @@ export const GROK_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   },
   {
     family: 'usage',
-    support: 'supported',
+    support: 'degraded',
     actorScope: 'root',
     latency: 'response',
     source: 'grok-response-and-turn-completed-usage',
     contractVersion: GROK_CONTRACT,
     limitations: [
-      'Complete, identified response usage updates live; durable turn totals reconcile missed responses.',
+      'Usage requires direct ACP response/turn notifications. Journal records are excluded.',
       'signals.json and subagent progress are context occupancy, never billed burn.',
       'No verified per-subagent billed usage surface exists on the pinned artifact.',
     ],

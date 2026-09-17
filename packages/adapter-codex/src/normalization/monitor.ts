@@ -1,7 +1,12 @@
 /** Codex app-server facts projected onto the correction-aware monitor SPI. */
 
 import { randomUUID } from 'node:crypto';
-import type { ActorRunRef, ContextWindowUpdatedEvent, MonitorMetricFamily } from '@vibecook/puppeteer-core';
+import type {
+  ActorRunRef,
+  ContextWindowUpdatedEvent,
+  MonitorMetricFamily,
+  UsagePricing,
+} from '@vibecook/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -12,10 +17,9 @@ import type {
 } from '@vibecook/puppeteer-core/monitor-spi';
 import type { CodexServerNotification } from './types.js';
 import { CODEX_CONTRACT, CODEX_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
+import { codexUsageCounter, codexUsagePricing, type CodexUsageCounter } from './usage.js';
 
 export { CODEX_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
-
-const MAX_USAGE_SAMPLES = 256;
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
@@ -113,7 +117,29 @@ export class CodexMonitorEvidence {
   private readonly epoch: string;
   private sequence = 0;
   private usageSequence = 0;
-  private readonly usageKeysByScope = new Map<string, string[]>();
+  private readonly usageCounters = new Map<string, { counter: CodexUsageCounter; model: string }>();
+  private readonly usageModels = new Map<string, Pick<UsagePricing, 'providerId' | 'modelId' | 'serviceTier'>>();
+  private readonly usageModelRevisions = new Map<string, number>();
+
+  private rememberUsageModel(
+    threadId: string,
+    model: Pick<UsagePricing, 'providerId' | 'modelId' | 'serviceTier'>,
+  ): void {
+    const previous = this.usageModels.get(threadId);
+    if (
+      previous?.providerId !== model.providerId ||
+      previous?.modelId !== model.modelId ||
+      previous?.serviceTier !== model.serviceTier
+    ) {
+      this.usageModelRevisions.set(threadId, (this.usageModelRevisions.get(threadId) ?? 0) + 1);
+    }
+    this.usageModels.set(threadId, model);
+  }
+
+  private usageModelKey(threadId: string): string {
+    // A -> B -> A between counters is still a mixed-model interval.
+    return JSON.stringify([this.usageModelRevisions.get(threadId) ?? 0, this.usageModels.get(threadId)]);
+  }
   private readonly childParents = new Map<string, string>();
   private readonly childRoles = new Map<string, string | undefined>();
 
@@ -212,6 +238,7 @@ export class CodexMonitorEvidence {
     observedAt: string,
     evidenceId: string,
     configured: CodexConfiguredIntent = {},
+    usageStartsAtZero = false,
   ): AdapterMonitorObservationBatch | null {
     const response = rec(responseValue);
     const thread = rec(response?.thread);
@@ -238,6 +265,19 @@ export class CodexMonitorEvidence {
       );
     }
     const modelId = str(response?.model);
+    if (threadId) {
+      this.rememberUsageModel(threadId, {
+        providerId: str(response?.modelProvider) ?? str(thread?.modelProvider) ?? 'unknown',
+        ...(modelId ? { modelId } : {}),
+        ...(str(response?.serviceTier) ? { serviceTier: str(response?.serviceTier)! } : {}),
+      });
+      if (usageStartsAtZero && !this.usageCounters.has(threadId)) {
+        this.usageCounters.set(threadId, {
+          counter: { total: 0, input: 0, cached: 0, output: 0, reasoning: 0 },
+          model: this.usageModelKey(threadId),
+        });
+      }
+    }
     if (modelId) {
       updates.push(
         upsert('model', actor ? `actor:${actor.runKey}` : 'observed', {
@@ -399,19 +439,42 @@ export class CodexMonitorEvidence {
         const total = rec(usage?.total);
         const last = rec(usage?.last);
         const cumulativeTokens = finiteNonNegative(total?.totalTokens);
+        const counter = codexUsageCounter(total);
+        const previous = this.usageCounters.get(notificationThreadId!);
+        const model = this.usageModels.get(notificationThreadId!) ?? { providerId: 'unknown' };
+        const modelKey = this.usageModelKey(notificationThreadId!);
+        const duplicate =
+          previous &&
+          counter &&
+          (['total', 'input', 'cached', 'output'] as const).every(
+            (field) => previous.counter[field] === counter[field],
+          );
+        if (duplicate && phase === 'live') {
+          this.usageCounters.set(notificationThreadId!, { counter, model: modelKey });
+        }
         const usedTokens = finiteNonNegative(last?.totalTokens);
         const capacityTokens = finiteNonNegative(usage?.modelContextWindow);
         const metricKey = actor ? `actor:${actor.runKey}` : 'root';
-        if (cumulativeTokens !== undefined) {
+        if (counter && phase === 'live' && !duplicate) {
+          this.usageCounters.set(notificationThreadId!, { counter, model: modelKey });
           this.usageSequence += 1;
-          const usageKey = `sample:${notificationThreadId}:${this.usageSequence}`;
-          const usageKeys = this.usageKeysByScope.get(metricKey) ?? [];
-          usageKeys.push(usageKey);
-          this.usageKeysByScope.set(metricKey, usageKeys);
+          const usageKey = `sample:${this.epoch}:${notificationThreadId}:${this.usageSequence}`;
           updates.push(
             upsert('usage', usageKey, {
               kind: 'usage',
+              origin: 'protocol',
               usageId: usageKey,
+              ...(counter.total > 0 || previous
+                ? {
+                    pricing: codexUsagePricing(
+                      counter,
+                      previous?.counter,
+                      model,
+                      previous?.model === modelKey,
+                      codexUsageCounter(last),
+                    ),
+                  }
+                : {}),
               actor: actor ?? {
                 rootSessionKey: this.rootSessionId()!,
                 runKey: `${this.rootSessionId()}:root`,
@@ -423,10 +486,6 @@ export class CodexMonitorEvidence {
               cumulativeTokens,
             }),
           );
-          while (usageKeys.length > MAX_USAGE_SAMPLES) {
-            const removed = usageKeys.shift();
-            if (removed) updates.push(retract('usage', removed));
-          }
         }
         if (root && usedTokens !== undefined && capacityTokens !== undefined) {
           updates.push(
@@ -450,6 +509,17 @@ export class CodexMonitorEvidence {
         const cwd = str(settings.cwd);
         if (root && cwd) updates.push(upsert('environment', 'root', { kind: 'environment', cwd }));
         const modelId = str(settings.model);
+        if (modelId || 'serviceTier' in settings || str(settings.modelProvider)) {
+          const previous = this.usageModels.get(notificationThreadId!) ?? { providerId: 'unknown' };
+          const model = {
+            ...previous,
+            ...(modelId ? { modelId } : {}),
+            ...(str(settings.modelProvider) ? { providerId: str(settings.modelProvider)! } : {}),
+            ...(str(settings.serviceTier) ? { serviceTier: str(settings.serviceTier)! } : {}),
+          };
+          if (settings.serviceTier === null) delete model.serviceTier;
+          this.rememberUsageModel(notificationThreadId!, model);
+        }
         if (modelId) {
           updates.push(
             upsert('model', metricKey, {
@@ -507,6 +577,11 @@ export class CodexMonitorEvidence {
 
       case 'model/rerouted': {
         const modelId = str(params.toModel);
+        if (modelId)
+          this.rememberUsageModel(notificationThreadId!, {
+            ...(this.usageModels.get(notificationThreadId!) ?? { providerId: 'unknown' }),
+            modelId,
+          });
         const metricKey = actor ? `actor:${actor.runKey}` : 'observed';
         if (modelId) {
           updates.push(

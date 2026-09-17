@@ -38,6 +38,7 @@ import type {
   WorkspaceMonitorObservation,
 } from './internal-types.js';
 import { deriveMonitorNotifications } from './notifications.js';
+import { liveUsageOrigin, permitsLiveUsage } from './usage-policy.js';
 
 interface StoredEntryContext {
   plane: MonitorEvidencePlane;
@@ -167,6 +168,15 @@ function applyUpdates(
   let compactionStarts = 0;
 
   for (const update of updates) {
+    // A history refresh must not even retract or replace live accounting.
+    if (update.family === 'usage') {
+      if (context.phase !== 'live' && context.phase !== 'correction') continue;
+      if (update.operation === 'upsert' && !permitsLiveUsage(context.phase, update.value.origin)) continue;
+      if (update.operation === 'replace') {
+        // Usage is an observation ledger, never a reconstructed snapshot.
+        continue;
+      }
+    }
     if (update.operation === 'retract') {
       entries.delete(storageKey(context, update.family, update.key));
       continue;
@@ -187,7 +197,18 @@ function applyUpdates(
     }
 
     const key = storageKey(context, update.family, update.key);
-    const existing = entries.get(key);
+    // A producer may reconnect under a new epoch. The observation identity
+    // still refers to the original work, so its rate timestamp must survive.
+    const usageId = update.value.kind === 'usage' ? update.value.usageId : undefined;
+    const existing =
+      entries.get(key) ??
+      (usageId !== undefined
+        ? [...entries.values()].find(
+            (entry) =>
+              entry.ownerId === context.ownerId && entry.value.kind === 'usage' && entry.value.usageId === usageId,
+          )
+        : undefined);
+    if (usageId !== undefined && existing && existing.storageKey !== key) entries.delete(existing.storageKey);
     if (
       context.phase === 'live' &&
       update.family === 'compaction' &&
@@ -481,7 +502,7 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
       // unavailable coverage may add/correct facts but cannot erase old ones.
       if (batch.completeness === 'complete') {
         for (const [key, entry] of semanticEntries) {
-          if (entry.ownerId === batch.producer.id) semanticEntries.delete(key);
+          if (entry.ownerId === batch.producer.id && entry.family !== 'usage') semanticEntries.delete(key);
         }
       }
       for (const [key, entry] of applied.entries) semanticEntries.set(key, entry);
@@ -958,10 +979,14 @@ export function translateAgentEventEnvelope(options: TranslateAgentEventOptions)
       break;
     }
     case 'usage:tokens-used':
+      if (envelope.replay || !liveUsageOrigin(envelope.source)) break;
       updates.push(
         upsert('usage', event.usageId, {
           kind: 'usage',
           usageId: event.usageId,
+          origin: liveUsageOrigin(envelope.source),
+          pricing: event.pricing,
+          cost: event.cost,
           boundary: event.boundary,
           canonical: event.canonical,
           totalTokens: event.totalTokens,

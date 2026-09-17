@@ -140,6 +140,11 @@ export interface MonitorUsageAggregate {
   cacheCreationTokens?: number | undefined;
   reasoningTokens?: number | undefined;
   costUsd?: number | undefined;
+  /** Estimated API-equivalent USD, for observed work only; never a subscription invoice. */
+  costCoverage?: 'complete' | 'partial' | 'unavailable' | undefined;
+  pricedObservations?: number | undefined;
+  unpricedObservations?: number | undefined;
+  costRatePerMin?: number | undefined;
   /** Never negative, and never synthesized from a bootstrap baseline. */
   burnRatePerMin?: number | undefined;
   burnRateWindowMs?: number | undefined;
@@ -148,9 +153,18 @@ export interface MonitorUsageAggregate {
 }
 
 export interface MonitorUsageState extends MonitorUsageAggregate {
+  /** Corrected costs in fixed 30-second buckets, including the current bucket. */
+  costHistory?: MonitorCostBucket[] | undefined;
   /** Explicit root-actor usage when the source identifies actor scope. */
   rootActor?: MonitorUsageAggregate | undefined;
   samples: MonitorUsageSample[];
+}
+
+export interface MonitorCostBucket {
+  at: string;
+  costUsd: number;
+  inputUsd?: number | undefined;
+  outputUsd?: number | undefined;
 }
 
 export interface MonitorContextState {
@@ -209,6 +223,9 @@ export interface MonitorSubagentState {
   effort?: string | undefined;
   cumulativeTokens?: number | undefined;
   burnRatePerMin?: number | undefined;
+  costUsd?: number | undefined;
+  costRatePerMin?: number | undefined;
+  costCoverage?: MonitorUsageAggregate['costCoverage'];
 }
 
 export interface MonitorCompactionState {

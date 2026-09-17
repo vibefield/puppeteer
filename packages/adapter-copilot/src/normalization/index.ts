@@ -10,7 +10,6 @@ export * from './tool.js';
 export * from './workspace.js';
 export * from './interaction.js';
 export * from './compaction.js';
-export * from './usage.js';
 export * from './delegation.js';
 export * from './adapter.js';
 export * from './pipeline.js';

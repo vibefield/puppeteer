@@ -174,6 +174,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     fallbackCwd?: string,
     fallbackModel?: string,
     configured: CodexConfiguredIntent = {},
+    usageStartsAtZero = false,
   ): void {
     const thread = rec(response?.thread);
     const currentCwd = str(response?.cwd) ?? str(thread?.cwd) ?? fallbackCwd;
@@ -181,10 +182,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     const provider = str(response?.modelProvider);
     emitMonitorBatch(
       monitorEvidence.bootstrapResponseBatch(
-        { ...response, ...(currentCwd ? { cwd: currentCwd } : {}), ...(modelId ? { model: modelId } : {}) },
+        { ...response, ...(currentCwd ? { cwd: currentCwd } : {}) },
         new Date().toISOString(),
         'thread-response',
         configured,
+        usageStartsAtZero,
       ),
     );
     if (!currentCwd && !modelId) return;
@@ -412,11 +414,17 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       await client.close();
       throw new Error(`codex observer failed to attach to owned thread ${tid}`);
     }
-    applyEnvironmentFromResponse(rec(startResult), opts.start.cwd, opts.start.model, {
-      ...(opts.start.model ? { model: opts.start.model } : {}),
-      approvalPolicy: opts.start.approvalPolicy ?? 'on-request',
-      sandboxPolicy: opts.start.sandbox ?? 'workspace-write',
-    });
+    applyEnvironmentFromResponse(
+      rec(startResult),
+      opts.start.cwd,
+      opts.start.model,
+      {
+        ...(opts.start.model ? { model: opts.start.model } : {}),
+        approvalPolicy: opts.start.approvalPolicy ?? 'on-request',
+        sandboxPolicy: opts.start.sandbox ?? 'workspace-write',
+      },
+      true,
+    );
   } else if (opts.threadId) {
     await attach(opts.threadId, undefined);
     if (!attached) {

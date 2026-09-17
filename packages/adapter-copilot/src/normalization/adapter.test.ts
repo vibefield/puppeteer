@@ -24,8 +24,7 @@ describe('Copilot session normalization', () => {
         outputTokens: 2,
       }),
     );
-    expect(request.events.map((event) => event.type)).toEqual(['tool:requested', 'usage:tokens-used']);
-    expect(request.events[1]).not.toHaveProperty('totalTokens');
+    expect(request.events.map((event) => event.type)).toEqual(['tool:requested']);
     expect(normalizer.normalize(record('assistant.turn_end', { turnId: '0' })).events).toEqual([]);
     normalizer.normalize(record('assistant.turn_start', { turnId: '1', interactionId: 'interaction' }));
     normalizer.normalize(
@@ -73,7 +72,7 @@ describe('Copilot session normalization', () => {
       new CopilotSessionNormalizer().normalize(record('session.compaction_complete', { success: false })).events,
     ).toEqual([{ type: 'compaction:completed', outcome: 'failed' }]);
   });
-  it('keeps the shutdown aggregate as a non-canonical cross-check', () => {
+  it('retains shutdown metadata without turning transcript totals into live usage', () => {
     const events = new CopilotSessionNormalizer().normalize(
       record('session.shutdown', {
         modelMetrics: {
@@ -85,19 +84,9 @@ describe('Copilot session normalization', () => {
     ).events;
     expect(events).toEqual([
       {
-        type: 'usage:tokens-used',
-        usageId: 'copilot:session.shutdown:shutdown',
-        boundary: 'sample',
-        canonical: false,
-        cumulativeTokens: 19,
-        meterTokens: 14,
-        breakdown: {
-          inputTokens: 10,
-          outputTokens: 4,
-          cacheReadTokens: 3,
-          cacheCreationTokens: 0,
-          reasoningTokens: 2,
-        },
+        type: 'adapter:native-event',
+        adapter: 'copilot',
+        nativeType: 'session.shutdown',
       },
     ]);
   });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AdapterMonitorObservationBatch } from '../monitor/internal-types.js';
 import { AgentExecutionModeSchema } from './contract.js';
 import { AgentGitStateSchema } from './environment.js';
+import { UsageOriginSchema, UsagePricingSchema, UsageCostEstimateSchema } from './usage.js';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const NonNegativeNumberSchema = z.number().finite().nonnegative();
@@ -100,6 +101,9 @@ const MonitorStatusValueSchema = z.discriminatedUnion('kind', [
 const MonitorUsageValueSchema = z
   .strictObject({
     kind: z.literal('usage'),
+    origin: UsageOriginSchema.optional(),
+    pricing: UsagePricingSchema.optional(),
+    cost: UsageCostEstimateSchema.optional(),
     usageId: NonEmptyStringSchema,
     actor: ActorRunRefSchema.optional(),
     boundary: z.enum(['response', 'sample']),

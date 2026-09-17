@@ -274,9 +274,6 @@ export async function prepareOpenCodeTuiSession(
       emitMonitorBatch(
         monitorEvidence.childrenSnapshotBatch(currentChildren, statuses, new Date().toISOString(), phase),
       );
-      emitMonitorBatch(
-        monitorEvidence.historySnapshotBatch([...messages, ...childMessages.flat()], new Date().toISOString(), phase),
-      );
     };
 
     const resynchronize = async (): Promise<void> => {

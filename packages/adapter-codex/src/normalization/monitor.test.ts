@@ -26,6 +26,7 @@ function project(batches: AdapterMonitorObservationBatch[], asOf: string) {
     providerId: 'codex',
   });
   for (const batch of batches) {
+    if (!batch) continue;
     state = reduceMonitorAccumulator(state, {
       ...batch,
       kind: 'semantic',
@@ -37,6 +38,101 @@ function project(batches: AdapterMonitorObservationBatch[], asOf: string) {
 }
 
 describe('CodexMonitorEvidence', () => {
+  it('keeps a model round-trip ambiguous and clears a reverted service tier', () => {
+    const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD });
+    evidence.bootstrapResponseBatch(
+      { thread: { id: THREAD, modelProvider: 'openai' }, model: 'gpt-5.4', serviceTier: 'priority' },
+      T0,
+      'thread/start',
+      {},
+      true,
+    );
+    const settings = (model: string, serviceTier: string | null) =>
+      evidence.notificationBatch(
+        {
+          method: 'thread/settings/updated',
+          params: { threadId: THREAD, model, serviceTier },
+        },
+        T0,
+      );
+    const sample = (multiple: number) =>
+      evidence.notificationBatch(
+        {
+          method: 'thread/tokenUsage/updated',
+          params: {
+            threadId: THREAD,
+            tokenUsage: {
+              total: {
+                totalTokens: 15 * multiple,
+                inputTokens: 10 * multiple,
+                cachedInputTokens: 0,
+                outputTokens: 5 * multiple,
+              },
+              last: { totalTokens: 15, inputTokens: 10, cachedInputTokens: 0, outputTokens: 5 },
+            },
+          },
+        },
+        T0,
+      )!;
+    sample(1);
+    settings('gpt-5.4-mini', 'priority');
+    settings('gpt-5.4', 'priority');
+    expect(family(sample(2), 'usage')).toMatchObject([{ value: { pricing: { gap: 'model-change' } } }]);
+    settings('gpt-5.4', null);
+    sample(3); // Establish the new interval after the tier transition.
+    const priced = family(sample(4), 'usage')[0];
+    if (priced?.operation !== 'upsert' || priced.family !== 'usage') throw new Error('missing usage');
+    expect(priced.value.pricing).toMatchObject({ modelId: 'gpt-5.4', inputTokens: 10, outputTokens: 5 });
+    expect(priced.value.pricing?.serviceTier).toBeUndefined();
+  });
+  it('prices the first request only for a proven newly created thread and ignores duplicate counters', () => {
+    const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD });
+    evidence.bootstrapResponseBatch(
+      { thread: { id: THREAD, modelProvider: 'openai' }, model: 'gpt-5.4' },
+      T0,
+      'thread/start',
+      {},
+      true,
+    );
+    const notification = {
+      method: 'thread/tokenUsage/updated',
+      params: {
+        threadId: THREAD,
+        tokenUsage: {
+          total: { totalTokens: 15, inputTokens: 10, cachedInputTokens: 4, outputTokens: 5, reasoningOutputTokens: 3 },
+          last: { totalTokens: 15, inputTokens: 10, cachedInputTokens: 4, outputTokens: 5, reasoningOutputTokens: 3 },
+        },
+      },
+    };
+    const first = evidence.notificationBatch(notification, T0)!;
+    expect(family(first, 'usage')).toMatchObject([
+      {
+        value: {
+          origin: 'protocol',
+          pricing: {
+            providerId: 'openai',
+            modelId: 'gpt-5.4',
+            inputTokens: 6,
+            cacheReadTokens: 4,
+            outputTokens: 5,
+            contextTokens: 10,
+          },
+        },
+      },
+    ]);
+    expect(evidence.notificationBatch(notification, T0)).toBeNull();
+    const resumed = new CodexMonitorEvidence({ nativeSessionId: () => THREAD });
+    resumed.bootstrapResponseBatch(
+      { thread: { id: THREAD, modelProvider: 'openai' }, model: 'gpt-5.4' },
+      T0,
+      'thread/resume',
+    );
+    const resumedUsage = family(resumed.notificationBatch(notification, T0)!, 'usage');
+    const keys = (updates: MonitorFamilyUpdate[]) =>
+      updates.map((update) => (update.operation === 'upsert' ? update.key : undefined));
+    expect(keys(resumedUsage)).not.toEqual(keys(family(first, 'usage')));
+    expect(resumedUsage).toMatchObject([{ value: { pricing: { gap: 'baseline' } } }]);
+  });
   it('adds independent root and child thread counters once without burning bootstrap history', () => {
     const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD, epoch: 'test-epoch' });
     const child = evidence.notificationBatch(
@@ -55,7 +151,7 @@ describe('CodexMonitorEvidence', () => {
         phase,
       )!;
     const baseline = [child, sample(THREAD, 100, 0, 'bootstrap'), sample(CHILD, 40, 0, 'bootstrap')];
-    expect(project(baseline, T0).usage).toMatchObject({ cumulativeTokens: 140 });
+    expect(project(baseline, T0).usage.cumulativeTokens).toBeUndefined();
     expect(project(baseline, T0).usage.burnRatePerMin).toBeUndefined();
     const result = project(
       [...baseline, sample(THREAD, 160, 30, 'live'), sample(CHILD, 70, 30, 'live')],
@@ -63,11 +159,11 @@ describe('CodexMonitorEvidence', () => {
     );
     expect(result.usage).toMatchObject({
       cumulativeTokens: 230,
-      burnRatePerMin: 180,
-      rootActor: { cumulativeTokens: 160, burnRatePerMin: 120 },
+      rootActor: { cumulativeTokens: 160 },
     });
     expect(result.subagentCount).toBe(1);
-    expect(result.subagents).toEqual([{ id: CHILD, working: false, cumulativeTokens: 70, burnRatePerMin: 60 }]);
+    expect(result.subagents).toMatchObject([{ id: CHILD, working: false, cumulativeTokens: 70 }]);
+    expect(result.usage.burnRatePerMin).toBeUndefined();
   });
 
   it('declares every family and keeps schema-only or absent surfaces honest', () => {
@@ -127,7 +223,7 @@ describe('CodexMonitorEvidence', () => {
       },
     ]);
     expect(project([capabilities, baseline, live], '2026-08-16T12:00:30.000Z')).toMatchObject({
-      usage: { cumulativeTokens: 38, burnRatePerMin: 38, burnRateBoundary: 'sample' },
+      usage: { cumulativeTokens: 38 },
       context: { usedTokens: 19, capacityTokens: 258_400 },
     });
   });

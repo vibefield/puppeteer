@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PiSessionNormalizer } from './pipeline.js';
 
 describe('Pi session normalization', () => {
-  it('maps a tool turn, usage, and workspace edit without terminal inference', () => {
+  it('maps transcript conversation and workspace edits without emitting usage', () => {
     const normalizer = new PiSessionNormalizer();
     expect(
       normalizer
@@ -31,11 +31,7 @@ describe('Pi session normalization', () => {
         usage: { input: 4, output: 2, totalTokens: 6 },
       },
     });
-    expect(request.events.map((event) => event.type)).toEqual([
-      'tool:requested',
-      'workspace:file-operation',
-      'usage:tokens-used',
-    ]);
+    expect(request.events.map((event) => event.type)).toEqual(['tool:requested', 'workspace:file-operation']);
     const result = normalizer.normalize({
       type: 'message',
       id: 'r',
@@ -72,11 +68,7 @@ describe('Pi session normalization', () => {
         cost: { total: 0.01 },
       },
     }).events;
-    expect(events.map((event) => event.type)).toEqual([
-      'usage:tokens-used',
-      'context-window:invalidated',
-      'compaction:completed',
-    ]);
-    expect(events[0]).toMatchObject({ totalTokens: 18, meterTokens: 15 });
+    expect(events.map((event) => event.type)).toEqual(['context-window:invalidated', 'compaction:completed']);
+    expect(events.some((event) => event.type === 'usage:tokens-used')).toBe(false);
   });
 });

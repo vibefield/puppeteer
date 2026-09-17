@@ -205,6 +205,7 @@ export class GrokMonitorEvidence {
       candidate.timestamp,
       replay ? 'bootstrap' : 'live',
       candidate.promptId ?? candidate.turnId,
+      candidate.source === 'native-protocol' && !replay,
     );
   }
 
@@ -214,6 +215,7 @@ export class GrokMonitorEvidence {
     observedAt: string,
     phase: 'bootstrap' | 'live',
     promptId?: string,
+    directUsage = false,
   ): AdapterMonitorObservationBatch | null {
     const nested = nestedUpdate(nativeEvent);
     const update = nested?.update;
@@ -221,7 +223,7 @@ export class GrokMonitorEvidence {
     const updates: MonitorFamilyUpdate[] = [];
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
     let provisional = false;
-    if (event.type === 'turn:started') this.activePromptId = promptId ?? event.turnId;
+    if (directUsage && event.type === 'turn:started') this.activePromptId = promptId ?? event.turnId;
     const usagePromptId =
       str(update?.prompt_id) ?? str(rec(nested?.params._meta)?.promptId) ?? promptId ?? this.activePromptId;
 
@@ -269,7 +271,11 @@ export class GrokMonitorEvidence {
     const isTurnCompletedEvent =
       event.type === 'turn:completed' ||
       (event.type === 'adapter:native-event' && event.adapter === 'grok' && event.nativeType === 'turn_completed');
-    if (update && ((isTurnCompletedEvent && kind === 'turn_completed') || kind === 'response_completed')) {
+    if (
+      directUsage &&
+      update &&
+      ((isTurnCompletedEvent && kind === 'turn_completed') || kind === 'response_completed')
+    ) {
       updates.push(
         ...this.usage.normalize(
           this.options.nativeSessionId(),

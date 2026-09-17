@@ -71,16 +71,8 @@ describe('GrokMonitorEvidence', () => {
         }).state;
     };
     apply(
-      projector.observedBatch(
-        {
-          ...observed(
-            { type: 'turn:started', turnId: 'prompt-1' },
-            record({ sessionUpdate: 'user_message_chunk' }),
-            'prompt-1',
-          ),
-          phase: 'live',
-        },
-        AT,
+      projector.controlCandidateBatch(
+        candidate({ sessionUpdate: 'user_message_chunk' }, { type: 'turn:started', turnId: 'prompt-1' }),
       ),
     );
     const response = candidate({
@@ -130,7 +122,7 @@ describe('GrokMonitorEvidence', () => {
       ['status', 'usage', 'context', 'model', 'effort', 'mode', 'delegation', 'compaction', 'environment'].sort(),
     );
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
-      support: 'supported',
+      support: 'degraded',
       actorScope: 'root',
     });
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
@@ -184,14 +176,16 @@ describe('GrokMonitorEvidence', () => {
       observationLevel: 'native-log',
       allocatedAt: AT,
     });
-    const { state } = reduceMonitorAccumulator(initial, {
-      ...batch,
-      kind: 'semantic',
-      runtimeRunId: 'run',
-      runtimeEpoch: 1,
-    });
+    const state = batch
+      ? reduceMonitorAccumulator(initial, {
+          ...batch,
+          kind: 'semantic',
+          runtimeRunId: 'run',
+          runtimeEpoch: 1,
+        }).state
+      : initial;
     const usage = projectAgentMonitorState(state, { asOf: AT }).usage;
-    expect(usage.cumulativeTokens).toBe(15);
+    expect(usage.cumulativeTokens).toBeUndefined();
     expect(usage.burnRatePerMin).toBeUndefined();
   });
 
@@ -233,7 +227,7 @@ describe('GrokMonitorEvidence', () => {
     expect(projector.controlCandidateBatch(completed)?.updates).toHaveLength(1);
   });
 
-  it('maps captured turn usage as canonical burn while keeping signals as context only', () => {
+  it('excludes captured journal usage while keeping signals as context only', () => {
     const projector = evidence();
     const usage = projector.observedBatch(
       observed(
@@ -250,23 +244,7 @@ describe('GrokMonitorEvidence', () => {
       ),
       AT,
     );
-    expect(usage).toMatchObject({
-      phase: 'bootstrap',
-      updates: [
-        {
-          family: 'usage',
-          operation: 'upsert',
-          key: `grok-turn:${SESSION}:prompt-1`,
-          value: {
-            boundary: 'response',
-            canonical: true,
-            deltaTokens: 13,
-            inputTokens: 12,
-            outputTokens: 1,
-          },
-        },
-      ],
-    });
+    expect(usage).toBeNull();
 
     const context = projector.observedBatch(
       observed(

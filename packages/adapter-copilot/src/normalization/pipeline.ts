@@ -11,7 +11,6 @@ import { normalizeCopilotModel } from './model.js';
 import { normalizeCopilotReasoning } from './reasoning.js';
 import { normalizeCopilotSession } from './session.js';
 import { copilotToolCompleted, copilotToolRequested, copilotToolStarted, type CopilotToolFact } from './tool.js';
-import { normalizeCopilotMessageUsage, normalizeCopilotShutdownUsage } from './usage.js';
 import { copilotWorkspaceOperation, normalizeCopilotWorkspace } from './workspace.js';
 import { copilotErrorText, copilotRecord, copilotString, type CopilotNormalizedRecord } from './types.js';
 
@@ -149,7 +148,6 @@ export class CopilotSessionNormalizer {
         const workspace = copilotWorkspaceOperation(id, fact, 'proposed');
         if (workspace) events.push(workspace);
       }
-      events.push(...normalizeCopilotMessageUsage(entryId, data));
       if (internal && requests.length === 0) actor.terminalInternalTurns.add(internal);
       return finish(events, events.length ? 'mapped' : 'no-output', interaction);
     }
@@ -230,7 +228,7 @@ export class CopilotSessionNormalizer {
       );
     }
     if (type === 'session.shutdown') {
-      const events = normalizeCopilotShutdownUsage(entryId, data);
+      const events: AgentEvent[] = [];
       const changes = copilotRecord(data.codeChanges);
       if (Array.isArray(changes?.filesModified) && changes.filesModified.length) {
         const files = changes.filesModified

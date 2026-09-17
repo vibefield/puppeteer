@@ -12,3 +12,4 @@ export * from './monitor/reduce.js';
 export * from './monitor/project.js';
 export * from './monitor/notifications.js';
 export * from './monitor/rate.js';
+export * from './monitor/usage-policy.js';

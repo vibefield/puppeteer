@@ -7,7 +7,6 @@ import { normalizePiModel } from './model.js';
 import { normalizePiSession } from './session.js';
 import { piToolRequests, piToolResult, type PiToolFact } from './tool.js';
 import { piTurnStarted, piTurnTerminal } from './turn.js';
-import { normalizePiSummaryUsage, normalizePiUsage } from './usage.js';
 import { piWorkspaceOperation } from './workspace.js';
 import { piRecord, piString, piTextContent, type PiNormalizedRecord } from './types.js';
 
@@ -39,11 +38,7 @@ export class PiSessionNormalizer {
     if (!body) return finish(normalizePiNative(type), 'retained-native');
 
     const direct =
-      normalizePiSession(body) ??
-      normalizePiModel(body) ??
-      normalizePiEffort(body) ??
-      normalizePiCompaction(body) ??
-      normalizePiSummaryUsage(body);
+      normalizePiSession(body) ?? normalizePiModel(body) ?? normalizePiEffort(body) ?? normalizePiCompaction(body);
     if (direct) return finish(direct, direct.length > 0 ? 'mapped' : 'no-output');
     if (type !== 'message') return finish(normalizePiNative(type), 'retained-native');
 
@@ -68,11 +63,10 @@ export class PiSessionNormalizer {
         const operation = piWorkspaceOperation(fact.id, fact, 'proposed');
         if (operation) workspace.push(operation);
       }
-      const usage = normalizePiUsage(`pi:${entryId}`, message.usage);
       const terminal = piTurnTerminal(turnId, message, piTextContent(message.content));
       if (terminal) this.currentTurnId = undefined;
       return finish(
-        [...conversation, ...requested.events, ...workspace, ...usage, ...(terminal ? [terminal] : [])],
+        [...conversation, ...requested.events, ...workspace, ...(terminal ? [terminal] : [])],
         'mapped',
         turnId,
       );
