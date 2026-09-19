@@ -1,10 +1,11 @@
+import type { MonitorBlocker } from '@vibecook/puppeteer-core';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { formatUsd } from '../../monitor/cost-format.js';
 import type { MonitorAgent } from '../../monitor/types.js';
-import { burnBars, type BurnBars } from './burn-bars.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
-import type { CopyLead, CopyLine, TextStyle } from './text-layout.js';
+import type { CopyLead, CopyLine, CopyTone, TextStyle } from './text-layout.js';
+import { SWARM_WEIGHT } from './weight.js';
 
 // The complete, controller-free reading of one swarm body: which of the five
 // drawn states it is in, how big it is, what it says, and which marks it
@@ -13,10 +14,49 @@ import type { CopyLead, CopyLine, TextStyle } from './text-layout.js';
 //
 // The numbers are the decided swarm design (proposals record, pass 9): sizes by
 // status, the unread dot before the name, model and effort always shown, the
-// burn graph and the context ring on a working body, the outer light on a
+// burn ladder and the context ring on a working body, the outer light on a
 // blocked one, and a hollow for a terminal no agent has claimed.
 
 export type SwarmBodyState = 'terminal-empty' | 'terminal-running' | 'idle' | 'working' | 'blocked';
+
+/** The colour of the light inside a body, which is the STATE's and never the
+ * project's (2026-09-16): the theme's own ink while working, orange while
+ * blocked, blue for a reply that arrived unseen. One light, three colours — a
+ * flood in the state's colour would leave the state's own words nowhere to sit. */
+export type SwarmLightTone = 'ink' | 'orange' | 'blue';
+
+/**
+ * The burn ladder (2026-09-17): estimated USD per minute, about three times the
+ * spend per step, so the four flames are even steps on a log scale. Absolute, not
+ * relative to the swarm, so one body's reading means the same as another's — the
+ * chart it replaces was scaled to its own tallest column and could only say
+ * "busier than it was", never "hot".
+ */
+export const BURN_LADDER: readonly number[] = [0.05, 0.15, 0.4, 1];
+
+/** How many of the four flames a rate lights. */
+export function burnFlames(costPerMin: number): number {
+  let lit = 0;
+  for (const step of BURN_LADDER) if (costPerMin >= step) lit += 1;
+  return lit;
+}
+
+export interface SwarmBurn {
+  /** 0–4 against the ladder. Zero with a price is a calm session. */
+  lit: number;
+  /** False where the provider has no pricing lane: the ladder is drawn unread,
+   * never as calm (RFC 008 — a missing lane is unavailable, not zero dollars). */
+  priced: boolean;
+}
+
+/** The burn rate as people price work: by the hour. */
+export function formatRatePerHour(costPerMin: number | undefined): string {
+  if (costPerMin === undefined) return '—/hr';
+  const perHour = costPerMin * 60;
+  if (perHour >= 10) return `$${Math.round(perHour)}/hr`;
+  if (perHour >= 1) return `$${perHour.toFixed(1)}/hr`;
+  return `${formatUsd(perHour)}/hr`;
+}
 
 export interface SwarmFigure {
   text: string;
@@ -31,7 +71,8 @@ export interface SwarmBubbleModel {
   /** The three-way reading that picks the body's colours and size. */
   appearance: AgentVisualStatus;
   radius: number;
-  /** The project's colour (record §02): the tag before the name, the flood, the centre light. */
+  /** The project's colour (record §02). It shows in ONE place: the folder before
+   * the project's name. Nothing else on the body wears it (2026-09-16). */
   accent: string;
   copy: CopyLine[];
   copyMaxWidthRatio: number;
@@ -39,10 +80,10 @@ export interface SwarmBubbleModel {
   figures?: { top?: SwarmFigure; bottom?: SwarmFigure };
   /** The context ring on the rim in the ink, every agent body. */
   ring?: { percent: number; hot: boolean };
-  /** The burn bars' two sides, twenty columns each, oldest first, each side against its tallest: output up, input down. */
-  graph?: BurnBars;
-  /** Blocked: the accent floods the body from the centre. */
-  flood: boolean;
+  /** How hard this session is burning, as a count on the fixed ladder. Working bodies only. */
+  burn?: SwarmBurn;
+  /** The light inside the body, in the state's colour. */
+  light?: SwarmLightTone;
   /** Transparent body with a rim: the unclaimed terminal. */
   hollow: boolean;
   /** The comet sweeping a hollow's rim: a foreground job. */
@@ -81,21 +122,62 @@ const LABEL_INLINE: TextStyle = { size: 7, weight: 800, transform: 'lowercase', 
 const LABEL_INLINE_ITALIC: TextStyle = { ...LABEL_INLINE, italic: true };
 const COMMAND: TextStyle = { size: 8, weight: 600 };
 const BRANCH: TextStyle = { size: 7, weight: 500 };
-/** The latest reply, one line. */
-const MESSAGE: TextStyle = { size: 8, weight: 500 };
-const KIND: TextStyle = { size: 7, weight: 800, transform: 'uppercase', letterSpacing: 0.08 };
+/** The project's name once the state has taken its place above it. */
+const PROJECT_ABOVE: TextStyle = { size: 7.5, weight: 800, letterSpacing: 0.02 };
+/** What the body waits on, in the name's place: a sentence, not a label, so it is
+ * set lighter than a name and a size under it to hold as many of its words as
+ * the chord allows. */
+const STATE_LINE: TextStyle = { size: 9, weight: 600, letterSpacing: -0.02 };
 
-/** The project's tag before the name: a rounded bar in the project's colour, the name's height, a quarter as wide. */
-function projectTag(style: TextStyle): CopyLead {
-  const size = Math.round(style.size * 0.8);
-  return { kind: 'bar', size, width: Math.max(2, Math.round(size / 4)), gap: 4, tone: 'accent' };
+/**
+ * The project's folder before its name, in the project's colour: the one place
+ * that colour is used. Drawn a little larger than the type so its 24-box ink
+ * stands at about the name's cap height, with its advance narrowed to the ink it
+ * actually covers.
+ *
+ * Where a state line has displaced the name, the folder turns SOLID and keeps
+ * its full strength while the name steps back to a supporting rung: the project
+ * is still which agent this is, but its name is no longer what the body is
+ * telling you (2026-09-18).
+ */
+function projectFolder(style: TextStyle, options: { solid?: boolean; tone?: CopyTone } = {}): CopyLead {
+  const size = Math.round(style.size * (options.solid ? 1.3 : 1.15));
+  return {
+    kind: 'icon',
+    icon: options.solid ? 'folder-solid' : 'folder',
+    size,
+    width: Math.round(size * 0.75),
+    gap: 4,
+    tone: options.tone ?? 'accent',
+    ...(options.solid ? { opacity: SWARM_WEIGHT.title } : {}),
+  };
 }
 
-const BLOCKER_LINE: Record<SwarmBlockerKind, string> = {
-  permission: 'permission',
-  question: 'question',
-  failure: 'failed',
+/** The mark a blocker asks with, and the word it falls back to unnamed. */
+const BLOCKER_MARK: Record<SwarmBlockerKind, { icon: string; word: string }> = {
+  permission: { icon: 'permission', word: 'permission' },
+  question: { icon: 'question', word: 'question' },
+  failure: { icon: 'failure', word: 'failed' },
 };
+
+/**
+ * What a blocked body says in the name's place: what it is actually waiting on,
+ * in the blocker's OWN evidence before the reply's — the question as asked, the
+ * detail an adapter gave, the tool a permission names, the failure's code — and
+ * only then the latest reply, and only then the bare word.
+ */
+function blockerText(blocker: MonitorBlocker, message: string | undefined): string {
+  if (blocker.kind === 'question') {
+    const question = blocker.questions[0];
+    const asked = question?.header?.trim() || question?.prompt.trim();
+    if (asked) return asked;
+  }
+  const detail = blocker.detail?.trim();
+  if (detail) return detail;
+  if (blocker.kind === 'permission' && blocker.permission?.tool) return blocker.permission.tool;
+  if (blocker.kind === 'failure' && blocker.failure?.code) return blocker.failure.code;
+  return message ?? BLOCKER_MARK[blocker.kind].word;
+}
 
 /** Compact token counts: 820, 8.1k, 24k, 384k, 1.2M, 24M. */
 export function formatTokens(count: number): string {
@@ -156,11 +238,6 @@ function contextPercent(agent: MonitorAgent): number | undefined {
   return usedPercent === undefined || !Number.isFinite(usedPercent) ? undefined : Math.floor(usedPercent);
 }
 
-function blockerKind(agent: MonitorAgent): SwarmBlockerKind | undefined {
-  const first = agent.agent?.monitor?.blockers[0];
-  return first?.kind;
-}
-
 function modelName(agent: MonitorAgent): string | undefined {
   const facet = agent.agent;
   return facet ? (facet.model ?? facet.provider.label) : undefined;
@@ -184,20 +261,44 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     const running = agent.status === 'working';
     const elapsed = running ? formatElapsed(input.runningSinceMs, nowMs) : undefined;
     const copy: CopyLine[] = [
+      // One line, the folder then the name, as every other body reads. A terminal
+      // belongs to no project, so its folder wears the ink rather than a colour.
       {
-        key: 'folder',
-        text: '',
+        key: 'name',
+        text: agent.project,
         style: TERMINAL_NAME,
-        opacity: 0.6,
+        opacity: SWARM_WEIGHT.title,
         tone: 'ink',
-        lead: { kind: 'icon', icon: 'folder', size: 14, gap: 0 },
+        lead: projectFolder(TERMINAL_NAME, { tone: 'ink' }),
       },
-      { key: 'name', text: agent.project, style: TERMINAL_NAME, opacity: 1, tone: 'ink', gapBefore: 3 },
       running
-        ? { key: 'command', text: 'running', style: COMMAND, opacity: 0.85, tone: 'ink', gapBefore: 3 }
-        : { key: 'sub', text: 'empty', style: LABEL_STACKED, opacity: 0.55, tone: 'ink', gapBefore: 3 },
+        ? {
+            key: 'command',
+            text: 'running',
+            style: COMMAND,
+            opacity: SWARM_WEIGHT.supporting,
+            tone: 'ink',
+            gapBefore: 3,
+          }
+        : {
+            key: 'sub',
+            text: 'empty',
+            style: LABEL_STACKED,
+            opacity: SWARM_WEIGHT.supporting,
+            tone: 'ink',
+            gapBefore: 3,
+          },
       ...(elapsed
-        ? [{ key: 'elapsed', text: elapsed, style: LABEL_STACKED, opacity: 0.55, tone: 'ink' as const, gapBefore: 3 }]
+        ? [
+            {
+              key: 'elapsed',
+              text: elapsed,
+              style: LABEL_STACKED,
+              opacity: SWARM_WEIGHT.supporting,
+              tone: 'ink' as const,
+              gapBefore: 3,
+            },
+          ]
         : []),
       // A peer's session wears its host on the body — the name and the
       // host's write policy, in both directions — so it cannot be read as
@@ -208,7 +309,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
               key: 'host',
               text: `${remote.deviceName} · ${remoteWriteLabel(remote)}`,
               style: LABEL_STACKED,
-              opacity: 0.7,
+              opacity: SWARM_WEIGHT.supporting,
               tone: 'ink' as const,
               gapBefore: 3,
             },
@@ -222,7 +323,6 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       radius: radiusForStatus(parameters, 'idle'),
       copy,
       copyMaxWidthRatio: 0.9,
-      flood: false,
       hollow: true,
       running,
       unread: false,
@@ -250,15 +350,22 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     key: 'model',
     text: effort ? `${model} · ${effort.text}` : model,
     style: effort?.configured ? LABEL_INLINE_ITALIC : LABEL_INLINE,
-    opacity: 0.58,
+    opacity: SWARM_WEIGHT.supporting,
     tone: 'ink',
     gapBefore: 3,
   };
   const message = latestMessage(agent);
 
   if (appearance === 'working') {
-    // Corrected USD totals and original observation buckets, including cached runs.
+    // The held total is the UI's ledger: corrected USD across a bubble's runs,
+    // cached ones included. The RATE is Core's own live projection over its
+    // rate-eligible window — never a difference of UI snapshots, which a
+    // correction could otherwise turn into new spend.
     const total = facet.usage?.total;
+    const liveUsage = facet.monitor?.usage;
+    const coverage = liveUsage?.costCoverage;
+    const priced = coverage === 'complete' || coverage === 'partial';
+    const ratePerMin = priced ? (liveUsage?.costRatePerMin ?? 0) : undefined;
     const copy: CopyLine[] = [
       ...(facet.branch
         ? [
@@ -266,7 +373,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
               key: 'branch',
               text: facet.branch,
               style: BRANCH,
-              opacity: 0.67,
+              opacity: SWARM_WEIGHT.supporting,
               tone: 'ink' as const,
               lead: { kind: 'dot' as const, size: 5, gap: 4, tone: 'green' as const },
             },
@@ -276,9 +383,9 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         key: 'name',
         text: agent.project,
         style: WORKING_NAME,
-        opacity: 1,
+        opacity: SWARM_WEIGHT.title,
         tone: 'ink',
-        tag: projectTag(WORKING_NAME),
+        lead: projectFolder(WORKING_NAME),
         ...(facet.branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
@@ -303,60 +410,68 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         },
       },
       ...(ring ? { ring } : {}),
-      ...(facet.usage ? { graph: burnBars(facet.usage) } : {}),
-      flood: false,
+      burn: { lit: ratePerMin === undefined ? 0 : burnFlames(ratePerMin), priced },
+      light: 'ink',
       hollow: false,
       running: false,
       unread: input.unread,
-      watermark: { sprite: facet.provider.id, opacity: 0.16 },
-      ariaLabel,
-      title,
+      watermark: { sprite: facet.provider.id, opacity: SWARM_WEIGHT.watermark },
+      // The flames are the glance; the exact rate is a word away, for a pointer
+      // and for a screen reader.
+      ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(ratePerMin)}`,
+      title: `${title} · ${formatRatePerHour(ratePerMin)}`,
     };
   }
 
-  const kind = appearance === 'blocked' ? blockerKind(agent) : undefined;
-  // The latest reply, one line, led by a dot: orange for a body that waits on
-  // the user, blue for a reply the user has not looked at. Without a reply the
-  // blocked body names its blocker instead.
-  const reply = (tone: 'orange' | 'blue', text: string): CopyLine => ({
-    key: 'message',
-    text,
-    style: MESSAGE,
-    opacity: 0.85,
-    tone: 'ink',
-    gapBefore: 3,
-    lineHeight: 1.2,
-    lead: { kind: 'dot', size: 5, gap: 4, tone },
-  });
-  const messageLine: CopyLine[] =
-    appearance === 'blocked'
-      ? [
-          message
-            ? reply('orange', message)
-            : {
-                key: 'kind',
-                text: kind ? BLOCKER_LINE[kind] : 'blocked',
-                style: KIND,
-                opacity: 1,
-                tone: 'orange',
-                gapBefore: 3,
-              },
-        ]
-      : input.unread && message
-        ? [reply('blue', message)]
-        : [];
+  const blocker = appearance === 'blocked' ? agent.agent?.monitor?.blockers[0] : undefined;
+  const kind = blocker?.kind;
+  // What the body needs from the user takes the name's place, in its own words
+  // behind its own mark: what a blocker is waiting on, or the reply that arrived
+  // unseen. The project's name moves above it, and nothing follows the model line
+  // (2026-09-16). The state's COLOUR is the body's ground rather than its words,
+  // so those words stay the theme's ink like every other body's (2026-09-18).
+  const state: { text: string; icon: string; spoken: string } | undefined = blocker
+    ? {
+        text: blockerText(blocker, message),
+        icon: BLOCKER_MARK[blocker.kind].icon,
+        spoken: `${BLOCKER_MARK[blocker.kind].word}: ${blockerText(blocker, message)}`,
+      }
+    : appearance === 'blocked'
+      ? { text: message ?? 'blocked', icon: 'failure', spoken: message ?? 'blocked' }
+      : input.unread
+        ? {
+            text: message ?? 'new message',
+            icon: 'message',
+            spoken: message ? `new message: ${message}` : 'new message',
+          }
+        : undefined;
+  const nameStyle = state ? PROJECT_ABOVE : SMALL_NAME;
   const copy: CopyLine[] = [
     {
       key: 'name',
       text: agent.project,
-      style: SMALL_NAME,
-      opacity: 1,
+      style: nameStyle,
+      opacity: state ? SWARM_WEIGHT.supporting : SWARM_WEIGHT.title,
       tone: 'ink',
-      tag: projectTag(SMALL_NAME),
-      ...(input.unread && !message ? { lead: { kind: 'dot' as const, size: 5, gap: 4, tone: 'blue' as const } } : {}),
+      lead: projectFolder(nameStyle, state ? { solid: true } : {}),
     },
+    ...(state
+      ? [
+          {
+            key: 'state',
+            text: state.text,
+            style: STATE_LINE,
+            opacity: SWARM_WEIGHT.title,
+            // The state's colour is the body's own ground now, so its words and
+            // its mark are the theme's ink, like every other body's (2026-09-18).
+            tone: 'ink' as const,
+            gapBefore: 2,
+            lineHeight: 1.15,
+            lead: { kind: 'icon' as const, icon: state.icon, size: 11, width: 8, gap: 3 },
+          },
+        ]
+      : []),
     modelLine,
-    ...messageLine,
   ];
   return {
     ...base,
@@ -364,15 +479,17 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     appearance,
     radius,
     copy,
-    copyMaxWidthRatio: 0.84,
+    // The state line is the widest thing a small body carries; it gets a little
+    // more of the chord than a name would.
+    copyMaxWidthRatio: state ? 0.86 : 0.84,
     ...(ring ? { ring } : {}),
-    flood: appearance === 'blocked',
+    ...(appearance === 'blocked' ? { light: 'orange' as const } : input.unread ? { light: 'blue' as const } : {}),
     hollow: false,
     running: false,
     unread: input.unread,
-    watermark: { sprite: facet.provider.id, opacity: appearance === 'blocked' ? 0.12 : 0.055 },
+    watermark: { sprite: facet.provider.id, opacity: SWARM_WEIGHT.watermark },
     ...(kind ? { blockerKind: kind } : {}),
-    ariaLabel,
+    ariaLabel: state ? `${ariaLabel}, ${state.spoken}` : ariaLabel,
     title,
   };
 }

@@ -52,14 +52,13 @@ describe('USD display history', () => {
     resumed = seedUsage(resumed, 'a', record!, T0);
     expect(resumed.histories.get('a')?.total).toBe(2.5);
   });
-  it('marks missing observations partial and avoids pretending an unsplit estimate is all output', () => {
+  it('marks missing observations partial', () => {
     const ledger = reconcileUsage(
       EMPTY_USAGE_LEDGER,
       [{ id: 'a', usage: { ...usage(0.2), costCoverage: 'partial' } }],
       T0,
     );
     expect(ledger.histories.get('a')).toMatchObject({ total: 0.2, coverage: 'partial' });
-    expect(ledger.histories.get('a')?.sides).toBeUndefined();
   });
   it('isolates a different conversation reusing the same visual identity', () => {
     const old = reconcileUsage(EMPTY_USAGE_LEDGER, [reading(2)], T0);

@@ -21,6 +21,10 @@ struct Frame {
   holdRim: vec4f,
   holdFill: vec4f,
   holdInk: vec4f,
+  // the state glow's shape: where it begins, where it is full, its strength, unused
+  glowBand: vec4f,
+  // and its motion: crests across the radius, crests a second, trough depth, unused
+  glowWave: vec4f,
 };
 
 struct Body {
@@ -28,24 +32,23 @@ struct Body {
   posRadius: vec4f,
   fill: vec4f,
   ink: vec4f,
-  accent: vec4f,
+  // the inner light's colour — the STATE's, never the project's (see body.wgsl)
+  core: vec4f,
   rim: vec4f,
-  // x: flag bits, y: first sample of this body's graph (output side, then input side), z/w unused
+  // x: flag bits; y/z/w unused
   flags: vec4u,
-  // context ring: fraction 0..1, unused, track alpha, unused
+  // context ring: fraction 0..1, the weight it starts its climb at, the track's
+  // weight, the weight a full ring would reach
   ring: vec4f,
   // the outer light: reach (px), strength, breath (0..1), phase seed
   glow: vec4f,
   // spawn time (s), phase seed, stale mix (0/1), opacity
   motion: vec4f,
   link: vec4f,
-  // the burn bars' band as fractions of the diameter: top (full intensity), bottom (none)
-  graph: vec4f,
 };
 
 const F_HOLLOW: u32 = 1u;
 const F_RUNNING: u32 = 2u;
-const F_GRAPH: u32 = 4u;
 const F_GLOW: u32 = 8u;
 const F_RIM: u32 = 16u;
 const F_STALE: u32 = 32u;
@@ -55,21 +58,17 @@ const F_RING_HOT: u32 = 512u;
 const F_RING: u32 = 1024u;
 const F_SHADOW: u32 = 2048u;
 const F_CORE: u32 = 4096u;
-const F_FLOOD: u32 = 8192u;
+const F_WAVES: u32 = 8192u;
 
 const TAU: f32 = 6.28318530718;
+
 // The context gauge's width and the light's gutter follow the body's radius:
 // 5px and 2px on the 60px working body, thicker on a bigger one.
 const GAUGE_WIDTH_RATIO: f32 = 5.0 / 60.0;
 const LIGHT_GUTTER_RATIO: f32 = 2.0 / 60.0;
-// The burn bars span this much of the diameter, centred, so they stay clear of the rim.
-const BARS_SPAN: f32 = 0.56;
-// Per side; a body's samples are the output side then the input side.
-const GRAPH_SAMPLES: u32 = 20u;
 
 @group(0) @binding(0) var<uniform> frame: Frame;
 @group(0) @binding(1) var<storage, read> bodies: array<Body>;
-@group(0) @binding(2) var<storage, read> samples: array<f32>;
 
 fn has(flags: u32, bit: u32) -> bool {
   return (flags & bit) != 0u;

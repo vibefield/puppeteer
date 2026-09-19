@@ -50,23 +50,20 @@ export interface MonitorPalette {
 }
 
 export interface SwarmPalette {
-  idleBg: string;
-  idleText: string;
-  workingBg: string;
-  workingText: string;
-  workingBorder: string;
-  blockedBg: string;
-  blockedText: string;
+  /** Every agent body's surface. One value, because no state inverts the theme
+   * (2026-09-18): the swarm reads the instrument's resting body colour and lets
+   * marks, light and size say what a body is doing. */
+  surface: string;
+  /** The one ink. Importance is its WEIGHT, never a different grey — see
+   * `weight.ts` for the ladder. */
+  ink: string;
   /** The field's faint 24px grid. */
   gridLine: string;
-  textMain: string;
-  textMuted: string;
-  panelBg: string;
-  /** §2.5's orange: blocked light and the hot ring. */
+  /** §2.5's orange: a body that waits on the user. */
   orange: string;
   /** The branch dot's green. */
   green: string;
-  /** §2.5's select blue: the unread reply's dot. */
+  /** §2.5's select blue: a reply that arrived unseen. */
   blue: string;
 }
 
@@ -104,17 +101,11 @@ function readScopedNumber(name: string, fallback: number, root?: Element | null)
 
 function readSwarmPalette(root?: Element | null): SwarmPalette {
   return {
-    idleBg: readScopedToken('--idle-bg', '#000000', root),
-    idleText: readScopedToken('--idle-text', '#000000', root),
-    workingBg: readScopedToken('--working-bg', '#000000', root),
-    workingText: readScopedToken('--working-text', '#000000', root),
-    workingBorder: readScopedToken('--working-border', '#000000', root),
-    blockedBg: readScopedToken('--blocked-bg', '#000000', root),
-    blockedText: readScopedToken('--blocked-text', '#000000', root),
+    // The instrument's resting body colour, which every body now wears; the
+    // inverted working and blocked fills are no longer read.
+    surface: readScopedToken('--idle-bg', '#000000', root),
+    ink: readScopedToken('--text-main', '#000000', root),
     gridLine: readScopedToken('--grid-line', 'rgba(0, 0, 0, 0)', root),
-    textMain: readScopedToken('--text-main', '#000000', root),
-    textMuted: readScopedToken('--text-muted', '#000000', root),
-    panelBg: readScopedToken('--panel-bg', '#000000', root),
     orange: readToken('--vf-orange', '#000000'),
     green: readToken('--vf-godview-rain-green', '#000000'),
     blue: readToken('--vf-select', '#000000'),

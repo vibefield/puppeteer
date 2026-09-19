@@ -10,7 +10,6 @@ export interface UsageHistory {
   coverage?: UsageRunRecord['coverage'];
   /** Corrected USD in fixed time buckets, oldest first. */
   steps: readonly number[];
-  sides?: { output: readonly number[]; input: readonly number[] };
   stepMs: number;
 }
 
@@ -39,12 +38,9 @@ function sameSession(left: UsageHistoryKey | undefined, right: UsageHistoryKey |
 
 function historyOf(entry: UsageEntry, nowMs: number): UsageHistory {
   const steps = new Array<number>(USAGE_STEP_COUNT).fill(0);
-  const input = [...steps];
-  const output = [...steps];
   const boundary = Math.floor(nowMs / USAGE_STEP_MS);
   let total: number | undefined;
   let partial = false;
-  let split = true;
   for (const run of entry.runs.values()) {
     if (run.costUsd !== undefined) total = (total ?? 0) + run.costUsd;
     if (run.coverage !== 'complete') partial = true;
@@ -52,16 +48,12 @@ function historyOf(entry: UsageEntry, nowMs: number): UsageHistory {
       const index = USAGE_STEP_COUNT - 1 - (boundary - Math.floor(Date.parse(bucket.at) / USAGE_STEP_MS));
       if (index < 0 || index >= USAGE_STEP_COUNT) continue;
       steps[index]! += bucket.costUsd;
-      if (bucket.costUsd > 0 && (bucket.inputUsd === undefined || bucket.outputUsd === undefined)) split = false;
-      input[index]! += bucket.inputUsd ?? 0;
-      output[index]! += bucket.outputUsd ?? 0;
     }
   }
   return {
     ...(total === undefined ? {} : { total }),
     coverage: total === undefined ? 'unavailable' : partial ? 'partial' : 'complete',
     steps,
-    ...(split && steps.some((step) => step > 0) ? { sides: { input, output } } : {}),
     stepMs: USAGE_STEP_MS,
   };
 }

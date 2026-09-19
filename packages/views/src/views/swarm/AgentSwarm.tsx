@@ -72,7 +72,7 @@ const SPAWN_DURATION_MS = 720;
 /** Critically damped: about 90% of a size change lands within 300ms. */
 const RADIUS_SPRING_OMEGA = 16;
 const GRID_PITCH = 24;
-/** The burn graph scrolls: models are refreshed on this cadence even when nothing else changed. */
+/** The burn rate moves on its own: models are refreshed on this cadence even when nothing else changed. */
 const MODEL_REFRESH_MS = 1000;
 const STATUS_RANK: Record<SwarmBubbleModel['appearance'], number> = { idle: 0, working: 1, blocked: 2 };
 
@@ -160,9 +160,13 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   // The palette arrives as CSS; the GPU wants numbers. Resolved here, once per
   // theme, in the container's own cascade so any syntax the tokens use resolves.
   useEffect(() => {
-    themeRef.current = resolveSwarmTheme(palette.swarm, containerRef.current ?? undefined);
+    themeRef.current = resolveSwarmTheme(palette.swarm, containerRef.current ?? undefined, swarm);
     colourCacheRef.current.clear();
-  }, [palette]);
+    // The chroma and the two grounds are resolved into the theme rather than sent
+    // as uniforms, so moving one of those three has to re-resolve it. The rest of
+    // the glow travels in the frame and needs nothing here — and naming them
+    // keeps a slider drag from clearing the colour cache every frame.
+  }, [palette, swarm.stateChroma, swarm.stateGroundDark, swarm.stateGroundLight]);
 
   const cancelHold = (): void => {
     if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
@@ -419,6 +423,14 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
           reach: currentParameters.glowReach,
           strength: currentParameters.glowStrength,
           breath: currentParameters.glowBreath,
+        },
+        stateGlow: {
+          inner: currentParameters.stateGlowInner,
+          full: currentParameters.stateGlowFull,
+          strength: currentParameters.stateGlowStrength,
+          count: currentParameters.stateWaveCount,
+          speed: currentParameters.stateWaveSpeed,
+          depth: currentParameters.stateWaveDepth,
         },
         theme,
         bodies,

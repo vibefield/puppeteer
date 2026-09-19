@@ -17,7 +17,7 @@ import {
   type SwarmParameters,
 } from '../swarm-parameters.js';
 import { resolveSwarmTheme } from '../swarm-theme.js';
-import { clusterStages, lightStages, stateStages, type LabStage } from './fixtures.js';
+import { burnStages, clusterStages, lightStages, stateStages, type LabStage } from './fixtures.js';
 
 // The swarm design lab: one page, the production renderer, fixture agents in
 // every state and setting, and the view's own tunables as live controls. It
@@ -110,8 +110,26 @@ async function main(): Promise<void> {
     return resolved;
   };
 
-  // Controls.
+  // The tuning panel: fixed to the viewport, and collapsible to its own bar,
+  // because the page runs to several screens of stages and a tunable that has
+  // scrolled away is no tunable at all.
   const controls = root.querySelector<HTMLElement>('.lab-controls')!;
+  const panelHead = element('header', 'lab-panel-head');
+  const panelToggle = element('button', 'lab-panel-toggle', 'Hide');
+  panelToggle.type = 'button';
+  panelToggle.setAttribute('aria-expanded', 'true');
+  panelHead.append(element('span', undefined, 'Tune'), panelToggle);
+  const panelBody = element('div', 'lab-panel-body');
+  panelBody.id = 'lab-tune';
+  panelToggle.setAttribute('aria-controls', panelBody.id);
+  controls.append(panelHead, panelBody);
+  panelToggle.addEventListener('click', () => {
+    const opening = panelBody.hidden;
+    panelBody.hidden = !opening;
+    panelToggle.textContent = opening ? 'Hide' : 'Show';
+    panelToggle.setAttribute('aria-expanded', String(opening));
+  });
+
   const themeButton = element('button', 'lab-theme', 'Dark');
   themeButton.type = 'button';
   const motionLabel = element('label', 'lab-check');
@@ -119,10 +137,17 @@ async function main(): Promise<void> {
   motionInput.type = 'checkbox';
   motionInput.checked = true;
   motionLabel.append(motionInput, document.createTextNode('motion'));
-  controls.append(themeButton, motionLabel);
+  const panelRow = element('div', 'lab-panel-row');
+  panelRow.append(themeButton, motionLabel);
+  panelBody.append(panelRow);
+
   const sliders = new Map<string, HTMLInputElement>();
   for (const group of SWARM_PARAMETER_GROUPS) {
     if (group.title === 'ENGINE VARIABLES') continue;
+    // The panel keeps the parameter groups' own titles: seventeen sliders in a
+    // narrow column need saying where one family ends and the next begins.
+    const section = element('div', 'lab-group');
+    section.append(element('span', 'lab-group-title', group.title));
     for (const control of group.controls) {
       const label = element('label', 'lab-slider');
       const name = element('span', 'lab-slider-name', control.label);
@@ -136,12 +161,17 @@ async function main(): Promise<void> {
       input.addEventListener('input', () => {
         value.textContent = input.value;
         parameters = normalizeSwarmParameters({ ...parameters, [control.key]: Number(input.value) });
-        rebuild();
+        // The STATE GLOW colours are resolved into the theme rather than sent as
+        // uniforms, so a slider re-applies the theme rather than only rebuilding.
+        applyTheme();
       });
       sliders.set(control.key, input);
-      label.append(name, input, value);
-      controls.append(label);
+      // Name and reading share the first row, the slider spans the second, so the
+      // grid has to receive them in that order.
+      label.append(name, value, input);
+      section.append(label);
     }
+    panelBody.append(section);
   }
 
   // Stages.
@@ -179,12 +209,18 @@ async function main(): Promise<void> {
   };
 
   const addPart = (title: string, lede: string, stages: LabStage[], kind: 'grid' | 'cluster'): void => {
+    const partId = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
     const section = element('section', 'lab-part');
     section.append(element('h2', undefined, title), element('p', 'lab-lede', lede));
     if (kind === 'grid') {
       const grid = element('div', 'lab-grid');
       stages.forEach((stage, index) => {
         const figure = element('figure', 'lab-stage');
+        // The stage's id on the figure: a capture script can clip one body by name.
+        figure.dataset.stage = stage.id;
         const cell = element('div', 'lab-cell');
         const caption = element('figcaption');
         caption.append(
@@ -200,6 +236,8 @@ async function main(): Promise<void> {
       section.append(grid);
     } else {
       const cell = element('div', 'lab-cluster');
+      // The field's id on the cell: a capture script can clip one field by name.
+      cell.dataset.field = partId;
       section.append(cell);
       clusters.push({ cell, stages, positions: [] });
       for (const stage of stages) {
@@ -210,6 +248,16 @@ async function main(): Promise<void> {
     }
     root.querySelector('.lab-parts')!.append(section);
   };
+
+  /** A stable phase per stage, so bodies that breathe or ping do not do it in
+   * unison. The app seeds this at random; the lab needs it to be the same on
+   * every reload, and taking the id's LENGTH gave every two-character id in a
+   * cluster the same phase. */
+  function phaseOf(id: string): number {
+    let hash = 0;
+    for (let index = 0; index < id.length; index += 1) hash = (hash * 31 + id.charCodeAt(index)) % 9973;
+    return (hash / 9973) * Math.PI * 2;
+  }
 
   function modelOf(stage: LabStage): SwarmBubbleModel {
     const model = bubbleModel({
@@ -225,6 +273,12 @@ async function main(): Promise<void> {
 
   addMarks();
   addPart('States', 'Every drawn state, one body each, at the sizes the sliders hold.', stateStages(nowMs), 'grid');
+  addPart(
+    'The burn ladder',
+    'How hard a session is spending, as up to four flames on a fixed absolute ladder of estimated USD per minute — about three times the spend per step, and only as many flames as the rate has lit. Absolute, so one body’s reading means what another’s does.',
+    burnStages(nowMs),
+    'grid',
+  );
   addPart(
     'The pane light, weighed',
     'The selected pane’s light under three settings on the idle body. The sliders above set the app’s; these are fixed for comparison.',
@@ -266,7 +320,7 @@ async function main(): Promise<void> {
   };
   const applyTheme = (): void => {
     dealProjects();
-    theme = resolveSwarmTheme(readMonitorPalette().swarm, root);
+    theme = resolveSwarmTheme(readMonitorPalette().swarm, root, parameters);
     colourCache.clear();
     rebuild();
   };
@@ -324,7 +378,7 @@ async function main(): Promise<void> {
         size: 40,
         x: rect.left - rootRect.left + rect.width / 2,
         y: rect.top - rootRect.top + rect.height / 2,
-        colour: theme.textMain,
+        colour: theme.ink,
         alpha: mark.chosen ? 1 : 0.4,
       });
     }
@@ -344,7 +398,7 @@ async function main(): Promise<void> {
         scale: 1,
         opacity: 1,
         focus: entry.stage.focus === true,
-        seed: entry.stage.id.length * 0.7,
+        seed: phaseOf(entry.stage.id),
         accent: entry.accent,
         ...(entry.link ? { link: entry.link } : {}),
         ...(entry.stage.glow ? { glow: entry.stage.glow } : {}),
@@ -356,6 +410,14 @@ async function main(): Promise<void> {
       fillOpacity: parameters.bubbleFillOpacity,
       gridPitch: 24,
       glow: { reach: parameters.glowReach, strength: parameters.glowStrength, breath: parameters.glowBreath },
+      stateGlow: {
+        inner: parameters.stateGlowInner,
+        full: parameters.stateGlowFull,
+        strength: parameters.stateGlowStrength,
+        count: parameters.stateWaveCount,
+        speed: parameters.stateWaveSpeed,
+        depth: parameters.stateWaveDepth,
+      },
       theme,
       bodies,
       marks,

@@ -19,6 +19,11 @@ body {
   display: block;
   overflow: visible;
   user-select: text;
+  /* The skin blurs whatever sits behind the stage. In the lab nothing does —
+     and any backdrop-filter at all, blur(0) included, makes this element the
+     containing block for its fixed children, which would pin the tuning panel
+     to the document instead of the viewport and let it scroll away. */
+  backdrop-filter: none;
 }
 
 .lab-canvas {
@@ -59,18 +64,92 @@ body {
   line-height: 1.5;
 }
 
+/* The tuning panel. Fixed to the viewport rather than sitting in the header:
+   the page is several screens of stages and a tunable is no use if it has
+   scrolled away. Collapsible to its own bar for when it is over something. */
 .lab-controls {
+  position: fixed;
+  z-index: 20;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: 16px;
+  width: 268px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
-  padding: 10px 12px;
+  flex-direction: column;
   border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: 0 16px 38px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(18px);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.lab-panel-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 9px 9px 12px;
+  color: var(--text-main);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.lab-panel-toggle {
+  padding: 4px 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lab-panel-toggle:hover {
+  border-color: var(--control-hover-border);
+  color: var(--text-main);
+  background: var(--control-hover-bg);
+}
+
+.lab-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--panel-border);
+}
+
+/* The skeleton's reset hides with display:none, which a flex container outranks. */
+.lab-panel-body[hidden] {
+  display: none;
+}
+
+.lab-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0 2px;
+}
+
+.lab-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.lab-group-title {
+  padding-top: 11px;
+  color: var(--text-faint);
+  font-weight: 800;
+  letter-spacing: 0.1em;
 }
 
 .lab-theme {
@@ -83,23 +162,42 @@ body {
   cursor: pointer;
 }
 
-.lab-check,
-.lab-slider {
+.lab-check {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
 }
 
+/* Label and reading on one row, the slider itself across both, so seventeen of
+   them stack legibly in a narrow panel. */
+.lab-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 1px 8px;
+  color: var(--text-muted);
+}
+
+.lab-slider-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lab-slider input {
-  width: 90px;
+  width: 100%;
+  height: 12px;
+  grid-column: 1 / -1;
+  margin: 0;
   accent-color: var(--text-main);
+  cursor: ew-resize;
 }
 
 .lab-slider-value {
-  min-width: 3ch;
   color: var(--text-main);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .lab-notice {

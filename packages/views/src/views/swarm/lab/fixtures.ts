@@ -56,15 +56,10 @@ function usageHistory(shape: BurnShape, total: number | undefined): UsageHistory
     { length: USAGE_STEP_COUNT },
     (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000 / 1_000_000,
   );
-  // The prompt side carries most of the burn, the completion side a swelling
-  // fraction of it, so the two sides of the chart read differently.
-  const output = steps.map((tokens, index) => tokens * (0.18 + 0.12 * Math.sin(index / 2)));
-  const input = steps.map((tokens, index) => tokens - output[index]!);
   return {
     ...(total === undefined ? {} : { total: total / 1_000_000 }),
     coverage: 'complete',
     steps,
-    sides: { output, input },
     stepMs: USAGE_STEP_MS,
   };
 }
@@ -92,6 +87,10 @@ interface AgentSpec {
   burn?: BurnShape;
   activity?: { kind: MonitorActivityKind; line: string };
   blocker?: MonitorBlocker['kind'];
+  /** An adapter's human-readable line for the blocker: what the body says first. */
+  blockerDetail?: string;
+  /** The question as asked, for a question blocker. */
+  question?: string;
   stale?: boolean;
   active?: boolean;
   mounted?: boolean;
@@ -104,17 +103,30 @@ interface AgentSpec {
   message?: string;
   /** The session's total tokens, the bottom figure. */
   tokens?: number;
+  /** Estimated USD per minute: what the burn ladder reads. */
+  ratePerMin?: number;
+  /** The provider has no pricing lane, so the ladder is drawn unread. */
+  unpriced?: boolean;
 }
 
 function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
   const at = new Date(nowMs - 20_000).toISOString();
+  const detail = spec.blockerDetail ? { detail: spec.blockerDetail } : {};
   const blockers: MonitorBlocker[] =
     spec.blocker === 'permission'
-      ? [{ id: 'b', kind: 'permission', since: at, permission: { requestId: 'r', tool: 'Bash' } }]
+      ? [{ id: 'b', kind: 'permission', since: at, ...detail, permission: { requestId: 'r', tool: 'Bash' } }]
       : spec.blocker === 'question'
-        ? [{ id: 'b', kind: 'question', since: at, questions: [] }]
+        ? [
+            {
+              id: 'b',
+              kind: 'question',
+              since: at,
+              ...detail,
+              questions: spec.question ? [{ prompt: spec.question }] : [],
+            },
+          ]
         : spec.blocker === 'failure'
-          ? [{ id: 'b', kind: 'failure', since: at, failure: { code: 'E_TOOL', recoverable: true } }]
+          ? [{ id: 'b', kind: 'failure', since: at, ...detail, failure: { code: 'E_TOOL', recoverable: true } }]
           : [];
   return {
     schemaVersion: AGENT_MONITOR_SCHEMA_VERSION,
@@ -126,7 +138,14 @@ function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
     blockers,
     ...(spec.activity ? { activity: { kind: spec.activity.kind, line: spec.activity.line, since: at } } : {}),
     ...(spec.message ? { lastAssistantMessage: { text: spec.message, at, final: true } } : {}),
-    usage: { samples: [], ...(spec.tokens === undefined ? {} : { cumulativeTokens: spec.tokens }) },
+    usage: {
+      samples: [],
+      ...(spec.tokens === undefined ? {} : { cumulativeTokens: spec.tokens }),
+      // What the burn ladder reads. An unpriced provider has the lane missing
+      // altogether, which is not the same as a rate of zero.
+      costCoverage: spec.unpriced ? 'unavailable' : 'complete',
+      ...(spec.unpriced ? {} : { costRatePerMin: spec.ratePerMin ?? 0 }),
+    },
     ...(spec.contextPercent === undefined
       ? {}
       : { context: { usedPercent: spec.contextPercent, percentageSource: 'provider', asOf: at } }),
@@ -154,18 +173,21 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
     ...(spec.branch ? { branch: spec.branch } : {}),
     ...(monitor.context ? { contextWindow: monitor.context } : {}),
     monitor,
-    ...(spec.burn
-      ? { usage: usageHistory(spec.burn, spec.tokens) }
-      : spec.tokens === undefined
-        ? {}
-        : {
-            usage: {
-              total: spec.tokens / 1_000_000,
-              coverage: 'complete',
-              steps: new Array<number>(USAGE_STEP_COUNT).fill(0),
-              stepMs: USAGE_STEP_MS,
-            },
-          }),
+    // A provider with no pricing lane has no ledger either: no total, no rate.
+    ...(spec.unpriced
+      ? {}
+      : spec.burn
+        ? { usage: usageHistory(spec.burn, spec.tokens) }
+        : spec.tokens === undefined
+          ? {}
+          : {
+              usage: {
+                total: spec.tokens / 1_000_000,
+                coverage: 'complete',
+                steps: new Array<number>(USAGE_STEP_COUNT).fill(0),
+                stepMs: USAGE_STEP_MS,
+              },
+            }),
     recency: spec.stale ? 'stale' : 'fresh',
   };
   return {
@@ -215,7 +237,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'idle',
       title: 'Agent, idle',
-      note: 'Name, model · effort on one line. The ring in the ink when context is known.',
+      note: 'The folder in the project’s colour, the name at the title’s weight, model · effort stepped back from it. The gauge climbs from the track’s weight as the context fills.',
       agent: agentFixture(
         {
           id: 'a1',
@@ -232,7 +254,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'idle-unread',
       title: 'Idle, unread',
-      note: 'The latest reply on one line with a blue dot: it arrived while another pane was active.',
+      note: 'A reply arrived while another pane was active. The reply itself takes the name’s place behind the chat mark, the name moves above it, and the body glows blue in the same carried waves. Nothing follows the model line.',
       agent: agentFixture(
         {
           id: 'a2',
@@ -247,6 +269,58 @@ export function stateStages(nowMs: number): LabStage[] {
         nowMs,
       ),
       unread: true,
+    },
+    {
+      id: 'idle-unread-silent',
+      title: 'Idle, unread, no reply text',
+      note: 'Nothing was captured to quote, so the line falls back to the words “new message”.',
+      agent: agentFixture(
+        {
+          id: 'a2b',
+          project: 'ref',
+          status: 'idle',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 18,
+          accent: 3,
+        },
+        nowMs,
+      ),
+      unread: true,
+    },
+    {
+      id: 'idle-context-low',
+      title: 'Idle, context barely touched',
+      note: 'Twelve per cent: the gauge is only just above its track, because it is not yet worth your attention.',
+      agent: agentFixture(
+        {
+          id: 'a1b',
+          project: 'voyager',
+          status: 'idle',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 12,
+          accent: 5,
+        },
+        nowMs,
+      ),
+    },
+    {
+      id: 'idle-context-high',
+      title: 'Idle, context nearly spent',
+      note: 'Ninety-four per cent: the same gauge, at the top of its climb, now the strongest mark on the body.',
+      agent: agentFixture(
+        {
+          id: 'a1c',
+          project: 'voyager',
+          status: 'idle',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 94,
+          accent: 5,
+        },
+        nowMs,
+      ),
     },
     {
       id: 'idle-configured',
@@ -286,7 +360,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'idle-mounted',
       title: 'Idle, mounted in a pane',
-      note: 'The pane’s own colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the project’s colour stays the tag before the name. The gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
+      note: 'The pane’s own colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the project’s colour stays the folder before the name. The gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
       agent: agentFixture(
         {
           id: 'a5',
@@ -322,7 +396,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'working',
       title: 'Agent, working',
-      note: 'Branch, name, model · effort; context at the top; the burn bars in the ink, output up and input down about a baseline, with the total below; the mark and the centre light in the accent. The least tokens among the working sessions: 60.',
+      note: 'Branch, the folder and name, model · effort; context at the top; the burn ladder in the ink, with the estimated total below; the centre light is the theme’s own ink. The least spend among the working sessions: 60.',
       agent: agentFixture(
         {
           id: 'w1',
@@ -333,6 +407,7 @@ export function stateStages(nowMs: number): LabStage[] {
           branch: 'swarm',
           contextPercent: 62,
           burn: 'steady',
+          ratePerMin: 0.22,
           activity: { kind: 'tool', line: 'Editing tokens.css' },
           accent: 1,
           tokens: 384_000,
@@ -343,7 +418,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'working-hot',
       title: 'Working, hot',
-      note: 'A burn climbing to its tallest column and the context past 80%: only the context turns orange; the newest column is the ink.',
+      note: 'Burning $72/hr and the context past 80%: four flames, the last at full weight, and the gauge at the top of its climb. Nothing turns a colour — the count and the weight are the alarm.',
       agent: agentFixture(
         {
           id: 'w2',
@@ -354,6 +429,7 @@ export function stateStages(nowMs: number): LabStage[] {
           branch: 'swarm',
           contextPercent: 88,
           burn: 'blaze',
+          ratePerMin: 1.2,
           activity: { kind: 'delegating', line: 'Delegating to Explore' },
           accent: 1,
         },
@@ -363,7 +439,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'working-ease',
       title: 'Working, easing',
-      note: 'A burn that is falling; reasoning.',
+      note: 'A quiet loop at $4.80/hr: one flame, and nothing beside it.',
       agent: agentFixture(
         {
           id: 'w3',
@@ -374,6 +450,7 @@ export function stateStages(nowMs: number): LabStage[] {
           branch: 'hw3',
           contextPercent: 55,
           burn: 'ease',
+          ratePerMin: 0.08,
           activity: { kind: 'reasoning', line: 'Thinking' },
           accent: 6,
         },
@@ -383,8 +460,11 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'working-quiet',
       title: 'Working, no evidence yet',
-      note: 'No usage, no context: the graph rests and both figures read "--".',
-      agent: agentFixture({ id: 'w4', project: 'study', status: 'working', model: 'Sonnet 5', accent: 8 }, nowMs),
+      note: 'No usage, no context, no price: one hollow flame — unread, which is not the same as calm — and both figures rest.',
+      agent: agentFixture(
+        { id: 'w4', project: 'study', status: 'working', model: 'Sonnet 5', accent: 8, unpriced: true },
+        nowMs,
+      ),
     },
     {
       id: 'working-active',
@@ -443,6 +523,7 @@ export function stateStages(nowMs: number): LabStage[] {
           branch: 'hw3',
           contextPercent: 55,
           burn: 'ease',
+          ratePerMin: 0.08,
           activity: { kind: 'reasoning', line: 'Thinking' },
           accent: 6,
           tokens: 1_200_000,
@@ -454,7 +535,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'blocked-permission',
       title: 'Blocked, permission',
-      note: 'Held at the idle size, inverted, the light outside the rim in the accent, the latest reply with an orange dot.',
+      note: 'The state’s own light. Its ground is that orange carried to the theme’s calm end — down toward black on a dark theme, up toward white on a light one — so the words keep the middle and the hue never turns to mud; the light itself rides the annulus at full chroma, in waves carried outward without a pause. Turn MOTION off above and they hold at mid-crest. What it waits on takes the name’s place behind the key: a permission says the tool it wants, its own evidence before any reply’s.',
       agent: agentFixture(
         {
           id: 'b1',
@@ -473,7 +554,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'blocked-question',
       title: 'Blocked, question',
-      note: 'Same body; the question it asked.',
+      note: 'A question says the question, as it was asked, ellipsised to the chord.',
       agent: agentFixture(
         {
           id: 'b2',
@@ -483,7 +564,7 @@ export function stateStages(nowMs: number): LabStage[] {
           effort: 'medium',
           contextPercent: 70,
           blocker: 'question',
-          message: 'Which key should the export use, the artist or the album?',
+          question: 'Which key should the export use, the artist or the album?',
           accent: 5,
         },
         nowMs,
@@ -492,7 +573,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'blocked-failure',
       title: 'Blocked, failed',
-      note: 'A failure with no reply to show: the blocker is named instead.',
+      note: 'A failure with nothing else to go on falls back to its code.',
       agent: agentFixture(
         {
           id: 'b3',
@@ -509,7 +590,7 @@ export function stateStages(nowMs: number): LabStage[] {
     {
       id: 'blocked-mounted',
       title: 'Blocked, mounted',
-      note: 'The flood inside and the band outside, both the project colour; the light joins only while its pane is selected.',
+      note: 'An adapter’s own line for the blocker, which beats both the tool and the reply. The light inside is the state’s orange, the band outside is the pane’s colour, the folder is the project’s: three colours, three owners. The outer light joins only while its pane is selected.',
       agent: agentFixture(
         {
           id: 'b4',
@@ -519,7 +600,7 @@ export function stateStages(nowMs: number): LabStage[] {
           effort: 'high',
           contextPercent: 52,
           blocker: 'permission',
-          message: 'May I delete the stale build folder?',
+          blockerDetail: 'Delete the stale build folder',
           mounted: true,
           accent: 2,
         },
@@ -555,6 +636,68 @@ export function stateStages(nowMs: number): LabStage[] {
 }
 
 /** Part II: the pane light, three weights, on the same idle body in the selected pane. */
+/** Part: the burn ladder, one body per reading, so the steps can be compared. */
+export function burnStages(nowMs: number): LabStage[] {
+  const step = (
+    id: string,
+    title: string,
+    note: string,
+    ratePerMin: number | undefined,
+    project: string,
+    accent: number,
+  ): LabStage => ({
+    id,
+    title,
+    note,
+    agent: agentFixture(
+      {
+        id,
+        project,
+        status: 'working',
+        model: 'Fable 5.1',
+        effort: 'high',
+        branch: 'main',
+        contextPercent: 44,
+        burn: 'steady',
+        activity: { kind: 'tool', line: 'Working' },
+        accent,
+        tokens: 620_000,
+        ...(ratePerMin === undefined ? { unpriced: true } : { ratePerMin }),
+      },
+      nowMs,
+    ),
+  });
+  return [
+    step(
+      'burn-calm',
+      'Calm',
+      'Under five cents a minute: no flames at all. A body with nothing to say says nothing.',
+      0.02,
+      'ref',
+      3,
+    ),
+    step(
+      'burn-one',
+      'One flame',
+      'Five cents a minute, $3/hr: one flame, low on its own climb. A working loop on a mid-tier model.',
+      0.07,
+      'duke',
+      6,
+    ),
+    step('burn-two', 'Two flames', 'Fifteen cents a minute, $9/hr. Steady work.', 0.24, 'voyager', 5),
+    step('burn-three', 'Three flames', 'Forty cents a minute, $24/hr. Long context or high effort.', 0.52, 'jabali', 2),
+    step('burn-four', 'Four flames', 'A dollar a minute, $60/hr. A fan-out worth knowing about.', 1.6, 'puppeteer', 1),
+    step(
+      'burn-unpriced',
+      'No price to read',
+      'A provider with no pricing lane: ONE hollow flame. Not four, and not nothing — an absent reading must never look like a calm one.',
+      undefined,
+      'study',
+      8,
+    ),
+  ];
+}
+
 export function lightStages(nowMs: number): LabStage[] {
   const mounted = (id: string): MonitorAgent =>
     agentFixture(
@@ -596,6 +739,7 @@ export function lightStages(nowMs: number): LabStage[] {
 }
 
 /** Part III: a settled cluster, the field as it actually looks. */
+/** Part: a settled field, the swarm as it actually rests. */
 export function clusterStages(nowMs: number): LabStage[] {
   return [
     { id: 'c1', title: '', note: '', agent: terminalFixture('c-t1', 'voyager', false, nowMs) },
@@ -643,6 +787,7 @@ export function clusterStages(nowMs: number): LabStage[] {
           active: true,
           accent: 1,
           tokens: 2400000,
+          ratePerMin: 0.62,
         },
         nowMs,
       ),
@@ -684,6 +829,7 @@ export function clusterStages(nowMs: number): LabStage[] {
           activity: { kind: 'delegating', line: 'Delegating' },
           accent: 1,
           tokens: 384000,
+          ratePerMin: 1.4,
         },
         nowMs,
       ),
@@ -723,6 +869,7 @@ export function clusterStages(nowMs: number): LabStage[] {
           activity: { kind: 'responding', line: 'Writing the reply' },
           accent: 6,
           tokens: 1200000,
+          ratePerMin: 0.09,
         },
         nowMs,
       ),

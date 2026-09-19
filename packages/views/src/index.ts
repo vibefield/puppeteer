@@ -36,7 +36,6 @@ export * from './find/FindSheet.js';
 export * from './views/swarm/index.js';
 export { AgentSwarm } from './views/swarm/AgentSwarm.js';
 export * from './views/swarm/bubble-model.js';
-export * from './views/swarm/burn-bars.js';
 export * from './views/swarm/swarm-parameters.js';
 export * from './views/swarm/swarm-theme.js';
 export * from './views/swarm/text-layout.js';

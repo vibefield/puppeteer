@@ -22,6 +22,16 @@ describe('swarm parameters', () => {
       radiusWorking: 60,
       radiusWorkingMax: 80,
       radiusBlocked: 50,
+      stateChroma: 1.22,
+      stateGroundDark: 0.5,
+      stateGroundLight: 0.45,
+      stateGlowLift: 0.55,
+      stateGlowStrength: 0.2,
+      stateGlowInner: 0.11,
+      stateGlowFull: 0.9,
+      stateWaveCount: 1.7,
+      stateWaveSpeed: 1.75,
+      stateWaveDepth: 0.72,
     });
   });
 

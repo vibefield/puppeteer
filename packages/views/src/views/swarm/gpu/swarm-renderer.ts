@@ -1,10 +1,6 @@
 /// <reference types="@webgpu/types" />
 import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile } from '../../../icons/AgentIcon.js';
 import type { SwarmBubbleModel } from '../bubble-model.js';
-import { BURN_BAR_COUNT } from '../burn-bars.js';
-
-/** Each body's samples: the completion side, then the prompt side. */
-const BODY_SAMPLES = BURN_BAR_COUNT * 2;
 import {
   layoutCopy,
   leadAdvance,
@@ -13,8 +9,9 @@ import {
   type CopyTone,
   type TextStyle,
 } from '../text-layout.js';
-import { luminance, type Rgba } from './color.js';
+import type { Rgba } from './color.js';
 import { GlyphAtlas } from './glyph-atlas.js';
+import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
 import commonShader from './shaders/common.wgsl.js';
 import fieldShader from './shaders/field.wgsl.js';
@@ -24,7 +21,7 @@ import textShader from './shaders/text.wgsl.js';
 
 // The swarm's renderer: one WebGPU canvas, one render pass, five pipelines in
 // painter's order — field, shadows, bodies, light, type — and one upload of
-// bodies, graph samples, and glyph quads per frame. It draws what it is given:
+// bodies and glyph quads per frame. It draws what it is given:
 // positions and sizes belong to the physics in AgentSwarm, meaning belongs to
 // bubble-model.ts, colour to the palette. Nothing here reads the DOM.
 
@@ -46,28 +43,6 @@ export interface RenderBody {
   glow?: { reach: number; strength: number; breath: number };
 }
 
-/** The ink over a flooded body: whichever of the theme's inks stands furthest
- * from the accent that fills it, the blocked ink winning ties. */
-function floodInk(theme: SwarmTheme, fill: Rgba, accent: Rgba): Rgba {
-  const flooded: Rgba = [
-    fill[0] * 0.1 + accent[0] * 0.9,
-    fill[1] * 0.1 + accent[1] * 0.9,
-    fill[2] * 0.1 + accent[2] * 0.9,
-    1,
-  ];
-  const target = luminance(flooded);
-  let best = theme.blocked.text;
-  let bestGap = Math.abs(luminance(best) - target);
-  for (const ink of [theme.idle.text, theme.working.text]) {
-    const gap = Math.abs(luminance(ink) - target);
-    if (gap > bestGap + 0.05) {
-      best = ink;
-      bestGap = gap;
-    }
-  }
-  return best;
-}
-
 /** A mark drawn on its own, for the lab's contact sheet. */
 export interface RenderMark {
   tile: { x: number; y: number };
@@ -79,17 +54,24 @@ export interface RenderMark {
   alpha: number;
 }
 
+/** Two colours and a ladder: see `weight.ts`. Nothing here is per-state, because
+ * no state inverts the theme. */
 export interface SwarmTheme {
-  idle: { bg: Rgba; text: Rgba };
-  working: { bg: Rgba; text: Rgba; border: Rgba };
-  blocked: { bg: Rgba; text: Rgba };
+  /** Every agent body's fill, in both themes. */
+  surface: Rgba;
+  /** The one ink every mark and every letter is drawn in. */
+  ink: Rgba;
   grid: Rgba;
-  textMain: Rgba;
-  textMuted: Rgba;
-  panelBg: Rgba;
+  /** The state colours at full chroma: what a body's LIGHT is made of. */
   orange: Rgba;
   green: Rgba;
   blue: Rgba;
+  /** The same three, fit to be READ on this theme's surface — see `readable`. */
+  stateInk: { orange: Rgba; green: Rgba; blue: Rgba };
+  /** The light a blocked or unread body gives: the hue at this theme's hot end. */
+  stateGlow: { orange: Rgba; blue: Rgba };
+  /** The ground it gives that light over: the same hue at this theme's calm end. */
+  stateGround: { orange: Rgba; blue: Rgba };
   /** The working body's drop shadow at rest and at its breathing peak. */
   shadow: Rgba;
   shadowPeak: Rgba;
@@ -102,6 +84,8 @@ export interface SwarmFrame {
   fillOpacity: number;
   gridPitch: number;
   glow: { reach: number; strength: number; breath: number };
+  /** The light a blocked or unread body gives: its shape, and how its waves travel. */
+  stateGlow: { inner: number; full: number; strength: number; count: number; speed: number; depth: number };
   theme: SwarmTheme;
   bodies: readonly RenderBody[];
   /** Hold-to-create in flight: where, and how far along (0..1). */
@@ -122,7 +106,6 @@ export type SwarmRendererResult = { ok: true; renderer: SwarmRenderer } | { ok: 
 
 const F_HOLLOW = 1;
 const F_RUNNING = 2;
-const F_GRAPH = 4;
 const F_GLOW = 8;
 const F_RIM = 16;
 const F_STALE = 32;
@@ -132,10 +115,10 @@ const F_RING_HOT = 512;
 const F_RING = 1024;
 const F_SHADOW = 2048;
 const F_CORE = 4096;
-const F_FLOOD = 8192;
+const F_WAVES = 8192;
 
-const FRAME_FLOATS = 40;
-const BODY_FLOATS = 44;
+const FRAME_FLOATS = 48;
+const BODY_FLOATS = 40;
 const GLYPH_FLOATS = 16;
 const INITIAL_BODIES = 32;
 const INITIAL_GLYPHS = 2048;
@@ -143,7 +126,7 @@ const INITIAL_GLYPHS = 2048;
 /** The context figure and the total: one size, the same margin in from the rim. */
 const FIGURE_STYLE: TextStyle = { size: 10.5, weight: 800, letterSpacing: 0.02 };
 const FIGURE_MARGIN = 7;
-/** The burn bars keep this much clear of the model line above and of the total below. */
+/** The burn row keeps this much clear of the model line above and of the total below. */
 const BAND_MARGIN_TOP = 4;
 const BAND_MARGIN_BOTTOM = 8;
 
@@ -162,19 +145,37 @@ const ICON_SVG: Record<string, string> = {
   question:
     '<path d="M9 9.5a3 3 0 1 1 4.2 2.7c-.8.4-1.2 1-1.2 1.8v.5"/><circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/>',
   failure: '<path d="M12 5v9"/><circle cx="12" cy="18" r="1.1" fill="currentColor" stroke="none"/>',
+  message: '<path d="M20 14a2 2 0 0 1-2 2H9l-4.5 3.5V6a2 2 0 0 1 2-2h11.5a2 2 0 0 1 2 2z"/>',
+  // The same silhouette filled: the project's mark once its name has stepped back.
+  'folder-solid': '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
 };
+
+/** Marks drawn as a silhouette rather than a stroke. */
+const FILLED_ICONS = new Set(['folder-solid']);
 
 function iconSvg(name: string): string | undefined {
   const inner = ICON_SVG[name];
   if (!inner) return undefined;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const paint = FILLED_ICONS.has(name)
+    ? 'fill="currentColor" stroke="none"'
+    : 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ${paint}>${inner}</svg>`;
 }
+
+/** The burn mark: a leaning flame with a sharp tip, so it reads as fire and not
+ * as a droplet at thirteen pixels. Filled when lit, outlined where there is no
+ * price to read. */
+const FLAME_PATH =
+  'M12.2 1.8C14.6 5.6 18 8.6 18 13.4a6 6 0 0 1-12 0c0-2.7 1.1-4.5 2.5-5.8.2 1.8 1 2.9 2.1 3.3C9.3 7.5 10.1 4.1 12.2 1.8z';
+const FLAME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${FLAME_PATH}" fill="currentColor"/></svg>`;
+const FLAME_HOLLOW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${FLAME_PATH}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+
+/** The ladder's own geometry: four marks, the gap between them, and the alphas. */
+const FLAME_SIZE = 13;
+const FLAME_GAP = 3;
 
 const DOT_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="currentColor"/></svg>';
-/** The project's tag: a rounded bar a quarter as wide as it is tall, standing in a square sprite. */
-const BAR_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="9" y="0" width="6" height="24" rx="3" fill="currentColor"/></svg>';
 
 async function compile(device: GPUDevice, label: string, source: string): Promise<GPUShaderModule> {
   const module = device.createShaderModule({ label, code: `${commonShader}\n${source}` });
@@ -217,6 +218,24 @@ async function loadMarks(device: GPUDevice): Promise<GPUTexture> {
     console.warn('[swarm] vendor marks atlas did not load', error);
   }
   return texture;
+}
+
+/** A light in a STATE's own colour, as against the ink a working body is lit with. */
+function isStateLight(light: SwarmBubbleModel['light']): boolean {
+  return light === 'orange' || light === 'blue';
+}
+
+/** The ground a body wears when it needs the user, or nothing for the rest. A
+ * working body's light is the ink itself and fills nothing. */
+function stateGroundOf(theme: SwarmTheme, light: SwarmBubbleModel['light']): Rgba | undefined {
+  if (light === 'orange') return theme.stateGround.orange;
+  if (light === 'blue') return theme.stateGround.blue;
+  return undefined;
+}
+
+/** The same colour at another alpha: every rung of the ladder is one ink at a weight. */
+function withAlpha(colour: Rgba, alpha: number): Rgba {
+  return [colour[0], colour[1], colour[2], alpha];
 }
 
 function writeRgba(target: Float32Array, offset: number, colour: Rgba, alphaScale = 1): void {
@@ -262,11 +281,6 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
       {
         binding: 1,
-        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: { type: 'read-only-storage' },
-      },
-      {
-        binding: 2,
         visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
         buffer: { type: 'read-only-storage' },
       },
@@ -316,39 +330,29 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
   let bodyCapacity = INITIAL_BODIES;
   let glyphCapacity = INITIAL_GLYPHS;
   let bodyBuffer: GPUBuffer | undefined;
-  let sampleBuffer: GPUBuffer | undefined;
   let glyphBuffer: GPUBuffer | undefined;
   let sceneBindGroup: GPUBindGroup | undefined;
   let textBindGroup: GPUBindGroup | undefined;
   let bodyData = new Float32Array(0);
   let bodyFlags = new Uint32Array(0);
-  let sampleData = new Float32Array(0);
   let glyphData = new Float32Array(0);
   const frameData = new Float32Array(FRAME_FLOATS);
 
   const allocateBodies = (capacity: number): void => {
     bodyCapacity = capacity;
     bodyBuffer?.destroy();
-    sampleBuffer?.destroy();
     bodyBuffer = device.createBuffer({
       label: 'swarm bodies',
       size: capacity * BODY_FLOATS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    sampleBuffer = device.createBuffer({
-      label: 'swarm samples',
-      size: capacity * BODY_SAMPLES * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
     bodyData = new Float32Array(capacity * BODY_FLOATS);
     bodyFlags = new Uint32Array(bodyData.buffer);
-    sampleData = new Float32Array(capacity * BODY_SAMPLES);
     sceneBindGroup = device.createBindGroup({
       layout: sceneLayout,
       entries: [
         { binding: 0, resource: { buffer: frameBuffer } },
         { binding: 1, resource: { buffer: bodyBuffer } },
-        { binding: 2, resource: { buffer: sampleBuffer } },
       ],
     });
   };
@@ -383,12 +387,14 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
 
   const toneColour = (tone: CopyTone, body: RenderBody, ink: Rgba, theme: SwarmTheme): Rgba => {
     switch (tone) {
+      // Words and marks take the readable variant; only the body's light is the
+      // full hue.
       case 'orange':
-        return theme.orange;
+        return theme.stateInk.orange;
       case 'green':
-        return theme.green;
+        return theme.stateInk.green;
       case 'blue':
-        return theme.blue;
+        return theme.stateInk.blue;
       case 'accent':
         return body.accent;
       default:
@@ -525,17 +531,61 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       maxWidthRatio: body.model.copyMaxWidthRatio,
     });
 
-  /** The burn bars' band: from a margin under the model line down to a margin
-   * above the total figure, whatever the radius, so the bars fill that space
-   * (taller on a bigger body). Fractions of the diameter. */
-  const graphBandOf = (body: RenderBody, layout: CopyLayout): { top: number; bottom: number } => {
+  /** The burn row's centre, relative to the body's own centre: midway between a
+   * margin under the model line and a margin above the total figure, so the
+   * flames stand where the chart used to, whatever the radius. */
+  const burnRowOf = (body: RenderBody, layout: CopyLayout): number => {
     const radius = body.radius * body.scale;
-    const diameter = radius * 2;
     const modelLine = layout.lines.find((line) => line.key === 'model');
     const under = modelLine ? modelLine.y + modelLine.height / 2 : layout.bottom;
     const top = under + BAND_MARGIN_TOP;
     const floor = Math.max(top + 4, radius - FIGURE_MARGIN - FIGURE_STYLE.size - BAND_MARGIN_BOTTOM);
-    return { top: 0.5 + top / diameter, bottom: 0.5 + floor / diameter };
+    return (top + floor) / 2;
+  };
+
+  /**
+   * The burn ladder: as many flames as the rate has lit, and no empty slots
+   * (2026-09-18). A calm session draws nothing at all, which is the honest thing
+   * for a body with nothing to say. The one exception is a session nobody can
+   * price: it draws a single hollow flame, because an absent reading must never
+   * look like a calm one (RFC 008). The last lit flame breathes on the newest
+   * bucket's rhythm, as the newest column used to. Ink only — a colour here would
+   * collide with the states' own (record §10).
+   */
+  const emitBurn = (
+    body: RenderBody,
+    ink: Rgba,
+    time: number,
+    motion: boolean,
+    layout: CopyLayout,
+    dim: number,
+    rung: (weight: number) => number,
+  ): void => {
+    const burn = body.model.burn;
+    if (!burn) return;
+    const drawn = burn.priced ? burn.lit : 1;
+    if (drawn === 0) return;
+    const rowY = body.y + burnRowOf(body, layout);
+    const span = drawn * FLAME_SIZE + (drawn - 1) * FLAME_GAP;
+    const breath = motion ? 0.5 - 0.5 * Math.cos((time * 2 * Math.PI) / 1.6 + body.seed) : 0.5;
+    for (let slot = 0; slot < drawn; slot += 1) {
+      const x = body.x - span / 2 + FLAME_SIZE / 2 + slot * (FLAME_SIZE + FLAME_GAP);
+      // Each flame climbs the range the gauge climbs: the first sits low, the
+      // fourth reaches the title's own weight, because a body burning that hard is
+      // the most important thing on the stage. The last one breathes.
+      const alpha = burn.priced
+        ? climb(slot / 3) * (slot === burn.lit - 1 ? 0.82 + 0.18 * breath : 1)
+        : SWARM_WEIGHT.absent;
+      pushSprite(
+        burn.priced ? 'flame' : 'flame-hollow',
+        burn.priced ? FLAME_SVG : FLAME_HOLLOW_SVG,
+        FLAME_SIZE,
+        x,
+        rowY,
+        ink,
+        rung(alpha) * dim,
+      );
+    }
   };
 
   const emitBodyText = (
@@ -549,6 +599,8 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     const { model } = body;
     const radius = body.radius * body.scale;
     const dim = body.opacity * (model.stale ? 0.58 : 1);
+    // A coloured ground gives the ink less room, so the ladder starts higher on it.
+    const rung = stateGroundOf(theme, model.light) === undefined ? (weight: number) => weight : onField;
     if (radius < 12) return;
     if (model.watermark) {
       // The ignition's breath, kept from the DOM: a working mark swells from
@@ -574,15 +626,14 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     }
     for (const line of layout.lines) {
       const colour = toneColour(line.tone, body, ink, theme);
-      const alpha = line.opacity * dim;
+      const alpha = rung(line.opacity) * dim;
       const lineY = body.y + line.y;
       let pen = body.x - line.width / 2;
       const mark = (lead: CopyLead): void => {
         const leadColour = toneColour(lead.tone ?? line.tone, body, ink, theme);
-        const leadAlpha = (lead.opacity ?? line.opacity) * dim;
+        const leadAlpha = rung(lead.opacity ?? line.opacity) * dim;
         const leadCentreX = pen + leadAdvance(lead) / 2;
         if (lead.kind === 'dot') pushSprite('dot', DOT_SVG, lead.size, leadCentreX, lineY - 0.5, leadColour, leadAlpha);
-        else if (lead.kind === 'bar') pushSprite('bar', BAR_SVG, lead.size, leadCentreX, lineY, leadColour, leadAlpha);
         else
           pushSprite(
             `icon:${lead.icon}`,
@@ -595,7 +646,6 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
           );
         pen += leadAdvance(lead) + lead.gap;
       };
-      if (line.tag) mark(line.tag);
       if (line.lead) mark(line.lead);
       if (line.text.length === 0) continue;
       const metrics = atlas.fontMetrics(line.style);
@@ -603,8 +653,10 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       pushText(line.text, line.style, pen, baseline, colour, alpha);
     }
     const figure = (item: { text: string; hot: boolean; none: boolean }, centreY: number): void => {
-      const colour = item.hot ? theme.orange : ink;
-      const alpha = (item.none ? 0.4 : item.hot ? 1 : 0.9) * dim;
+      // The gauge's own climb already says a context is nearly spent; the figure
+      // beside it needs no second alarm, and orange now means one thing only.
+      const colour = ink;
+      const alpha = rung(item.none ? SWARM_WEIGHT.absent : SWARM_WEIGHT.secondary) * dim;
       const textWidth = atlas.measure(item.text, FIGURE_STYLE);
       const metrics = atlas.fontMetrics(FIGURE_STYLE);
       pushText(
@@ -617,40 +669,55 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       );
     };
     // The context figure on the top chord and the total on the bottom one,
-    // under the bars' floor, each the same distance in from the rim.
+    // under the burn row, each the same distance in from the rim.
     const figureInset = FIGURE_MARGIN + FIGURE_STYLE.size / 2;
     if (model.figures?.top) figure(model.figures.top, body.y - radius + figureInset);
     if (model.figures?.bottom) figure(model.figures.bottom, body.y + radius - figureInset);
+    emitBurn(body, ink, time, motion, layout, dim, rung);
   };
 
-  const packBody = (
-    index: number,
-    body: RenderBody,
-    frame: SwarmFrame,
-    band: { top: number; bottom: number },
-  ): Rgba => {
+  const packBody = (index: number, body: RenderBody, frame: SwarmFrame): Rgba => {
     const { model } = body;
     const theme = frame.theme;
     const offset = index * BODY_FLOATS;
-    const colours =
-      model.appearance === 'working'
-        ? { fill: theme.working.bg, ink: theme.working.text, rim: theme.working.border }
-        : model.appearance === 'blocked'
-          ? {
-              fill: theme.blocked.bg,
-              ink: model.flood ? floodInk(theme, theme.blocked.bg, body.accent) : theme.blocked.text,
-              rim: theme.blocked.text,
-            }
-          : { fill: theme.idle.bg, ink: theme.idle.text, rim: theme.idle.text };
+    // One surface, one ink, in both themes (2026-09-18). A body's edge is the
+    // faintest rung of the ladder; a hollow terminal's dashed rim and a working
+    // body's border earn a little more.
+    const rimWeight = model.hollow
+      ? SWARM_WEIGHT.rim
+      : model.appearance === 'working'
+        ? SWARM_WEIGHT.edge
+        : SWARM_WEIGHT.hairline;
+    // A body that needs the user is filled with the state's own colour, and its
+    // words are still the theme's ink — light on dark, dark on light, the same
+    // direction every other body follows.
+    const fill = stateGroundOf(theme, model.light) ?? theme.surface;
+    const colours = { fill, ink: theme.ink, rim: withAlpha(theme.ink, rimWeight) };
+    // The light inside the body is the STATE's colour — the theme's own ink while
+    // working, orange while blocked, blue for an unread reply. The project's colour
+    // reaches the body only as the folder before its name (2026-09-16). The ink is
+    // held back: on a light theme it can only darken, so it reads as density at the
+    // centre rather than as a glow.
+    // The light itself: the state's own glow over the ground it sits on, or the
+    // theme's ink for a working body, which is a density and not a colour.
+    const lightColour: Rgba =
+      model.light === undefined
+        ? [0, 0, 0, 0]
+        : model.light === 'orange'
+          ? theme.stateGlow.orange
+          : model.light === 'blue'
+            ? theme.stateGlow.blue
+            : withAlpha(theme.ink, WORKING_CORE_STRENGTH);
     let flags = 0;
     if (model.hollow) flags |= F_HOLLOW;
     if (model.running) flags |= F_RUNNING;
-    if (model.graph) flags |= F_GRAPH;
-    if (model.flood) flags |= F_FLOOD;
+    if (model.light) flags |= F_CORE;
+    // A body that needs the user glows in waves rather than breathing.
+    if (isStateLight(model.light)) flags |= F_WAVES;
     // The outer light: only on the body whose pane is the selected one. Every
     // other mounted body wears its colour as the band alone.
     if (body.link && model.active) flags |= F_GLOW;
-    if (model.appearance === 'working' && !model.hollow) flags |= F_RIM | F_SHADOW | F_CORE;
+    if (model.appearance === 'working' && !model.hollow) flags |= F_RIM | F_SHADOW;
     if (model.stale) flags |= F_STALE;
     if (body.link) flags |= F_LINKED;
     if (body.focus) flags |= F_FOCUS;
@@ -663,16 +730,17 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     bodyData[offset + 3] = body.scale;
     writeRgba(bodyData, offset + 4, colours.fill, body.opacity);
     writeRgba(bodyData, offset + 8, colours.ink);
-    writeRgba(bodyData, offset + 12, body.accent, body.opacity);
+    writeRgba(bodyData, offset + 12, lightColour, body.opacity);
     writeRgba(bodyData, offset + 16, colours.rim, body.opacity);
     bodyFlags[offset + 20] = flags;
-    bodyFlags[offset + 21] = index * BODY_SAMPLES;
+    bodyFlags[offset + 21] = 0;
     bodyFlags[offset + 22] = 0;
     bodyFlags[offset + 23] = 0;
     bodyData[offset + 24] = model.ring ? model.ring.percent / 100 : 0;
-    bodyData[offset + 25] = 0;
-    bodyData[offset + 26] = 0.18 * body.opacity;
-    bodyData[offset + 27] = 0;
+    // The gauge climbs as it goes round; the track behind it stays the faintest rung.
+    bodyData[offset + 25] = climb(0);
+    bodyData[offset + 26] = SWARM_WEIGHT.hairline * body.opacity;
+    bodyData[offset + 27] = climb(1);
     const glow = body.glow ?? frame.glow;
     bodyData[offset + 28] = glow.reach;
     bodyData[offset + 29] = glow.strength * body.opacity;
@@ -683,14 +751,6 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     bodyData[offset + 34] = model.stale ? 1 : 0;
     bodyData[offset + 35] = body.opacity;
     writeRgba(bodyData, offset + 36, body.link ?? [0, 0, 0, 0], body.opacity);
-    bodyData[offset + 40] = band.top;
-    bodyData[offset + 41] = band.bottom;
-    bodyData[offset + 42] = 0;
-    bodyData[offset + 43] = 0;
-    if (model.graph) {
-      sampleData.set(model.graph.up, index * BODY_SAMPLES);
-      sampleData.set(model.graph.down, index * BODY_SAMPLES + BURN_BAR_COUNT);
-    }
     return colours.ink;
   };
 
@@ -727,7 +787,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       for (let index = 0; index < bodies.length; index += 1) {
         const body = bodies[index]!;
         const layout = copyLayoutOf(body);
-        const ink = packBody(index, body, frame, graphBandOf(body, layout));
+        const ink = packBody(index, body, frame);
         emitBodyText(body, ink, theme, time, frame.motion, layout);
       }
       for (const mark of frame.marks ?? []) pushTile(mark.tile, mark.size, mark.x, mark.y, mark.colour, mark.alpha);
@@ -749,14 +809,21 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       frameData[22] = frame.hold?.progress ?? 0;
       frameData[23] = frame.hold ? 1 : 0;
       writeRgba(frameData, 24, theme.orange);
-      writeRgba(frameData, 28, theme.textMuted);
-      writeRgba(frameData, 32, theme.panelBg, 0.74);
-      writeRgba(frameData, 36, theme.textMain);
+      writeRgba(frameData, 28, withAlpha(theme.ink, SWARM_WEIGHT.supporting));
+      writeRgba(frameData, 32, theme.surface, 0.74);
+      writeRgba(frameData, 36, theme.ink);
+      frameData[40] = frame.stateGlow.inner;
+      frameData[41] = frame.stateGlow.full;
+      frameData[42] = frame.stateGlow.strength;
+      frameData[43] = 0;
+      frameData[44] = frame.stateGlow.count;
+      frameData[45] = frame.stateGlow.speed;
+      frameData[46] = frame.stateGlow.depth;
+      frameData[47] = 0;
 
       device.queue.writeBuffer(frameBuffer, 0, frameData);
       if (bodies.length > 0) {
         device.queue.writeBuffer(bodyBuffer!, 0, bodyData, 0, bodies.length * BODY_FLOATS);
-        device.queue.writeBuffer(sampleBuffer!, 0, sampleData, 0, bodies.length * BODY_SAMPLES);
       }
       if (glyphCount > 0) device.queue.writeBuffer(glyphBuffer!, 0, glyphData, 0, glyphCount * GLYPH_FLOATS);
 
@@ -796,7 +863,6 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       atlas.destroy();
       marks.destroy();
       bodyBuffer?.destroy();
-      sampleBuffer?.destroy();
       glyphBuffer?.destroy();
       frameBuffer.destroy();
       // The canvas context is shared by every renderer ever made for this

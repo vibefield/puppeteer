@@ -63,7 +63,7 @@ describe('layoutCopy', () => {
     expect(line.textWidth).toBeLessThanOrEqual(0.84 * 40);
   });
 
-  it('reserves room for a tag ahead of the lead, a narrow mark taking only its width', () => {
+  it('gives a mark narrower than it is tall only its own width', () => {
     const measure: TextMeasure = (text) => text.length * 6;
     const line: CopyLine = {
       key: 'name',
@@ -71,11 +71,11 @@ describe('layoutCopy', () => {
       style: { size: 12, weight: 800 },
       opacity: 1,
       tone: 'ink',
-      tag: { kind: 'bar', size: 10, width: 3, gap: 4, tone: 'accent' },
-      lead: { kind: 'dot', size: 5, gap: 4 },
+      // The project's folder: a 14px sprite that takes 11px of the line.
+      lead: { kind: 'icon', icon: 'folder', size: 14, width: 11, gap: 4, tone: 'accent' },
     };
     const [placed] = layoutCopy([line], { radius: 60, measure, maxWidthRatio: 0.9 }).lines;
-    expect(placed?.width).toBe(18 + 3 + 4 + 5 + 4);
+    expect(placed?.width).toBe(18 + 11 + 4);
   });
 
   it('reserves room for a lead mark and reports the full width', () => {
