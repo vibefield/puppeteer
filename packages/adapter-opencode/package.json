@@ -47,6 +47,6 @@
     "@vibecook/puppeteer-surface": "workspace:*",
     "@vibecook/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }
