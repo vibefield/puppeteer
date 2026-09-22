@@ -62,7 +62,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "prettier": "^3.3.0",
+    "prettier": "^3.9.8",
     "typescript": "^5.5.0",
     "vitest": "^3.0.0",
     "@vibecook/puppeteer-surface": "workspace:*"
