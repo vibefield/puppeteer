@@ -103,6 +103,14 @@ export function hermesCheckoutFromWrapper(wrapper: string): string | undefined {
   return HERMES_VENV_PATTERN.exec(wrapper)?.[1];
 }
 
+/**
+ * Observed 2026-09-22 on 0.20.5 → 0.21.4: the updater fetches its git checkout
+ * (a shallow clone fetched ~650 MB in five minutes), migrates, then stops the
+ * gateway service "draining in-flight runs (up to 1815s)" before restarting it.
+ * The runner's default budget would end it mid-drain.
+ */
+const HERMES_UPDATE_TIMEOUT_MS = 45 * 60_000;
+
 export function createHermesDistributionService(options: HermesDistributionServiceOptions = {}): DistributionService {
   const exec = options.exec ?? defaultExec;
   const readHead = options.readHead ?? defaultReadHead;
@@ -154,7 +162,11 @@ export function createHermesDistributionService(options: HermesDistributionServi
     recipeFor(install: InstalledAgent): UpdateRecipe {
       // `--yes` keeps the vendor updater non-interactive; it still rebuilds the
       // checkout and the virtual environment itself.
-      return { kind: 'native-self-update', argv: [install.executable, 'update', '--yes'] };
+      return {
+        kind: 'native-self-update',
+        argv: [install.executable, 'update', '--yes'],
+        timeoutMs: HERMES_UPDATE_TIMEOUT_MS,
+      };
     },
   };
 }

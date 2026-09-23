@@ -139,6 +139,7 @@ describe('Hermes update recipes', () => {
     expect(service.recipeFor(installed())).toEqual({
       kind: 'native-self-update',
       argv: ['/home/tester/.local/bin/hermes', 'update', '--yes'],
+      timeoutMs: 45 * 60_000,
     });
   });
 });
