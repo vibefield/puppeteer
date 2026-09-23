@@ -63,6 +63,55 @@ describe('runtime cache prewarming', () => {
     }
   });
 
+  it("warms the default set's account when none is named, and never a signed-out one", async () => {
+    const profile: AgentProfile = {
+      id: 'work',
+      provider: 'example',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/profiles/work',
+      createdAt: '2026-09-11T00:00:00.000Z',
+    };
+    const prewarm = vi.fn(async () => undefined);
+    const profiles: ProfileService = {
+      provider: { id: 'example', label: 'Example', support: { supported: true, identity: 'none', sharedSurfaces: [] } },
+      bindingEnvironment: () => ({}),
+      observationRoot: (target) => target.dataRoot,
+      loginInvocation: () => ({ command: 'example', args: ['login'], cwd: '/unused' }),
+      verify: vi.fn(),
+    };
+    const play: AgentProfile = { ...profile, id: 'play', label: 'Play', dataRoot: '/profiles/play' };
+    let snapshot = parseProfileRegistrySnapshot({ version: 1, profiles: [profile, play] });
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: '/unused',
+      providers: [{ descriptor: { id: 'example', label: 'Example' }, profiles, prewarm, createSession: vi.fn() }],
+      profiles: {
+        store: {
+          load: async () => snapshot,
+          save: async (next) => {
+            snapshot = next;
+          },
+        },
+      },
+    });
+    try {
+      await runtime.setDefaultProfileSet('work');
+      // the next plain spawn runs under Work, so that is what gets warmed
+      await runtime.prewarm('example');
+      expect(prewarm).toHaveBeenLastCalledWith({
+        profile: { ...profile, set: 'work' },
+        signal: expect.any(AbortSignal),
+      });
+      // a signed-out account starts no probe: named outright it is refused
+      await runtime.retireProfile('play');
+      await expect(runtime.prewarm('example', 'play')).rejects.toThrow('is signed out');
+      expect(prewarm).toHaveBeenCalledOnce();
+    } finally {
+      await runtime.dispose();
+    }
+  });
+
   it('coalesces in-flight requests and throttles successful warming without allocating a session', async () => {
     let finish!: () => void;
     const prewarm = vi.fn(

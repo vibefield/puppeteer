@@ -131,6 +131,14 @@ export const ProfileSupportSchema = z.strictObject({
    * one exists.
    */
   signOut: z.boolean().optional(),
+  /**
+   * Where a managed root's credential lives, as the adapter has established
+   * it: `root` — inside the root, so deleting the root is the sign-out;
+   * `external` — outside it (an OS keychain item keyed on the root's path),
+   * so only the vendor's own sign-out removes it. Absent: not established,
+   * and a host must not claim more than that the root was deleted.
+   */
+  credential: z.enum(['root', 'external']).optional(),
 });
 export type ProfileSupport = z.infer<typeof ProfileSupportSchema>;
 

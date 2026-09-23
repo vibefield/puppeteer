@@ -78,7 +78,11 @@ function normalize(sets: readonly ProfileSet[], profiles: readonly AgentProfile[
   const keptSets: ProfileSet[] = [];
   const ids = new Set<string>([NATIVE_PROFILE_SET_ID]);
   for (const set of sets) {
-    if (set.kind !== 'managed' || ids.has(set.id)) continue;
+    if (set.kind !== 'managed') continue;
+    // Two sets under one id is a corrupt document, not a choice between them:
+    // dropping either would let the next write forget its folder.
+    if (set.id !== NATIVE_PROFILE_SET_ID && ids.has(set.id)) throw new Error(`duplicate profile set id: ${set.id}`);
+    if (ids.has(set.id)) continue;
     ids.add(set.id);
     keptSets.push({ ...set });
   }
@@ -89,7 +93,10 @@ function normalize(sets: readonly ProfileSet[], profiles: readonly AgentProfile[
     keptProfiles.some((profile) => profile.set === setId && profile.provider === provider && active(profile));
 
   for (const entry of profiles) {
-    if (entry.kind !== 'managed' || seenProfiles.has(entry.id)) continue;
+    if (entry.kind !== 'managed') continue;
+    // The same for accounts: each names a root, and a dropped one is a root
+    // (and a credential) nothing would ever sign out.
+    if (seenProfiles.has(entry.id)) throw new Error(`duplicate agent profile id: ${entry.id}`);
     seenProfiles.add(entry.id);
     let home = entry.set === undefined ? undefined : byId.get(entry.set);
     if (home !== undefined && active(entry) && holds(home.id, entry.provider)) home = undefined;
@@ -332,14 +339,37 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
     return { set: { ...set }, isDefault: defaultSet === set.id, profiles: members.map(cloneProfile) };
   }
 
-  async function persist(): Promise<void> {
-    const loaded = await load();
-    await options.store.save({
-      version: 2,
-      ...(loaded.defaultSet === undefined ? {} : { defaultSet: loaded.defaultSet }),
-      sets: loaded.sets.map((set) => ({ ...set })),
-      profiles: loaded.profiles.map(cloneProfile),
+  /**
+   * Every write goes through here, one at a time: the change is made to a
+   * copy of the committed state, the copy is saved, and only a save that
+   * succeeded makes it the state. So the file never lags what readers see
+   * (two overlapping saves could otherwise land out of order), and a failed
+   * write changes nothing — a retry finds the state it started from.
+   */
+  let writes: Promise<unknown> = Promise.resolve();
+  function mutate<T>(change: (draft: RegistryState) => { result: T; changed: boolean }): Promise<T> {
+    const run = writes.then(async () => {
+      const current = await load();
+      const draft: RegistryState = {
+        sets: current.sets.map((set) => ({ ...set })),
+        profiles: current.profiles.map(cloneProfile),
+        defaultSet: current.defaultSet,
+      };
+      const { result, changed } = change(draft);
+      if (changed) {
+        await options.store.save({
+          version: 2,
+          ...(draft.defaultSet === undefined ? {} : { defaultSet: draft.defaultSet }),
+          sets: draft.sets.map((set) => ({ ...set })),
+          profiles: draft.profiles.map(cloneProfile),
+        });
+        state = draft;
+        await announce();
+      }
+      return result;
     });
+    writes = run.catch(() => undefined);
+    return run;
   }
 
   function emit(profiles: AgentProfile[]): void {
@@ -371,63 +401,61 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
         .filter((profile) => providerId === undefined || profile.provider === providerId)
         .map(cloneProfile),
 
-    async add(profile) {
-      const loaded = await load();
-      if (profile.kind !== 'managed') throw new Error(`only managed profiles are registered: ${profile.id}`);
-      if (loaded.profiles.some((existing) => existing.id === profile.id)) {
-        throw new Error(`agent profile already registered: ${profile.id}`);
+    add(profile) {
+      if (profile.kind !== 'managed') {
+        return Promise.reject(new Error(`only managed profiles are registered: ${profile.id}`));
       }
-      const set = profile.set === undefined ? undefined : managedSet(loaded, profile.set);
-      if (!set) throw new Error(`agent profile names no registered profile set: ${profile.id}`);
-      if (
-        active(profile) &&
-        loaded.profiles.some(
-          (existing) => existing.set === set.id && existing.provider === profile.provider && active(existing),
-        )
-      ) {
-        throw new Error(`profile set ${set.id} already has a ${profile.provider} account`);
-      }
-      if (loaded.profiles.length >= MAX_PERSISTED_PROFILES) {
-        throw new Error(`profile registry is full (${MAX_PERSISTED_PROFILES} profiles)`);
-      }
-      loaded.profiles.push({ ...cloneProfile(profile), label: set.label });
-      await persist();
-      await announce();
+      return mutate((draft) => {
+        if (draft.profiles.some((existing) => existing.id === profile.id)) {
+          throw new Error(`agent profile already registered: ${profile.id}`);
+        }
+        const set = profile.set === undefined ? undefined : managedSet(draft, profile.set);
+        if (!set) throw new Error(`agent profile names no registered profile set: ${profile.id}`);
+        if (
+          active(profile) &&
+          draft.profiles.some(
+            (existing) => existing.set === set.id && existing.provider === profile.provider && active(existing),
+          )
+        ) {
+          throw new Error(`profile set ${set.id} already has a ${profile.provider} account`);
+        }
+        if (draft.profiles.length >= MAX_PERSISTED_PROFILES) {
+          throw new Error(`profile registry is full (${MAX_PERSISTED_PROFILES} profiles)`);
+        }
+        draft.profiles.push({ ...cloneProfile(profile), label: set.label });
+        return { result: undefined, changed: true };
+      });
     },
 
-    async remove(profileId) {
-      const loaded = await load();
-      const index = loaded.profiles.findIndex((profile) => profile.id === profileId);
-      if (index < 0) return false;
-      loaded.profiles.splice(index, 1);
-      await persist();
-      await announce();
-      return true;
+    remove(profileId) {
+      return mutate((draft) => {
+        const index = draft.profiles.findIndex((profile) => profile.id === profileId);
+        if (index < 0) return { result: false, changed: false };
+        draft.profiles.splice(index, 1);
+        return { result: true, changed: true };
+      });
     },
 
-    async retire(profileId, at) {
-      const loaded = await load();
-      const profile = loaded.profiles.find((entry) => entry.id === profileId);
-      if (!profile) return undefined;
-      if (profile.retiredAt === undefined) {
-        profile.retiredAt = at;
-        await persist();
-        await announce();
-      }
-      return cloneProfile(profile);
+    retire(profileId, at) {
+      return mutate((draft) => {
+        const profile = draft.profiles.find((entry) => entry.id === profileId);
+        if (!profile) return { result: undefined, changed: false };
+        const changed = profile.retiredAt === undefined;
+        if (changed) profile.retiredAt = at;
+        return { result: cloneProfile(profile), changed };
+      });
     },
 
     async recordIdentity(profileId, identity) {
       const parsed = ProfileIdentitySchema.safeParse(identity);
       if (!parsed.success) throw new Error(`profile identity for ${profileId} failed schema validation`);
-      const loaded = await load();
-      const profile = loaded.profiles.find((entry) => entry.id === profileId);
-      if (profile) {
+      const recorded = await mutate((draft) => {
+        const profile = draft.profiles.find((entry) => entry.id === profileId);
+        if (!profile) return { result: undefined, changed: false };
         profile.identity = parsed.data;
-        await persist();
-        await announce();
-        return cloneProfile(profile);
-      }
+        return { result: cloneProfile(profile), changed: true };
+      });
+      if (recorded) return recorded;
       const existing = (await snapshot()).find((entry) => entry.id === profileId);
       if (existing?.kind !== 'native-default') return undefined;
       nativeDefaultIdentities.set(profileId, parsed.data);
@@ -447,73 +475,69 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
       return set ? info(loaded, set) : undefined;
     },
 
-    async addSet(set) {
+    addSet(set) {
       const parsed = ProfileSetSchema.safeParse(set);
       if (!parsed.success || parsed.data.kind !== 'managed') {
-        throw new Error(`profile set ${JSON.stringify(set.id)} failed schema validation`);
+        return Promise.reject(new Error(`profile set ${JSON.stringify(set.id)} failed schema validation`));
       }
-      const loaded = await load();
-      if (parsed.data.id === NATIVE_PROFILE_SET_ID || managedSet(loaded, parsed.data.id)) {
-        throw new Error(`profile set already registered: ${parsed.data.id}`);
-      }
-      if (loaded.sets.length >= MAX_PERSISTED_SETS) {
-        throw new Error(`profile registry is full (${MAX_PERSISTED_SETS} profile sets)`);
-      }
-      loaded.sets.push(parsed.data);
-      await persist();
-      await announce();
+      return mutate((draft) => {
+        if (parsed.data.id === NATIVE_PROFILE_SET_ID || managedSet(draft, parsed.data.id)) {
+          throw new Error(`profile set already registered: ${parsed.data.id}`);
+        }
+        if (draft.sets.length >= MAX_PERSISTED_SETS) {
+          throw new Error(`profile registry is full (${MAX_PERSISTED_SETS} profile sets)`);
+        }
+        draft.sets.push(parsed.data);
+        return { result: undefined, changed: true };
+      });
     },
 
-    async updateSet(setId, patch) {
-      const loaded = await load();
-      const set = managedSet(loaded, setId);
-      if (!set) return undefined;
-      const next: ProfileSet = {
-        ...set,
-        ...(patch.label === undefined ? {} : { label: patch.label.trim() }),
-        ...(patch.directory === undefined || set.directory !== undefined ? {} : { directory: patch.directory }),
-      };
-      if (patch.glyph === null) delete next.glyph;
-      else if (patch.glyph !== undefined) next.glyph = patch.glyph;
-      const parsed = ProfileSetSchema.safeParse(next);
-      if (!parsed.success) throw new Error(`profile set ${JSON.stringify(setId)} failed schema validation`);
-      Object.assign(set, parsed.data);
-      if (parsed.data.glyph === undefined) delete set.glyph;
-      if (patch.label !== undefined) {
-        for (const profile of loaded.profiles) if (profile.set === setId) profile.label = set.label;
-      }
-      await persist();
-      await announce();
-      return info(loaded, set);
+    updateSet(setId, patch) {
+      return mutate((draft) => {
+        const set = managedSet(draft, setId);
+        if (!set) return { result: undefined, changed: false };
+        const next: ProfileSet = {
+          ...set,
+          ...(patch.label === undefined ? {} : { label: patch.label.trim() }),
+          ...(patch.directory === undefined || set.directory !== undefined ? {} : { directory: patch.directory }),
+        };
+        if (patch.glyph === null) delete next.glyph;
+        else if (patch.glyph !== undefined) next.glyph = patch.glyph;
+        const parsed = ProfileSetSchema.safeParse(next);
+        if (!parsed.success) throw new Error(`profile set ${JSON.stringify(setId)} failed schema validation`);
+        Object.assign(set, parsed.data);
+        if (parsed.data.glyph === undefined) delete set.glyph;
+        if (patch.label !== undefined) {
+          for (const profile of draft.profiles) if (profile.set === setId) profile.label = set.label;
+        }
+        return { result: info(draft, set), changed: true };
+      });
     },
 
-    async removeSet(setId) {
-      const loaded = await load();
-      const index = loaded.sets.findIndex((set) => set.id === setId);
-      if (index < 0) return undefined;
-      const [set] = loaded.sets.splice(index, 1);
-      const removed = loaded.profiles.filter((profile) => profile.set === setId);
-      loaded.profiles = loaded.profiles.filter((profile) => profile.set !== setId);
-      if (loaded.defaultSet === setId) loaded.defaultSet = undefined;
-      await persist();
-      await announce();
-      return { set: { ...set! }, profiles: removed.map(cloneProfile) };
+    removeSet(setId) {
+      return mutate((draft) => {
+        const index = draft.sets.findIndex((set) => set.id === setId);
+        if (index < 0) return { result: undefined, changed: false };
+        const [set] = draft.sets.splice(index, 1);
+        const removed = draft.profiles.filter((profile) => profile.set === setId);
+        draft.profiles = draft.profiles.filter((profile) => profile.set !== setId);
+        if (draft.defaultSet === setId) draft.defaultSet = undefined;
+        return { result: { set: { ...set! }, profiles: removed.map(cloneProfile) }, changed: true };
+      });
     },
 
     async defaultSetId() {
       return (await load()).defaultSet ?? NATIVE_PROFILE_SET_ID;
     },
 
-    async setDefault(setId) {
-      const loaded = await load();
-      if (setId !== NATIVE_PROFILE_SET_ID && !managedSet(loaded, setId)) return false;
-      const next = setId === NATIVE_PROFILE_SET_ID ? undefined : setId;
-      if (loaded.defaultSet !== next) {
-        loaded.defaultSet = next;
-        await persist();
-        await announce();
-      }
-      return true;
+    setDefault(setId) {
+      return mutate((draft) => {
+        if (setId !== NATIVE_PROFILE_SET_ID && !managedSet(draft, setId)) return { result: false, changed: false };
+        const next = setId === NATIVE_PROFILE_SET_ID ? undefined : setId;
+        const changed = draft.defaultSet !== next;
+        draft.defaultSet = next;
+        return { result: true, changed };
+      });
     },
 
     onChange(listener) {

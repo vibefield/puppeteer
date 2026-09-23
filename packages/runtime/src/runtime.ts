@@ -8,6 +8,7 @@ import {
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
   DistributionProviderSchema,
+  NATIVE_PROFILE_SET_ID,
   ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
@@ -710,30 +711,65 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
    */
   const defaultedSpawns = new WeakSet<CreateAgentSessionOptions>();
 
-  /** The account a creation runs under: a named profile, a named set's, the default set's, or none. */
+  /**
+   * The account a creation runs under: a named profile, a named set's, the
+   * default set's, or none. `setId` names the set when a named set resolved to
+   * no account — the native set, the provider's own root.
+   */
   async function resolveProfileChoice(
     request: CreateAgentSessionOptions,
-  ): Promise<{ profile?: AgentProfile } | { error: string }> {
+  ): Promise<{ profile?: AgentProfile; setId?: string } | { error: string }> {
     const defaulted = defaultedSpawns.has(request);
     if (request.profile === undefined && request.profileSet === undefined && !defaulted) return {};
     if (!profileRegistryProviders.has(request.agent)) {
-      // The default is only ever a choice among accounts a provider can have.
-      return defaulted ? {} : { error: `agent provider does not expose account profiles: ${request.agent}` };
+      // The default is only ever a choice among accounts a provider can have,
+      // and the native set is every provider's own root, accounts or not.
+      if (defaulted) return {};
+      if (request.profile === undefined && request.profileSet === NATIVE_PROFILE_SET_ID) {
+        return { setId: NATIVE_PROFILE_SET_ID };
+      }
+      return { error: `agent provider does not expose account profiles: ${request.agent}` };
     }
-    const resolved = await (
-      await profileRuntime()
-    ).onboarding.resolveSpawnProfile(request.agent, {
-      ...(request.profile === undefined ? {} : { profile: request.profile }),
-      ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
-    });
-    if ('error' in resolved) return resolved;
-    if (resolved.profileId === undefined) return {};
-    const checked = await resolveSessionProfile(request.agent, resolved.profileId);
-    if ('error' in checked) return checked;
-    if (request.profileSet !== undefined && checked.profile.set !== request.profileSet) {
-      return { error: `account profile ${checked.profile.id} is not in profile set ${request.profileSet}` };
+    try {
+      const resolved = await (
+        await profileRuntime()
+      ).onboarding.resolveSpawnProfile(request.agent, {
+        ...(request.profile === undefined ? {} : { profile: request.profile }),
+        ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
+      });
+      if ('error' in resolved) return resolved;
+      if (resolved.profileId === undefined) return defaulted ? {} : { setId: resolved.setId };
+      const checked = await resolveSessionProfile(request.agent, resolved.profileId);
+      if ('error' in checked) {
+        // The default's account signed out between the two reads: the default
+        // was a preference, and the provider's own root is what it falls to.
+        return defaulted ? {} : checked;
+      }
+      if (request.profileSet !== undefined && checked.profile.set !== request.profileSet) {
+        return { error: `account profile ${checked.profile.id} is not in profile set ${request.profileSet}` };
+      }
+      return { profile: checked.profile };
+    } catch (error) {
+      report(error);
+      // A registry that cannot be read (a newer build's file, a torn write, a
+      // permission) must not stop plain spawns, which never read it before
+      // sets: the default is a preference, and the provider's own root is what
+      // a spawn used then. A named profile or set is a demand the registry has
+      // to answer, so that one fails — typed, with its run terminal.
+      return defaulted ? {} : { error: 'account profiles could not be read' };
     }
-    return { profile: checked.profile };
+  }
+
+  /** The default set's account for a provider, when it has one; never a throw. */
+  async function defaultAccountFor(providerId: string): Promise<string | undefined> {
+    if (!profileRegistryProviders.has(providerId)) return undefined;
+    try {
+      const resolved = await (await profileRuntime()).onboarding.resolveSpawnProfile(providerId, {});
+      return 'error' in resolved ? undefined : resolved.profileId;
+    } catch (error) {
+      report(error);
+      return undefined;
+    }
   }
 
   function bindRunProfile(run: ManagedRun, profile: AgentProfile): void {
@@ -2211,7 +2247,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
   /** `spawn` names a profile, a set, or neither — and neither means the default set's account. */
   function spawnInProfile(request: SpawnAgentOptions): Promise<Agent | AgentSessionFailure> {
-    if (request.profile !== undefined || request.profileSet !== undefined) return spawnAgent(request);
+    // A resume never consults the default — not even one that arrives through
+    // spawn from a host forwarding CreateAgentSessionOptions unchecked: it
+    // continues in the root it was born in, which a request cannot see here.
+    const resuming = (request as CreateAgentSessionOptions).resume !== undefined;
+    if (request.profile !== undefined || request.profileSet !== undefined || resuming) return spawnAgent(request);
     const defaulted: CreateAgentSessionOptions = { ...request };
     defaultedSpawns.add(defaulted);
     return spawnAgent(defaulted);
@@ -2285,7 +2325,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (disposed) throw new Error('agent runtime is disposed');
       const provider = providers.get(providerId);
       if (!provider?.prewarm) return;
-      const key = JSON.stringify([providerId, profileId ?? null]);
+      // Warm what the next spawn will use: the named account, else the default
+      // set's for this provider (a plain spawn's), else the provider's own root.
+      const target =
+        profileId ?? (profileRegistryProviders.has(providerId) ? await defaultAccountFor(providerId) : undefined);
+      const key = JSON.stringify([providerId, target ?? null]);
       const pending = pendingPrewarms.get(key);
       if (pending) return pending;
       // Opening several panes must not repeatedly spawn cache probes. The
@@ -2293,8 +2337,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (Date.now() - (warmedAt.get(key) ?? -Infinity) < 60_000) return;
       const operation = Promise.resolve().then(async () => {
         let profile: AgentProfile | undefined;
-        if (profileId !== undefined) {
-          const resolved = await resolveSessionProfile(providerId, profileId, { allowRetired: true });
+        if (target !== undefined) {
+          // A signed-out account starts nothing, a probe included: its root
+          // may be on its way to deletion.
+          const resolved = await resolveSessionProfile(providerId, target);
           if ('error' in resolved) throw new Error(resolved.error);
           profile = resolved.profile;
         }
@@ -2523,6 +2569,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     async signOutProfile(profileId: string): Promise<ProfileSignOutResult> {
       if (disposed) throw new Error('agent runtime is disposed');
+      // A sign-out takes the credential a running session may still need; the
+      // host waits for its sessions (retire first, sign out when they end).
+      const using = [...runs.values()].filter((run) => run.profileId === profileId && run.status !== 'terminal');
+      if (using.length > 0) {
+        return {
+          status: 'invalid',
+          message: `${using.length} session${using.length === 1 ? '' : 's'} still run under ${profileId}`,
+          retryable: false,
+        };
+      }
       return (await profileRuntime()).onboarding.signOutProfile(profileId);
     },
 
@@ -2605,6 +2661,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         }
         const profile = choice.profile;
         if (profile !== undefined) bindRunProfile(run, profile);
+        else if ('setId' in choice && choice.setId !== undefined) run.profileSetId = choice.setId;
 
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
         try {
@@ -2781,6 +2838,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         }
         const profile = choice.profile;
         if (profile !== undefined) bindRunProfile(run, profile);
+        else if ('setId' in choice && choice.setId !== undefined) run.profileSetId = choice.setId;
 
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
         try {

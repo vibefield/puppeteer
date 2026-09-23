@@ -3302,13 +3302,21 @@ describe('createAgentRuntime', () => {
     await expect(runtime.spawn({ agent: 'other', profileSet: 'work' })).resolves.toMatchObject({
       error: { code: 'AGENT_PROFILE_NOT_FOUND', message: 'Work has no other account' },
     });
-    // A provider without profiles never meets the default, and cannot be named into a set.
+    // A provider without profiles never meets the default, and cannot be named
+    // into a set — but the native set is its own root, so that one it is in.
     expect((await spawn({ agent: 'bare' })).info.profileId).toBeUndefined();
     await expect(runtime.spawn({ agent: 'bare', profileSet: 'work' })).resolves.toMatchObject({
       error: { code: 'AGENT_PROFILE_NOT_FOUND' },
     });
-    // The native set can be named outright, whatever the default.
-    await spawn({ agent: 'example', profileSet: 'native' });
+    expect((await spawn({ agent: 'bare', profileSet: 'native' })).info.profileSetId).toBe('native');
+    // The native set can be named outright, whatever the default, and the run says so.
+    const native = await spawn({ agent: 'example', profileSet: 'native' });
+    expect(seenProfiles.at(-1)).toBeUndefined();
+    expect(native.info).toMatchObject({ profileSetId: 'native' });
+    expect(native.info.profileId).toBeUndefined();
+    // A resume that arrives through spawn (a host forwarding the wider options)
+    // is still a resume: the default is not consulted for it.
+    await spawn({ agent: 'example', resume: 'native-session-born-plain' } as Parameters<typeof runtime.spawn>[0]);
     expect(seenProfiles.at(-1)).toBeUndefined();
     await expect(
       runtime.spawn({ agent: 'example', profile: 'example:native-default', profileSet: 'work' }),
@@ -3340,6 +3348,79 @@ describe('createAgentRuntime', () => {
       { set: { id: 'native', kind: 'native' }, isDefault: false },
       { set: { id: 'work', glyph: 'briefcase' }, isDefault: true, profiles: [] },
     ]);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('never lets a registry it cannot read stop a plain spawn, and fails a named one typed with its run ended', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-registry-unreadable-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const errors: Error[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        {
+          ...fakeProvider('example', handles),
+          descriptor: { id: 'example', label: 'Example' },
+          profiles: exampleProfileService(),
+        },
+      ],
+      // a file a newer build wrote, a torn write, a permission: every read fails
+      profiles: {
+        store: {
+          async load() {
+            throw new Error('unsupported profile registry version');
+          },
+          async save() {},
+        },
+        rootsDirectory: join(root, 'profiles'),
+      },
+      onError: (error) => errors.push(error),
+    });
+    const plain = await runtime.spawn({ agent: 'example' });
+    if ('error' in plain) throw new Error(plain.error.message);
+    expect(plain.info.profileId).toBeUndefined();
+    expect(errors.map((error) => error.message)).toContain('unsupported profile registry version');
+
+    const named = await runtime.spawn({ agent: 'example', profile: 'work-account' });
+    expect(named).toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND', message: 'account profiles could not be read' },
+    });
+    if (!('error' in named)) throw new Error('expected a failure');
+    // the run the failure names is over, not left preparing
+    expect(runtime.runtimeRunInfo(named.runtimeRunId)?.status).toBe('terminal');
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('refuses to sign an account out while a run of this runtime still uses it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-sign-out-live-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        {
+          ...fakeProvider('example', handles),
+          descriptor: { id: 'example', label: 'Example' },
+          profiles: exampleProfileService(),
+        },
+      ],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const account = await runtime.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in account) throw new Error(account.message);
+    const running = await runtime.spawn({ agent: 'example', profile: account.id });
+    if ('error' in running) throw new Error(running.error.message);
+    await runtime.retireProfile(account.id);
+    await expect(runtime.signOutProfile(account.id)).resolves.toMatchObject({
+      status: 'invalid',
+      message: `1 session still run under ${account.id}`,
+    });
+    await runtime.handleProcessExit(running.info.terminalSessionId, { exitCode: 0, signal: null, reason: 'exited' });
+    // the fake service keeps its credential in the root and says nothing more
+    await expect(runtime.signOutProfile(account.id)).resolves.toEqual({ ran: false, credential: 'unknown' });
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
   });

@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,9 +10,14 @@ import type {
   ProfileService,
   TerminalSpec,
 } from '@vibecook/puppeteer-core';
-import type { ProfileRegistrySnapshot } from '../types.js';
+import type { ProfileRegistrySnapshot, ProfileSetInfo } from '../types.js';
 import { createProfileOnboarding } from './onboarding.js';
-import { createProfileRegistry, nativeDefaultProfileId, type ProfileRegistryProvider } from './registry.js';
+import {
+  createProfileRegistry,
+  nativeDefaultProfileId,
+  parseProfileRegistrySnapshot,
+  type ProfileRegistryProvider,
+} from './registry.js';
 import { createProfileRootAllocator } from './roots.js';
 
 const identity: ProfileIdentity = {
@@ -36,6 +41,7 @@ function fakeProvider(
     verify?: ProfileService['verify'];
     initializeRoot?: ProfileService['initializeRoot'];
     signOut?: ProfileService['signOut'];
+    credential?: 'root' | 'external';
   } = {},
 ): FakeProvider {
   const variable = options.variable ?? `${id.toUpperCase()}_HOME`;
@@ -47,6 +53,7 @@ function fakeProvider(
       identity: 'native-status',
       sharedSurfaces: [],
       nativeDefaultRoot: `/home/user/.${id}`,
+      ...(options.credential === undefined ? {} : { credential: options.credential }),
     },
   };
   const initialized: AgentProfile[] = [];
@@ -255,10 +262,16 @@ describe('createProfileOnboarding', () => {
         return undefined;
       },
     });
-    const beta = fakeProvider('beta');
-    const box = await onboarding([alpha, beta]);
+    const beta = fakeProvider('beta', { credential: 'root' });
+    const gamma = fakeProvider('gamma');
+    const box = await onboarding([alpha, beta, gamma]);
     const a = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
     const b = (await box.onboarding.createProfile({ providerId: 'beta', label: 'Work' })) as AgentProfile;
+    const c = (await box.onboarding.createProfile({ providerId: 'gamma', label: 'Work' })) as AgentProfile;
+
+    // An account still in its set is not signed out: new work could land in it.
+    await expect(box.onboarding.signOutProfile(a.id)).resolves.toMatchObject({ status: 'invalid' });
+    expect(signedOut).toEqual([]);
 
     await expect(box.onboarding.retireProfile(a.id)).resolves.toMatchObject({
       id: a.id,
@@ -274,7 +287,11 @@ describe('createProfileOnboarding', () => {
     await expect(box.onboarding.signOutProfile(a.id)).resolves.toEqual({ ran: true });
     expect(signedOut.map((profile) => profile.id)).toEqual([a.id]);
     // beta keeps its credential in the root: deleting the root is its sign-out.
-    await expect(box.onboarding.signOutProfile(b.id)).resolves.toEqual({ ran: false });
+    await box.onboarding.retireProfile(b.id);
+    await expect(box.onboarding.signOutProfile(b.id)).resolves.toEqual({ ran: false, credential: 'root' });
+    // gamma never said where it keeps one: the root can go, and nothing more is claimed.
+    await box.onboarding.retireProfile(c.id);
+    await expect(box.onboarding.signOutProfile(c.id)).resolves.toEqual({ ran: false, credential: 'unknown' });
     await expect(box.onboarding.signOutProfile(nativeDefaultProfileId('beta'))).resolves.toMatchObject({
       status: 'unsupported',
     });
@@ -382,6 +399,66 @@ describe('createProfileOnboarding', () => {
     await expect(box.onboarding.bindingEnvironment([])).resolves.toEqual({});
     await expect(box.onboarding.bindingEnvironment([first.id, second.id])).rejects.toThrow('more than once');
     await expect(box.onboarding.bindingEnvironment(['ghost'])).rejects.toThrow('unknown agent profile');
+    // A signed-out account binds nothing; the others still bind.
+    await box.onboarding.retireProfile(first.id);
+    await expect(box.onboarding.bindingEnvironment([first.id, other.id])).resolves.toEqual({
+      BETA_HOME: other.dataRoot,
+    });
+  });
+
+  it('decides one change at a time: two creates never both pass the check, two names never make two sets', async () => {
+    const box = await onboarding([fakeProvider('alpha'), fakeProvider('beta')]);
+    const work = (await box.onboarding.createProfileSet({ label: 'Work' })) as ProfileSetInfo;
+    const [one, two] = await Promise.all([
+      box.onboarding.createProfile({ providerId: 'alpha', set: work.set.id }),
+      box.onboarding.createProfile({ providerId: 'alpha', set: work.set.id }),
+    ]);
+    const outcomes = [one, two].map((result) => ('status' in result ? result.status : 'created')).sort();
+    expect(outcomes).toEqual(['created', 'invalid']);
+    // the refused one allocated nothing: one root in the folder
+    await expect(readdir(work.set.directory!)).resolves.toHaveLength(1);
+
+    const [a, b] = (await Promise.all([
+      box.onboarding.createProfile({ providerId: 'alpha', label: 'Client' }),
+      box.onboarding.createProfile({ providerId: 'beta', label: 'Client' }),
+    ])) as AgentProfile[];
+    expect(a!.set).toBe(b!.set);
+    expect((await box.registry.sets()).filter((info) => info.set.label === 'Client')).toHaveLength(1);
+  });
+
+  it('gives a set adopted from a version 1 registry its folder under its own id, never beside one a set owns', async () => {
+    const alpha = fakeProvider('alpha');
+    const beta = fakeProvider('beta');
+    const box = harness([alpha, beta]);
+    // what a pre-set host wrote: one Work account at the old layout
+    box.stored.snapshot = parseProfileRegistrySnapshot({
+      version: 1,
+      profiles: [
+        {
+          id: 'old-work',
+          provider: 'alpha',
+          label: 'Work',
+          kind: 'managed',
+          dataRoot: '/home/user/.puppeteer/profiles/alpha/old-work',
+          createdAt: '2026-09-06T12:00:00.000Z',
+        },
+      ],
+    });
+    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles');
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({ rootsDirectory }),
+      host: box.host,
+      defaultCwd: '/workspace',
+    });
+    const added = (await flow.createProfile({ providerId: 'beta', set: 'work' })) as AgentProfile;
+    expect(added.dataRoot.startsWith(join(rootsDirectory, 'work') + '/')).toBe(true);
+    expect((await box.registry.getSet('work'))?.set.directory).toBe(join(rootsDirectory, 'work'));
+    // a new "Work" never lands in that folder, even once it is gone from disk
+    await rm(join(rootsDirectory, 'work'), { recursive: true, force: true });
+    const other = (await flow.createProfileSet({ label: 'Work' })) as ProfileSetInfo;
+    expect(other.set.directory).not.toBe(join(rootsDirectory, 'work'));
   });
 
   it('spawns the native login with the binding merged over the adapter environment', async () => {

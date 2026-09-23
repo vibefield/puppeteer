@@ -50,12 +50,14 @@ const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
 export type ClaudeProfileExec = (
   file: string,
   args: string[],
-  options: { env: NodeJS.ProcessEnv },
+  /** `strict`: a non-zero exit is a failure whatever it printed (an act, not a read). */
+  options: { env: NodeJS.ProcessEnv; strict?: boolean },
 ) => Promise<{ stdout: string }>;
 
 /**
  * Default runner. A non-zero exit that still printed a document is decoded
- * rather than discarded: `auth status` reports "not logged in" that way.
+ * rather than discarded: `auth status` reports "not logged in" that way. An
+ * act runs strict — a logout that failed may well have printed something.
  */
 const defaultProfileExec: ClaudeProfileExec = async (file, args, options) => {
   const isScript = SCRIPT_EXECUTABLE.test(file);
@@ -71,7 +73,7 @@ const defaultProfileExec: ClaudeProfileExec = async (file, args, options) => {
     return { stdout };
   } catch (error) {
     const stdout = (error as { stdout?: unknown }).stdout;
-    if (typeof stdout === 'string' && stdout.trim()) return { stdout };
+    if (options.strict !== true && typeof stdout === 'string' && stdout.trim()) return { stdout };
     throw error;
   }
 };
@@ -139,6 +141,9 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
       // root, so every profile in one repository sees the same ones.
       sharedSurfaces: ['project .claude/ settings and .mcp.json'],
       nativeDefaultRoot: join(home, '.claude'),
+      // macOS keeps the OAuth credential in a login-Keychain item named after
+      // the root's path, outside the root: only `auth logout` removes it.
+      credential: 'external',
     },
   };
 
@@ -153,6 +158,22 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
     // another account.
     if (profile.kind !== 'managed') delete env[CLAUDE_PROFILE_ROOT_VARIABLE];
     return env;
+  };
+
+  const readIdentity = async (profile: AgentProfile): Promise<ProfileIdentity | ProfileFailure> => {
+    let stdout: string;
+    try {
+      stdout = (await exec(executable, ['auth', 'status', '--json'], { env: probeEnvironment(profile) })).stdout;
+    } catch {
+      return unavailable('`claude auth status --json` could not be run');
+    }
+    let document: unknown;
+    try {
+      document = JSON.parse(stdout);
+    } catch {
+      return unavailable('`claude auth status --json` did not return JSON');
+    }
+    return claudeProfileIdentityFrom(document, now().toISOString());
   };
 
   return {
@@ -175,30 +196,19 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
       };
     },
 
-    async verify(profile: AgentProfile): Promise<ProfileIdentity | ProfileFailure> {
-      let stdout: string;
-      try {
-        stdout = (await exec(executable, ['auth', 'status', '--json'], { env: probeEnvironment(profile) })).stdout;
-      } catch {
-        return unavailable('`claude auth status --json` could not be run');
-      }
-      let document: unknown;
-      try {
-        document = JSON.parse(stdout);
-      } catch {
-        return unavailable('`claude auth status --json` did not return JSON');
-      }
-      return claudeProfileIdentityFrom(document, now().toISOString());
-    },
+    verify: readIdentity,
 
     async signOut(profile: AgentProfile): Promise<ProfileFailure | undefined> {
-      // Output is the vendor's; whether it worked is the next `verify`.
       try {
-        await exec(executable, ['auth', 'logout'], { env: probeEnvironment(profile) });
+        await exec(executable, ['auth', 'logout'], { env: probeEnvironment(profile), strict: true });
       } catch {
-        return unavailable('`claude auth logout` could not be run');
+        return unavailable('`claude auth logout` did not complete');
       }
-      return undefined;
+      // The output is the vendor's and is not read; the status afterwards
+      // says whether it took, and only a root that reads signed out is one.
+      const after = await readIdentity(profile);
+      if ('status' in after) return after;
+      return after.loggedIn ? unavailable('`claude auth logout` ran, but the root still reads signed in') : undefined;
     },
   };
 }

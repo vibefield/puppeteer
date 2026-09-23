@@ -147,7 +147,7 @@ describe('parseProfileRegistrySnapshot', () => {
     const repaired = parseProfileRegistrySnapshot({
       version: 2,
       defaultSet: 'gone',
-      sets: [WORK_SET, { ...WORK_SET, label: 'Duplicate' }],
+      sets: [WORK_SET],
       profiles: [
         { ...managedProfile('alpha', 'a1'), set: 'work' },
         { ...managedProfile('alpha', 'a2', 'Orphan'), set: 'missing' },
@@ -162,6 +162,23 @@ describe('parseProfileRegistrySnapshot', () => {
       ['a2', 'orphan'],
       ['a0', 'work'],
     ]);
+  });
+
+  it('refuses a document that names one set or one account twice, rather than dropping either', () => {
+    // Keeping one would let the next write forget the other's folder or root.
+    expect(() =>
+      parseProfileRegistrySnapshot({ version: 2, sets: [WORK_SET, { ...WORK_SET, label: 'Again' }], profiles: [] }),
+    ).toThrow('duplicate profile set id: work');
+    expect(() =>
+      parseProfileRegistrySnapshot({
+        version: 2,
+        sets: [WORK_SET],
+        profiles: [
+          { ...managedProfile('alpha', 'a1'), set: 'work' },
+          { ...managedProfile('beta', 'a1'), set: 'work' },
+        ],
+      }),
+    ).toThrow('duplicate agent profile id: a1');
   });
 });
 
@@ -381,6 +398,69 @@ describe('createProfileRegistry', () => {
       { id: 'p2' },
     ]);
     await expect(registry.remove('p2')).resolves.toBe(true);
+  });
+
+  it('writes one change at a time, so the file ends where memory does however the saves are timed', async () => {
+    const saved: ProfileRegistrySnapshot[] = [];
+    // A slow disk: the first save lands long after the rest were asked for.
+    let delay = 40;
+    const registry = createProfileRegistry({
+      providers: [registryProvider(descriptor('alpha'))],
+      store: {
+        async load() {
+          return undefined;
+        },
+        async save(snapshot) {
+          const wait = delay;
+          delay = Math.max(0, delay - 10);
+          await new Promise((resolve) => setTimeout(resolve, wait));
+          saved.push(snapshot);
+        },
+      },
+    });
+    await Promise.all(
+      ['a', 'b', 'c', 'd', 'e'].map((id) =>
+        registry.addSet({ ...WORK_SET, id, label: id.toUpperCase(), directory: `/profiles/${id}` }),
+      ),
+    );
+    const memory = (await registry.sets()).map((info) => info.set.id);
+    expect(memory).toEqual(['native', 'a', 'b', 'c', 'd', 'e']);
+    // every save carried everything before it, and the last one is the whole
+    expect(saved.map((snapshot) => snapshot.sets.length)).toEqual([1, 2, 3, 4, 5]);
+    expect(saved.at(-1)?.sets.map((set) => set.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('changes nothing when a write fails, so a retry finds the state it started from', async () => {
+    const { store, state } = memoryStore([managedProfile('alpha', 'p1')]);
+    let failNext = false;
+    const registry = createProfileRegistry({
+      providers: [registryProvider(descriptor('alpha'))],
+      store: {
+        load: store.load,
+        async save(snapshot) {
+          if (failNext) {
+            failNext = false;
+            throw new Error('disk full');
+          }
+          await store.save(snapshot);
+        },
+      },
+    });
+    const setId = (await registry.get('p1'))!.set!;
+    failNext = true;
+    await expect(registry.removeSet(setId)).rejects.toThrow('disk full');
+    // the set is still there, in memory and on disk
+    expect((await registry.sets()).map((info) => info.set.id)).toContain(setId);
+    expect(state.snapshot?.sets.map((set) => set.id)).toContain(setId);
+
+    // a retire that failed is not half-done: the retry writes it
+    failNext = true;
+    await expect(registry.retire('p1', '2026-09-23T10:00:00.000Z')).rejects.toThrow('disk full');
+    expect((await registry.get('p1'))?.retiredAt).toBeUndefined();
+    await expect(registry.retire('p1', '2026-09-23T10:00:00.000Z')).resolves.toMatchObject({
+      retiredAt: '2026-09-23T10:00:00.000Z',
+    });
+    expect(state.snapshot?.profiles[0]?.retiredAt).toBe('2026-09-23T10:00:00.000Z');
   });
 
   it('stops announcing after dispose', async () => {

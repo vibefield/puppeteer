@@ -49,6 +49,8 @@ export function createOpenCodeProfileService(options: OpenCodeProfileServiceOpti
         'tools the agent spawns inherit XDG_DATA_HOME',
       ],
       nativeDefaultRoot: join(home, '.local', 'share', 'opencode'),
+      // auth.json lives under the bound data root (verified on 1.18.23).
+      credential: 'root',
     },
   };
 

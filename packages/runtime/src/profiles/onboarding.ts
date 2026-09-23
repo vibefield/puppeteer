@@ -19,6 +19,7 @@ import type {
   StartProfileLoginOptions,
   UpdateProfileSetOptions,
 } from '../types.js';
+import { basename } from 'node:path';
 import type { ProfileRegistry, ProfileRegistryProvider } from './registry.js';
 import type { ProfileRootAllocator } from './roots.js';
 
@@ -104,8 +105,33 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
     return entry;
   }
 
-  async function takenSetIds(): Promise<Set<string>> {
-    return new Set((await registry.sets()).map((info) => info.set.id));
+  /**
+   * One onboarding change at a time. Creating an account checks that its set
+   * holds none of its provider, then allocates and registers: two at once
+   * would both pass the check (the loser leaving a root behind), and two
+   * creates of one name would make two sets. The registry serializes its own
+   * writes; this serializes the decisions made on what it read.
+   */
+  let turn: Promise<unknown> = Promise.resolve();
+  function exclusive<T>(work: () => Promise<T>): Promise<T> {
+    const run = turn.then(work);
+    turn = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * The names a new set folder must not take: every registered set's id and
+   * the name of every folder a set was given, so a folder never lands on one
+   * a registered set owns (even one that was removed from disk behind its
+   * back). `except` leaves one set's own id free, for giving it its folder.
+   */
+  async function takenSetNames(except?: string): Promise<Set<string>> {
+    const taken = new Set<string>();
+    for (const info of await registry.sets()) {
+      if (info.set.id !== except) taken.add(info.set.id);
+      if (info.set.directory !== undefined) taken.add(basename(info.set.directory));
+    }
+    return taken;
   }
 
   async function createSet(request: CreateProfileSetOptions): Promise<ProfileSetInfo | ProfileFailure> {
@@ -116,7 +142,7 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
     }
     let allocated;
     try {
-      allocated = await options.allocator.allocateSet(label, await takenSetIds());
+      allocated = await options.allocator.allocateSet(label, await takenSetNames());
     } catch (error) {
       report(error);
       return failure('unavailable', 'profile directory could not be allocated');
@@ -138,11 +164,15 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
     return info ?? failure('unavailable', 'profile set could not be read back');
   }
 
-  /** The directory new accounts of a set are allocated in; an adopted set is given one on first use. */
+  /**
+   * The directory new accounts of a set are allocated in. A set adopted from a
+   * version 1 registry has none until its first new account, and is given one
+   * named after its own id where that folder is free.
+   */
   async function directoryOf(info: ProfileSetInfo): Promise<string | ProfileFailure> {
     if (info.set.directory !== undefined) return info.set.directory;
     try {
-      const allocated = await options.allocator.allocateSet(info.set.label, await takenSetIds());
+      const allocated = await options.allocator.allocateSet(info.set.id, await takenSetNames(info.set.id));
       const updated = await registry.updateSet(info.set.id, { directory: allocated.directory });
       return updated?.set.directory ?? allocated.directory;
     } catch (error) {
@@ -202,68 +232,83 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
     return profile;
   }
 
+  async function createProfile(request: CreateProfileOptions): Promise<AgentProfile | ProfileFailure> {
+    if (request.set !== undefined) {
+      if (request.label !== undefined) {
+        return failure('invalid', 'name the set or a label, not both', request.providerId);
+      }
+      return createInSet(request.providerId, request.set);
+    }
+    const label = validLabel(request.label ?? '');
+    if (label === undefined) return failure('invalid', LABEL_RULE, request.providerId);
+    const entry = supporting(request.providerId);
+    if ('status' in entry) return entry;
+    // The set of this name that has no account for the provider yet, as a
+    // host that named per-provider profiles alike meant; else a new one.
+    const sets = await registry.sets();
+    const joined = sets.find(
+      (info) =>
+        info.set.kind === 'managed' &&
+        info.set.label.toLowerCase() === label.toLowerCase() &&
+        !info.profiles.some((profile) => profile.provider === request.providerId),
+    );
+    if (joined) return createInSet(request.providerId, joined.set.id);
+    const made = await createSet({ label });
+    if ('status' in made) return { ...made, provider: request.providerId };
+    return createInSet(request.providerId, made.set.id);
+  }
+
   return {
-    async createProfile(request) {
-      if (request.set !== undefined) {
-        if (request.label !== undefined) {
-          return failure('invalid', 'name the set or a label, not both', request.providerId);
+    createProfile: (request) => exclusive(() => createProfile(request)),
+
+    removeProfile: (profileId) =>
+      exclusive(async () => {
+        const profile = await registry.get(profileId);
+        // Native defaults are derived from the adapter, not registered, so there
+        // is nothing to remove. The managed root stays on disk: deleting an
+        // account's credentials and history is the user's decision, not ours.
+        if (!profile || profile.kind !== 'managed') return false;
+        return registry.remove(profileId);
+      }),
+
+    retireProfile: (profileId) =>
+      exclusive(async () => {
+        const profile = await registry.get(profileId);
+        if (!profile) return failure('not-found', `unknown agent profile: ${profileId}`);
+        if (profile.kind !== 'managed') {
+          return failure(
+            'invalid',
+            "a native default is the provider's own root; it is never retired",
+            profile.provider,
+          );
         }
-        return createInSet(request.providerId, request.set);
-      }
-      const label = validLabel(request.label ?? '');
-      if (label === undefined) return failure('invalid', LABEL_RULE, request.providerId);
-      const entry = supporting(request.providerId);
-      if ('status' in entry) return entry;
-      // The set of this name that has no account for the provider yet, as a
-      // host that named per-provider profiles alike meant; else a new one.
-      const sets = await registry.sets();
-      const joined = sets.find(
-        (info) =>
-          info.set.kind === 'managed' &&
-          info.set.label.toLowerCase() === label.toLowerCase() &&
-          !info.profiles.some((profile) => profile.provider === request.providerId),
-      );
-      if (joined) return createInSet(request.providerId, joined.set.id);
-      const made = await createSet({ label });
-      if ('status' in made) return { ...made, provider: request.providerId };
-      return createInSet(request.providerId, made.set.id);
-    },
-
-    async removeProfile(profileId) {
-      const profile = await registry.get(profileId);
-      // Native defaults are derived from the adapter, not registered, so there
-      // is nothing to remove. The managed root stays on disk: deleting an
-      // account's credentials and history is the user's decision, not ours.
-      if (!profile || profile.kind !== 'managed') return false;
-      return registry.remove(profileId);
-    },
-
-    async retireProfile(profileId) {
-      const profile = await registry.get(profileId);
-      if (!profile) return failure('not-found', `unknown agent profile: ${profileId}`);
-      if (profile.kind !== 'managed') {
-        return failure('invalid', "a native default is the provider's own root; it is never retired", profile.provider);
-      }
-      try {
-        const retired = await registry.retire(profileId, now().toISOString());
-        return retired ?? failure('not-found', `unknown agent profile: ${profileId}`, profile.provider);
-      } catch (error) {
-        report(error);
-        return failure('unavailable', 'profile could not be retired', profile.provider);
-      }
-    },
+        try {
+          const retired = await registry.retire(profileId, now().toISOString());
+          return retired ?? failure('not-found', `unknown agent profile: ${profileId}`, profile.provider);
+        } catch (error) {
+          report(error);
+          return failure('unavailable', 'profile could not be retired', profile.provider);
+        }
+      }),
 
     async signOutProfile(profileId) {
       const profile = await registry.get(profileId);
       if (!profile) return failure('not-found', `unknown agent profile: ${profileId}`);
+      if (profile.kind === 'managed' && profile.retiredAt === undefined) {
+        // Retiring first is what keeps new work off the account while its
+        // credential goes; a sign-out of an account still in its set would
+        // leave spawns landing in a root that is signed out.
+        return failure('invalid', `retire ${profileId} before signing it out`, profile.provider);
+      }
       const entry = options.providers.get(profile.provider);
       if (!entry?.service.signOut) {
-        // A managed root holds its own credential: deleting it is the sign-out.
-        // A native default's root is never deleted, so without the vendor's
-        // own command there is nothing to do here.
-        return profile.kind === 'managed'
-          ? { ran: false }
-          : failure('unsupported', `${profile.provider} signs out in its own terminal`, profile.provider);
+        // No vendor sign-out: a managed root's deletion is all there is, and
+        // the adapter's declaration says what that deletion amounts to. A
+        // native default's root is never deleted, so there is nothing to do.
+        if (profile.kind !== 'managed') {
+          return failure('unsupported', `${profile.provider} signs out in its own terminal`, profile.provider);
+        }
+        return { ran: false, credential: entry?.provider.support.credential === 'root' ? 'root' : 'unknown' };
       }
       let outcome: ProfileFailure | undefined;
       try {
@@ -279,66 +324,69 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
         : failure('unavailable', 'native sign-out returned an unreadable result', profile.provider);
     },
 
-    createProfileSet: createSet,
+    createProfileSet: (request) => exclusive(() => createSet(request)),
 
-    async updateProfileSet(request) {
-      if (request.setId === NATIVE_PROFILE_SET_ID) {
-        return failure('invalid', 'the native set keeps its name and mark');
-      }
-      let label: string | undefined;
-      if (request.label !== undefined) {
-        label = validLabel(request.label);
-        if (label === undefined) return failure('invalid', LABEL_RULE);
-      }
-      if (
-        request.glyph !== undefined &&
-        request.glyph !== null &&
-        !ProfileGlyphSchema.safeParse(request.glyph).success
-      ) {
-        return failure('invalid', `not a glyph: ${JSON.stringify(request.glyph)}`);
-      }
-      try {
-        const updated = await registry.updateSet(request.setId, {
-          ...(label === undefined ? {} : { label }),
-          ...(request.glyph === undefined ? {} : { glyph: request.glyph }),
-        });
-        return updated ?? failure('not-found', `unknown profile set: ${request.setId}`);
-      } catch (error) {
-        report(error);
-        return failure('unavailable', 'profile set could not be updated');
-      }
-    },
+    updateProfileSet: (request) =>
+      exclusive(async () => {
+        if (request.setId === NATIVE_PROFILE_SET_ID) {
+          return failure('invalid', 'the native set keeps its name and mark');
+        }
+        let label: string | undefined;
+        if (request.label !== undefined) {
+          label = validLabel(request.label);
+          if (label === undefined) return failure('invalid', LABEL_RULE);
+        }
+        if (
+          request.glyph !== undefined &&
+          request.glyph !== null &&
+          !ProfileGlyphSchema.safeParse(request.glyph).success
+        ) {
+          return failure('invalid', `not a glyph: ${JSON.stringify(request.glyph)}`);
+        }
+        try {
+          const updated = await registry.updateSet(request.setId, {
+            ...(label === undefined ? {} : { label }),
+            ...(request.glyph === undefined ? {} : { glyph: request.glyph }),
+          });
+          return updated ?? failure('not-found', `unknown profile set: ${request.setId}`);
+        } catch (error) {
+          report(error);
+          return failure('unavailable', 'profile set could not be updated');
+        }
+      }),
 
-    async setDefaultProfileSet(setId) {
-      try {
-        if (!(await registry.setDefault(setId))) return failure('not-found', `unknown profile set: ${setId}`);
-      } catch (error) {
-        report(error);
-        return failure('unavailable', 'the default profile set could not be recorded');
-      }
-      return (await registry.getSet(setId)) ?? failure('not-found', `unknown profile set: ${setId}`);
-    },
+    setDefaultProfileSet: (setId) =>
+      exclusive(async () => {
+        try {
+          if (!(await registry.setDefault(setId))) return failure('not-found', `unknown profile set: ${setId}`);
+        } catch (error) {
+          report(error);
+          return failure('unavailable', 'the default profile set could not be recorded');
+        }
+        return (await registry.getSet(setId)) ?? failure('not-found', `unknown profile set: ${setId}`);
+      }),
 
-    async removeProfileSet(setId) {
-      if (setId === NATIVE_PROFILE_SET_ID) {
-        return failure('invalid', "the native set is the providers' own roots; it is never removed");
-      }
-      const info = await registry.getSet(setId);
-      if (!info) return failure('not-found', `unknown profile set: ${setId}`);
-      if (info.isDefault) {
-        return failure(
-          'invalid',
-          `${info.set.label} is the default for new sessions; make another set the default first`,
-        );
-      }
-      try {
-        const removed = await registry.removeSet(setId);
-        return removed ?? failure('not-found', `unknown profile set: ${setId}`);
-      } catch (error) {
-        report(error);
-        return failure('unavailable', 'profile set could not be removed');
-      }
-    },
+    removeProfileSet: (setId) =>
+      exclusive(async () => {
+        if (setId === NATIVE_PROFILE_SET_ID) {
+          return failure('invalid', "the native set is the providers' own roots; it is never removed");
+        }
+        const info = await registry.getSet(setId);
+        if (!info) return failure('not-found', `unknown profile set: ${setId}`);
+        if (info.isDefault) {
+          return failure(
+            'invalid',
+            `${info.set.label} is the default for new sessions; make another set the default first`,
+          );
+        }
+        try {
+          const removed = await registry.removeSet(setId);
+          return removed ?? failure('not-found', `unknown profile set: ${setId}`);
+        } catch (error) {
+          report(error);
+          return failure('unavailable', 'profile set could not be removed');
+        }
+      }),
 
     async resolveSpawnProfile(providerId, request) {
       if (request.profile !== undefined) {
@@ -366,6 +414,10 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
         // A caller that names an unregistered profile, or two profiles of one
         // provider, has a bug: one process has exactly one root per provider.
         if (!profile) throw new Error(`unknown agent profile: ${profileId}`);
+        // A signed-out account binds nothing: its provider runs in its own
+        // root, as if the account had not been named (a host's stored pane
+        // default can outlive the sign-out by a moment).
+        if (profile.retiredAt !== undefined) continue;
         if (boundProviders.has(profile.provider)) {
           throw new Error(`profile set binds ${profile.provider} more than once: ${profileId}`);
         }

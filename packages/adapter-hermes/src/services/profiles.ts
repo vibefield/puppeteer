@@ -38,6 +38,8 @@ export function createHermesProfileService(options: HermesProfileServiceOptions 
       identity: 'none',
       sharedSurfaces: ['the Hermes source checkout and virtual environment the wrapper script execs'],
       nativeDefaultRoot: join(home, '.hermes'),
+      // auth.json sits in the bound root (probed on 0.20.5).
+      credential: 'root',
     },
   };
 

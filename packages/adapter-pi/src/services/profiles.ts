@@ -49,6 +49,8 @@ export function createPiProfileService(options: PiProfileServiceOptions = {}): P
       // Provider API keys read from the ambient environment reach every profile.
       sharedSurfaces: ['provider API keys supplied through environment variables'],
       nativeDefaultRoot,
+      // auth.json sits in the bound agent directory (probed on 0.84.3).
+      credential: 'root',
     },
   };
 

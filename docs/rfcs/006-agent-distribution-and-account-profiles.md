@@ -286,19 +286,32 @@ it is the registry's.
 - **The default.** The registry records one default set. `spawn()` with neither `profile` nor `profileSet` runs
   under the default set's account for the agent, else the provider's own root — which, with no default chosen, is
   what a spawn without a profile has always meant. `spawn({ profileSet })` is a demand: a set without an account for
-  the agent is `AGENT_PROFILE_NOT_FOUND`. Resume and attach never consult the default: a run continues in the account
-  it was born under. `AgentSessionInfo.profileSetId` names the set.
-- **Sign-out.** `retireProfile(id)` takes an account out of its set and out of new spawns, logins and resumes while
-  its sessions run on (attach still accepts it); a host finishes it when they have ended —
-  `signOutProfile(id)`, which runs the adapter's optional native `signOut(profile)` for a credential kept outside
-  the root (Claude Code: `claude auth logout` under `CLAUDE_CONFIG_DIR`, removing the root-keyed Keychain item), then
-  deletes the root and calls `removeProfile(id)`. Where the credential is a file inside the root (Codex's file store,
-  which managed roots are written with; Grok; OpenCode's `auth.json` under the bound data directory; Pi), deleting the
-  root is the sign-out and `signOutProfile` answers `{ ran: false }`. Copilot, Kimi and Hermes have not been probed
-  for where their credentials live; until they are, no claim is made for them.
+  the agent is `AGENT_PROFILE_NOT_FOUND`; `native` is satisfiable for every provider, accounts or not. Resume and
+  attach never consult the default — nor does a `resume` that arrives through `spawn`: a run continues in the account
+  it was born under. `AgentSessionInfo.profileSetId` names the set, `native` included when it was named. The default
+  is a preference, so a registry that cannot be read (a newer build's file, a torn write, a permission) leaves a plain
+  spawn in the provider's own root, reported through `onError`; a named profile or set is a demand, and fails typed
+  with its run terminal. `prewarm(provider)` warms what the next plain spawn will use — the default set's account —
+  and never a signed-out one.
+- **Sign-out.** `retireProfile(id)` takes an account out of its set and out of new spawns, logins, resumes, prewarms
+  and terminal bindings while its sessions run on (attach still accepts it); a host finishes it when they have ended —
+  `signOutProfile(id)`, then deletes the root and calls `removeProfile(id)`. `signOutProfile` refuses (`invalid`) an
+  account that is not retired or that a run of this runtime still uses, and runs the adapter's optional native
+  `signOut(profile)` for a credential kept outside the root (Claude Code: `claude auth logout` under
+  `CLAUDE_CONFIG_DIR`, removing the root-keyed Keychain item; strict — a failed logout is a failure whatever it
+  printed — and confirmed by the status read afterwards). Without one it answers `{ ran: false, credential }` from the
+  adapter's declaration `ProfileSupport.credential`: `root` where the credential is a file inside the root (Codex's
+  file store, which managed roots are written with; OpenCode's `auth.json` under the bound data directory; Hermes;
+  Pi), so deleting the root is the sign-out; `unknown` where it has not been established (Grok, Kimi, Copilot), so a
+  host deletes the root and claims nothing beyond it.
 - **Registry version 2** (`{ version: 2, defaultSet?, sets, profiles }`). A version 1 file is adopted on read by one
   rule that also repairs a hand-edited document: accounts named alike share a set unless two are of one provider,
-  every account names an existing set, and every root stays where it is. Nothing needed adopting on the development
+  every account names an existing set, and every root stays where it is. A document naming one id twice is corrupt,
+  not repaired — keeping either copy would let the next write forget the other's root. Writes run one at a time,
+  each to a copy that becomes the state only once the store has saved it, so the file never lags what readers see and
+  a failed write changes nothing; onboarding's check-then-act flows (one account per provider per set, one set per
+  name) are serialized above that. An adopted set is given its folder on its first new account, named after its own
+  id where that folder is free, never on a folder a registered set owns. Nothing needed adopting on the development
   machine.
 - **Compatibility.** `createProfile({ providerId, label })` — the per-provider call Godview's drawer makes — joins the
   set of that name that has no account for the provider yet, or makes one, so a host that never heard of sets keeps
@@ -387,7 +400,10 @@ with version 1 adoption, set folders and per-account roots in `roots.ts`, and `A
 `profileSet`, `createProfileSet`, `updateProfileSet`, `setDefaultProfileSet`, `removeProfileSet`, `retireProfile`,
 `signOutProfile`, `createProfile({ set })`, `spawn({ profileSet })` with the default set applied to spawns only, and
 `AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views. Godview's drawer is
-unchanged: its per-provider calls land in sets named as its user named them.
+unchanged: its per-provider calls land in sets named as its user named them. After review the same day:
+`ProfileSupport.credential`, the retire-first and live-run rules on `signOutProfile`, serialized commit-after-save
+registry writes, the unreadable-registry fallback for plain spawns, and every profile service built with the
+executable its launch uses (a login, an identity read or a sign-out reaches the install the host chose).
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

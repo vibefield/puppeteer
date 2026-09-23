@@ -133,17 +133,51 @@ describe('Claude profile verification', () => {
   });
 
   it('signs out with the vendor command under the binding, so the root-keyed Keychain item goes too', async () => {
-    const calls: Call[] = [];
-    const claude = service('', calls);
+    const calls: Array<Call & { strict?: boolean }> = [];
+    const claude = createClaudeProfileService({
+      executable: '/Users/test/.local/bin/claude',
+      home: HOME,
+      env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: '/Users/test/.claude' },
+      now: () => NOW,
+      exec: async (file, args, options) => {
+        calls.push({ file, args, env: options.env, ...(options.strict ? { strict: true } : {}) });
+        return { stdout: args[1] === 'status' ? JSON.stringify({ loggedIn: false }) : '' };
+      },
+    });
+    expect(claude.provider.support.credential).toBe('external');
     await expect(claude.signOut?.(managed)).resolves.toBeUndefined();
-    expect(calls[0]).toMatchObject({ file: '/Users/test/.local/bin/claude', args: ['auth', 'logout'] });
+    expect(calls[0]).toMatchObject({ file: '/Users/test/.local/bin/claude', args: ['auth', 'logout'], strict: true });
     expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(managed.dataRoot);
     expect(calls[0]?.env.CLAUDE_SECURESTORAGE_CONFIG_DIR).toBeUndefined();
+    // and it is only a sign-out when the root reads signed out afterwards
+    expect(calls[1]).toMatchObject({ args: ['auth', 'status', '--json'] });
 
     const failing = service(() => {
       throw new Error('spawn ENOENT');
     });
     await expect(failing.signOut?.(managed)).resolves.toMatchObject({ status: 'unavailable', retryable: true });
+  });
+
+  it('never reports a sign-out the vendor did not complete or the root does not show', async () => {
+    // a logout that failed but printed something is still a failure
+    const printedAndFailed = createClaudeProfileService({
+      executable: '/Users/test/.local/bin/claude',
+      home: HOME,
+      env: { PATH: '/usr/bin' },
+      now: () => NOW,
+      exec: async (_file, args, options) => {
+        if (args[1] === 'logout' && options.strict)
+          throw Object.assign(new Error('exit 1'), { stdout: 'Keychain locked' });
+        return { stdout: LOGGED_IN };
+      },
+    });
+    await expect(printedAndFailed.signOut?.(managed)).resolves.toMatchObject({ status: 'unavailable' });
+    // a logout that exited cleanly while the root still reads signed in is not one either
+    const stillIn = service((() => LOGGED_IN) as () => string);
+    await expect(stillIn.signOut?.(managed)).resolves.toMatchObject({
+      status: 'unavailable',
+      message: expect.stringContaining('still reads signed in'),
+    });
   });
 
   it('reports a logged-out root without inventing identity fields', async () => {

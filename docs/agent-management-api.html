@@ -1573,8 +1573,9 @@ interface UpdateReceipt {
                   <tr>
                     <td><code id="runtime-retireProfile">retireProfile()</code></td>
                     <td>
-                      Takes a managed account out of its set and out of new spawns, logins and resumes, while sessions
-                      already running under it go on; <code>attach</code> still accepts it. It stays registered, with
+                      Takes a managed account out of its set and out of new spawns, logins, resumes, prewarms and
+                      terminal bindings, while sessions already running under it go on; <code>attach</code> still
+                      accepts it. It stays registered, with
                       <code>retiredAt</code>, until the host has let those sessions end and calls
                       <code>removeProfile()</code>.
                     </td>
@@ -1582,11 +1583,15 @@ interface UpdateReceipt {
                   <tr>
                     <td><code id="runtime-signOutProfile">signOutProfile()</code></td>
                     <td>
-                      Runs the adapter's native sign-out where the provider keeps the credential outside the root (a
-                      keychain item keyed on the root's path — Claude Code on macOS): <code>{ ran: true }</code>. A
-                      managed root that holds its own credential answers <code>{ ran: false }</code> — deleting the
-                      root is its sign-out; a native default without a native command answers
-                      <code>unsupported</code>. Whether it worked is the next <code>verifyProfile()</code>.
+                      Refuses (<code>invalid</code>) a managed account that is not retired, or that a run of this
+                      runtime still uses. Runs the adapter's native sign-out where the provider keeps the credential
+                      outside the root (a keychain item keyed on the root's path — Claude Code on macOS):
+                      <code>{ ran: true }</code> only when the vendor's command completed and the root reads signed
+                      out. Without one it answers <code>{ ran: false, credential }</code> from the adapter's
+                      <code>ProfileSupport.credential</code>: <code>root</code> — the credential is inside the root,
+                      so deleting it is the sign-out — or <code>unknown</code>, where that has not been established,
+                      so a host deletes the root and claims nothing more. A native default without a native command
+                      answers <code>unsupported</code>.
                     </td>
                   </tr>
                   <tr>
@@ -1877,10 +1882,13 @@ const resumed = await runtime.resume({
               not in a <code>profileSet</code> named beside it — produces <code>AGENT_PROFILE_NOT_FOUND</code> on
               spawn/resume, as does a named set with no account for the agent. <code>spawn()</code> with neither a
               profile nor a set runs under the default set's account for the agent, else the provider's own root, and
-              <code>AgentSessionInfo.profileSetId</code> names the set a run was born under; resume and attach never
-              consult the default. A host handling native invocations can seed the terminal environment with
-              <code>profileBindingEnvironment()</code>; supported adapters preserve and attribute the binding through
-              invocation normalization.
+              <code>AgentSessionInfo.profileSetId</code> names the set a run was born under (<code>native</code>
+              when it was named); resume and attach never consult the default, nor does a <code>resume</code> that
+              arrives through <code>spawn()</code>. The default is a preference: a registry that cannot be read leaves
+              a plain spawn in the provider's own root (reported through <code>onError</code>), while a named profile
+              or set fails typed with its run terminal. A host handling native invocations can seed the terminal
+              environment with <code>profileBindingEnvironment()</code>, which binds nothing for a signed-out
+              account; supported adapters preserve and attribute the binding through invocation normalization.
             </p>
             <div class="table-wrap">
               <table class="reference-table">
@@ -2192,10 +2200,11 @@ type ManagementRuntimeOptions = Pick&lt;AgentRuntimeOptions, 'profiles' | 'distr
                   <tr>
                     <td><code id="runtime-prewarm">prewarm()</code></td>
                     <td>
-                      Optional provider/profile cache warming without creating a session or sending model input.
-                      Unsupported providers are a no-op; concurrent calls coalesce and successful warming is reused for
-                      60 seconds. Disposal aborts in-flight warming. Invalid profile selection or a native warm-up
-                      failure can reject.
+                      Optional provider/profile cache warming without creating a session or sending model input. With
+                      no profile named it warms what the next plain spawn will use — the default set's account for the
+                      provider. Unsupported providers are a no-op; concurrent calls coalesce and successful warming is
+                      reused for 60 seconds. Disposal aborts in-flight warming. Invalid profile selection (a signed-out
+                      account included) or a native warm-up failure can reject.
                     </td>
                   </tr>
                 </tbody>

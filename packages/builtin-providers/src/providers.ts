@@ -222,41 +222,48 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     copilot: executables.copilot ?? process.env.PUPPETEER_COPILOT_BIN,
     pi: executables.pi ?? process.env.PUPPETEER_PI_BIN,
   };
+  const chosen = (executable: string | undefined): { executable?: string } =>
+    executable === undefined ? {} : { executable };
   // Provider-scoped capabilities live for the composition's lifetime, like account usage.
+  // Profile services get the same executable the launch uses: a login, an identity
+  // read or a sign-out must reach the install the host chose, not whatever PATH holds.
   const services = {
     claude: {
       distribution: createClaudeDistributionService({ executable: resolved.claude }),
-      profiles: createClaudeProfileService(),
+      profiles: createClaudeProfileService(chosen(resolved.claude)),
     },
     codex: {
       distribution: createCodexDistributionService({ executable: resolved.codex }),
-      profiles: createCodexProfileService(),
+      profiles: createCodexProfileService(chosen(resolved.codex)),
     },
     grok: {
       distribution: createGrokDistributionService({ executable: resolved.grok }),
-      profiles: createGrokProfileService(),
+      profiles: createGrokProfileService(chosen(resolved.grok)),
     },
     kimi: {
       distribution: createKimiDistributionService({ executable: resolved.kimi }),
-      profiles: createKimiProfileService(),
+      profiles: createKimiProfileService(chosen(resolved.kimi)),
     },
     opencode: {
       distribution: createOpenCodeDistributionService({ executable: resolved.opencode }),
-      profiles: createOpenCodeProfileService(),
+      profiles: createOpenCodeProfileService(chosen(resolved.opencode)),
     },
     hermes: {
       distribution: createHermesDistributionService({ executable: resolved.hermes }),
-      profiles: createHermesProfileService(),
+      profiles: createHermesProfileService(chosen(resolved.hermes)),
     },
     antigravity: {
       distribution: createAntigravityDistributionService({ executable: resolved.antigravity }),
-      profiles: createAntigravityProfileService(),
+      profiles: createAntigravityProfileService(chosen(resolved.antigravity)),
     },
     copilot: {
       distribution: createCopilotDistributionService({ executable: resolved.copilot }),
-      profiles: createCopilotProfileService(),
+      profiles: createCopilotProfileService(chosen(resolved.copilot)),
     },
-    pi: { distribution: createPiDistributionService({ executable: resolved.pi }), profiles: createPiProfileService() },
+    pi: {
+      distribution: createPiDistributionService({ executable: resolved.pi }),
+      profiles: createPiProfileService(chosen(resolved.pi)),
+    },
   };
   const claudeLaunchFor = async (
     resume: string | undefined,

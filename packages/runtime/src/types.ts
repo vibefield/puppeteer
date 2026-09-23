@@ -556,11 +556,15 @@ export interface RemovedProfileSet {
 }
 
 /**
- * A sign-out's outcome: whether the adapter's native sign-out ran. `false`
- * means the provider keeps the credential inside the root, so deleting the
- * root is the sign-out; the host decides when.
+ * A sign-out's outcome. `ran: true` — the adapter's own sign-out ran and the
+ * root reads signed out. `ran: false` — there is no vendor sign-out to run,
+ * and `credential` says what deleting the managed root amounts to: `root`,
+ * the provider keeps its credential inside the root, so deleting it is the
+ * sign-out; `unknown`, where it keeps it has not been established, so a host
+ * may delete the root but must not claim the account is signed out beyond it.
+ * The host decides when the root goes.
  */
-export type ProfileSignOutResult = { ran: boolean } | ProfileFailure;
+export type ProfileSignOutResult = { ran: true } | { ran: false; credential: 'root' | 'unknown' } | ProfileFailure;
 
 export interface StartProfileLoginOptions {
   profileId: string;
@@ -691,7 +695,10 @@ export interface AgentRuntime {
   retireProfile(profileId: string): Promise<AgentProfile | ProfileFailure>;
   /**
    * The adapter's native sign-out, for a credential kept outside the root; run
-   * before a host deletes a managed root, or to sign a native default out.
+   * before a host deletes a managed root, or to sign a native default out. A
+   * managed account must be retired first, and is refused (`invalid`) while a
+   * run of this runtime still uses it: a sign-out under a live session would
+   * take its credential mid-run.
    */
   signOutProfile(profileId: string): Promise<ProfileSignOutResult>;
   /** The native set first, then every managed set in the order it was made. */

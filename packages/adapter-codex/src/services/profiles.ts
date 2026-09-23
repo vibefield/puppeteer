@@ -131,6 +131,9 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
       // CODEX_HOME, so every profile sees the same user skills.
       sharedSurfaces: ['~/.agents/skills'],
       nativeDefaultRoot: join(home, '.codex'),
+      // A managed root is written with the `file` credential store, so its
+      // auth.json is inside it (MANAGED_ROOT_CONFIG).
+      credential: 'root',
     },
   };
 
