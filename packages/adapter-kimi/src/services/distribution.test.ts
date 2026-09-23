@@ -17,7 +17,8 @@ const installed = (overrides: Partial<InstalledAgent> = {}): InstalledAgent => (
   provider: 'kimi',
   executable: '/home/tester/.kimi-code/bin/kimi',
   realPath: '/home/tester/.kimi-code/bin/kimi',
-  method: 'standalone-binary',
+  method: 'native-installer',
+  location: '/home/tester/.kimi-code',
   autoUpdate: 'unknown',
   detectedAt: new Date().toISOString(),
   warnings: [],
@@ -54,9 +55,9 @@ describe('Kimi distribution provider', () => {
 });
 
 describe('Kimi install classification', () => {
-  it('classifies the vendor home install and keeps that home as the location', () => {
+  it('classifies the vendor home install as the native installer and keeps that home as the location', () => {
     expect(classifyKimiCandidate(candidate({ realPath: '/home/tester/.kimi-code/bin/kimi' }))).toEqual({
-      method: 'standalone-binary',
+      method: 'native-installer',
       location: '/home/tester/.kimi-code',
     });
   });
@@ -81,7 +82,7 @@ describe('Kimi inspect', () => {
     expect(InstalledAgentSchema.parse(install)).toMatchObject({
       provider: 'kimi',
       version: '0.37.1',
-      method: 'standalone-binary',
+      method: 'native-installer',
       location: '/home/tester/.kimi-code',
       autoUpdate: 'unknown',
       warnings: [],
@@ -101,19 +102,37 @@ describe('Kimi inspect', () => {
 });
 
 describe('Kimi update recipes', () => {
-  const service = createKimiDistributionService({ exec: async () => ({ stdout: versionOutput, stderr: '' }) });
+  const service = createKimiDistributionService({
+    exec: async () => ({ stdout: versionOutput, stderr: '' }),
+    platform: 'darwin',
+  });
 
-  it('runs the vendor upgrade command', () => {
+  // Native evidence 2026-09-22, Kimi 0.37.1: `kimi upgrade` on a native-installer
+  // install prints the script to run instead and exits 0, having moved nothing.
+  it('updates a native-installer install by running the vendor install script again, in place', () => {
     expect(service.recipeFor(installed())).toEqual({
-      kind: 'native-self-update',
-      argv: ['/home/tester/.kimi-code/bin/kimi', 'upgrade'],
+      kind: 'installer-script',
+      url: 'https://code.kimi.com/kimi-code/install.sh',
+      env: { KIMI_INSTALL_DIR: '/home/tester/.kimi-code', KIMI_NO_MODIFY_PATH: '1' },
     });
   });
 
-  it('keeps the vendor command even when the install method is unknown', () => {
-    expect(service.recipeFor(installed({ method: 'unknown', executable: '/usr/local/bin/kimi' }))).toEqual({
+  it('keeps the vendor command when the install method is unknown', () => {
+    expect(
+      service.recipeFor(
+        installed({ method: 'unknown', executable: '/usr/local/bin/kimi', location: '/usr/local/bin' }),
+      ),
+    ).toEqual({
       kind: 'native-self-update',
       argv: ['/usr/local/bin/kimi', 'upgrade'],
+    });
+  });
+
+  it('keeps the vendor command on Windows, where the script is not the documented path', () => {
+    const windows = createKimiDistributionService({ platform: 'win32' });
+    expect(windows.recipeFor(installed())).toEqual({
+      kind: 'native-self-update',
+      argv: ['/home/tester/.kimi-code/bin/kimi', 'upgrade'],
     });
   });
 });
