@@ -11,6 +11,12 @@
  *   { loggedIn, authMethod, apiProvider, analyticsDisabled, projectsDirectory,
  *     email, orgId, orgName, subscriptionType }
  * The document carries no token, and this service never reads a credential store.
+ *
+ * On macOS the credential is NOT in the root: it is a login-Keychain item
+ * whose service name is derived from the root's path. Deleting a managed root
+ * would leave it behind, so sign-out runs the vendor's own `claude auth
+ * logout` under the binding first (the subcommand confirmed on this machine
+ * 2026-09-23: "Log out from your Anthropic account").
  */
 
 import { execFile } from 'node:child_process';
@@ -142,6 +148,10 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
   const probeEnvironment = (profile: AgentProfile): NodeJS.ProcessEnv => {
     const env: NodeJS.ProcessEnv = { ...ambient, ...bindingEnvironment(profile) };
     delete env[SECURE_STORAGE_OVERRIDE];
+    // The native default is the vendor's own root: a root variable the host
+    // happened to inherit must not re-point a probe — or a sign-out — at
+    // another account.
+    if (profile.kind !== 'managed') delete env[CLAUDE_PROFILE_ROOT_VARIABLE];
     return env;
   };
 
@@ -179,6 +189,16 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
         return unavailable('`claude auth status --json` did not return JSON');
       }
       return claudeProfileIdentityFrom(document, now().toISOString());
+    },
+
+    async signOut(profile: AgentProfile): Promise<ProfileFailure | undefined> {
+      // Output is the vendor's; whether it worked is the next `verify`.
+      try {
+        await exec(executable, ['auth', 'logout'], { env: probeEnvironment(profile) });
+      } catch {
+        return unavailable('`claude auth logout` could not be run');
+      }
+      return undefined;
     },
   };
 }

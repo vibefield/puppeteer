@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   AgentProfileIdSchema,
   AgentProfileSchema,
+  NATIVE_PROFILE_SET_ID,
   ProfileFailureSchema,
+  ProfileGlyphSchema,
   ProfileIdentitySchema,
   ProfileProviderSchema,
+  ProfileSetIdSchema,
+  ProfileSetSchema,
   ProfileSupportSchema,
 } from './profiles.js';
 
@@ -102,5 +106,42 @@ describe('account profile contracts', () => {
       ).toBe(true);
     }
     expect(ProfileFailureSchema.safeParse({ status: 'broken', message: 'nope', retryable: false }).success).toBe(false);
+  });
+
+  it('names a profile set by a directory-safe id and keeps its glyph an open token', () => {
+    const set = ProfileSetSchema.parse({
+      id: 'client-demo',
+      kind: 'managed',
+      label: 'Client demo',
+      glyph: 'flask',
+      directory: '/home/user/.puppeteer/profiles/client-demo',
+      createdAt: '2026-09-23T09:00:00.000Z',
+    });
+    expect(set.id).toBe('client-demo');
+    expect(ProfileSetIdSchema.safeParse(NATIVE_PROFILE_SET_ID).success).toBe(true);
+    // A set id is a directory name: no separators, no dots, no case, no edges.
+    for (const id of ['../work', 'work/claude', '.work', 'Work', '-work', 'work-', '', 'a'.repeat(49)]) {
+      expect(ProfileSetIdSchema.safeParse(id).success, id).toBe(false);
+    }
+    // A glyph a newer build adds still parses here.
+    expect(ProfileGlyphSchema.safeParse('telescope').success).toBe(true);
+    expect(ProfileGlyphSchema.safeParse('<svg>').success).toBe(false);
+    expect(ProfileSetSchema.safeParse({ ...set, members: [] }).success).toBe(false);
+    expect(ProfileSetSchema.safeParse({ ...set, label: ' ' }).success).toBe(false);
+  });
+
+  it('records the set an account belongs to and when it was signed out', () => {
+    const profile = AgentProfileSchema.parse({
+      id: '9a3bf3d4-0e3b-4d0e-b9b1-9a1d7f2b6c40',
+      provider: 'example',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/home/user/.puppeteer/profiles/work/example-9a3bf3d4',
+      createdAt: '2026-09-23T09:00:00.000Z',
+      set: 'work',
+      retiredAt: '2026-09-23T10:00:00.000Z',
+    });
+    expect(profile.set).toBe('work');
+    expect(AgentProfileSchema.safeParse({ ...profile, set: 'Work' }).success).toBe(false);
   });
 });

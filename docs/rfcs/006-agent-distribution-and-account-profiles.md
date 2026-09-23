@@ -209,7 +209,8 @@ Two new modules beside `observation/` and `services/`; nothing here imports an a
   `AgentRuntimeOptions` for hosts and tests. Every supported provider has one synthetic `native-default` profile
   pointing at the native root with no variable injected, so the existing account appears without being moved.
 - `roots.ts` allocates `~/.puppeteer/profiles/<providerId>/<uuid>/` (0700). Paths are immutable because Codex
-  derives its keyring key from the path; labels are metadata.
+  derives its keyring key from the path; labels are metadata. (Since 2026-09-23 a root is allocated inside its
+  profile set's folder instead — see "Profile sets".)
 - `onboarding.ts`: create the profile, `AgentHost.spawnTerminal(loginInvocation)` with `bindingEnvironment` merged
   over the clean environment, then on pane exit `verify()` and store the identity on the profile. Output of the
   login pane is never captured.
@@ -259,6 +260,49 @@ the development machine when the binding changed. The adapter's own observation 
 finds sessions under the new binding without a second rule. Antigravity's managed answer is nominal: support is
 `false`, no managed root is ever onboarded, and were that to change the answer would have to follow the HOME
 redirection down to `<root>/.gemini/antigravity-cli`.
+
+### Profile sets (2026-09-23)
+
+A person does not think in per-provider roots. They think in places — "Work" holds a Claude Code sign-in and a
+Codex sign-in; "Personal" holds others — and they want one of those places to be where new sessions start. A host
+built that grouping itself for its Settings (VibeField's Agent Profiles), and a second host (Godview's profile tabs)
+would have needed the same one; two groupings of one registry would drift. The grouping is an account concept, so
+it is the registry's.
+
+- **Contract.** `ProfileSet { id, kind: 'native' | 'managed', label, glyph?, directory?, createdAt }` in Core. A set
+  holds at most one account per provider. `AgentProfile` gains `set` (the native set, `native`, for a native
+  default) and `retiredAt`. The glyph is an open token the views resolve (`ProfileGlyph` in `packages/views`: eleven
+  monoline symbols and the laptop for the native set, filled for the default) — open, so a glyph a newer build draws
+  never makes an older build's registry unreadable.
+- **The native set is synthetic**: the providers' own roots, never stored, renamed or removed. Every host sees it,
+  whatever it named its own sets.
+- **Folders.** A managed set owns one directory, `<rootsDirectory>/<id>/`, the id made once from its first name
+  (`work`, `client-demo`, `work-2` on a clash; `native` reserved); a rename never moves it. An account's root is
+  `<set directory>/<provider>-<8 hex>/`, created exclusively, 0700, and never handed out twice: Claude Code keys its
+  Keychain service and Codex its keyring account on the root's path, so an account signed out and added again must
+  land where no credential left behind can answer for it. A host that roots the registry under a user's folder
+  (VibeField: `users/<fuid>/agents/profiles/`) thereby keeps every account's config, history, plugins and sign-in
+  for one place in one folder under that user.
+- **The default.** The registry records one default set. `spawn()` with neither `profile` nor `profileSet` runs
+  under the default set's account for the agent, else the provider's own root — which, with no default chosen, is
+  what a spawn without a profile has always meant. `spawn({ profileSet })` is a demand: a set without an account for
+  the agent is `AGENT_PROFILE_NOT_FOUND`. Resume and attach never consult the default: a run continues in the account
+  it was born under. `AgentSessionInfo.profileSetId` names the set.
+- **Sign-out.** `retireProfile(id)` takes an account out of its set and out of new spawns, logins and resumes while
+  its sessions run on (attach still accepts it); a host finishes it when they have ended —
+  `signOutProfile(id)`, which runs the adapter's optional native `signOut(profile)` for a credential kept outside
+  the root (Claude Code: `claude auth logout` under `CLAUDE_CONFIG_DIR`, removing the root-keyed Keychain item), then
+  deletes the root and calls `removeProfile(id)`. Where the credential is a file inside the root (Codex's file store,
+  which managed roots are written with; Grok; OpenCode's `auth.json` under the bound data directory; Pi), deleting the
+  root is the sign-out and `signOutProfile` answers `{ ran: false }`. Copilot, Kimi and Hermes have not been probed
+  for where their credentials live; until they are, no claim is made for them.
+- **Registry version 2** (`{ version: 2, defaultSet?, sets, profiles }`). A version 1 file is adopted on read by one
+  rule that also repairs a hand-edited document: accounts named alike share a set unless two are of one provider,
+  every account names an existing set, and every root stays where it is. Nothing needed adopting on the development
+  machine.
+- **Compatibility.** `createProfile({ providerId, label })` — the per-provider call Godview's drawer makes — joins the
+  set of that name that has no account for the provider yet, or makes one, so a host that never heard of sets keeps
+  working and its accounts group the way its user named them.
 
 ### Host and Godview
 
@@ -336,6 +380,14 @@ next step (see "Resolved questions" for the probes they must capture).
 Open after phase 1: the extension track (C1–C3), profile marks in the views (B4), Surface claims for the probed
 facts, the release-awareness cadence (today network runs only on an explicit check), and Codex auto-update state
 (no native switch exists, so it reports `unknown`).
+
+Added 2026-09-23 for VibeField's Agent Profiles (see "Profile sets"): `ProfileSet` and `ProfileGlyph` in Core,
+`AgentProfile.set` and `retiredAt`, the optional adapter `ProfileService.signOut` (Claude Code), registry version 2
+with version 1 adoption, set folders and per-account roots in `roots.ts`, and `AgentRuntime.profileSets`,
+`profileSet`, `createProfileSet`, `updateProfileSet`, `setDefaultProfileSet`, `removeProfileSet`, `retireProfile`,
+`signOutProfile`, `createProfile({ set })`, `spawn({ profileSet })` with the default set applied to spawns only, and
+`AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views. Godview's drawer is
+unchanged: its per-provider calls land in sets named as its user named them.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

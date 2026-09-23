@@ -12,6 +12,7 @@ import type {
   ProfileIdentity,
   ProfileProvider,
   ProfileService,
+  ProfileSet,
   ReleaseChannel,
   ReleaseSnapshot,
   UpdateReceipt,
@@ -186,6 +187,14 @@ export interface CreateAgentSessionOptions {
   agentOptions?: unknown;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
   profile?: string | undefined;
+  /**
+   * Run under this profile set's account for the agent; the set must hold
+   * one, and a `profile` named beside it must be that account. With neither,
+   * `spawn` — and only `spawn` — uses the DEFAULT set's account when it holds
+   * one for the agent, else the provider's own root: resume and attach never
+   * consult the default, so a run continues in the account it was born under.
+   */
+  profileSet?: string | undefined;
   /** The host's say over the session's loopback ingress (stable ingress). */
   ingress?: HostIngress | undefined;
 }
@@ -243,6 +252,8 @@ export interface AgentSessionInfo {
   workspace: AgentWorkspaceInfo;
   /** Registered profile this run is bound to, when one was selected or matched from the launch environment. */
   profileId?: string;
+  /** The profile set the run was born under, when a spawn chose one or took the default set's account. */
+  profileSetId?: string;
 }
 
 export type AgentSessionErrorCode =
@@ -393,20 +404,48 @@ export interface AgentRuntimeOptions {
 
 /** Host-injected persistence for the profile registry. */
 export interface ProfileStore {
+  /**
+   * The persisted document, or undefined when there is none. A store should
+   * hand back what `parseProfileRegistrySnapshot` made of its file; the
+   * registry re-reads it through the parser either way, so a document from
+   * before profile sets is adopted rather than refused.
+   */
   load(): Promise<ProfileRegistrySnapshot | undefined>;
   save(snapshot: ProfileRegistrySnapshot): Promise<void>;
 }
 
 export interface ProfileRegistrySnapshot {
-  version: 1;
+  version: 2;
+  /** The set spawns use when they name none; absent means the native set. */
+  defaultSet?: string;
+  /** Managed sets, in the order they were made. The native set is synthetic and never stored. */
+  sets: ProfileSet[];
+  /** Managed account profiles; every one names its set. */
   profiles: AgentProfile[];
 }
 
 export interface ProfileRuntimeOptions {
   /** Defaults to ~/.puppeteer/profiles.json with atomic 0600 writes. */
   store?: ProfileStore;
-  /** Defaults to ~/.puppeteer/profiles; managed roots are <dir>/<providerId>/<uuid> created 0700. */
+  /**
+   * Defaults to ~/.puppeteer/profiles. Each managed set is a directory here,
+   * named once from its first name; each account's root is
+   * `<set directory>/<provider>-<8 hex>`, created 0700 and never reused.
+   */
   rootsDirectory?: string;
+}
+
+/** One profile set as a host lists it. */
+export interface ProfileSetInfo {
+  set: ProfileSet;
+  /** Spawns that name no profile use this set's account for their agent. */
+  isDefault: boolean;
+  /**
+   * The set's accounts, at most one per provider, in provider order; a
+   * retired account is not one of them. The native set holds every
+   * supporting provider's native default.
+   */
+  profiles: AgentProfile[];
 }
 
 export interface DistributionRuntimeOptions {
@@ -488,8 +527,40 @@ export interface UpdatePlan {
 
 export interface CreateProfileOptions {
   providerId: string;
-  label: string;
+  /** The managed set the account joins; it must not already hold one for the provider. */
+  set?: string | undefined;
+  /**
+   * Without `set`: the managed set of this name that has no account for the
+   * provider yet, or a new set of this name. Exactly one of the two.
+   */
+  label?: string | undefined;
 }
+
+export interface CreateProfileSetOptions {
+  label: string;
+  /** A glyph token the views draw. */
+  glyph?: string | undefined;
+}
+
+export interface UpdateProfileSetOptions {
+  setId: string;
+  label?: string | undefined;
+  /** A glyph token, or null to clear it. */
+  glyph?: string | null | undefined;
+}
+
+/** What unregistering a set removed; its directory stays on disk for the host to delete. */
+export interface RemovedProfileSet {
+  set: ProfileSet;
+  profiles: AgentProfile[];
+}
+
+/**
+ * A sign-out's outcome: whether the adapter's native sign-out ran. `false`
+ * means the provider keeps the credential inside the root, so deleting the
+ * root is the sign-out; the host decides when.
+ */
+export type ProfileSignOutResult = { ran: boolean } | ProfileFailure;
 
 export interface StartProfileLoginOptions {
   profileId: string;
@@ -605,10 +676,38 @@ export interface AgentRuntime {
   /** Registered profiles plus one synthetic native-default profile per supporting provider. */
   profiles(providerId?: string): Promise<AgentProfile[]>;
   profile(profileId: string): Promise<AgentProfile | undefined>;
-  /** Allocate an immutable managed root and register it; the account is empty until login. */
+  /**
+   * Allocate an immutable managed root inside a profile set's directory and
+   * register it; the account is empty until login.
+   */
   createProfile(options: CreateProfileOptions): Promise<AgentProfile | ProfileFailure>;
   /** Unregister a managed profile. The root stays on disk; deleting it is the user's decision. */
   removeProfile(profileId: string): Promise<boolean>;
+  /**
+   * Take a managed account out of its set and out of new spawns and resumes
+   * while sessions still run under it; it stays registered until the host has
+   * let them end and calls {@link removeProfile}.
+   */
+  retireProfile(profileId: string): Promise<AgentProfile | ProfileFailure>;
+  /**
+   * The adapter's native sign-out, for a credential kept outside the root; run
+   * before a host deletes a managed root, or to sign a native default out.
+   */
+  signOutProfile(profileId: string): Promise<ProfileSignOutResult>;
+  /** The native set first, then every managed set in the order it was made. */
+  profileSets(): Promise<ProfileSetInfo[]>;
+  profileSet(setId: string): Promise<ProfileSetInfo | undefined>;
+  /** Make a set and its directory; it holds no account until one is created in it. */
+  createProfileSet(options: CreateProfileSetOptions): Promise<ProfileSetInfo | ProfileFailure>;
+  /** Rename a managed set (its accounts take the name) or change its glyph; its directory never moves. */
+  updateProfileSet(options: UpdateProfileSetOptions): Promise<ProfileSetInfo | ProfileFailure>;
+  /** The set spawns use when they name no profile. */
+  setDefaultProfileSet(setId: string): Promise<ProfileSetInfo | ProfileFailure>;
+  /**
+   * Unregister a managed set that is not the default, and every account in
+   * it. The directory stays on disk; deleting it is the host's decision.
+   */
+  removeProfileSet(setId: string): Promise<RemovedProfileSet | ProfileFailure>;
   /** Merged binding variables for a set of profiles, at most one per provider, for seeding a host terminal. */
   profileBindingEnvironment(profileIds: readonly string[]): Promise<Record<string, string>>;
   /**

@@ -79,21 +79,27 @@ import type {
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileOptions,
+  CreateProfileSetOptions,
   InspectInstallationsOptions,
   PreparationFailure,
   PreparedAgentSessionInfo,
   PreparedProviderSession,
   PrepareAgentSessionResult,
   ProfileLoginResult,
+  ProfileSetInfo,
+  ProfileSignOutResult,
   ReleaseCheckResult,
+  RemovedProfileSet,
   AttachAgentOptions,
   RestoreAgentSessionOptions,
   RuntimeAgentEventEnvelope,
   RuntimeRunInfo,
+  SpawnAgentOptions,
   StartProfileLoginOptions,
   UpdateInstallationOptions,
   UpdatePlan,
   UpdatePlanOptions,
+  UpdateProfileSetOptions,
 } from './types.js';
 import {
   createInstallationInventory,
@@ -203,6 +209,8 @@ interface ManagedRun {
   launchImplementation?: AgentContinuation['implementation'] | undefined;
   /** Account profile this run is bound to, either selected by the caller or attributed from the launch environment. */
   profileId?: string | undefined;
+  /** The profile set that account belongs to. */
+  profileSetId?: string | undefined;
   creationClaim?: CreationRequestClaimRef | undefined;
   preparationId?: string | undefined;
   terminalOutcome?: CreationRequestTerminalOutcome | undefined;
@@ -557,7 +565,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         `profile provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
       );
     }
-    return [descriptor];
+    // Whether a root can be signed out natively is the composed service's
+    // fact, not the adapter's declaration to keep in step.
+    return [
+      {
+        ...descriptor,
+        support: { ...descriptor.support, signOut: typeof provider.profiles.signOut === 'function' },
+      },
+    ];
   });
   const profileRegistryProviders = new Map<string, ProfileRegistryProvider>(
     profileProviders.map((descriptor) => [
@@ -662,10 +677,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return profileServices;
   }
 
-  /** Resolve a requested profile id for one provider before any resource is allocated. */
+  /**
+   * Resolve a requested profile id for one provider before any resource is
+   * allocated. A retired account starts nothing new; only a process that is
+   * still running under it may be attached again (`allowRetired`), and reads
+   * such as usage may still name it.
+   */
   async function resolveSessionProfile(
     providerId: string,
     profileId: string,
+    resolution: { allowRetired?: boolean } = {},
   ): Promise<{ profile: AgentProfile } | { error: string }> {
     if (!profileRegistryProviders.has(providerId)) {
       return { error: `agent provider does not expose account profiles: ${providerId}` };
@@ -675,7 +696,49 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (profile.provider !== providerId) {
       return { error: `account profile ${profileId} belongs to ${profile.provider}, not ${providerId}` };
     }
+    if (profile.retiredAt !== undefined && resolution.allowRetired !== true) {
+      return { error: `account profile ${profileId} is signed out` };
+    }
     return { profile };
+  }
+
+  /**
+   * Spawn requests that named neither a profile nor a set, marked by `spawn`
+   * so `createSession` applies the default set there — where a refusal can
+   * still be a run's typed failure — and nowhere else: resume and attach
+   * never consult the default.
+   */
+  const defaultedSpawns = new WeakSet<CreateAgentSessionOptions>();
+
+  /** The account a creation runs under: a named profile, a named set's, the default set's, or none. */
+  async function resolveProfileChoice(
+    request: CreateAgentSessionOptions,
+  ): Promise<{ profile?: AgentProfile } | { error: string }> {
+    const defaulted = defaultedSpawns.has(request);
+    if (request.profile === undefined && request.profileSet === undefined && !defaulted) return {};
+    if (!profileRegistryProviders.has(request.agent)) {
+      // The default is only ever a choice among accounts a provider can have.
+      return defaulted ? {} : { error: `agent provider does not expose account profiles: ${request.agent}` };
+    }
+    const resolved = await (
+      await profileRuntime()
+    ).onboarding.resolveSpawnProfile(request.agent, {
+      ...(request.profile === undefined ? {} : { profile: request.profile }),
+      ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
+    });
+    if ('error' in resolved) return resolved;
+    if (resolved.profileId === undefined) return {};
+    const checked = await resolveSessionProfile(request.agent, resolved.profileId);
+    if ('error' in checked) return checked;
+    if (request.profileSet !== undefined && checked.profile.set !== request.profileSet) {
+      return { error: `account profile ${checked.profile.id} is not in profile set ${request.profileSet}` };
+    }
+    return { profile: checked.profile };
+  }
+
+  function bindRunProfile(run: ManagedRun, profile: AgentProfile): void {
+    run.profileId = profile.id;
+    run.profileSetId = profile.set;
   }
 
   /**
@@ -1199,6 +1262,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
+      ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
     });
   }
 
@@ -1849,6 +1913,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (extras.preparationId !== undefined) info.preparationId = extras.preparationId;
     if (extras.processId !== undefined) info.processId = extras.processId;
     if (run.profileId !== undefined) info.profileId = run.profileId;
+    if (run.profileSetId !== undefined) info.profileSetId = run.profileSetId;
     if (!run.monitor) throw new Error(`runtime monitor was not installed for run ${run.identity.runtimeRunId}`);
     let managed: ManagedSession | undefined;
     const agentController = createAgentController({
@@ -2144,8 +2209,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return agent;
   }
 
+  /** `spawn` names a profile, a set, or neither — and neither means the default set's account. */
+  function spawnInProfile(request: SpawnAgentOptions): Promise<Agent | AgentSessionFailure> {
+    if (request.profile !== undefined || request.profileSet !== undefined) return spawnAgent(request);
+    const defaulted: CreateAgentSessionOptions = { ...request };
+    defaultedSpawns.add(defaulted);
+    return spawnAgent(defaulted);
+  }
+
   const runtime: AgentRuntime = {
-    spawn: spawnAgent,
+    spawn: spawnInProfile,
 
     async resume(request) {
       const continuation = AgentContinuationSchema.parse(request.continuation);
@@ -2221,7 +2294,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const operation = Promise.resolve().then(async () => {
         let profile: AgentProfile | undefined;
         if (profileId !== undefined) {
-          const resolved = await resolveSessionProfile(providerId, profileId);
+          const resolved = await resolveSessionProfile(providerId, profileId, { allowRetired: true });
           if ('error' in resolved) throw new Error(resolved.error);
           profile = resolved.profile;
         }
@@ -2269,7 +2342,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       const request = (async (): Promise<AccountUsageFetchResult> => {
         let profile: AgentProfile | undefined;
         if (profileId !== undefined) {
-          const resolved = await resolveSessionProfile(providerId, profileId);
+          const resolved = await resolveSessionProfile(providerId, profileId, { allowRetired: true });
           if ('error' in resolved) {
             return { status: 'unsupported', provider: providerId, message: resolved.error, retryable: false };
           }
@@ -2443,6 +2516,46 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return (await profileRuntime()).onboarding.removeProfile(profileId);
     },
 
+    async retireProfile(profileId: string): Promise<AgentProfile | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.retireProfile(profileId);
+    },
+
+    async signOutProfile(profileId: string): Promise<ProfileSignOutResult> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.signOutProfile(profileId);
+    },
+
+    async profileSets(): Promise<ProfileSetInfo[]> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).registry.sets();
+    },
+
+    async profileSet(setId: string): Promise<ProfileSetInfo | undefined> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).registry.getSet(setId);
+    },
+
+    async createProfileSet(request: CreateProfileSetOptions): Promise<ProfileSetInfo | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.createProfileSet(request);
+    },
+
+    async updateProfileSet(request: UpdateProfileSetOptions): Promise<ProfileSetInfo | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.updateProfileSet(request);
+    },
+
+    async setDefaultProfileSet(setId: string): Promise<ProfileSetInfo | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.setDefaultProfileSet(setId);
+    },
+
+    async removeProfileSet(setId: string): Promise<RemovedProfileSet | ProfileFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return (await profileRuntime()).onboarding.removeProfileSet(setId);
+    },
+
     async profileBindingEnvironment(profileIds: readonly string[]): Promise<Record<string, string>> {
       if (disposed) throw new Error('agent runtime is disposed');
       return (await profileRuntime()).onboarding.bindingEnvironment(profileIds);
@@ -2484,17 +2597,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, 'AGENT_NOT_FOUND', `unknown agent provider: ${request.agent}`);
         }
 
-        let profile: AgentProfile | undefined;
-        if (request.profile !== undefined) {
-          const resolved = await resolveSessionProfile(request.agent, request.profile);
-          if ('error' in resolved) {
-            await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
-            await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
-            return sessionFailure(run, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
-          }
-          profile = resolved.profile;
-          run.profileId = profile.id;
+        const choice = await resolveProfileChoice(request);
+        if ('error' in choice) {
+          await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
+          await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
+          return sessionFailure(run, 'AGENT_PROFILE_NOT_FOUND', choice.error);
         }
+        const profile = choice.profile;
+        if (profile !== undefined) bindRunProfile(run, profile);
 
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
         try {
@@ -2632,6 +2742,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // root variable out of the invocation, so its options are untouched.
         try {
           run.profileId = await attributeInvocationProfile(invocation.providerId, invocation.environment);
+          if (run.profileId !== undefined) {
+            run.profileSetId = (await (await profileRuntime()).registry.get(run.profileId))?.set;
+          }
         } catch (error) {
           report(error);
         }
@@ -2660,17 +2773,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           );
         }
 
-        let profile: AgentProfile | undefined;
-        if (request.profile !== undefined) {
-          const resolved = await resolveSessionProfile(request.agent, request.profile);
-          if ('error' in resolved) {
-            await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
-            await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
-            return preparationFailure('AGENT_PROFILE_NOT_FOUND', resolved.error, run);
-          }
-          profile = resolved.profile;
-          run.profileId = profile.id;
+        const choice = await resolveProfileChoice(request);
+        if ('error' in choice) {
+          await markRunTerminal(run, { kind: 'failed', code: 'AGENT_PROFILE_NOT_FOUND' });
+          await recordRunStartFailure(run, 'validation', 'AGENT_PROFILE_NOT_FOUND');
+          return preparationFailure('AGENT_PROFILE_NOT_FOUND', choice.error, run);
         }
+        const profile = choice.profile;
+        if (profile !== undefined) bindRunProfile(run, profile);
 
         let lease: WorkspaceLease | WorkspaceLeaseFailure;
         try {
@@ -3099,7 +3209,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         }
         let profile: AgentProfile | undefined;
         if (request.profile !== undefined) {
-          const resolved = await resolveSessionProfile(request.agent, request.profile);
+          // The process is already running under this account, signed out or not.
+          const resolved = await resolveSessionProfile(request.agent, request.profile, { allowRetired: true });
           if ('error' in resolved) return sessionFailure(provisional, 'AGENT_PROFILE_NOT_FOUND', resolved.error);
           profile = resolved.profile;
         }
@@ -3236,8 +3347,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         if (profile !== undefined) {
           const managed = sessionsByRunId.get(restored.runtimeRunId);
           if (managed) {
-            managed.run.profileId = profile.id;
+            bindRunProfile(managed.run, profile);
             managed.info.profileId = profile.id;
+            if (profile.set !== undefined) managed.info.profileSetId = profile.set;
             return cloneAgentSessionInfo(managed.info);
           }
         }

@@ -114,6 +114,38 @@ describe('Claude profile verification', () => {
     expect(calls[0]?.env.CLAUDE_SECURESTORAGE_CONFIG_DIR).toBeUndefined();
   });
 
+  it('reads the native default from its own root even when the host inherited a root variable', async () => {
+    const calls: Call[] = [];
+    const inherited = createClaudeProfileService({
+      executable: '/Users/test/.local/bin/claude',
+      home: HOME,
+      env: { PATH: '/usr/bin', [CLAUDE_PROFILE_ROOT_VARIABLE]: '/Users/test/elsewhere' },
+      now: () => NOW,
+      exec: async (file, args, options) => {
+        calls.push({ file, args, env: options.env });
+        return { stdout: LOGGED_IN };
+      },
+    });
+    await inherited.verify(nativeDefault);
+    await inherited.verify(managed);
+    expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBeUndefined();
+    expect(calls[1]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(managed.dataRoot);
+  });
+
+  it('signs out with the vendor command under the binding, so the root-keyed Keychain item goes too', async () => {
+    const calls: Call[] = [];
+    const claude = service('', calls);
+    await expect(claude.signOut?.(managed)).resolves.toBeUndefined();
+    expect(calls[0]).toMatchObject({ file: '/Users/test/.local/bin/claude', args: ['auth', 'logout'] });
+    expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(managed.dataRoot);
+    expect(calls[0]?.env.CLAUDE_SECURESTORAGE_CONFIG_DIR).toBeUndefined();
+
+    const failing = service(() => {
+      throw new Error('spawn ENOENT');
+    });
+    await expect(failing.signOut?.(managed)).resolves.toMatchObject({ status: 'unavailable', retryable: true });
+  });
+
   it('reports a logged-out root without inventing identity fields', async () => {
     const identity = await service(JSON.stringify({ loggedIn: false })).verify(managed);
     expect(identity).toEqual({

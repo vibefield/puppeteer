@@ -1,17 +1,24 @@
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentProfile, ProfileProvider, ProfileService } from '@vibecook/puppeteer-core';
+import type { ProfileRegistrySnapshot } from '../types.js';
 import {
   createFileProfileStore,
   createProfileRegistry,
   defaultProfileStorePath,
+  NATIVE_PROFILE_SET_LABEL,
   nativeDefaultProfileId,
   parseProfileRegistrySnapshot,
   type ProfileRegistryProvider,
 } from './registry.js';
-import { createProfileRootAllocator, defaultProfileRootsDirectory } from './roots.js';
+import {
+  createProfileRootAllocator,
+  defaultProfileRootsDirectory,
+  profileSetSlug,
+  uniqueProfileSetId,
+} from './roots.js';
 
 function descriptor(id: string, overrides: Partial<ProfileProvider['support']> = {}): ProfileProvider {
   return {
@@ -56,15 +63,27 @@ function managedProfile(provider: string, id: string, label = 'Work'): AgentProf
   };
 }
 
+const WORK_SET = {
+  id: 'work',
+  kind: 'managed' as const,
+  label: 'Work',
+  glyph: 'briefcase',
+  directory: '/home/user/.puppeteer/profiles/work',
+  createdAt: '2026-09-23T09:00:00.000Z',
+};
+
+/** A store holding what a pre-set host wrote (version 1), adopted on the registry's first read. */
 function memoryStore(initial?: AgentProfile[]) {
-  const state = { snapshot: initial ? { version: 1 as const, profiles: initial } : undefined };
+  const state: { snapshot: ProfileRegistrySnapshot | undefined } = {
+    snapshot: initial ? parseProfileRegistrySnapshot({ version: 1, profiles: initial }) : undefined,
+  };
   return {
     state,
     store: {
       async load() {
         return state.snapshot;
       },
-      async save(snapshot: { version: 1; profiles: AgentProfile[] }) {
+      async save(snapshot: ProfileRegistrySnapshot) {
         state.snapshot = snapshot;
       },
     },
@@ -80,13 +99,69 @@ describe('default host locations', () => {
 
 describe('parseProfileRegistrySnapshot', () => {
   it('accepts a versioned document and rejects anything it cannot vouch for', () => {
-    const profile = managedProfile('example', 'p1');
-    expect(parseProfileRegistrySnapshot({ version: 1, profiles: [profile] }).profiles).toEqual([profile]);
-    expect(() => parseProfileRegistrySnapshot({ version: 2, profiles: [] })).toThrow('unsupported');
+    const profile = { ...managedProfile('example', 'p1'), set: 'work' };
+    const document = { version: 2, defaultSet: 'work', sets: [WORK_SET], profiles: [profile] };
+    expect(parseProfileRegistrySnapshot(document)).toEqual(document);
+    expect(() => parseProfileRegistrySnapshot({ version: 3, sets: [], profiles: [] })).toThrow('unsupported');
+    expect(() => parseProfileRegistrySnapshot({ version: 2, profiles: [] })).toThrow('sets array');
     expect(() => parseProfileRegistrySnapshot({ version: 1 })).toThrow('profiles array');
     expect(() => parseProfileRegistrySnapshot({ version: 1, profiles: [{ ...profile, kind: 'other' }] })).toThrow(
       'schema validation',
     );
+    expect(() => parseProfileRegistrySnapshot({ ...document, sets: [{ ...WORK_SET, id: '../escape' }] })).toThrow(
+      'schema validation',
+    );
+  });
+
+  it('adopts a version 1 registry into sets by name, keeping every root where it is', () => {
+    const adopted = parseProfileRegistrySnapshot({
+      version: 1,
+      profiles: [
+        managedProfile('alpha', 'a1', 'Work'),
+        managedProfile('beta', 'b1', ' work '),
+        // A second account of one provider under one name cannot share the set.
+        managedProfile('alpha', 'a2', 'Work'),
+        managedProfile('alpha', 'a3', 'Personal'),
+        // Synthetic entries a careless host wrote are not stored state.
+        { ...managedProfile('alpha', 'alpha:native-default', 'Default'), kind: 'native-default' },
+      ],
+    });
+    expect(adopted.version).toBe(2);
+    expect(adopted.defaultSet).toBeUndefined();
+    expect(adopted.sets.map((set) => [set.id, set.label, set.directory])).toEqual([
+      ['work', 'Work', undefined],
+      ['work-2', 'Work', undefined],
+      ['personal', 'Personal', undefined],
+    ]);
+    expect(adopted.profiles.map((profile) => [profile.id, profile.set, profile.label, profile.dataRoot])).toEqual([
+      ['a1', 'work', 'Work', '/home/user/.puppeteer/profiles/alpha/a1'],
+      ['b1', 'work', 'Work', '/home/user/.puppeteer/profiles/beta/b1'],
+      ['a2', 'work-2', 'Work', '/home/user/.puppeteer/profiles/alpha/a2'],
+      ['a3', 'personal', 'Personal', '/home/user/.puppeteer/profiles/alpha/a3'],
+    ]);
+    // Adoption is a fixed point: reading the result again changes nothing.
+    expect(parseProfileRegistrySnapshot(adopted)).toEqual(adopted);
+  });
+
+  it('repairs a document whose references do not hold, without dropping a root', () => {
+    const repaired = parseProfileRegistrySnapshot({
+      version: 2,
+      defaultSet: 'gone',
+      sets: [WORK_SET, { ...WORK_SET, label: 'Duplicate' }],
+      profiles: [
+        { ...managedProfile('alpha', 'a1'), set: 'work' },
+        { ...managedProfile('alpha', 'a2', 'Orphan'), set: 'missing' },
+        // A retired account may sit beside its successor.
+        { ...managedProfile('alpha', 'a0'), set: 'work', retiredAt: '2026-09-23T10:00:00.000Z' },
+      ],
+    });
+    expect(repaired.defaultSet).toBeUndefined();
+    expect(repaired.sets.map((set) => set.id)).toEqual(['work', 'orphan']);
+    expect(repaired.profiles.map((profile) => [profile.id, profile.set])).toEqual([
+      ['a1', 'work'],
+      ['a2', 'orphan'],
+      ['a0', 'work'],
+    ]);
   });
 });
 
@@ -97,16 +172,28 @@ describe('createFileProfileStore', () => {
     const store = createFileProfileStore({ path });
 
     await expect(store.load()).resolves.toBeUndefined();
-    const profile = managedProfile('example', 'p1');
-    await store.save({ version: 1, profiles: [profile] });
+    const profile = { ...managedProfile('example', 'p1'), set: 'work' };
+    const document: ProfileRegistrySnapshot = { version: 2, sets: [WORK_SET], profiles: [profile] };
+    await store.save(document);
 
     expect((await stat(path)).mode & 0o777).toBe(0o600);
-    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ version: 1, profiles: [profile] });
-    await expect(store.load()).resolves.toEqual({ version: 1, profiles: [profile] });
+    expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(document);
+    await expect(store.load()).resolves.toEqual(document);
 
     // A rewrite replaces the document rather than appending to it.
-    await store.save({ version: 1, profiles: [] });
-    await expect(store.load()).resolves.toEqual({ version: 1, profiles: [] });
+    await store.save({ version: 2, sets: [], profiles: [] });
+    await expect(store.load()).resolves.toEqual({ version: 2, sets: [], profiles: [] });
+  });
+
+  it('reads a version 1 file as the adopted version 2 document', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'puppeteer-profiles-'));
+    const path = join(directory, 'profiles.json');
+    await writeFile(path, JSON.stringify({ version: 1, profiles: [managedProfile('example', 'p1', 'Work')] }));
+    await expect(createFileProfileStore({ path }).load()).resolves.toMatchObject({
+      version: 2,
+      sets: [{ id: 'work', label: 'Work' }],
+      profiles: [{ id: 'p1', set: 'work' }],
+    });
   });
 
   it('refuses to silently forget a corrupt registry', async () => {
@@ -143,6 +230,7 @@ describe('createProfileRegistry', () => {
       kind: 'native-default',
       dataRoot: '/home/user/.alpha',
       createdAt: '1970-01-01T00:00:00.000Z',
+      set: 'native',
     });
     await expect(registry.list('beta')).resolves.toHaveLength(1);
     await expect(registry.managed()).resolves.toHaveLength(1);
@@ -156,19 +244,108 @@ describe('createProfileRegistry', () => {
     const changes = vi.fn();
     registry.onChange(changes);
 
-    await registry.add(managedProfile('alpha', 'p1'));
-    expect(state.snapshot?.profiles.map((profile) => profile.id)).toEqual(['p1']);
-    expect(changes).toHaveBeenCalledTimes(1);
-    expect(changes.mock.calls[0]?.[0].map((profile: AgentProfile) => profile.id)).toEqual([
+    await registry.addSet(WORK_SET);
+    await registry.add({ ...managedProfile('alpha', 'p1', 'Anything'), set: 'work' });
+    expect(state.snapshot?.profiles.map((profile) => [profile.id, profile.label])).toEqual([['p1', 'Work']]);
+    expect(changes).toHaveBeenCalledTimes(2);
+    expect(changes.mock.calls[1]?.[0].map((profile: AgentProfile) => profile.id)).toEqual([
       nativeDefaultProfileId('alpha'),
       'p1',
     ]);
 
-    await expect(registry.add(managedProfile('alpha', 'p1'))).rejects.toThrow('already registered');
+    await expect(registry.add({ ...managedProfile('alpha', 'p1'), set: 'work' })).rejects.toThrow('already registered');
+    await expect(registry.add(managedProfile('alpha', 'p9'))).rejects.toThrow('names no registered profile set');
+    await expect(registry.add({ ...managedProfile('alpha', 'p2'), set: 'work' })).rejects.toThrow(
+      'already has a alpha account',
+    );
     await expect(registry.remove('p1')).resolves.toBe(true);
     await expect(registry.remove('p1')).resolves.toBe(false);
     expect(state.snapshot?.profiles).toEqual([]);
-    expect(changes).toHaveBeenCalledTimes(2);
+    expect(changes).toHaveBeenCalledTimes(3);
+  });
+
+  it('lists the native set first and each managed set with its active accounts', async () => {
+    const { state, store } = memoryStore();
+    const registry = createProfileRegistry({
+      providers: [registryProvider(descriptor('alpha')), registryProvider(descriptor('beta'))],
+      store,
+    });
+    await registry.addSet(WORK_SET);
+    await registry.add({ ...managedProfile('beta', 'b1'), set: 'work' });
+    await registry.add({ ...managedProfile('alpha', 'a1'), set: 'work' });
+
+    const sets = await registry.sets();
+    expect(sets.map((info) => [info.set.id, info.set.kind, info.isDefault])).toEqual([
+      ['native', 'native', true],
+      ['work', 'managed', false],
+    ]);
+    expect(sets[0]?.set.label).toBe(NATIVE_PROFILE_SET_LABEL);
+    expect(sets[0]?.profiles.map((profile) => profile.id)).toEqual([
+      nativeDefaultProfileId('alpha'),
+      nativeDefaultProfileId('beta'),
+    ]);
+    // Provider order, whatever order the accounts were added in.
+    expect(sets[1]?.profiles.map((profile) => profile.id)).toEqual(['a1', 'b1']);
+
+    // Retiring takes an account out of its set and lets another take its place.
+    await expect(registry.retire('a1', '2026-09-23T10:00:00.000Z')).resolves.toMatchObject({
+      retiredAt: '2026-09-23T10:00:00.000Z',
+    });
+    expect((await registry.getSet('work'))?.profiles.map((profile) => profile.id)).toEqual(['b1']);
+    await registry.add({ ...managedProfile('alpha', 'a2'), set: 'work' });
+    expect((await registry.getSet('work'))?.profiles.map((profile) => profile.id)).toEqual(['a2', 'b1']);
+    // Still registered, so a host can find it to finish it.
+    await expect(registry.get('a1')).resolves.toMatchObject({ retiredAt: '2026-09-23T10:00:00.000Z' });
+    expect(state.snapshot?.profiles.map((profile) => profile.id)).toEqual(['b1', 'a1', 'a2']);
+  });
+
+  it('renames a set through to its accounts and keeps its directory', async () => {
+    const { state, store } = memoryStore();
+    const registry = createProfileRegistry({ providers: [registryProvider(descriptor('alpha'))], store });
+    await registry.addSet(WORK_SET);
+    await registry.add({ ...managedProfile('alpha', 'a1'), set: 'work' });
+
+    const renamed = await registry.updateSet('work', { label: '  Acme  ', glyph: 'rocket' });
+    expect(renamed?.set).toMatchObject({ id: 'work', label: 'Acme', glyph: 'rocket', directory: WORK_SET.directory });
+    expect(renamed?.profiles[0]?.label).toBe('Acme');
+    expect(state.snapshot?.profiles[0]?.label).toBe('Acme');
+    // A directory is recorded once and never moved.
+    await registry.updateSet('work', { directory: '/elsewhere' });
+    expect((await registry.getSet('work'))?.set.directory).toBe(WORK_SET.directory);
+    await expect(registry.updateSet('work', { glyph: null })).resolves.toMatchObject({
+      set: { id: 'work', label: 'Acme' },
+    });
+    expect((await registry.getSet('work'))?.set.glyph).toBeUndefined();
+    await expect(registry.updateSet('work', { label: ' ' })).rejects.toThrow('schema validation');
+    await expect(registry.updateSet('native', { label: 'Mine' })).resolves.toBeUndefined();
+  });
+
+  it('records one default and forgets it with its set', async () => {
+    const { state, store } = memoryStore();
+    const registry = createProfileRegistry({ providers: [registryProvider(descriptor('alpha'))], store });
+    await registry.addSet(WORK_SET);
+    await registry.add({ ...managedProfile('alpha', 'a1'), set: 'work' });
+    await expect(registry.defaultSetId()).resolves.toBe('native');
+
+    await expect(registry.setDefault('work')).resolves.toBe(true);
+    await expect(registry.setDefault('ghost')).resolves.toBe(false);
+    expect(state.snapshot?.defaultSet).toBe('work');
+    expect((await registry.sets()).map((info) => info.isDefault)).toEqual([false, true]);
+
+    const removed = await registry.removeSet('work');
+    expect(removed?.set.id).toBe('work');
+    expect(removed?.profiles.map((profile) => profile.id)).toEqual(['a1']);
+    expect(state.snapshot).toEqual({ version: 2, sets: [], profiles: [] });
+    await expect(registry.defaultSetId()).resolves.toBe('native');
+    await expect(registry.removeSet('work')).resolves.toBeUndefined();
+
+    await registry.addSet(WORK_SET);
+    await registry.setDefault('work');
+    await expect(registry.setDefault('native')).resolves.toBe(true);
+    expect(state.snapshot?.defaultSet).toBeUndefined();
+    await expect(registry.addSet({ ...WORK_SET })).rejects.toThrow('already registered');
+    await expect(registry.addSet({ ...WORK_SET, id: 'native' })).rejects.toThrow('already registered');
+    await expect(registry.addSet({ ...WORK_SET, id: 'other', kind: 'native' })).rejects.toThrow('schema validation');
   });
 
   it('persists a managed identity and keeps a native-default identity in memory only', async () => {
@@ -195,7 +372,7 @@ describe('createProfileRegistry', () => {
   });
 
   it('keeps registered profiles whose provider no longer exposes profiles', async () => {
-    const { store } = memoryStore([managedProfile('alpha', 'p1'), managedProfile('retired', 'p2')]);
+    const { store } = memoryStore([managedProfile('alpha', 'p1'), managedProfile('retired', 'p2', 'Other')]);
     const registry = createProfileRegistry({ providers: [registryProvider(descriptor('alpha'))], store });
 
     await expect(registry.list()).resolves.toMatchObject([
@@ -213,20 +390,53 @@ describe('createProfileRegistry', () => {
     registry.onChange(changes);
     registry.dispose();
 
-    await registry.add(managedProfile('alpha', 'p1'));
+    await registry.addSet(WORK_SET);
+    await registry.add({ ...managedProfile('alpha', 'p1'), set: 'work' });
     expect(changes).not.toHaveBeenCalled();
     expect(registry.onChange(changes)()).toBeUndefined();
   });
 });
 
-describe('createProfileRootAllocator', () => {
-  it('allocates one immutable 0700 root per profile under the provider directory', async () => {
-    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-roots-')), 'profiles');
-    const allocator = createProfileRootAllocator({ rootsDirectory, newId: () => 'fixed-id' });
+describe('profile set slugs', () => {
+  it('folds a name to a directory-safe id and never lands on the native set', () => {
+    expect(profileSetSlug('Work')).toBe('work');
+    expect(profileSetSlug('  Client Demo!  ')).toBe('client-demo');
+    expect(profileSetSlug('Café Déjà-vu')).toBe('cafe-deja-vu');
+    expect(profileSetSlug('../../etc')).toBe('etc');
+    expect(profileSetSlug('🚀')).toBe('profile');
+    expect(profileSetSlug('a'.repeat(80))).toHaveLength(40);
+    expect(uniqueProfileSetId('work', new Set(['work', 'work-2']))).toBe('work-3');
+    expect(uniqueProfileSetId('native', new Set())).toBe('native-2');
+  });
+});
 
-    const allocated = await allocator.allocate('alpha');
-    expect(allocated).toEqual({ id: 'fixed-id', dataRoot: join(rootsDirectory, 'alpha', 'fixed-id') });
-    expect((await stat(allocated.dataRoot)).mode & 0o777).toBe(0o700);
-    expect((await stat(join(rootsDirectory, 'alpha'))).mode & 0o777).toBe(0o700);
+describe('createProfileRootAllocator', () => {
+  it('makes a set directory from its name, skipping ids and folders already there', async () => {
+    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-roots-')), 'profiles');
+    const allocator = createProfileRootAllocator({ rootsDirectory });
+
+    await expect(allocator.allocateSet('Work', new Set())).resolves.toEqual({
+      id: 'work',
+      directory: join(rootsDirectory, 'work'),
+    });
+    expect((await stat(join(rootsDirectory, 'work'))).mode & 0o777).toBe(0o700);
+    // Registered elsewhere, or a folder nobody registered: neither is reused.
+    await mkdir(join(rootsDirectory, 'work-3'));
+    await expect(allocator.allocateSet('Work', new Set(['work-2']))).resolves.toMatchObject({ id: 'work-4' });
+  });
+
+  it('allocates each account a fresh 0700 root inside its set directory', async () => {
+    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-roots-')), 'profiles');
+    const ids = ['aaaaaaaa-1111-4111-8111-111111111111', 'aaaaaaaa-2222-4222-8222-222222222222', 'bbbbbbbb-3333'];
+    const allocator = createProfileRootAllocator({ rootsDirectory, newId: () => ids.shift()! });
+    const { directory } = await allocator.allocateSet('Work', new Set());
+
+    const first = await allocator.allocateAccount(directory, 'alpha');
+    expect(first).toEqual({ id: 'aaaaaaaa-1111-4111-8111-111111111111', dataRoot: join(directory, 'alpha-aaaaaaaa') });
+    expect((await stat(first.dataRoot)).mode & 0o777).toBe(0o700);
+    // The same short name is taken, so the next id is tried: a root is never shared.
+    const second = await allocator.allocateAccount(directory, 'alpha');
+    expect(second).toEqual({ id: 'bbbbbbbb-3333', dataRoot: join(directory, 'alpha-bbbbbbbb') });
+    expect(await readdir(directory)).toEqual(['alpha-aaaaaaaa', 'alpha-bbbbbbbb']);
   });
 });

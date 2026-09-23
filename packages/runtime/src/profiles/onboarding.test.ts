@@ -10,6 +10,7 @@ import type {
   ProfileService,
   TerminalSpec,
 } from '@vibecook/puppeteer-core';
+import type { ProfileRegistrySnapshot } from '../types.js';
 import { createProfileOnboarding } from './onboarding.js';
 import { createProfileRegistry, nativeDefaultProfileId, type ProfileRegistryProvider } from './registry.js';
 import { createProfileRootAllocator } from './roots.js';
@@ -34,6 +35,7 @@ function fakeProvider(
     supported?: boolean;
     verify?: ProfileService['verify'];
     initializeRoot?: ProfileService['initializeRoot'];
+    signOut?: ProfileService['signOut'];
   } = {},
 ): FakeProvider {
   const variable = options.variable ?? `${id.toUpperCase()}_HOME`;
@@ -59,6 +61,7 @@ function fakeProvider(
       env: { NO_COLOR: '1' },
     }),
     verify: options.verify ?? (async () => identity),
+    ...(options.signOut === undefined ? {} : { signOut: options.signOut }),
     ...(options.initializeRoot === undefined
       ? {
           async initializeRoot(profile) {
@@ -72,7 +75,7 @@ function fakeProvider(
 
 function harness(entries: FakeProvider[], overrides: { host?: AgentHost } = {}) {
   const providers = new Map(entries.map((entry) => [entry.provider.id, entry as ProfileRegistryProvider]));
-  const stored: { snapshot?: { version: 1; profiles: AgentProfile[] } } = {};
+  const stored: { snapshot?: ProfileRegistrySnapshot } = {};
   const registry = createProfileRegistry({
     providers: entries,
     store: {
@@ -80,7 +83,7 @@ function harness(entries: FakeProvider[], overrides: { host?: AgentHost } = {}) 
         return stored.snapshot;
       },
       async save(snapshot) {
-        stored.snapshot = snapshot as { version: 1; profiles: AgentProfile[] };
+        stored.snapshot = snapshot;
       },
     },
   });
@@ -120,12 +123,197 @@ describe('createProfileOnboarding', () => {
     const box = await onboarding([alpha]);
 
     const created = await box.onboarding.createProfile({ providerId: 'alpha', label: '  Work  ' });
-    expect(created).toMatchObject({ provider: 'alpha', label: 'Work', kind: 'managed' });
+    expect(created).toMatchObject({ provider: 'alpha', label: 'Work', kind: 'managed', set: 'work' });
     const profile = created as AgentProfile;
-    expect(profile.dataRoot).toBe(join(box.rootsDirectory, 'alpha', profile.id));
+    // The account's root is inside the set's folder, named for the provider.
+    expect(profile.dataRoot).toBe(join(box.rootsDirectory, 'work', `alpha-${profile.id.slice(0, 8)}`));
     expect((await stat(profile.dataRoot)).mode & 0o777).toBe(0o700);
     expect(alpha.initialized).toEqual([profile]);
     expect(box.stored.snapshot?.profiles).toEqual([profile]);
+    expect(box.stored.snapshot?.sets).toMatchObject([
+      { id: 'work', kind: 'managed', label: 'Work', directory: join(box.rootsDirectory, 'work') },
+    ]);
+  });
+
+  it('makes a set with its folder, adds one account per agent, and joins by name for older hosts', async () => {
+    const box = await onboarding([fakeProvider('alpha'), fakeProvider('beta')]);
+
+    const work = await box.onboarding.createProfileSet({ label: 'Client demo', glyph: 'flask' });
+    if ('status' in work) throw new Error(work.message);
+    expect(work).toMatchObject({
+      set: { id: 'client-demo', kind: 'managed', label: 'Client demo', glyph: 'flask' },
+      isDefault: false,
+      profiles: [],
+    });
+    expect((await stat(join(box.rootsDirectory, 'client-demo'))).mode & 0o777).toBe(0o700);
+
+    const alpha = (await box.onboarding.createProfile({ providerId: 'alpha', set: 'client-demo' })) as AgentProfile;
+    expect(alpha).toMatchObject({ set: 'client-demo', label: 'Client demo' });
+    await expect(box.onboarding.createProfile({ providerId: 'alpha', set: 'client-demo' })).resolves.toMatchObject({
+      status: 'invalid',
+      message: 'Client demo already has a alpha account',
+    });
+    await expect(box.onboarding.createProfile({ providerId: 'alpha', set: 'ghost' })).resolves.toMatchObject({
+      status: 'not-found',
+    });
+    await expect(box.onboarding.createProfile({ providerId: 'alpha', set: 'native' })).resolves.toMatchObject({
+      status: 'invalid',
+    });
+    await expect(
+      box.onboarding.createProfile({ providerId: 'alpha', set: 'client-demo', label: 'x' }),
+    ).resolves.toMatchObject({ status: 'invalid' });
+
+    // A per-provider host naming "client demo" for beta means the same place.
+    const beta = (await box.onboarding.createProfile({ providerId: 'beta', label: 'client demo' })) as AgentProfile;
+    expect(beta.set).toBe('client-demo');
+    // A second alpha under that name cannot share it, so it gets a set of its own.
+    const again = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Client demo' })) as AgentProfile;
+    expect(again.set).toBe('client-demo-2');
+
+    await expect(box.onboarding.createProfileSet({ label: ' ' })).resolves.toMatchObject({ status: 'invalid' });
+    await expect(box.onboarding.createProfileSet({ label: 'X', glyph: 'Not A Glyph' })).resolves.toMatchObject({
+      status: 'invalid',
+    });
+  });
+
+  it('renames, re-marks, and moves the default; never touches the native set', async () => {
+    const box = await onboarding([fakeProvider('alpha')]);
+    const work = (await box.onboarding.createProfileSet({ label: 'Work' })) as { set: { id: string } };
+    await box.onboarding.createProfile({ providerId: 'alpha', set: work.set.id });
+
+    await expect(
+      box.onboarding.updateProfileSet({ setId: 'work', label: 'Acme', glyph: 'bolt' }),
+    ).resolves.toMatchObject({
+      set: { label: 'Acme', glyph: 'bolt', directory: join(box.rootsDirectory, 'work') },
+      profiles: [{ label: 'Acme' }],
+    });
+    await expect(box.onboarding.updateProfileSet({ setId: 'work', label: 'x'.repeat(65) })).resolves.toMatchObject({
+      status: 'invalid',
+    });
+    await expect(box.onboarding.updateProfileSet({ setId: 'native', label: 'Mine' })).resolves.toMatchObject({
+      status: 'invalid',
+    });
+    await expect(box.onboarding.updateProfileSet({ setId: 'ghost', label: 'Mine' })).resolves.toMatchObject({
+      status: 'not-found',
+    });
+
+    await expect(box.onboarding.setDefaultProfileSet('work')).resolves.toMatchObject({ isDefault: true });
+    await expect(box.onboarding.setDefaultProfileSet('ghost')).resolves.toMatchObject({ status: 'not-found' });
+    // The default cannot be removed; neither can the native set.
+    await expect(box.onboarding.removeProfileSet('work')).resolves.toMatchObject({
+      status: 'invalid',
+      message: 'Acme is the default for new sessions; make another set the default first',
+    });
+    await expect(box.onboarding.removeProfileSet('native')).resolves.toMatchObject({ status: 'invalid' });
+    await box.onboarding.setDefaultProfileSet('native');
+    const removed = await box.onboarding.removeProfileSet('work');
+    expect(removed).toMatchObject({ set: { id: 'work' }, profiles: [{ provider: 'alpha' }] });
+    expect(box.stored.snapshot).toMatchObject({ sets: [], profiles: [] });
+    // The folder is left for the host to delete.
+    await expect(stat(join(box.rootsDirectory, 'work'))).resolves.toBeDefined();
+  });
+
+  it('resolves which account a spawn runs under, falling back only when the set was not named', async () => {
+    const box = await onboarding([fakeProvider('alpha'), fakeProvider('beta')]);
+    await box.onboarding.createProfileSet({ label: 'Work' });
+    const alpha = (await box.onboarding.createProfile({ providerId: 'alpha', set: 'work' })) as AgentProfile;
+
+    await expect(box.onboarding.resolveSpawnProfile('alpha', {})).resolves.toEqual({ setId: 'native' });
+    await box.onboarding.setDefaultProfileSet('work');
+    await expect(box.onboarding.resolveSpawnProfile('alpha', {})).resolves.toEqual({
+      profileId: alpha.id,
+      setId: 'work',
+    });
+    // The default set has no beta: beta stays on its own root.
+    await expect(box.onboarding.resolveSpawnProfile('beta', {})).resolves.toEqual({ setId: 'native' });
+    // Naming the set is a demand, not a preference.
+    await expect(box.onboarding.resolveSpawnProfile('beta', { profileSet: 'work' })).resolves.toEqual({
+      error: 'Work has no beta account',
+    });
+    await expect(box.onboarding.resolveSpawnProfile('alpha', { profileSet: 'ghost' })).resolves.toEqual({
+      error: 'unknown profile set: ghost',
+    });
+    await expect(box.onboarding.resolveSpawnProfile('alpha', { profileSet: 'native' })).resolves.toEqual({
+      setId: 'native',
+    });
+    await expect(
+      box.onboarding.resolveSpawnProfile('alpha', { profile: nativeDefaultProfileId('alpha') }),
+    ).resolves.toEqual({
+      profileId: nativeDefaultProfileId('alpha'),
+      setId: 'native',
+    });
+    // A retired account is out of its set: the default falls back past it.
+    await box.onboarding.retireProfile(alpha.id);
+    await expect(box.onboarding.resolveSpawnProfile('alpha', {})).resolves.toEqual({ setId: 'native' });
+  });
+
+  it('retires managed accounts only, and signs out through the adapter where it keeps a credential outside the root', async () => {
+    const signedOut: AgentProfile[] = [];
+    const alpha = fakeProvider('alpha', {
+      async signOut(profile) {
+        signedOut.push(profile);
+        return undefined;
+      },
+    });
+    const beta = fakeProvider('beta');
+    const box = await onboarding([alpha, beta]);
+    const a = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+    const b = (await box.onboarding.createProfile({ providerId: 'beta', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.retireProfile(a.id)).resolves.toMatchObject({
+      id: a.id,
+      retiredAt: expect.any(String),
+    });
+    await expect(box.onboarding.retireProfile(nativeDefaultProfileId('alpha'))).resolves.toMatchObject({
+      status: 'invalid',
+    });
+    await expect(box.onboarding.retireProfile('ghost')).resolves.toMatchObject({ status: 'not-found' });
+    // A signed-out account starts no login.
+    await expect(box.onboarding.startLogin({ profileId: a.id })).resolves.toMatchObject({ status: 'invalid' });
+
+    await expect(box.onboarding.signOutProfile(a.id)).resolves.toEqual({ ran: true });
+    expect(signedOut.map((profile) => profile.id)).toEqual([a.id]);
+    // beta keeps its credential in the root: deleting the root is its sign-out.
+    await expect(box.onboarding.signOutProfile(b.id)).resolves.toEqual({ ran: false });
+    await expect(box.onboarding.signOutProfile(nativeDefaultProfileId('beta'))).resolves.toMatchObject({
+      status: 'unsupported',
+    });
+    await expect(box.onboarding.signOutProfile(nativeDefaultProfileId('alpha'))).resolves.toEqual({ ran: true });
+    await expect(box.onboarding.signOutProfile('ghost')).resolves.toMatchObject({ status: 'not-found' });
+  });
+
+  it('contains an adapter sign-out that throws or answers nonsense', async () => {
+    const onError = vi.fn();
+    const box = harness([
+      fakeProvider('alpha', {
+        async signOut() {
+          throw new Error('keychain locked, token sk-secret');
+        },
+      }),
+      fakeProvider('beta', {
+        async signOut() {
+          return { status: 'weird' } as never;
+        },
+      }),
+    ]);
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({
+        rootsDirectory: join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles'),
+      }),
+      host: box.host,
+      defaultCwd: '/workspace',
+      onError,
+    });
+    const failure = await flow.signOutProfile(nativeDefaultProfileId('alpha'));
+    expect(failure).toMatchObject({ status: 'unavailable', provider: 'alpha', retryable: true });
+    expect(JSON.stringify(failure)).not.toContain('sk-secret');
+    await expect(flow.signOutProfile(nativeDefaultProfileId('beta'))).resolves.toMatchObject({
+      status: 'unavailable',
+      message: 'native sign-out returned an unreadable result',
+    });
+    expect(onError).toHaveBeenCalled();
   });
 
   it('rejects bad labels and providers that do not support profiles', async () => {
@@ -174,7 +362,7 @@ describe('createProfileOnboarding', () => {
     expect(box.stored.snapshot?.profiles ?? []).toEqual([]);
     expect(onError).toHaveBeenCalled();
     // The allocated directory is left behind rather than deleted blindly.
-    await expect(readdir(join(rootsDirectory, 'alpha'))).resolves.toHaveLength(1);
+    await expect(readdir(join(rootsDirectory, 'work'))).resolves.toHaveLength(1);
   });
 
   it('merges binding variables and refuses two profiles of one provider', async () => {

@@ -24,8 +24,9 @@ import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/mo
 import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
 import { createWorkspace } from '@vibecook/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
+import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
-import type { AgentProvider, ProfileStore } from './types.js';
+import type { AgentProvider, ProfileRegistrySnapshot, ProfileStore } from './types.js';
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -247,7 +248,7 @@ function exampleProfileService(id = 'example', label = 'Example'): ProfileServic
 }
 
 function memoryProfileStore(): ProfileStore {
-  let snapshot: { version: 1; profiles: AgentProfile[] } | undefined;
+  let snapshot: ProfileRegistrySnapshot | undefined;
   return {
     async load() {
       return snapshot;
@@ -2837,6 +2838,8 @@ describe('createAgentRuntime', () => {
           identity: 'native-status',
           sharedSurfaces: [],
           nativeDefaultRoot: '/home/user/.example',
+          // the runtime's own fact: this service composes no native sign-out
+          signOut: false,
         },
       },
     ]);
@@ -2884,7 +2887,10 @@ describe('createAgentRuntime', () => {
       defaultCwd: root,
       providers: [provider],
       profiles: {
-        store: { load: async () => ({ version: 1, profiles: [foreign] }), save: async () => undefined },
+        store: {
+          load: async () => parseProfileRegistrySnapshot({ version: 1, profiles: [foreign] }),
+          save: async () => undefined,
+        },
         rootsDirectory: join(root, 'profiles'),
       },
     });
@@ -3241,6 +3247,159 @@ describe('createAgentRuntime', () => {
     });
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
+  });
+
+  it('spawns under the default profile set or a named one, and never consults the default on resume', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-sets-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const base = fakeProvider('example', handles);
+    const seenProfiles: Array<AgentProfile | undefined> = [];
+    const provider: AgentProvider = {
+      ...base,
+      descriptor: { id: 'example', label: 'Example' },
+      createSession(providerOptions) {
+        seenProfiles.push(providerOptions.profile);
+        return base.createSession(providerOptions);
+      },
+      profiles: exampleProfileService(),
+    };
+    const other: AgentProvider = {
+      ...fakeProvider('other', handles),
+      descriptor: { id: 'other', label: 'Other' },
+      profiles: exampleProfileService('other', 'Other'),
+    };
+    const bare: AgentProvider = { ...fakeProvider('bare', handles), descriptor: { id: 'bare', label: 'Bare' } };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider, other, bare],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+    const work = await runtime.createProfileSet({ label: 'Work', glyph: 'briefcase' });
+    if ('status' in work) throw new Error(work.message);
+    const account = await runtime.createProfile({ providerId: 'example', set: work.set.id });
+    if ('status' in account) throw new Error(account.message);
+    const spawn = async (options: Parameters<typeof runtime.spawn>[0]) => {
+      const spawned = await runtime.spawn(options);
+      if ('error' in spawned) throw new Error(spawned.error.message);
+      return spawned;
+    };
+
+    // No default chosen: the provider's own root, as a spawn has always meant.
+    const plain = await spawn({ agent: 'example' });
+    expect(seenProfiles.at(-1)).toBeUndefined();
+    expect(plain.info.profileId).toBeUndefined();
+    expect(plain.info.profileSetId).toBeUndefined();
+
+    await runtime.setDefaultProfileSet('work');
+    const defaulted = await spawn({ agent: 'example' });
+    expect(seenProfiles.at(-1)).toEqual(account);
+    expect(defaulted.info).toMatchObject({ profileId: account.id, profileSetId: 'work' });
+
+    // The default holds no account for `other`, which stays on its own root;
+    // naming the set is a demand, not a preference.
+    expect((await spawn({ agent: 'other' })).info.profileId).toBeUndefined();
+    await expect(runtime.spawn({ agent: 'other', profileSet: 'work' })).resolves.toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND', message: 'Work has no other account' },
+    });
+    // A provider without profiles never meets the default, and cannot be named into a set.
+    expect((await spawn({ agent: 'bare' })).info.profileId).toBeUndefined();
+    await expect(runtime.spawn({ agent: 'bare', profileSet: 'work' })).resolves.toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND' },
+    });
+    // The native set can be named outright, whatever the default.
+    await spawn({ agent: 'example', profileSet: 'native' });
+    expect(seenProfiles.at(-1)).toBeUndefined();
+    await expect(
+      runtime.spawn({ agent: 'example', profile: 'example:native-default', profileSet: 'work' }),
+    ).resolves.toMatchObject({
+      error: {
+        code: 'AGENT_PROFILE_NOT_FOUND',
+        message: 'account profile example:native-default is not in profile set work',
+      },
+    });
+
+    // Resume never consults the default: a plain run continues plain.
+    const resumed = await runtime.resume({ continuation: plain.info.continuation });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(seenProfiles.at(-1)).toBeUndefined();
+    expect(resumed.info.profileId).toBeUndefined();
+
+    // A signed-out account starts nothing new, and the default falls back past it.
+    await expect(runtime.retireProfile(account.id)).resolves.toMatchObject({ retiredAt: expect.any(String) });
+    const signedOut = `account profile ${account.id} is signed out`;
+    await expect(runtime.spawn({ agent: 'example', profile: account.id })).resolves.toMatchObject({
+      error: { code: 'AGENT_PROFILE_NOT_FOUND', message: signedOut },
+    });
+    await expect(
+      runtime.resume({ continuation: defaulted.info.continuation, profile: account.id }),
+    ).resolves.toMatchObject({ error: { code: 'AGENT_PROFILE_NOT_FOUND', message: signedOut } });
+    expect((await spawn({ agent: 'example' })).info.profileId).toBeUndefined();
+
+    await expect(runtime.profileSets()).resolves.toMatchObject([
+      { set: { id: 'native', kind: 'native' }, isDefault: false },
+      { set: { id: 'work', glyph: 'briefcase' }, isDefault: true, profiles: [] },
+    ]);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('re-attaches a process still running under an account that was signed out since', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-retired-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-retired-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const store = memoryProfileStore();
+    const providerFor = () =>
+      ({
+        ...fakeProvider('example', handles),
+        descriptor: { id: 'example', label: 'Example' },
+        profiles: exampleProfileService(),
+        async createSession() {
+          return standaloneSession('native-retired', 'terminal-retired');
+        },
+        async attachSession(options) {
+          return standaloneSession(options.sessionId, options.runtimeSessionId);
+        },
+      }) satisfies AgentProvider;
+    const runtimeFor = () =>
+      createAgentRuntime({
+        host,
+        defaultCwd: root,
+        providers: [providerFor()],
+        creationRegistry: createFileCreationRequestRegistry({ directory: registryDirectory }),
+        profiles: { store, rootsDirectory: join(root, 'profiles') },
+      });
+
+    const first = runtimeFor();
+    const account = await first.createProfile({ providerId: 'example', label: 'Work' });
+    if ('status' in account) throw new Error(account.message);
+    const created = await first.createSession({
+      agent: 'example',
+      creationRequestId: 'retired-run',
+      cwd: root,
+      profile: account.id,
+    });
+    if ('error' in created) throw new Error(created.error.message);
+    expect(created.profileSetId).toBe('work');
+    await first.dispose({ detach: true });
+
+    const second = runtimeFor();
+    await second.retireProfile(account.id);
+    const attached = await second.attach({
+      agent: 'example',
+      creationRequestId: 'retired-run',
+      runtimeRunId: created.runtimeRunId,
+      expectedRuntimeEpoch: created.runtimeEpoch,
+      sessionId: created.nativeSession.id,
+      terminalSessionId: created.terminalSessionId,
+      cwd: root,
+      profile: account.id,
+    });
+    if ('error' in attached) throw new Error(attached.error.message);
+    expect(attached).toMatchObject({ profileId: account.id, profileSetId: 'work' });
+    await second.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
   });
 });
 

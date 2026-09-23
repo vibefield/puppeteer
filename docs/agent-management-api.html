@@ -1163,7 +1163,8 @@
               <article class="card">
                 <h3>Profiles</h3>
                 <p>
-                  Allocate account roots, launch native login, verify identity and bind a selected root to a process.
+                  Group account roots into profile sets with one folder each, launch native login, verify identity,
+                  choose the default set and bind a selected root to a process.
                 </p>
               </article>
               <article class="card">
@@ -1498,8 +1499,10 @@ interface UpdateReceipt {
           <section id="profiles">
             <h2>Profiles &amp; native identity</h2>
             <p class="section-note">
-              A managed profile is a persistent native data root bound to a launch. Creating it and authenticating it
-              are separate operations.
+              A managed profile is a persistent native data root bound to a launch — one agent's account. Profiles are
+              grouped into <strong>profile sets</strong>, the places a person works in ("Work", "Personal"): at most
+              one account per provider each, one folder each, and one set the default for spawns that name none.
+              Creating an account and authenticating it are separate operations.
             </p>
             <p><span class="badge tone-runtime">AgentRuntime · excerpt</span></p>
             <pre><code data-source="packages/runtime/src/types.ts" data-members="AgentRuntime">interface AgentRuntime {
@@ -1508,6 +1511,14 @@ interface UpdateReceipt {
   profile(profileId: string): Promise&lt;AgentProfile | undefined&gt;;
   createProfile(options: CreateProfileOptions): Promise&lt;AgentProfile | ProfileFailure&gt;;
   removeProfile(profileId: string): Promise&lt;boolean&gt;;
+  retireProfile(profileId: string): Promise&lt;AgentProfile | ProfileFailure&gt;;
+  signOutProfile(profileId: string): Promise&lt;ProfileSignOutResult&gt;;
+  profileSets(): Promise&lt;ProfileSetInfo[]&gt;;
+  profileSet(setId: string): Promise&lt;ProfileSetInfo | undefined&gt;;
+  createProfileSet(options: CreateProfileSetOptions): Promise&lt;ProfileSetInfo | ProfileFailure&gt;;
+  updateProfileSet(options: UpdateProfileSetOptions): Promise&lt;ProfileSetInfo | ProfileFailure&gt;;
+  setDefaultProfileSet(setId: string): Promise&lt;ProfileSetInfo | ProfileFailure&gt;;
+  removeProfileSet(setId: string): Promise&lt;RemovedProfileSet | ProfileFailure&gt;;
   startProfileLogin(options: StartProfileLoginOptions): Promise&lt;ProfileLoginResult&gt;;
   verifyProfile(profileId: string): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
   onProfilesChanged(listener: (profiles: AgentProfile[]) =&gt; void): () =&gt; void;
@@ -1544,8 +1555,11 @@ interface UpdateReceipt {
                   <tr>
                     <td><code id="runtime-createProfile">createProfile()</code></td>
                     <td>
-                      Validates a trimmed 1–64 character label, allocates a managed root, optionally initializes native
-                      config and persists the registry entry. Returns a profile or typed failure; it does not
+                      With <code>set</code>: allocates the provider's root inside that managed set's folder
+                      (<code>&lt;set folder&gt;/&lt;provider&gt;-&lt;8 hex&gt;</code>, 0700, never reused), optionally
+                      initializes native config and registers it; a set holds one account per provider. With
+                      <code>label</code> instead (hosts from before sets): joins the set of that name that has no
+                      account for the provider yet, or makes one. Returns a profile or typed failure; it does not
                       authenticate the account.
                     </td>
                   </tr>
@@ -1554,6 +1568,63 @@ interface UpdateReceipt {
                     <td>
                       Unregisters a managed profile. Returns <code>false</code> for unknown or native-default profiles.
                       The root and its native data remain on disk.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-retireProfile">retireProfile()</code></td>
+                    <td>
+                      Takes a managed account out of its set and out of new spawns, logins and resumes, while sessions
+                      already running under it go on; <code>attach</code> still accepts it. It stays registered, with
+                      <code>retiredAt</code>, until the host has let those sessions end and calls
+                      <code>removeProfile()</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-signOutProfile">signOutProfile()</code></td>
+                    <td>
+                      Runs the adapter's native sign-out where the provider keeps the credential outside the root (a
+                      keychain item keyed on the root's path — Claude Code on macOS): <code>{ ran: true }</code>. A
+                      managed root that holds its own credential answers <code>{ ran: false }</code> — deleting the
+                      root is its sign-out; a native default without a native command answers
+                      <code>unsupported</code>. Whether it worked is the next <code>verifyProfile()</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-profileSets">profileSets()</code></td>
+                    <td>
+                      The native set first — synthetic, the providers' own roots, kind <code>native</code> — then every
+                      managed set in the order it was made, each with <code>isDefault</code> and its accounts (one per
+                      provider, provider order, retired accounts excluded). <code>profileSet(id)</code> reads one.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-createProfileSet">createProfileSet()</code></td>
+                    <td>
+                      Validates the label and glyph token, creates the set's folder exclusively under the roots
+                      directory — named once from the label (<code>work</code>, <code>client-demo</code>,
+                      <code>work-2</code> on a clash; <code>native</code> reserved) — and registers it, empty.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-updateProfileSet">updateProfileSet()</code></td>
+                    <td>
+                      Renames a managed set (its accounts take the name) or sets or clears its glyph. The folder never
+                      moves. The native set keeps its name and mark.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-setDefaultProfileSet">setDefaultProfileSet()</code></td>
+                    <td>
+                      Records the set <code>spawn()</code> uses when it names neither <code>profile</code> nor
+                      <code>profileSet</code>: that set's account for the agent, else the provider's own root. Resume
+                      and attach never consult it.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-removeProfileSet">removeProfileSet()</code></td>
+                    <td>
+                      Unregisters a managed set that is not the default, and every account in it; answers what was
+                      removed. The folder stays on disk for the host to delete — after signing each account out.
                     </td>
                   </tr>
                   <tr>
@@ -1581,10 +1652,38 @@ interface UpdateReceipt {
                 </tbody>
               </table>
             </div>
-            <pre><code data-source="packages/runtime/src/types.ts" data-types="CreateProfileOptions,StartProfileLoginOptions,ProfileLoginResult">interface CreateProfileOptions {
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="CreateProfileOptions,CreateProfileSetOptions,UpdateProfileSetOptions,ProfileSetInfo,RemovedProfileSet,ProfileSignOutResult,StartProfileLoginOptions,ProfileLoginResult">interface CreateProfileOptions {
   providerId: string;
-  label: string;
+  /** The managed set the account joins. */
+  set?: string;
+  /** Without `set`: the set of this name with no account for the provider yet, or a new one. */
+  label?: string;
 }
+
+interface CreateProfileSetOptions {
+  label: string;
+  glyph?: string;
+}
+
+interface UpdateProfileSetOptions {
+  setId: string;
+  label?: string;
+  /** A glyph token, or null to clear it. */
+  glyph?: string | null;
+}
+
+interface ProfileSetInfo {
+  set: ProfileSet;
+  isDefault: boolean;
+  profiles: AgentProfile[];
+}
+
+interface RemovedProfileSet {
+  set: ProfileSet;
+  profiles: AgentProfile[];
+}
+
+type ProfileSignOutResult = { ran: boolean } | ProfileFailure;
 
 interface StartProfileLoginOptions {
   profileId: string;
@@ -1592,7 +1691,7 @@ interface StartProfileLoginOptions {
 }
 
 type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;</code></pre>
-            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileIdentity,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
+            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileSetId,ProfileGlyph,ProfileSet,ProfileIdentity,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
 type AgentProfileKind = 'native-default' | 'managed';
 
 interface AgentProfile {
@@ -1603,6 +1702,25 @@ interface AgentProfile {
   dataRoot: string;
   createdAt: string;
   identity?: ProfileIdentity;
+  /** The set this account belongs to; 'native' for a native default. */
+  set?: ProfileSetId;
+  /** When the host signed it out while sessions still ran under it. */
+  retiredAt?: string;
+}
+
+/** A directory name: [a-z0-9] and single hyphens, at most 48. */
+type ProfileSetId = string;
+/** An open token the views draw (briefcase, house, flask, …). */
+type ProfileGlyph = string;
+
+interface ProfileSet {
+  id: ProfileSetId;
+  kind: 'native' | 'managed';
+  label: string;
+  glyph?: ProfileGlyph;
+  /** The folder the set's account roots live in; absent for the native set. Never moves. */
+  directory?: string;
+  createdAt: string;
 }
 
 interface ProfileIdentity {
@@ -1640,8 +1758,16 @@ interface ProfileFailure {
             <div class="flow-list">
               <div class="flow-step">
                 <div>
+                  <strong>Make a place</strong>
+                  <p>
+                    Call createProfileSet({ label, glyph }) once per place; its folder is made there and then.
+                  </p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
                   <strong>Allocate</strong>
-                  <p>Call createProfile({ providerId, label }); render ProfileFailure if returned.</p>
+                  <p>Call createProfile({ providerId, set }); render ProfileFailure if returned.</p>
                 </div>
               </div>
               <div class="flow-step">
@@ -1666,16 +1792,29 @@ interface ProfileFailure {
                 <div>
                   <strong>Bind a run</strong>
                   <p>
-                    Pass the profile ID to spawn() or resume(). Persist AgentSessionInfo.profileId beside the opaque
-                    continuation.
+                    Pass the profile ID or a profileSet to spawn(), or neither for the default set; pass the profile ID
+                    to resume(). Persist AgentSessionInfo.profileId beside the opaque continuation.
+                  </p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
+                  <strong>Sign out</strong>
+                  <p>
+                    retireProfile() at once; when no session runs under it, signOutProfile(), delete the root, then
+                    removeProfile(). A whole set: stop its sessions, sign each account out, removeProfileSet(), delete
+                    its folder.
                   </p>
                 </div>
               </div>
             </div>
             <div class="callout">
               <strong>Native root semantics.</strong> Managed roots are immutable because native credential stores may
-              key on their path. Profiles bind process environments; they are not machine-wide account switches or
-              isolation boundaries. <code>sharedSurfaces</code> declares native resources that profiles still share.
+              key on their path, and an account's root is never handed out twice, so a credential left behind can never
+              answer for a new account. Profiles bind process environments; they are not machine-wide account switches or
+              isolation boundaries. <code>sharedSurfaces</code> declares native resources that profiles still share. A
+              registry written before sets (version 1) is adopted on read: accounts named alike share a set, and every
+              root stays where it is.
             </div>
           </section>
           <section id="binding">
@@ -1734,10 +1873,14 @@ const resumed = await runtime.resume({
   profile: saved.profileId,
 });</code></pre>
             <p>
-              A profile that cannot be resolved for the selected provider produces
-              <code>AGENT_PROFILE_NOT_FOUND</code> on spawn/resume. A host handling native invocations can seed the
-              terminal environment with <code>profileBindingEnvironment()</code>; supported adapters preserve and
-              attribute the binding through invocation normalization.
+              A profile that cannot be resolved for the selected provider — unknown, another provider's, signed out, or
+              not in a <code>profileSet</code> named beside it — produces <code>AGENT_PROFILE_NOT_FOUND</code> on
+              spawn/resume, as does a named set with no account for the agent. <code>spawn()</code> with neither a
+              profile nor a set runs under the default set's account for the agent, else the provider's own root, and
+              <code>AgentSessionInfo.profileSetId</code> names the set a run was born under; resume and attach never
+              consult the default. A host handling native invocations can seed the terminal environment with
+              <code>profileBindingEnvironment()</code>; supported adapters preserve and attribute the binding through
+              invocation normalization.
             </p>
             <div class="table-wrap">
               <table class="reference-table">
@@ -1960,19 +2103,29 @@ interface AccountUsageProvider {
               when constructing either runtime factory.
             </p>
             <pre><code data-source="packages/runtime/src/types.ts" data-types="ProfileStore,ProfileRegistrySnapshot,ProfileRuntimeOptions,DistributionRuntimeOptions">interface ProfileStore {
+  /** Hand back what parseProfileRegistrySnapshot() made of the file; the registry re-reads it either way. */
   load(): Promise&lt;ProfileRegistrySnapshot | undefined&gt;;
   save(snapshot: ProfileRegistrySnapshot): Promise&lt;void&gt;;
 }
 
 interface ProfileRegistrySnapshot {
-  version: 1;
+  version: 2;
+  /** The set spawns use when they name none; absent means the native set. */
+  defaultSet?: string;
+  /** Managed sets; the native set is synthetic and never stored. */
+  sets: ProfileSet[];
+  /** Managed accounts; every one names its set. */
   profiles: AgentProfile[];
 }
 
 interface ProfileRuntimeOptions {
   /** Defaults to ~/.puppeteer/profiles.json with atomic 0600 writes. */
   store?: ProfileStore;
-  /** Defaults to ~/.puppeteer/profiles; managed roots are &lt;dir&gt;/&lt;providerId&gt;/&lt;uuid&gt; created 0700. */
+  /**
+   * Defaults to ~/.puppeteer/profiles. Each managed set is a folder here, named
+   * once from its first name; each account's root is &lt;set folder&gt;/&lt;provider&gt;-&lt;8 hex&gt;,
+   * created 0700 and never reused.
+   */
   rootsDirectory?: string;
 }
 
@@ -1999,11 +2152,18 @@ type ManagementRuntimeOptions = Pick&lt;AgentRuntimeOptions, 'profiles' | 'distr
                 <tbody>
                   <tr>
                     <td><code>~/.puppeteer/profiles.json</code></td>
-                    <td>Version 1 registry; atomic file writes with mode 0600.</td>
+                    <td>
+                      Version 2 registry (sets, accounts, the default); atomic file writes with mode 0600. A version 1
+                      file is adopted on read.
+                    </td>
                   </tr>
                   <tr>
-                    <td><code>~/.puppeteer/profiles/&lt;provider&gt;/&lt;uuid&gt;</code></td>
-                    <td>Managed roots are allocated with mode 0700.</td>
+                    <td><code>~/.puppeteer/profiles/&lt;set&gt;/&lt;provider&gt;-&lt;8 hex&gt;</code></td>
+                    <td>
+                      One folder per profile set, one account root per provider inside it, each created exclusively
+                      with mode 0700. Roots allocated before sets (<code>&lt;provider&gt;/&lt;uuid&gt;</code>) stay
+                      where they are.
+                    </td>
                   </tr>
                   <tr>
                     <td><code>~/.puppeteer/updates</code></td>
@@ -2116,6 +2276,13 @@ interface DistributionProvider {
    */
   loginInvocation(profile: AgentProfile, options: { cwd: string }): TerminalSpec;
   verify(profile: AgentProfile): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
+  /**
+   * The vendor's own sign-out, run non-interactively under the binding. Only
+   * for a credential that lives OUTSIDE the root — a keychain item keyed on
+   * the root's path — which deleting the root would leave behind. Absent when
+   * the credential is a file inside the root.
+   */
+  signOut?(profile: AgentProfile): Promise&lt;ProfileFailure | undefined&gt;;
 }</code></pre>
             <pre><code data-source="packages/core/src/services/account-usage.ts" data-types="AccountUsageService">interface AccountUsageService {
   readonly provider: AccountUsageProvider;

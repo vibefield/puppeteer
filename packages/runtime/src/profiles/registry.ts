@@ -4,27 +4,35 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   AgentProfileSchema,
+  NATIVE_PROFILE_SET_ID,
   ProfileIdentitySchema,
+  ProfileSetSchema,
   type AgentProfile,
   type ProfileIdentity,
   type ProfileProvider,
   type ProfileService,
+  type ProfileSet,
 } from '@vibecook/puppeteer-core';
-import type { ProfileRegistrySnapshot, ProfileStore } from '../types.js';
+import type { ProfileRegistrySnapshot, ProfileSetInfo, ProfileStore } from '../types.js';
+import { profileSetSlug, uniqueProfileSetId } from './roots.js';
 
 /**
  * The account-profile registry.
  *
- * Managed profiles are persisted host state. Every provider that supports
- * profiles also contributes one synthetic `native-default` profile pointing at
- * the vendor's own root, so the account the user already has appears in the
- * list without being moved, copied, or re-authenticated.
+ * Managed profiles are persisted host state, grouped into profile sets — the
+ * places a person works in, at most one account per provider each. Every
+ * provider that supports profiles also contributes one synthetic
+ * `native-default` profile pointing at the vendor's own root; together they
+ * are the synthetic native set, so the accounts the user already has appear
+ * without being moved, copied, or re-authenticated.
  *
  * Nothing here reads or writes a credential: a profile records a label, a
  * directory, and the last identity the adapter read back from native evidence.
  */
 
 export const NATIVE_DEFAULT_PROFILE_LABEL = 'Default';
+/** What the native set is called: the machine the providers' own roots are on. */
+export const NATIVE_PROFILE_SET_LABEL = process.platform === 'darwin' ? 'This Mac' : 'This computer';
 const NATIVE_DEFAULT_SUFFIX = 'native-default';
 /**
  * Synthetic profiles have no creation event. A fixed timestamp keeps them
@@ -34,6 +42,7 @@ const NATIVE_DEFAULT_CREATED_AT = new Date(0).toISOString();
 const STORE_FILE_MODE = 0o600;
 const STORE_DIRECTORY_MODE = 0o700;
 const MAX_PERSISTED_PROFILES = 512;
+const MAX_PERSISTED_SETS = 256;
 
 export function nativeDefaultProfileId(providerId: string): string {
   return `${providerId}:${NATIVE_DEFAULT_SUFFIX}`;
@@ -43,25 +52,105 @@ export function defaultProfileStorePath(home = homedir()): string {
   return join(home, '.puppeteer', 'profiles.json');
 }
 
+function nativeProfileSet(): ProfileSet {
+  return {
+    id: NATIVE_PROFILE_SET_ID,
+    kind: 'native',
+    label: NATIVE_PROFILE_SET_LABEL,
+    createdAt: NATIVE_DEFAULT_CREATED_AT,
+  };
+}
+
+const sameLabel = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+const active = (profile: AgentProfile): boolean => profile.retiredAt === undefined;
+
 /**
- * Validate one persisted snapshot. The envelope is checked structurally and
- * every entry through Core's Zod schema; a corrupt file is an error rather
+ * Bring a parsed document to the registry's invariants, keeping every root:
+ * only managed entries are stored; every account names an existing managed
+ * set, which is found (same name, no account of that provider yet) or made
+ * from its label when it does not; a set holds at most one active account per
+ * provider, the later one re-homed the same way; an account's label is its
+ * set's name; the default names a known set or is dropped. A version 1
+ * document — per-provider profiles and no sets — is adopted by exactly this
+ * rule, which groups the accounts one person named alike.
+ */
+function normalize(sets: readonly ProfileSet[], profiles: readonly AgentProfile[], defaultSet: string | undefined) {
+  const keptSets: ProfileSet[] = [];
+  const ids = new Set<string>([NATIVE_PROFILE_SET_ID]);
+  for (const set of sets) {
+    if (set.kind !== 'managed' || ids.has(set.id)) continue;
+    ids.add(set.id);
+    keptSets.push({ ...set });
+  }
+  const byId = new Map(keptSets.map((set) => [set.id, set]));
+  const keptProfiles: AgentProfile[] = [];
+  const seenProfiles = new Set<string>();
+  const holds = (setId: string, provider: string): boolean =>
+    keptProfiles.some((profile) => profile.set === setId && profile.provider === provider && active(profile));
+
+  for (const entry of profiles) {
+    if (entry.kind !== 'managed' || seenProfiles.has(entry.id)) continue;
+    seenProfiles.add(entry.id);
+    let home = entry.set === undefined ? undefined : byId.get(entry.set);
+    if (home !== undefined && active(entry) && holds(home.id, entry.provider)) home = undefined;
+    if (home === undefined) {
+      home = keptSets.find(
+        (set) => sameLabel(set.label, entry.label) && (!active(entry) || !holds(set.id, entry.provider)),
+      );
+    }
+    if (home === undefined) {
+      const id = uniqueProfileSetId(profileSetSlug(entry.label), ids);
+      ids.add(id);
+      home = { id, kind: 'managed', label: entry.label.trim(), createdAt: entry.createdAt };
+      keptSets.push(home);
+      byId.set(id, home);
+    }
+    keptProfiles.push({ ...entry, set: home.id, label: home.label });
+  }
+  const keptDefault = defaultSet !== undefined && byId.has(defaultSet) ? defaultSet : undefined;
+  return { sets: keptSets, profiles: keptProfiles, defaultSet: keptDefault };
+}
+
+/**
+ * Validate one persisted document. The envelope is checked structurally and
+ * every entry through Core's Zod schemas; a corrupt file is an error rather
  * than an empty registry, because silently forgetting profiles would let the
- * next write erase them.
+ * next write erase them. Version 1 (per-provider profiles, no sets) is read
+ * and adopted into sets; what comes back is always version 2.
  */
 export function parseProfileRegistrySnapshot(value: unknown): ProfileRegistrySnapshot {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('profile registry document must be an object');
   }
-  const document = value as { version?: unknown; profiles?: unknown };
-  if (document.version !== 1) throw new Error('unsupported profile registry version');
+  const document = value as { version?: unknown; profiles?: unknown; sets?: unknown; defaultSet?: unknown };
+  if (document.version !== 1 && document.version !== 2) throw new Error('unsupported profile registry version');
   if (!Array.isArray(document.profiles)) throw new Error('profile registry document has no profiles array');
   const profiles = document.profiles.map((entry, index) => {
     const parsed = AgentProfileSchema.safeParse(entry);
     if (!parsed.success) throw new Error(`profile registry entry ${index} failed schema validation`);
     return parsed.data;
   });
-  return { version: 1, profiles };
+  let sets: ProfileSet[] = [];
+  let defaultSet: string | undefined;
+  if (document.version === 2) {
+    if (!Array.isArray(document.sets)) throw new Error('profile registry document has no sets array');
+    sets = document.sets.map((entry, index) => {
+      const parsed = ProfileSetSchema.safeParse(entry);
+      if (!parsed.success) throw new Error(`profile registry set ${index} failed schema validation`);
+      return parsed.data;
+    });
+    if (document.defaultSet !== undefined) {
+      if (typeof document.defaultSet !== 'string') throw new Error('profile registry default set is not a string');
+      defaultSet = document.defaultSet;
+    }
+  }
+  const normalized = normalize(sets, profiles, defaultSet);
+  return {
+    version: 2,
+    ...(normalized.defaultSet === undefined ? {} : { defaultSet: normalized.defaultSet }),
+    sets: normalized.sets,
+    profiles: normalized.profiles,
+  };
 }
 
 export interface FileProfileStoreOptions {
@@ -108,22 +197,50 @@ export interface ProfileRegistryOptions {
   onError?: (error: Error) => void;
 }
 
+export interface ProfileSetPatch {
+  label?: string;
+  /** A glyph token, or null to clear it. */
+  glyph?: string | null;
+  /** Record the directory a set was given after it was made (an adopted set's first account). */
+  directory?: string;
+}
+
 export interface ProfileRegistry {
   /** Managed profiles plus one synthetic native-default profile per supporting provider. */
   list(providerId?: string): Promise<AgentProfile[]>;
   get(profileId: string): Promise<AgentProfile | undefined>;
-  /** Registered managed profiles only; native defaults are excluded. */
+  /** Registered managed profiles only, retired ones included; native defaults are excluded. */
   managed(providerId?: string): Promise<AgentProfile[]>;
+  /** Register a managed profile in the set it names, which must not already hold an active account of its provider. */
   add(profile: AgentProfile): Promise<void>;
   remove(profileId: string): Promise<boolean>;
+  /** Take an account out of its set and out of new spawns, keeping it registered until it is removed. */
+  retire(profileId: string, at: string): Promise<AgentProfile | undefined>;
   /** Persist the identity a verification read back from native evidence. */
   recordIdentity(profileId: string, identity: ProfileIdentity): Promise<AgentProfile | undefined>;
+  /** The native set first, then the managed sets in the order they were made. */
+  sets(): Promise<ProfileSetInfo[]>;
+  getSet(setId: string): Promise<ProfileSetInfo | undefined>;
+  addSet(set: ProfileSet): Promise<void>;
+  /** A managed set's name, glyph, or first directory; a new name is its accounts' label too. */
+  updateSet(setId: string, patch: ProfileSetPatch): Promise<ProfileSetInfo | undefined>;
+  /** Unregister a managed set and every account in it; answers what was removed. */
+  removeSet(setId: string): Promise<{ set: ProfileSet; profiles: AgentProfile[] } | undefined>;
+  /** The set spawns use when they name none. */
+  defaultSetId(): Promise<string>;
+  setDefault(setId: string): Promise<boolean>;
   onChange(listener: (profiles: AgentProfile[]) => void): () => void;
   dispose(): void;
 }
 
 function cloneProfile(profile: AgentProfile): AgentProfile {
   return { ...profile, ...(profile.identity ? { identity: { ...profile.identity } } : {}) };
+}
+
+interface RegistryState {
+  sets: ProfileSet[];
+  profiles: AgentProfile[];
+  defaultSet: string | undefined;
 }
 
 export function createProfileRegistry(options: ProfileRegistryOptions): ProfileRegistry {
@@ -135,18 +252,25 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
    * which can change with HOME, so a stale stored identity would outlive it.
    */
   const nativeDefaultIdentities = new Map<string, ProfileIdentity>();
-  let managedProfiles: AgentProfile[] | undefined;
-  let loading: Promise<AgentProfile[]> | undefined;
+  let state: RegistryState | undefined;
+  let loading: Promise<RegistryState> | undefined;
   let disposed = false;
 
   const report = (error: unknown): void => options.onError?.(error instanceof Error ? error : new Error(String(error)));
 
-  function load(): Promise<AgentProfile[]> {
-    if (managedProfiles) return Promise.resolve(managedProfiles);
+  function load(): Promise<RegistryState> {
+    if (state) return Promise.resolve(state);
     loading ??= (async () => {
       const snapshot = await options.store.load();
-      managedProfiles = (snapshot?.profiles ?? []).filter((profile) => profile.kind === 'managed');
-      return managedProfiles;
+      // Re-read through the parser whatever the store handed back: a host
+      // store may predate sets, and the invariants are the registry's.
+      const parsed = snapshot === undefined ? undefined : parseProfileRegistrySnapshot(snapshot);
+      state = {
+        sets: parsed?.sets ?? [],
+        profiles: parsed?.profiles ?? [],
+        defaultSet: parsed?.defaultSet,
+      };
+      return state;
     })().finally(() => {
       loading = undefined;
     });
@@ -167,14 +291,25 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
         kind: 'native-default',
         dataRoot: root,
         createdAt: NATIVE_DEFAULT_CREATED_AT,
+        set: NATIVE_PROFILE_SET_ID,
         ...(identity ? { identity } : {}),
       });
     }
     return profiles;
   }
 
+  /** Provider registration order, then any provider no longer composed: a stable list for a UI. */
+  function inProviderOrder(profiles: readonly AgentProfile[]): AgentProfile[] {
+    const ordered: AgentProfile[] = [];
+    for (const providerId of providers.keys()) {
+      for (const profile of profiles) if (profile.provider === providerId) ordered.push(profile);
+    }
+    for (const profile of profiles) if (!providers.has(profile.provider)) ordered.push(profile);
+    return ordered;
+  }
+
   async function snapshot(): Promise<AgentProfile[]> {
-    const managed = await load();
+    const { profiles: managed } = await load();
     const synthetic = nativeDefaults();
     const combined: AgentProfile[] = [];
     // Provider registration order, native default first: a stable list for a UI.
@@ -188,8 +323,23 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
     return combined.map(cloneProfile);
   }
 
+  function info(loaded: RegistryState, set: ProfileSet): ProfileSetInfo {
+    const defaultSet = loaded.defaultSet ?? NATIVE_PROFILE_SET_ID;
+    const members =
+      set.kind === 'native'
+        ? nativeDefaults()
+        : inProviderOrder(loaded.profiles.filter((profile) => profile.set === set.id && active(profile)));
+    return { set: { ...set }, isDefault: defaultSet === set.id, profiles: members.map(cloneProfile) };
+  }
+
   async function persist(): Promise<void> {
-    await options.store.save({ version: 1, profiles: (managedProfiles ?? []).map(cloneProfile) });
+    const loaded = await load();
+    await options.store.save({
+      version: 2,
+      ...(loaded.defaultSet === undefined ? {} : { defaultSet: loaded.defaultSet }),
+      sets: loaded.sets.map((set) => ({ ...set })),
+      profiles: loaded.profiles.map(cloneProfile),
+    });
   }
 
   function emit(profiles: AgentProfile[]): void {
@@ -206,6 +356,10 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
     emit(await snapshot());
   }
 
+  function managedSet(loaded: RegistryState, setId: string): ProfileSet | undefined {
+    return loaded.sets.find((set) => set.id === setId);
+  }
+
   return {
     list: async (providerId) =>
       (await snapshot()).filter((profile) => providerId === undefined || profile.provider === providerId),
@@ -213,36 +367,61 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
     get: async (profileId) => (await snapshot()).find((profile) => profile.id === profileId),
 
     managed: async (providerId) =>
-      (await load()).filter((profile) => providerId === undefined || profile.provider === providerId).map(cloneProfile),
+      (await load()).profiles
+        .filter((profile) => providerId === undefined || profile.provider === providerId)
+        .map(cloneProfile),
 
     async add(profile) {
-      const managed = await load();
-      if (managed.some((existing) => existing.id === profile.id)) {
+      const loaded = await load();
+      if (profile.kind !== 'managed') throw new Error(`only managed profiles are registered: ${profile.id}`);
+      if (loaded.profiles.some((existing) => existing.id === profile.id)) {
         throw new Error(`agent profile already registered: ${profile.id}`);
       }
-      if (managed.length >= MAX_PERSISTED_PROFILES) {
+      const set = profile.set === undefined ? undefined : managedSet(loaded, profile.set);
+      if (!set) throw new Error(`agent profile names no registered profile set: ${profile.id}`);
+      if (
+        active(profile) &&
+        loaded.profiles.some(
+          (existing) => existing.set === set.id && existing.provider === profile.provider && active(existing),
+        )
+      ) {
+        throw new Error(`profile set ${set.id} already has a ${profile.provider} account`);
+      }
+      if (loaded.profiles.length >= MAX_PERSISTED_PROFILES) {
         throw new Error(`profile registry is full (${MAX_PERSISTED_PROFILES} profiles)`);
       }
-      managed.push(cloneProfile(profile));
+      loaded.profiles.push({ ...cloneProfile(profile), label: set.label });
       await persist();
       await announce();
     },
 
     async remove(profileId) {
-      const managed = await load();
-      const index = managed.findIndex((profile) => profile.id === profileId);
+      const loaded = await load();
+      const index = loaded.profiles.findIndex((profile) => profile.id === profileId);
       if (index < 0) return false;
-      managed.splice(index, 1);
+      loaded.profiles.splice(index, 1);
       await persist();
       await announce();
       return true;
     },
 
+    async retire(profileId, at) {
+      const loaded = await load();
+      const profile = loaded.profiles.find((entry) => entry.id === profileId);
+      if (!profile) return undefined;
+      if (profile.retiredAt === undefined) {
+        profile.retiredAt = at;
+        await persist();
+        await announce();
+      }
+      return cloneProfile(profile);
+    },
+
     async recordIdentity(profileId, identity) {
       const parsed = ProfileIdentitySchema.safeParse(identity);
       if (!parsed.success) throw new Error(`profile identity for ${profileId} failed schema validation`);
-      const managed = await load();
-      const profile = managed.find((entry) => entry.id === profileId);
+      const loaded = await load();
+      const profile = loaded.profiles.find((entry) => entry.id === profileId);
       if (profile) {
         profile.identity = parsed.data;
         await persist();
@@ -254,6 +433,87 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
       nativeDefaultIdentities.set(profileId, parsed.data);
       await announce();
       return { ...existing, identity: parsed.data };
+    },
+
+    async sets() {
+      const loaded = await load();
+      return [info(loaded, nativeProfileSet()), ...loaded.sets.map((set) => info(loaded, set))];
+    },
+
+    async getSet(setId) {
+      const loaded = await load();
+      if (setId === NATIVE_PROFILE_SET_ID) return info(loaded, nativeProfileSet());
+      const set = managedSet(loaded, setId);
+      return set ? info(loaded, set) : undefined;
+    },
+
+    async addSet(set) {
+      const parsed = ProfileSetSchema.safeParse(set);
+      if (!parsed.success || parsed.data.kind !== 'managed') {
+        throw new Error(`profile set ${JSON.stringify(set.id)} failed schema validation`);
+      }
+      const loaded = await load();
+      if (parsed.data.id === NATIVE_PROFILE_SET_ID || managedSet(loaded, parsed.data.id)) {
+        throw new Error(`profile set already registered: ${parsed.data.id}`);
+      }
+      if (loaded.sets.length >= MAX_PERSISTED_SETS) {
+        throw new Error(`profile registry is full (${MAX_PERSISTED_SETS} profile sets)`);
+      }
+      loaded.sets.push(parsed.data);
+      await persist();
+      await announce();
+    },
+
+    async updateSet(setId, patch) {
+      const loaded = await load();
+      const set = managedSet(loaded, setId);
+      if (!set) return undefined;
+      const next: ProfileSet = {
+        ...set,
+        ...(patch.label === undefined ? {} : { label: patch.label.trim() }),
+        ...(patch.directory === undefined || set.directory !== undefined ? {} : { directory: patch.directory }),
+      };
+      if (patch.glyph === null) delete next.glyph;
+      else if (patch.glyph !== undefined) next.glyph = patch.glyph;
+      const parsed = ProfileSetSchema.safeParse(next);
+      if (!parsed.success) throw new Error(`profile set ${JSON.stringify(setId)} failed schema validation`);
+      Object.assign(set, parsed.data);
+      if (parsed.data.glyph === undefined) delete set.glyph;
+      if (patch.label !== undefined) {
+        for (const profile of loaded.profiles) if (profile.set === setId) profile.label = set.label;
+      }
+      await persist();
+      await announce();
+      return info(loaded, set);
+    },
+
+    async removeSet(setId) {
+      const loaded = await load();
+      const index = loaded.sets.findIndex((set) => set.id === setId);
+      if (index < 0) return undefined;
+      const [set] = loaded.sets.splice(index, 1);
+      const removed = loaded.profiles.filter((profile) => profile.set === setId);
+      loaded.profiles = loaded.profiles.filter((profile) => profile.set !== setId);
+      if (loaded.defaultSet === setId) loaded.defaultSet = undefined;
+      await persist();
+      await announce();
+      return { set: { ...set! }, profiles: removed.map(cloneProfile) };
+    },
+
+    async defaultSetId() {
+      return (await load()).defaultSet ?? NATIVE_PROFILE_SET_ID;
+    },
+
+    async setDefault(setId) {
+      const loaded = await load();
+      if (setId !== NATIVE_PROFILE_SET_ID && !managedSet(loaded, setId)) return false;
+      const next = setId === NATIVE_PROFILE_SET_ID ? undefined : setId;
+      if (loaded.defaultSet !== next) {
+        loaded.defaultSet = next;
+        await persist();
+        await announce();
+      }
+      return true;
     },
 
     onChange(listener) {
