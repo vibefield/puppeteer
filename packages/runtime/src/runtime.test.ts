@@ -3134,6 +3134,21 @@ describe('createAgentRuntime', () => {
       failures: [{ status: 'unsupported', provider: 'missing' }],
     });
 
+    // The plan names what the button would run, from the same recipe, without running it.
+    await expect(runtime.planUpdate({ providerId: 'example' })).resolves.toEqual({
+      provider: 'example',
+      executable: join(binDirectory, 'example'),
+      recipe: { kind: 'manual', instructions: 'reinstall from the vendor site' },
+    });
+    await expect(runtime.planUpdate({ providerId: 'example', executable: '/nowhere/example' })).resolves.toMatchObject({
+      status: 'unavailable',
+      provider: 'example',
+    });
+    await expect(runtime.planUpdate({ providerId: 'missing' })).resolves.toMatchObject({
+      status: 'unsupported',
+      provider: 'missing',
+    });
+
     version = '1.3.0';
     // A manual recipe is reported rather than reinvented as a download.
     await expect(runtime.updateInstallation({ providerId: 'example' })).resolves.toMatchObject({

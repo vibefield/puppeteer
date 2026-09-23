@@ -15,6 +15,7 @@ import type {
   ReleaseChannel,
   ReleaseSnapshot,
   UpdateReceipt,
+  UpdateRecipe,
   AgentExecutionMode,
   AgentEvent,
   AgentEventEnvelope,
@@ -436,6 +437,12 @@ export interface ReleaseCheckResult {
   releases: ReleaseSnapshot[];
   /** Newest release per channel that is newer than the active install. */
   behind: { channel: ReleaseChannel; version: string }[];
+  /**
+   * The one update the active install's own updater would take: the newest
+   * release on the channel it follows (its adapter-mapped `releaseChannel`,
+   * else `stable`) when that is newer than it. Absent when current or unknown.
+   */
+  available?: { channel: ReleaseChannel; version: string };
   failures: DistributionFailure[];
 }
 
@@ -443,6 +450,34 @@ export interface UpdateInstallationOptions {
   providerId: string;
   /** Defaults to the active install. */
   executable?: string;
+  /**
+   * Opaque observer for the updater's output as it arrives, beside the 0600
+   * transcript. A host may show it to the person who asked for the update;
+   * nothing may parse it — the outcome is the re-inspection, never this text.
+   * An observer that throws is contained and never fails the update.
+   */
+  onOutput?: (chunk: string) => void;
+}
+
+export interface UpdatePlanOptions {
+  providerId: string;
+  /** Defaults to the active install. */
+  executable?: string;
+}
+
+/**
+ * What an update would run for one install, answered before anyone runs it,
+ * so a host can say which command a button will execute. Computed the way
+ * {@link AgentRuntime.updateInstallation} computes it: the adapter's recipe,
+ * resolved to the argv the runner would execute.
+ */
+export interface UpdatePlan {
+  provider: string;
+  /** The install this plan updates. */
+  executable: string;
+  recipe: UpdateRecipe;
+  /** The command the runner would execute; absent when the recipe is manual. */
+  argv?: string[];
 }
 
 export interface CreateProfileOptions {
@@ -557,6 +592,8 @@ export interface AgentRuntime {
   checkReleases(options: CheckReleasesOptions): Promise<ReleaseCheckResult>;
   /** Run the adapter's update recipe and re-inspect; the receipt is evidence, not parsed output. */
   updateInstallation(options: UpdateInstallationOptions): Promise<UpdateReceipt>;
+  /** What {@link updateInstallation} would run for an install, without running it. */
+  planUpdate(options: UpdatePlanOptions): Promise<UpdatePlan | DistributionFailure>;
   /** Enumerate every adapter that advertises account profiles. */
   profileProviders(): readonly ProfileProvider[];
   /** Registered profiles plus one synthetic native-default profile per supporting provider. */

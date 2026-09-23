@@ -11,7 +11,7 @@ const live = process.env.PUPPETEER_DISTRIBUTION_LIVE === '1';
  * install, never logs in, and never spawns a terminal.
  */
 describe.skipIf(!live)('distribution and profiles against installed agents (PUPPETEER_DISTRIBUTION_LIVE=1)', () => {
-  it('inspects installations, runs the Grok oracle, and lists native-default profiles', async () => {
+  it('inspects installations, plans their updates, runs the Grok oracle, and lists native-default profiles', async () => {
     const host: AgentHost = {
       async spawnTerminal() {
         throw new Error('the live distribution proof never spawns terminals');
@@ -34,6 +34,18 @@ describe.skipIf(!live)('distribution and profiles against installed agents (PUPP
       );
       expect(installations.length).toBeGreaterThan(0);
       expect(installations.filter((install) => install.active).length).toBeGreaterThan(0);
+
+      // The release line each adapter maps, and what Update would run — planned, never run.
+      for (const install of installations) {
+        const plan = await runtime.planUpdate({ providerId: install.provider, executable: install.executable });
+        console.log(
+          `${install.provider}\tline=${install.releaseChannel ?? '?'}\t` +
+            ('status' in plan
+              ? `no plan (${plan.status}): ${plan.message}`
+              : `${plan.recipe.kind}\t${plan.argv?.join(' ') ?? '(manual)'}`),
+        );
+        if (!('status' in plan)) expect(plan.executable).toBe(install.executable);
+      }
 
       const grok = await runtime.checkReleases({ providerId: 'grok', network: false });
       console.log(JSON.stringify(grok, null, 1));

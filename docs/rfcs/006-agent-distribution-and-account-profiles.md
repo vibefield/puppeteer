@@ -337,6 +337,23 @@ Open after phase 1: the extension track (C1–C3), profile marks in the views (B
 facts, the release-awareness cadence (today network runs only on an explicit check), and Codex auto-update state
 (no native switch exists, so it reports `unknown`).
 
+Added 2026-09-23 for hosts that put updates in front of a person (VibeField's Agents settings section):
+
+- `updateInstallation({ onOutput })`: an optional observer that receives the vendor updater's output as it arrives,
+  beside the 0600 transcript. It is opaque display text under the same rule as the transcript — never parsed; the
+  outcome is still the re-inspection — and an observer that throws is reported through `onError` without stopping
+  the update.
+- `planUpdate({ providerId, executable? })`: what an update would run for an install, without running it — the
+  adapter's own `recipeFor`, resolved to argv exactly as the runner resolves it (the npm that owns a global install,
+  not the first on PATH), so a host can name the command before anyone presses Update. Manual recipes carry no argv.
+- `InstalledAgent.releaseChannel` and `ReleaseCheckResult.available`: `behind` lists every declared channel, which
+  cannot say whether a Claude install on its default `latest` line is behind a preview release or merely ahead of
+  stable. Which declared channel an install's own updater follows is a provider fact, so the adapter maps it —
+  Claude from `autoUpdatesChannel` (`stable`, or the documented default `latest`, which the preview detectors track)
+  and from what its npm and cask recipes install; Grok from its version banner's channel (`alpha` is preview) — and
+  the runtime answers `available`, the one release that updater would take, through the pure `availableUpdate()`,
+  which a host that kept an earlier check can re-run after the install changed. Absent a mapping, `stable`.
+
 ## Verification
 
 - Unit: schema tests; install fingerprints against fixture paths copied from real layouts; recipe runner and

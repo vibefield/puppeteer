@@ -26,6 +26,7 @@ import type {
   InstallCandidate,
   InstallMethod,
   InstalledAgent,
+  ReleaseChannel,
   UpdateRecipe,
 } from '@vibecook/puppeteer-core';
 import {
@@ -222,6 +223,25 @@ export function evaluateClaudeAutoUpdate(
   return { autoUpdate: nativeInstall ? 'enabled' : 'unknown', ...(channel ? { channel } : {}), warnings };
 }
 
+/**
+ * Which declared release channel an install's own updater follows. The
+ * native installer (and a standalone binary, which `claude update` migrates
+ * into it) follows `autoUpdatesChannel`: `stable`, or `latest` — the
+ * documented default — which the `vendor-latest` and `github-latest`
+ * detectors track, as does `rc`. A global npm install is updated to the npm
+ * `latest` dist-tag by its recipe, the same line. The `@latest` cask names its
+ * line; the plain cask's line is not evidenced, so it stays unclassified.
+ */
+export function claudeReleaseChannel(
+  method: InstallMethod,
+  packageName: string | undefined,
+  nativeChannel: string | undefined,
+): ReleaseChannel | undefined {
+  if (method === 'npm-global') return 'preview';
+  if (method === 'brew') return packageName?.endsWith('@latest') === true ? 'preview' : undefined;
+  return nativeChannel === 'stable' ? 'stable' : 'preview';
+}
+
 async function readJson(read: (path: string) => Promise<string>, path: string): Promise<unknown> {
   try {
     return JSON.parse(await read(path));
@@ -275,6 +295,7 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
       const config = await readJson(read, join(home, '.claude.json'));
       const settings = await readJson(read, join(home, '.claude', 'settings.json'));
       const update = evaluateClaudeAutoUpdate(classification.method, config, settings, env);
+      const releaseChannel = claudeReleaseChannel(classification.method, classification.packageName, update.channel);
 
       return {
         provider: 'claude',
@@ -286,6 +307,7 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
         ...(classification.location ? { location: classification.location } : {}),
         autoUpdate: update.autoUpdate,
         ...(update.channel ? { channel: update.channel } : {}),
+        ...(releaseChannel ? { releaseChannel } : {}),
         detectedAt: now().toISOString(),
         warnings: [...warnings, ...update.warnings],
       };

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentInstallation, DistributionProvider, DistributionService } from '@vibecook/puppeteer-core';
-import { checkProviderReleases, compareVersions, createReleaseEtagCache } from './releases.js';
+import { availableUpdate, checkProviderReleases, compareVersions, createReleaseEtagCache } from './releases.js';
 
 const installed: AgentInstallation = {
   provider: 'example',
@@ -106,6 +106,7 @@ describe('checkProviderReleases', () => {
     expect(checkUpdate).toHaveBeenCalledWith(expect.not.objectContaining({ active: expect.anything() }));
     expect(result.releases).toHaveLength(1);
     expect(result.behind).toEqual([{ channel: 'stable', version: '1.3.0' }]);
+    expect(result.available).toEqual({ channel: 'stable', version: '1.3.0' });
   });
 
   it('executes text, npm-registry, and github-release detectors', async () => {
@@ -278,5 +279,32 @@ describe('checkProviderReleases', () => {
 
     expect(result.releases).toHaveLength(1);
     expect(result.behind).toEqual([]);
+  });
+});
+
+describe('availableUpdate', () => {
+  const releases = [
+    { channel: 'stable' as const, version: '1.3.0' },
+    { channel: 'stable' as const, version: '1.2.9' },
+    { channel: 'preview' as const, version: '1.4.0-rc.1' },
+  ];
+
+  it('follows the stable line when the adapter could not tell the install channel', () => {
+    expect(availableUpdate(releases, { version: '1.2.3' })).toEqual({ channel: 'stable', version: '1.3.0' });
+  });
+
+  it('follows the channel the adapter mapped, not whichever release is newest', () => {
+    expect(availableUpdate(releases, { version: '1.2.3', releaseChannel: 'preview' })).toEqual({
+      channel: 'preview',
+      version: '1.4.0-rc.1',
+    });
+    // A preview release never offers itself to a stable install.
+    expect(availableUpdate([{ channel: 'preview', version: '9.0.0' }], { version: '1.2.3' })).toBeUndefined();
+  });
+
+  it('answers nothing when the install is current or its version is unknown', () => {
+    expect(availableUpdate(releases, { version: '1.3.0' })).toBeUndefined();
+    expect(availableUpdate(releases, {})).toBeUndefined();
+    expect(availableUpdate([], { version: '1.2.3' })).toBeUndefined();
   });
 });

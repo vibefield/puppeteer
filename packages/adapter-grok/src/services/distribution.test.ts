@@ -87,6 +87,7 @@ describe('Grok inspect', () => {
       provider: 'grok',
       version: '1.0.13',
       channel: 'stable',
+      releaseChannel: 'stable',
       method: 'vendor-downloader',
       location: '/home/tester/.grok',
       autoUpdate: 'unknown',

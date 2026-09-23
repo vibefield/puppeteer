@@ -167,6 +167,8 @@ export function createGrokDistributionService(options: GrokDistributionServiceOp
         // The oracle reports autoUpdate; a version probe alone is no evidence of it.
         autoUpdate: 'unknown',
         ...(channel ? { channel } : {}),
+        // `alpha` is Grok's preview line, the same rule the oracle's snapshot applies.
+        ...(channel ? { releaseChannel: channel === 'alpha' ? ('preview' as const) : ('stable' as const) } : {}),
         detectedAt: new Date().toISOString(),
         warnings,
       };

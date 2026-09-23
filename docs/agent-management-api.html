@@ -1263,6 +1263,7 @@ await runtime.dispose();</code></pre>
   inspectInstallations(options?: InspectInstallationsOptions): Promise&lt;AgentInstallation[]&gt;;
   checkReleases(options: CheckReleasesOptions): Promise&lt;ReleaseCheckResult&gt;;
   updateInstallation(options: UpdateInstallationOptions): Promise&lt;UpdateReceipt&gt;;
+  planUpdate(options: UpdatePlanOptions): Promise&lt;UpdatePlan | DistributionFailure&gt;;
 }</code></pre>
             <div class="table-wrap">
               <table class="reference-table">
@@ -1301,13 +1302,26 @@ await runtime.dispose();</code></pre>
                     <td>
                       Selects the active installation unless <code>executable</code> is supplied. Executes the adapter
                       recipe, then refreshes inventory and returns an update receipt. It does not restart existing agent
-                      sessions.
+                      sessions. An optional <code>onOutput</code> observer receives the updater's output as it arrives,
+                      beside the 0600 transcript, so a host can show the vendor's command running; it is opaque text,
+                      never parsed, and an observer that throws is reported through <code>onError</code> without
+                      stopping the update.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-planUpdate">planUpdate()</code></td>
+                    <td>
+                      What <code>updateInstallation()</code> would run for an install, without running it: the
+                      adapter's recipe for the active installation (or <code>executable</code>), resolved to the argv
+                      the runner would execute, so a host can name the command before anyone presses Update. A manual
+                      recipe carries no argv. An unknown provider answers <code>unsupported</code>; a provider with no
+                      matching installation answers <code>unavailable</code>.
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <pre><code data-source="packages/runtime/src/types.ts" data-types="InspectInstallationsOptions,CheckReleasesOptions,ReleaseCheckResult,UpdateInstallationOptions">interface InspectInstallationsOptions {
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="InspectInstallationsOptions,CheckReleasesOptions,ReleaseCheckResult,UpdateInstallationOptions,UpdatePlanOptions,UpdatePlan">interface InspectInstallationsOptions {
   providerId?: string;
   /** Discard the cached inventory before inspecting. */
   refresh?: boolean;
@@ -1326,6 +1340,8 @@ interface ReleaseCheckResult {
   releases: ReleaseSnapshot[];
   /** Newest release per channel that is newer than the active install. */
   behind: { channel: ReleaseChannel; version: string }[];
+  /** The one update the active install's own updater would take (its releaseChannel, else stable). */
+  available?: { channel: ReleaseChannel; version: string };
   failures: DistributionFailure[];
 }
 
@@ -1333,6 +1349,23 @@ interface UpdateInstallationOptions {
   providerId: string;
   /** Defaults to the active install. */
   executable?: string;
+  /** Opaque observer beside the transcript; never parsed, a throw is contained. */
+  onOutput?: (chunk: string) =&gt; void;
+}
+
+interface UpdatePlanOptions {
+  providerId: string;
+  /** Defaults to the active install. */
+  executable?: string;
+}
+
+interface UpdatePlan {
+  provider: string;
+  /** The install this plan updates. */
+  executable: string;
+  recipe: UpdateRecipe;
+  /** The command the runner would execute; absent when the recipe is manual. */
+  argv?: string[];
 }</code></pre>
             <pre><code data-source="packages/core/src/services/distribution.ts" data-types="InstallMethod,InstallCandidateOrigin,AutoUpdateState,InstalledAgent,AgentInstallation">type InstallMethod = 'native-installer' | 'vendor-downloader' | 'npm-global'
   | 'brew' | 'standalone-binary' | 'source-checkout' | 'unknown';
@@ -1349,6 +1382,8 @@ interface InstalledAgent {
   location?: string;
   autoUpdate: AutoUpdateState;
   channel?: string;
+  /** The declared release channel the install's updater follows, mapped by the adapter; absent = stable. */
+  releaseChannel?: ReleaseChannel;
   detectedAt: string;
   warnings: string[];
 }

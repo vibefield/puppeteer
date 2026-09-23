@@ -5,6 +5,7 @@ import {
   type DistributionFailure,
   type DistributionProvider,
   type DistributionService,
+  type InstalledAgent,
   type ReleaseChannel,
   type ReleaseDetector,
   type ReleaseSnapshot,
@@ -280,17 +281,11 @@ export async function checkProviderReleases(options: ProviderReleaseCheckOptions
   const behind: { channel: ReleaseChannel; version: string }[] = [];
   const installedVersion = installed?.version;
   if (installedVersion) {
-    const newestByChannel = new Map<ReleaseChannel, string>();
-    for (const release of releases) {
-      const current = newestByChannel.get(release.channel);
-      if (!current || compareVersions(release.version, current) > 0) {
-        newestByChannel.set(release.channel, release.version);
-      }
-    }
-    for (const [channel, version] of newestByChannel) {
+    for (const [channel, version] of newestByChannel(releases)) {
       if (compareVersions(version, installedVersion) > 0) behind.push({ channel, version });
     }
   }
+  const available = installed === undefined ? undefined : availableUpdate(releases, installed);
 
   return {
     provider: provider.id,
@@ -298,6 +293,37 @@ export async function checkProviderReleases(options: ProviderReleaseCheckOptions
     ...(installed === undefined ? {} : { installed }),
     releases,
     behind,
+    ...(available === undefined ? {} : { available }),
     failures,
   };
+}
+
+function newestByChannel(
+  releases: readonly Pick<ReleaseSnapshot, 'channel' | 'version'>[],
+): Map<ReleaseChannel, string> {
+  const newest = new Map<ReleaseChannel, string>();
+  for (const release of releases) {
+    const current = newest.get(release.channel);
+    if (!current || compareVersions(release.version, current) > 0) newest.set(release.channel, release.version);
+  }
+  return newest;
+}
+
+/**
+ * The one update an install's own updater would take: the newest release on
+ * the channel the install follows — its adapter-mapped `releaseChannel`, else
+ * `stable` — when that is newer than the install. Pure, so a host that kept an
+ * earlier check's releases can re-answer after the install changed without
+ * running the check again.
+ */
+export function availableUpdate(
+  releases: readonly Pick<ReleaseSnapshot, 'channel' | 'version'>[],
+  installed: Pick<InstalledAgent, 'version' | 'releaseChannel'>,
+): { channel: ReleaseChannel; version: string } | undefined {
+  if (!installed.version) return undefined;
+  const channel = installed.releaseChannel ?? 'stable';
+  const newest = newestByChannel(releases).get(channel);
+  return newest !== undefined && compareVersions(newest, installed.version) > 0
+    ? { channel, version: newest }
+    : undefined;
 }

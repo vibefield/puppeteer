@@ -6,9 +6,16 @@ import type {
   AgentInstallation,
   DistributionProvider,
   DistributionService,
+  InstalledAgent,
   UpdateRecipe,
 } from '@vibecook/puppeteer-core';
-import { recipeArgv, resolveNpmCommand, runInstallationUpdate, type UpdateCommandRunner } from './update.js';
+import {
+  planInstallationUpdate,
+  recipeArgv,
+  resolveNpmCommand,
+  runInstallationUpdate,
+  type UpdateCommandRunner,
+} from './update.js';
 
 const provider: DistributionProvider = {
   id: 'example',
@@ -219,5 +226,91 @@ describe('runInstallationUpdate', () => {
     expect(unstartable).toMatchObject({ status: 'failed', message: 'update command did not run to completion' });
     expect(unstartable.exitCode).toBeUndefined();
     expect(onError).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('runInstallationUpdate output observer', () => {
+  it('hands the updater output to the observer as it arrives, beside the transcript', async () => {
+    const directory = await transcripts();
+    const seen: string[] = [];
+    const receipt = await runInstallationUpdate({
+      provider,
+      service: service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+      install: installation(),
+      reinspect: async () => installation({ version: '1.3.0' }),
+      transcriptsDirectory: directory,
+      onOutput: (chunk) => seen.push(chunk),
+      run: async (request) => {
+        request.onOutput('downloading...\n');
+        request.onOutput('installed 1.3.0\n');
+        return { exitCode: 0 };
+      },
+    });
+
+    expect(seen).toEqual(['downloading...\n', 'installed 1.3.0\n']);
+    expect(receipt.status).toBe('updated');
+    await expect(readFile(receipt.transcriptPath!, 'utf8')).resolves.toBe('downloading...\ninstalled 1.3.0\n');
+  });
+
+  it('contains an observer that throws: the update still runs to its receipt', async () => {
+    const errors: Error[] = [];
+    const receipt = await runInstallationUpdate({
+      provider,
+      service: service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+      install: installation(),
+      reinspect: async () => installation({ version: '1.3.0' }),
+      transcriptsDirectory: await transcripts(),
+      onOutput: () => {
+        throw new Error('display went away');
+      },
+      onError: (error) => errors.push(error),
+      run: async (request) => {
+        request.onOutput('downloading...\n');
+        return { exitCode: 0 };
+      },
+    });
+
+    expect(receipt.status).toBe('updated');
+    expect(errors.map((error) => error.message)).toEqual(['display went away']);
+  });
+});
+
+describe('planInstallationUpdate', () => {
+  it('names the command an update would run, resolved the way the runner resolves it', async () => {
+    await expect(
+      planInstallationUpdate(
+        service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+        installation(),
+      ),
+    ).resolves.toEqual({
+      recipe: { kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] },
+      argv: ['/usr/local/bin/example', 'update'],
+    });
+    await expect(
+      planInstallationUpdate(
+        service({ kind: 'npm-global', package: '@example/cli' }),
+        installation(),
+        async () => false,
+      ),
+    ).resolves.toEqual({
+      recipe: { kind: 'npm-global', package: '@example/cli' },
+      argv: ['npm', 'install', '-g', '@example/cli@latest'],
+    });
+  });
+
+  it('carries no command for a manual recipe', async () => {
+    await expect(
+      planInstallationUpdate(service({ kind: 'manual', instructions: 'download it' }), installation()),
+    ).resolves.toEqual({ recipe: { kind: 'manual', instructions: 'download it' } });
+  });
+
+  it('asks the adapter with the install, never with the host ranking', async () => {
+    const recipeFor = vi.fn((_install: InstalledAgent): UpdateRecipe => ({
+      kind: 'manual',
+      instructions: 'download it',
+    }));
+    await planInstallationUpdate({ provider, inspect: async () => undefined, recipeFor }, installation());
+    expect(recipeFor).toHaveBeenCalledWith(expect.not.objectContaining({ active: true }));
+    expect(recipeFor.mock.calls[0]?.[0]).not.toHaveProperty('origin');
   });
 });

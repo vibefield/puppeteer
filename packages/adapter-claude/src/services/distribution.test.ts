@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibecook/puppeteer-core';
 import {
   CLAUDE_DISTRIBUTION_PROVIDER,
+  claudeReleaseChannel,
   createClaudeDistributionService,
   evaluateClaudeAutoUpdate,
 } from './distribution.js';
@@ -202,6 +203,32 @@ describe('Claude auto-update evidence', () => {
       }),
     }).inspect(candidate({ realPath: join(HOME, '.local/share/claude/versions/2.1.263') }));
     expect(install?.channel).toBe('stable');
+    expect(install?.releaseChannel).toBe('stable');
+  });
+
+  it('follows the latest line by default, the way the native installer does', async () => {
+    const install = await service().inspect(
+      candidate({ realPath: join(HOME, '.local/share/claude/versions/2.1.263') }),
+    );
+    expect(install?.channel).toBeUndefined();
+    expect(install?.releaseChannel).toBe('preview');
+  });
+});
+
+describe('Claude release channel', () => {
+  it('maps the native channel setting for the native installer and a standalone binary', () => {
+    expect(claudeReleaseChannel('native-installer', undefined, 'stable')).toBe('stable');
+    expect(claudeReleaseChannel('native-installer', undefined, 'latest')).toBe('preview');
+    expect(claudeReleaseChannel('native-installer', undefined, 'rc')).toBe('preview');
+    expect(claudeReleaseChannel('native-installer', undefined, undefined)).toBe('preview');
+    expect(claudeReleaseChannel('standalone-binary', undefined, 'stable')).toBe('stable');
+  });
+
+  it('follows what a package manager recipe installs, and nothing it cannot evidence', () => {
+    // The npm recipe installs the `latest` dist-tag whatever settings say.
+    expect(claudeReleaseChannel('npm-global', '@anthropic-ai/claude-code', 'stable')).toBe('preview');
+    expect(claudeReleaseChannel('brew', 'claude-code@latest', undefined)).toBe('preview');
+    expect(claudeReleaseChannel('brew', 'claude-code', undefined)).toBeUndefined();
   });
 });
 

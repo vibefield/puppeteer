@@ -28,6 +28,7 @@ import {
   type AgentProfile,
   type AgentAdapterBinding,
   type AgentProviderDescriptor,
+  type DistributionFailure,
   type DistributionProvider,
   type ExternalRef,
   type ProfileFailure,
@@ -91,6 +92,8 @@ import type {
   RuntimeRunInfo,
   StartProfileLoginOptions,
   UpdateInstallationOptions,
+  UpdatePlan,
+  UpdatePlanOptions,
 } from './types.js';
 import {
   createInstallationInventory,
@@ -98,7 +101,11 @@ import {
   type InventoryProvider,
 } from './distribution/inventory.js';
 import { checkProviderReleases, createReleaseEtagCache } from './distribution/releases.js';
-import { defaultUpdateTranscriptsDirectory, runInstallationUpdate } from './distribution/update.js';
+import {
+  defaultUpdateTranscriptsDirectory,
+  planInstallationUpdate,
+  runInstallationUpdate,
+} from './distribution/update.js';
 import {
   createFileProfileStore,
   createProfileRegistry,
@@ -2369,7 +2376,46 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         },
         transcriptsDirectory: options.distribution?.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
         onError: report,
+        ...(request.onOutput === undefined ? {} : { onOutput: request.onOutput }),
       });
+    },
+
+    async planUpdate(request: UpdatePlanOptions): Promise<UpdatePlan | DistributionFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const service = providers.get(request.providerId)?.distribution;
+      if (!distributionProvidersById.has(request.providerId) || !service) {
+        return {
+          status: 'unsupported',
+          provider: request.providerId,
+          message: `agent provider does not expose distribution: ${request.providerId}`,
+          retryable: false,
+        };
+      }
+      const installations = await inventory.inspect({ providerId: request.providerId });
+      const install =
+        request.executable === undefined
+          ? installations.find((entry) => entry.active)
+          : installations.find((entry) => entry.executable === request.executable);
+      if (!install) {
+        return {
+          status: 'unavailable',
+          provider: request.providerId,
+          message: `no installation found for ${request.providerId}`,
+          retryable: true,
+        };
+      }
+      try {
+        const plan = await planInstallationUpdate(service, install);
+        return { provider: request.providerId, executable: install.executable, ...plan };
+      } catch (error) {
+        report(error);
+        return {
+          status: 'unavailable',
+          provider: request.providerId,
+          message: 'adapter could not produce an update recipe',
+          retryable: false,
+        };
+      }
     },
 
     profileProviders() {

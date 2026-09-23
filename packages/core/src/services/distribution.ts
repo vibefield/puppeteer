@@ -66,6 +66,9 @@ export type InstallCandidate = z.infer<typeof InstallCandidateSchema>;
 export const AutoUpdateStateSchema = z.enum(['enabled', 'disabled', 'unknown']);
 export type AutoUpdateState = z.infer<typeof AutoUpdateStateSchema>;
 
+export const ReleaseChannelSchema = z.enum(['stable', 'preview']);
+export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
+
 /** An adapter-classified install. Every field is native evidence, never a guess dressed as a fact. */
 export const InstalledAgentSchema = z.strictObject({
   provider: AgentProviderIdSchema,
@@ -82,6 +85,13 @@ export const InstalledAgentSchema = z.strictObject({
   autoUpdate: AutoUpdateStateSchema,
   /** Native release channel the install follows, when the agent reports one. */
   channel: NonEmptyStringSchema.optional(),
+  /**
+   * Which of the provider's declared release channels this install's own
+   * updater follows, mapped by the adapter from its native channel setting or
+   * install source (the vendor's grammar stays in the adapter). Absent when the
+   * adapter cannot tell; hosts then compare against `stable`.
+   */
+  releaseChannel: ReleaseChannelSchema.optional(),
   detectedAt: TimestampSchema,
   warnings: z.array(z.string().max(2_000)).max(32),
 });
@@ -94,9 +104,6 @@ export const AgentInstallationSchema = InstalledAgentSchema.extend({
   active: z.boolean(),
 });
 export type AgentInstallation = z.infer<typeof AgentInstallationSchema>;
-
-export const ReleaseChannelSchema = z.enum(['stable', 'preview']);
-export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
 
 /** Declarative release detectors. The host executes them; adapters only declare them. */
 export const ReleaseDetectorSchema = z.discriminatedUnion('kind', [

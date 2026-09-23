@@ -132,6 +132,29 @@ export async function recipeArgv(
   }
 }
 
+/** What an update would run for one install: the adapter's recipe resolved the way the runner resolves it. */
+export interface InstallationUpdatePlan {
+  recipe: UpdateRecipe;
+  /** Absent when the recipe is manual. */
+  argv?: string[];
+}
+
+/**
+ * Plan an install's update without running it. The recipe comes from the
+ * adapter exactly as {@link runInstallationUpdate} asks for it, so the command
+ * a host shows is the command the button runs.
+ */
+export async function planInstallationUpdate(
+  service: DistributionService,
+  install: AgentInstallation,
+  exists?: (path: string) => Promise<boolean>,
+): Promise<InstallationUpdatePlan> {
+  const installed = toInstalledAgent(install);
+  const recipe = service.recipeFor(installed);
+  const argv = await recipeArgv(recipe, installed, exists);
+  return argv === undefined ? { recipe } : { recipe, argv };
+}
+
 function toInstalledAgent(installation: AgentInstallation): InstalledAgent {
   const { active: _active, origin: _origin, ...install } = installation;
   return install;
@@ -148,6 +171,8 @@ export interface InstallationUpdateOptions {
   exists?: (path: string) => Promise<boolean>;
   now?: () => Date;
   onError?: (error: Error) => void;
+  /** Opaque observer beside the transcript; a throw is contained and reported, never fatal. */
+  onOutput?: (chunk: string) => void;
 }
 
 interface TranscriptSink {
@@ -233,7 +258,16 @@ export async function runInstallationUpdate(options: InstallationUpdateOptions):
       env: environment,
       cwd: environment.HOME ?? process.cwd(),
       timeoutMs: UPDATE_TIMEOUT_MS,
-      onOutput: (chunk) => transcript.write(chunk),
+      onOutput: (chunk) => {
+        transcript.write(chunk);
+        if (options.onOutput === undefined) return;
+        try {
+          options.onOutput(chunk);
+        } catch (error) {
+          // The person asked for the update; a host's display failing must not stop it.
+          report(error);
+        }
+      },
     });
   } catch (error) {
     report(error);
