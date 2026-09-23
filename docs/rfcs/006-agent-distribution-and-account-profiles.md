@@ -337,7 +337,7 @@ Open after phase 1: the extension track (C1–C3), profile marks in the views (B
 facts, the release-awareness cadence (today network runs only on an explicit check), and Codex auto-update state
 (no native switch exists, so it reports `unknown`).
 
-Added 2026-09-23 for hosts that put updates in front of a person (VibeField's Agents settings section):
+Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 
 - `updateInstallation({ onOutput })`: an optional observer that receives the vendor updater's output as it arrives,
   beside the 0600 transcript. It is opaque display text under the same rule as the transcript — never parsed; the
@@ -421,6 +421,27 @@ version-sensitive and becomes a Surface claim before an adapter relies on it.
    scriptable. Decision: `execFile` for listings and for Claude and Codex mutations; a terminal pane for installs on
    Copilot, Grok, Pi, OpenCode, and Hermes until their prompts are captured. `copilot plugins` reported
    "not available" on 1.0.80.
+
+
+Found in live use the same evening, when a person ran every update from VibeField:
+
+- **The runner runs unattended.** `updateInstallation` spawns the updater with no stdin (a prompt reads end-of-file
+  instead of waiting for nobody), in a session of its own (nothing it starts can prompt on the host's terminal), with
+  `PYTHONUNBUFFERED=1` (Hermes's own lines otherwise sat in a pipe buffer for minutes), streaming instead of
+  buffering (`execFile`'s 8 MB `maxBuffer` would have killed a chatty updater). A timeout or `signal` ends the whole
+  process GROUP — SIGTERM, then SIGKILL — so the git, ssh or curl an updater started goes with it.
+  `runUpdateCommand` is that runner, exported.
+- **`unchanged` replaces the claim `already-current`.** Kimi 0.37.1's `upgrade` answers a native install with the
+  script to run instead and exits 0; the receipt said "already current" while 2.0.2 was on offer. Exit 0 with no
+  version change now reads `unchanged` — current, or an updater that declined — and a host that knows of a newer
+  release says which. `already-current` stays valid for receipts written before.
+- **`installer-script`**, a recipe for an install its own updater will not move: the vendor's documented
+  `curl -fsSL <url> | bash`, run as argv with the URL a positional parameter, https only and `pipefail`, with the
+  variables the script documents. Kimi's native installer is the first user (`KIMI_INSTALL_DIR` = the install,
+  `KIMI_NO_MODIFY_PATH=1`: an update has no business in the shell rc), and the adapter now classifies
+  `~/.kimi-code/bin/kimi` as `native-installer`, as Kimi itself does.
+- **A recipe may carry its own budget** (`timeoutMs`). Hermes's updater fetched a shallow checkout (~650 MB in five
+  minutes) and then drains its gateway "up to 1815s" before restarting it; its adapter declares 45 minutes.
 
 ## Non-goals
 

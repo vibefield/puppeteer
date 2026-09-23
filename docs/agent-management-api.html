@@ -1305,7 +1305,10 @@ await runtime.dispose();</code></pre>
                       sessions. An optional <code>onOutput</code> observer receives the updater's output as it arrives,
                       beside the 0600 transcript, so a host can show the vendor's command running; it is opaque text,
                       never parsed, and an observer that throws is reported through <code>onError</code> without
-                      stopping the update.
+                      stopping the update. The updater runs unattended: no stdin (a prompt reads end-of-file), a
+                      session of its own (nothing it starts can prompt on the host's terminal), Python output
+                      unbuffered. Aborting the optional <code>signal</code> stops its whole process group (SIGTERM,
+                      then SIGKILL); so does the recipe's budget (<code>timeoutMs</code>, else 15 minutes).
                     </td>
                   </tr>
                   <tr>
@@ -1351,6 +1354,8 @@ interface UpdateInstallationOptions {
   executable?: string;
   /** Opaque observer beside the transcript; never parsed, a throw is contained. */
   onOutput?: (chunk: string) =&gt; void;
+  /** Aborting stops the updater and everything it started; the receipt says so. */
+  signal?: AbortSignal;
 }
 
 interface UpdatePlanOptions {
@@ -1418,14 +1423,16 @@ interface DistributionFailure {
 }
 
 type UpdateRecipe =
-  | { kind: 'native-self-update'; argv: string[] }
+  | { kind: 'native-self-update'; argv: string[]; timeoutMs?: number }
   | { kind: 'npm-global'; package: string; version?: string }
   | { kind: 'brew'; name: string; cask: boolean }
+  // the vendor's documented `curl -fsSL &lt;url&gt; | bash`, https only, with the variables it documents
+  | { kind: 'installer-script'; url: string; env?: Record&lt;string, string&gt;; timeoutMs?: number }
   | { kind: 'manual'; instructions: string };
 
 interface UpdateReceipt {
   provider: string;
-  status: 'updated' | 'already-current' | 'failed' | 'unsupported';
+  status: 'updated' | 'unchanged' | 'already-current' | 'failed' | 'unsupported';
   recipe?: UpdateRecipe;
   before?: InstalledAgent;
   after?: InstalledAgent;
@@ -1452,17 +1459,27 @@ interface UpdateReceipt {
                     </td>
                   </tr>
                   <tr>
+                    <td><code>unchanged</code></td>
+                    <td>
+                      The command exited with zero and no version change was observed: the install is current, or its
+                      updater declined (Kimi 0.37.1's <code>upgrade</code> answers a native install with the script to
+                      run instead). Only the output says which, and nothing reads it — a host that knows of a newer
+                      release says so. <code>after</code> can be absent when re-inspection fails.
+                    </td>
+                  </tr>
+                  <tr>
                     <td><code>already-current</code></td>
                     <td>
-                      The command exited with zero and no version change was observed. <code>after</code> can be absent
-                      when re-inspection fails; this status alone does not prove a remote release comparison.
+                      Written by runtimes before <code>unchanged</code> existed, with the same meaning; the runner no
+                      longer claims a currency it has no evidence for.
                     </td>
                   </tr>
                   <tr>
                     <td><code>failed</code></td>
                     <td>
-                      No observed version change and command failure, missing target, invalid recipe or failed receipt
-                      construction.
+                      No observed version change and command failure (a non-zero exit, a signal, a timeout, a stop),
+                      missing target, invalid recipe or failed receipt construction. A stop or timeout after the
+                      version moved is still <code>updated</code>, and its message says the updater was then stopped.
                     </td>
                   </tr>
                   <tr>

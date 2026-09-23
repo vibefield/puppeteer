@@ -158,6 +158,7 @@ describe('update receipts', () => {
         after: { ...snapshot.installations[1]!, version: '1.5.0' },
       }),
     ).toEqual({ status: 'UPDATED', detail: '1.4.0 → 1.5.0' });
+    expect(updateReceiptView({ ...base, status: 'unchanged' }).status).toBe('UNCHANGED');
     expect(updateReceiptView({ ...base, status: 'already-current' }).status).toBe('ALREADY CURRENT');
     expect(updateReceiptView({ ...base, status: 'failed', message: 'exit code 1' })).toEqual({
       status: 'FAILED',

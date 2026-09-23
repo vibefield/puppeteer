@@ -457,6 +457,12 @@ export interface UpdateInstallationOptions {
    * An observer that throws is contained and never fails the update.
    */
   onOutput?: (chunk: string) => void;
+  /**
+   * Aborting stops the updater and everything it started (its process group),
+   * SIGTERM then SIGKILL; the receipt says it was stopped. An update may run
+   * long — a gateway drained, a large fetch — and the person may stop waiting.
+   */
+  signal?: AbortSignal;
 }
 
 export interface UpdatePlanOptions {

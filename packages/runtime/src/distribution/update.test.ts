@@ -14,6 +14,7 @@ import {
   recipeArgv,
   resolveNpmCommand,
   runInstallationUpdate,
+  runUpdateCommand,
   type UpdateCommandRunner,
 } from './update.js';
 
@@ -97,6 +98,13 @@ describe('recipeArgv', () => {
     ]);
     await expect(recipeArgv({ kind: 'manual', instructions: 'download it' }, installation())).resolves.toBeUndefined();
   });
+
+  it('runs an installer script the way its vendor documents — curl | bash — with the URL never spliced into the script', async () => {
+    const argv = await recipeArgv({ kind: 'installer-script', url: 'https://example.com/install.sh' }, installation());
+    expect(argv?.slice(0, 2)).toEqual(['/bin/bash', '-c']);
+    expect(argv?.[2]).toBe('set -o pipefail; curl --proto =https --tlsv1.2 -fsSL "$1" | bash');
+    expect(argv?.slice(3)).toEqual(['puppeteer-update', 'https://example.com/install.sh']);
+  });
 });
 
 describe('runInstallationUpdate', () => {
@@ -137,7 +145,7 @@ describe('runInstallationUpdate', () => {
     expect((await stat(directory)).mode & 0o777).toBe(0o700);
   });
 
-  it('reports already-current when a clean run left the version unchanged', async () => {
+  it('reports unchanged — never a currency it has no evidence for — when a clean run left the version where it was', async () => {
     const receipt = await runInstallationUpdate({
       provider,
       service: service({ kind: 'npm-global', package: '@example/cli' }),
@@ -151,7 +159,92 @@ describe('runInstallationUpdate', () => {
       },
     });
 
-    expect(receipt).toMatchObject({ status: 'already-current', exitCode: 0, message: 'already at 1.2.3' });
+    expect(receipt).toMatchObject({ status: 'unchanged', exitCode: 0, message: 'still 1.2.3' });
+  });
+
+  it("gives an installer script the variables it documents, every updater unbuffered output, and a recipe's own budget", async () => {
+    const seen: Parameters<UpdateCommandRunner>[0][] = [];
+    const run: UpdateCommandRunner = async (request) => {
+      seen.push(request);
+      return { exitCode: 0 };
+    };
+    await runInstallationUpdate({
+      provider,
+      service: service({
+        kind: 'installer-script',
+        url: 'https://example.com/install.sh',
+        env: { EXAMPLE_INSTALL_DIR: '/home/tester/.example', EXAMPLE_NO_MODIFY_PATH: '1' },
+      }),
+      install: installation(),
+      reinspect: async () => installation(),
+      transcriptsDirectory: await transcripts(),
+      run,
+    });
+    await runInstallationUpdate({
+      provider,
+      service: service({
+        kind: 'native-self-update',
+        argv: ['/usr/local/bin/example', 'update'],
+        timeoutMs: 2_700_000,
+      }),
+      install: installation(),
+      reinspect: async () => installation(),
+      transcriptsDirectory: await transcripts(),
+      run,
+    });
+    expect(seen[0]?.env).toMatchObject({
+      EXAMPLE_INSTALL_DIR: '/home/tester/.example',
+      EXAMPLE_NO_MODIFY_PATH: '1',
+      PYTHONUNBUFFERED: '1',
+    });
+    expect(seen[0]?.timeoutMs).toBe(15 * 60_000);
+    expect(seen[1]?.env).not.toHaveProperty('EXAMPLE_INSTALL_DIR');
+    expect(seen[1]?.timeoutMs).toBe(2_700_000);
+  });
+
+  it('says an update the person stopped was stopped, and still reports a version that moved first', async () => {
+    const stopRun: UpdateCommandRunner = async (request) => {
+      expect(request.signal?.aborted).toBe(true);
+      return { exitCode: null, signal: 'SIGTERM', error: 'stopped before it finished' };
+    };
+    const controller = new AbortController();
+    controller.abort();
+    const stopped = await runInstallationUpdate({
+      provider,
+      service: service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+      install: installation(),
+      reinspect: async () => installation(),
+      transcriptsDirectory: await transcripts(),
+      signal: controller.signal,
+      run: stopRun,
+    });
+    expect(stopped).toMatchObject({ status: 'failed', message: 'update command stopped before it finished' });
+
+    const movedFirst = await runInstallationUpdate({
+      provider,
+      service: service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+      install: installation(),
+      reinspect: async () => installation({ version: '1.3.0' }),
+      transcriptsDirectory: await transcripts(),
+      signal: controller.signal,
+      run: stopRun,
+    });
+    expect(movedFirst).toMatchObject({
+      status: 'updated',
+      message: 'updated from 1.2.3 to 1.3.0; the updater was then stopped before it finished',
+    });
+
+    // A clean exit the runner did not end is the only success: a stop that
+    // happens to exit 0 is still a stop.
+    const exitedZero = await runInstallationUpdate({
+      provider,
+      service: service({ kind: 'native-self-update', argv: ['/usr/local/bin/example', 'update'] }),
+      install: installation(),
+      reinspect: async () => installation(),
+      transcriptsDirectory: await transcripts(),
+      run: async () => ({ exitCode: 0, error: 'timed out after 15 min' }),
+    });
+    expect(exitedZero.status).toBe('failed');
   });
 
   it('reports failure on a non-zero exit and keeps the transcript', async () => {
@@ -223,7 +316,7 @@ describe('runInstallationUpdate', () => {
       },
       onError,
     });
-    expect(unstartable).toMatchObject({ status: 'failed', message: 'update command did not run to completion' });
+    expect(unstartable).toMatchObject({ status: 'failed', message: 'update command could not be started' });
     expect(unstartable.exitCode).toBeUndefined();
     expect(onError).toHaveBeenCalledTimes(2);
   });
@@ -313,4 +406,78 @@ describe('planInstallationUpdate', () => {
     expect(recipeFor).toHaveBeenCalledWith(expect.not.objectContaining({ active: true }));
     expect(recipeFor.mock.calls[0]?.[0]).not.toHaveProperty('origin');
   });
+});
+
+// The real runner, against real processes: an update runs unattended, so it
+// has no stdin to wait on and no terminal to prompt on, and a stop or a timeout
+// ends everything it started.
+describe.skipIf(process.platform === 'win32')('runUpdateCommand', () => {
+  const env = { PATH: process.env.PATH ?? '/usr/bin:/bin', HOME: tmpdir() };
+  const run = (script: string, extra: { timeoutMs?: number; signal?: AbortSignal } = {}) => {
+    let output = '';
+    const done = runUpdateCommand({
+      argv: ['/bin/sh', '-c', script],
+      env,
+      cwd: tmpdir(),
+      timeoutMs: extra.timeoutMs ?? 30_000,
+      ...(extra.signal === undefined ? {} : { signal: extra.signal }),
+      onOutput: (chunk) => {
+        output += chunk;
+      },
+    });
+    return { done, output: () => output };
+  };
+  const alive = (pid: number): boolean => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  it('streams both streams and a clean exit', async () => {
+    const { done, output } = run('echo out; echo err >&2');
+    await expect(done).resolves.toEqual({ exitCode: 0, signal: null });
+    expect(output()).toContain('out\n');
+    expect(output()).toContain('err\n');
+  });
+
+  it('answers a prompt on stdin with end-of-file instead of waiting for nobody', async () => {
+    const started = Date.now();
+    const { done, output } = run('read answer; echo "answer:[$answer]"');
+    await expect(done).resolves.toMatchObject({ exitCode: 0 });
+    expect(output()).toContain('answer:[]');
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('gives the updater no controlling terminal to prompt on', async () => {
+    const { done, output } = run('if (exec 3</dev/tty) 2>/dev/null; then echo tty; else echo no-tty; fi');
+    await done;
+    expect(output().trim()).toBe('no-tty');
+  });
+
+  it('stops the whole group on request, grandchildren included', async () => {
+    const controller = new AbortController();
+    const { done, output } = run('sleep 30 & echo "child:$!"; wait', { signal: controller.signal });
+    for (let tries = 0; !output().includes('child:') && tries < 100; tries += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    const child = Number(/child:(\d+)/u.exec(output())?.[1]);
+    expect(alive(child)).toBe(true);
+    controller.abort();
+    // The abort arrives after spawn: the signal is wired, not only pre-checked.
+    const result = await Promise.race([
+      done,
+      new Promise((resolve) => setTimeout(() => resolve('still running'), 10_000)),
+    ]);
+    expect(result).toMatchObject({ error: 'stopped before it finished' });
+    // Signalled with its group; an orphan lingers as a zombie until launchd reaps it.
+    await vi.waitFor(() => expect(alive(child)).toBe(false), { timeout: 5_000, interval: 50 });
+  }, 20_000);
+
+  it('ends a run that outlives its budget, and says so', async () => {
+    const { done } = run('sleep 30', { timeoutMs: 300 });
+    await expect(done).resolves.toMatchObject({ exitCode: null, error: 'timed out after 1 s' });
+  }, 20_000);
 });

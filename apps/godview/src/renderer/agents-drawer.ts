@@ -189,6 +189,8 @@ export function updateReceiptView(receipt: UpdateReceipt): UpdateReceiptView {
   const before = receipt.before?.version ?? '—';
   const after = receipt.after?.version ?? '—';
   if (receipt.status === 'updated') return { status: 'UPDATED', detail: `${before} → ${after}` };
+  // The updater exited 0 and nothing moved: current, or it declined — its output says which.
+  if (receipt.status === 'unchanged') return { status: 'UNCHANGED', detail: after };
   if (receipt.status === 'already-current') return { status: 'ALREADY CURRENT', detail: after };
   if (receipt.status === 'unsupported') {
     return { status: 'NOT SUPPORTED', detail: receipt.message ?? 'this install updates outside Puppeteer' };

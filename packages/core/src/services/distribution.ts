@@ -19,7 +19,7 @@ const TimestampSchema = z.iso.datetime({ offset: true });
 const HttpsUrlSchema = z
   .string()
   .url()
-  .refine((value) => value.startsWith('https://'), { message: 'release endpoints must use https' });
+  .refine((value) => value.startsWith('https://'), { message: 'release endpoints and install scripts must use https' });
 const DetectorIdSchema = z
   .string()
   .trim()
@@ -157,11 +157,23 @@ export const ReleaseSnapshotSchema = z.strictObject({
 export type ReleaseSnapshot = z.infer<typeof ReleaseSnapshotSchema>;
 
 /** How to update one install. Only the native and package-manager commands the vendor documents. */
+/** How long a vendor's updater may honestly take, when longer than the runner's default. */
+const UpdateTimeoutSchema = z
+  .number()
+  .int()
+  .min(1_000)
+  .max(4 * 60 * 60_000);
+const EnvironmentNameSchema = z
+  .string()
+  .max(128)
+  .regex(/^[A-Z_][A-Z0-9_]*$/u);
+
 export const UpdateRecipeSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('native-self-update'),
     /** Complete argv; the first entry is the executable to run. */
     argv: z.array(z.string().max(8_192)).min(1).max(32),
+    timeoutMs: UpdateTimeoutSchema.optional(),
   }),
   z.strictObject({
     kind: z.literal('npm-global'),
@@ -175,6 +187,19 @@ export const UpdateRecipeSchema = z.discriminatedUnion('kind', [
     cask: z.boolean(),
   }),
   z.strictObject({
+    /**
+     * The vendor's documented install script, run again to update an install
+     * its own updater will not move (a native installer whose upgrade command
+     * answers with these very instructions). Unix only: the runner fetches it
+     * over https and pipes it to bash, exactly as the vendor tells a person to.
+     */
+    kind: z.literal('installer-script'),
+    url: HttpsUrlSchema,
+    /** Variables the script itself documents: its install directory, leaving the shell rc alone. */
+    env: z.record(EnvironmentNameSchema, z.string().max(8_192)).optional(),
+    timeoutMs: UpdateTimeoutSchema.optional(),
+  }),
+  z.strictObject({
     kind: z.literal('manual'),
     instructions: NonEmptyStringSchema,
   }),
@@ -183,7 +208,16 @@ export type UpdateRecipe = z.infer<typeof UpdateRecipeSchema>;
 
 export const UpdateReceiptSchema = z.strictObject({
   provider: AgentProviderIdSchema,
-  status: z.enum(['updated', 'already-current', 'failed', 'unsupported']),
+  /**
+   * `updated`: the version moved (re-inspection is the only evidence).
+   * `unchanged`: the updater exited 0 and the version did not move — current,
+   * or an updater that declined; its output says which, and a host that knows
+   * of a newer release says so. `already-current` is kept for receipts written
+   * before `unchanged` existed: the runner no longer claims a currency it has
+   * no evidence for. `failed`: the updater did not finish (a non-zero exit, a
+   * signal, a timeout, a stop). `unsupported`: the recipe is manual.
+   */
+  status: z.enum(['updated', 'unchanged', 'already-current', 'failed', 'unsupported']),
   recipe: UpdateRecipeSchema.optional(),
   before: InstalledAgentSchema.optional(),
   /** Fresh inspection after the command finished; the only evidence of success. */

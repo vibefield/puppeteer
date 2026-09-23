@@ -2377,6 +2377,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         transcriptsDirectory: options.distribution?.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
         onError: report,
         ...(request.onOutput === undefined ? {} : { onOutput: request.onOutput }),
+        ...(request.signal === undefined ? {} : { signal: request.signal }),
       });
     },
 
