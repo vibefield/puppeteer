@@ -118,6 +118,7 @@ describe('Claude account usage', () => {
           durationMinutes: 10_080,
           usedPercent: 56,
           resetsAt: '2027-01-22T08:00:00.000Z',
+          group: { id: 'scope:opus', label: 'Opus only' },
         },
       ],
     });
@@ -218,7 +219,12 @@ describe('Claude account usage', () => {
       description: 'Current week (Fable) usage',
       durationMinutes: 10_080,
       resetsAt: '2026-09-16T16:00:00.477Z',
+      // the part of the plan it meters, headed the way the usage page says it
+      group: { id: 'scope:fable', label: 'Fable only' },
     });
+    // the plan's own windows belong to no group
+    expect(snapshot.metrics[0]!.group).toBeUndefined();
+    expect(snapshot.metrics[1]!.group).toBeUndefined();
   });
 
   it('supports structured-only limits with stable identities independent of array order', () => {
@@ -234,6 +240,12 @@ describe('Claude account usage', () => {
     ];
     const metrics = normalizeClaudeAccountUsage({ limits }).metrics;
     expect(metrics.map(({ label }) => label)).toEqual(['5H', '7D', 'FABLE 5.1 / CLAUDE CODE', 'FABLE 5.1']);
+    expect(metrics.map(({ group }) => group?.label)).toEqual([
+      undefined,
+      undefined,
+      'Fable 5.1 in Claude Code',
+      'Fable 5.1 only',
+    ]);
     expect(new Set(metrics.map(({ id }) => id)).size).toBe(4);
     expect(normalizeClaudeAccountUsage({ limits: [...limits].reverse() }).metrics).toEqual(metrics);
   });
@@ -250,6 +262,8 @@ describe('Claude account usage', () => {
       { label: 'FABLE', usedPercent: 20 },
       { label: 'SONNET', usedPercent: 20 },
     ]);
+    // the legacy field and the structured limit name the same part of the plan
+    expect(snapshot.metrics[1]!.group).toEqual({ id: 'scope:sonnet', label: 'Sonnet only' });
   });
 
   it('omits disabled budgets, unknown backend counters, and unnamed structured limits', () => {

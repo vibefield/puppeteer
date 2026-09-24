@@ -31,6 +31,24 @@ export const AccountUsageMetricKindSchema = z.enum(['window', 'budget']);
 export type AccountUsageMetricKind = z.infer<typeof AccountUsageMetricKindSchema>;
 
 /**
+ * The part of a plan a meter measures when it is not the whole plan: a model
+ * family ("Claude and GPT models") or an allowance of its own ("Luna Reserve"),
+ * named as the provider names it. Meters that share a group id are one family;
+ * a consumer may head them with `label` and name each by its window alone.
+ */
+export const AccountUsageMetricGroupSchema = z.strictObject({
+  id: NonEmptyStringSchema,
+  label: NonEmptyStringSchema,
+  /**
+   * An allowance the provider draws on only after the plan's own limits run
+   * out. Untouched, it says nothing about the plan, so a consumer may keep it
+   * out of sight until it is used or those limits are spent.
+   */
+  standby: z.literal(true).optional(),
+});
+export type AccountUsageMetricGroup = z.infer<typeof AccountUsageMetricGroupSchema>;
+
+/**
  * One adapter-normalized meter, already named and ordered for a generic
  * consumer. The id is opaque outside the adapter; consumers render `label`
  * and preserve array order.
@@ -48,6 +66,8 @@ export const AccountUsageMetricSchema = z.strictObject({
   durationMinutes: PositiveSafeIntegerSchema.optional(),
   startsAt: TimestampSchema.optional(),
   resetsAt: TimestampSchema.optional(),
+  /** Absent for the plan's own meters; `label` stays unique across groups. */
+  group: AccountUsageMetricGroupSchema.optional(),
 });
 export type AccountUsageMetric = z.infer<typeof AccountUsageMetricSchema>;
 

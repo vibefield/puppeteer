@@ -127,6 +127,7 @@ describe('Antigravity account usage', () => {
           usedPercent: 26,
           durationMinutes: 300,
           resetsAt: '2026-07-01T12:00:00.000Z',
+          group: { id: 'gemini-models', label: 'Gemini models' },
         },
         {
           id: 'gemini-weekly:window',
@@ -136,6 +137,7 @@ describe('Antigravity account usage', () => {
           usedPercent: 6.22,
           durationMinutes: 10_080,
           resetsAt: '2026-07-06T07:50:32.000Z',
+          group: { id: 'gemini-models', label: 'Gemini models' },
         },
         {
           id: '3p-5h:window',
@@ -145,6 +147,7 @@ describe('Antigravity account usage', () => {
           usedPercent: 50,
           durationMinutes: 300,
           resetsAt: '2026-09-12T04:11:22.000Z',
+          group: { id: 'claude-and-gpt-models', label: 'Claude and GPT models' },
         },
         {
           id: '3p-weekly:window',
@@ -154,6 +157,7 @@ describe('Antigravity account usage', () => {
           usedPercent: 0,
           durationMinutes: 10_080,
           resetsAt: '2026-09-18T23:11:22.000Z',
+          group: { id: 'claude-and-gpt-models', label: 'Claude and GPT models' },
         },
       ],
     });
@@ -188,6 +192,11 @@ describe('Antigravity account usage', () => {
     expect(snapshot?.metrics.map(({ label, usedPercent }) => ({ label, usedPercent }))).toEqual([
       { label: '5H', usedPercent: 25.9 },
       { label: '7D', usedPercent: 6.22 },
+    ]);
+    // the map has bucket ids only: the documented family is still named
+    expect(snapshot?.metrics.map(({ group }) => group)).toEqual([
+      { id: 'gemini-models', label: 'Gemini models' },
+      { id: 'gemini-models', label: 'Gemini models' },
     ]);
   });
 

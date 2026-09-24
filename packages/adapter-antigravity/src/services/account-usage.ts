@@ -21,6 +21,7 @@ import type {
   AccountUsageCredits,
   AccountUsageFetchResult,
   AccountUsageMetric,
+  AccountUsageMetricGroup,
   AccountUsageProvider,
   AccountUsageService,
   AccountUsageSnapshot,
@@ -101,6 +102,21 @@ function familyPrefix(id: string, groupName: string | undefined): string | undef
   return raw ? raw.toUpperCase() : undefined;
 }
 
+/**
+ * Antigravity's model groups: each shares a 5-hour and a weekly limit of its
+ * own. `/usage` names them ("Gemini Models", "Claude and GPT models"); the
+ * status-line map has only bucket ids, so the two documented families are
+ * named from those.
+ */
+function bucketGroup(id: string, groupName: string | undefined): AccountUsageMetricGroup | undefined {
+  const named = groupName?.replace(/\bModels\b/, 'models');
+  const label =
+    named ?? (id.startsWith('gemini') ? 'Gemini models' : id.startsWith('3p') ? 'Claude and GPT models' : undefined);
+  if (label === undefined) return undefined;
+  // keyed by its name, so either source files a bucket under the same family
+  return { id: label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'), label };
+}
+
 function usedPercentFromRemaining(remaining: number): number | undefined {
   if (!Number.isFinite(remaining) || remaining < 0) return undefined;
   const used = remaining <= 1 ? (1 - remaining) * 100 : remaining <= 100 ? 100 - remaining : Number.NaN;
@@ -143,6 +159,7 @@ function normalizeBucket(
   const rank = (prefix ? 40 : 0) + (window.durationMinutes === 300 ? 0 : window.durationMinutes === 10_080 ? 20 : 30);
   const description = groupDescription ?? groupName ?? `${id} ${window.label} usage`;
   const reset = resetsAt(bucket, now);
+  const group = bucketGroup(id, groupName);
   return {
     rank,
     metric: {
@@ -153,6 +170,7 @@ function normalizeBucket(
       usedPercent,
       durationMinutes: window.durationMinutes,
       ...(reset ? { resetsAt: reset } : {}),
+      ...(group ? { group } : {}),
     },
   };
 }

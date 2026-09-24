@@ -2,6 +2,7 @@ import type {
   AccountUsageCredits,
   AccountUsageFetchResult,
   AccountUsageMetric,
+  AccountUsageMetricGroup,
   AccountUsageProvider,
   AccountUsageService,
   AccountUsageSnapshot,
@@ -65,6 +66,28 @@ function specializedLimitLabel(id: string, name: string | undefined): string | u
   return compactLabel(name ?? id) || 'LIMIT';
 }
 
+/**
+ * What a limit other than the plan's own is called where no backend name says
+ * more than its id. `gpt-reserve` is the allowance OpenAI calls Luna Reserve
+ * (GPT-5.6 Luna only, for some personal Plus and Pro accounts).
+ */
+const KNOWN_LIMIT_NAMES: Readonly<Record<string, string>> = { 'gpt-reserve': 'Luna Reserve' };
+/** An allowance drawn on only once the plan's own limits run out. */
+const RESERVE_LIMIT = /(^|[\s_-])reserve$/i;
+
+/** The part of the plan a non-base limit meters, in its own words: the backend's name, else a known one. */
+function limitGroup(id: string, name: string | undefined): AccountUsageMetricGroup | undefined {
+  if (id === 'codex') return undefined;
+  const known = KNOWN_LIMIT_NAMES[id];
+  // a backend name that only respells the id ("GPT Reserve" for `gpt-reserve`) gives way to the known one
+  const respells = name !== undefined && compactLabel(name) === compactLabel(id);
+  const words = compactLabel(id).toLowerCase();
+  const label =
+    (known !== undefined && (name === undefined || respells) ? known : name) ??
+    (words ? `${words[0]!.toUpperCase()}${words.slice(1)}` : id);
+  return { id, label, ...(RESERVE_LIMIT.test(id) || RESERVE_LIMIT.test(name ?? '') ? { standby: true as const } : {}) };
+}
+
 function windowDurationLabel(minutes: number | undefined): string | undefined {
   if (minutes === undefined || !Number.isSafeInteger(minutes) || minutes <= 0) return undefined;
   if (minutes % 1440 === 0) return `${minutes / 1440}D`;
@@ -93,6 +116,7 @@ function normalizeWindow(
   // Keep the base account limits first. A model-specific short window must
   // retain its model name and must not occupy the base account's 5H ring.
   const rank = (specialized ? 40 : 0) + (duration === 300 ? 0 : duration === 10_080 ? 20 : 30) + providerOrder / 100;
+  const group = limitGroup(limitId, limitName);
   return {
     rank,
     metric: {
@@ -103,6 +127,7 @@ function normalizeWindow(
       usedPercent,
       ...(period ? { durationMinutes: duration! } : {}),
       ...(resetsAt ? { resetsAt } : {}),
+      ...(group ? { group } : {}),
     },
   };
 }

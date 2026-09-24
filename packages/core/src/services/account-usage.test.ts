@@ -28,6 +28,34 @@ describe('account usage contracts', () => {
     ).toMatchObject({ label: '5H', usedPercent: 12.5 });
   });
 
+  it('names the part of a plan a meter measures, and marks an allowance held in standby', () => {
+    const snapshot = AccountUsageSnapshotSchema.parse({
+      provider: 'example',
+      fetchedAt: '2026-08-26T12:00:00.000Z',
+      scope: 'subscription',
+      source: { kind: 'native-protocol', stability: 'documented' },
+      metrics: [
+        { id: 'plan', label: '7D', kind: 'window', usedPercent: 25, durationMinutes: 10_080 },
+        {
+          id: 'reserve',
+          label: 'RESERVE 7D',
+          kind: 'window',
+          usedPercent: 0,
+          durationMinutes: 10_080,
+          group: { id: 'reserve', label: 'Luna Reserve', standby: true },
+        },
+      ],
+    });
+    expect(snapshot.metrics[0]!.group).toBeUndefined();
+    expect(snapshot.metrics[1]!.group).toEqual({ id: 'reserve', label: 'Luna Reserve', standby: true });
+    // standby is a mark, not a switch: only `true` is written
+    const falseStandby = {
+      ...snapshot,
+      metrics: [{ ...snapshot.metrics[1]!, group: { id: 'reserve', label: 'Luna Reserve', standby: false } }],
+    };
+    expect(AccountUsageSnapshotSchema.safeParse(falseStandby).success).toBe(false);
+  });
+
   it('rejects malformed timestamps and duplicate metric ids at the boundary', () => {
     const base = {
       provider: 'example',

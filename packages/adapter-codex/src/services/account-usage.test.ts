@@ -106,6 +106,7 @@ describe('Codex account usage', () => {
           usedPercent: 7,
           durationMinutes: 10_080,
           resetsAt: '2027-01-22T08:00:00.000Z',
+          group: { id: 'codex_spark', label: 'Codex Spark' },
         },
       ],
     });
@@ -140,6 +141,55 @@ describe('Codex account usage', () => {
     ]);
     expect(snapshot.metrics[1]?.description).toBe('GPT-5.3-Codex-Spark 5H usage');
     expect(snapshot.metrics[2]?.description).toBe('GPT-5.3-Codex-Spark 7D usage');
+    // both Spark windows are one part of the plan, named as the backend names it; the base limit is the plan
+    expect(snapshot.metrics.map((metric) => metric.group)).toEqual([
+      undefined,
+      { id: 'codex_bengalfox', label: 'GPT-5.3-Codex-Spark' },
+      { id: 'codex_bengalfox', label: 'GPT-5.3-Codex-Spark' },
+    ]);
+  });
+
+  it('names the reserve Luna Reserve and holds it in standby: it is spent only after the plan runs out', () => {
+    // The shape James's Pro account reads (2026-09-24): a weekly base limit and a weekly `gpt-reserve`.
+    const snapshot = normalizeCodexAccountUsage({
+      rateLimitsByLimitId: {
+        codex: { limitId: 'codex', primary: { usedPercent: 25, windowDurationMins: 10_080 } },
+        'gpt-reserve': {
+          limitId: 'gpt-reserve',
+          limitName: null,
+          primary: { usedPercent: 0, windowDurationMins: 10_080 },
+        },
+      },
+    });
+    expect(snapshot.metrics.map(({ label, group }) => ({ label, group }))).toEqual([
+      { label: '7D', group: undefined },
+      { label: 'GPT RESERVE 7D', group: { id: 'gpt-reserve', label: 'Luna Reserve', standby: true } },
+    ]);
+    // a backend name that only respells the id says no more than it; a real one is kept
+    const respelled = normalizeCodexAccountUsage({
+      rateLimitsByLimitId: {
+        'gpt-reserve': {
+          limitId: 'gpt-reserve',
+          limitName: 'GPT Reserve',
+          primary: { usedPercent: 3, windowDurationMins: 10_080 },
+        },
+      },
+    });
+    expect(respelled.metrics[0]?.group).toEqual({ id: 'gpt-reserve', label: 'Luna Reserve', standby: true });
+    const renamed = normalizeCodexAccountUsage({
+      rateLimitsByLimitId: {
+        'gpt-reserve': {
+          limitId: 'gpt-reserve',
+          limitName: 'Luna Reserve (GPT-5.6 Luna)',
+          primary: { usedPercent: 3, windowDurationMins: 10_080 },
+        },
+      },
+    });
+    expect(renamed.metrics[0]?.group).toEqual({
+      id: 'gpt-reserve',
+      label: 'Luna Reserve (GPT-5.6 Luna)',
+      standby: true,
+    });
   });
 
   it.each([
@@ -159,6 +209,10 @@ describe('Codex account usage', () => {
       },
     });
     expect(snapshot.metrics.map((metric) => metric.label)).toEqual([`${label} 5H`, `${label} 7D`]);
+    // a bucket the plan does not name is still one part of it, never in standby
+    expect(new Set(snapshot.metrics.map((metric) => JSON.stringify(metric.group))).size).toBe(1);
+    expect(snapshot.metrics[0]?.group?.id).toBe(limitId);
+    expect(snapshot.metrics[0]?.group?.standby).toBeUndefined();
   });
 
   it.each([

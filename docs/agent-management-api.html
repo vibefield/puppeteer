@@ -2094,12 +2094,18 @@ const resumed = await runtime.resume({
                 </tbody>
               </table>
             </div>
-            <pre><code data-source="packages/core/src/services/account-usage.ts" data-types="AccountUsageScope,AccountUsageMetricKind,AccountUsageSource,AccountUsageMetric,AccountUsageCredits,AccountUsageSnapshot,AccountUsageAvailable,AccountUsageFailure,AccountUsageFetchResult,AccountUsageProvider">type AccountUsageScope = 'subscription' | 'api' | 'workspace' | 'unknown';
+            <pre><code data-source="packages/core/src/services/account-usage.ts" data-types="AccountUsageScope,AccountUsageMetricKind,AccountUsageSource,AccountUsageMetricGroup,AccountUsageMetric,AccountUsageCredits,AccountUsageSnapshot,AccountUsageAvailable,AccountUsageFailure,AccountUsageFetchResult,AccountUsageProvider">type AccountUsageScope = 'subscription' | 'api' | 'workspace' | 'unknown';
 type AccountUsageMetricKind = 'window' | 'budget';
 
 interface AccountUsageSource {
   kind: 'native-protocol' | 'native-statusline' | 'oauth-endpoint';
   stability: 'documented' | 'experimental';
+}
+
+interface AccountUsageMetricGroup {
+  id: string;
+  label: string;
+  standby?: true;
 }
 
 interface AccountUsageMetric {
@@ -2111,6 +2117,7 @@ interface AccountUsageMetric {
   durationMinutes?: number;
   startsAt?: string;
   resetsAt?: string;
+  group?: AccountUsageMetricGroup;
 }
 
 interface AccountUsageCredits {
@@ -2165,6 +2172,18 @@ interface AccountUsageProvider {
                     <td>
                       Preserve adapter-ranked order and render the supplied label. Metric IDs are opaque; duplicate IDs
                       are rejected by the schema.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Groups</td>
+                    <td>
+                      A metric that meters part of the plan names that part in <code>group</code>, in the provider’s
+                      words: a model family (Antigravity’s “Gemini models”, “Claude and GPT models”; Claude’s “Fable
+                      only”) or an allowance of its own (Codex’s “Luna Reserve”, <code>gpt-reserve</code>). Metrics
+                      sharing a group id are one family; a view may head them with the group’s label and name each by
+                      its window. <code>label</code> stays unique across groups. <code>standby</code> marks an
+                      allowance drawn on only after the plan’s own limits run out; untouched, a view may keep it out of
+                      sight.
                     </td>
                   </tr>
                   <tr>

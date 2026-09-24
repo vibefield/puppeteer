@@ -8,6 +8,7 @@ import type {
   AccountUsageAvailable,
   AccountUsageFetchResult,
   AccountUsageMetric,
+  AccountUsageMetricGroup,
   AccountUsageProvider,
   AccountUsageService,
   AccountUsageSnapshot,
@@ -377,6 +378,20 @@ interface RankedMetric {
   rank: number;
 }
 
+/** A scoped weekly window meters part of the plan: one model, one surface, or both. */
+function scopedGroup(key: string, label: string): AccountUsageMetricGroup {
+  return { id: `scope:${key}`, label };
+}
+
+/** The legacy per-model fields: `seven_day_opus` meters Opus alone, `seven_day_oauth_apps` the OAuth apps. */
+function legacyGroup(id: string): AccountUsageMetricGroup | undefined {
+  if (!LEGACY_USAGE_WINDOWS.has(id) || !id.startsWith('seven_day_')) return undefined;
+  const key = id.slice('seven_day_'.length);
+  if (key === 'oauth_apps') return scopedGroup(key, 'OAuth apps');
+  const name = key.replaceAll('_', ' ');
+  return scopedGroup(key, `${name[0]!.toUpperCase()}${name.slice(1)} only`);
+}
+
 function normalizeWindow(id: string, value: unknown, group = 'subscription'): RankedMetric | undefined {
   const window = rec(value);
   if (!window) return undefined;
@@ -392,6 +407,7 @@ function normalizeWindow(id: string, value: unknown, group = 'subscription'): Ra
   const durationMinutes = windowDurationMinutes(id);
   const name = firstString(window, ['display_name', 'label', 'name']);
   const metricId = group === 'subscription' ? `${group}:${id}:window` : `${group}:window`;
+  const part = group === 'subscription' ? legacyGroup(id) : undefined;
   return {
     rank: metricRank(id, 'window'),
     metric: {
@@ -402,6 +418,7 @@ function normalizeWindow(id: string, value: unknown, group = 'subscription'): Ra
       usedPercent,
       ...(durationMinutes !== undefined ? { durationMinutes } : {}),
       ...(resetsAt ? { resetsAt } : {}),
+      ...(part ? { group: part } : {}),
     },
   };
 }
@@ -502,13 +519,19 @@ function normalizeStructuredWindow(value: unknown): RankedMetric | undefined {
   const surface = firstString(rec(scope?.surface) ?? {}, ['display_name']);
   if (!model && !surface) return undefined;
   const scopeKey = (name: string): string => encodeURIComponent(name.toLowerCase());
-  const id = `seven_day_${model ? scopeKey(model) : ''}${surface ? `:surface:${scopeKey(surface)}` : ''}`;
-  const normalized = normalizeWindow(id, limit);
+  const key = `${model ? scopeKey(model) : ''}${surface ? `:surface:${scopeKey(surface)}` : ''}`;
+  const normalized = normalizeWindow(`seven_day_${key}`, limit);
   if (!normalized) return undefined;
   const name = [model, surface].filter(Boolean).join(' / ');
+  const part = scopedGroup(key, model && surface ? `${model} in ${surface}` : `${model ?? surface} only`);
   return {
     ...normalized,
-    metric: { ...normalized.metric, label: name.toUpperCase(), description: `Current week (${name}) usage` },
+    metric: {
+      ...normalized.metric,
+      label: name.toUpperCase(),
+      description: `Current week (${name}) usage`,
+      group: part,
+    },
   };
 }
 
