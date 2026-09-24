@@ -8,9 +8,6 @@
  * never writes `~/.kimi-code/credentials` or rotates a refresh token.
  */
 
-import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import type {
   AccountUsageCredits,
   AccountUsageFetchResult,
@@ -21,12 +18,16 @@ import type {
   AccountUsageSource,
   AgentProfile,
 } from '@vibecook/puppeteer-core';
-import { KIMI_PROFILE_ROOT_VARIABLE } from './profiles.js';
+import {
+  KIMI_CODE_DEFAULT_BASE_URL,
+  getKimiCodeDocument,
+  kimiCodeCredentialPath,
+  readKimiCodeCredential,
+  resolveKimiCodeBaseUrl,
+} from '../transport/managed-platform.js';
+import { kimiCredentialRoot } from './profiles.js';
 
-export const KIMI_USAGE_ENDPOINT = 'https://api.kimi.com/coding/v1/usages';
-export const KIMI_CODE_BASE_URL_VARIABLE = 'KIMI_CODE_BASE_URL';
-const CREDENTIALS_FILE = 'kimi-code.json';
-const TOKEN_EXPIRY_SKEW_MS = 60_000;
+export const KIMI_USAGE_ENDPOINT = `${KIMI_CODE_DEFAULT_BASE_URL}/usages`;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const OAUTH_SOURCE: AccountUsageSource = { kind: 'oauth-endpoint', stability: 'documented' };
 
@@ -51,73 +52,6 @@ const finite = (value: unknown): number | undefined => {
   return undefined;
 };
 
-function kimiHome(env: NodeJS.ProcessEnv = process.env): string {
-  const configured = env[KIMI_PROFILE_ROOT_VARIABLE]?.trim();
-  if (configured)
-    return configured === '~'
-      ? homedir()
-      : configured.startsWith('~/')
-        ? join(homedir(), configured.slice(2))
-        : configured;
-  return join(homedir(), '.kimi-code');
-}
-
-export function kimiCredentialsPath(env: NodeJS.ProcessEnv = process.env, credentialsPath?: string): string {
-  if (credentialsPath) {
-    return credentialsPath === '~'
-      ? homedir()
-      : credentialsPath.startsWith('~/')
-        ? join(homedir(), credentialsPath.slice(2))
-        : credentialsPath;
-  }
-  return join(kimiHome(env), 'credentials', CREDENTIALS_FILE);
-}
-
-export function kimiUsageUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const base = env[KIMI_CODE_BASE_URL_VARIABLE]?.trim().replace(/\/+$/, '');
-  return base ? `${base}/usages` : KIMI_USAGE_ENDPOINT;
-}
-
-export interface KimiCredentialOptions {
-  env?: NodeJS.ProcessEnv | undefined;
-  credentialsPath?: string | undefined;
-  now?: (() => Date) | undefined;
-}
-
-function expiresAtMs(value: unknown): number | undefined {
-  const numeric = finite(value);
-  if (numeric === undefined || numeric < 0) return undefined;
-  return numeric > 10_000_000_000 ? numeric : numeric * 1_000;
-}
-
-export function findKimiAccessToken(value: unknown, nowMs = Date.now()): string | undefined {
-  const document = rec(value);
-  if (!document) return undefined;
-  const token = str(document.access_token) ?? str(document.accessToken);
-  if (!token) return undefined;
-  const expiresAt = expiresAtMs(document.expires_at ?? document.expiresAt);
-  if (expiresAt !== undefined && expiresAt <= nowMs + TOKEN_EXPIRY_SKEW_MS) return undefined;
-  return token;
-}
-
-export async function resolveKimiAccessToken(options: KimiCredentialOptions = {}): Promise<string | undefined> {
-  const env = options.env ?? process.env;
-  const path = kimiCredentialsPath(env, options.credentialsPath);
-  let raw: string;
-  try {
-    raw = await readFile(path, 'utf8');
-  } catch {
-    return undefined;
-  }
-  let document: unknown;
-  try {
-    document = JSON.parse(raw) as unknown;
-  } catch {
-    return undefined;
-  }
-  return findKimiAccessToken(document, (options.now ?? (() => new Date()))().valueOf());
-}
-
 function isoTimestamp(value: unknown): string | undefined {
   if (typeof value !== 'string' || !value.trim()) return undefined;
   const parsed = Date.parse(value);
@@ -125,7 +59,7 @@ function isoTimestamp(value: unknown): string | undefined {
   return new Date(parsed).toISOString();
 }
 
-function retryAtFromHeader(value: string | null, now: Date): string | undefined {
+function retryAtFromHeader(value: string | undefined, now: Date): string | undefined {
   const header = value?.trim();
   if (!header) return undefined;
   const seconds = Number(header);
@@ -134,9 +68,11 @@ function retryAtFromHeader(value: string | null, now: Date): string | undefined 
   return new Date(millis).toISOString();
 }
 
+const roundedPercent = (value: number): number => Math.round(value * 1e6) / 1e6;
+
 function usedPercent(used: number, limit: number): number | undefined {
   if (!Number.isFinite(used) || !Number.isFinite(limit) || used < 0 || limit <= 0) return undefined;
-  return Math.round((used / limit) * 100 * 1e6) / 1e6;
+  return roundedPercent((used / limit) * 100);
 }
 
 function windowFromNative(raw: unknown): { duration: number; unit: string } | undefined {
@@ -219,33 +155,9 @@ function metricFromRow(
   };
 }
 
-function fixedPointToCents(value: number): number {
-  const cents = value / 1_000_000;
-  if (cents > 0 && cents < 1) return 1;
-  return Math.round(cents);
-}
-
-function parseBoosterCredits(value: unknown): AccountUsageCredits | undefined {
-  const wallet = rec(value);
-  if (!wallet) return undefined;
-  const balance = rec(wallet.balance);
-  if (!balance || str(balance.type) !== 'BOOSTER') return undefined;
-  const amountLeft = finite(balance.amountLeft);
-  if (amountLeft === undefined || amountLeft < 0) return undefined;
-  const cents = fixedPointToCents(amountLeft);
-  const currency = str(rec(wallet.monthlyChargeLimit)?.currency) ?? str(wallet.currency) ?? 'USD';
-  return { balance: `${(cents / 100).toFixed(2)} ${currency}`, hasCredits: cents > 0 };
-}
-
-/** Normalize the documented managed `/usages` payload into ordered metrics. */
-export function normalizeKimiAccountUsage(
-  value: unknown,
-  fetchedAt = new Date().toISOString(),
-  source: AccountUsageSource = OAUTH_SOURCE,
-): AccountUsageSnapshot {
-  const body = rec(value) ?? {};
+/** The older document: a weekly `usage` summary and `limits[]` rows that carry their native window. */
+function legacyMetrics(body: Record<string, unknown>): RankedMetric[] {
   const metrics: RankedMetric[] = [];
-
   const summaryWindow = rec(body.usage) ? { duration: 1, timeUnit: 'TIME_UNIT_WEEK' } : undefined;
   const summary = metricFromRow(
     'subscription:weekly:window',
@@ -268,6 +180,129 @@ export function normalizeKimiAccountUsage(
     const metric = metricFromRow(id, detail.used, detail.limit, detail.resetTime, nativeWindow, name ?? 'Plan window');
     if (metric) metrics.push(metric);
   }
+  return metrics;
+}
+
+/**
+ * The current document's `usages` entries, in the order the CLI lists them
+ * (`quotaUsageRows` in kimi-code). Each is `used_ratio` (0–1) and `reset_time`.
+ * `limit_month_code` is not a limit of its own: the CLI draws it as Kimi Code's
+ * part of the monthly bar, so it is kept as that share, ranked just after it.
+ * The month has no stated length; thirty days is the window a meter paces by.
+ */
+const QUOTA_WINDOWS = [
+  { key: 'limit_5h', id: 'subscription:5h:window', label: '5H', description: '5-hour limit', minutes: 300, rank: 0 },
+  {
+    key: 'limit_7d',
+    id: 'subscription:weekly:window',
+    label: '7D',
+    description: 'Weekly limit',
+    minutes: 10_080,
+    rank: 20,
+  },
+  {
+    key: 'limit_month_total',
+    id: 'subscription:monthly:window',
+    label: '30D',
+    description: 'Monthly limit',
+    minutes: 43_200,
+    rank: 30,
+  },
+  {
+    key: 'limit_month_code',
+    id: 'subscription:monthly-code:window',
+    label: 'CODE',
+    description: "Kimi Code's share of the monthly limit",
+    minutes: 43_200,
+    rank: 31,
+  },
+] as const;
+
+function quotaMetrics(value: unknown): RankedMetric[] {
+  const usages = rec(value);
+  if (!usages) return [];
+  return QUOTA_WINDOWS.flatMap((window): RankedMetric[] => {
+    const entry = rec(usages[window.key]);
+    const ratio = finite(entry?.used_ratio);
+    if (ratio === undefined || ratio < 0) return [];
+    const reset = isoTimestamp(entry?.reset_time);
+    return [
+      {
+        rank: window.rank,
+        metric: {
+          id: window.id,
+          label: window.label,
+          description: window.description,
+          kind: 'window',
+          usedPercent: roundedPercent(ratio * 100),
+          durationMinutes: window.minutes,
+          ...(reset ? { resetsAt: reset } : {}),
+        },
+      },
+    ];
+  });
+}
+
+function fixedPointToCents(value: number): number {
+  const cents = value / 1_000_000;
+  if (cents > 0 && cents < 1) return 1;
+  return Math.round(cents);
+}
+
+/**
+ * The pay-as-you-go booster wallet, read as the CLI reads it: `amount` and
+ * `amountLeft` are fixed-point (a million per cent), the monthly charge limit
+ * and this month's spend are plain cents, and a wallet never funded (no
+ * positive `amount`) is no wallet. The limit becomes a budget meter only while
+ * it is switched on.
+ */
+function parseBoosterWallet(value: unknown): { credits: AccountUsageCredits; budget?: RankedMetric } | undefined {
+  const wallet = rec(value);
+  const balance = rec(wallet?.balance);
+  if (!wallet || !balance || str(balance.type) !== 'BOOSTER') return undefined;
+  const amount = finite(balance.amount);
+  if (amount === undefined || amount <= 0) return undefined;
+  const amountLeft = finite(balance.amountLeft);
+  const cents = amountLeft === undefined ? 0 : fixedPointToCents(amountLeft);
+  const chargeLimit = rec(wallet.monthlyChargeLimit);
+  const monthlyUsed = rec(wallet.monthlyUsed);
+  const currency = str(chargeLimit?.currency) ?? str(monthlyUsed?.currency) ?? str(wallet.currency) ?? 'USD';
+  const credits = { balance: `${(cents / 100).toFixed(2)} ${currency}`, hasCredits: cents > 0 };
+
+  const limitCents = finite(chargeLimit?.priceInCents);
+  const spent = usedPercent(finite(monthlyUsed?.priceInCents) ?? 0, limitCents ?? 0);
+  if (wallet.monthlyChargeLimitEnabled !== true || spent === undefined) return { credits };
+  return {
+    credits,
+    budget: {
+      rank: 70,
+      metric: {
+        id: 'booster:monthly:budget',
+        label: 'SPEND',
+        description: 'Booster spend against the monthly charge limit',
+        kind: 'budget',
+        usedPercent: spent,
+      },
+    },
+  };
+}
+
+/**
+ * Normalize the managed `/usages` payload into ordered metrics. The current
+ * document (`usages.limit_*`) wins; the older one (`usage` and `limits[]`) is
+ * read only when it yields nothing, so a document carrying both never shows one
+ * window twice.
+ */
+export function normalizeKimiAccountUsage(
+  value: unknown,
+  fetchedAt = new Date().toISOString(),
+  source: AccountUsageSource = OAUTH_SOURCE,
+): AccountUsageSnapshot {
+  const body = rec(value) ?? {};
+  const current = quotaMetrics(body.usages);
+  const metrics = current.length > 0 ? current : legacyMetrics(body);
+  const wallet = parseBoosterWallet(body.boosterWallet);
+  if (wallet?.budget) metrics.push(wallet.budget);
 
   const byId = new Map<string, RankedMetric>();
   for (const entry of metrics) {
@@ -275,7 +310,6 @@ export function normalizeKimiAccountUsage(
     if (!held || entry.rank < held.rank) byId.set(entry.metric.id, entry);
   }
 
-  const credits = parseBoosterCredits(body.boosterWallet);
   return {
     provider: 'kimi',
     fetchedAt,
@@ -284,14 +318,19 @@ export function normalizeKimiAccountUsage(
     metrics: [...byId.values()]
       .sort((left, right) => left.rank - right.rank || left.metric.id.localeCompare(right.metric.id))
       .map(({ metric }) => metric),
-    ...(credits ? { credits } : {}),
+    ...(wallet ? { credits: wallet.credits } : {}),
   };
 }
 
 export interface FetchKimiAccountUsageOptions {
   timeoutMs?: number | undefined;
+  /** Ambient environment: `KIMI_CODE_HOME` when no root is named, and `KIMI_CODE_BASE_URL`. */
   env?: NodeJS.ProcessEnv | undefined;
-  credentialsPath?: string | undefined;
+  /**
+   * The Kimi Code root to read: its credential, and the platform its config and
+   * region marker name. Absent, the root Kimi Code itself resolves.
+   */
+  root?: string | undefined;
   endpoint?: string | undefined;
   fetchImpl?: typeof fetch | undefined;
   resolveAccessToken?: (() => Promise<string | undefined>) | undefined;
@@ -306,6 +345,11 @@ function failure(
   return { status, provider: 'kimi', message, retryable };
 }
 
+const notFound = (): AccountUsageFetchResult =>
+  failure('unauthenticated', 'Kimi Code OAuth credentials were not found', false);
+const unreadable = (): AccountUsageFetchResult =>
+  failure('unavailable', 'Kimi Code OAuth credentials could not be read', true);
+
 export async function fetchKimiAccountUsage(
   options: FetchKimiAccountUsageOptions = {},
 ): Promise<AccountUsageFetchResult> {
@@ -315,85 +359,69 @@ export async function fetchKimiAccountUsage(
   }
 
   const env = options.env ?? process.env;
-  let token: string | undefined;
-  try {
-    token = options.resolveAccessToken
-      ? await options.resolveAccessToken()
-      : await resolveKimiAccessToken({
-          env,
-          credentialsPath: options.credentialsPath,
-          now: options.now,
-        });
-  } catch {
-    return failure('unavailable', 'Kimi Code OAuth credentials could not be read', true);
-  }
-  if (!token) {
-    return failure('unauthenticated', 'Kimi Code OAuth credentials were not found', false);
+  const now = options.now ?? (() => new Date());
+  const root = options.root ?? kimiCredentialRoot(undefined, env);
+  let token: string;
+  if (options.resolveAccessToken) {
+    let resolved: string | undefined;
+    try {
+      resolved = await options.resolveAccessToken();
+    } catch {
+      return unreadable();
+    }
+    if (!resolved) return notFound();
+    token = resolved;
+  } else {
+    const credential = await readKimiCodeCredential(kimiCodeCredentialPath(root), now().valueOf());
+    if (credential.state === 'signed-out') return notFound();
+    // A signed-in root whose fifteen-minute token lapsed while Kimi Code was
+    // closed is not a root that needs a sign-in.
+    if (credential.state === 'expired') {
+      return failure('unavailable', "Kimi Code's access token has expired; Kimi Code renews it while it runs", true);
+    }
+    if (credential.state === 'unreadable') return unreadable();
+    token = credential.accessToken;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  timer.unref?.();
-  try {
-    const response = await (options.fetchImpl ?? fetch)(options.endpoint ?? kimiUsageUrl(env), {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      signal: controller.signal,
-    });
-    if (response.status === 401 || response.status === 403) {
+  const url = options.endpoint ?? `${await resolveKimiCodeBaseUrl(root, env)}/usages`;
+  const response = await getKimiCodeDocument(url, token, { timeoutMs, fetchImpl: options.fetchImpl });
+  if (response.status === 'failed') {
+    return failure('unavailable', 'Kimi account usage request could not be completed', true);
+  }
+  if (response.status === 'invalid-json') {
+    return failure('unavailable', 'Kimi account usage returned invalid JSON', true);
+  }
+  if (response.status === 'http-error') {
+    if (response.httpStatus === 401 || response.httpStatus === 403) {
       return failure('unauthenticated', 'Kimi Code OAuth credentials were rejected', false);
     }
-    if (!response.ok) {
-      const retryable = response.status === 429 || response.status >= 500;
-      const retryAt = retryable
-        ? retryAtFromHeader(response.headers.get('retry-after'), (options.now ?? (() => new Date()))())
-        : undefined;
-      return {
-        status: 'unavailable',
-        provider: 'kimi',
-        message: `Kimi account usage request failed with HTTP ${response.status}`,
-        retryable,
-        ...(response.status === 429 ? { code: 'rate-limited' as const } : {}),
-        ...(retryAt ? { retryAt } : {}),
-      };
-    }
-    const text = await response.text();
-    let body: unknown;
-    try {
-      body = JSON.parse(text) as unknown;
-    } catch {
-      return failure('unavailable', 'Kimi account usage returned invalid JSON', true);
-    }
-    const snapshot = normalizeKimiAccountUsage(body, (options.now ?? (() => new Date()))().toISOString());
-    if (snapshot.metrics.length === 0 && !snapshot.credits) {
-      return failure('unavailable', 'Kimi returned no account usage limits', true);
-    }
-    return { status: 'available', snapshot };
-  } catch {
-    return failure('unavailable', 'Kimi account usage request could not be completed', true);
-  } finally {
-    clearTimeout(timer);
+    const retryable = response.httpStatus === 429 || response.httpStatus >= 500;
+    const retryAt = retryable ? retryAtFromHeader(response.retryAfter, now()) : undefined;
+    return {
+      status: 'unavailable',
+      provider: 'kimi',
+      message: `Kimi account usage request failed with HTTP ${response.httpStatus}`,
+      retryable,
+      ...(response.httpStatus === 429 ? { code: 'rate-limited' as const } : {}),
+      ...(retryAt ? { retryAt } : {}),
+    };
   }
-}
-
-function credentialOptionsForProfile(profile: AgentProfile | undefined): KimiCredentialOptions {
-  if (!profile || profile.kind !== 'managed') return {};
-  const env = { ...process.env };
-  delete env[KIMI_PROFILE_ROOT_VARIABLE];
-  return {
-    env,
-    credentialsPath: join(profile.dataRoot, 'credentials', CREDENTIALS_FILE),
-  };
+  const snapshot = normalizeKimiAccountUsage(response.body, now().toISOString());
+  if (snapshot.metrics.length === 0 && !snapshot.credits) {
+    return failure('unavailable', 'Kimi returned no account usage limits', true);
+  }
+  return { status: 'available', snapshot };
 }
 
 export async function fetchKimiAccountUsageForProfile(
   profile?: AgentProfile,
   options: FetchKimiAccountUsageOptions = {},
 ): Promise<AccountUsageFetchResult> {
-  const bound = credentialOptionsForProfile(profile);
+  // A managed profile reads its own root whatever the options name; the native
+  // default reads the root Kimi Code resolves, as `kimiCredentialRoot` says.
   const result = await fetchKimiAccountUsage({
     ...options,
-    ...(bound.credentialsPath ? { credentialsPath: bound.credentialsPath, env: bound.env } : {}),
+    ...(profile?.kind === 'managed' ? { root: profile.dataRoot } : {}),
   });
   if (!profile || result.status !== 'available') return result;
   return { ...result, snapshot: { ...result.snapshot, profileId: profile.id } };

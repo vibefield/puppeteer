@@ -9,7 +9,11 @@ import {
   ProfileProviderSchema,
   ProfileSetIdSchema,
   ProfileSetSchema,
+  ProfileSignInRouteSchema,
+  ProfileSignInSchema,
   ProfileSupportSchema,
+  SignInServiceIdSchema,
+  SignInServiceSchema,
 } from './profiles.js';
 
 describe('account profile contracts', () => {
@@ -143,5 +147,136 @@ describe('account profile contracts', () => {
     });
     expect(profile.set).toBe('work');
     expect(AgentProfileSchema.safeParse({ ...profile, set: 'Work' }).success).toBe(false);
+  });
+});
+
+describe('sign-in contracts', () => {
+  const inUse = {
+    service: { id: 'example', label: 'Example' },
+    method: 'oauth',
+    subscription: true,
+    inUse: true,
+    account: 'person',
+    email: 'person@example.com',
+    plan: 'Pro',
+  };
+  const other = { service: { id: 'other-cloud', label: 'Other Cloud' }, method: 'api-key' };
+  const read = {
+    verifiedAt: '2026-09-23T12:00:00.000Z',
+    source: { kind: 'native-protocol', stability: 'experimental' },
+  } as const;
+
+  it('lists every sign-in a root holds and repeats the in-use one at the top level', () => {
+    const identity = ProfileIdentitySchema.parse({
+      loggedIn: true,
+      method: 'oauth',
+      account: 'person',
+      email: 'person@example.com',
+      plan: 'Pro',
+      signIns: [inUse, other],
+      ...read,
+    });
+    expect(identity.signIns?.map((signIn) => signIn.service.id)).toEqual(['example', 'other-cloud']);
+    expect(identity.account).toBe('person');
+    // A vendor agent's single sign-in names its account without a list.
+    expect(ProfileIdentitySchema.safeParse({ loggedIn: true, account: 'person', ...read }).success).toBe(true);
+  });
+
+  it('keeps loggedIn and the list in agreement, with at most one sign-in in use', () => {
+    // A harness with nothing signed in says so with an empty list.
+    expect(ProfileIdentitySchema.safeParse({ loggedIn: false, signIns: [], ...read }).success).toBe(true);
+    expect(ProfileIdentitySchema.safeParse({ loggedIn: true, signIns: [], ...read }).success).toBe(false);
+    expect(ProfileIdentitySchema.safeParse({ loggedIn: false, signIns: [other], ...read }).success).toBe(false);
+    // Sign-ins with none in use are still signed in.
+    expect(ProfileIdentitySchema.safeParse({ loggedIn: true, signIns: [other], ...read }).success).toBe(true);
+    const twoInUse = { loggedIn: true, signIns: [inUse, { ...other, inUse: true }], ...read };
+    expect(ProfileIdentitySchema.safeParse(twoInUse).success).toBe(false);
+    expect(ProfileIdentitySchema.safeParse({ ...twoInUse, signIns: [inUse, { ...other, inUse: false }] }).success).toBe(
+      true,
+    );
+    // The rules hold wherever an identity travels, a stored profile included.
+    expect(
+      AgentProfileSchema.safeParse({
+        id: 'profile-1',
+        provider: 'example',
+        label: 'Work',
+        kind: 'managed',
+        dataRoot: '/home/user/.puppeteer/profiles/work/example-profile1',
+        createdAt: '2026-09-23T09:00:00.000Z',
+        identity: twoInUse,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('gives a token no field to live in, on a sign-in or on its service', () => {
+    expect(ProfileSignInSchema.safeParse(other).success).toBe(true);
+    for (const field of ['accessToken', 'refreshToken', 'token', 'key', 'apiKey', 'secret']) {
+      expect(ProfileSignInSchema.safeParse({ ...other, [field]: 'sk-secret' }).success, field).toBe(false);
+    }
+    expect(ProfileSignInSchema.safeParse({ ...other, service: { ...other.service, key: 'sk-secret' } }).success).toBe(
+      false,
+    );
+    expect(
+      ProfileIdentitySchema.safeParse({ loggedIn: true, signIns: [{ ...other, token: 'sk-secret' }], ...read }).success,
+    ).toBe(false);
+    // A sign-in says how it signs in, to a service a person can name.
+    expect(ProfileSignInSchema.safeParse({ service: other.service }).success).toBe(false);
+    expect(ProfileSignInSchema.safeParse({ ...other, method: ' ' }).success).toBe(false);
+    expect(SignInServiceSchema.safeParse({ id: 'example', label: ' ' }).success).toBe(false);
+    expect(SignInServiceSchema.safeParse({ id: 'example', label: 'x'.repeat(65) }).success).toBe(false);
+  });
+
+  it('shares service ids across adapters under one grammar', () => {
+    const canonical = [
+      'anthropic',
+      'openai',
+      'xai',
+      'kimi',
+      'google',
+      'github',
+      'nous',
+      'opencode',
+      'openrouter',
+      'meta',
+    ];
+    for (const id of canonical) expect(SignInServiceIdSchema.safeParse(id).success, id).toBe(true);
+    // An unlisted native id passes through where it already fits.
+    for (const id of ['github-copilot', 'amazon.bedrock', 'custom_llm', 'x', 'a'.repeat(64)]) {
+      expect(SignInServiceIdSchema.safeParse(id).success, id).toBe(true);
+    }
+    for (const id of ['', 'OpenAI', 'open ai', 'open/ai', '-openai', 'openai-', '.openai', '_openai', 'a'.repeat(65)]) {
+      expect(SignInServiceIdSchema.safeParse(id).success, id).toBe(false);
+    }
+  });
+
+  it('declares sign-in routes as menu items the runtime can check, never as commands', () => {
+    const support = { supported: true, identity: 'native-protocol', sharedSurfaces: [] } as const;
+    const routes = [
+      { id: 'portal', label: 'Example Portal', service: { id: 'example', label: 'Example' } },
+      { id: 'another-provider', label: 'Another provider…' },
+    ];
+    expect(
+      ProfileProviderSchema.parse({
+        id: 'example-harness',
+        label: 'Example Harness',
+        support: { ...support, service: { id: 'example', label: 'Example' }, signInRoutes: routes },
+      }).support.signInRoutes,
+    ).toEqual(routes);
+    // Absent is one login; an empty list is not a way to say it, and seventeen is not a menu.
+    expect(ProfileSupportSchema.safeParse({ ...support, signInRoutes: [] }).success).toBe(false);
+    const seventeen = Array.from({ length: 17 }, (_, index) => ({ id: `route-${index}`, label: `Route ${index}` }));
+    expect(ProfileSupportSchema.safeParse({ ...support, signInRoutes: seventeen }).success).toBe(false);
+    // One id names one route.
+    const twice = [routes[0], { ...routes[1], id: 'portal' }];
+    expect(ProfileSupportSchema.safeParse({ ...support, signInRoutes: twice }).success).toBe(false);
+    // The adapter builds the command from the id; nothing else rides along.
+    expect(ProfileSignInRouteSchema.safeParse({ ...routes[1], args: ['auth', 'login'] }).success).toBe(false);
+    for (const id of ['', 'Portal', '-portal', 'por tal', 'por_tal', 'a'.repeat(33)]) {
+      expect(ProfileSignInRouteSchema.safeParse({ ...routes[1], id }).success, id).toBe(false);
+    }
+    expect(ProfileSignInRouteSchema.safeParse({ ...routes[1], label: ' ' }).success).toBe(false);
+    expect(
+      ProfileSignInRouteSchema.safeParse({ ...routes[0], service: { id: 'Example', label: 'Example' } }).success,
+    ).toBe(false);
   });
 });

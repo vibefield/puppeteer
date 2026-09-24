@@ -569,6 +569,8 @@ export type ProfileSignOutResult = { ran: true } | { ran: false; credential: 'ro
 export interface StartProfileLoginOptions {
   profileId: string;
   cwd?: string;
+  /** One of the provider's `support.signInRoutes` ids; absent, its default login. */
+  route?: string;
 }
 
 export type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;

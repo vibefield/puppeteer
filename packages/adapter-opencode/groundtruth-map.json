@@ -36,6 +36,7 @@
     "session.updated"
   ],
   "observedOrControlledEvents": [
+    "http/experimental.console.listOrgs",
     "http/permission.list",
     "http/question.list",
     "http/session.children",
@@ -44,13 +45,13 @@
     "http/session.status"
   ],
   "unmapped": {
-    "count": 243,
-    "sha256": "882c914565549ecedde199a677f9e736daa52373e2234efcb700b8566e94b2f8",
+    "count": 242,
+    "sha256": "05904be477fec2d226af2e19bc7772d6af3796c3d85139bef2659dd0552fc6c5",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 278,
     "semantic": 29,
-    "observedOrControlled": 6
+    "observedOrControlled": 7
   }
 }

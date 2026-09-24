@@ -31,21 +31,85 @@ export const AgentProfileKindSchema = z.enum([
 ]);
 export type AgentProfileKind = z.infer<typeof AgentProfileKindSchema>;
 
-/** What the native status surface says about who is logged in. Never carries a token. */
-export const ProfileIdentitySchema = z.strictObject({
-  loggedIn: z.boolean(),
-  /** Native login method label, such as a subscription or API-key mode. */
-  method: NonEmptyStringSchema.optional(),
-  email: NonEmptyStringSchema.optional(),
-  organization: NonEmptyStringSchema.optional(),
-  /** Native plan or subscription label. */
-  plan: NonEmptyStringSchema.optional(),
-  verifiedAt: TimestampSchema,
-  source: z.strictObject({
-    kind: z.enum(['native-status', 'native-protocol']),
-    stability: z.enum(['documented', 'experimental']),
-  }),
+/**
+ * The service a sign-in is billed through: the company whose account the work
+ * runs on (Anthropic, OpenAI, xAI, …). It is not the agent. A harness such as
+ * Pi holds sign-ins to several services, and several agents can hold sign-ins
+ * to one. Ids are shared across adapters so a host can tell that two agents'
+ * sign-ins are to the same service; RFC 006 keeps the list. An adapter maps
+ * its native provider ids onto it and passes an unlisted one through, folded
+ * where it does not already fit: lowercase ASCII letters and digits, with
+ * `.`, `_` or `-` only between them.
+ */
+export const SignInServiceIdSchema = z.string().regex(/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/u);
+export type SignInServiceId = z.infer<typeof SignInServiceIdSchema>;
+
+export const SignInServiceSchema = z.strictObject({
+  id: SignInServiceIdSchema,
+  /** The service's own name as a person knows it ("Anthropic"), not a login-menu label. */
+  label: z.string().trim().min(1).max(64),
 });
+export type SignInService = z.infer<typeof SignInServiceSchema>;
+
+/**
+ * One sign-in a root holds, for an agent whose root can hold several (a
+ * harness: Pi, OpenCode, Hermes). Never carries a token or any field that
+ * travels beside one. Who and which plan appear only when the agent itself
+ * reports them: a harness usually keeps no email for a third party's login,
+ * and a host must not fill one in.
+ */
+export const ProfileSignInSchema = z.strictObject({
+  service: SignInServiceSchema,
+  /** Native method label: `oauth`, `api-key`, `free-tier`, … */
+  method: NonEmptyStringSchema,
+  /** The agent's own catalog calls this login a subscription, not a pay-per-use key. */
+  subscription: z.boolean().optional(),
+  /** The one a new session in this root uses unless the person picks another. */
+  inUse: z.boolean().optional(),
+  email: NonEmptyStringSchema.optional(),
+  /** A non-email handle for the account, such as a GitHub login. */
+  account: NonEmptyStringSchema.optional(),
+  organization: NonEmptyStringSchema.optional(),
+  plan: NonEmptyStringSchema.optional(),
+});
+export type ProfileSignIn = z.infer<typeof ProfileSignInSchema>;
+
+/** What the native status surface says about who is logged in. Never carries a token. */
+export const ProfileIdentitySchema = z
+  .strictObject({
+    loggedIn: z.boolean(),
+    /** Native login method label, such as a subscription or API-key mode. */
+    method: NonEmptyStringSchema.optional(),
+    email: NonEmptyStringSchema.optional(),
+    /** A non-email handle for the account, such as a GitHub login; a view shows it before the email. */
+    account: NonEmptyStringSchema.optional(),
+    organization: NonEmptyStringSchema.optional(),
+    /** Native plan or subscription label. */
+    plan: NonEmptyStringSchema.optional(),
+    /**
+     * Every sign-in the root holds, for an agent whose root can hold several.
+     * When present it is the whole answer: `loggedIn` is true exactly when it
+     * is non-empty, and the top-level method, email, account, organization
+     * and plan repeat the in-use sign-in's (absent when none is in use), so a
+     * view that predates the list still reads the one that matters. The
+     * runtime derives those from the list when it verifies, whatever the
+     * adapter put there.
+     */
+    signIns: z.array(ProfileSignInSchema).max(64).optional(),
+    verifiedAt: TimestampSchema,
+    source: z.strictObject({
+      kind: z.enum(['native-status', 'native-protocol']),
+      stability: z.enum(['documented', 'experimental']),
+    }),
+  })
+  .refine((identity) => identity.signIns === undefined || identity.loggedIn === identity.signIns.length > 0, {
+    message: 'loggedIn must be true exactly when signIns is non-empty',
+    path: ['loggedIn'],
+  })
+  .refine((identity) => (identity.signIns ?? []).filter((signIn) => signIn.inUse === true).length <= 1, {
+    message: 'at most one sign-in is in use',
+    path: ['signIns'],
+  });
 export type ProfileIdentity = z.infer<typeof ProfileIdentitySchema>;
 
 /**
@@ -116,6 +180,16 @@ export const AgentProfileSchema = z.strictObject({
 });
 export type AgentProfile = z.infer<typeof AgentProfileSchema>;
 
+/** One way to add a sign-in to a root: the agent's own login, run in a host terminal. */
+export const ProfileSignInRouteSchema = z.strictObject({
+  id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/u),
+  /** What the route does, as a menu item: "Nous Portal", "Another provider…". */
+  label: z.string().trim().min(1).max(64),
+  /** The service the route signs in to, when it is exactly one. */
+  service: SignInServiceSchema.optional(),
+});
+export type ProfileSignInRoute = z.infer<typeof ProfileSignInRouteSchema>;
+
 export const ProfileSupportSchema = z.strictObject({
   supported: z.boolean(),
   /** How verify() learns who is logged in. */
@@ -139,6 +213,25 @@ export const ProfileSupportSchema = z.strictObject({
    * and a host must not claim more than that the root was deleted.
    */
   credential: z.enum(['root', 'external']).optional(),
+  /**
+   * The service this agent's own sign-in is to: Claude Code's is Anthropic.
+   * Absent for an agent with no service of its own (Pi signs in only to
+   * other companies' services).
+   */
+  service: SignInServiceSchema.optional(),
+  /**
+   * The ways to add a sign-in to a root, for an agent whose root holds
+   * several. Each is the agent's own login; `loginInvocation` takes the chosen
+   * route's id, so one id names one route. Absent: one login, the default.
+   */
+  signInRoutes: z
+    .array(ProfileSignInRouteSchema)
+    .min(1)
+    .max(16)
+    .refine((routes) => new Set(routes.map((route) => route.id)).size === routes.length, {
+      message: 'sign-in route ids are unique',
+    })
+    .optional(),
 });
 export type ProfileSupport = z.infer<typeof ProfileSupportSchema>;
 
@@ -183,8 +276,10 @@ export interface ProfileService {
   /**
    * The native interactive login for a host terminal. The host merges
    * bindingEnvironment(profile) over spec.env and over its clean environment.
+   * `route` is one of `provider.support.signInRoutes`' ids (the runtime
+   * refuses any other before calling); absent, the default login.
    */
-  loginInvocation(profile: AgentProfile, options: { cwd: string }): TerminalSpec;
+  loginInvocation(profile: AgentProfile, options: { cwd: string; route?: string }): TerminalSpec;
   verify(profile: AgentProfile): Promise<ProfileIdentity | ProfileFailure>;
   /**
    * The vendor's own sign-out, run non-interactively under the binding. Only

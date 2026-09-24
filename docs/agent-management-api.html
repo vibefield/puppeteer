@@ -1535,8 +1535,11 @@ interface UpdateReceipt {
                   <tr>
                     <td><code id="runtime-profileProviders">profileProviders()</code></td>
                     <td>
-                      Returns profile descriptors, including <code>support.supported</code>, identity capability and
-                      shared native surfaces. Advertising a descriptor does not imply login support.
+                      Returns profile descriptors, including <code>support.supported</code>, identity capability,
+                      shared native surfaces, the service the agent's own sign-in is to (<code>support.service</code>)
+                      and, for an agent whose root holds several sign-ins, the logins that add one
+                      (<code>support.signInRoutes</code>). Each call returns fresh copies. Advertising a descriptor does
+                      not imply login support.
                     </td>
                   </tr>
                   <tr>
@@ -1607,7 +1610,8 @@ interface UpdateReceipt {
                     <td>
                       Validates the label and glyph token, creates the set's folder exclusively under the roots
                       directory — named once from the label (<code>work</code>, <code>client-demo</code>,
-                      <code>work-2</code> on a clash; <code>native</code> reserved) — and registers it, empty.
+                      <code>work-2</code> on a clash; <code>native</code> and <code>profiles</code> reserved, so
+                      "Profiles" is <code>profiles-2</code>) — and registers it, empty.
                     </td>
                   </tr>
                   <tr>
@@ -1636,7 +1640,10 @@ interface UpdateReceipt {
                     <td><code id="runtime-startProfileLogin">startProfileLogin()</code></td>
                     <td>
                       Spawns the provider’s native login in an application host terminal bound to that profile. The
-                      returned terminal ID reports launch, not authentication success.
+                      returned terminal ID reports launch, not authentication success. <code>route</code> picks one of
+                      the provider's <code>support.signInRoutes</code>; any other id — every id, for a provider that
+                      declares none — is refused as <code>invalid</code> before a terminal opens. Without it the
+                      provider's default login runs.
                     </td>
                   </tr>
                   <tr>
@@ -1644,7 +1651,10 @@ interface UpdateReceipt {
                     <td>
                       Reads native identity and attempts to persist it on the profile. A returned identity can have
                       <code>loggedIn: false</code>. Persistence failure is reported through <code>onError</code> while
-                      the observed identity is still returned.
+                      the observed identity is still returned. For an identity that lists <code>signIns</code>, the
+                      runtime sets the top-level <code>method</code>, <code>email</code>, <code>account</code>,
+                      <code>organization</code> and <code>plan</code> to the in-use sign-in's, or leaves them out
+                      when none is in use.
                     </td>
                   </tr>
                   <tr>
@@ -1688,15 +1698,17 @@ interface RemovedProfileSet {
   profiles: AgentProfile[];
 }
 
-type ProfileSignOutResult = { ran: boolean } | ProfileFailure;
+type ProfileSignOutResult = { ran: true } | { ran: false; credential: 'root' | 'unknown' } | ProfileFailure;
 
 interface StartProfileLoginOptions {
   profileId: string;
   cwd?: string;
+  /** One of the provider's `support.signInRoutes` ids; absent, its default login. */
+  route?: string;
 }
 
 type ProfileLoginResult = { runtimeSessionId: string; profile: AgentProfile } | ProfileFailure;</code></pre>
-            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileSetId,ProfileGlyph,ProfileSet,ProfileIdentity,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
+            <pre><code data-source="packages/core/src/services/profiles.ts" data-types="AgentProfileId,AgentProfileKind,AgentProfile,ProfileSetId,ProfileGlyph,ProfileSet,SignInServiceId,SignInService,ProfileSignIn,ProfileIdentity,ProfileSignInRoute,ProfileSupport,ProfileProvider,ProfileFailure">type AgentProfileId = string;
 type AgentProfileKind = 'native-default' | 'managed';
 
 interface AgentProfile {
@@ -1728,12 +1740,45 @@ interface ProfileSet {
   createdAt: string;
 }
 
+/** Shared across adapters: anthropic, openai, xai, kimi, google, github, nous, opencode, openrouter, meta, … */
+type SignInServiceId = string;
+
+/** The service a sign-in is billed through — never the agent. */
+interface SignInService {
+  id: SignInServiceId;
+  /** The service's own name ("Anthropic"). */
+  label: string;
+}
+
+/** One sign-in a root holds, for an agent whose root holds several. Strict: no token field. */
+interface ProfileSignIn {
+  service: SignInService;
+  /** Native method label: 'oauth', 'api-key', 'free-tier', … */
+  method: string;
+  /** The agent's own catalog calls this login a subscription. */
+  subscription?: boolean;
+  /** The one a new session uses unless the person picks another. */
+  inUse?: boolean;
+  email?: string;
+  /** A non-email handle, such as a GitHub login. */
+  account?: string;
+  organization?: string;
+  plan?: string;
+}
+
 interface ProfileIdentity {
   loggedIn: boolean;
   method?: string;
   email?: string;
+  /** A non-email handle; a view shows it before the email. */
+  account?: string;
   organization?: string;
   plan?: string;
+  /**
+   * Every sign-in, for an agent whose root holds several. loggedIn is true exactly when it is
+   * non-empty; at most one is in use; the top-level fields above repeat the in-use one's.
+   */
+  signIns?: ProfileSignIn[];
   verifiedAt: string;
   source: {
     kind: 'native-status' | 'native-protocol';
@@ -1741,11 +1786,27 @@ interface ProfileIdentity {
   };
 }
 
+/** One way to add a sign-in to a root: the agent's own login, named as a menu item. */
+interface ProfileSignInRoute {
+  id: string;
+  label: string;
+  /** The service it signs in to, when exactly one. */
+  service?: SignInService;
+}
+
 interface ProfileSupport {
   supported: boolean;
   identity: 'native-status' | 'native-protocol' | 'none';
   sharedSurfaces: string[];
   nativeDefaultRoot?: string;
+  /** Whether a native sign-out exists; the runtime's fact, set from the composed service. */
+  signOut?: boolean;
+  /** Where a managed root's credential lives: 'root' (inside it) or 'external' (a keychain item). */
+  credential?: 'root' | 'external';
+  /** The service the agent's own sign-in is to; absent for an agent with none of its own. */
+  service?: SignInService;
+  /** 1–16 routes with unique ids; absent: one login, the default. */
+  signInRoutes?: ProfileSignInRoute[];
 }
 
 interface ProfileProvider {
@@ -1779,7 +1840,8 @@ interface ProfileFailure {
                 <div>
                   <strong>Authenticate</strong>
                   <p>
-                    Call startProfileLogin({ profileId }); let the user complete the provider’s own login in the
+                    Call startProfileLogin({ profileId }), or pass a route from support.signInRoutes to add one more
+                    sign-in to a root that holds several; let the user complete the provider’s own login in the
                     returned terminal.
                   </p>
                 </div>
@@ -2282,8 +2344,10 @@ interface DistributionProvider {
   /**
    * The native interactive login for a host terminal. The host merges
    * bindingEnvironment(profile) over spec.env and over its clean environment.
+   * `route` is one of `provider.support.signInRoutes`' ids (the runtime
+   * refuses any other before calling); absent, the default login.
    */
-  loginInvocation(profile: AgentProfile, options: { cwd: string }): TerminalSpec;
+  loginInvocation(profile: AgentProfile, options: { cwd: string; route?: string }): TerminalSpec;
   verify(profile: AgentProfile): Promise&lt;ProfileIdentity | ProfileFailure&gt;;
   /**
    * The vendor's own sign-out, run non-interactively under the binding. Only

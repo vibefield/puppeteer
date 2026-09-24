@@ -55,6 +55,15 @@ export interface OpenCodePromptBody {
   model?: OpenCodeModelSelection;
 }
 
+export interface OpenCodeConsoleOrg {
+  accountID: string;
+  accountEmail: string;
+  accountUrl: string;
+  orgID: string;
+  orgName: string;
+  active: boolean;
+}
+
 export interface OpenCodeClientOptions {
   origin: string;
   directory: string;
@@ -198,5 +207,14 @@ export class OpenCodeClient {
 
   getTrackedDiff(): Promise<unknown[]> {
     return this.request('GET', '/vcs/diff', { query: { mode: 'git' } });
+  }
+
+  /**
+   * `http/experimental.console.listOrgs`: the orgs of every Console account
+   * signed in to the server's data root, the active one marked. An account
+   * whose console cannot be reached contributes no orgs rather than an error.
+   */
+  listConsoleOrgs(): Promise<{ orgs: OpenCodeConsoleOrg[] }> {
+    return this.request('GET', '/experimental/console/orgs');
   }
 }

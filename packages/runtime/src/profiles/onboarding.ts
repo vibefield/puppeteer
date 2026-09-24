@@ -87,6 +87,27 @@ function validLabel(label: string): string | undefined {
   return trimmed.length > 0 && trimmed.length <= MAX_PROFILE_LABEL_LENGTH ? trimmed : undefined;
 }
 
+const IN_USE_FIELDS = ['method', 'email', 'account', 'organization', 'plan'] as const;
+
+/**
+ * An identity that lists its sign-ins answers at the top level with the
+ * in-use one's fields, and with none when no sign-in is in use, so a view
+ * that predates the list reads the one that matters. The list is the whole
+ * answer; the runtime derives the rest from it rather than trusting every
+ * adapter to keep both in step.
+ */
+function withInUseSignIn(identity: ProfileIdentity): ProfileIdentity {
+  if (identity.signIns === undefined) return identity;
+  const current = identity.signIns.find((signIn) => signIn.inUse === true);
+  const derived: ProfileIdentity = { ...identity };
+  for (const field of IN_USE_FIELDS) {
+    const value = current?.[field];
+    if (value === undefined) delete derived[field];
+    else derived[field] = value;
+  }
+  return derived;
+}
+
 const LABEL_RULE = `profile label must be 1 to ${MAX_PROFILE_LABEL_LENGTH} characters`;
 
 export function createProfileOnboarding(options: ProfileOnboardingOptions): ProfileOnboarding {
@@ -437,9 +458,20 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
       }
       const entry = supporting(profile.provider);
       if ('status' in entry) return entry;
+      // A route is one of the adapter's own logins; any other id is a host bug,
+      // refused before the adapter is asked to build a command for it.
+      if (
+        request.route !== undefined &&
+        !entry.provider.support.signInRoutes?.some((route) => route.id === request.route)
+      ) {
+        return failure('invalid', `unknown sign-in route for ${profile.provider}: ${request.route}`, profile.provider);
+      }
 
       try {
-        const spec = entry.service.loginInvocation(profile, { cwd: request.cwd ?? options.defaultCwd });
+        const spec = entry.service.loginInvocation(profile, {
+          cwd: request.cwd ?? options.defaultCwd,
+          ...(request.route !== undefined ? { route: request.route } : {}),
+        });
         const binding = entry.service.bindingEnvironment(profile);
         const { runtimeSessionId } = await options.host.spawnTerminal({
           ...spec,
@@ -467,13 +499,14 @@ export function createProfileOnboarding(options: ProfileOnboardingOptions): Prof
       }
       const identity = ProfileIdentitySchema.safeParse(outcome);
       if (identity.success) {
+        const verified = withInUseSignIn(identity.data);
         try {
-          await registry.recordIdentity(profileId, identity.data);
+          await registry.recordIdentity(profileId, verified);
         } catch (error) {
           // The identity is still true even when persisting it failed.
           report(error);
         }
-        return identity.data;
+        return verified;
       }
       const declared = ProfileFailureSchema.safeParse(outcome);
       if (declared.success) return declared.data;

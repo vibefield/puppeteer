@@ -134,6 +134,7 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
       // A managed root is written with the `file` credential store, so its
       // auth.json is inside it (MANAGED_ROOT_CONFIG).
       credential: 'root',
+      service: { id: 'openai', label: 'OpenAI' },
     },
   };
 

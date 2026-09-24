@@ -2865,6 +2865,66 @@ describe('createAgentRuntime', () => {
     await rm(root, { recursive: true, force: true });
   });
 
+  it('hands out copies of profile providers, so a host cannot widen the sign-in routes a login may take', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-routes-'));
+    const base = exampleProfileService();
+    const logins: Array<{ cwd: string; route?: string }> = [];
+    const provider: AgentProvider = {
+      ...preparableProvider('example', { prepareCount: 0, adoptCount: 0, disposeCount: 0 }),
+      descriptor: { id: 'example', label: 'Example' },
+      profiles: {
+        ...base,
+        provider: {
+          ...base.provider,
+          support: {
+            ...base.provider.support,
+            service: { id: 'example', label: 'Example' },
+            signInRoutes: [{ id: 'portal', label: 'Example Portal', service: { id: 'example', label: 'Example' } }],
+          },
+        },
+        loginInvocation(profile, options) {
+          logins.push(options);
+          return base.loginInvocation(profile, options);
+        },
+      },
+    };
+    const spawned: string[] = [];
+    const runtime = createAgentRuntime({
+      host: {
+        async spawnTerminal(spec) {
+          spawned.push(spec.command);
+          return { runtimeSessionId: `login-${spawned.length}` };
+        },
+        async automateTerminal() {
+          return { accepted: true };
+        },
+      },
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+    });
+
+    const listed = runtime.profileProviders()[0]!;
+    listed.support.signInRoutes!.push({ id: 'injected', label: 'Injected' });
+    listed.support.signInRoutes![0]!.service!.label = 'Changed';
+    listed.support.service!.label = 'Changed';
+    expect(runtime.profileProviders()[0]?.support).toMatchObject({
+      service: { id: 'example', label: 'Example' },
+      signInRoutes: [{ id: 'portal', label: 'Example Portal', service: { id: 'example', label: 'Example' } }],
+    });
+
+    await expect(
+      runtime.startProfileLogin({ profileId: 'example:native-default', route: 'injected' }),
+    ).resolves.toMatchObject({ status: 'invalid', provider: 'example' });
+    await expect(
+      runtime.startProfileLogin({ profileId: 'example:native-default', route: 'portal', cwd: root }),
+    ).resolves.toMatchObject({ runtimeSessionId: 'login-1', profile: { id: 'example:native-default' } });
+    expect(logins).toEqual([{ cwd: root, route: 'portal' }]);
+    expect(spawned).toEqual(['example']);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('answers the observation root from the adapter and says nothing about profiles it cannot resolve', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-profile-observation-'));
     const provider: AgentProvider = {

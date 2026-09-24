@@ -240,8 +240,18 @@ export interface ProfileRegistry {
   dispose(): void;
 }
 
+function cloneIdentity(identity: ProfileIdentity): ProfileIdentity {
+  return {
+    ...identity,
+    source: { ...identity.source },
+    ...(identity.signIns === undefined
+      ? {}
+      : { signIns: identity.signIns.map((signIn) => ({ ...signIn, service: { ...signIn.service } })) }),
+  };
+}
+
 function cloneProfile(profile: AgentProfile): AgentProfile {
-  return { ...profile, ...(profile.identity ? { identity: { ...profile.identity } } : {}) };
+  return { ...profile, ...(profile.identity ? { identity: cloneIdentity(profile.identity) } : {}) };
 }
 
 interface RegistryState {
@@ -460,7 +470,7 @@ export function createProfileRegistry(options: ProfileRegistryOptions): ProfileR
       if (existing?.kind !== 'native-default') return undefined;
       nativeDefaultIdentities.set(profileId, parsed.data);
       await announce();
-      return { ...existing, identity: parsed.data };
+      return cloneProfile({ ...existing, identity: parsed.data });
     },
 
     async sets() {

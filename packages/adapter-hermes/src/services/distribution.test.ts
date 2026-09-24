@@ -6,6 +6,7 @@ import {
   createHermesDistributionService,
   HERMES_DISTRIBUTION_PROVIDER,
   hermesCheckoutFromWrapper,
+  hermesPythonFromWrapper,
 } from './distribution.js';
 
 const candidate = (overrides: Partial<InstallCandidate> & Pick<InstallCandidate, 'realPath'>): InstallCandidate => ({
@@ -71,6 +72,15 @@ describe('Hermes distribution provider', () => {
 describe('Hermes wrapper fingerprint', () => {
   it('reads the checkout out of the installer wrapper', () => {
     expect(hermesCheckoutFromWrapper(wrapper)).toBe('/home/tester/.hermes/hermes-agent');
+  });
+
+  it('reads the interpreter the wrapper execs', () => {
+    expect(hermesPythonFromWrapper(wrapper)).toBe('/home/tester/.hermes/hermes-agent/venv/bin/python');
+    expect(hermesPythonFromWrapper(wrapper.replace('venv/bin/python"', 'venv/bin/python3.11"'))).toBe(
+      '/home/tester/.hermes/hermes-agent/venv/bin/python3.11',
+    );
+    expect(hermesPythonFromWrapper('#!/bin/sh\nexec /usr/bin/other "$@"\n')).toBeUndefined();
+    expect(hermesPythonFromWrapper('exec "/opt/hermes/venv/bin/python" "$@"\n')).toBeUndefined();
   });
 
   it('rejects anything that is not a script', () => {

@@ -24,6 +24,16 @@ const MAX_SLUG_LENGTH = 40;
 const MAX_SET_SUFFIX = 999;
 const MAX_ACCOUNT_ATTEMPTS = 8;
 
+/**
+ * Set ids no new set or set folder is given. `native` is the synthetic set's.
+ * `profiles` would name a folder an agent reads as its own: Hermes treats a
+ * HERMES_HOME whose parent directory is named `profiles` as one of its native
+ * profiles and takes its credentials from the grandparent — here the roots
+ * directory itself, outside every set, where deleting an account never
+ * reaches. A registry that already holds a `profiles` set is read as it is.
+ */
+const RESERVED_SET_IDS: ReadonlySet<string> = new Set([NATIVE_PROFILE_SET_ID, 'profiles']);
+
 export function defaultProfileRootsDirectory(home = homedir()): string {
   return join(home, '.puppeteer', 'profiles');
 }
@@ -44,15 +54,11 @@ export function profileSetSlug(label: string): string {
   return trimmed.length > 0 ? trimmed : 'profile';
 }
 
-/** The first id from `base`, `base-2`, `base-3`, … that `taken` does not hold and is not the native set's. */
+/** The first id from `base`, `base-2`, `base-3`, … that `taken` does not hold and is not reserved. */
 export function uniqueProfileSetId(base: string, taken: ReadonlySet<string>): string {
   for (let suffix = 1; suffix <= MAX_SET_SUFFIX; suffix += 1) {
     const candidate = suffix === 1 ? base : `${base}-${suffix}`;
-    if (
-      candidate !== NATIVE_PROFILE_SET_ID &&
-      !taken.has(candidate) &&
-      ProfileSetIdSchema.safeParse(candidate).success
-    ) {
+    if (!RESERVED_SET_IDS.has(candidate) && !taken.has(candidate) && ProfileSetIdSchema.safeParse(candidate).success) {
       return candidate;
     }
   }

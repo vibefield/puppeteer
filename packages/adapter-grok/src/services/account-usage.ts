@@ -9,9 +9,6 @@
  * terminal. A managed profile binds `GROK_HOME` the same way launch does.
  */
 
-import { spawn } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { createInterface } from 'node:readline';
 import type {
   AccountUsageCredits,
   AccountUsageFetchResult,
@@ -22,16 +19,20 @@ import type {
   AgentProfile,
 } from '@vibecook/puppeteer-core';
 import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
-import { resolveGrokExecutable } from '../detection.js';
+import {
+  GROK_BILLING_ACP_METHOD,
+  GrokAcpClient,
+  GrokAcpError,
+  JSONRPC_METHOD_NOT_FOUND,
+  spawnGrokAgentTransport,
+  type GrokAgentTransport,
+  type JsonRpcErrorBody,
+} from '../transport/agent-client.js';
 import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
-/** ACP wire method. The agent handler matches `x.ai/billing` after stripping `_`. */
-export const GROK_BILLING_ACP_METHOD = '_x.ai/billing';
 const GROK_CACHED_TOKEN_AUTH = 'cached_token';
-const GROK_AGENT_ARGS = ['agent', '--no-leader', 'stdio'] as const;
 const CLIENT_INFO = { name: 'puppeteer-account-usage', version: PUPPETEER_VERSION } as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
-const JSONRPC_METHOD_NOT_FOUND = -32_601;
 const AUTH_PATTERN =
   /authentication required|not authenticated|no cached auth|session expired|run [`']?grok login|sign in/i;
 const RATE_LIMIT_PATTERN = /\b429\b|rate[- ]?limit/i;
@@ -43,23 +44,15 @@ export const GROK_ACCOUNT_USAGE_PROVIDER: AccountUsageProvider = {
   refresh: { pollIntervalMs: 15 * 60_000 },
 };
 
-export interface GrokBillingTransport {
-  send(message: unknown): void;
-  onMessage(handler: (message: unknown) => void): void;
-  onClose(handler: (info: { code: number | null; signal: string | null }) => void): void;
-  close(): void | Promise<void>;
-}
-
 export interface FetchGrokAccountUsageOptions {
   /** One-shot transport override for tests. Closed after the fetch. */
-  transport?: GrokBillingTransport | undefined;
+  transport?: GrokAgentTransport | undefined;
   executable?: string | undefined;
   requestTimeoutMs?: number | undefined;
   now?: (() => Date) | undefined;
   /** Extra process environment; carries the profile binding (`GROK_HOME`). */
   env?: Record<string, string> | undefined;
-  spawnTransport?:
-    ((options: { executable?: string; env?: Record<string, string> }) => GrokBillingTransport) | undefined;
+  spawnTransport?: ((options: { executable?: string; env?: Record<string, string> }) => GrokAgentTransport) | undefined;
 }
 
 const rec = (value: unknown): Record<string, unknown> | undefined =>
@@ -122,201 +115,17 @@ function firstDefined<T>(...values: readonly T[]): T | undefined {
   return values.find((value) => value !== undefined);
 }
 
-interface JsonRpcErrorBody {
-  code: number;
-  message: string;
-  data?: unknown;
-}
-
-class GrokAcpError extends Error {
-  constructor(public readonly body: JsonRpcErrorBody) {
-    super(body.message);
-    this.name = 'GrokAcpError';
-  }
-}
-
-class GrokAcpRequestTimeoutError extends Error {
-  constructor(
-    public readonly method: string,
-    public readonly timeoutMs: number,
-  ) {
-    super(`Grok ACP request "${method}" timed out after ${timeoutMs}ms`);
-    this.name = 'GrokAcpRequestTimeoutError';
-  }
-}
-
 function positiveTimeout(value: number, label: string): number {
   if (!Number.isFinite(value) || value <= 0) throw new RangeError(`${label} must be positive`);
   return value;
 }
 
-class GrokAcpClient {
-  private nextId = 1;
-  private pending = new Map<
-    number,
-    { resolve: (value: unknown) => void; reject: (error: unknown) => void; timer: ReturnType<typeof setTimeout> }
-  >();
-  private closed = false;
-  private closePromise?: Promise<void>;
-  private readonly requestTimeoutMs: number;
-
-  constructor(
-    private readonly transport: GrokBillingTransport,
-    requestTimeoutMs: number,
-  ) {
-    this.requestTimeoutMs = requestTimeoutMs;
-    transport.onMessage((message) => this.handle(message));
-    transport.onClose(() => {
-      this.closed = true;
-      this.rejectAllPending(new Error('Grok ACP transport closed'));
-    });
-  }
-
-  request(method: string, params: unknown = {}): Promise<unknown> {
-    if (this.closed) return Promise.reject(new Error('client closed'));
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        if (!this.pending.delete(id)) return;
-        reject(new GrokAcpRequestTimeoutError(method, this.requestTimeoutMs));
-      }, this.requestTimeoutMs);
-      timer.unref?.();
-      this.pending.set(id, { resolve, reject, timer });
-      try {
-        this.transport.send({ jsonrpc: '2.0', id, method, params });
-      } catch (error) {
-        clearTimeout(timer);
-        this.pending.delete(id);
-        reject(error);
-      }
-    });
-  }
-
-  close(): Promise<void> {
-    if (this.closePromise) return this.closePromise;
-    if (this.closed) return Promise.resolve();
-    this.closed = true;
-    this.rejectAllPending(new Error('client closed'));
-    try {
-      this.closePromise = Promise.resolve(this.transport.close());
-    } catch (error) {
-      this.closePromise = Promise.reject(error);
-    }
-    return this.closePromise;
-  }
-
-  private rejectAllPending(error: Error): void {
-    for (const { reject, timer } of this.pending.values()) {
-      clearTimeout(timer);
-      reject(error);
-    }
-    this.pending.clear();
-  }
-
-  private handle(message: unknown): void {
-    if (this.closed) return;
-    const body = rec(message);
-    if (!body) return;
-    const hasId = body.id !== undefined && body.id !== null;
-    const method = str(body.method);
-
-    if (hasId && method === undefined) {
-      const id = body.id as number;
-      const entry = this.pending.get(id);
-      if (!entry) return;
-      this.pending.delete(id);
-      clearTimeout(entry.timer);
-      if (body.error !== undefined) entry.reject(new GrokAcpError(body.error as JsonRpcErrorBody));
-      else entry.resolve(body.result);
-      return;
-    }
-
-    if (hasId && method !== undefined) {
-      this.transport.send({
-        jsonrpc: '2.0',
-        id: body.id,
-        error: { code: JSONRPC_METHOD_NOT_FOUND, message: 'Method not found' },
-      });
-    }
-  }
-}
-
-function spawnGrokBillingTransport(opts?: { executable?: string; env?: Record<string, string> }): GrokBillingTransport {
-  const child = spawn(resolveGrokExecutable(opts?.executable), [...GROK_AGENT_ARGS], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    cwd: tmpdir(),
-    env: opts?.env ? { ...process.env, ...opts.env } : process.env,
-    windowsHide: true,
+/** The default transport: `env` carries only the binding, merged over this process's environment. */
+function spawnBillingTransport(options: { executable?: string; env?: Record<string, string> }): GrokAgentTransport {
+  return spawnGrokAgentTransport({
+    ...(options.executable !== undefined ? { executable: options.executable } : {}),
+    env: options.env ? { ...process.env, ...options.env } : process.env,
   });
-  child.stderr?.resume();
-  const rl = createInterface({ input: child.stdout });
-  let onMsg: ((message: unknown) => void) | undefined;
-  let onCls: ((info: { code: number | null; signal: string | null }) => void) | undefined;
-  let closedInfo: { code: number | null; signal: string | null } | undefined;
-  let resolveExited!: () => void;
-  const exited = new Promise<void>((resolve) => {
-    resolveExited = resolve;
-  });
-
-  const markClosed = (info: { code: number | null; signal: string | null }): void => {
-    if (closedInfo) return;
-    closedInfo = info;
-    resolveExited();
-    onCls?.(info);
-  };
-
-  rl.on('line', (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    try {
-      onMsg?.(JSON.parse(trimmed) as unknown);
-    } catch {
-      // Non-JSON banner lines are ignored.
-    }
-  });
-  child.on('exit', (code, signal) => markClosed({ code, signal }));
-  child.on('error', () => markClosed({ code: null, signal: null }));
-
-  const exitedWithin = async (timeoutMs: number): Promise<boolean> => {
-    if (closedInfo) return true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timedOut = new Promise<false>((resolve) => {
-      timer = setTimeout(() => resolve(false), timeoutMs);
-    });
-    const result = await Promise.race([exited.then(() => true as const), timedOut]);
-    if (timer) clearTimeout(timer);
-    return result;
-  };
-
-  return {
-    send: (message) => {
-      if (child.stdin.writable) child.stdin.write(`${JSON.stringify(message)}\n`);
-    },
-    onMessage: (handler) => {
-      onMsg = handler;
-    },
-    onClose: (handler) => {
-      onCls = handler;
-      if (closedInfo) handler(closedInfo);
-    },
-    close: async () => {
-      if (closedInfo) return;
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        if (child.exitCode !== null || child.signalCode !== null) return;
-      }
-      if (await exitedWithin(2_000)) return;
-      try {
-        child.kill('SIGKILL');
-      } catch {
-        if (child.exitCode !== null || child.signalCode !== null) return;
-      }
-      if (!(await exitedWithin(2_000))) {
-        throw new Error(`grok agent process ${child.pid ?? '?'} survived SIGTERM and SIGKILL`);
-      }
-    },
-  };
 }
 
 function authMethodIds(value: unknown): string[] {
@@ -466,14 +275,14 @@ export async function fetchGrokAccountUsage(
   }
 
   const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
-  let transport: GrokBillingTransport | undefined;
+  let transport: GrokAgentTransport | undefined;
   let client: GrokAcpClient | undefined;
   try {
     transport =
       options.transport ??
       // The transport factory's parameter stays narrow: test doubles annotate it
       // explicitly, and widening it would reject those implementations.
-      (options.spawnTransport ?? spawnGrokBillingTransport)({
+      (options.spawnTransport ?? spawnBillingTransport)({
         ...(options.executable !== undefined ? { executable: options.executable } : {}),
         ...(options.env ? { env: options.env } : {}),
       });

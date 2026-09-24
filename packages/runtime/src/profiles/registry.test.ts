@@ -143,6 +143,26 @@ describe('parseProfileRegistrySnapshot', () => {
     expect(parseProfileRegistrySnapshot(adopted)).toEqual(adopted);
   });
 
+  it('adopts accounts named "Profiles" into a set that is not called profiles, and keeps one that already is', () => {
+    const adopted = parseProfileRegistrySnapshot({ version: 1, profiles: [managedProfile('alpha', 'a1', 'Profiles')] });
+    expect(adopted.sets.map((set) => [set.id, set.label])).toEqual([['profiles-2', 'Profiles']]);
+    // A registry an earlier build wrote with the id is read as it is, folder and all.
+    const earlier = {
+      version: 2,
+      defaultSet: 'profiles',
+      sets: [
+        {
+          ...WORK_SET,
+          id: 'profiles',
+          label: 'Profiles',
+          directory: '/home/user/.puppeteer/profiles/profiles',
+        },
+      ],
+      profiles: [{ ...managedProfile('alpha', 'a1', 'Profiles'), set: 'profiles' }],
+    };
+    expect(parseProfileRegistrySnapshot(earlier)).toEqual(earlier);
+  });
+
   it('repairs a document whose references do not hold, without dropping a root', () => {
     const repaired = parseProfileRegistrySnapshot({
       version: 2,
@@ -388,6 +408,32 @@ describe('createProfileRegistry', () => {
     await expect(registry.recordIdentity('missing', identity)).resolves.toBeUndefined();
   });
 
+  it('hands out copies of an identity, its sign-ins included, never the one it keeps', async () => {
+    const { state, store } = memoryStore([managedProfile('alpha', 'p1')]);
+    const registry = createProfileRegistry({ providers: [registryProvider(descriptor('alpha'))], store });
+    const identity = {
+      loggedIn: true,
+      method: 'oauth',
+      signIns: [{ service: { id: 'example', label: 'Example' }, method: 'oauth', inUse: true }],
+      verifiedAt: '2026-09-23T12:00:00.000Z',
+      source: { kind: 'native-protocol' as const, stability: 'experimental' as const },
+    };
+    const copy = structuredClone(identity);
+
+    for (const profileId of ['p1', nativeDefaultProfileId('alpha')]) {
+      const recorded = await registry.recordIdentity(profileId, identity);
+      const read = await registry.get(profileId);
+      for (const handed of [recorded, read]) {
+        handed!.identity!.signIns!.push({ service: { id: 'injected', label: 'Injected' }, method: 'oauth' });
+        handed!.identity!.signIns![0]!.service.label = 'Changed';
+        handed!.identity!.source.stability = 'documented';
+      }
+      await expect(registry.get(profileId)).resolves.toMatchObject({ identity: copy });
+      expect((await registry.get(profileId))?.identity?.signIns).toHaveLength(1);
+    }
+    expect(state.snapshot?.profiles[0]?.identity).toEqual(copy);
+  });
+
   it('keeps registered profiles whose provider no longer exposes profiles', async () => {
     const { store } = memoryStore([managedProfile('alpha', 'p1'), managedProfile('retired', 'p2', 'Other')]);
     const registry = createProfileRegistry({ providers: [registryProvider(descriptor('alpha'))], store });
@@ -478,7 +524,7 @@ describe('createProfileRegistry', () => {
 });
 
 describe('profile set slugs', () => {
-  it('folds a name to a directory-safe id and never lands on the native set', () => {
+  it('folds a name to a directory-safe id and never lands on a reserved one', () => {
     expect(profileSetSlug('Work')).toBe('work');
     expect(profileSetSlug('  Client Demo!  ')).toBe('client-demo');
     expect(profileSetSlug('Café Déjà-vu')).toBe('cafe-deja-vu');
@@ -487,6 +533,12 @@ describe('profile set slugs', () => {
     expect(profileSetSlug('a'.repeat(80))).toHaveLength(40);
     expect(uniqueProfileSetId('work', new Set(['work', 'work-2']))).toBe('work-3');
     expect(uniqueProfileSetId('native', new Set())).toBe('native-2');
+    // An agent reads a folder named `profiles` as its own profiles directory.
+    expect(uniqueProfileSetId(profileSetSlug(' Profiles '), new Set())).toBe('profiles-2');
+    expect(uniqueProfileSetId('profiles', new Set(['profiles-2']))).toBe('profiles-3');
+    // Only the whole name is reserved.
+    expect(uniqueProfileSetId('profile', new Set())).toBe('profile');
+    expect(uniqueProfileSetId('work-profiles', new Set())).toBe('work-profiles');
   });
 });
 
@@ -503,6 +555,10 @@ describe('createProfileRootAllocator', () => {
     // Registered elsewhere, or a folder nobody registered: neither is reused.
     await mkdir(join(rootsDirectory, 'work-3'));
     await expect(allocator.allocateSet('Work', new Set(['work-2']))).resolves.toMatchObject({ id: 'work-4' });
+    await expect(allocator.allocateSet('Profiles', new Set())).resolves.toEqual({
+      id: 'profiles-2',
+      directory: join(rootsDirectory, 'profiles-2'),
+    });
   });
 
   it('allocates each account a fresh 0700 root inside its set directory', async () => {

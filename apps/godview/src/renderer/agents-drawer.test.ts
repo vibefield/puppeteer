@@ -3,6 +3,7 @@ import type {
   AgentInstallationsSnapshot,
   AgentProfile,
   DistributionProvider,
+  ProfileIdentity,
   ProfileProvider,
   ReleaseCheckResult,
   UpdateReceipt,
@@ -245,6 +246,70 @@ describe('account groups', () => {
   it('allows removal only for a runtime-allocated root', () => {
     const [example] = profileGroupViews(providers, profiles, {}, NOW);
     expect(example?.profiles.map((profile) => profile.canRemove)).toEqual([false, true]);
+  });
+
+  describe('sign-ins', () => {
+    const verified = {
+      verifiedAt: '2026-09-06T10:00:00.000Z',
+      source: { kind: 'native-protocol', stability: 'experimental' },
+    } as const;
+    const portal = {
+      service: { id: 'example-service', label: 'Example Service' },
+      method: 'oauth',
+      subscription: true,
+      inUse: true,
+      email: 'person@example.com',
+      plan: 'Pro',
+    };
+    const key = { service: { id: 'other-service', label: 'Other Service' }, method: 'api-key' };
+    const handle = { service: { id: 'third-service', label: 'Third Service' }, method: 'oauth', account: 'person' };
+
+    function accountRow(identity: ProfileIdentity) {
+      const [example] = profileGroupViews(providers, [{ ...profiles[0]!, identity }], {}, NOW);
+      return example?.profiles[0];
+    }
+
+    it('names an account handle before the email beside it', () => {
+      expect(
+        accountRow({ loggedIn: true, account: 'person', email: 'person@example.com', plan: 'Team', ...verified }),
+      ).toMatchObject({ identityText: 'SIGNED IN', identityDetail: 'person · person@example.com · Team · 2h ago' });
+    });
+
+    it('shows the sign-in in use, who it is and on which plan, and how many others the root holds', () => {
+      const row = accountRow({
+        loggedIn: true,
+        method: 'oauth',
+        email: 'person@example.com',
+        plan: 'Pro',
+        signIns: [key, portal, handle],
+        ...verified,
+      });
+      expect(row?.identityText).toBe('SIGNED IN');
+      expect(row?.identityDetail).toBe('Example Service · person@example.com · Pro · +2 more · 2h ago');
+      expect(row?.identityTitle).toBe(
+        [
+          'Other Service · api-key',
+          'Example Service · person@example.com · Pro (in use)',
+          'Third Service · person',
+        ].join('\n'),
+      );
+      // Nobody to name and no plan: how it signs in says the rest.
+      expect(
+        accountRow({ loggedIn: true, method: 'api-key', signIns: [{ ...key, inUse: true }], ...verified })
+          ?.identityDetail,
+      ).toBe('Other Service · api-key · 2h ago');
+    });
+
+    it('counts sign-ins when none is in use, and reads an empty list as signed out', () => {
+      expect(accountRow({ loggedIn: true, signIns: [key, handle], ...verified })).toMatchObject({
+        identityText: 'SIGNED IN',
+        identityDetail: '2 sign-ins · 2h ago',
+      });
+      expect(accountRow({ loggedIn: true, signIns: [handle], ...verified })?.identityDetail).toBe('1 sign-in · 2h ago');
+      const signedOut = accountRow({ loggedIn: false, signIns: [], ...verified });
+      expect(signedOut).toMatchObject({ identityText: 'SIGNED OUT', identityDetail: '2h ago' });
+      expect(signedOut?.identityTitle).toBeUndefined();
+    });
   });
 
   it('indexes labels by account id for surfaces that only carry the id', () => {

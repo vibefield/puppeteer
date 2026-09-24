@@ -4,11 +4,10 @@ import {
   createGrokAccountUsageService,
   fetchGrokAccountUsage,
   fetchGrokAccountUsageForProfile,
-  GROK_BILLING_ACP_METHOD,
   normalizeGrokAccountUsage,
-  type GrokBillingTransport,
 } from './account-usage.js';
 import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
+import { GROK_BILLING_ACP_METHOD, type GrokAgentTransport } from '../transport/agent-client.js';
 
 const creditsFixture = {
   config: {
@@ -37,7 +36,7 @@ const legacyFixture = {
 };
 
 function scriptedTransport(respond: (message: Record<string, unknown>) => unknown): {
-  transport: GrokBillingTransport;
+  transport: GrokAgentTransport;
   sent: Array<Record<string, unknown>>;
   closed: () => boolean;
 } {
@@ -300,7 +299,7 @@ describe('Grok account usage per profile', () => {
   const nativeDefault: AgentProfile = { ...managed, id: 'grok:native-default', kind: 'native-default' };
 
   function recordingSpawn(): {
-    spawnTransport: (options: { executable?: string; env?: Record<string, string> }) => GrokBillingTransport;
+    spawnTransport: (options: { executable?: string; env?: Record<string, string> }) => GrokAgentTransport;
     spawns: Array<{ executable?: string; env?: Record<string, string> }>;
   } {
     const spawns: Array<{ executable?: string; env?: Record<string, string> }> = [];

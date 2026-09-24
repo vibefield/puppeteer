@@ -4,6 +4,7 @@ import type {
   AgentProfile,
   DistributionProvider,
   ProfileDefaults,
+  ProfileIdentity,
   ProfileProvider,
   ReleaseCheckResult,
   UpdateReceipt,
@@ -64,6 +65,8 @@ export interface ProfileRowView {
   /** What the provider's own status surface last reported, in words. */
   identityText: string;
   identityDetail?: string;
+  /** Every sign-in the root holds, one per line, for a root that lists them. */
+  identityTitle?: string;
   canRemove: boolean;
   canVerify: boolean;
 }
@@ -213,20 +216,50 @@ export function formatAge(timestamp: string | undefined, nowMs: number): string 
   return new Date(atMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
 }
 
+type SignIn = NonNullable<ProfileIdentity['signIns']>[number];
+
+const words = (values: ReadonlyArray<string | undefined>): string =>
+  values.filter((value): value is string => Boolean(value)).join(' · ');
+
+/** One sign-in: the service it is billed through, then who and which plan, else how it signs in. */
+function signInText(signIn: SignIn): string {
+  const who = words([signIn.account, signIn.email, signIn.organization, signIn.plan]);
+  return words([signIn.service.label, who || signIn.method]);
+}
+
+/**
+ * A root that lists its sign-ins shows the one in use and how many others it
+ * holds; with none in use, only how many.
+ */
+function signInsDetail(signIns: readonly SignIn[]): string {
+  const current = signIns.find((signIn) => signIn.inUse === true);
+  if (current) {
+    const others = signIns.length - 1;
+    return words([signInText(current), others > 0 ? `+${others} more` : undefined]);
+  }
+  if (signIns.length === 0) return '';
+  return signIns.length === 1 ? '1 sign-in' : `${signIns.length} sign-ins`;
+}
+
 function identityText(
   profile: AgentProfile,
   supported: boolean,
   nowMs: number,
-): Pick<ProfileRowView, 'identityText' | 'identityDetail'> {
+): Pick<ProfileRowView, 'identityText' | 'identityDetail' | 'identityTitle'> {
   const identity = profile.identity;
   if (!identity) return { identityText: supported ? 'NOT VERIFIED' : 'NO IDENTITY SURFACE' };
   const age = formatAge(identity.verifiedAt, nowMs);
-  const detail = [identity.email, identity.organization, identity.plan ?? identity.method]
-    .filter((value): value is string => Boolean(value))
-    .join(' · ');
+  const signIns = identity.signIns;
+  // An account handle comes before the email it may sit beside.
+  const detail =
+    signIns === undefined
+      ? words([identity.account, identity.email, identity.organization, identity.plan ?? identity.method])
+      : signInsDetail(signIns);
+  const title = signIns?.map((signIn) => `${signInText(signIn)}${signIn.inUse === true ? ' (in use)' : ''}`);
   return {
     identityText: identity.loggedIn ? 'SIGNED IN' : 'SIGNED OUT',
-    ...(detail || age ? { identityDetail: [detail, age].filter(Boolean).join(' · ') } : {}),
+    ...(detail || age ? { identityDetail: words([detail, age]) } : {}),
+    ...(title && title.length > 0 ? { identityTitle: title.join('\n') } : {}),
   };
 }
 

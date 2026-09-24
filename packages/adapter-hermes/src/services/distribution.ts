@@ -26,8 +26,8 @@ import { HERMES_VERSION_FLAG } from '../generated/detection.js';
 
 const HERMES_COMMANDS = ['hermes'];
 const MAX_WRAPPER_BYTES = 8 * 1024;
-/** `exec "<checkout>/venv/bin/python" …` in the installer's wrapper script. */
-const HERMES_VENV_PATTERN = /(?:^|["'\s])([^"'\s]+)[/\\]venv[/\\]bin[/\\]python[0-9.]*(?=["'\s]|$)/mu;
+/** `exec "<checkout>/venv/bin/python" …` in the installer's wrapper script: the interpreter, then the checkout. */
+const HERMES_VENV_PATTERN = /(?:^|["'\s])(([^"'\s]+)[/\\]venv[/\\]bin[/\\]python[0-9.]*)(?=["'\s]|$)/mu;
 
 /** Injected process execution so unit tests never run a real binary. */
 export type HermesDistributionExec = (
@@ -81,7 +81,8 @@ function defaultExec(file: string, args: readonly string[]): Promise<{ stdout: s
   });
 }
 
-async function defaultReadHead(path: string): Promise<string> {
+/** The bounded head of a candidate wrapper script; the profile service reads the same evidence. */
+export async function readHermesWrapperHead(path: string): Promise<string> {
   const handle = await open(path, 'r');
   try {
     const buffer = Buffer.alloc(MAX_WRAPPER_BYTES);
@@ -100,6 +101,12 @@ function isHermesCommandName(value: string): boolean {
 /** The checkout the wrapper script execs, or undefined when it is not that wrapper. */
 export function hermesCheckoutFromWrapper(wrapper: string): string | undefined {
   if (!wrapper.startsWith('#!')) return undefined;
+  return HERMES_VENV_PATTERN.exec(wrapper)?.[2];
+}
+
+/** The interpreter the wrapper script execs, or undefined when it is not that wrapper. */
+export function hermesPythonFromWrapper(wrapper: string): string | undefined {
+  if (!wrapper.startsWith('#!')) return undefined;
   return HERMES_VENV_PATTERN.exec(wrapper)?.[1];
 }
 
@@ -113,7 +120,7 @@ const HERMES_UPDATE_TIMEOUT_MS = 45 * 60_000;
 
 export function createHermesDistributionService(options: HermesDistributionServiceOptions = {}): DistributionService {
   const exec = options.exec ?? defaultExec;
-  const readHead = options.readHead ?? defaultReadHead;
+  const readHead = options.readHead ?? readHermesWrapperHead;
 
   return {
     provider: HERMES_DISTRIBUTION_PROVIDER,

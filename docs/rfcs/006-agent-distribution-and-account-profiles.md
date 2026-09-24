@@ -174,13 +174,13 @@ adapter. What each service would rest on, from current evidence and today's prob
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude Code | fingerprint `~/.local/share/claude/versions/<v>` (native installer; `.last-update-result.json` is native evidence) and npm; `claude update`, `claude install <stable\|latest\|x.y.z>`, `claude doctor` plus `.last-update-result.json` as the native oracle; detectors `downloads.claude.ai` stable/latest and GitHub | `CLAUDE_CONFIG_DIR`; login `claude auth login`; identity `claude auth status --json` (`email`, `orgName`, `subscriptionType`); Keychain service `Claude Code-credentials[-<sha256(root)[:8]>]`, account `$USER`, file fallback `<root>/.credentials.json`; shared: project settings                                       | `<root>/plugins/installed_plugins.json`, `known_marketplaces.json`, `settings.json` `enabledPlugins`, `<root>/skills`; mutations through `claude plugin …` and `claude mcp …`                                                    |
 | Codex       | npm global `@openai/codex` or GitHub tarball; `codex update` or the npm recipe; detectors GitHub `rust-v*`                                            | `CODEX_HOME`; login, identity, and logout through the private app-server (`account/login/start`, `account/read`, `account/logout`) over the transport the adapter already owns; `cli_auth_credentials_store` decides file (`<root>/auth.json`) vs keyring (service `Codex Auth`, account `cli\|<sha256(root)[:16]>`); shared `~/.agents/skills` | app-server `plugin/*`, `skills/*`, `marketplace/*`, `mcpServer/*`: protocol-native, no store parsing                                                                                                                       |
-| Copilot CLI | standalone binary from npm platform tarballs; `copilot update [channel]`; `autoUpdate` setting                                                       | `COPILOT_HOME`; `copilot login`                                                                                                                                                                                                                | `copilot plugins`, `copilot skill`, `copilot mcp`; `<root>/{installed-plugins,skills,extensions,mcp-config.json}`                                                                                                        |
-| Grok        | vendor downloader `~/.grok/downloads/grok-<v>-<platform>`; `grok update --check --json` is a native oracle, `grok update --version <v>`; detectors `x.ai/cli/{stable,alpha}`                                        | `GROK_HOME`; `grok login`, `grok logout`                                                                                                                                                                                                       | `grok plugin`, `grok mcp`; ACP `PluginsChanged`                                                                                                                                                                         |
-| Kimi Code   | standalone `~/.kimi-code/bin/kimi`; `kimi upgrade`                                                                                                   | `KIMI_CODE_HOME`; `kimi login` (device code)                                                                                                                                                                                                   | `--skills-dir`; skill and plugin ids in the source contract; directories to capture                                                                                                                                     |
-| OpenCode    | standalone `~/.opencode/bin/opencode`; `opencode upgrade [target] --method <curl\|npm\|pnpm\|bun\|brew>`; `autoupdate` config                                                              | `XDG_DATA_HOME=<root>/data` (holds `auth.json`, `opencode.db`, logs) inside the clean environment; config, plugins, and cache stay shared                                                                                                                                 | config `plugin[]`, `skills{paths,urls}`, `mcp{}`; `opencode plugin`, `opencode mcp`                                                                                                                                     |
-| Pi          | npm global `@earendil-works/pi-coding-agent`; `pi update self`                                                                                       | `PI_CODING_AGENT_DIR`, `PI_CODING_AGENT_SESSION_DIR`; `pi auth`                                                                                                                                                                                | `pi list/install/remove/update/config`; `<root>/agent/{skills,extensions,prompts,tools}`                                                                                                                                |
-| Hermes      | source checkout plus uv venv behind a wrapper script; `hermes update`                                                                                | `HERMES_HOME` (the adapter already redirects HOME for the gateway); `hermes login`, `hermes auth`                                                                                                                                              | `hermes skills`, `hermes plugins`, `hermes mcp`; gateway `plugins.list`, `skills.manage`                                                                                                                                 |
-| Antigravity | GitHub `agy_cli_*`; `agy update`; `AGY_CLI_DISABLE_AUTO_UPDATE`                                                                                      | adapter-owned HOME redirection (`PUPPETEER_ANTIGRAVITY_HOME`)                                                                                                                                                                                  | `/skills`; to capture                                                                                                                                                                                                   |
+| Copilot CLI | standalone binary from npm platform tarballs; `copilot update [channel]`; `autoUpdate` setting                                                       | `COPILOT_HOME`; `copilot login`; identity `auth.getStatus`, then `account.getCurrentAuth` for a `user` login, on `copilot --server --stdio`; credential one keychain item per GitHub login | `copilot plugins`, `copilot skill`, `copilot mcp`; `<root>/{installed-plugins,skills,extensions,mcp-config.json}`                                                                                                        |
+| Grok        | vendor downloader `~/.grok/downloads/grok-<v>-<platform>`; `grok update --check --json` is a native oracle, `grok update --version <v>`; detectors `x.ai/cli/{stable,alpha}`                                        | `GROK_HOME`; `grok login`, `grok logout`; identity ACP `_x.ai/auth/info`, then `_x.ai/billing` for the plan | `grok plugin`, `grok mcp`; ACP `PluginsChanged`                                                                                                                                                                         |
+| Kimi Code   | standalone `~/.kimi-code/bin/kimi`; `kimi upgrade`                                                                                                   | `KIMI_CODE_HOME`; `kimi login` (device code); identity `GET {base}/me` with the stored access token, read-only | `--skills-dir`; skill and plugin ids in the source contract; directories to capture                                                                                                                                     |
+| OpenCode    | standalone `~/.opencode/bin/opencode`; `opencode upgrade [target] --method <curl\| `XDG_DATA_HOME=<root>/data` (holds `auth.json`, `opencode.db`, logs) inside the clean environment; config, plugins, and cache stay shared; sign-ins: Console (`opencode console login`) and providers (`opencode auth login`) |pnpm\|bun\|brew>`; `autoupdate` config                                                              | `XDG_DATA_HOME=<root>/data` (holds `auth.json`, `opencode.db`, logs) inside the clean environment; config, plugins, and cache stay shared                                                                                                                                 | config `plugin[]`, `skills{paths,urls}`, `mcp{}`; `opencode plugin`, `opencode mcp`                                                                                                                                     |
+| Pi          | npm global `@earendil-works/pi-coding-agent`; `pi update self`                                                                                       | `PI_CODING_AGENT_DIR`, `PI_CODING_AGENT_SESSION_DIR`; `/login` inside `pi`; identity: `auth.json` reduced to provider and type, confirmed by `pi auth check --no-refresh` | `pi list/install/remove/update/config`; `<root>/agent/{skills,extensions,prompts,tools}`                                                                                                                                |
+| Hermes      | source checkout plus uv venv behind a wrapper script; `hermes update`                                                                                | `HERMES_HOME` (the adapter already redirects HOME for the gateway); `hermes portal`, `hermes auth`; identity through Hermes's own helpers in its venv | `hermes skills`, `hermes plugins`, `hermes mcp`; gateway `plugins.list`, `skills.manage`                                                                                                                                 |
+| Antigravity | GitHub `agy_cli_*`; `agy update`; `AGY_CLI_DISABLE_AUTO_UPDATE`                                                                                      | adapter-owned HOME redirection (`PUPPETEER_ANTIGRAVITY_HOME`); login `agy`; identity: the ID token in `antigravity-oauth-token` | `/skills`; to capture                                                                                                                                                                                                   |
 
 Imposter personas gain `--version`, `update`, `auth status --json`, and store layouts so conformance covers these
 services without network or real accounts.
@@ -247,7 +247,7 @@ The mapping is provider-specific, so it belongs where every other provider-speci
 | Grok        | `dataRoot`                 | `~/.grok`                   |
 | Kimi Code   | `dataRoot`                 | `~/.kimi-code`              |
 | Hermes      | `dataRoot`                 | `~/.hermes`                 |
-| Antigravity | `dataRoot`                 | `~/.gemini/antigravity-cli` |
+| Antigravity | `<dataRoot>/.gemini/antigravity-cli` | `~/.gemini/antigravity-cli` |
 | OpenCode    | `<dataRoot>/data/opencode` | `~/.local/share/opencode`   |
 | Pi          | `dataRoot`                 | `~/.pi`                     |
 
@@ -257,9 +257,9 @@ the profile root becomes the layout root. Pi holds its credentials in `auth.json
 deriving a keyring key from the path the way Codex does, so nothing breaks if the path moves: the change costs a
 one-time move of an existing managed root's contents into `<dataRoot>/agent`, and no managed Pi profile existed on
 the development machine when the binding changed. The adapter's own observation resolves the same variable, so it
-finds sessions under the new binding without a second rule. Antigravity's managed answer is nominal: support is
-`false`, no managed root is ever onboarded, and were that to change the answer would have to follow the HOME
-redirection down to `<root>/.gemini/antigravity-cli`.
+finds sessions under the new binding without a second rule. Antigravity's managed answer follows the HOME
+redirection down to `<root>/.gemini/antigravity-cli`; until 2026-09-23 it was nominal, because support was `false` and
+no managed root was ever onboarded.
 
 ### Profile sets (2026-09-23)
 
@@ -277,7 +277,8 @@ it is the registry's.
 - **The native set is synthetic**: the providers' own roots, never stored, renamed or removed. Every host sees it,
   whatever it named its own sets.
 - **Folders.** A managed set owns one directory, `<rootsDirectory>/<id>/`, the id made once from its first name
-  (`work`, `client-demo`, `work-2` on a clash; `native` reserved); a rename never moves it. An account's root is
+  (`work`, `client-demo`, `work-2` on a clash; `native` and, since the sign-in contract below, `profiles`
+  reserved); a rename never moves it. An account's root is
   `<set directory>/<provider>-<8 hex>/`, created exclusively, 0700, and never handed out twice: Claude Code keys its
   Keychain service and Codex its keyring account on the root's path, so an account signed out and added again must
   land where no credential left behind can answer for it. A host that roots the registry under a user's folder
@@ -301,9 +302,12 @@ it is the registry's.
   `CLAUDE_CONFIG_DIR`, removing the root-keyed Keychain item; strict — a failed logout is a failure whatever it
   printed — and confirmed by the status read afterwards). Without one it answers `{ ran: false, credential }` from the
   adapter's declaration `ProfileSupport.credential`: `root` where the credential is a file inside the root (Codex's
-  file store, which managed roots are written with; OpenCode's `auth.json` under the bound data directory; Hermes;
-  Pi), so deleting the root is the sign-out; `unknown` where it has not been established (Grok, Kimi, Copilot), so a
-  host deletes the root and claims nothing beyond it.
+  file store, which managed roots are written with; OpenCode's `auth.json` and `opencode.db` under the bound data
+  directory; Hermes; Pi; Grok's `auth.json`; Kimi Code's `credentials/kimi-code.json`; Antigravity's
+  `antigravity-oauth-token` in the redirected home), so deleting the root is the sign-out; `unknown` otherwise, so a
+  host deletes the root and claims nothing beyond it. Copilot declares `external` — one keychain item per GitHub login,
+  shared by every root signed in as that login — and has no `signOut` until `account.logout` is probed on a
+  disposable account, so it answers `unknown` too.
 - **Registry version 2** (`{ version: 2, defaultSet?, sets, profiles }`). A version 1 file is adopted on read by one
   rule that also repairs a hand-edited document: accounts named alike share a set unless two are of one provider,
   every account names an existing set, and every root stays where it is. A document naming one id twice is corrupt,
@@ -316,6 +320,166 @@ it is the registry's.
 - **Compatibility.** `createProfile({ providerId, label })` — the per-provider call Godview's drawer makes — joins the
   set of that name that has no account for the provider yet, or makes one, so a host that never heard of sets keeps
   working and its accounts group the way its user named them.
+
+### Sign-ins and the services they bill (2026-09-23)
+
+A profile's root is the agent's folder: its config, history, plugins, and whatever the agent keeps to stay signed in.
+What a person pays for is something else — a sign-in to a service, the company whose account the work runs on and is
+billed through. `ProfileIdentity` described one sign-in and left its service implied by the agent. That holds for a
+vendor agent, whose root holds one sign-in to its own company's service: Claude Code to Anthropic, Codex to OpenAI,
+Grok to xAI, Kimi Code to Kimi, Antigravity to Google, Copilot CLI to GitHub. It does not hold for a harness — Pi,
+OpenCode, Hermes — whose one root holds sign-ins to several services, mostly other companies', so a row that said
+"signed in" could not say to what, or which one a new session would use. The contract now separates the two.
+
+- **Custody never moves.** Every sign-in is the agent's own login, run by the agent in a host terminal under the
+  profile's binding, and its credential stays wherever the agent keeps it — a file inside the root or an OS keychain
+  item. Puppeteer never copies, moves, or mints a credential, and identity never reads one: who is signed in comes from
+  the agent's own status surface, and every shape below is strict, so no field exists for a token to travel in. (Account
+  usage, RFC 002, is a separate capability: some usage services read an agent's own credential, read-only, to ask that
+  agent's service for usage.)
+- **`SignInService { id, label }`** names the service a sign-in is billed through — never the agent. Ids are shared
+  across adapters so a host can tell that two agents' sign-ins are to the same service: lowercase ASCII letters and
+  digits with `.`, `_` or `-` only between them, at most 64. An adapter maps its native provider ids onto the list below
+  (a product line of a listed service, such as a coding plan or a Copilot seat, is that service) and passes an unlisted
+  one through, folded to the grammar. The label is the service's own name as a person knows it, not a login-menu
+  label; adapters use the listed labels exactly, so one service reads alike under every agent.
+
+  | Id           | Label         | Own service of |
+  | ------------ | ------------- | -------------- |
+  | `anthropic`  | Anthropic     | Claude Code    |
+  | `openai`     | OpenAI        | Codex          |
+  | `xai`        | xAI           | Grok           |
+  | `kimi`       | Moonshot AI   | Kimi Code      |
+  | `google`     | Google        | Antigravity    |
+  | `github`     | GitHub        | Copilot CLI    |
+  | `nous`       | Nous Research | —              |
+  | `opencode`   | OpenCode      | OpenCode       |
+  | `openrouter` | OpenRouter    | —              |
+  | `meta`       | Meta          | —              |
+
+- **`ProfileSignIn { service, method, subscription?, inUse?, email?, account?, organization?, plan? }`** is one sign-in
+  a root holds. `method` is the agent's own label (`oauth`, `api-key`, `free-tier`, …). `subscription` is set when the
+  agent's own catalog calls the login a subscription rather than a pay-per-use key. `inUse` marks the one a new session
+  uses unless the person picks another. Who and which plan appear only when the agent itself reports them: a harness
+  usually keeps no email for a third party's login, and a host never fills one in.
+- **`ProfileIdentity.signIns`** lists every sign-in, for an agent whose root holds several; a vendor agent reports no
+  list. When present it is the whole answer, and the schema holds it to two rules: `loggedIn` is true exactly when the
+  list is non-empty — an empty list is a signed-out harness — and at most one sign-in is in use. The top-level `method`,
+  `email`, `account`, `organization` and `plan` repeat the in-use sign-in's, and are absent when none is in use, so a
+  view that predates the list still reads the one that matters. The runtime derives them from the list when it
+  verifies, whatever the adapter put there, rather than trusting every adapter to keep the two in step (the same way
+  `support.signOut` is the runtime's fact, not the adapter's).
+- **`account`**, on `ProfileIdentity` and on `ProfileSignIn`: a non-email handle for the account, such as a GitHub
+  login. A view shows it before the email.
+- **`ProfileSupport.service`**: the service the agent's own sign-in is to (Claude Code declares Anthropic; Codex,
+  OpenAI). Absent for an agent with no service of its own.
+- **`ProfileSupport.signInRoutes`** `[{ id, label, service? }]`: the ways to add a sign-in to a root, for an agent whose
+  root holds several. Each route is the agent's own login, named as a menu item ("Nous Portal", "Another provider…"),
+  with its service when it signs in to exactly one; one to sixteen routes, each id unique, and absent means one login.
+  A route is an id, never a command: `loginInvocation(profile, { cwd, route? })` builds the terminal spec from it.
+- **The route check.** `startProfileLogin({ profileId, cwd?, route? })` refuses a route the adapter did not declare —
+  `invalid`, with no terminal opened and the adapter never asked — and an agent that declares no routes refuses every
+  route. With no route the adapter is asked for its default login, without a `route` key at all. The runtime checks
+  against its own copy of the declaration; `profileProviders()` hands out deep copies, so a host cannot widen it by
+  editing what it was given.
+- **The reserved set id `profiles`.** Hermes treats a `HERMES_HOME` whose parent directory is named `profiles` as one
+  of its own native profiles and takes provider credentials from the grandparent (probed on Hermes 0.21.4;
+  `draft/HERMES-SUBSCRIPTION-IDENTITY.md`). A Hermes root is `<rootsDirectory>/<set id>/hermes-<8 hex>`, so a set
+  folder named `profiles` would point every Hermes account in it at `<rootsDirectory>` itself — outside every set,
+  where deleting an account never reaches. No new set is given the id or the folder `profiles`, as none is given
+  `native`: a set named "Profiles" gets `profiles-2`, whether `createProfileSet` makes it, the per-agent
+  `createProfile({ label })` does, a version 1 registry is adopted, or an adopted set is given its first folder. A
+  rename moves nothing. A registry that already holds a `profiles` set is read as it is; one whose folder is already
+  `<rootsDirectory>/profiles` (only a set made on 2026-09-23 before this rule, or a folder a host chose through
+  `addSet`) keeps it, and the Hermes adapter guards the rest: its `initializeRoot` refuses a managed root whose parent
+  directory is named `profiles`, so such an account fails `unavailable` and nothing is registered.
+
+#### Per agent
+
+Every reading below is `experimental` unless it says otherwise, and each still owes its Surface claim set before
+promotion. Identity never reads a credential except where a paragraph says so, and nothing it returns carries one.
+
+- **Claude Code** — service `anthropic`. Unchanged: `claude auth status --json` gives email, organization and plan
+  (`native-status`, documented). Credential `external`, removed by `claude auth logout`.
+- **Codex** — service `openai`. Unchanged: app-server `account/read` with token refresh off (`native-protocol`,
+  documented). Credential `root` in managed roots.
+- **Grok** (probed on 1.0.41) — service `xai`, credential `root` (`auth.json` in `GROK_HOME`), no `signOut`.
+  `verify()` (`native-protocol`) starts `grok agent --no-leader stdio` through the ACP client account usage shares, in
+  an allow-listed environment plus `GROK_HOME` — never `XAI_API_KEY`, `GROK_CODE_XAI_API_KEY`, `GROK_AUTH` or
+  `GROK_AUTH_PATH`. It sends `initialize`, then `_x.ai/auth/info`. A `methodId` of `cached_token` or `xai.api_key` is
+  signed in; `null`, `grok.com` and `oidc` are signed out; any other value is `unavailable`. The email comes when
+  present, and the organization from `organizationName`, else `teamName`. Only when signed in, `_x.ai/billing` gives
+  the plan (`subscription_tier` or `subscriptionTier`); a billing miss keeps the identity without one. It never calls
+  `authenticate`, `_x.ai/auth/check_subscription` (which refreshes first) or `_x.ai/auth/getBearerToken`. A build
+  without the method (`-32601`) is `unsupported`.
+- **Kimi Code** (Kimi Code 2.0.2) — service `kimi`, credential `root` (the only token store is the file), no
+  `signOut`. `verify()` (`native-status`, documented) reads the access token Kimi Code keeps in
+  `<root>/credentials/kimi-code.json` and makes one `GET {base}/me`. That gives `email`, and `user_level_name` as the
+  plan, with method `kimi-code`. `{base}` is `KIMI_CODE_BASE_URL`; else the `managed:kimi-code` provider's `base_url`
+  in `config.toml`, when it names `api.kimi.com` or `api.kimi.ai` `/coding/v1`; else the root's `region` marker; else
+  mainland. Verify never refreshes and never writes. A missing file or blank tokens is signed out. A lapsed
+  15-minute token, a rejected token or a malformed document is `unavailable` and keeps the last identity. The local
+  server's `/api/v1/oauth/userinfo` is never used: it refreshes first and blanks the credential when that fails. Usage
+  reads `{base}/usages` from the same root: `usages.limit_5h`, `limit_7d`, `limit_month_total`, `limit_month_code` and
+  the booster wallet.
+- **Antigravity** (agy 1.2.9) — profiles are on. Service `google`, credential `root`, no `signOut`: in-prompt
+  `/logout` purges the OS keyring every home shares. The adapter-owned `PUPPETEER_ANTIGRAVITY_HOME` becomes `HOME` for
+  the child, both in the driver's launch and in the login terminal a host spawns directly. The login is `agy` itself,
+  whose first launch in an empty home opens the browser. `verify()` (`native-status`) reads
+  `<store>/antigravity-oauth-token` without touching `token`. It decodes the ID token's payload locally for `email` and
+  `hd` (the organization), and takes `auth_method` as the method; there is no plan. A missing file is signed out. An
+  unreadable file, or one naming no account, is `unavailable`. A root set to a Gemini API key (`modelProvider:
+  "gemini"`), or running where `AGY_ADC_AUTH` is set, reads signed out with that method, never as the consumer account:
+  the launch allow-list forwards neither the key nor the switch.
+- **Copilot CLI** (1.0.88) — service `github`, credential `external`, no `signOut`. `verify()` (`native-protocol`)
+  speaks Content-Length JSON-RPC to the server the official SDK starts (`copilot --server --stdio --no-auto-update`),
+  and `ping` must answer protocol version 3. The server runs with only PATH, HOME, user, locale and temp in its
+  environment, never `COPILOT_GITHUB_TOKEN`, `GH_TOKEN` or `GITHUB_TOKEN`. `auth.getStatus` gives `isAuthenticated`,
+  `authType` (the method) and `login`, which fills `account`. Only a `user` status is followed by
+  `account.getCurrentAuth`. That call's `copilotUser` is allowlisted to `copilot_plan` (the plan) and a single-entry
+  `organization_login_list` (the organization), and the whole document is dropped if a token, hmac or key field appears
+  anywhere in it. A `gh-cli` status is the truth for a root with no Copilot login of its own: it runs as GitHub CLI's
+  user. The credential is one `copilot-cli` keychain item per GitHub login, shared by every root signed in as that
+  login, so deleting a root leaves it.
+- **Pi** (0.87.1) — a harness with no `service` of its own, no `signInRoutes` (every sign-in is `/login` inside
+  `pi`), no `signOut`, and credential `root`. A root keeps one credential per upstream provider in
+  `<agent dir>/auth.json`, and `settings.json`'s `defaultProvider` names the one a new session uses. No Pi command lists
+  a root's sign-ins, and `pi auth check` reports `ready` for any provider whose key is in the environment. So `verify()`
+  (`native-status`) reads `auth.json` the way Pi's own `CredentialStore.list()` does — provider id and type, never
+  `access`, `refresh`, `key` or `env` — and returns one `signIns` row per credential. The service is mapped from Pi's
+  provider id; the method is `oauth` or `api-key`; `subscription` marks the six OAuth logins Pi flags `isSubscription`.
+  Only the selected row — `defaultProvider`'s, else the only subscription login, else the first — is confirmed, with
+  `pi auth check --provider <id> --json --no-refresh` under `PI_CODING_AGENT_DIR` and with provider credential variables
+  removed. It is marked `inUse` only when the answer is `ready` with the stored type; a failed check leaves the row
+  listed, not in use, and is not a sign-out. Pi keeps no email, organization or plan, and a ChatGPT `accountId` is never
+  shown as one.
+- **OpenCode** (1.18.32) — a harness whose own service is `opencode`, credential `root`. Routes: `provider`
+  ("Another provider…", `opencode auth login`, the default) and `console` ("OpenCode Console", `opencode console
+  login`, a device-code flow). `verify()` (`native-protocol`) returns one row per Console account in `opencode.db`
+  (method `console`, the stored email, and the org name from `GET /experimental/console/orgs` on a short-lived
+  `opencode serve` bound to the root, started only when an account exists). It also returns one row per `auth.json`
+  entry: the service mapped from the provider id, method `oauth`, `api-key` or `wellknown`, and `subscription` only for
+  the catalog's plan logins (ChatGPT, SuperGrok, Copilot). The database is opened read-only and read by named columns,
+  never a token column; `auth.json` is reduced to provider id and type as it is parsed. No row is `inUse`: a new
+  session's model is chosen in the shared config or the state root's recent-model list. An unreachable console costs
+  the org names, not the rows. The org request lets OpenCode refresh a Console token near expiry, as any OpenCode
+  start in the root would.
+- **Hermes** (read against the 0.21.4 source) — a harness whose own service is `nous`, credential `root`. Routes:
+  `portal` ("Nous Portal", `hermes portal`, the default: `hermes auth add nous --type oauth` plus the model and provider
+  choice; 0.21.4's `hermes login` only prints that it was removed) and `provider` ("Another provider…", bare
+  `hermes auth`, whose first action adds a credential for any provider). `verify()` (`native-protocol`) runs one short
+  script in the interpreter the `hermes` wrapper execs, with `-I -B` and only `HERMES_HOME` bound, and reads one
+  allowlisted JSON line. The script reads the refresh-free `get_nous_auth_status_local()` snapshot. Only when that
+  snapshot holds a Portal login does it call `get_nous_portal_account_info(force_fresh=True)` for email, organisation
+  and plan: a 401, or a refresh Hermes itself quarantined, removes the row, and a network failure keeps it without
+  details. It reads the stored pool through `read_credential_pool()`, projected to provider and auth type, and never
+  calls `load_pool()`, which runs `gh auth token` and writes back. `gh_cli`, `claude_code` and `qwen-cli` rows are
+  another program's login, marked by method. The in-use row comes from `model.provider` in the raw config. It never
+  calls `get_nous_auth_status()`, which redeems the single-use refresh token. The probe drops every provider credential
+  variable (`*_API_KEY`, `*_TOKEN`, …) from the host's environment: a launched session never sees them, and Hermes's
+  pool loader would seed and save them. `initializeRoot` refuses a root Hermes would resolve into another root — one
+  whose parent directory is named `profiles`, or anywhere inside `~/.hermes` — because such a home falls back to that
+  root's store and keeps the Nous login's shared copy outside the profile.
 
 ### Host and Godview
 
@@ -381,7 +545,8 @@ next step (see "Resolved questions" for the probes they must capture).
   `<root>/.credentials.json`; Codex verifies through app-server `account/read` with `CODEX_HOME` and writes
   `cli_auth_credentials_store = "file"` into new roots; Grok implements the native oracle; OpenCode forwards
   `XDG_DATA_HOME` and records it in a version 2 continuation; Pi has no login command (identity none);
-  Antigravity declares its binding but reports `supported: false` because 1.1.21 has no login subcommand.
+  Antigravity declares its binding but reports `supported: false` because 1.1.21 has no login subcommand. (Both
+  superseded on 2026-09-23; every adapter's current reading is under "Per agent".)
 - Composition: `packages/builtin-providers` wires both services per provider and binds a selected profile through
   each adapter's own native-invocation normalizer; OpenCode's allow-list is `['XDG_DATA_HOME']`.
 - Godview: `AgentsDrawer` (Installs, Accounts), the `puppeteer:installations`, `check-releases`,
@@ -404,6 +569,13 @@ unchanged: its per-provider calls land in sets named as its user named them. Aft
 `ProfileSupport.credential`, the retire-first and live-run rules on `signOutProfile`, serialized commit-after-save
 registry writes, the unreadable-registry fallback for plain spawns, and every profile service built with the
 executable its launch uses (a login, an identity read or a sign-out reaches the install the host chose).
+
+Added 2026-09-23 for account rows that say what they hold (see "Sign-ins and the services they bill"): `SignInService`,
+`ProfileSignIn` and `ProfileSignInRoute` in Core; `ProfileIdentity.account` and `signIns`; `ProfileSupport.service`
+and `signInRoutes`; the optional `route` on `loginInvocation` and `startProfileLogin`, refused unless declared; the
+runtime's derivation of an identity's top-level fields from its in-use sign-in; deep copies from `profileProviders()`
+and from the registry; the reserved `profiles` set id; and Godview's drawer showing an account handle before the email
+and, for a root that lists its sign-ins, the one in use and how many others (every sign-in on hover).
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

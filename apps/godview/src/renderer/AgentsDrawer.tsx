@@ -299,7 +299,7 @@ function AccountsTab({ profiles }: { profiles: AgentProfilesState }) {
                       </strong>
                       <small>{profile.kindLabel}</small>
                     </span>
-                    <span className="vf-agents-drawer-identity">
+                    <span className="vf-agents-drawer-identity" title={profile.identityTitle}>
                       <span>{profile.identityText}</span>
                       {profile.identityDetail ? <small>{profile.identityDetail}</small> : null}
                     </span>

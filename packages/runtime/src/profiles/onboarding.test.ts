@@ -1,6 +1,6 @@
 import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   AgentHost,
@@ -8,6 +8,7 @@ import type {
   ProfileIdentity,
   ProfileProvider,
   ProfileService,
+  ProfileSupport,
   TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { ProfileRegistrySnapshot, ProfileSetInfo } from '../types.js';
@@ -31,6 +32,8 @@ const identity: ProfileIdentity = {
 interface FakeProvider extends ProfileRegistryProvider {
   spawnedSpecs: TerminalSpec[];
   initialized: AgentProfile[];
+  /** The options every loginInvocation call received, as received. */
+  logins: Array<{ cwd: string; route?: string }>;
 }
 
 function fakeProvider(
@@ -42,6 +45,7 @@ function fakeProvider(
     initializeRoot?: ProfileService['initializeRoot'];
     signOut?: ProfileService['signOut'];
     credential?: 'root' | 'external';
+    signInRoutes?: ProfileSupport['signInRoutes'];
   } = {},
 ): FakeProvider {
   const variable = options.variable ?? `${id.toUpperCase()}_HOME`;
@@ -54,19 +58,24 @@ function fakeProvider(
       sharedSurfaces: [],
       nativeDefaultRoot: `/home/user/.${id}`,
       ...(options.credential === undefined ? {} : { credential: options.credential }),
+      ...(options.signInRoutes === undefined ? {} : { signInRoutes: options.signInRoutes }),
     },
   };
   const initialized: AgentProfile[] = [];
+  const logins: FakeProvider['logins'] = [];
   const service: ProfileService = {
     provider,
     bindingEnvironment: (profile) => (profile.kind === 'native-default' ? {} : { [variable]: profile.dataRoot }),
     observationRoot: (profile) => profile.dataRoot,
-    loginInvocation: (_profile, invocation) => ({
-      command: id,
-      args: ['login'],
-      cwd: invocation.cwd,
-      env: { NO_COLOR: '1' },
-    }),
+    loginInvocation: (_profile, invocation) => {
+      logins.push(invocation);
+      return {
+        command: id,
+        args: invocation.route === undefined ? ['login'] : ['login', invocation.route],
+        cwd: invocation.cwd,
+        env: { NO_COLOR: '1' },
+      };
+    },
     verify: options.verify ?? (async () => identity),
     ...(options.signOut === undefined ? {} : { signOut: options.signOut }),
     ...(options.initializeRoot === undefined
@@ -77,7 +86,7 @@ function fakeProvider(
         }
       : { initializeRoot: options.initializeRoot }),
   };
-  return { provider, service, spawnedSpecs: [], initialized };
+  return { provider, service, spawnedSpecs: [], initialized, logins };
 }
 
 function harness(entries: FakeProvider[], overrides: { host?: AgentHost } = {}) {
@@ -461,6 +470,66 @@ describe('createProfileOnboarding', () => {
     expect(other.set.directory).not.toBe(join(rootsDirectory, 'work'));
   });
 
+  it('never names a set folder profiles, which an agent would read as its own profiles directory', async () => {
+    const box = await onboarding([fakeProvider('alpha'), fakeProvider('beta')]);
+    const made = (await box.onboarding.createProfileSet({ label: 'Profiles' })) as ProfileSetInfo;
+    expect(made.set).toMatchObject({
+      id: 'profiles-2',
+      label: 'Profiles',
+      directory: join(box.rootsDirectory, 'profiles-2'),
+    });
+    // A host that names per-agent accounts joins it by name, as before.
+    const alpha = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'profiles' })) as AgentProfile;
+    expect(dirname(alpha.dataRoot)).toBe(join(box.rootsDirectory, 'profiles-2'));
+    // A second account of one agent under that name gets a set of its own, still not the reserved one.
+    const again = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Profiles' })) as AgentProfile;
+    expect(again.set).toBe('profiles-3');
+    // Renaming a set to the name moves nothing.
+    const work = (await box.onboarding.createProfileSet({ label: 'Work' })) as ProfileSetInfo;
+    await expect(box.onboarding.updateProfileSet({ setId: work.set.id, label: 'Profiles' })).resolves.toMatchObject({
+      set: { id: 'work', label: 'Profiles', directory: join(box.rootsDirectory, 'work') },
+    });
+    expect((await readdir(box.rootsDirectory)).sort()).toEqual(['profiles-2', 'profiles-3', 'work']);
+  });
+
+  it('reads a registry that already holds a profiles set, and gives it a folder by another name', async () => {
+    const box = harness([fakeProvider('alpha'), fakeProvider('beta')]);
+    // What an earlier build wrote once it had adopted a version 1 account
+    // named "Profiles": a set under that id, still without a folder.
+    box.stored.snapshot = parseProfileRegistrySnapshot({
+      version: 2,
+      sets: [{ id: 'profiles', kind: 'managed', label: 'Profiles', createdAt: '2026-09-06T12:00:00.000Z' }],
+      profiles: [
+        {
+          id: 'old-profiles',
+          provider: 'alpha',
+          label: 'Profiles',
+          kind: 'managed',
+          dataRoot: '/home/user/.puppeteer/profiles/alpha/old-profiles',
+          createdAt: '2026-09-06T12:00:00.000Z',
+          set: 'profiles',
+        },
+      ],
+    });
+    const rootsDirectory = join(await mkdtemp(join(tmpdir(), 'puppeteer-onboarding-')), 'profiles');
+    const flow = createProfileOnboarding({
+      registry: box.registry,
+      providers: box.providers,
+      allocator: createProfileRootAllocator({ rootsDirectory }),
+      host: box.host,
+      defaultCwd: '/workspace',
+    });
+
+    await expect(box.registry.getSet('profiles')).resolves.toMatchObject({
+      set: { id: 'profiles', label: 'Profiles' },
+      profiles: [{ id: 'old-profiles', dataRoot: '/home/user/.puppeteer/profiles/alpha/old-profiles' }],
+    });
+    const added = (await flow.createProfile({ providerId: 'beta', set: 'profiles' })) as AgentProfile;
+    expect(added.set).toBe('profiles');
+    expect(dirname(added.dataRoot)).toBe(join(rootsDirectory, 'profiles-2'));
+    expect((await box.registry.getSet('profiles'))?.set.directory).toBe(join(rootsDirectory, 'profiles-2'));
+  });
+
   it('spawns the native login with the binding merged over the adapter environment', async () => {
     const alpha = fakeProvider('alpha', { variable: 'ALPHA_HOME' });
     const box = await onboarding([alpha]);
@@ -480,6 +549,56 @@ describe('createProfileOnboarding', () => {
     await box.onboarding.startLogin({ profileId: nativeDefaultProfileId('alpha'), cwd: '/elsewhere' });
     expect(box.spawned[1]).toMatchObject({ cwd: '/elsewhere', env: { NO_COLOR: '1' } });
     await expect(box.onboarding.startLogin({ profileId: 'ghost' })).resolves.toMatchObject({ status: 'not-found' });
+  });
+
+  it('hands the adapter a sign-in route it declared, and refuses any other before a terminal opens', async () => {
+    const harnessProvider = fakeProvider('alpha', {
+      variable: 'ALPHA_HOME',
+      signInRoutes: [
+        { id: 'portal', label: 'Example Portal', service: { id: 'example', label: 'Example' } },
+        { id: 'another', label: 'Another provider…' },
+      ],
+    });
+    const single = fakeProvider('beta');
+    const box = await onboarding([harnessProvider, single]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    await expect(box.onboarding.startLogin({ profileId: profile.id, route: 'portal' })).resolves.toEqual({
+      runtimeSessionId: 'terminal-1',
+      profile,
+    });
+    expect(harnessProvider.logins).toEqual([{ cwd: '/workspace', route: 'portal' }]);
+    expect(box.spawned[0]).toEqual({
+      command: 'alpha',
+      args: ['login', 'portal'],
+      cwd: '/workspace',
+      env: { NO_COLOR: '1', ALPHA_HOME: profile.dataRoot },
+    });
+
+    // An id the adapter never declared is a host bug: refused as invalid,
+    // with no terminal and without asking the adapter for a command.
+    for (const route of ['elsewhere', 'Portal', '']) {
+      await expect(box.onboarding.startLogin({ profileId: profile.id, route })).resolves.toEqual({
+        status: 'invalid',
+        provider: 'alpha',
+        message: `unknown sign-in route for alpha: ${route}`,
+        retryable: false,
+      });
+    }
+    // An agent with one login declares no routes, so every route is unknown to it.
+    await expect(
+      box.onboarding.startLogin({ profileId: nativeDefaultProfileId('beta'), route: 'portal' }),
+    ).resolves.toMatchObject({ status: 'invalid', provider: 'beta' });
+    expect(box.spawned).toHaveLength(1);
+    expect(harnessProvider.logins).toHaveLength(1);
+    expect(single.logins).toEqual([]);
+
+    // No route is the default login, asked for without a route key at all.
+    await box.onboarding.startLogin({ profileId: profile.id });
+    await box.onboarding.startLogin({ profileId: nativeDefaultProfileId('beta'), cwd: '/elsewhere' });
+    expect(harnessProvider.logins[1]).toStrictEqual({ cwd: '/workspace' });
+    expect(single.logins).toStrictEqual([{ cwd: '/elsewhere' }]);
+    expect(box.spawned.map((spec) => spec.args)).toEqual([['login', 'portal'], ['login'], ['login']]);
   });
 
   it('reports a login the host could not start as retryable', async () => {
@@ -534,6 +653,54 @@ describe('createProfileOnboarding', () => {
       message: 'no native identity surface',
       retryable: false,
     });
+  });
+
+  it('answers at the top level with the in-use sign-in, whatever the adapter put there', async () => {
+    const portal = {
+      service: { id: 'example', label: 'Example' },
+      method: 'oauth',
+      subscription: true,
+      inUse: true,
+      account: 'person',
+      email: 'person@example.com',
+      plan: 'Pro',
+    };
+    const key = { service: { id: 'other-cloud', label: 'Other Cloud' }, method: 'api-key' };
+    const read = { verifiedAt: '2026-09-23T12:00:00.000Z', source: identity.source };
+    let answer: ProfileIdentity = {
+      loggedIn: true,
+      // stale or guessed top-level fields the list contradicts
+      method: 'subscription',
+      organization: 'Somewhere Else',
+      signIns: [key, portal],
+      ...read,
+    };
+    const alpha = fakeProvider('alpha', { verify: async () => answer });
+    const box = await onboarding([alpha]);
+    const profile = (await box.onboarding.createProfile({ providerId: 'alpha', label: 'Work' })) as AgentProfile;
+
+    const inUse: ProfileIdentity = {
+      loggedIn: true,
+      method: 'oauth',
+      account: 'person',
+      email: 'person@example.com',
+      plan: 'Pro',
+      signIns: [key, portal],
+      ...read,
+    };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(inUse);
+    expect(box.stored.snapshot?.profiles[0]?.identity).toStrictEqual(inUse);
+
+    // Signed in with none in use: nothing at the top level speaks for the list.
+    answer = { loggedIn: true, email: 'person@example.com', signIns: [key, { ...portal, inUse: false }], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual({
+      loggedIn: true,
+      signIns: [key, { ...portal, inUse: false }],
+      ...read,
+    });
+    // A single-sign-in agent reports no list, and its fields pass through untouched.
+    answer = { loggedIn: true, method: 'subscription', email: 'person@example.com', ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(answer);
   });
 
   it('never lets an adapter fault escape verification', async () => {

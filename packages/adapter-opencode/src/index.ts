@@ -14,6 +14,7 @@ export {
   OpenCodeClient,
   OpenCodeHttpError,
   type OpenCodeClientOptions,
+  type OpenCodeConsoleOrg,
   type OpenCodeMessage,
   type OpenCodeModelSelection,
   type OpenCodePermissionRequest,

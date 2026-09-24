@@ -144,6 +144,7 @@ export function createClaudeProfileService(options: ClaudeProfileOptions = {}): 
       // macOS keeps the OAuth credential in a login-Keychain item named after
       // the root's path, outside the root: only `auth logout` removes it.
       credential: 'external',
+      service: { id: 'anthropic', label: 'Anthropic' },
     },
   };
 

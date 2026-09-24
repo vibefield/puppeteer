@@ -407,9 +407,24 @@ function cloneDistributionProvider(provider: DistributionProvider): Distribution
 }
 
 function cloneProfileProvider(provider: ProfileProvider): ProfileProvider {
+  // Deep: the runtime checks login routes against its own copy, which a host
+  // must not be able to widen by editing what it was handed.
+  const { service, signInRoutes } = provider.support;
   return {
     ...provider,
-    support: { ...provider.support, sharedSurfaces: [...provider.support.sharedSurfaces] },
+    support: {
+      ...provider.support,
+      sharedSurfaces: [...provider.support.sharedSurfaces],
+      ...(service === undefined ? {} : { service: { ...service } }),
+      ...(signInRoutes === undefined
+        ? {}
+        : {
+            signInRoutes: signInRoutes.map((route) => ({
+              ...route,
+              ...(route.service === undefined ? {} : { service: { ...route.service } }),
+            })),
+          }),
+    },
   };
 }
 
