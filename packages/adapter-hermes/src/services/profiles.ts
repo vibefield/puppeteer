@@ -252,12 +252,13 @@ const SUBSCRIPTION_LOGINS = new Set(['openai-codex', 'anthropic', 'xai-oauth']);
 /**
  * Pool rows Hermes borrows from another program's login on this machine
  * instead of holding one in the root. Every root that seeds one shows the same
- * account, so the method names whose login it is.
+ * account, so the method names whose login it is, and `borrowedFrom` names the
+ * program as a person knows it.
  */
 const BORROWED_METHODS = new Map([
-  ['gh_cli', 'gh-cli'],
-  ['claude_code', 'claude-code'],
-  ['qwen-cli', 'qwen-cli'],
+  ['gh_cli', { method: 'gh-cli', from: 'GitHub CLI' }],
+  ['claude_code', { method: 'claude-code', from: 'Claude Code' }],
+  ['qwen-cli', { method: 'qwen-cli', from: 'Qwen Code' }],
 ]);
 
 const NOUS_STATES = new Set(['none', 'free-tier', 'account', 'unreachable', 'rejected']);
@@ -336,10 +337,15 @@ function poolSignIn(row: unknown): HeldSignIn | undefined {
   if (!service) return undefined;
   const oauth = authType.startsWith('oauth');
   const borrowed = typeof entry.borrowed === 'string' ? BORROWED_METHODS.get(entry.borrowed) : undefined;
-  const method = borrowed ?? (oauth ? 'oauth' : authType === 'api_key' ? 'api-key' : authType);
+  const method = borrowed?.method ?? (oauth ? 'oauth' : authType === 'api_key' ? 'api-key' : authType);
   return {
     provider,
-    signIn: { service, method, ...(oauth && SUBSCRIPTION_LOGINS.has(provider) ? { subscription: true } : {}) },
+    signIn: {
+      service,
+      method,
+      ...(oauth && SUBSCRIPTION_LOGINS.has(provider) ? { subscription: true } : {}),
+      ...(borrowed ? { borrowedFrom: borrowed.from } : {}),
+    },
   };
 }
 
@@ -379,6 +385,7 @@ export function hermesProfileIdentityFrom(document: unknown, verifiedAt: string)
           ...(current.account ? { account: current.account } : {}),
           ...(current.organization ? { organization: current.organization } : {}),
           ...(current.plan ? { plan: current.plan } : {}),
+          ...(current.borrowedFrom ? { borrowedFrom: current.borrowedFrom } : {}),
         }
       : {}),
     signIns,

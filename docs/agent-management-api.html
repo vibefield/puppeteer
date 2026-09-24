@@ -1764,6 +1764,8 @@ interface ProfileSignIn {
   account?: string;
   organization?: string;
   plan?: string;
+  /** The program whose sign-in this is, when the root holds none of its own ("GitHub CLI"). */
+  borrowedFrom?: string;
 }
 
 interface ProfileIdentity {
@@ -1774,6 +1776,8 @@ interface ProfileIdentity {
   account?: string;
   organization?: string;
   plan?: string;
+  /** The program whose sign-in the agent runs as; the machine's account, not the profile's. */
+  borrowedFrom?: string;
   /**
    * Every sign-in, for an agent whose root holds several. loggedIn is true exactly when it is
    * non-empty; at most one is in use; the top-level fields above repeat the in-use one's.
@@ -1821,6 +1825,51 @@ interface ProfileFailure {
   message: string;
   retryable: boolean;
 }</code></pre>
+            <pre><code data-source="packages/core/src/services/profile-plans.ts" data-types="ProfilePlanAccount,ProfilePlan,ProfileHolding,ProfileSetPlans,profileSetPlans">/** Pure: what each set runs on, read from its identities. Nothing is stored. */
+function profileSetPlans(
+  sets: readonly { set: { id: string }; profiles: readonly AgentProfile[] }[],
+  providers: readonly { id: string; support: Pick&lt;ProfileSupport, 'service'&gt; }[],
+): ProfileSetPlans[];
+
+interface ProfileSetPlans {
+  setId: string;
+  /** In the order the set's agents first hold a sign-in on them. */
+  plans: ProfilePlan[];
+  /** Per profile, in the agent's own order; none for one unread or signed out. */
+  holdings: Record&lt;string, ProfileHolding[]&gt;;
+}
+
+interface ProfilePlan {
+  /** The service id, then -2, -3 … for further plans with that service. */
+  id: string;
+  service: SignInService;
+  /** Whose account, when an agent in the set named it. */
+  account?: ProfilePlanAccount;
+  /** The profile that named it; the plan's usage is that account's. */
+  namedBy?: string;
+  /** Every holder runs as this program's sign-in. */
+  borrowedFrom?: string;
+  holders: string[];
+  /** Other sets with the same account, or on the same borrowed sign-in. */
+  alsoIn: string[];
+}
+
+interface ProfilePlanAccount {
+  email?: string;
+  account?: string;
+  organization?: string;
+  plan?: string;
+}
+
+/** One sign-in a profile holds; a vendor agent's one is made from its identity. */
+interface ProfileHolding extends Omit&lt;ProfileSignIn, 'method'&gt; {
+  method?: string;
+  /** 'api-key': pay per use, never on a plan. */
+  key: boolean;
+  planId?: string;
+  /** In use, else first subscription, else first that names an account, else first. */
+  runsOn: boolean;
+}</code></pre>
             <div class="flow-list">
               <div class="flow-step">
                 <div>
@@ -1852,6 +1901,15 @@ interface ProfileFailure {
                   <p>
                     When the host observes login completion, call verifyProfile(profileId). Inspect loggedIn and
                     identity metadata.
+                  </p>
+                </div>
+              </div>
+              <div class="flow-step">
+                <div>
+                  <strong>Show what it runs on</strong>
+                  <p>
+                    Pass profileSets() and profileProviders() to profileSetPlans(); draw each plan once with the usage
+                    of its namedBy account, and each agent's holdings with the one it runs on first.
                   </p>
                 </div>
               </div>

@@ -118,6 +118,13 @@ function carriesSecret(value: unknown): boolean {
 }
 
 /**
+ * `authType`s that are another program's sign-in: with no login of its own in
+ * the root, Copilot acts as the GitHub CLI's user — the same account in every
+ * root that has none, so the identity says whose it is.
+ */
+const BORROWED_AUTH = new Map([['gh-cli', 'GitHub CLI']]);
+
+/**
  * Decode `auth.getStatus`. Only the documented boolean says whether anyone is
  * signed in; a document without it, or one that carries a secret, is not the
  * credential-free status this reader was built for. The account is `login`,
@@ -135,10 +142,12 @@ export function copilotProfileIdentityFrom(result: unknown, verifiedAt: string):
 
   const method = text(status.authType);
   const account = text(status.login);
+  const borrowedFrom = method === undefined ? undefined : BORROWED_AUTH.get(method);
   return {
     loggedIn: true,
     ...(method ? { method } : {}),
     ...(account ? { account } : {}),
+    ...(borrowedFrom ? { borrowedFrom } : {}),
     verifiedAt,
     source,
   };

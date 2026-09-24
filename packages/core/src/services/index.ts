@@ -5,3 +5,4 @@ export * from './account-usage.js';
 export * from './launch.js';
 export * from './distribution.js';
 export * from './profiles.js';
+export * from './profile-plans.js';

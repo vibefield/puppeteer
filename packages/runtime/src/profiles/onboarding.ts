@@ -87,7 +87,7 @@ function validLabel(label: string): string | undefined {
   return trimmed.length > 0 && trimmed.length <= MAX_PROFILE_LABEL_LENGTH ? trimmed : undefined;
 }
 
-const IN_USE_FIELDS = ['method', 'email', 'account', 'organization', 'plan'] as const;
+const IN_USE_FIELDS = ['method', 'email', 'account', 'organization', 'plan', 'borrowedFrom'] as const;
 
 /**
  * An identity that lists its sign-ins answers at the top level with the

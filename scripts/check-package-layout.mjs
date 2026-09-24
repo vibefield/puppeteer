@@ -305,7 +305,13 @@ const forbiddenPrivateLaunchTokens = [
   'agentOptions',
 ];
 
-const godviewBrandingPaths = new Set(['packages/views/src/icons/AgentIcon.tsx']);
+// The views' visual-branding maps: the agents' own marks, and the services' —
+// the company marks, and the names their plans are sold under (RFC 006, "Plans").
+const godviewBrandingPaths = new Set([
+  'packages/views/src/icons/AgentIcon.tsx',
+  'packages/views/src/icons/ServiceMark.tsx',
+  'packages/views/src/icons/service-marks.ts',
+]);
 const godviewCompositionRootPaths = new Set(['apps/godview/src/main/main.ts']);
 const forbiddenGodviewWireTokens = [
   'claudeHookRailFaultInjection',
@@ -390,7 +396,7 @@ export function launchHostBoundaryIssues(sources) {
 
 /**
  * Godview is a consumer of normalized providers. Concrete provider names are
- * allowed only in its optional visual-branding map; provider package assembly
+ * allowed only in its optional visual-branding maps; provider package assembly
  * is allowed only in the main-process composition root.
  */
 export function godviewConsumerBoundaryIssues(sources) {

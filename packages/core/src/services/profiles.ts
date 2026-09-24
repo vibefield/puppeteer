@@ -52,6 +52,15 @@ export const SignInServiceSchema = z.strictObject({
 export type SignInService = z.infer<typeof SignInServiceSchema>;
 
 /**
+ * The program whose sign-in an agent runs as when its root holds none of its
+ * own: Copilot without its own login acts as the GitHub CLI's user. Such a
+ * sign-in is the machine's, not the profile's — every root that borrows it
+ * answers for the same account — so a host must not present it as the
+ * profile's own. The adapter names the program as a person knows it.
+ */
+const BorrowedFromSchema = z.string().trim().min(1).max(64);
+
+/**
  * One sign-in a root holds, for an agent whose root can hold several (a
  * harness: Pi, OpenCode, Hermes). Never carries a token or any field that
  * travels beside one. Who and which plan appear only when the agent itself
@@ -71,6 +80,7 @@ export const ProfileSignInSchema = z.strictObject({
   account: NonEmptyStringSchema.optional(),
   organization: NonEmptyStringSchema.optional(),
   plan: NonEmptyStringSchema.optional(),
+  borrowedFrom: BorrowedFromSchema.optional(),
 });
 export type ProfileSignIn = z.infer<typeof ProfileSignInSchema>;
 
@@ -86,6 +96,8 @@ export const ProfileIdentitySchema = z
     organization: NonEmptyStringSchema.optional(),
     /** Native plan or subscription label. */
     plan: NonEmptyStringSchema.optional(),
+    /** The program whose sign-in the agent runs as, when the root holds none of its own. */
+    borrowedFrom: BorrowedFromSchema.optional(),
     /**
      * Every sign-in the root holds, for an agent whose root can hold several.
      * When present it is the whole answer: `loggedIn` is true exactly when it

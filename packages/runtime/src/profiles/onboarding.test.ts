@@ -698,6 +698,23 @@ describe('createProfileOnboarding', () => {
       signIns: [key, { ...portal, inUse: false }],
       ...read,
     });
+    // A borrowed sign-in in use says so at the top level too; a stale claim goes.
+    const borrowed = {
+      service: { id: 'forge', label: 'Forge' },
+      method: 'cli',
+      borrowedFrom: 'Forge CLI',
+      inUse: true,
+    };
+    answer = { loggedIn: true, borrowedFrom: 'Stale CLI', signIns: [key, borrowed], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual({
+      loggedIn: true,
+      method: 'cli',
+      borrowedFrom: 'Forge CLI',
+      signIns: [key, borrowed],
+      ...read,
+    });
+    answer = { loggedIn: true, borrowedFrom: 'Stale CLI', signIns: [key, portal], ...read };
+    await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(inUse);
     // A single-sign-in agent reports no list, and its fields pass through untouched.
     answer = { loggedIn: true, method: 'subscription', email: 'person@example.com', ...read };
     await expect(box.onboarding.verifyProfile(profile.id)).resolves.toStrictEqual(answer);

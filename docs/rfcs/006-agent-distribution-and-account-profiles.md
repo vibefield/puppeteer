@@ -371,6 +371,12 @@ OpenCode, Hermes — whose one root holds sign-ins to several services, mostly o
   `support.signOut` is the runtime's fact, not the adapter's).
 - **`account`**, on `ProfileIdentity` and on `ProfileSignIn`: a non-email handle for the account, such as a GitHub
   login. A view shows it before the email.
+- **`borrowedFrom`** (2026-09-24), on `ProfileIdentity` and on `ProfileSignIn`: the program whose sign-in the agent
+  runs as because its root holds none of its own — Copilot without its own login acts as the GitHub CLI's user;
+  Hermes's pool seeds rows from the GitHub CLI, Claude Code and Qwen Code. Such a sign-in is the machine's, not the
+  profile's: every root that borrows it answers for one account, so a host must not present it as the profile's
+  own. The adapter names the program as a person knows it; the runtime's in-use derivation carries it like the
+  other top-level fields.
 - **`ProfileSupport.service`**: the service the agent's own sign-in is to (Claude Code declares Anthropic; Codex,
   OpenAI). Absent for an agent with no service of its own.
 - **`ProfileSupport.signInRoutes`** `[{ id, label, service? }]`: the ways to add a sign-in to a root, for an agent whose
@@ -439,7 +445,7 @@ promotion. Identity never reads a credential except where a paragraph says so, a
   `account.getCurrentAuth`. That call's `copilotUser` is allowlisted to `copilot_plan` (the plan) and a single-entry
   `organization_login_list` (the organization), and the whole document is dropped if a token, hmac or key field appears
   anywhere in it. A `gh-cli` status is the truth for a root with no Copilot login of its own: it runs as GitHub CLI's
-  user. The credential is one `copilot-cli` keychain item per GitHub login, shared by every root signed in as that
+  user, and the identity says so with `borrowedFrom: "GitHub CLI"`. The credential is one `copilot-cli` keychain item per GitHub login, shared by every root signed in as that
   login, so deleting a root leaves it.
 - **Pi** (0.87.1) — a harness with no `service` of its own, no `signInRoutes` (every sign-in is `/login` inside
   `pi`), no `signOut`, and credential `root`. A root keeps one credential per upstream provider in
@@ -474,12 +480,40 @@ promotion. Identity never reads a credential except where a paragraph says so, a
   and plan: a 401, or a refresh Hermes itself quarantined, removes the row, and a network failure keeps it without
   details. It reads the stored pool through `read_credential_pool()`, projected to provider and auth type, and never
   calls `load_pool()`, which runs `gh auth token` and writes back. `gh_cli`, `claude_code` and `qwen-cli` rows are
-  another program's login, marked by method. The in-use row comes from `model.provider` in the raw config. It never
+  another program's login, marked by method and by `borrowedFrom` ("GitHub CLI", "Claude Code", "Qwen Code"). The in-use row comes from `model.provider` in the raw config. It never
   calls `get_nous_auth_status()`, which redeems the single-use refresh token. The probe drops every provider credential
   variable (`*_API_KEY`, `*_TOKEN`, …) from the host's environment: a launched session never sees them, and Hermes's
   pool loader would seed and save them. `initializeRoot` refuses a root Hermes would resolve into another root — one
   whose parent directory is named `profiles`, or anywhere inside `~/.hermes` — because such a home falls back to that
   root's store and keeps the Nous login's shared copy outside the profile.
+
+### Plans: what a set runs on (2026-09-24)
+
+A person pays for plans — a Claude Max account, a ChatGPT Pro account — and a set's agents sign in to them. Which
+plans a set runs on, whose account each is, and which agents spend it are a reading of the set's identities, never
+a record: nothing is stored, matched, or asked of a person. Core's pure `profileSetPlans(sets, providers)` reads
+every set at once (so it can say where else an account is used) and answers, per set, `plans` and `holdings`.
+
+- **A holding** is one sign-in a profile holds: a harness's `signIns` rows, or the one sign-in a vendor agent's
+  identity describes, to the service its provider declares. `key` marks a pay-per-use key; `planId` names the plan it
+  is on; `runsOn` marks the one the agent runs on — the one in use, else its first subscription, else the first that
+  names an account, else its first. A profile whose identity is unknown or signed out holds nothing.
+- **A plan** is `{ id, service, account?, namedBy?, borrowedFrom?, holders, alsoIn }`. A sign-in is placed by the
+  first rule that fits: `api-key`, the method label every adapter gives a raw key, is never a plan; a sign-in that
+  names its account (a handle or an email, compared without case) is on that account's plan, read through the
+  service's own agent where several name it (`namedBy` — its usage is the plan's); a borrowed sign-in that names no
+  account is on the plan of the same program's credential; any other sign-in that names no account is on the plan the
+  service's own agent named in the set, else the first another agent named without borrowing, else the service's
+  unnamed plan. The third rule is the design's simplification, and a host says it out loud: inside one set a harness's
+  sign-in to a company is taken to be the set's account with that company, and its row says the agent does not name
+  the account.
+- **Ids and order.** Plans come in the order the set's agents first hold them; an id is the service id, then `-2`,
+  `-3` … for further plans with the same service. `alsoIn` lists the other sets with a plan for the same account, or
+  running on the same borrowed sign-in.
+- **Presentation** stays in the views: `ServiceMark` draws a service with its company's mark (LobeHub's, Claude's for
+  Anthropic), `serviceProduct` names what the company's plans are sold as ("Claude", "ChatGPT"), and `planTitle` joins
+  the two ("Claude Max"; a label that already names the product, such as "SuperGrok Heavy", stands alone; the product
+  alone when no plan was reported). Never select behaviour on them.
 
 ### Host and Godview
 
@@ -576,6 +610,11 @@ and `signInRoutes`; the optional `route` on `loginInvocation` and `startProfileL
 runtime's derivation of an identity's top-level fields from its in-use sign-in; deep copies from `profileProviders()`
 and from the registry; the reserved `profiles` set id; and Godview's drawer showing an account handle before the email
 and, for a root that lists its sign-ins, the one in use and how many others (every sign-in on hover).
+
+Added 2026-09-24 for profile pages that show what a set runs on (see "Plans: what a set runs on"): Core's pure
+`profileSetPlans` with `ProfilePlan`, `ProfileHolding` and `ProfileSetPlans`; `borrowedFrom` on `ProfileIdentity` and
+`ProfileSignIn`, carried by the in-use derivation and set by Copilot (`gh-cli`) and Hermes (its borrowed pool rows);
+and the views' `ServiceMark`, `serviceProduct` and `planTitle`.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

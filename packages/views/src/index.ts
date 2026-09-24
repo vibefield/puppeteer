@@ -27,6 +27,7 @@ export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';
 export * from './icons/AgentIcon.js';
 export * from './icons/ProfileGlyph.js';
+export * from './icons/ServiceMark.js';
 export * from './bar/InstrumentBar.js';
 export * from './usage/UsageColumn.js';
 export * from './usage/account-usage.js';

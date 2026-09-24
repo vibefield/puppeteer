@@ -249,6 +249,7 @@ describe('Copilot profile verification', () => {
       loggedIn: true,
       method: 'gh-cli',
       account: 'octo-dev',
+      borrowedFrom: 'GitHub CLI',
       verifiedAt: VERIFIED_AT,
       source: SOURCE,
     });

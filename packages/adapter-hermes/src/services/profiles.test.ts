@@ -396,10 +396,15 @@ describe('Hermes identity document', () => {
     expect(result.loggedIn).toBe(true);
     expect(result).not.toHaveProperty('method');
     expect(result.signIns).toEqual([
-      { service: { id: 'anthropic', label: 'Anthropic' }, method: 'claude-code', subscription: true },
+      {
+        service: { id: 'anthropic', label: 'Anthropic' },
+        method: 'claude-code',
+        subscription: true,
+        borrowedFrom: 'Claude Code',
+      },
       { service: { id: 'anthropic', label: 'Anthropic' }, method: 'api-key' },
       // The machine's gh login: every root that loads Copilot shows the same account.
-      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli' },
+      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli', borrowedFrom: 'GitHub CLI' },
       // A custom endpoint keeps the name it was given; its pool key is no service id.
       { service: { id: 'custom-lab-box-v2', label: 'lab-box/v2' }, method: 'api-key' },
       { service: { id: 'deepseek', label: 'DeepSeek' }, method: 'api-key' },
@@ -486,7 +491,7 @@ describe('Hermes identity document', () => {
       // `device_code` is Hermes's own login, not a borrowed one.
       { service: { id: 'openai', label: 'OpenAI' }, method: 'oauth', subscription: true },
       { service: { id: 'openrouter', label: 'OpenRouter' }, method: 'api-key' },
-      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli' },
+      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli', borrowedFrom: 'GitHub CLI' },
     ]);
   });
 
@@ -683,7 +688,7 @@ describe.skipIf(!python3)('Hermes identity script', () => {
         organization: 'Analytical Engines',
         plan: 'Pro',
       },
-      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli' },
+      { service: { id: 'github', label: 'GitHub' }, method: 'gh-cli', borrowedFrom: 'GitHub CLI' },
       { service: { id: 'nous', label: 'Nous Research' }, method: 'api-key' },
       { service: { id: 'openai', label: 'OpenAI' }, method: 'oauth', subscription: true },
       { service: { id: 'openrouter', label: 'OpenRouter' }, method: 'api-key' },
