@@ -312,3 +312,134 @@ describe('startup ordering', () => {
     expect(batch.entries.map((entry) => entry.profileId)).toEqual(['push-agent:native-default']);
   });
 });
+
+describe('manual account usage refresh', () => {
+  const PROFILES: AccountUsageProfileRef[] = [
+    { id: 'one', provider: 'push-agent', label: 'One' },
+    { id: 'two', provider: 'push-agent', label: 'Two' },
+  ];
+
+  it('reconciles without fetching, targets one account, and reuses recent readings', async () => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (id: string) => available(id));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => PROFILES,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refreshProfiles({ poll: false });
+    expect(fetchUsage).not.toHaveBeenCalled();
+    await monitor.refresh();
+    fetchUsage.mockClear();
+    nowMs = 30_000;
+    await monitor.refresh();
+    expect(fetchUsage).not.toHaveBeenCalled();
+    const batch = await monitor.refresh({ force: true, profileIds: ['one'] });
+    expect(fetchUsage.mock.calls).toEqual([['push-agent', 'one']]);
+    expect(batch.entries.map((entry) => entry.profileId)).toEqual(['one', 'two']);
+    await monitor.refresh({ force: true, profileIds: ['one'] });
+    expect(fetchUsage).toHaveBeenCalledTimes(1);
+    await monitor.refresh({ force: true, profileIds: [] });
+    expect(fetchUsage).toHaveBeenCalledTimes(1);
+    nowMs += 30_000;
+    await monitor.refresh({ force: true, profileIds: ['one'] });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([undefined, new Date(120_000).toISOString()])('honors failure backoff and retryAt (%s)', async (retryAt) => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('fast-agent'));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[1]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refresh();
+    nowMs = 30_000;
+    fetchUsage.mockResolvedValueOnce({
+      provider: 'fast-agent',
+      status: 'unavailable',
+      code: 'rate-limited',
+      retryable: true,
+      message: 'Please wait',
+      ...(retryAt ? { retryAt } : {}),
+    });
+    const stale = await monitor.refresh({ force: true });
+    expect(stale.entries[0]).toMatchObject({ stale: true, refreshFailure: { code: 'rate-limited' } });
+    nowMs = 60_000;
+    expect(await monitor.refresh({ force: true })).toBe(stale);
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    nowMs = retryAt ? 120_000 : 90_000;
+    expect((await monitor.refresh({ force: true })).entries[0]?.stale).toBeUndefined();
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('coalesces concurrent manual requests and preserves targets behind an unrelated poll', async () => {
+    let nowMs = 0;
+    let release: (() => void) | undefined;
+    const fetchUsage = vi.fn(async (id: string, _profileId?: string) => available(id));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => PROFILES,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refreshProfiles();
+    nowMs = 30_000;
+    fetchUsage.mockClear();
+    fetchUsage.mockImplementationOnce(async (id) => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return available(id);
+    });
+    const first = monitor.refresh({ force: true, profileIds: ['one'] });
+    const duplicate = monitor.refresh({ force: true, profileIds: ['one'] });
+    const other = monitor.refresh({ force: true, profileIds: ['two'] });
+    release?.();
+    await Promise.all([first, duplicate, other]);
+    expect(fetchUsage.mock.calls).toEqual([
+      ['push-agent', 'one'],
+      ['push-agent', 'two'],
+    ]);
+  });
+
+  it('does not replace a recent push with another network reading', async () => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (id: string) => available(id));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refresh();
+    nowMs = 60_000;
+    monitor.ingest('push-agent', available('push-agent', { kind: 'native-statusline', stability: 'documented' }));
+    await monitor.refresh({ force: true });
+    expect(fetchUsage).toHaveBeenCalledTimes(1);
+  });
+});
+
+it('manual clicks respect the 30s guard even with a shorter product polling override', async () => {
+  let nowMs = 0;
+  const fetchUsage = vi.fn(async (id: string) => available(id));
+  const monitor = createAccountUsageMonitor({
+    providers: [PROVIDERS[1]!],
+    fetchUsage,
+    publish: () => undefined,
+    refreshMs: 1_000,
+    now: () => new Date(nowMs),
+  });
+  await monitor.refresh({ force: true });
+  nowMs = 1_000;
+  await monitor.refresh({ force: true });
+  expect(fetchUsage).toHaveBeenCalledTimes(1);
+  // The automatic cadence remains independent of the manual-click guard.
+  await monitor.refresh();
+  expect(fetchUsage).toHaveBeenCalledTimes(2);
+});
