@@ -124,9 +124,13 @@ body {
   user-select: none;
 }
 
-.vf-godview button,
-.vf-godview kbd,
-.vf-godview select {
+/* Controls take the stage's type rather than the browser's, and the reset
+   weighs nothing: under `:where()` it gives way to every component's own type.
+   At one class and one element it outranked them, and the bar's counters and
+   tools drew at the page's size in regular weight instead of §04's 9px 700. */
+:where(.vf-godview) button,
+:where(.vf-godview) kbd,
+:where(.vf-godview) select {
   font: inherit;
 }
 
@@ -205,8 +209,9 @@ body {
   -webkit-app-region: no-drag;
 }
 
-.vf-godview-tweak-panel button,
-.vf-godview-tweak-panel select {
+/* The same reset for the panel's portal, weighing nothing for the same reason. */
+:where(.vf-godview-tweak-panel) button,
+:where(.vf-godview-tweak-panel) select {
   font: inherit;
 }
 
