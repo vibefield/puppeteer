@@ -6,7 +6,8 @@ import type { AgentMonitorView, MonitorTheme } from '../monitor/types.js';
 // the title was, tools on the right, drag space between. Every control is one
 // recipe: 22px tall, 5px radius, 9px 700 numerals, 12px marks drawn on a
 // 24-unit grid. Tooltips carry the words and the shortcuts. The bar drags the
-// window; the controls do not.
+// window; the controls do not. The one exception to "no words" is the profile
+// tabs a host may centre in it (`ProfileTabs`, amended for the tabs 2026-09-22).
 
 /** The marks: a 24-unit grid, monoline 1.6, round caps and joins, currentColor. */
 const MARKS: Record<string, ReactNode> = {
@@ -177,6 +178,8 @@ export interface InstrumentBarProps {
   onThemeChange(theme: MonitorTheme): void;
   /** Before the counters: a frameless window's own lights, say. */
   leading?: ReactNode;
+  /** Centred between two spacers: the profile tabs (`ProfileTabs`). */
+  centre?: ReactNode;
   /** After the view switch, before the theme switch: the host's tools. */
   trailing?: ReactNode;
 }
@@ -197,6 +200,7 @@ export function InstrumentBar({
   theme,
   onThemeChange,
   leading,
+  centre,
   trailing,
 }: InstrumentBarProps) {
   const nextTheme: MonitorTheme = theme === 'light' ? 'dark' : 'light';
@@ -221,6 +225,13 @@ export function InstrumentBar({
       </div>
 
       <div className="vf-godview-bar-spacer" />
+
+      {centre ? (
+        <>
+          {centre}
+          <div className="vf-godview-bar-spacer" />
+        </>
+      ) : null}
 
       <div className="vf-godview-bar-group" role="group" aria-label="Monitor view">
         {views.map((view) => {

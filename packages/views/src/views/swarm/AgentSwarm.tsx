@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { monitorChromeElements } from '../../monitor/chrome.js';
+import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
 import { resolveCssColor, type Rgba } from './gpu/color.js';
@@ -47,6 +48,8 @@ interface BodyVisual {
   seed: number;
   /** Arrival order, for a stable draw order within one status. */
   arrival: number;
+  /** The weight it is drawn at while the host shows another group: 1 when shown (`monitor/recede.ts`). */
+  recede: number;
 }
 
 interface Drag {
@@ -131,6 +134,8 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   const rendererRef = useRef<SwarmRenderer | undefined>(undefined);
   const parametersRef = useRef(swarm);
   const agentsRef = useRef<readonly MonitorAgent[]>(agents);
+  /** Which rows the host has receded, and whether that is all of them; read by the render loop. */
+  const recedeRef = useRef<{ ids: ReadonlySet<string>; every: boolean }>({ ids: new Set(), every: false });
   const modelsRef = useRef<Models>({ byId: new Map(), at: 0, agents: [] });
   const themeRef = useRef<SwarmTheme | undefined>(undefined);
   const colourCacheRef = useRef(new Map<string, Rgba>());
@@ -149,6 +154,10 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
 
   useEffect(() => {
     agentsRef.current = agents;
+    recedeRef.current = {
+      ids: new Set(agents.filter((agent) => agent.receded === true).map((agent) => agent.id)),
+      every: everyReceded(agents),
+    };
   }, [agents]);
 
   useEffect(() => {
@@ -361,10 +370,14 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       const theme = themeRef.current;
       const motion = !prefersReducedMotion() && root?.getAttribute('data-godview-animations') !== 'off';
       const focused = focusedIdRef.current;
+      const recede = recedeRef.current;
       const bodies: RenderBody[] = [];
       for (const [id, state] of statesRef.current) {
         const model = models.byId.get(id);
         if (!model) continue;
+        // A receded body stays in the physics and only fades: the host is
+        // showing another group, and this one keeps its place for when it returns.
+        const recedeTo = recedeTarget(recede.ids.has(id), recede.every);
         let visual = visualsRef.current.get(id);
         if (!visual) {
           arrivalCounterRef.current += 1;
@@ -374,9 +387,11 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
             spawnedAt: time,
             seed: Math.random() * Math.PI * 2,
             arrival: arrivalCounterRef.current,
+            recede: recedeTo,
           };
           visualsRef.current.set(id, visual);
         }
+        visual.recede = motion ? approachRecede(visual.recede, recedeTo, delta) : recedeTo;
         // The visual radius follows the model's on a critically damped spring;
         // the physics body already jumped (the frame carries its radius).
         const displacement = visual.visualRadius - model.radius;
@@ -396,7 +411,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
           y: state.previousY + (state.y - state.previousY) * alpha,
           radius: visual.visualRadius,
           scale: landing.scale,
-          opacity: landing.opacity,
+          opacity: landing.opacity * visual.recede,
           focus: focused === id,
           seed: visual.seed,
           accent: accentOf(model.accent),
@@ -667,6 +682,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
                 data-agent-bubble-status={agent.status}
                 data-agent-bubble-visual={model.state}
                 data-agent-bubble-source={agent.remote ? 'remote' : agent.agent ? 'agent' : 'terminal'}
+                data-agent-bubble-receded={agent.receded === true ? 'true' : undefined}
                 onFocus={() => {
                   focusedIdRef.current = agent.id;
                 }}

@@ -135,6 +135,10 @@ export interface MonitorAgent {
   spawnHint?: { x: number; y: number } | undefined;
   /** Finished something while another pane was active (`monitor/unread.ts`). */
   unread?: boolean | undefined;
+  /** The host is showing another group of sessions (VibeField's profile tabs):
+   * the row keeps its place — in the physics, in the list — and is drawn
+   * faint (`monitor/recede.ts`). Presentation, never a status. */
+  receded?: boolean | undefined;
   agent?: MonitorAgentFacet | undefined;
 }
 

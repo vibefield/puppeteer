@@ -69,4 +69,13 @@ describe('the swarm as markup', () => {
     expect(html).toContain('aria-label="on studio-mini, mesh-console, remote session, idle, read-only host"');
     expect(html.match(/<button /g)).toHaveLength(3);
   });
+
+  it('keeps a receded body on the stage and says so on its button', () => {
+    const html = markup([
+      agentFixture({ id: 'a1', project: 'vibe-field', status: 'working', accent: 1 }, NOW),
+      { ...agentFixture({ id: 'a2', project: 'rosetta', status: 'idle', accent: 2 }, NOW), receded: true },
+    ]);
+    expect(html.match(/<button /g)).toHaveLength(2);
+    expect(html.match(/data-agent-bubble-receded="true"/g)).toHaveLength(1);
+  });
 });

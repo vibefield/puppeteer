@@ -280,3 +280,106 @@
 .vf-godview-theme-switch[aria-checked='true'] .vf-godview-theme-switch-track i {
   transform: translateX(10px);
 }
+
+/* ── The profile tabs (the VibeField agents-settings record's T3) ─────────
+   A sliding segment centred between two spacers: a 24px track in the hover
+   fill with a hairline, 18px tabs of glyph and name in the bar's 9px
+   uppercase, and one thumb in the panel colour that slides on the island
+   ease. The bar's one place for words (§04, amended for the tabs). A narrow
+   bar keeps the glyphs, then the chosen tab alone (`ProfileTabs`' fit). */
+.vf-godview-profile-tabs {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  background: var(--control-hover-bg);
+  -webkit-app-region: no-drag;
+}
+
+.vf-godview-profile-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-radius: 5px;
+  background: var(--panel-bg);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 12%),
+    0 0 0 1px var(--panel-border);
+  pointer-events: none;
+  transition:
+    transform 300ms var(--vf-ease-island, cubic-bezier(0.25, 1, 0.3, 1)),
+    width 300ms var(--vf-ease-island, cubic-bezier(0.25, 1, 0.3, 1));
+}
+
+.vf-godview-profile-slot {
+  display: inline-flex;
+}
+
+.vf-godview-profile-slot[hidden] {
+  display: none;
+}
+
+.vf-godview-profile-tab {
+  position: relative;
+  z-index: 1;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+
+.vf-godview-profile-tab:hover,
+.vf-godview-profile-tab.is-on {
+  color: var(--text-main);
+}
+
+.vf-godview-profile-tab:focus-visible {
+  outline: 1px solid var(--text-main);
+  outline-offset: 1px;
+}
+
+.vf-godview-profile-glyph {
+  display: block;
+  flex: none;
+}
+
+.vf-godview-profile-tab .vf-godview-bar-dot {
+  margin-left: 1px;
+}
+
+/* Glyphs alone: a profile's name moves into its tip; All keeps its word. */
+.vf-godview-profile-tabs.is-glyphs .vf-godview-profile-glyph + .vf-godview-profile-name {
+  display: none;
+}
+
+.vf-godview-profile-tabs.is-glyphs .vf-godview-profile-tab {
+  padding: 0 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-godview-profile-thumb {
+    transition: none;
+  }
+}
+
+.vf-godview[data-godview-animations='off'] .vf-godview-profile-thumb {
+  transition: none;
+}

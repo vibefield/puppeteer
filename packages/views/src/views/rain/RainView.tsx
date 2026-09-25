@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MonitorPalette } from '../../monitor/palette.js';
+import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { normalizeRainParameters, type RainParameters } from './rain-parameters.js';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
@@ -123,6 +124,9 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
     let frame = 0;
     let previousTime = performance.now();
     let accumulated = 0;
+    /** Each column's recede weight as last drawn, stepped toward its target per draw (`monitor/recede.ts`). */
+    const recedes = new Map<string, number>();
+    let drawnAt = previousTime;
     // Driven from rAF rather than setInterval so the loop stops with the window
     // instead of repainting behind other applications; the accumulator is what
     // keeps the deliberately chunky sub-60 cadence.
@@ -134,10 +138,10 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       const interval = 1000 / settings.refreshRate;
       if (accumulated < interval) return;
       accumulated = Math.min(accumulated - interval, interval);
-      draw(context, settings);
+      draw(context, settings, time);
     };
 
-    const draw = (context2d: CanvasRenderingContext2D, settings: RainParameters): void => {
+    const draw = (context2d: CanvasRenderingContext2D, settings: RainParameters, time: number): void => {
       const { columns, rows, cell, width, height } = geometryRef.current;
       const drops = dropsRef.current;
       const byId = agentsRef.current;
@@ -145,6 +149,16 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       const presentationByStatus = statusPresentation(colors);
       context2d.fillStyle = colors.rain.stage;
       context2d.fillRect(0, 0, width, height);
+
+      // A receded column keeps falling, faint: the host is showing another group.
+      const elapsed = time - drawnAt;
+      drawnAt = time;
+      const every = everyReceded(byId.values());
+      for (const id of [...recedes.keys()]) if (!byId.has(id)) recedes.delete(id);
+      for (const agent of byId.values()) {
+        const target = recedeTarget(agent.receded === true, every);
+        recedes.set(agent.id, approachRecede(recedes.get(agent.id) ?? target, target, elapsed));
+      }
 
       // Pane linkage rides its own channel — a wash behind the column in the
       // session's own colour, one stripe per further pane showing it — so the
@@ -154,10 +168,11 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
           const agent = byId.get(drop.agentId);
           const attachment = agent?.attachment;
           if (!agent || !attachment) continue;
-          context2d.globalAlpha = settings.paneTint;
+          const weight = recedes.get(agent.id) ?? 1;
+          context2d.globalAlpha = settings.paneTint * weight;
           context2d.fillStyle = agent.color;
           context2d.fillRect(column * cell, 0, cell, height);
-          context2d.globalAlpha = Math.min(0.6, settings.paneTint * 2.2);
+          context2d.globalAlpha = Math.min(0.6, settings.paneTint * 2.2) * weight;
           for (let mirror = 1; mirror < attachment.paneIds.length; mirror += 1) {
             context2d.fillRect(column * cell + (mirror - 1) * 2, 0, 2, height);
           }
@@ -205,6 +220,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
         };
 
         context2d.shadowBlur = 0;
+        context2d.globalAlpha = recedes.get(agent.id) ?? 1;
         // Clamped rather than guarded inside: a long tail on a short stage runs
         // most of its length off-screen, and this is the hot loop.
         const first = Math.min(headRow, rows - 1);
@@ -225,6 +241,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
           context2d.shadowBlur = 0;
         }
       }
+      context2d.globalAlpha = 1;
     };
 
     frame = requestAnimationFrame(render);

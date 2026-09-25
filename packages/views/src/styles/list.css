@@ -66,7 +66,9 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: 120ms ease;
+  transition:
+    120ms ease,
+    opacity 240ms ease;
 }
 
 .vf-monitor-list-row:hover {
@@ -91,6 +93,16 @@
 
 .vf-monitor-list-row.is-stale {
   opacity: 0.58;
+}
+
+/* Receded (monitor/recede.ts): the host is showing another group of sessions.
+   The row keeps its place below the shown ones, at the recede weights. */
+.vf-monitor-list-row.is-receded {
+  opacity: 0.22;
+}
+
+.vf-monitor-list.is-all-receded .vf-monitor-list-row.is-receded {
+  opacity: 0.07;
 }
 
 .vf-monitor-list-status {

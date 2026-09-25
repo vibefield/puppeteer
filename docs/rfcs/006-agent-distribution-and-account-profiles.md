@@ -616,6 +616,12 @@ Added 2026-09-24 for profile pages that show what a set runs on (see "Plans: wha
 `ProfileSignIn`, carried by the in-use derivation and set by Copilot (`gh-cli`) and Hermes (its borrowed pool rows);
 and the views' `ServiceMark`, `serviceProduct` and `planTitle`.
 
+Added 2026-09-24 for Godview's profile tabs (B4's first half, VibeField's T3): the views' `ProfileTabs` — a sliding
+segment of All and each set, glyph and name, that a host centres in `InstrumentBar`'s new `centre` slot — and
+`MonitorAgent.receded`, host-set presentation the swarm, the list and the rain draw faint (`monitor/recede.ts`: 22 %,
+7 % when every row recedes, 240 ms) while keeping the row in the physics and in the list. Which set a run is under
+is already `AgentSessionInfo.profileSetId`; a set as an identity ground on the bodies themselves stays open.
+
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 
 - `updateInstallation({ onOutput })`: an optional observer that receives the vendor updater's output as it arrives,

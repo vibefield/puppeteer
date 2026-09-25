@@ -2,6 +2,7 @@ import { useMemo, type CSSProperties } from 'react';
 import { AgentIcon } from '../../icons/AgentIcon.js';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
+import { everyReceded } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { normalizeListParameters } from './list-parameters.js';
 
@@ -14,6 +15,8 @@ import { normalizeListParameters } from './list-parameters.js';
 const STATUS_ORDER: Record<AgentVisualStatus, number> = { blocked: 0, working: 1, idle: 2 };
 
 function compareAgents(left: MonitorAgent, right: MonitorAgent): number {
+  // What the host is showing comes first; a receded row keeps its order below.
+  if (Boolean(left.receded) !== Boolean(right.receded)) return left.receded ? 1 : -1;
   // Agents outrank unclaimed terminals, then the ones asking for something.
   if (Boolean(left.agent) !== Boolean(right.agent)) return left.agent ? -1 : 1;
   const byStatus = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
@@ -23,6 +26,7 @@ function compareAgents(left: MonitorAgent, right: MonitorAgent): number {
 export function AgentList({ agents, parameters, actions, palette }: AgentMonitorProps) {
   const { rowHeight, projectWidth } = normalizeListParameters(parameters);
   const ordered = useMemo(() => [...agents].sort(compareAgents), [agents]);
+  const shown = ordered.filter((agent) => agent.receded !== true).length;
   const style = {
     '--vf-monitor-row-height': `${rowHeight}px`,
     '--vf-monitor-project-width': `${projectWidth}px`,
@@ -32,9 +36,15 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
   } as CSSProperties;
 
   return (
-    <section className="vf-monitor-list" style={style} aria-label="Running agent list">
+    <section
+      className={`vf-monitor-list${everyReceded(ordered) ? ' is-all-receded' : ''}`}
+      style={style}
+      aria-label="Running agent list"
+    >
       <div className="vf-monitor-list-toolbar">
-        <span className="vf-monitor-list-count">{ordered.length} SESSIONS</span>
+        <span className="vf-monitor-list-count">
+          {shown === ordered.length ? `${ordered.length} SESSIONS` : `${shown} OF ${ordered.length} SESSIONS`}
+        </span>
         <button type="button" className="vf-monitor-list-new" onClick={() => void actions.createAt()}>
           ＋ TERMINAL
         </button>
@@ -63,7 +73,9 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
                   type="button"
                   className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
                     agent.stale ? ' is-stale' : ''
-                  }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}`}
+                  }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}${
+                    agent.receded ? ' is-receded' : ''
+                  }`}
                   style={rowStyle}
                   aria-current={agent.active ? 'true' : undefined}
                   // The status belongs to the ROW's name, not to the dot: a
