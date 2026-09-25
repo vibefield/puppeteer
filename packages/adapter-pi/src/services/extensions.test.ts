@@ -1,0 +1,312 @@
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  AgentProfileSchema,
+  ExtensionInventorySchema,
+  ExtensionProviderSchema,
+  type ExtensionInventory,
+  type ExtensionItem,
+} from '@vibecook/puppeteer-core';
+import { createPiExtensionService } from './extensions.js';
+
+const now = () => new Date('2026-09-25T09:00:00.000Z');
+const made: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(made.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+async function tempHome(): Promise<string> {
+  const dir = await realpath(await mkdtemp(join(tmpdir(), 'pi-extensions-')));
+  made.push(dir);
+  return dir;
+}
+
+async function write(path: string, content: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, typeof content === 'string' ? content : JSON.stringify(content, null, 2));
+}
+
+const skill = (name: string, description?: string) =>
+  `---\nname: ${name}\n${description ? `description: ${description}\n` : ''}---\n\n# ${name}\n`;
+
+const managedProfile = (root: string) =>
+  AgentProfileSchema.parse({
+    id: 'work-pi',
+    provider: 'pi',
+    label: 'Work',
+    kind: 'managed',
+    dataRoot: root,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  });
+
+const nativeProfile = (home: string) =>
+  AgentProfileSchema.parse({
+    id: 'pi:native-default',
+    provider: 'pi',
+    label: 'Default',
+    kind: 'native-default',
+    dataRoot: join(home, '.pi', 'agent'),
+    createdAt: '1970-01-01T00:00:00.000Z',
+  });
+
+const find = (inventory: ExtensionInventory, kind: ExtensionItem['kind'], id: string) =>
+  inventory.items.find((item) => item.kind === kind && item.id === id);
+const idsOf = (inventory: ExtensionInventory, kind: ExtensionItem['kind']) =>
+  inventory.items.filter((item) => item.kind === kind).map((item) => item.id);
+
+async function read(home: string, root: string): Promise<ExtensionInventory> {
+  return ExtensionInventorySchema.parse(await createPiExtensionService({ home, now }).inventory(managedProfile(root)));
+}
+
+describe('Pi extensions', () => {
+  it('declares packages as plugins and skills, and no MCP servers or marketplaces', () => {
+    const { provider } = createPiExtensionService({ home: '/nowhere', now });
+    expect(ExtensionProviderSchema.parse(provider)).toEqual({
+      id: 'pi',
+      label: 'Pi',
+      support: {
+        plugins: { store: 'profile', changes: 'command', read: true },
+        skills: { store: 'mixed', changes: 'folder', read: true },
+      },
+    });
+  });
+
+  it('reads a managed agent directory: packages, loose extensions, and skills in Pi’s order, with its filters', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    const tools = join(agent, 'npm', 'node_modules', '@acme', 'pi-tools');
+    const review = join(agent, 'git', 'github.com', 'northlight', 'pi-review');
+    await write(join(agent, 'settings.json'), {
+      defaultProvider: 'anthropic',
+      packages: [
+        'npm:@acme/pi-tools@1.2.0',
+        { source: 'git:github.com/northlight/pi-review@v2', skills: ['!skills/draft/SKILL.md'] },
+        './local-ext.ts',
+        'git:https://deploy:ghp_secret123@github.com/acme/private-pack',
+      ],
+      skills: ['-skills/sql-review/SKILL.md', '../extra-skills/deploy'],
+      extensions: ['!old.ts'],
+    });
+    await write(join(tools, 'package.json'), {
+      name: '@acme/pi-tools',
+      version: '1.2.0',
+      description: 'Lint and format tools for Pi',
+      pi: { extensions: ['./ext.ts'], skills: ['./skills'] },
+    });
+    await write(join(tools, 'ext.ts'), 'export default () => {};\n');
+    await write(join(tools, 'skills', 'lint', 'SKILL.md'), skill('lint', 'Lints the change'));
+    await write(join(review, 'package.json'), { name: 'pi-review', version: '2.0.1' });
+    await write(join(review, 'skills', 'review', 'SKILL.md'), skill('review', 'Reviews against the house style'));
+    await write(join(review, 'skills', 'draft', 'SKILL.md'), skill('draft', 'Drafts a review'));
+    await write(join(agent, 'local-ext.ts'), 'export default () => {};\n');
+    await write(join(agent, 'extensions', 'notify.ts'), 'export default () => {};\n');
+    await write(join(agent, 'extensions', 'old.ts'), 'export default () => {};\n');
+    await write(join(agent, 'extensions', 'panel', 'index.ts'), 'export default () => {};\n');
+    await write(join(agent, 'extensions', 'notes.md'), '# not an extension');
+    await write(join(agent, 'skills', 'release-notes', 'SKILL.md'), skill('release-notes', 'Drafts release notes'));
+    await write(join(agent, 'skills', 'sql-review', 'SKILL.md'), skill('sql-review', 'Reviews a migration'));
+    await write(join(agent, 'skills', 'no-description', 'SKILL.md'), skill('no-description'));
+    await write(join(agent, 'skills', 'handoff.md'), skill('handoff', 'Writes a handoff note'));
+    await write(join(root, 'extra-skills', 'deploy', 'SKILL.md'), skill('deploy', 'Deploys the service'));
+    await write(join(home, '.agents', 'skills', 'browser-use', 'SKILL.md'), skill('browser-use', 'Drives a browser'));
+    await write(join(home, '.agents', 'skills', 'release-notes', 'SKILL.md'), skill('release-notes', 'Shared copy'));
+    await write(join(home, '.agents', 'skills', 'top-level.md'), skill('top-level', 'Not a skill at this level'));
+
+    const inventory = await read(home, root);
+    expect(JSON.stringify(inventory)).not.toContain('ghp_secret123');
+    expect(inventory).toMatchObject({
+      provider: 'pi',
+      profileId: 'work-pi',
+      fetchedAt: '2026-09-25T09:00:00.000Z',
+      source: { kind: 'native-store', stability: 'documented' },
+    });
+    // The private git package is configured but not cloned into this profile yet.
+    expect(inventory.unread).toEqual([
+      {
+        kind: 'skill',
+        message: 'a configured npm or git package is not installed in this profile, so its skills are not listed',
+      },
+    ]);
+
+    expect(find(inventory, 'plugin', 'npm:@acme/pi-tools')).toEqual({
+      kind: 'plugin',
+      id: 'npm:@acme/pi-tools',
+      name: '@acme/pi-tools',
+      origin: 'own',
+      enabled: true,
+      version: '1.2.0',
+      description: 'Lint and format tools for Pi',
+      location: tools,
+    });
+    expect(find(inventory, 'plugin', 'git:github.com/northlight/pi-review')).toMatchObject({
+      name: 'pi-review',
+      enabled: true,
+      version: '2.0.1',
+      location: review,
+    });
+    expect(find(inventory, 'plugin', `local:${join(agent, 'local-ext.ts')}`)).toMatchObject({
+      name: 'local-ext',
+      enabled: true,
+    });
+    expect(find(inventory, 'plugin', 'git:github.com/acme/private-pack')).toMatchObject({
+      name: 'private-pack',
+      enabled: true,
+    });
+    expect(find(inventory, 'plugin', 'git:github.com/acme/private-pack')).not.toHaveProperty('location');
+    expect(find(inventory, 'plugin', `extension:${join(agent, 'extensions', 'notify.ts')}`)).toMatchObject({
+      name: 'notify',
+      enabled: true,
+    });
+    expect(find(inventory, 'plugin', `extension:${join(agent, 'extensions', 'old.ts')}`)).toMatchObject({
+      enabled: false,
+    });
+    expect(find(inventory, 'plugin', `extension:${join(agent, 'extensions', 'panel')}`)).toMatchObject({
+      name: 'panel',
+      enabled: true,
+    });
+    expect(idsOf(inventory, 'plugin')).toHaveLength(7);
+
+    expect(find(inventory, 'skill', 'release-notes')).toEqual({
+      kind: 'skill',
+      id: 'release-notes',
+      name: 'release-notes',
+      origin: 'own',
+      enabled: true,
+      description: 'Drafts release notes',
+      location: join(agent, 'skills', 'release-notes'),
+    });
+    // `pi config` writes `-path`: switched off, still held.
+    expect(find(inventory, 'skill', 'sql-review')).toMatchObject({ enabled: false });
+    expect(find(inventory, 'skill', 'handoff.md')).toMatchObject({
+      name: 'handoff',
+      location: join(agent, 'skills', 'handoff.md'),
+    });
+    expect(find(inventory, 'skill', `path:${join(root, 'extra-skills', 'deploy')}`)).toMatchObject({
+      name: 'deploy',
+      origin: 'own',
+      enabled: true,
+    });
+    expect(find(inventory, 'skill', 'shared:browser-use')).toMatchObject({
+      origin: 'own',
+      shared: true,
+      enabled: true,
+    });
+    expect(find(inventory, 'skill', 'plugin:npm:@acme/pi-tools:lint')).toMatchObject({
+      origin: 'plugin',
+      plugin: 'npm:@acme/pi-tools',
+      enabled: true,
+    });
+    expect(find(inventory, 'skill', 'plugin:git:github.com/northlight/pi-review:review')).toMatchObject({
+      enabled: true,
+    });
+    expect(find(inventory, 'skill', 'plugin:git:github.com/northlight/pi-review:draft')).toMatchObject({
+      enabled: false,
+    });
+    const names = inventory.items.filter((item) => item.kind === 'skill').map((item) => item.name);
+    // The agent's release-notes wins the name over the shared copy; a skill needs a description; a loose
+    // `.md` counts at the top of the agent's folder, not at the top of the shared one.
+    expect(names.filter((name) => name === 'release-notes')).toHaveLength(1);
+    expect(names).not.toContain('no-description');
+    expect(names).not.toContain('top-level');
+  });
+
+  it('reads a linked shared skill as shared, with where its folder points', async () => {
+    const home = await tempHome();
+    const library = join(home, 'library', 'changelog');
+    await write(join(library, 'SKILL.md'), skill('changelog', 'Writes the changelog entry'));
+    await mkdir(join(home, '.agents', 'skills'), { recursive: true });
+    await symlink(library, join(home, '.agents', 'skills', 'changelog'));
+
+    const inventory = await read(home, join(home, 'profiles', 'work', 'pi-7c1e'));
+    expect(inventory.items).toEqual([
+      {
+        kind: 'skill',
+        id: 'shared:changelog',
+        name: 'changelog',
+        origin: 'own',
+        shared: true,
+        enabled: true,
+        description: 'Writes the changelog entry',
+        location: join(home, '.agents', 'skills', 'changelog'),
+        linkTarget: library,
+      },
+    ]);
+  });
+
+  it('applies a glob exclusion, and an exact force-include over it', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    await write(join(root, 'agent', 'settings.json'), { skills: ['!wip-*', '+skills/wip-kept/SKILL.md'] });
+    for (const name of ['wip-dropped', 'wip-kept', 'steady']) {
+      await write(join(home, '.agents', 'skills', name, 'SKILL.md'), skill(name, `The ${name} skill`));
+    }
+    const inventory = await read(home, root);
+    const enabled = Object.fromEntries(
+      inventory.items.filter((item) => item.kind === 'skill').map((item) => [item.name, item.enabled]),
+    );
+    expect(enabled).toEqual({ 'wip-kept': true, steady: true, 'wip-dropped': false });
+  });
+
+  it('reads the native default from the home it was given', async () => {
+    const home = await tempHome();
+    await write(join(home, '.pi', 'agent', 'skills', 'triage', 'SKILL.md'), skill('triage', 'Triages an issue'));
+    const inventory = ExtensionInventorySchema.parse(
+      await createPiExtensionService({ home, now }).inventory(nativeProfile(home)),
+    );
+    expect(inventory.profileId).toBe('pi:native-default');
+    expect(find(inventory, 'skill', 'triage')).toMatchObject({
+      location: join(home, '.pi', 'agent', 'skills', 'triage'),
+    });
+  });
+
+  it('says which kinds an unreadable settings file hides, and lists what the folders still hold', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    await write(join(root, 'agent', 'settings.json'), '{ "packages": [ not json');
+    await write(join(root, 'agent', 'skills', 'release-notes', 'SKILL.md'), skill('release-notes', 'Drafts notes'));
+    await write(join(root, 'agent', 'extensions', 'notify.ts'), 'export default () => {};\n');
+
+    const inventory = await read(home, root);
+    expect(inventory.unread).toEqual([
+      { kind: 'plugin', message: 'settings.json could not be read' },
+      { kind: 'skill', message: 'settings.json could not be read' },
+    ]);
+    expect(inventory.items.map((item) => item.id)).toEqual([
+      `extension:${join(root, 'agent', 'extensions', 'notify.ts')}`,
+      'release-notes',
+    ]);
+  });
+
+  it('reads a filter it cannot evaluate as unread, not as a guess', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    await write(join(root, 'agent', 'settings.json'), { skills: ['!+(wip|old)-*'] });
+    await write(join(root, 'agent', 'skills', 'wip-a', 'SKILL.md'), skill('wip-a', 'Work in progress'));
+    const inventory = await read(home, root);
+    expect(inventory.unread).toEqual([
+      { kind: 'skill', message: 'a filter in settings.json uses glob syntax this reader does not evaluate' },
+    ]);
+  });
+
+  it('marks a missing local package off, since Pi loads nothing from it', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    await write(join(root, 'agent', 'settings.json'), { packages: ['../gone'] });
+    const inventory = await read(home, root);
+    expect(inventory.unread).toBeUndefined();
+    expect(inventory.items).toEqual([
+      { kind: 'plugin', id: `local:${join(root, 'gone')}`, name: 'gone', origin: 'own', enabled: false },
+    ]);
+  });
+
+  it('reads an empty root as holding nothing', async () => {
+    const home = await tempHome();
+    const inventory = await read(home, join(home, 'fresh'));
+    expect(inventory.items).toEqual([]);
+    expect(inventory.unread).toBeUndefined();
+  });
+});

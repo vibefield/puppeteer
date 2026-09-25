@@ -8,6 +8,10 @@ import type {
   DistributionFailure,
   DistributionProvider,
   DistributionService,
+  ExtensionFailure,
+  ExtensionInventory,
+  ExtensionProvider,
+  ExtensionService,
   ProfileFailure,
   ProfileIdentity,
   ProfileProvider,
@@ -132,6 +136,8 @@ export interface AgentProvider {
   readonly distribution?: DistributionService;
   /** Adapter-owned account-profile binding, login, and identity verification. */
   readonly profiles?: ProfileService;
+  /** Adapter-owned inventory of the agent's plugins, marketplaces, MCP servers and skills per profile. */
+  readonly extensions?: ExtensionService;
   /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
   readonly launch?: AgentProviderLaunchService;
   /** Optional cache warming only: no sessions/model input; must stop promptly when the signal aborts. */
@@ -731,6 +737,15 @@ export interface AgentRuntime {
   /** Re-read native identity for a profile and persist it on the registry entry. */
   verifyProfile(profileId: string): Promise<ProfileIdentity | ProfileFailure>;
   onProfilesChanged(listener: (profiles: AgentProfile[]) => void): () => void;
+  /** Enumerate every adapter that advertises extensions, with how its agent keeps each kind. */
+  extensionProviders(): readonly ExtensionProvider[];
+  /**
+   * One profile's plugins, marketplaces, MCP servers and skills, read from the
+   * agent's own stores and protocols (RFC 006 C1); the provider's native
+   * default when no profile is named. Never connects to an MCP server and never
+   * returns a secret. Concurrent reads of one profile coalesce.
+   */
+  extensionInventory(providerId: string, profileId?: string): Promise<ExtensionInventory | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */

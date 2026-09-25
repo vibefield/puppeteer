@@ -121,6 +121,11 @@ import {
   type ProfileRegistryProvider,
 } from './profiles/registry.js';
 import { createProfileOnboarding, type ProfileOnboarding } from './profiles/onboarding.js';
+import {
+  cloneExtensionProvider,
+  composeExtensionProviders,
+  createExtensionInventoryReader,
+} from './extensions/inventory.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
@@ -596,6 +601,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       { provider: descriptor, service: providers.get(descriptor.id)!.profiles! },
     ]),
   );
+  const extensionProviderEntries = composeExtensionProviders(providers.values());
   const monitorClock = options.monitorClock ?? createSystemMonitorClock();
   const runs = new Map<string, ManagedRun>();
   const terminalFailuresByRunId = new Map<string, TerminalFailureEntry>();
@@ -631,6 +637,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   let disposed = false;
 
   const report = (err: unknown): void => options.onError?.(err instanceof Error ? err : new Error(String(err)));
+  const extensionReader = createExtensionInventoryReader({
+    providers: extensionProviderEntries,
+    resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, { allowRetired: true }),
+    nativeDefaultProfileId: (providerId) =>
+      profileRegistryProviders.get(providerId)?.provider.support.nativeDefaultRoot
+        ? nativeDefaultProfileId(providerId)
+        : undefined,
+    report,
+  });
 
   const inventory: InstallInventory = createInstallationInventory({
     providers: [...providers.values()].flatMap((provider): InventoryProvider[] => {
@@ -2654,6 +2669,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     onProfilesChanged(listener) {
       profileListeners.add(listener);
       return () => profileListeners.delete(listener);
+    },
+
+    extensionProviders() {
+      return [...extensionProviderEntries.values()].map((entry) => cloneExtensionProvider(entry.provider));
+    },
+
+    async extensionInventory(providerId: string, profileId?: string) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionReader.inventory(providerId, profileId);
     },
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {

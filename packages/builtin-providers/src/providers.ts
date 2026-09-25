@@ -12,6 +12,7 @@ import {
   captureAntigravityContinuationState,
   createAntigravityAccountUsageService,
   createAntigravityDistributionService,
+  createAntigravityExtensionService,
   createAntigravityProfileService,
   createAntigravityTuiSession,
   normalizeAntigravityNativeInvocation,
@@ -23,6 +24,7 @@ import {
 import {
   createClaudeAccountUsageService,
   createClaudeDistributionService,
+  createClaudeExtensionService,
   createClaudeProfileService,
   captureClaudeContinuationState,
   attachClaudeTuiSession,
@@ -36,6 +38,7 @@ import {
 import {
   createCodexAccountUsageService,
   createCodexDistributionService,
+  createCodexExtensionService,
   createCodexProfileService,
   captureCodexContinuationState,
   createCodexTuiSession,
@@ -59,6 +62,7 @@ import {
 import {
   captureGrokContinuationState,
   createGrokDistributionService,
+  createGrokExtensionService,
   createGrokProfileService,
   createGrokAccountUsageService,
   createGrokBackend,
@@ -71,6 +75,7 @@ import {
   captureKimiContinuationState,
   createKimiAccountUsageService,
   createKimiDistributionService,
+  createKimiExtensionService,
   createKimiProfileService,
   createKimiTuiSession,
   normalizeKimiNativeInvocation,
@@ -82,6 +87,7 @@ import {
 import {
   captureOpenCodeContinuationState,
   createOpenCodeDistributionService,
+  createOpenCodeExtensionService,
   createOpenCodeProfileService,
   createOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation,
@@ -93,6 +99,7 @@ import {
 import {
   captureHermesContinuationState,
   createHermesDistributionService,
+  createHermesExtensionService,
   createHermesProfileService,
   createHermesTuiSession,
   normalizeHermesNativeInvocation,
@@ -104,6 +111,7 @@ import {
 import {
   capturePiContinuationState,
   createPiDistributionService,
+  createPiExtensionService,
   createPiProfileService,
   createPiTuiSession,
   normalizePiNativeInvocation,
@@ -155,6 +163,13 @@ export interface BuiltinProviderOptions {
   imposterExecutable?: string | undefined;
   /** Default connector for generic ACP sessions; individual sessions may override it. */
   acpConnector?: AcpConnector | undefined;
+  /**
+   * The home directory native-default roots hang off, for the services that
+   * read them (profiles and extensions); the process home when absent. A host's
+   * tests pass a temporary one, so no inventory of the native set reads the
+   * real home.
+   */
+  home?: string | undefined;
 }
 
 const BUILTIN_PROVIDER_DESCRIPTORS = {
@@ -211,6 +226,7 @@ function withProfileBinding<
  */
 export function createBuiltinProviders(options: BuiltinProviderOptions = {}): AgentProvider[] {
   const { executables = {}, acpConnector } = options;
+  const homeOption = options.home === undefined ? {} : { home: options.home };
   const resolved = {
     claude: executables.claude ?? process.env.PUPPETEER_CLAUDE_BIN,
     codex: executables.codex ?? process.env.PUPPETEER_CODEX_BIN,
@@ -230,39 +246,47 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   const services = {
     claude: {
       distribution: createClaudeDistributionService({ executable: resolved.claude }),
-      profiles: createClaudeProfileService(chosen(resolved.claude)),
+      profiles: createClaudeProfileService({ ...chosen(resolved.claude), ...homeOption }),
+      extensions: createClaudeExtensionService(homeOption),
     },
     codex: {
       distribution: createCodexDistributionService({ executable: resolved.codex }),
-      profiles: createCodexProfileService(chosen(resolved.codex)),
+      profiles: createCodexProfileService({ ...chosen(resolved.codex), ...homeOption }),
+      extensions: createCodexExtensionService({ ...chosen(resolved.codex), ...homeOption }),
     },
     grok: {
       distribution: createGrokDistributionService({ executable: resolved.grok }),
-      profiles: createGrokProfileService(chosen(resolved.grok)),
+      profiles: createGrokProfileService({ ...chosen(resolved.grok), ...homeOption }),
+      extensions: createGrokExtensionService(homeOption),
     },
     kimi: {
       distribution: createKimiDistributionService({ executable: resolved.kimi }),
-      profiles: createKimiProfileService(chosen(resolved.kimi)),
+      profiles: createKimiProfileService({ ...chosen(resolved.kimi), ...homeOption }),
+      extensions: createKimiExtensionService(homeOption),
     },
     opencode: {
       distribution: createOpenCodeDistributionService({ executable: resolved.opencode }),
-      profiles: createOpenCodeProfileService(chosen(resolved.opencode)),
+      profiles: createOpenCodeProfileService({ ...chosen(resolved.opencode), ...homeOption }),
+      extensions: createOpenCodeExtensionService(homeOption),
     },
     hermes: {
       distribution: createHermesDistributionService({ executable: resolved.hermes }),
-      profiles: createHermesProfileService(chosen(resolved.hermes)),
+      profiles: createHermesProfileService({ ...chosen(resolved.hermes), ...homeOption }),
+      extensions: createHermesExtensionService(homeOption),
     },
     antigravity: {
       distribution: createAntigravityDistributionService({ executable: resolved.antigravity }),
-      profiles: createAntigravityProfileService(chosen(resolved.antigravity)),
+      profiles: createAntigravityProfileService({ ...chosen(resolved.antigravity), ...homeOption }),
+      extensions: createAntigravityExtensionService(homeOption),
     },
     copilot: {
       distribution: createCopilotDistributionService({ executable: resolved.copilot }),
-      profiles: createCopilotProfileService(chosen(resolved.copilot)),
+      profiles: createCopilotProfileService({ ...chosen(resolved.copilot), ...homeOption }),
     },
     pi: {
       distribution: createPiDistributionService({ executable: resolved.pi }),
-      profiles: createPiProfileService(chosen(resolved.pi)),
+      profiles: createPiProfileService({ ...chosen(resolved.pi), ...homeOption }),
+      extensions: createPiExtensionService(homeOption),
     },
   };
   const claudeLaunchFor = async (
@@ -318,6 +342,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.claude.distribution,
       profiles: services.claude.profiles,
+      extensions: services.claude.extensions,
       accountUsage: createClaudeAccountUsageService(),
       launch: {
         provider: {
@@ -443,6 +468,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.codex.distribution,
       profiles: services.codex.profiles,
+      extensions: services.codex.extensions,
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
       prewarm: ({ profile, signal }) =>
         prewarmCodex({
@@ -539,6 +565,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.grok.distribution,
       profiles: services.grok.profiles,
+      extensions: services.grok.extensions,
       accountUsage: createGrokAccountUsageService({ executable: resolved.grok }),
       launch: {
         provider: {
@@ -609,6 +636,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.kimi.distribution,
       profiles: services.kimi.profiles,
+      extensions: services.kimi.extensions,
       accountUsage: createKimiAccountUsageService(),
       launch: {
         provider: {
@@ -687,6 +715,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.opencode.distribution,
       profiles: services.opencode.profiles,
+      extensions: services.opencode.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
@@ -763,6 +792,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.antigravity.distribution,
       profiles: services.antigravity.profiles,
+      extensions: services.antigravity.extensions,
       accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity }),
       launch: {
         provider: {
@@ -931,6 +961,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.pi.distribution,
       profiles: services.pi.profiles,
+      extensions: services.pi.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
@@ -1004,6 +1035,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.hermes.distribution,
       profiles: services.hermes.profiles,
+      extensions: services.hermes.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,

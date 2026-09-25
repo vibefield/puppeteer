@@ -36,4 +36,5 @@ export {
 export * from './services/prompt.js';
 export * from './services/distribution.js';
 export * from './services/profiles.js';
+export * from './services/extensions.js';
 export * from './driver.js';

@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3; track C and B4 open)
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2, C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -621,6 +621,77 @@ segment of All and each set, glyph and name, that a host centres in `InstrumentB
 `MonitorAgent.receded`, host-set presentation the swarm, the list and the rain draw faint (`monitor/recede.ts`: 22 %,
 7 % when every row recedes, 240 ms) while keeping the row in the physics and in the list. Which set a run is under
 is already `AgentSessionInfo.profileSetId`; a set as an identity ground on the bodies themselves stays open.
+
+Started 2026-09-25, C1's first half, for VibeField's Extensions (its design record, pass 24: skills and MCP servers
+kept once per profile, turned on per agent; plugins per agent). Core `services/extensions.ts` settles the sketch
+above for reading: four kinds (`plugin`, `marketplace`, `mcp-server`, `skill`) in one item union whose `origin` says
+where an item comes from (`own`, `project`, `plugin`, `bundled`, `managed`, `agent`, `borrowed`, with the plugin,
+project or lending agent named), `shared` for an item every profile of the agent reads from one place,
+`ExtensionInventory` with the kinds a read could not cover (`unread`), per-kind `ExtensionSupport` on the provider
+(kept per profile or shared; changed by command, protocol, folder, or only in the app; a kind the agent lacks is
+absent), `ExtensionFailure`, and `ExtensionService { provider; inventory(profile) }` — the sketch's `invocation`
+waits for C2. An inventory never carries a secret: a server's environment and headers are names, and
+`describeMcpUrl` / `describeMcpCommand` drop userinfo and query and mask any argument that could hold a credential,
+so two definitions that differ only in a secret read as one server. `parseSkillFrontmatter` reads a `SKILL.md`. The
+runtime's `extensions/inventory.ts` adds `AgentRuntime.extensionProviders()` and `extensionInventory(providerId,
+profileId?)`: the native default when no profile is named, coalesced per profile, checked against the schema,
+including that it names the profile asked for and holds no kind the adapter declares absent. Claude Code is first,
+from its store files: `<root>/.claude.json` (the native default's `~/.claude.json`), `settings.json`,
+`plugins/installed_plugins.json`, `known_marketplaces*.json`, `plugins/synced/`, each plugin's manifest, `.mcp.json`
+and `skills/`, and `skills/` with `skills/synced/`; never `claude mcp list`, which connects to every server it
+lists. `createBuiltinProviders({ home })` hangs native-default roots off a given home, so a host's tests never read
+the real one. Next, per James's reports (`draft/*-PLUGINS-SKILLS-MCP.md`, probed 2026-09-24): Codex, then Grok,
+Kimi, OpenCode, Pi, Hermes and Antigravity, from files where their listings would connect or start a session.
+
+Codex followed the same day, through Codex alone. One private app-server, bound to the profile and started in its
+root, answers `skills/list` (the root as the only cwd, so no repository's skills), `plugin/installed`, `config/read`
+(its `origins` only, which say which layer set each `mcp_servers.<name>` key) and `plugin/read` per enabled plugin of
+a local marketplace (the servers it brings); `codex mcp list --json`, run in the root with the same binding, lists
+every server the profile loads. A server is the profile's own when the user layer set it, a managed layer's when
+another did, a plugin's when an enabled plugin declares it, and otherwise the host app's or the account's (the
+ChatGPT connectors server), read as managed. User skills in `~/.agents/skills` are `shared` and `switchable`; system
+skills are `bundled`; a plugin installed by a workspace setting is managed. Marketplaces are declared and not yet
+read. The response shapes come from Codex's own source at `rust-v0.150.0`, the Surface pin, whose model carries
+these methods' requests but not their results. Two corrections to the reports, from that source: `mcp list` starts
+no server and opens no session, but for an enabled HTTP server with no bearer variable, no Authorization header and
+no stored sign-in it fetches the server's OAuth metadata, which is how it tells "needs a sign-in" from "has none";
+and it prints environment and header *values*, so the adapter keeps names and never repeats its output or its
+errors. Its sign-in states are snake case (`not_logged_in`, `o_auth`), not the protocol's camel case.
+`plugin/installed` may also refresh the account's remote-installed plugins, as Codex does whenever it starts. Core's
+wording follows: reading never starts an MCP server or opens a session with one, though an agent's own listing may
+fetch a server's public sign-in metadata.
+
+The other six the same day, each from its own files, since their listings would connect, start a session, install,
+or miss what a session loads. Every one takes the `home` the builtin composition is given, and so does every profile
+service; under an injected home Codex also pins `HOME` and `CODEX_HOME`, and Kimi and OpenCode stop following the
+machine's variables, so a host's tests reach nothing real.
+- **Grok**: its root's `config.toml` (a TOML subset read strictly; `[mcp_servers]`, the disabled lists, the
+  `[compat.claude]` and `[compat.cursor]` cells), `skills/`, `bundled/skills/`, `installed-plugins/` and `plugins/`.
+  What it borrows from the home is `borrowed` and `shared`: Claude Code's skills and `~/.claude.json` servers
+  (`lender: 'claude'`), every plugin in Claude's `installed_plugins.json`, and Cursor's skills and servers; a cell
+  that is off leaves them listed and off. `~/.agents/skills` is the person's own, shared. Never `grok mcp doctor`.
+- **Kimi**: `plugins/installed.json` with each plugin's manifest, servers and skills; `mcp.json`; `skills/` and
+  `~/.agents/skills`. Plugins and servers change only in the app: there is no command, and `kimi web` would be a Kimi
+  process of its own. `bearerTokenEnvVar` reads as the variable plus an `Authorization` header; whether an OAuth
+  server is signed in lives in its credential store, which is not read.
+- **OpenCode**: the config documents in OpenCode's merge order, as JSONC. One config serves every profile, so every
+  item is `shared`, and servers have no command that turns one off (`changes: 'in-app'`). `{env:NAME}` stays in a
+  target as written and NAME joins the server's variables. `mcp-auth.json` is not opened, so no sign-in state; Claude
+  Code's skills are borrowed; skills from `skills.urls`, fetched at start, mark the kind unread. Never `opencode mcp
+  list`, which connects.
+- **Pi**: `settings.json` packages (npm, git, local) and loose extensions are its plugins; skills follow Pi's own
+  precedence and filters (its glob subset and exact `+`/`-` entries); a filter outside that subset marks the kind
+  unread rather than guessed. No MCP and no marketplace, so neither kind is declared; no skill is switchable, since
+  only `pi config` writes the switch. Never a Pi start, which installs missing packages.
+- **Hermes**: `config.yaml` (a YAML subset whose errors never quote the document) for servers (`${VAR}` and
+  `${env:VAR}` as names), the plugin allow-list and disabled skills; plugins under `plugins/`, with the bundled ones
+  the config names listed as `bundled`; skills in Hermes's own words (bundled, hub-installed, agent-created →
+  `bundled`, `own`, `agent`). A server's sign-in is whether its token file exists; `.env`, `auth.json` and token
+  contents are never read. No `hermes` command, which writes config or starts OAuth.
+- **Antigravity**: `.gemini/config/` under the profile's home: plugins by `plugin.json` with `config.json`'s
+  switches, their servers and skills; `mcp_config.json`, whose literal secrets are read as names; `skills/`; the
+  CLI's builtin skills. `agy plugin list` misses a plugin copied in by hand, so it is not the source; the extra
+  folder lists (`skills.json`, `plugins.json`) mark their kind unread until their global place is known.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

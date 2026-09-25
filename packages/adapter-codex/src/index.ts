@@ -14,6 +14,7 @@ export * from './transport/app-server-client.js';
 export * from './transport/app-server-process.js';
 export * from './services/account-usage.js';
 export * from './services/distribution.js';
+export * from './services/extensions.js';
 export * from './services/profiles.js';
 export * from './services/prewarm.js';
 export * from './transport/ws-transport.js';

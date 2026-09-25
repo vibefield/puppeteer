@@ -37,6 +37,7 @@
     "account/read",
     "applyPatchApproval",
     "attestation/generate",
+    "config/read",
     "currentTime/read",
     "execCommandApproval",
     "initialize",
@@ -48,6 +49,9 @@
     "item/tool/requestUserInput",
     "mcpServer/elicitation/request",
     "model/list",
+    "plugin/installed",
+    "plugin/read",
+    "skills/list",
     "thread/inject_items",
     "thread/read",
     "thread/resume",
@@ -55,13 +59,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 198,
-    "sha256": "805b90cd6a6593199c90d7844ba64f83b9019cce476a4bb68dc2101cff480e37",
+    "count": 194,
+    "sha256": "6848034094e95227a6e2156b9a928f091b9737f6b031a3da9b8d8083943de76f",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 244,
     "semantic": 25,
-    "observedOrControlled": 21
+    "observedOrControlled": 25
   }
 }

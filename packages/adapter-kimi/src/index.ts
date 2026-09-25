@@ -6,5 +6,6 @@ export * from './driver.js';
 export * from './launch/native-invocation.js';
 export * from './services/account-usage.js';
 export * from './services/distribution.js';
+export * from './services/extensions.js';
 export * from './services/profiles.js';
 export * from './transport/managed-platform.js';

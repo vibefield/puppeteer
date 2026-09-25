@@ -32,26 +32,58 @@ const adapters = vi.hoisted(() => {
   return {
     createAntigravityDistributionService: vi.fn(() => fakeDistribution('antigravity', 'Antigravity', 'agy')),
     createAntigravityProfileService: vi.fn(() => fakeProfiles('antigravity', 'Antigravity')),
+    createAntigravityExtensionService: vi.fn(() => ({
+      provider: { id: 'antigravity', label: 'Antigravity', support: {} },
+      inventory: vi.fn(),
+    })),
     createAntigravityAccountUsageService: vi.fn(),
     fetchAntigravityAccountUsage: vi.fn(),
     createClaudeDistributionService: vi.fn(() => fakeDistribution('claude', 'Claude', 'claude')),
     createClaudeProfileService: vi.fn(() => fakeProfiles('claude', 'Claude')),
+    createClaudeExtensionService: vi.fn(() => ({
+      provider: { id: 'claude', label: 'Claude', support: {} },
+      inventory: vi.fn(),
+    })),
     createCodexDistributionService: vi.fn(() => fakeDistribution('codex', 'Codex', 'codex')),
     createCodexProfileService: vi.fn(() => fakeProfiles('codex', 'Codex')),
+    createCodexExtensionService: vi.fn(() => ({
+      provider: { id: 'codex', label: 'Codex', support: {} },
+      inventory: vi.fn(),
+    })),
     createCopilotDistributionService: vi.fn(() => fakeDistribution('copilot', 'GitHub Copilot', 'copilot')),
     createCopilotProfileService: vi.fn(() => fakeProfiles('copilot', 'GitHub Copilot')),
     createGrokDistributionService: vi.fn(() => fakeDistribution('grok', 'Grok', 'grok')),
     createGrokProfileService: vi.fn(() => fakeProfiles('grok', 'Grok')),
+    createGrokExtensionService: vi.fn(() => ({
+      provider: { id: 'grok', label: 'Grok', support: {} },
+      inventory: vi.fn(),
+    })),
     createKimiDistributionService: vi.fn(() => fakeDistribution('kimi', 'Kimi', 'kimi')),
     createKimiProfileService: vi.fn(() => fakeProfiles('kimi', 'Kimi')),
+    createKimiExtensionService: vi.fn(() => ({
+      provider: { id: 'kimi', label: 'Kimi', support: {} },
+      inventory: vi.fn(),
+    })),
     createKimiAccountUsageService: vi.fn(),
     fetchKimiAccountUsage: vi.fn(),
     createOpenCodeDistributionService: vi.fn(() => fakeDistribution('opencode', 'OpenCode', 'opencode')),
     createOpenCodeProfileService: vi.fn(() => fakeProfiles('opencode', 'OpenCode')),
+    createOpenCodeExtensionService: vi.fn(() => ({
+      provider: { id: 'opencode', label: 'OpenCode', support: {} },
+      inventory: vi.fn(),
+    })),
     createHermesDistributionService: vi.fn(() => fakeDistribution('hermes', 'Hermes', 'hermes')),
     createHermesProfileService: vi.fn(() => fakeProfiles('hermes', 'Hermes')),
+    createHermesExtensionService: vi.fn(() => ({
+      provider: { id: 'hermes', label: 'Hermes', support: {} },
+      inventory: vi.fn(),
+    })),
     createPiDistributionService: vi.fn(() => fakeDistribution('pi', 'Pi', 'pi')),
     createPiProfileService: vi.fn(() => fakeProfiles('pi', 'Pi')),
+    createPiExtensionService: vi.fn(() => ({
+      provider: { id: 'pi', label: 'Pi', support: {} },
+      inventory: vi.fn(),
+    })),
     createAcpSession: vi.fn(),
     createAntigravityTuiSession: vi.fn(),
     prepareAntigravityTuiSession: vi.fn(),
@@ -117,6 +149,7 @@ vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
 vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   createAntigravityDistributionService: adapters.createAntigravityDistributionService,
   createAntigravityProfileService: adapters.createAntigravityProfileService,
+  createAntigravityExtensionService: adapters.createAntigravityExtensionService,
   createAntigravityAccountUsageService: adapters.createAntigravityAccountUsageService,
   createAntigravityTuiSession: adapters.createAntigravityTuiSession,
   prepareAntigravityTuiSession: adapters.prepareAntigravityTuiSession,
@@ -128,6 +161,7 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
 vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
+  createClaudeExtensionService: adapters.createClaudeExtensionService,
   createClaudeAccountUsageService: adapters.createClaudeAccountUsageService,
   createClaudeSession: adapters.createClaudeSession,
   attachClaudeTuiSession: adapters.attachClaudeTuiSession,
@@ -143,6 +177,7 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
 vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   createCodexDistributionService: adapters.createCodexDistributionService,
   createCodexProfileService: adapters.createCodexProfileService,
+  createCodexExtensionService: adapters.createCodexExtensionService,
   createCodexAccountUsageService: adapters.createCodexAccountUsageService,
   createCodexTuiSession: adapters.createCodexTuiSession,
   fetchCodexAccountUsage: adapters.fetchCodexAccountUsage,
@@ -166,6 +201,7 @@ vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
   createGrokDistributionService: adapters.createGrokDistributionService,
   createGrokProfileService: adapters.createGrokProfileService,
+  createGrokExtensionService: adapters.createGrokExtensionService,
   createGrokAccountUsageService: adapters.createGrokAccountUsageService,
   createGrokBackend: adapters.createGrokBackend,
   fetchGrokAccountUsage: adapters.fetchGrokAccountUsage,
@@ -177,6 +213,7 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
 vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   createKimiDistributionService: adapters.createKimiDistributionService,
   createKimiProfileService: adapters.createKimiProfileService,
+  createKimiExtensionService: adapters.createKimiExtensionService,
   createKimiAccountUsageService: adapters.createKimiAccountUsageService,
   createKimiTuiSession: adapters.createKimiTuiSession,
   prepareKimiTuiSession: adapters.prepareKimiTuiSession,
@@ -188,6 +225,7 @@ vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
 vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
   createOpenCodeDistributionService: adapters.createOpenCodeDistributionService,
   createOpenCodeProfileService: adapters.createOpenCodeProfileService,
+  createOpenCodeExtensionService: adapters.createOpenCodeExtensionService,
   createOpenCodeTuiSession: adapters.createOpenCodeTuiSession,
   prepareOpenCodeTuiSession: adapters.prepareOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation: adapters.normalizeOpenCodeNativeInvocation,
@@ -198,6 +236,7 @@ vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
 vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   createHermesDistributionService: adapters.createHermesDistributionService,
   createHermesProfileService: adapters.createHermesProfileService,
+  createHermesExtensionService: adapters.createHermesExtensionService,
   createHermesTuiSession: adapters.createHermesTuiSession,
   prepareHermesTuiSession: adapters.prepareHermesTuiSession,
   normalizeHermesNativeInvocation: adapters.normalizeHermesNativeInvocation,
@@ -208,6 +247,7 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
 vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
   createPiDistributionService: adapters.createPiDistributionService,
   createPiProfileService: adapters.createPiProfileService,
+  createPiExtensionService: adapters.createPiExtensionService,
   createPiTuiSession: adapters.createPiTuiSession,
   preparePiTuiSession: adapters.preparePiTuiSession,
   normalizePiNativeInvocation: adapters.normalizePiNativeInvocation,

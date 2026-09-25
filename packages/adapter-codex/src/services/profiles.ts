@@ -54,6 +54,11 @@ function unavailable(message: string): ProfileFailure {
   return { status: 'unavailable', provider: 'codex', message, retryable: true };
 }
 
+/** What binds a Codex process to a profile: its root as `CODEX_HOME` when managed; nothing for the native default. */
+export function codexProfileBinding(profile: AgentProfile): Record<string, string> {
+  return profile.kind === 'managed' ? { [CODEX_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
+}
+
 /**
  * Decode the app-server `account/read` result. `account: null` is the
  * documented logged-out answer; a response without the key at all is an
@@ -138,8 +143,7 @@ export function createCodexProfileService(options: CodexProfileOptions = {}): Pr
     },
   };
 
-  const bindingEnvironment = (profile: AgentProfile): Record<string, string> =>
-    profile.kind === 'managed' ? { [CODEX_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
+  const bindingEnvironment = codexProfileBinding;
 
   return {
     provider,
