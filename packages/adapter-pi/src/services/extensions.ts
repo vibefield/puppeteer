@@ -41,13 +41,18 @@ import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import {
+  extensionActUnavailable,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
+  type McpServerItem,
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
@@ -741,8 +746,16 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     },
   };
 
+  // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the app.
+  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
+    return extensionActUnavailable(target, act, 'in-app', 'Pi filters its skills only with pi config');
+  }
+
   return {
     provider,
+    plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       const agentDir = profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);

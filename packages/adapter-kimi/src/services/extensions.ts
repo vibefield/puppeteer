@@ -38,8 +38,12 @@ import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  extensionActUnavailable,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -313,8 +317,20 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
     },
   };
 
+  // Acts (RFC 006 C2): Kimi has no command for either kind — its servers change
+  // only inside the app (`/mcp-config`), and one skill has no switch.
+  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own')
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Kimi', item));
+    return item.kind === 'mcp-server'
+      ? extensionActUnavailable(target, act, 'in-app', 'Kimi changes its servers only inside the app, with /mcp-config')
+      : extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
+  }
+
   return {
     provider,
+    plan,
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       // The root identity and usage read: a managed root, else what Kimi Code resolves with nothing bound.
       const root = kimiCredentialRoot(profile, ambient, home);

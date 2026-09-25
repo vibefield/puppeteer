@@ -47,8 +47,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  extensionActUnavailable,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -448,8 +452,26 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
 
   const shown = (path: string): string => (path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path);
 
+  // Acts (RFC 006 C2): OpenCode has no command that turns a server off or a
+  // skill out — both are keys of its one config, which serves every profile.
+  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('OpenCode', item, 'Claude Code'));
+    }
+    return item.kind === 'mcp-server'
+      ? extensionActUnavailable(
+          target,
+          act,
+          'no-command',
+          'OpenCode has no command that turns a server off: its one config serves every profile',
+        )
+      : extensionActUnavailable(target, act, 'no-command', 'OpenCode leaves a skill out only in its config');
+  }
+
   return {
     provider,
+    plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       const configHome = text(env.XDG_CONFIG_HOME);

@@ -126,6 +126,7 @@ import {
   composeExtensionProviders,
   createExtensionInventoryReader,
 } from './extensions/inventory.js';
+import { createExtensionActRunner } from './extensions/act.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
@@ -644,6 +645,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       profileRegistryProviders.get(providerId)?.provider.support.nativeDefaultRoot
         ? nativeDefaultProfileId(providerId)
         : undefined,
+    report,
+  });
+  const extensionActs = createExtensionActRunner({
+    providers: extensionProviderEntries,
+    reader: extensionReader,
+    // a retired account's agent is no longer the profile's: acts need a live one
+    resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, {}),
+    nativeDefaultProfileId: (providerId) =>
+      profileRegistryProviders.get(providerId)?.provider.support.nativeDefaultRoot
+        ? nativeDefaultProfileId(providerId)
+        : undefined,
+    ...(options.extensions?.run === undefined ? {} : { run: options.extensions.run }),
     report,
   });
 
@@ -2678,6 +2691,21 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     async extensionInventory(providerId: string, profileId?: string) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionReader.inventory(providerId, profileId);
+    },
+
+    async planExtensionAct(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionActs.plan(request);
+    },
+
+    async runExtensionAct(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionActs.run(request);
+    },
+
+    async extensionActPlans(providerId, profileId, items) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionActs.plans({ providerId, ...(profileId === undefined ? {} : { profileId }), items });
     },
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {

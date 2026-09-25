@@ -68,14 +68,19 @@ export interface ExtensionInventoryReaderOptions {
 }
 
 export interface ExtensionInventoryReader {
-  /** One profile's inventory; the native default's when none is named. Concurrent reads of one target coalesce. */
-  inventory(providerId: string, profileId?: string): Promise<ExtensionInventoryResult>;
+  /**
+   * One profile's inventory; the native default's when none is named.
+   * Concurrent reads of one target coalesce — unless `fresh`, which starts a
+   * read of its own (one that began before an act finished cannot show it)
+   * and becomes the read later callers join.
+   */
+  inventory(providerId: string, profileId?: string, options?: { fresh?: boolean }): Promise<ExtensionInventoryResult>;
 }
 
 export function createExtensionInventoryReader(options: ExtensionInventoryReaderOptions): ExtensionInventoryReader {
   const inflight = new Map<string, Promise<ExtensionInventoryResult>>();
   return {
-    inventory(providerId, profileId) {
+    inventory(providerId, profileId, readOptions) {
       const entry = options.providers.get(providerId);
       if (!entry)
         return Promise.resolve(
@@ -89,8 +94,8 @@ export function createExtensionInventoryReader(options: ExtensionInventoryReader
       }
       const key = `${providerId} ${target}`;
       const existing = inflight.get(key);
-      if (existing) return existing;
-      const request = (async (): Promise<ExtensionInventoryResult> => {
+      if (existing && readOptions?.fresh !== true) return existing;
+      const request: Promise<ExtensionInventoryResult> = (async (): Promise<ExtensionInventoryResult> => {
         const resolved = await options.resolveProfile(providerId, target);
         if ('error' in resolved) return failure('not-found', providerId, resolved.error, false);
         return checkInventory(entry.provider, resolved.profile, await entry.service.inventory(resolved.profile));
@@ -99,7 +104,10 @@ export function createExtensionInventoryReader(options: ExtensionInventoryReader
           options.report?.(error);
           return failure('unavailable', providerId, `extension inventory failed for ${providerId}`, true);
         })
-        .finally(() => inflight.delete(key));
+        .finally(() => {
+          // a fresh read may have taken this key over: leave its entry alone
+          if (inflight.get(key) === request) inflight.delete(key);
+        });
       inflight.set(key, request);
       return request;
     },

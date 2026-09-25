@@ -32,6 +32,14 @@
  * `plugin/installed` may refresh the account's remote-installed plugins, as
  * Codex does whenever it starts.
  *
+ * Acts (RFC 006 C2), on what the profile itself holds: a server of the user
+ * layer turns on and off through the app-server's `config/value/write` of
+ * `mcp_servers.<name>.enabled` in the root's config.toml (its sign-in stays),
+ * and goes with `codex mcp remove <name>`; a skill in `~/.agents/skills`
+ * switches for this profile alone through `skills/config/write` on its
+ * `SKILL.md`, and stays in the shared folder. A plugin's, a project's, the
+ * app's or an organization's item changes where it comes from.
+ *
  * Shapes: `SkillsListResponse`, `PluginInstalledResponse` and
  * `PluginReadResponse` in codex-rs/app-server-protocol/src/protocol/v2/plugin.rs,
  * `ConfigReadResponse` in v2/config.rs, and `run_list` in
@@ -47,8 +55,17 @@ import { basename, dirname, join, resolve } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   PUPPETEER_VERSION,
   type AgentProfile,
+  type AvailableExtensionActPlan,
+  type ExtensionActIo,
+  type ExtensionActKind,
+  type ExtensionActOutcome,
+  type ExtensionActPlan,
   type ExtensionFailure,
   type ExtensionInventory,
   type ExtensionItem,
@@ -98,18 +115,21 @@ const bounded = (value: string | undefined, max: number): string | undefined =>
 const names = (values: Iterable<string>, pattern: RegExp): string[] =>
   [...new Set(values)].filter((value) => pattern.test(value)).slice(0, 64);
 
+/** A command line that runs an npm install's `.js` shim under Node rather than rely on its shebang. */
+function codexArgv(executable: string, args: readonly string[]): string[] {
+  if (!SCRIPT_EXECUTABLE.test(executable)) return [executable, ...args];
+  return [process.versions.electron ? 'node' : process.execPath, executable, ...args];
+}
+
 function defaultListServers(options: {
   executable: string;
   env: Record<string, string>;
   cwd: string;
 }): Promise<string> {
-  // npm installs expose a `.js` shim; run it under Node rather than rely on the shebang.
-  const isScript = SCRIPT_EXECUTABLE.test(options.executable);
-  const command = isScript ? (process.versions.electron ? 'node' : process.execPath) : options.executable;
-  const args = [...(isScript ? [options.executable] : []), 'mcp', 'list', '--json'];
+  const [command, ...args] = codexArgv(options.executable, ['mcp', 'list', '--json']);
   return new Promise((resolveOutput, reject) => {
     execFile(
-      command,
+      command!,
       args,
       {
         cwd: options.cwd,
@@ -464,8 +484,108 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     }
   }
 
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Codex', item));
+    }
+    if (item.kind === 'mcp-server') {
+      if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+        return extensionActUnavailable(target, act, 'no-command', "Codex's commands do not take this server's name");
+      }
+      if (act === 'remove') {
+        return extensionCommandPlan({
+          target,
+          act,
+          argv: codexArgv(executable, ['mcp', 'remove', item.id]),
+          env: codexProfileBinding(profile),
+          reaches: ['definition'],
+        });
+      }
+      const enabled = act === 'enable';
+      return {
+        target,
+        act,
+        available: true,
+        runs: {
+          kind: 'protocol',
+          method: 'config/value/write',
+          params: { keyPath: `mcp_servers.${item.id}.enabled`, mergeStrategy: 'replace', value: enabled },
+        },
+        display: `config/value/write mcp_servers.${item.id}.enabled = ${enabled}`,
+        reaches: [],
+      };
+    }
+    // A skill of your own lives in ~/.agents/skills; Codex's switch for it is this profile's alone.
+    if (act === 'remove') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Codex has no command that removes a skill: it lives in ~/.agents/skills, which every profile reads',
+      );
+    }
+    if (item.switchable !== true || item.location === undefined) {
+      return extensionActUnavailable(target, act, 'no-command', 'Codex has no switch for this skill');
+    }
+    const enabled = act === 'enable';
+    return {
+      target,
+      act,
+      available: true,
+      runs: {
+        kind: 'protocol',
+        method: 'skills/config/write',
+        params: { path: join(item.location, 'SKILL.md'), enabled },
+      },
+      display: `skills/config/write ${item.id} enabled = ${enabled}`,
+      reaches: [],
+    };
+  }
+
+  async function perform(
+    profile: AgentProfile,
+    planned: AvailableExtensionActPlan,
+    io: ExtensionActIo,
+  ): Promise<ExtensionActOutcome> {
+    if (planned.runs.kind !== 'protocol') return { ok: false, error: 'is not a protocol call' };
+    const root = profile.dataRoot;
+    if (!(await isDirectory(root))) return { ok: false, error: 'found no Codex root on disk' };
+    const { method, params } = planned.runs;
+    let transport: Transport | undefined;
+    let client: AppServerClient | undefined;
+    const onAbort = (): void => {
+      void (client ? client.close() : transport?.close());
+    };
+    io.signal?.addEventListener('abort', onAbort, { once: true });
+    try {
+      transport = spawnTransport({ executable, env: environmentFor(profile), cwd: root });
+      client = new AppServerClient(transport, { requestTimeoutMs });
+      await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
+      client.notify('initialized');
+      io.onOutput?.(`${planned.display}\n`);
+      try {
+        await client.request(method, params ?? {});
+      } catch {
+        // Codex's refusal may quote its config: it is never repeated.
+        io.onOutput?.('Codex refused it.\n');
+        return { ok: false, error: 'was refused by Codex' };
+      }
+      io.onOutput?.('Codex wrote it to its config.\n');
+      return { ok: true };
+    } catch {
+      return { ok: false, error: io.signal?.aborted ? 'was stopped' : 'could not reach the Codex app-server' };
+    } finally {
+      io.signal?.removeEventListener('abort', onAbort);
+      if (client) await client.close();
+      else await transport?.close();
+    }
+  }
+
   return {
     provider,
+    plan,
+    perform,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory | ExtensionFailure> {
       const env = environmentFor(profile);

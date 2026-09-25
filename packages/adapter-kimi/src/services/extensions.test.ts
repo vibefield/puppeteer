@@ -314,3 +314,40 @@ describe('Kimi Code extensions', () => {
     expect(inventory.unread).toBeUndefined();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-kimi' : 'kimi:native-default',
+    provider: 'kimi',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Kimi extension acts', () => {
+  it('changes nothing from outside the app', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    expect(kimi.plan!(actProfile('managed', '/p'), actServer(), 'disable')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi changes its servers only inside the app, with /mcp-config',
+    });
+    expect(kimi.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({ reason: 'no-command' });
+  });
+});

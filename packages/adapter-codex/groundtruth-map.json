@@ -38,6 +38,7 @@
     "applyPatchApproval",
     "attestation/generate",
     "config/read",
+    "config/value/write",
     "currentTime/read",
     "execCommandApproval",
     "initialize",
@@ -51,6 +52,7 @@
     "model/list",
     "plugin/installed",
     "plugin/read",
+    "skills/config/write",
     "skills/list",
     "thread/inject_items",
     "thread/read",
@@ -59,13 +61,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 194,
-    "sha256": "6848034094e95227a6e2156b9a928f091b9737f6b031a3da9b8d8083943de76f",
+    "count": 192,
+    "sha256": "f3e82c73c986c45952bac453e8570054b97f58b5dc28f5d25d34ef2975fa293a",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 244,
     "semantic": 25,
-    "observedOrControlled": 25
+    "observedOrControlled": 27
   }
 }

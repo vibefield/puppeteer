@@ -38,8 +38,14 @@ import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionProvider,
@@ -49,11 +55,15 @@ import {
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
+import { resolveHermesExecutable } from '../detection.js';
+import { HERMES_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
 export interface HermesExtensionOptions {
   /** Home directory the native default root hangs off; defaults to the process home. */
   home?: string;
   now?: () => Date;
+  /** The executable an act runs; the adapter's own resolution when absent. */
+  executable?: string;
 }
 
 const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
@@ -942,8 +952,37 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
     },
   };
 
+  const executable = resolveHermesExecutable(options.executable);
+
+  // Acts (RFC 006 C2): Hermes turns a server off only in its config.yaml
+  // (`enabled: false`), so a server of the profile's own is only removed —
+  // `hermes mcp remove <name>`. A skill's switch is a config key too.
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Hermes', item));
+    }
+    if (item.kind === 'skill') {
+      return extensionActUnavailable(target, act, 'no-command', 'Hermes switches a skill only in its config.yaml');
+    }
+    if (act !== 'remove') {
+      return extensionActUnavailable(target, act, 'no-command', 'Hermes turns a server off only in its config.yaml');
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(target, act, 'no-command', "Hermes's commands do not take this server's name");
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, 'mcp', 'remove', item.id],
+      env: profile.kind === 'native-default' ? {} : { [HERMES_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+      reaches: ['definition'],
+    });
+  }
+
   return {
     provider,
+    plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       // The native default is Hermes's own root, whatever path the profile carries.

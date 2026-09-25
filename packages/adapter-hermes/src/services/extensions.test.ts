@@ -433,3 +433,47 @@ describe('Hermes extensions', () => {
     expect(unconfigured.unread).toBeUndefined();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-hermes' : 'hermes:native-default',
+    provider: 'hermes',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Hermes extension acts', () => {
+  const hermes = createHermesExtensionService({ executable: '/opt/hermes/bin/hermes', home: '/Users/test' });
+  it('removes a server of its own config with its own command, and turns none off by command', () => {
+    expect(hermes.plan!(actProfile('managed', '/profiles/work/hermes'), actServer(), 'remove')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['/opt/hermes/bin/hermes', 'mcp', 'remove', 'linear'],
+        env: { HERMES_HOME: '/profiles/work/hermes' },
+      },
+      reaches: ['definition'],
+    });
+    expect(hermes.plan!(actProfile('managed', '/p'), actServer(), 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+  });
+});

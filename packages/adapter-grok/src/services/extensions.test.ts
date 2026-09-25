@@ -435,3 +435,70 @@ describe('parseGrokConfig', () => {
     expect(() => parseGrokConfig('a = 1 b = 2\n')).toThrow();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-grok' : 'grok:native-default',
+    provider: 'grok',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Grok extension acts', () => {
+  const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
+  it("turns a server of the profile's own config on and off, and removes it, with Grok's own commands", () => {
+    expect(grok.plan!(actProfile('managed', '/profiles/work/grok'), actServer(), 'disable')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'disable',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['/opt/grok/bin/grok', 'mcp', 'disable', 'linear'],
+        env: { GROK_HOME: '/profiles/work/grok' },
+      },
+      display: '/opt/grok/bin/grok mcp disable linear',
+      reaches: [],
+    });
+    expect(grok.plan!(actProfile('native-default', '/Users/test/.grok'), actServer(), 'remove')).toMatchObject({
+      runs: { kind: 'command', argv: ['/opt/grok/bin/grok', 'mcp', 'remove', 'linear', '--scope', 'user'] },
+      reaches: ['definition'],
+    });
+  });
+
+  it('leaves what it borrows to its lender, a skill to its config, and never passes a flag as a name', () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    expect(
+      grok.plan!(
+        work,
+        actServer({ id: 'claude:linear', origin: 'borrowed', lender: 'claude', shared: true }),
+        'disable',
+      ),
+    ).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'Grok loads it from Claude Code on This Mac, and it changes there',
+    });
+    expect(grok.plan!(work, actSkill(), 'disable')).toMatchObject({ available: false, reason: 'no-command' });
+    expect(grok.plan!(work, actServer({ id: '--scope', name: '--scope' }), 'remove')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+  });
+});

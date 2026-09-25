@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25; the rest of C2, C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -692,6 +692,30 @@ machine's variables, so a host's tests reach nothing real.
   switches, their servers and skills; `mcp_config.json`, whose literal secrets are read as names; `skills/`; the
   CLI's builtin skills. `agy plugin list` misses a plugin copied in by hand, so it is not the source; the extra
   folder lists (`skills.json`, `plugins.json`) mark their kind unread until their global place is known.
+
+C2's first slice, the same day: acts on what a profile's agent already holds. Core adds `ExtensionActKind`
+(`enable`, `disable`, `remove`), `ExtensionActPlan` — available: what runs (the agent's own command, as argv plus the
+variables that point it at the profile, or a call on its protocol) and what it reaches beyond that one item
+(`definition`: turning it back on needs it again; `sign-in`: a remote server's stored sign-in goes; `every-profile`;
+`shared-folder`); unavailable: `in-app`, `no-command`, `not-own` or `not-held`, in the agent's own words —
+`ExtensionActReceipt`, `ExtensionService.plan?(profile, item, act)` (pure) and `perform?` (a protocol plan through the
+adapter's own transport), and `EXTENSION_COMMAND_NAME`, which keeps a name that could be read as a flag or a path out
+of an argv. The runtime's `extensions/act.ts` answers `planExtensionAct` and `runExtensionAct`: a fresh read finds
+the item (`inventory(…, { fresh: true })` never joins a read that began before), the adapter plans, a command runs
+through the update runner (no stdin, a process group of its own, the clean environment plus the plan's variables, two
+minutes, the agent's own folder as cwd so no project's config joins in), and a second fresh read decides the receipt —
+`changed`, `unchanged`, `failed` or `unavailable` — never the output, which is display text only. What each agent
+offers, from the reports: Codex turns a server of its user layer on and off through the app-server's
+`config/value/write` of `mcp_servers.<name>.enabled` (its sign-in stays), removes one with `codex mcp remove`, and
+switches a skill of `~/.agents/skills` for one profile through `skills/config/write` on its `SKILL.md`; Grok `grok mcp
+enable|disable` and `grok mcp remove --scope user`; Antigravity `agy mcp enable|disable` under the profile's HOME, for
+a name the read found (disabling an unknown one writes a stub), removal not probed and not offered; Claude Code has no
+switch for a whole profile (`/mcp` works one project at a time), so `claude mcp remove --scope user`, which reaches
+the definition and, for a remote server, its sign-in; Hermes `hermes mcp remove` only; Kimi (inside the app), OpenCode
+(no command; one config serves every profile) and Pi (`pi config`) answer unavailable. A plugin's, a project's, the
+app's, an organization's or another agent's item changes where it comes from. Settings keys with no command
+(`skillOverrides`, `[skills] disabled`, `enabled: false`, `skill: deny`) stay the agent's: no act writes one. Turning
+one on for an agent that does not hold it needs its definition and secret kept once, and waits.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

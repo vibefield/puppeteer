@@ -268,3 +268,70 @@ describe('Claude Code extensions', () => {
     expect(inventory.unread).toBeUndefined();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-claude' : 'claude:native-default',
+    provider: 'claude',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Claude Code extension acts', () => {
+  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
+  it('removes a user server with its own command, saying a remote one takes its sign-in with it', () => {
+    expect(claude.plan!(actProfile('managed', '/profiles/work/claude'), actServer(), 'remove')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'remove',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['claude', 'mcp', 'remove', '--scope', 'user', 'linear'],
+        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+      },
+      display: 'claude mcp remove --scope user linear',
+      reaches: ['definition', 'sign-in'],
+    });
+    expect(
+      claude.plan!(
+        actProfile('native-default', '/Users/test/.claude'),
+        actServer({ transport: 'stdio', target: 'npx x' }),
+        'remove',
+      ),
+    ).toMatchObject({ reaches: ['definition'] });
+  });
+
+  it("has no switch for a whole profile, and leaves a project's server and a skill alone", () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    expect(claude.plan!(work, actServer(), 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+      message: 'Claude Code has no switch for a whole profile: /mcp turns a server off one project at a time',
+    });
+    expect(
+      claude.plan!(
+        work,
+        actServer({ id: 'project:/Users/test/billing:sentry', origin: 'project', project: '~/billing' }),
+        'remove',
+      ),
+    ).toMatchObject({ available: false, reason: 'not-own' });
+    expect(claude.plan!(work, actSkill(), 'disable')).toMatchObject({ available: false, reason: 'no-command' });
+  });
+});

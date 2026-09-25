@@ -75,4 +75,79 @@ describe('built-in extension capabilities', () => {
     expect(await runtime.extensionInventory('copilot')).toMatchObject({ status: 'unsupported' });
     expect(host.spawnTerminal).not.toHaveBeenCalled();
   });
+
+  it("runs an act through Claude Code's own command, in the clean environment, and decides by reading again", async () => {
+    const home = await mkdtemp(join(tmpdir(), 'builtin-extension-acts-'));
+    made.push(home);
+    const appState = join(home, '.claude.json');
+    await write(appState, {
+      mcpServers: {
+        linear: { type: 'http', url: 'https://mcp.linear.app/mcp' },
+        postgres: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
+      },
+    });
+    await write(join(home, '.claude', 'settings.json'), {});
+    // Stands in for `claude mcp remove`: never the machine's Claude.
+    const run = vi.fn(
+      async (request: { argv: readonly string[]; env: Record<string, string>; onOutput(chunk: string): void }) => {
+        request.onOutput('Removed MCP server linear from user config\n');
+        await write(appState, {
+          mcpServers: { postgres: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] } },
+        });
+        return { exitCode: 0 };
+      },
+    );
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: home,
+      providers: createBuiltinProviders({
+        home,
+        executables: { claude: join(home, 'no-claude'), codex: join(home, 'no-codex') },
+      }),
+      profiles: {
+        store: { load: async () => undefined, save: async () => {} },
+        rootsDirectory: join(home, 'profiles'),
+      },
+      extensions: { run },
+    });
+    runtimes.push(runtime);
+    const target = { kind: 'mcp-server' as const, id: 'linear' };
+
+    // Claude has no switch for a whole profile: only removal, which says what it takes
+    expect(await runtime.planExtensionAct({ providerId: 'claude', target, act: 'disable' })).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    expect(await runtime.planExtensionAct({ providerId: 'claude', target, act: 'remove' })).toMatchObject({
+      available: true,
+      display: `${join(home, 'no-claude')} mcp remove --scope user linear`,
+      reaches: ['definition', 'sign-in'],
+    });
+    const output: string[] = [];
+    const receipt = await runtime.runExtensionAct({
+      providerId: 'claude',
+      target,
+      act: 'remove',
+      onOutput: (chunk) => output.push(chunk),
+    });
+    expect(receipt).toMatchObject({
+      provider: 'claude',
+      profileId: 'claude:native-default',
+      status: 'changed',
+      message: 'removed',
+      exitCode: 0,
+    });
+    expect(output).toEqual(['Removed MCP server linear from user config\n']);
+    // the native default binds no root variable: Claude finds its own home
+    expect(run.mock.calls[0]?.[0].env.CLAUDE_CONFIG_DIR).toBeUndefined();
+    expect(await runtime.extensionInventory('claude')).toMatchObject({
+      items: [{ kind: 'mcp-server', id: 'postgres' }],
+    });
+    // an act on what the profile does not hold never runs
+    expect(await runtime.runExtensionAct({ providerId: 'claude', target, act: 'remove' })).toMatchObject({
+      status: 'unavailable',
+    });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(host.spawnTerminal).not.toHaveBeenCalled();
+  });
 });

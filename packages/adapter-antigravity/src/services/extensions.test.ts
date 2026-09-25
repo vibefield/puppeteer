@@ -290,3 +290,51 @@ describe('Antigravity extensions', () => {
     expect(inventory.unread).toBeUndefined();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-antigravity' : 'antigravity:native-default',
+    provider: 'antigravity',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Antigravity extension acts', () => {
+  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/Users/test' });
+  it("switches a server of the home's own under the profile's HOME, and offers no removal it has not probed", () => {
+    expect(agy.plan!(actProfile('managed', '/profiles/work/antigravity'), actServer(), 'enable')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['agy', 'mcp', 'enable', 'linear'],
+        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+      },
+      reaches: [],
+    });
+    const native = agy.plan!(actProfile('native-default', '/Users/test'), actServer(), 'disable');
+    expect(native).toMatchObject({ available: true, runs: { argv: ['agy', 'mcp', 'disable', 'linear'] } });
+    expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+    expect(agy.plan!(actProfile('managed', '/p'), actServer(), 'remove')).toMatchObject({ available: false });
+    expect(agy.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+    });
+  });
+});

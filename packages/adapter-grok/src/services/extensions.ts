@@ -28,6 +28,12 @@
  * Command markdown (`commands/*.md`), project files (`.grok/`, `.mcp.json`) and
  * `[plugins] paths` are not read; neither are the `GROK_CLAUDE_*_ENABLED`
  * overrides, which belong to a launch environment rather than the profile.
+ *
+ * Acts (RFC 006 C2): a server of the root's own config turns on and off with
+ * `grok mcp enable|disable <name>` and goes with `grok mcp remove <name>
+ * --scope user`, which write the profile's `config.toml`. A borrowed server
+ * changes in the agent it comes from; a skill's switch (`[skills] disabled`)
+ * has no command.
  */
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
@@ -36,8 +42,14 @@ import { dirname, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -48,12 +60,20 @@ import {
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
+import { resolveGrokExecutable } from '../detection.js';
+import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
 export interface GrokExtensionOptions {
   /** Home directory the native default root and every borrowed store hang off; defaults to the process home. */
   home?: string;
   now?: () => Date;
+  /** The `grok` an act runs; the adapter's own resolution when absent. */
+  executable?: string;
+  env?: NodeJS.ProcessEnv;
 }
+
+/** The agents Grok borrows from, by the names a person knows them by. */
+const LENDERS: Record<string, string> = { claude: 'Claude Code', cursor: 'Cursor' };
 
 const MAX_CONFIG_BYTES = 1024 * 1024;
 /** Claude's app-state file grows with project history; past this it is not parsed. */
@@ -540,6 +560,36 @@ async function pluginAt(folder: string): Promise<{ manifest?: Json } | undefined
 export function createGrokExtensionService(options: GrokExtensionOptions = {}): ExtensionService {
   const home = options.home ?? homedir();
   const now = options.now ?? (() => new Date());
+  const executable = resolveGrokExecutable(options.executable, options.env ?? process.env);
+
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'skill') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Grok switches a skill only in its config.toml, with no command',
+      );
+    }
+    if (item.origin !== 'own') {
+      const lender = item.lender === undefined ? undefined : (LENDERS[item.lender] ?? item.lender);
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Grok', item, lender));
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(target, act, 'no-command', "Grok's commands do not take this server's name");
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv:
+        act === 'remove'
+          ? [executable, 'mcp', 'remove', item.id, '--scope', 'user']
+          : [executable, 'mcp', act, item.id],
+      env: profile.kind === 'native-default' ? {} : { [GROK_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+      reaches: act === 'remove' ? ['definition'] : [],
+    });
+  }
 
   const provider: ExtensionProvider = {
     id: 'grok',
@@ -558,6 +608,7 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
 
   return {
     provider,
+    plan,
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       const root = profile.dataRoot;
       const claudeRoot = join(home, '.claude');

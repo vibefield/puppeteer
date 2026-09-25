@@ -38,8 +38,14 @@ import { dirname, join, resolve } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -49,11 +55,16 @@ import {
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
+import { resolveAntigravityExecutable } from '../detection.js';
+import { ANTIGRAVITY_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
 export interface AntigravityExtensionOptions {
   /** Home directory the native default hangs off; defaults to the process home. Injected so tests never read the real one. */
   home?: string;
   now?: () => Date;
+  /** The executable an act runs; the adapter's own resolution when absent. */
+  executable?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 /** The customization root and the CLI's own store, relative to the home a profile runs under. */
@@ -289,8 +300,50 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
   // the process home, whatever root variable the host happens to inherit.
   const homeOf = (profile: AgentProfile): string => (profile.kind === 'managed' ? profile.dataRoot : nativeHome);
 
+  const executable = resolveAntigravityExecutable(options.executable, options.env ?? process.env);
+
+  // Acts (RFC 006 C2): a server of the home's own `mcp_config.json` turns on and
+  // off with `agy mcp enable|disable <name>` under the profile's HOME — only a
+  // name the read found, since disabling an unknown one writes a stub. Removal
+  // was not probed and is not offered; skills switch only inside the app.
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
+    }
+    if (item.kind === 'skill') {
+      return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
+    }
+    if (act === 'remove') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Removing a server from Antigravity is not offered yet: turn it off instead',
+      );
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Antigravity's commands do not take this server's name",
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, 'mcp', act, item.id],
+      env:
+        profile.kind === 'managed'
+          ? { HOME: profile.dataRoot, [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: profile.dataRoot }
+          : {},
+    });
+  }
+
   return {
     provider,
+    plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       const home = homeOf(profile);

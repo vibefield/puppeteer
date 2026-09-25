@@ -639,3 +639,136 @@ describe('Codex extensions', () => {
     }
   });
 });
+
+describe('Codex extension acts', () => {
+  const own = {
+    kind: 'mcp-server' as const,
+    id: 'linear',
+    name: 'linear',
+    origin: 'own' as const,
+    enabled: true,
+    transport: 'http' as const,
+    target: 'https://mcp.linear.app/mcp',
+  };
+  const skill = {
+    kind: 'skill' as const,
+    id: 'release-notes',
+    name: 'release-notes',
+    origin: 'own' as const,
+    enabled: true,
+    shared: true as const,
+    switchable: true as const,
+    location: '/Users/test/.agents/skills/release-notes',
+  };
+
+  it("turns a server of the profile's own on and off through its config, and removes it with its own command", async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(codex.plan!(managedProfile(root), own, 'disable')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'disable',
+      available: true,
+      runs: {
+        kind: 'protocol',
+        method: 'config/value/write',
+        params: { keyPath: 'mcp_servers.linear.enabled', mergeStrategy: 'replace', value: false },
+      },
+      display: 'config/value/write mcp_servers.linear.enabled = false',
+      reaches: [],
+    });
+    // the definition goes with a removal; the command is bound to the profile's root
+    expect(codex.plan!(managedProfile(root), own, 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['/opt/node/bin/codex', 'mcp', 'remove', 'linear'], env: { CODEX_HOME: root } },
+      display: '/opt/node/bin/codex mcp remove linear',
+      reaches: ['definition'],
+    });
+    // the native default binds nothing: Codex finds its own home
+    expect(codex.plan!(nativeProfile(root), own, 'remove')).toMatchObject({
+      runs: { kind: 'command', argv: ['/opt/node/bin/codex', 'mcp', 'remove', 'linear'] },
+    });
+    expect((codex.plan!(nativeProfile(root), own, 'remove') as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it("leaves a plugin's, a project's and the app's servers where they come from", async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(codex.plan!(managedProfile(root), { ...own, origin: 'plugin', plugin: 'docs@openai' }, 'disable')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'disable',
+      available: false,
+      reason: 'not-own',
+      message: 'It comes with the docs@openai plugin and changes with it',
+    });
+    expect(codex.plan!(managedProfile(root), { ...own, origin: 'managed' }, 'remove')).toMatchObject({
+      available: false,
+      reason: 'not-own',
+    });
+    expect(codex.plan!(managedProfile(root), { ...own, id: 'odd.name', name: 'odd.name' }, 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+  });
+
+  it('switches a shared skill for this profile alone, and never removes one from the shared folder', async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(codex.plan!(managedProfile(root), skill, 'disable')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'protocol',
+        method: 'skills/config/write',
+        params: { path: '/Users/test/.agents/skills/release-notes/SKILL.md', enabled: false },
+      },
+      display: 'skills/config/write release-notes enabled = false',
+      reaches: [],
+    });
+    expect(codex.plan!(managedProfile(root), skill, 'remove')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    expect(
+      codex.plan!(managedProfile(root), { ...skill, id: 'system:skill-creator', origin: 'bundled' }, 'disable'),
+    ).toMatchObject({ available: false, reason: 'not-own', message: 'It ships with Codex' });
+  });
+
+  it("performs a protocol plan on a private app-server in the profile's root, and never repeats a refusal", async () => {
+    const { home, root } = await managedSetup();
+    const server = fakeAppServer({
+      initialize: () => ({ codexHome: root }),
+      'config/value/write': () => ({ status: 'ok', version: 'sha256:next', filePath: join(root, 'config.toml') }),
+    });
+    const codex = service(server, { home });
+    const plan = codex.plan!(managedProfile(root), own, 'disable');
+    if (!plan.available) throw new Error('expected a plan');
+    const output: string[] = [];
+    expect(await codex.perform!(managedProfile(root), plan, { onOutput: (chunk) => output.push(chunk) })).toEqual({
+      ok: true,
+    });
+    expect(server.spawns).toEqual([
+      { executable: '/opt/node/bin/codex', env: { CODEX_HOME: root, HOME: home }, cwd: root },
+    ]);
+    expect(server.requests.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'config/value/write']);
+    expect(server.requests[2]?.params).toEqual({
+      keyPath: 'mcp_servers.linear.enabled',
+      mergeStrategy: 'replace',
+      value: false,
+    });
+    expect(output.join('')).toBe(
+      'config/value/write mcp_servers.linear.enabled = false\nCodex wrote it to its config.\n',
+    );
+    expect(server.closed()).toBe(true);
+
+    // a refusal (here: no answer, so an error that quotes itself) is said without its words
+    const refusing = fakeAppServer({ initialize: () => ({ codexHome: root }) });
+    const skillPlan = service(refusing, { home }).plan!(managedProfile(root), skill, 'enable');
+    if (!skillPlan.available) throw new Error('expected a plan');
+    const said: string[] = [];
+    expect(
+      await service(refusing, { home }).perform!(managedProfile(root), skillPlan, {
+        onOutput: (chunk) => said.push(chunk),
+      }),
+    ).toEqual({ ok: false, error: 'was refused by Codex' });
+    expect(said.join('')).not.toContain('no answer');
+  });
+});

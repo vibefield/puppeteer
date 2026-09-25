@@ -32,8 +32,14 @@ import { dirname, join, resolve } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActKind,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -44,11 +50,16 @@ import {
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
+import { resolveClaudeExecutable } from '../detection.js';
+import { CLAUDE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
 export interface ClaudeExtensionOptions {
   /** Home directory the native default root hangs off; defaults to the process home. */
   home?: string;
   now?: () => Date;
+  /** The executable an act runs; the adapter's own resolution when absent. */
+  executable?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 /** The app-state file grows with project history; past this it is not parsed. */
@@ -212,8 +223,48 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
     },
   };
 
+  const executable = resolveClaudeExecutable(options.executable, options.env ?? process.env);
+
+  // Acts (RFC 006 C2): Claude Code has no switch that turns a server off for a
+  // whole profile (`/mcp` does it one project at a time), so a user server is
+  // only removed — `claude mcp remove --scope user <name>`, which also deletes
+  // a remote server's stored sign-in. A skill's switch is a settings key.
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Claude Code', item));
+    }
+    if (item.kind === 'skill') {
+      return extensionActUnavailable(target, act, 'no-command', 'Claude Code turns a skill off only in its settings');
+    }
+    if (act !== 'remove') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Claude Code has no switch for a whole profile: /mcp turns a server off one project at a time',
+      );
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Claude Code's commands do not take this server's name",
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, 'mcp', 'remove', '--scope', 'user', item.id],
+      env: profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {},
+      reaches: item.transport === 'stdio' ? ['definition'] : ['definition', 'sign-in'],
+    });
+  }
+
   return {
     provider,
+    plan,
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
       const root = profile.dataRoot;
       // The native default keeps its app state beside its root, not inside it.

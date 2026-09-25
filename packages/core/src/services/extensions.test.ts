@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeArgv,
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
+  ExtensionActPlanSchema,
+  ExtensionActReceiptSchema,
+  extensionActUnavailable,
+  extensionCommandPlan,
+  extensionNotOwnWords,
   ExtensionFailureSchema,
   ExtensionInventorySchema,
   ExtensionItemSchema,
@@ -259,5 +266,90 @@ describe('parseSkillFrontmatter', () => {
     expect(parseSkillFrontmatter('\n---\nname: late\n---\n')).toEqual({});
     expect(parseSkillFrontmatter('# Just a body')).toEqual({});
     expect(parseSkillFrontmatter('---\nname: unterminated\n')).toEqual({});
+  });
+});
+
+describe('extension acts (RFC 006 C2)', () => {
+  const target = { kind: 'mcp-server' as const, id: 'linear' };
+
+  it("plans one of the agent's own commands as a person reads it, with only the variables that bind the profile", () => {
+    const plan = extensionCommandPlan({
+      target,
+      act: 'remove',
+      argv: ['/Applications/Some Agent.app/bin/agent', 'mcp', 'remove', 'linear'],
+      env: { AGENT_HOME: '/profiles/work/agent' },
+      reaches: ['definition', 'sign-in'],
+    });
+    expect(ExtensionActPlanSchema.parse(plan)).toEqual(plan);
+    expect(plan.display).toBe('"/Applications/Some Agent.app/bin/agent" mcp remove linear');
+    // no binding at all leaves no env: the native default finds its own root
+    const bare = extensionCommandPlan({ target, act: 'disable', argv: ['agent', 'mcp', 'disable', 'linear'], env: {} });
+    expect('env' in bare.runs).toBe(false);
+    expect(describeArgv(['a', 'b c'])).toBe('a "b c"');
+  });
+
+  it('says why an agent cannot, and refuses a plan that carries a credential-shaped variable name or an empty command', () => {
+    expect(
+      ExtensionActPlanSchema.parse(
+        extensionActUnavailable(target, 'disable', 'in-app', 'Kimi changes it inside the app'),
+      ),
+    ).toMatchObject({ available: false, reason: 'in-app' });
+    expect(
+      ExtensionActPlanSchema.safeParse({
+        ...extensionCommandPlan({ target, act: 'disable', argv: ['a'] }),
+        runs: { kind: 'command', argv: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      ExtensionActPlanSchema.safeParse({
+        ...extensionCommandPlan({ target, act: 'disable', argv: ['a'] }),
+        runs: { kind: 'command', argv: ['a'], env: { 'not a name': 'x' } },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('takes a name as an argument only when a command could never read it as a flag or a path', () => {
+    expect(EXTENSION_COMMAND_NAME.test('linear')).toBe(true);
+    expect(EXTENSION_COMMAND_NAME.test('my_server-2')).toBe(true);
+    expect(EXTENSION_COMMAND_NAME.test('--scope')).toBe(false);
+    expect(EXTENSION_COMMAND_NAME.test('-v')).toBe(false);
+    expect(EXTENSION_COMMAND_NAME.test('../x')).toBe(false);
+    expect(EXTENSION_COMMAND_NAME.test('a.b')).toBe(false);
+  });
+
+  it("words why an item that is not the profile's own changes where it comes from", () => {
+    const item = (fields: Record<string, unknown>) =>
+      ExtensionItemSchema.parse({
+        kind: 'mcp-server',
+        id: 'x',
+        name: 'x',
+        enabled: true,
+        transport: 'http',
+        target: 'https://x.example/mcp',
+        ...fields,
+      });
+    expect(extensionNotOwnWords('Codex', item({ origin: 'plugin', plugin: 'docs@openai' }))).toBe(
+      'It comes with the docs@openai plugin and changes with it',
+    );
+    expect(extensionNotOwnWords('Grok', item({ origin: 'borrowed', lender: 'claude' }), 'Claude Code')).toBe(
+      'Grok loads it from Claude Code on This Mac, and it changes there',
+    );
+    expect(extensionNotOwnWords('Codex', item({ origin: 'bundled' }))).toBe('It ships with Codex');
+  });
+
+  it('keeps a receipt to what the second read decided and what ran', () => {
+    const receipt = {
+      provider: 'codex',
+      profileId: 'work-codex',
+      target,
+      act: 'disable',
+      status: 'changed',
+      startedAt: '2026-09-25T09:00:00.000Z',
+      finishedAt: '2026-09-25T09:00:01.000Z',
+      display: 'config/value/write mcp_servers.linear.enabled = false',
+      message: 'turned off',
+    };
+    expect(ExtensionActReceiptSchema.parse(receipt)).toEqual(receipt);
+    expect(ExtensionActReceiptSchema.safeParse({ ...receipt, output: 'anything' }).success).toBe(false);
   });
 });

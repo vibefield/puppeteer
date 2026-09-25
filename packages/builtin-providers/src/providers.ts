@@ -247,7 +247,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     claude: {
       distribution: createClaudeDistributionService({ executable: resolved.claude }),
       profiles: createClaudeProfileService({ ...chosen(resolved.claude), ...homeOption }),
-      extensions: createClaudeExtensionService(homeOption),
+      extensions: createClaudeExtensionService({ ...chosen(resolved.claude), ...homeOption }),
     },
     codex: {
       distribution: createCodexDistributionService({ executable: resolved.codex }),
@@ -257,7 +257,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     grok: {
       distribution: createGrokDistributionService({ executable: resolved.grok }),
       profiles: createGrokProfileService({ ...chosen(resolved.grok), ...homeOption }),
-      extensions: createGrokExtensionService(homeOption),
+      extensions: createGrokExtensionService({ ...chosen(resolved.grok), ...homeOption }),
     },
     kimi: {
       distribution: createKimiDistributionService({ executable: resolved.kimi }),
@@ -272,12 +272,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     hermes: {
       distribution: createHermesDistributionService({ executable: resolved.hermes }),
       profiles: createHermesProfileService({ ...chosen(resolved.hermes), ...homeOption }),
-      extensions: createHermesExtensionService(homeOption),
+      extensions: createHermesExtensionService({ ...chosen(resolved.hermes), ...homeOption }),
     },
     antigravity: {
       distribution: createAntigravityDistributionService({ executable: resolved.antigravity }),
       profiles: createAntigravityProfileService({ ...chosen(resolved.antigravity), ...homeOption }),
-      extensions: createAntigravityExtensionService(homeOption),
+      extensions: createAntigravityExtensionService({ ...chosen(resolved.antigravity), ...homeOption }),
     },
     copilot: {
       distribution: createCopilotDistributionService({ executable: resolved.copilot }),

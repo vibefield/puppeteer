@@ -221,6 +221,197 @@ export const ExtensionFailureSchema = z.strictObject({
 });
 export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
 
+/*
+ * RFC 006 C2 — acts. A person asks for one server or skill an agent holds to be
+ * turned on, turned off or removed; the adapter answers with a plan (the
+ * agent's own command or protocol call, and what the act reaches beyond that
+ * one item) or with why the agent cannot do it; the runtime runs the plan and
+ * reads the agent again. The outcome is that second read, never the output.
+ */
+
+export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove']);
+export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
+
+/** The item an act is about, by the key its inventory gave it. */
+export const ExtensionActTargetSchema = z.strictObject({
+  kind: z.enum(['mcp-server', 'skill']),
+  id: ItemIdSchema,
+});
+export type ExtensionActTarget = z.infer<typeof ExtensionActTargetSchema>;
+
+/** What an act changes beyond one agent's one item, said before it runs. */
+export const ExtensionReachSchema = z.enum([
+  /** The definition goes with it: turning it back on needs it again. */
+  'definition',
+  /** A remote server's stored sign-in goes with it. */
+  'sign-in',
+  /** One config serves every profile of the agent. */
+  'every-profile',
+  /** It lives in a folder other profiles, and other agents, read. */
+  'shared-folder',
+]);
+export type ExtensionReach = z.infer<typeof ExtensionReachSchema>;
+
+/** How an available act runs: the agent's own command, or a call on its protocol. */
+export const ExtensionActRunSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('command'),
+    /** The executable and its arguments, run with no shell and no stdin. */
+    argv: z.array(z.string().min(1).max(4_096)).min(1).max(64),
+    /** The variables that point the agent at the profile: paths, never a credential. */
+    env: z.record(EnvironmentNameSchema, z.string().max(4_096)).optional(),
+  }),
+  z.strictObject({
+    kind: z.literal('protocol'),
+    method: NonEmptyStringSchema,
+    /** The call's parameters, for the adapter's own `perform`: names and switches, never a secret. */
+    params: z.record(z.string(), z.unknown()).optional(),
+  }),
+]);
+export type ExtensionActRun = z.infer<typeof ExtensionActRunSchema>;
+
+const actPlanBase = {
+  target: ExtensionActTargetSchema,
+  act: ExtensionActKindSchema,
+};
+
+export const AvailableExtensionActPlanSchema = z.strictObject({
+  ...actPlanBase,
+  available: z.literal(true),
+  runs: ExtensionActRunSchema,
+  /** What runs, as a person reads it: the command line, or the protocol call. */
+  display: NonEmptyStringSchema,
+  reaches: z.array(ExtensionReachSchema).max(4),
+});
+export type AvailableExtensionActPlan = z.infer<typeof AvailableExtensionActPlanSchema>;
+
+export const UnavailableExtensionActPlanSchema = z.strictObject({
+  ...actPlanBase,
+  available: z.literal(false),
+  /**
+   * `in-app`: only the agent's own app changes it. `no-command`: the agent
+   * keeps the switch in a settings file only it may write. `not-own`: it comes
+   * with a plugin, a project, an app or another agent, and changes there.
+   * `not-held`: the profile's agent does not hold it.
+   */
+  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held']),
+  /** Why, in the agent's own terms. */
+  message: NonEmptyStringSchema,
+});
+export type UnavailableExtensionActPlan = z.infer<typeof UnavailableExtensionActPlanSchema>;
+
+export const ExtensionActPlanSchema = z.discriminatedUnion('available', [
+  AvailableExtensionActPlanSchema,
+  UnavailableExtensionActPlanSchema,
+]);
+export type ExtensionActPlan = z.infer<typeof ExtensionActPlanSchema>;
+
+/** What an adapter's `perform` reports: whether the agent accepted the call. The receipt still reads the agent again. */
+export interface ExtensionActOutcome {
+  ok: boolean;
+  exitCode?: number;
+  /** Short reason, never the agent's output. */
+  error?: string;
+}
+
+export interface ExtensionActIo {
+  /** Aborting stops the act and everything it started. */
+  signal?: AbortSignal;
+  /** Opaque display text as it arrives; never parsed. */
+  onOutput?: (chunk: string) => void;
+}
+
+/** An act's receipt: decided by reading the agent again after it ran. */
+export const ExtensionActReceiptSchema = z.strictObject({
+  provider: AgentProviderIdSchema,
+  profileId: AgentProfileIdSchema,
+  target: ExtensionActTargetSchema,
+  act: ExtensionActKindSchema,
+  /**
+   * `changed`: the second read shows it done. `unchanged`: the agent accepted
+   * it and still holds it as before (another layer may decide). `failed`: the
+   * agent refused or could not be run, and nothing changed. `unavailable`: the
+   * plan said the agent cannot, or the item was not held.
+   */
+  status: z.enum(['changed', 'unchanged', 'failed', 'unavailable']),
+  startedAt: TimestampSchema,
+  finishedAt: TimestampSchema,
+  /** What ran, as a person reads it. */
+  display: NonEmptyStringSchema.optional(),
+  exitCode: z.number().int().optional(),
+  message: NonEmptyStringSchema,
+});
+export type ExtensionActReceipt = z.infer<typeof ExtensionActReceiptSchema>;
+
+/** A command line as a person reads it: each argument quoted only where it needs to be. */
+export function describeArgv(argv: readonly string[]): string {
+  return argv.map(quoteForShow).join(' ');
+}
+
+/**
+ * A name an agent's own command can take as an argument: letters, digits,
+ * underscores and hyphens, never starting with a hyphen (a command would read
+ * it as a flag) and never a path. Also safe as one segment of a dotted key.
+ */
+export const EXTENSION_COMMAND_NAME = /^[A-Za-z0-9_][A-Za-z0-9_-]{0,127}$/u;
+
+/**
+ * Why an item that is not the profile's own changes where it comes from, in
+ * words a person reads: `label` is the agent's, `lender` the lending agent's.
+ */
+export function extensionNotOwnWords(label: string, item: ExtensionItem, lender?: string): string {
+  switch (item.origin) {
+    case 'plugin':
+      return item.plugin === undefined
+        ? 'It comes with a plugin and changes with it'
+        : `It comes with the ${item.plugin} plugin and changes with it`;
+    case 'project':
+      return `It is kept for one project${item.project === undefined ? '' : `, ${item.project}`}, and changes there`;
+    case 'bundled':
+      return `It ships with ${label}`;
+    case 'borrowed':
+      return `${label} loads it from ${lender ?? item.lender ?? 'another agent'} on This Mac, and it changes there`;
+    case 'agent':
+      return `${label} wrote it itself, and changes it itself`;
+    case 'managed':
+      return `${label}'s app or your organization adds it, and changes it`;
+    default:
+      return `It is ${label}'s own`;
+  }
+}
+
+/** An available plan for one of the agent's own commands. */
+export function extensionCommandPlan(fields: {
+  target: ExtensionActTarget;
+  act: ExtensionActKind;
+  argv: readonly string[];
+  env?: Record<string, string>;
+  reaches?: readonly ExtensionReach[];
+}): AvailableExtensionActPlan {
+  return {
+    target: fields.target,
+    act: fields.act,
+    available: true,
+    runs: {
+      kind: 'command',
+      argv: [...fields.argv],
+      ...(fields.env !== undefined && Object.keys(fields.env).length > 0 ? { env: { ...fields.env } } : {}),
+    },
+    display: describeArgv(fields.argv),
+    reaches: [...(fields.reaches ?? [])],
+  };
+}
+
+/** Why an agent cannot do an act, in its own terms. */
+export function extensionActUnavailable(
+  target: ExtensionActTarget,
+  act: ExtensionActKind,
+  reason: UnavailableExtensionActPlan['reason'],
+  message: string,
+): UnavailableExtensionActPlan {
+  return { target, act, available: false, reason, message };
+}
+
 /** One adapter-owned extensions capability, independent of live sessions. */
 export interface ExtensionService {
   readonly provider: ExtensionProvider;
@@ -231,6 +422,17 @@ export interface ExtensionService {
    * session, never returns a secret.
    */
   inventory(profile: AgentProfile): Promise<ExtensionInventory | ExtensionFailure>;
+  /**
+   * RFC 006 C2: what an act on a server or skill this profile's agent holds
+   * would run, without running it — or why the agent cannot. Pure: the runtime
+   * passes the item as a fresh read found it. Absent, the agent has no acts.
+   */
+  plan?(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan;
+  /**
+   * Runs a protocol plan through the adapter's own transport. A command plan
+   * is the runtime's to run, in the clean environment with the plan's variables.
+   */
+  perform?(profile: AgentProfile, plan: AvailableExtensionActPlan, io: ExtensionActIo): Promise<ExtensionActOutcome>;
 }
 
 const MASK = '•••';

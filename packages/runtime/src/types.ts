@@ -8,10 +8,16 @@ import type {
   DistributionFailure,
   DistributionProvider,
   DistributionService,
+  ExtensionActKind,
+  ExtensionActPlan,
+  ExtensionActReceipt,
+  ExtensionActTarget,
   ExtensionFailure,
   ExtensionInventory,
   ExtensionProvider,
   ExtensionService,
+  McpServerItem,
+  SkillItem,
   ProfileFailure,
   ProfileIdentity,
   ProfileProvider,
@@ -61,6 +67,7 @@ import type {
 } from './identity/creation-registry.js';
 import type { RuntimeCreationOperation } from './identity/runtime-identity.js';
 import type { MonitorClock } from './monitor/clock.js';
+import type { UpdateCommandRunner } from './distribution/update.js';
 import type { Agent } from './agent.js';
 
 /** Provider-owned live preparation. The runtime keeps this handle private and exposes only its serializable recipe. */
@@ -406,6 +413,7 @@ export interface AgentRuntimeOptions {
   terminalFailureCapacity?: number;
   profiles?: ProfileRuntimeOptions;
   distribution?: DistributionRuntimeOptions;
+  extensions?: ExtensionRuntimeOptions;
 }
 
 /** Host-injected persistence for the profile registry. */
@@ -461,6 +469,24 @@ export interface DistributionRuntimeOptions {
   fetch?: typeof fetch;
   /** PATH-style list searched for candidates; defaults to process.env.PATH. */
   searchPath?: string;
+}
+
+export interface ExtensionRuntimeOptions {
+  /** Runs an act's command; injected so a host's tests never run an agent. Defaults to the update runner. */
+  run?: UpdateCommandRunner;
+}
+
+/** One act on a server or skill a profile's agent holds (RFC 006 C2). */
+export interface ExtensionActOptions {
+  providerId: string;
+  /** The provider's native default when absent. */
+  profileId?: string;
+  target: ExtensionActTarget;
+  act: ExtensionActKind;
+  /** The act's own output as it arrives: display text, never parsed. */
+  onOutput?: (chunk: string) => void;
+  /** Aborting stops the act and everything it started. */
+  signal?: AbortSignal;
 }
 
 export interface InspectInstallationsOptions {
@@ -746,6 +772,26 @@ export interface AgentRuntime {
    * returns a secret. Concurrent reads of one profile coalesce.
    */
   extensionInventory(providerId: string, profileId?: string): Promise<ExtensionInventory | ExtensionFailure>;
+  /**
+   * RFC 006 C2: what an act on a server or skill the profile's agent holds
+   * would run — the agent's own command or protocol call, and what it reaches
+   * beyond that one item — or why the agent cannot. Plans from a fresh read.
+   */
+  planExtensionAct(
+    options: Omit<ExtensionActOptions, 'onOutput' | 'signal'>,
+  ): Promise<ExtensionActPlan | ExtensionFailure>;
+  /** Run the act, then read the agent again: the receipt is that second read, never the output. */
+  runExtensionAct(options: ExtensionActOptions): Promise<ExtensionActReceipt>;
+  /**
+   * Every act the agent answers for items an inventory already holds (each
+   * item, each act), planned without reading again: what a host shows beside
+   * each item before anyone clicks.
+   */
+  extensionActPlans(
+    providerId: string,
+    profileId: string | undefined,
+    items: ReadonlyArray<McpServerItem | SkillItem>,
+  ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */

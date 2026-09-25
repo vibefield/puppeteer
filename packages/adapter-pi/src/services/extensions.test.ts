@@ -310,3 +310,38 @@ describe('Pi extensions', () => {
     expect(inventory.unread).toBeUndefined();
   });
 });
+
+// ── acts (RFC 006 C2) ──
+
+const actProfile = (kind: 'managed' | 'native-default', dataRoot: string) =>
+  ({
+    id: kind === 'managed' ? 'work-pi' : 'pi:native-default',
+    provider: 'pi',
+    label: kind === 'managed' ? 'Work' : 'Default',
+    kind,
+    dataRoot,
+    createdAt: '2026-09-23T00:00:00.000Z',
+  }) as const;
+const actServer = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'mcp-server',
+    id: 'linear',
+    name: 'linear',
+    origin: 'own',
+    enabled: true,
+    transport: 'http',
+    target: 'https://mcp.linear.app/mcp',
+    ...fields,
+  }) as never;
+const actSkill = (fields: Record<string, unknown> = {}) =>
+  ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+
+describe('Pi extension acts', () => {
+  it('filters skills only inside the app', () => {
+    const pi = createPiExtensionService({ home: '/Users/test' });
+    expect(pi.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+    });
+  });
+});
