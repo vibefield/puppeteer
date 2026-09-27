@@ -134,7 +134,9 @@ products do not reconstruct native argv or `agentOptions`. It exposes only a gen
 provider topology remains opaque. Terminal hosts use the separate `launchProviders()` →
 `prepareInvocation()` → `adoptPrepared()` SPI. The host authenticates requests, finds the containing terminal, resolves
 trusted executables/state roots, and performs `exec`; the adapter parses argv and chooses hooks, app servers, ACP,
-sockets, durable logs, private HTTP/SSE services, or gateway attachment.
+sockets, durable logs, private HTTP/SSE services, or gateway attachment. A host builds that path from the
+`@vibecook/puppeteer-runtime/spawn-through` kit — the shim, its launchers and shell integration, the rendezvous and the
+loopback gateway — and supplies only its terminals, runtime and records (`docs/guides/spawn-through-hosts.md`).
 
 Godview therefore contains no built-in provider list, native resume parser, environment branch, transport switch,
 Imposter allow-list, or provider label switch. A repository-wide production-source check rejects provider mechanics and
