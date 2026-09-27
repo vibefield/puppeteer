@@ -46,6 +46,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "esbuild": "^0.24.0",
     "vitest": "^3.0.0"
   }
 }
