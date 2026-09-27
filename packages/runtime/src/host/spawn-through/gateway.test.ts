@@ -92,7 +92,7 @@ describe('spawn-through gateway', () => {
     await expect(ask(gateway.port, line({ ...request, token: 'guess' }))).resolves.toEqual({
       action: 'refuse',
       reason: 'spawn-through authentication failed',
-      message: 'the agent was not started: spawn-through authentication failed',
+      message: 'not started, because it could not be run as a managed session: spawn-through authentication failed',
     });
     await expect(ask(gateway.port, line(request))).resolves.toMatchObject({
       action: 'refuse',

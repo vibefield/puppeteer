@@ -54,6 +54,19 @@ export type SpawnThroughResponse =
   | { action: 'refuse'; reason: string; message: string }
   | { action: 'ack' };
 
+/**
+ * The answer to a launch the host will not manage: the real executable runs
+ * unmanaged, or — for a strict host — nothing runs and the person is told why.
+ */
+export function declineSpawnThrough(
+  reason: string,
+  { strict }: { strict?: boolean | undefined },
+): SpawnThroughResponse {
+  return strict === true
+    ? { action: 'refuse', reason, message: `not started, because it could not be run as a managed session: ${reason}` }
+    : { action: 'fallback', reason };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -1,6 +1,7 @@
 import { createServer, type Server, type Socket } from 'node:net';
 import {
   MAX_REQUEST_BYTES,
+  declineSpawnThrough,
   parseSpawnThroughRequest,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
@@ -34,10 +35,7 @@ function writeResponse(socket: Socket, response: SpawnThroughResponse): void {
 /** One loopback listener: one JSON line in, one JSON line out, per connection. */
 export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptions): Promise<SpawnThroughGateway> {
   const { token, handle } = options;
-  const declined = (reason: string): SpawnThroughResponse =>
-    options.strict === true
-      ? { action: 'refuse', reason, message: `the agent was not started: ${reason}` }
-      : { action: 'fallback', reason };
+  const declined = (reason: string): SpawnThroughResponse => declineSpawnThrough(reason, { strict: options.strict });
   const sockets = new Set<Socket>();
   const server: Server = createServer((socket) => {
     sockets.add(socket);
