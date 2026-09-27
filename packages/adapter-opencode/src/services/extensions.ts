@@ -47,8 +47,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   describeMcpCommand,
   describeMcpUrl,
+  EXTENSION_COMMAND_NAME,
   extensionActUnavailable,
+  extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSignInAbsentWords,
+  extensionTerminalPlan,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -62,6 +66,8 @@ import {
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
+import { resolveOpenCodeExecutable } from '../detection.js';
+import { OPENCODE_PROFILE_ROOT_VARIABLE, openCodeDataHome } from './profiles.js';
 
 export interface OpenCodeExtensionOptions {
   /** Home directory every path hangs off; defaults to the process home. */
@@ -75,6 +81,8 @@ export interface OpenCodeExtensionOptions {
    */
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
+  /** The `opencode` a sign-in runs; the adapter's own resolution when absent. */
+  executable?: string;
 }
 
 const MAX_CONFIG_BYTES = 4 * 1024 * 1024;
@@ -452,12 +460,32 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
 
   const shown = (path: string): string => (path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path);
 
+  const executable = resolveOpenCodeExecutable(options.executable);
+
   // Acts (RFC 006 C2): OpenCode has no command that turns a server off or a
   // skill out — both are keys of its one config, which serves every profile.
-  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // A remote server's sign-in is the profile's own, though: `mcp-auth.json`
+  // under the data home it binds. `opencode mcp auth <name>` signs in (it
+  // opens a browser and waits on a local callback, so a terminal) and
+  // `opencode mcp logout <name>` forgets it.
+  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('OpenCode', item, 'Claude Code'));
+    }
+    if (item.kind === 'mcp-server' && (act === 'sign-in' || act === 'sign-out')) {
+      const absent = extensionSignInAbsentWords('OpenCode', item);
+      if (absent !== undefined) return extensionActUnavailable(target, act, 'no-sign-in', absent);
+      if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+        return extensionActUnavailable(target, act, 'no-command', "OpenCode's commands do not take this server's name");
+      }
+      const fields = {
+        target,
+        act,
+        argv: [executable, 'mcp', act === 'sign-in' ? 'auth' : 'logout', item.id],
+        env: profile.kind === 'native-default' ? {} : { [OPENCODE_PROFILE_ROOT_VARIABLE]: openCodeDataHome(profile) },
+      };
+      return act === 'sign-in' ? extensionTerminalPlan(fields) : extensionCommandPlan(fields);
     }
     return item.kind === 'mcp-server'
       ? extensionActUnavailable(

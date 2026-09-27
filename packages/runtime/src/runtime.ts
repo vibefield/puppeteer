@@ -657,6 +657,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ? nativeDefaultProfileId(providerId)
         : undefined,
     ...(options.extensions?.run === undefined ? {} : { run: options.extensions.run }),
+    // a sign-in's terminal is the host's, like a profile login's
+    host: options.host,
     report,
   });
 
@@ -2701,6 +2703,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     async runExtensionAct(request) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionActs.run(request);
+    },
+
+    async startExtensionAct(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionActs.start(request);
+    },
+
+    async settleExtensionAct(started, ended) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionActs.settle(started, ended);
     },
 
     async extensionActPlans(providerId, profileId, items) {

@@ -9,6 +9,8 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSignInAbsentWords,
+  extensionTerminalPlan,
   ExtensionFailureSchema,
   ExtensionInventorySchema,
   ExtensionItemSchema,
@@ -351,5 +353,66 @@ describe('extension acts (RFC 006 C2)', () => {
     };
     expect(ExtensionActReceiptSchema.parse(receipt)).toEqual(receipt);
     expect(ExtensionActReceiptSchema.safeParse({ ...receipt, output: 'anything' }).success).toBe(false);
+    // a sign-in the agent keeps where no read looks is neither changed nor unchanged
+    expect(
+      ExtensionActReceiptSchema.parse({ ...receipt, act: 'sign-in', status: 'unconfirmed', message: 'x' }),
+    ).toMatchObject({ act: 'sign-in', status: 'unconfirmed' });
+  });
+
+  it("plans a sign-in as the agent's own login in a terminal the person answers, and a sign-out as a command", () => {
+    const signIn = extensionTerminalPlan({
+      target,
+      act: 'sign-in',
+      argv: ['codex', 'mcp', 'login', 'linear'],
+      env: { CODEX_HOME: '/profiles/work/codex' },
+      reaches: ['every-profile'],
+    });
+    expect(ExtensionActPlanSchema.parse(signIn)).toEqual({
+      target,
+      act: 'sign-in',
+      available: true,
+      runs: {
+        kind: 'terminal',
+        argv: ['codex', 'mcp', 'login', 'linear'],
+        env: { CODEX_HOME: '/profiles/work/codex' },
+      },
+      display: 'codex mcp login linear',
+      reaches: ['every-profile'],
+    });
+    expect(
+      ExtensionActPlanSchema.parse(
+        extensionCommandPlan({ target, act: 'sign-out', argv: ['codex', 'mcp', 'logout', 'linear'] }),
+      ),
+    ).toMatchObject({ act: 'sign-out', runs: { kind: 'command' } });
+    expect(
+      ExtensionActPlanSchema.parse(
+        extensionActUnavailable(target, 'sign-in', 'no-sign-in', 'linear sends its own key'),
+      ),
+    ).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
+
+  it("says when a server has no sign-in of the agent's: local, WebSocket, or sending its own key", () => {
+    const server = (fields: Record<string, unknown>) =>
+      ExtensionItemSchema.parse({
+        kind: 'mcp-server',
+        id: 'linear',
+        name: 'linear',
+        origin: 'own',
+        enabled: true,
+        transport: 'http',
+        target: 'https://mcp.linear.app/mcp',
+        ...fields,
+      }) as Parameters<typeof extensionSignInAbsentWords>[1];
+    expect(extensionSignInAbsentWords('Claude Code', server({}))).toBeUndefined();
+    expect(extensionSignInAbsentWords('Claude Code', server({ headers: ['X-Trace'] }))).toBeUndefined();
+    expect(extensionSignInAbsentWords('Claude Code', server({ headers: ['authorization'] }))).toBe(
+      'linear sends its own key, so Claude Code has no sign-in for it',
+    );
+    expect(extensionSignInAbsentWords('Claude Code', server({ transport: 'stdio', target: 'npx linear' }))).toBe(
+      'linear runs on this machine and has no sign-in',
+    );
+    expect(extensionSignInAbsentWords('Claude Code', server({ transport: 'ws', target: 'wss://x.example' }))).toBe(
+      'Claude Code reaches a WebSocket server with a header, never a sign-in',
+    );
   });
 });

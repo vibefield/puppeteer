@@ -323,9 +323,21 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own')
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Kimi', item));
-    return item.kind === 'mcp-server'
-      ? extensionActUnavailable(target, act, 'in-app', 'Kimi changes its servers only inside the app, with /mcp-config')
-      : extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
+    if (item.kind === 'skill')
+      return extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
+    return act === 'sign-in' || act === 'sign-out'
+      ? extensionActUnavailable(
+          target,
+          act,
+          'in-app',
+          'Kimi signs in to a server only inside the app, with /mcp-config',
+        )
+      : extensionActUnavailable(
+          target,
+          act,
+          'in-app',
+          'Kimi changes its servers only inside the app, with /mcp-config',
+        );
   }
 
   return {

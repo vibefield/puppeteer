@@ -349,5 +349,10 @@ describe('Kimi extension acts', () => {
       message: 'Kimi changes its servers only inside the app, with /mcp-config',
     });
     expect(kimi.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({ reason: 'no-command' });
+    expect(kimi.plan!(actProfile('managed', '/p'), actServer(), 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi signs in to a server only inside the app, with /mcp-config',
+    });
   });
 });

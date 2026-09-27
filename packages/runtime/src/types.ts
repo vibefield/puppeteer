@@ -68,6 +68,7 @@ import type {
 import type { RuntimeCreationOperation } from './identity/runtime-identity.js';
 import type { MonitorClock } from './monitor/clock.js';
 import type { UpdateCommandRunner } from './distribution/update.js';
+import type { ExtensionActEnd, StartedExtensionAct } from './extensions/act.js';
 import type { Agent } from './agent.js';
 
 /** Provider-owned live preparation. The runtime keeps this handle private and exposes only its serializable recipe. */
@@ -780,8 +781,23 @@ export interface AgentRuntime {
   planExtensionAct(
     options: Omit<ExtensionActOptions, 'onOutput' | 'signal'>,
   ): Promise<ExtensionActPlan | ExtensionFailure>;
-  /** Run the act, then read the agent again: the receipt is that second read, never the output. */
+  /**
+   * Run the act, then read the agent again: the receipt is that second read,
+   * never the output. An act the person answers in a terminal is refused here.
+   */
   runExtensionAct(options: ExtensionActOptions): Promise<ExtensionActReceipt>;
+  /**
+   * An act the person answers in a terminal (a server's sign-in): planned from
+   * a fresh read and opened in the host's terminal, whose id the handle
+   * carries. Its receipt waits for `settleExtensionAct`, which the host calls
+   * when that terminal ends; an act that could not start answers with its
+   * receipt now.
+   */
+  startExtensionAct(
+    options: Omit<ExtensionActOptions, 'onOutput' | 'signal'>,
+  ): Promise<StartedExtensionAct | ExtensionActReceipt>;
+  /** A started act's terminal ended, or the host stopped waiting: read the agent again for the receipt. */
+  settleExtensionAct(started: StartedExtensionAct, ended?: ExtensionActEnd): Promise<ExtensionActReceipt>;
   /**
    * Every act the agent answers for items an inventory already holds (each
    * item, each act), planned without reading again: what a host shows beside

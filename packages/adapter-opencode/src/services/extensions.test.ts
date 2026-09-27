@@ -380,4 +380,31 @@ describe('OpenCode extension acts', () => {
       ),
     ).toMatchObject({ available: false, reason: 'not-own' });
   });
+
+  it("signs a remote server in and out in the profile's own data home, though the definition is every profile's", () => {
+    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    expect(
+      opencode.plan!(actProfile('managed', '/profiles/work/opencode'), actServer({ shared: true }), 'sign-in'),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'sign-in',
+      available: true,
+      runs: {
+        kind: 'terminal',
+        argv: ['opencode', 'mcp', 'auth', 'linear'],
+        env: { XDG_DATA_HOME: '/profiles/work/opencode/data' },
+      },
+      display: 'opencode mcp auth linear',
+      reaches: [],
+    });
+    const native = opencode.plan!(actProfile('native-default', '/Users/test'), actServer({ shared: true }), 'sign-out');
+    expect(native).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['opencode', 'mcp', 'logout', 'linear'] },
+    });
+    expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+    expect(
+      opencode.plan!(actProfile('managed', '/p'), actServer({ transport: 'stdio', target: 'npx x' }), 'sign-in'),
+    ).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
 });

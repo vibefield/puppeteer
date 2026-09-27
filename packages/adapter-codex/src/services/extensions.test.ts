@@ -690,6 +690,33 @@ describe('Codex extension acts', () => {
     expect((codex.plan!(nativeProfile(root), own, 'remove') as { runs: { env?: unknown } }).runs.env).toBeUndefined();
   });
 
+  it('signs in with its own login in a terminal and out with its own command, a sign-in every Codex profile shares', async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(codex.plan!(managedProfile(root), { ...own, auth: 'needs-sign-in' }, 'sign-in')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'sign-in',
+      available: true,
+      runs: { kind: 'terminal', argv: ['/opt/node/bin/codex', 'mcp', 'login', 'linear'], env: { CODEX_HOME: root } },
+      display: '/opt/node/bin/codex mcp login linear',
+      // the keychain entry is keyed by the server's name and address, not the profile's root
+      reaches: process.platform === 'win32' ? [] : ['every-profile'],
+    });
+    expect(codex.plan!(managedProfile(root), { ...own, auth: 'signed-in' }, 'sign-out')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['/opt/node/bin/codex', 'mcp', 'logout', 'linear'], env: { CODEX_HOME: root } },
+    });
+    // Codex says nothing of a sign-in for a server that sends its own key, or a local one
+    expect(codex.plan!(managedProfile(root), own, 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'no-sign-in',
+      message: 'Codex has no sign-in for linear: it sends a key, or asks for none',
+    });
+    expect(
+      codex.plan!(managedProfile(root), { ...own, transport: 'stdio', target: 'npx linear-mcp' }, 'sign-out'),
+    ).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
+
   it("leaves a plugin's, a project's and the app's servers where they come from", async () => {
     const { root } = await managedSetup();
     const codex = service(fakeAppServer({}));

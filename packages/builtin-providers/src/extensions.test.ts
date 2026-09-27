@@ -150,4 +150,55 @@ describe('built-in extension capabilities', () => {
     expect(run).toHaveBeenCalledTimes(1);
     expect(host.spawnTerminal).not.toHaveBeenCalled();
   });
+
+  it("opens Claude Code's own login in the host's terminal for a sign-in, which no read can confirm", async () => {
+    const home = await mkdtemp(join(tmpdir(), 'builtin-extension-sign-in-'));
+    made.push(home);
+    await write(join(home, '.claude.json'), {
+      mcpServers: { linear: { type: 'http', url: 'https://mcp.linear.app/mcp' } },
+    });
+    await write(join(home, '.claude', 'settings.json'), {});
+    // the host's terminal is a stand-in: nothing runs Claude
+    const terminals = {
+      spawnTerminal: vi.fn(async () => ({ runtimeSessionId: 'pty-sign-in' })),
+      automateTerminal: vi.fn(),
+    } as unknown as AgentHost;
+    const run = vi.fn();
+    const runtime = createAgentRuntime({
+      host: terminals,
+      defaultCwd: home,
+      providers: createBuiltinProviders({
+        home,
+        executables: { claude: join(home, 'no-claude'), codex: join(home, 'no-codex') },
+      }),
+      profiles: {
+        store: { load: async () => undefined, save: async () => {} },
+        rootsDirectory: join(home, 'profiles'),
+      },
+      extensions: { run },
+    });
+    runtimes.push(runtime);
+    const target = { kind: 'mcp-server' as const, id: 'linear' };
+
+    const started = await runtime.startExtensionAct({ providerId: 'claude', target, act: 'sign-in' });
+    expect(started).toMatchObject({
+      runtimeSessionId: 'pty-sign-in',
+      profileId: 'claude:native-default',
+      display: `${join(home, 'no-claude')} mcp login linear`,
+      reaches: [],
+    });
+    // the native default binds nothing, and the login runs in Claude's own folder
+    expect(terminals.spawnTerminal).toHaveBeenCalledWith({
+      command: join(home, 'no-claude'),
+      args: ['mcp', 'login', 'linear'],
+      cwd: join(home, '.claude'),
+    });
+    if (!('runtimeSessionId' in started)) throw new Error('the sign-in did not start');
+    // Claude Code keeps its sign-ins in the keychain, which nothing here reads
+    expect(await runtime.settleExtensionAct(started, { exitCode: 0 })).toMatchObject({
+      status: 'unconfirmed',
+      exitCode: 0,
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
 });

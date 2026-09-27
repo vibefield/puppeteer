@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import {
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
+  type AgentHost,
   type AgentProfile,
   type AvailableExtensionActPlan,
   type ExtensionActKind,
@@ -10,6 +11,7 @@ import {
   type ExtensionActTarget,
   type ExtensionFailure,
   type ExtensionInventory,
+  type ExtensionReach,
   type McpServerItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
@@ -25,6 +27,11 @@ import type { ExtensionInventoryReader, ExtensionProviderEntry } from './invento
  * own, the clean environment plus the plan's variables that point the agent at
  * the profile) and hands a protocol plan to the adapter. The receipt is a
  * second fresh read, never the output, which is display text only.
+ *
+ * A sign-in is the one act a person answers — the agent's own login opens a
+ * browser and may ask for a pasted code — so its plan runs in a terminal of
+ * the host's: `start` opens it, the host says when it ended, and `settle`
+ * reads the agent again for the receipt.
  */
 
 /** An act is one small edit of the agent's own config: one that hangs is ended. */
@@ -42,6 +49,33 @@ export interface ExtensionActRequest {
   signal?: AbortSignal;
 }
 
+/** A terminal act's request: the person answers it in the terminal, so nothing streams here. */
+export type ExtensionTerminalActRequest = Omit<ExtensionActRequest, 'onOutput' | 'signal'>;
+
+/** A terminal act the host is running: what `settle` needs once the host says it ended. */
+export interface StartedExtensionAct {
+  /** The host's terminal, as its `spawnTerminal` named it. */
+  runtimeSessionId: string;
+  providerId: string;
+  profileId: string;
+  target: ExtensionActTarget;
+  act: ExtensionActKind;
+  /** What runs, as a person reads it. */
+  display: string;
+  reaches: ExtensionReach[];
+  startedAt: string;
+  /** The item as the read the plan came from found it: the receipt compares against it. */
+  before: McpServerItem | SkillItem;
+}
+
+/** How a terminal act's terminal ended, as the host saw it; nothing when the host stopped waiting. */
+export interface ExtensionActEnd {
+  /** Its exit code; null when a signal ended it. */
+  exitCode?: number | null;
+  /** The host ended it because the person cancelled: its exit is not the agent refusing. */
+  stopped?: boolean;
+}
+
 export interface ExtensionActRunnerOptions {
   providers: ReadonlyMap<string, ExtensionProviderEntry>;
   reader: ExtensionInventoryReader;
@@ -49,6 +83,8 @@ export interface ExtensionActRunnerOptions {
   nativeDefaultProfileId(providerId: string): string | undefined;
   /** Injected so tests never run an agent. */
   run?: UpdateCommandRunner;
+  /** The host a terminal act opens its terminal in; without one, a terminal act cannot start. */
+  host?: AgentHost;
   /** The process environment the clean one is built from. */
   env?: NodeJS.ProcessEnv;
   now?: () => Date;
@@ -68,10 +104,20 @@ export interface ExtensionActRunner {
     profileId?: string;
     items: ReadonlyArray<McpServerItem | SkillItem>;
   }): Promise<ExtensionActPlan[] | ExtensionFailure>;
+  /** Runs an act whose plan needs no terminal: a command or a protocol call. */
   run(request: ExtensionActRequest): Promise<ExtensionActReceipt>;
+  /**
+   * Opens an act whose plan runs in a terminal the person answers (a sign-in)
+   * in the host's terminal, planned from a fresh read. Its receipt waits for
+   * `settle`; an act that cannot start answers with its receipt now.
+   */
+  start(request: ExtensionTerminalActRequest): Promise<StartedExtensionAct | ExtensionActReceipt>;
+  /** The host's terminal ended (or the host stopped waiting): read the agent again for the receipt. */
+  settle(started: StartedExtensionAct, ended?: ExtensionActEnd): Promise<ExtensionActReceipt>;
 }
 
-const ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove'];
+const SERVER_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove', 'sign-in', 'sign-out'];
+const SKILL_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove'];
 
 type Located =
   | { failure: ExtensionFailure }
@@ -85,7 +131,61 @@ const DONE: Record<ExtensionActKind, string> = {
   enable: 'turned on',
   disable: 'turned off',
   remove: 'removed',
+  'sign-in': 'signed in',
+  'sign-out': 'signed out',
 };
+
+const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === 'sign-out';
+
+/**
+ * What the second read says an act did, beside what the agent answered when
+ * it ran (`error`). A switch is done when the read shows it switched, a
+ * removal when the item is gone, a sign-in or sign-out when the agent says so
+ * — and an agent that keeps its sign-ins where no read looks leaves it
+ * unconfirmed.
+ */
+function outcome(
+  act: ExtensionActKind,
+  label: string,
+  before: McpServerItem | SkillItem,
+  after: McpServerItem | SkillItem | undefined,
+  display: string,
+  error: string | undefined,
+): Pick<ExtensionActReceipt, 'status' | 'message'> {
+  const done = (message: string): Pick<ExtensionActReceipt, 'status' | 'message'> => ({
+    status: 'changed',
+    message: `${message}${error === undefined ? '' : `, though ${display} ${error}`}`,
+  });
+  const refused = { status: 'failed' as const, message: `${display} ${error}` };
+  if (signs(act)) {
+    const was = before.kind === 'mcp-server' ? before.auth : undefined;
+    const is = after?.kind === 'mcp-server' ? after.auth : undefined;
+    if (after !== undefined && is === undefined) {
+      return error === undefined
+        ? { status: 'unconfirmed', message: `${label} says whether it is signed in only inside a session` }
+        : refused;
+    }
+    const goal = act === 'sign-in' ? 'signed-in' : 'needs-sign-in';
+    if (is === goal && was !== goal) return done(DONE[act]);
+    if (error !== undefined) return refused;
+    return {
+      status: 'unchanged',
+      message:
+        after === undefined
+          ? 'no longer there'
+          : is === 'signed-in'
+            ? `${label} still holds a sign-in`
+            : `${label} still asks you to sign in`,
+    };
+  }
+  const switched = act === 'remove' ? after === undefined : after !== undefined && after.enabled === (act === 'enable');
+  if (switched && (act === 'remove' || before.enabled !== after!.enabled)) return done(DONE[act]);
+  if (error !== undefined) return refused;
+  return {
+    status: 'unchanged',
+    message: after === undefined ? 'no longer there' : `${label} still holds it ${after.enabled ? 'on' : 'off'}`,
+  };
+}
 
 export function createExtensionActRunner(options: ExtensionActRunnerOptions): ExtensionActRunner {
   const now = options.now ?? (() => new Date());
@@ -133,6 +233,15 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         available: false,
         reason: 'not-held',
         message: `${entry.provider.label} does not hold ${request.target.id} in this profile`,
+      };
+    }
+    if (item.kind === 'skill' && signs(request.act)) {
+      return {
+        target: request.target,
+        act: request.act,
+        available: false,
+        reason: 'no-sign-in',
+        message: 'a skill has no sign-in',
       };
     }
     let answer: unknown;
@@ -193,6 +302,53 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     }
   }
 
+  type ReceiptFields = Pick<ExtensionActReceipt, 'status' | 'message'> & Partial<ExtensionActReceipt>;
+
+  /** A receipt checked against its schema: one that fails it is reported, and says so. */
+  function assemble(
+    base: Pick<ExtensionActReceipt, 'provider' | 'target' | 'act' | 'startedAt'>,
+    profileId: string,
+    fields: ReceiptFields,
+  ): ExtensionActReceipt {
+    const candidate = { ...base, profileId, finishedAt: now().toISOString(), ...fields };
+    const parsed = ExtensionActReceiptSchema.safeParse(candidate);
+    if (parsed.success) return parsed.data;
+    options.report?.(new Error(`act receipt for ${base.provider} failed schema validation`));
+    return {
+      ...base,
+      profileId,
+      finishedAt: now().toISOString(),
+      status: 'failed',
+      message: 'the act receipt could not be assembled',
+    };
+  }
+
+  /** The second read, and what it says the act did. */
+  async function readBack(
+    providerId: string,
+    profileId: string,
+    label: string,
+    ran: {
+      act: ExtensionActKind;
+      target: ExtensionActTarget;
+      before: McpServerItem | SkillItem;
+      display: string;
+      error: string | undefined;
+    },
+  ): Promise<Pick<ExtensionActReceipt, 'status' | 'message'>> {
+    const afterRead = await options.reader.inventory(providerId, profileId, { fresh: true });
+    if ('status' in afterRead) {
+      return {
+        status: 'failed',
+        message:
+          ran.error === undefined
+            ? `it ran, but ${label} could not be read again to confirm: ${afterRead.message}`
+            : `${ran.display} ${ran.error}`,
+      };
+    }
+    return outcome(ran.act, label, ran.before, find(afterRead, ran.target), ran.display, ran.error);
+  }
+
   return {
     async plan(request) {
       const located = await locate(request);
@@ -208,17 +364,15 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       }
       if (entry.service.plan === undefined) return [];
       const target = request.profileId ?? options.nativeDefaultProfileId(providerId);
-      if (target === undefined) return failure('unsupported', providerId, `${providerId} has no native default profile`);
+      if (target === undefined)
+        return failure('unsupported', providerId, `${providerId} has no native default profile`);
       const resolved = await options.resolveProfile(providerId, target);
       if ('error' in resolved) return failure('not-found', providerId, resolved.error);
       const located = { profile: resolved.profile, entry };
       const plans: ExtensionActPlan[] = [];
       for (const item of request.items) {
-        for (const act of ACTS) {
-          const plan = planFor(
-            { ...located, item },
-            { providerId, target: { kind: item.kind, id: item.id }, act },
-          );
+        for (const act of item.kind === 'mcp-server' ? SERVER_ACTS : SKILL_ACTS) {
+          const plan = planFor({ ...located, item }, { providerId, target: { kind: item.kind, id: item.id }, act });
           // one malformed answer is reported and left out; the rest stand
           if (!('status' in plan)) plans.push(plan);
         }
@@ -227,29 +381,14 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     },
 
     async run(request) {
-      const startedAt = now().toISOString();
       const base = {
         provider: request.providerId,
         target: request.target,
         act: request.act,
-        startedAt,
+        startedAt: now().toISOString(),
       };
-      const receipt = (
-        profileId: string,
-        fields: Pick<ExtensionActReceipt, 'status' | 'message'> & Partial<ExtensionActReceipt>,
-      ): ExtensionActReceipt => {
-        const candidate = { ...base, profileId, finishedAt: now().toISOString(), ...fields };
-        const parsed = ExtensionActReceiptSchema.safeParse(candidate);
-        if (parsed.success) return parsed.data;
-        options.report?.(new Error(`act receipt for ${request.providerId} failed schema validation`));
-        return {
-          ...base,
-          profileId,
-          finishedAt: now().toISOString(),
-          status: 'failed',
-          message: 'the act receipt could not be assembled',
-        };
-      };
+      const receipt = (profileId: string, fields: ReceiptFields): ExtensionActReceipt =>
+        assemble(base, profileId, fields);
       const profileId = request.profileId ?? options.nativeDefaultProfileId(request.providerId) ?? 'unknown';
 
       const located = await locate(request);
@@ -259,7 +398,14 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       if (!plan.available) return receipt(located.profile.id, { status: 'unavailable', message: plan.message });
 
       const { profile, entry } = located;
-      const before = located.item!;
+      if (plan.runs.kind === 'terminal') {
+        // the person answers it: only a terminal of the host's runs it (`start`)
+        return receipt(profile.id, {
+          status: 'failed',
+          display: plan.display,
+          message: `${plan.display} runs in a terminal the person answers`,
+        });
+      }
       let exitCode: number | undefined;
       let error: string | undefined;
       if (plan.runs.kind === 'command') {
@@ -292,42 +438,110 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         }
       }
 
-      const afterRead = await options.reader.inventory(request.providerId, profile.id, { fresh: true });
       const ran = {
         display: plan.display,
         ...(exitCode === undefined ? {} : { exitCode }),
       };
-      if ('status' in afterRead) {
-        return receipt(profile.id, {
-          ...ran,
-          status: 'failed',
-          message:
-            error === undefined
-              ? `it ran, but ${entry.provider.label} could not be read again to confirm: ${afterRead.message}`
-              : `${plan.display} ${error}`,
-        });
-      }
-      const after = find(afterRead, request.target);
-      const done =
-        request.act === 'remove'
-          ? after === undefined
-          : after !== undefined && after.enabled === (request.act === 'enable');
-      if (done && (request.act === 'remove' || before.enabled !== after!.enabled)) {
-        return receipt(profile.id, {
-          ...ran,
-          status: 'changed',
-          message: `${DONE[request.act]}${error === undefined ? '' : `, though ${plan.display} ${error}`}`,
-        });
-      }
-      if (error !== undefined)
-        return receipt(profile.id, { ...ran, status: 'failed', message: `${plan.display} ${error}` });
       return receipt(profile.id, {
         ...ran,
-        status: 'unchanged',
-        message:
-          after === undefined
-            ? 'no longer there'
-            : `${entry.provider.label} still holds it ${after.enabled ? 'on' : 'off'}`,
+        ...(await readBack(request.providerId, profile.id, entry.provider.label, {
+          act: request.act,
+          target: request.target,
+          before: located.item!,
+          display: plan.display,
+          error,
+        })),
+      });
+    },
+
+    async start(request) {
+      const base = {
+        provider: request.providerId,
+        target: request.target,
+        act: request.act,
+        startedAt: now().toISOString(),
+      };
+      const receipt = (profileId: string, fields: ReceiptFields): ExtensionActReceipt =>
+        assemble(base, profileId, fields);
+      const profileId = request.profileId ?? options.nativeDefaultProfileId(request.providerId) ?? 'unknown';
+
+      const located = await locate(request);
+      if ('failure' in located) return receipt(profileId, { status: 'failed', message: located.failure.message });
+      const plan = planFor(located, request);
+      if ('status' in plan) return receipt(located.profile.id, { status: 'failed', message: plan.message });
+      if (!plan.available) return receipt(located.profile.id, { status: 'unavailable', message: plan.message });
+
+      const { profile } = located;
+      if (plan.runs.kind !== 'terminal') {
+        return receipt(profile.id, {
+          status: 'failed',
+          display: plan.display,
+          message: `${plan.display} runs without a terminal`,
+        });
+      }
+      if (options.host === undefined) {
+        return receipt(profile.id, {
+          status: 'failed',
+          display: plan.display,
+          message: 'there is no terminal to run it in',
+        });
+      }
+      const [command, ...args] = plan.runs.argv;
+      // The agent's own folder, never a project, as a command act's is.
+      const cwd = (await isDirectory(profile.dataRoot)) ? profile.dataRoot : (processEnv.HOME ?? process.cwd());
+      try {
+        const { runtimeSessionId } = await options.host.spawnTerminal({
+          command: command!,
+          args,
+          cwd,
+          ...(plan.runs.env === undefined ? {} : { env: { ...plan.runs.env } }),
+        });
+        return {
+          runtimeSessionId,
+          providerId: request.providerId,
+          profileId: profile.id,
+          target: request.target,
+          act: request.act,
+          display: plan.display,
+          reaches: [...plan.reaches],
+          startedAt: base.startedAt,
+          before: located.item!,
+        };
+      } catch (error) {
+        options.report?.(error);
+        return receipt(profile.id, {
+          status: 'failed',
+          display: plan.display,
+          message: `${plan.display} could not be started`,
+        });
+      }
+    },
+
+    async settle(started, ended = {}) {
+      const base = {
+        provider: started.providerId,
+        target: started.target,
+        act: started.act,
+        startedAt: started.startedAt,
+      };
+      const label = options.providers.get(started.providerId)?.provider.label ?? started.providerId;
+      // a terminal the person cancelled ended because they asked, not because the agent refused
+      const error =
+        ended.stopped === true || ended.exitCode === undefined || ended.exitCode === 0
+          ? undefined
+          : ended.exitCode === null
+            ? 'did not run to completion'
+            : `exited with ${ended.exitCode}`;
+      return assemble(base, started.profileId, {
+        display: started.display,
+        ...(typeof ended.exitCode === 'number' ? { exitCode: ended.exitCode } : {}),
+        ...(await readBack(started.providerId, started.profileId, label, {
+          act: started.act,
+          target: started.target,
+          before: started.before,
+          display: started.display,
+          error,
+        })),
       });
     },
   };

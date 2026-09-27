@@ -314,6 +314,11 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
     if (item.kind === 'skill') {
       return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
     }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return item.transport === 'stdio'
+        ? extensionActUnavailable(target, act, 'no-sign-in', `${item.name} runs on this machine and has no sign-in`)
+        : extensionActUnavailable(target, act, 'in-app', 'Antigravity signs in to a server only in its /mcp panel');
+    }
     if (act === 'remove') {
       return extensionActUnavailable(
         target,

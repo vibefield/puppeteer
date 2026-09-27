@@ -476,4 +476,22 @@ describe('Hermes extension acts', () => {
       reason: 'no-command',
     });
   });
+
+  it('signs in to a server its config marks auth: oauth in a terminal, and has no command that signs out', () => {
+    const work = actProfile('managed', '/profiles/work/hermes');
+    expect(hermes.plan!(work, actServer({ auth: 'needs-sign-in' }), 'sign-in')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'terminal',
+        argv: ['/opt/hermes/bin/hermes', 'mcp', 'login', 'linear'],
+        env: { HERMES_HOME: '/profiles/work/hermes' },
+      },
+      reaches: [],
+    });
+    expect(hermes.plan!(work, actServer({ auth: 'signed-in' }), 'sign-out')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    expect(hermes.plan!(work, actServer(), 'sign-in')).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
 });

@@ -336,5 +336,10 @@ describe('Antigravity extension acts', () => {
       available: false,
       reason: 'in-app',
     });
+    expect(agy.plan!(actProfile('managed', '/p'), actServer(), 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+      message: 'Antigravity signs in to a server only in its /mcp panel',
+    });
   });
 });

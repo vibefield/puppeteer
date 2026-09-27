@@ -42,6 +42,7 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionTerminalPlan,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -956,7 +957,10 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
 
   // Acts (RFC 006 C2): Hermes turns a server off only in its config.yaml
   // (`enabled: false`), so a server of the profile's own is only removed —
-  // `hermes mcp remove <name>`. A skill's switch is a config key too.
+  // `hermes mcp remove <name>`. A skill's switch is a config key too. A server
+  // its config marks `auth: oauth` signs in with `hermes mcp login <name>`,
+  // which opens a browser or asks for a pasted code (so a terminal), into the
+  // root's `mcp-tokens/`; no command forgets that sign-in.
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
@@ -964,6 +968,34 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
     }
     if (item.kind === 'skill') {
       return extensionActUnavailable(target, act, 'no-command', 'Hermes switches a skill only in its config.yaml');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      // the read says "signed in" or "asks" only for a server marked `auth: oauth`
+      if (item.auth === undefined) {
+        return extensionActUnavailable(
+          target,
+          act,
+          'no-sign-in',
+          'Hermes signs in only to a server its config marks auth: oauth',
+        );
+      }
+      if (act === 'sign-out') {
+        return extensionActUnavailable(
+          target,
+          act,
+          'no-command',
+          'Hermes has no command that forgets a sign-in: it keeps it in mcp-tokens',
+        );
+      }
+      if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+        return extensionActUnavailable(target, act, 'no-command', "Hermes's commands do not take this server's name");
+      }
+      return extensionTerminalPlan({
+        target,
+        act,
+        argv: [executable, 'mcp', 'login', item.id],
+        env: profile.kind === 'native-default' ? {} : { [HERMES_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+      });
     }
     if (act !== 'remove') {
       return extensionActUnavailable(target, act, 'no-command', 'Hermes turns a server off only in its config.yaml');

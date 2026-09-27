@@ -576,6 +576,16 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
       const lender = item.lender === undefined ? undefined : (LENDERS[item.lender] ?? item.lender);
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Grok', item, lender));
     }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return item.transport === 'stdio'
+        ? extensionActUnavailable(target, act, 'no-sign-in', `${item.name} runs on this machine and has no sign-in`)
+        : extensionActUnavailable(
+            target,
+            act,
+            'in-app',
+            'Grok signs in to a server inside the app, in /mcps, or the first time a session uses it',
+          );
+    }
     if (!EXTENSION_COMMAND_NAME.test(item.id)) {
       return extensionActUnavailable(target, act, 'no-command', "Grok's commands do not take this server's name");
     }

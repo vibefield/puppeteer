@@ -318,6 +318,36 @@ describe('Claude Code extension acts', () => {
     ).toMatchObject({ reaches: ['definition'] });
   });
 
+  it('signs a remote server in with its own login in a terminal, and out with its own command', () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    expect(claude.plan!(work, actServer(), 'sign-in')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'sign-in',
+      available: true,
+      runs: {
+        kind: 'terminal',
+        argv: ['claude', 'mcp', 'login', 'linear'],
+        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+      },
+      display: 'claude mcp login linear',
+      // the profile's own keychain item: it reaches no other profile
+      reaches: [],
+    });
+    expect(claude.plan!(work, actServer(), 'sign-out')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['claude', 'mcp', 'logout', 'linear'] },
+    });
+    expect(claude.plan!(work, actServer({ transport: 'stdio', target: 'npx x' }), 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'no-sign-in',
+    });
+    expect(claude.plan!(work, actServer({ headers: ['Authorization'] }), 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'no-sign-in',
+      message: 'linear sends its own key, so Claude Code has no sign-in for it',
+    });
+  });
+
   it("has no switch for a whole profile, and leaves a project's server and a skill alone", () => {
     const work = actProfile('managed', '/profiles/work/claude');
     expect(claude.plan!(work, actServer(), 'disable')).toMatchObject({

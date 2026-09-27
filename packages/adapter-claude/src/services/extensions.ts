@@ -36,6 +36,8 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSignInAbsentWords,
+  extensionTerminalPlan,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -228,7 +230,11 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
   // Acts (RFC 006 C2): Claude Code has no switch that turns a server off for a
   // whole profile (`/mcp` does it one project at a time), so a user server is
   // only removed — `claude mcp remove --scope user <name>`, which also deletes
-  // a remote server's stored sign-in. A skill's switch is a settings key.
+  // a remote server's stored sign-in. A skill's switch is a settings key. A
+  // remote server signs in with `claude mcp login <name>` (a browser, so a
+  // terminal) and out with `claude mcp logout <name>`: the report's shell
+  // forms, not probed. The sign-in lands in the root's own keychain item, and
+  // no read here can see it (the keychain is never opened).
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
@@ -237,7 +243,7 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
     if (item.kind === 'skill') {
       return extensionActUnavailable(target, act, 'no-command', 'Claude Code turns a skill off only in its settings');
     }
-    if (act !== 'remove') {
+    if (act === 'enable' || act === 'disable') {
       return extensionActUnavailable(
         target,
         act,
@@ -245,6 +251,8 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
         'Claude Code has no switch for a whole profile: /mcp turns a server off one project at a time',
       );
     }
+    const absent = act === 'remove' ? undefined : extensionSignInAbsentWords('Claude Code', item);
+    if (absent !== undefined) return extensionActUnavailable(target, act, 'no-sign-in', absent);
     if (!EXTENSION_COMMAND_NAME.test(item.id)) {
       return extensionActUnavailable(
         target,
@@ -253,13 +261,19 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
         "Claude Code's commands do not take this server's name",
       );
     }
-    return extensionCommandPlan({
-      target,
-      act,
-      argv: [executable, 'mcp', 'remove', '--scope', 'user', item.id],
-      env: profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {},
-      reaches: item.transport === 'stdio' ? ['definition'] : ['definition', 'sign-in'],
-    });
+    const env: Record<string, string> =
+      profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
+    if (act === 'remove') {
+      return extensionCommandPlan({
+        target,
+        act,
+        argv: [executable, 'mcp', 'remove', '--scope', 'user', item.id],
+        env,
+        reaches: item.transport === 'stdio' ? ['definition'] : ['definition', 'sign-in'],
+      });
+    }
+    const fields = { target, act, argv: [executable, 'mcp', act === 'sign-in' ? 'login' : 'logout', item.id], env };
+    return act === 'sign-in' ? extensionTerminalPlan(fields) : extensionCommandPlan(fields);
   }
 
   return {

@@ -267,7 +267,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     opencode: {
       distribution: createOpenCodeDistributionService({ executable: resolved.opencode }),
       profiles: createOpenCodeProfileService({ ...chosen(resolved.opencode), ...homeOption }),
-      extensions: createOpenCodeExtensionService(homeOption),
+      extensions: createOpenCodeExtensionService({ ...chosen(resolved.opencode), ...homeOption }),
     },
     hermes: {
       distribution: createHermesDistributionService({ executable: resolved.hermes }),

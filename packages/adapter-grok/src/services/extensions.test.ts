@@ -501,4 +501,16 @@ describe('Grok extension acts', () => {
       reason: 'no-command',
     });
   });
+
+  it('signs in to a server only inside the app, or when a session first uses it', () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    expect(grok.plan!(work, actServer(), 'sign-in')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+      message: 'Grok signs in to a server inside the app, in /mcps, or the first time a session uses it',
+    });
+    expect(grok.plan!(work, actServer({ transport: 'stdio', target: 'npx x' }), 'sign-out')).toMatchObject({
+      reason: 'no-sign-in',
+    });
+  });
 });

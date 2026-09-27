@@ -38,7 +38,16 @@
  * and goes with `codex mcp remove <name>`; a skill in `~/.agents/skills`
  * switches for this profile alone through `skills/config/write` on its
  * `SKILL.md`, and stays in the shared folder. A plugin's, a project's, the
- * app's or an organization's item changes where it comes from.
+ * app's or an organization's item changes where it comes from. A streamable
+ * HTTP server that asks for a sign-in gets `codex mcp login <name>`, in a
+ * terminal the person answers (it opens a browser and waits for it), and one
+ * signed in gets `codex mcp logout <name>`. Off Windows, Codex keeps that
+ * sign-in in the OS keychain under the server's name and a hash of its
+ * address — not its `CODEX_HOME` (`compute_store_key` in
+ * codex-rs/rmcp-client/src/oauth.rs; the Direct keyring backend is the default
+ * there, config/src/types.rs) — so every Codex profile holding that server at
+ * that address shares it. A profile whose config sets
+ * `mcp_oauth_credentials_store = "file"` keeps its own; that key is not read.
  *
  * Shapes: `SkillsListResponse`, `PluginInstalledResponse` and
  * `PluginReadResponse` in codex-rs/app-server-protocol/src/protocol/v2/plugin.rs,
@@ -59,6 +68,7 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionTerminalPlan,
   PUPPETEER_VERSION,
   type AgentProfile,
   type AvailableExtensionActPlan,
@@ -70,6 +80,7 @@ import {
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionProvider,
+  type ExtensionReach,
   type ExtensionService,
   type McpServerItem,
   type PluginItem,
@@ -211,6 +222,9 @@ function ownerOf(
   const plugin = pluginServers.get(name);
   return plugin !== undefined ? { origin: 'plugin', plugin } : { origin: 'managed' };
 }
+
+/** Off Windows a server's sign-in is one keychain entry for every Codex profile (see above). */
+const SIGN_IN_REACHES: readonly ExtensionReach[] = process.platform === 'win32' ? [] : ['every-profile'];
 
 function authOf(status: string | undefined): McpServerItem['auth'] | undefined {
   if (status === 'o_auth' || status === 'oAuth') return 'signed-in';
@@ -492,6 +506,27 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     if (item.kind === 'mcp-server') {
       if (!EXTENSION_COMMAND_NAME.test(item.id)) {
         return extensionActUnavailable(target, act, 'no-command', "Codex's commands do not take this server's name");
+      }
+      if (act === 'sign-in' || act === 'sign-out') {
+        // `mcp list` says "signed in" or "asks" only for a server Codex can sign in to
+        if (item.transport !== 'http' || item.auth === undefined) {
+          return extensionActUnavailable(
+            target,
+            act,
+            'no-sign-in',
+            item.transport === 'http'
+              ? `Codex has no sign-in for ${item.name}: it sends a key, or asks for none`
+              : `${item.name} runs on this machine and has no sign-in`,
+          );
+        }
+        const fields = {
+          target,
+          act,
+          argv: codexArgv(executable, ['mcp', act === 'sign-in' ? 'login' : 'logout', item.id]),
+          env: codexProfileBinding(profile),
+          reaches: SIGN_IN_REACHES,
+        };
+        return act === 'sign-in' ? extensionTerminalPlan(fields) : extensionCommandPlan(fields);
       }
       if (act === 'remove') {
         return extensionCommandPlan({

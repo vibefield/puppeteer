@@ -5,11 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extensionActUnavailable,
   extensionCommandPlan,
+  extensionTerminalPlan,
+  type AgentHost,
   type AgentProfile,
   type ExtensionInventory,
   type ExtensionProvider,
   type ExtensionService,
   type McpServerItem,
+  type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { UpdateCommandRequest } from '../distribution/update.js';
 import { createExtensionActRunner } from './act.js';
@@ -42,9 +45,12 @@ const server = (id: string, enabled: boolean): McpServerItem => ({
 
 /**
  * A fake agent: its "config" is a map the fake command and protocol edit, so
- * the receipt can only come from reading it again.
+ * the receipt can only come from reading it again; its sign-ins another, which
+ * a test changes the way a person finishing a login in the terminal would.
  */
-async function setup(options: { plan?: ExtensionService['plan']; perform?: ExtensionService['perform'] } = {}) {
+async function setup(
+  options: { plan?: ExtensionService['plan']; perform?: ExtensionService['perform']; host?: AgentHost | null } = {},
+) {
   root = await mkdtemp(join(tmpdir(), 'puppeteer-act-'));
   const work: AgentProfile = {
     id: 'work-example',
@@ -58,6 +64,7 @@ async function setup(options: { plan?: ExtensionService['plan']; perform?: Exten
     ['linear', true],
     ['postgres', false],
   ]);
+  const auth = new Map<string, NonNullable<McpServerItem['auth']>>();
   const reads = vi.fn();
   const service: ExtensionService = {
     provider: PROVIDER,
@@ -67,21 +74,31 @@ async function setup(options: { plan?: ExtensionService['plan']; perform?: Exten
         provider: 'example',
         profileId: profile.id,
         fetchedAt: '2026-09-25T09:00:00.000Z',
-        items: [...state].map(([id, enabled]) => server(id, enabled)),
+        items: [...state].map(([id, enabled]) => {
+          const signIn = auth.get(id);
+          return { ...server(id, enabled), ...(signIn === undefined ? {} : { auth: signIn }) };
+        }),
         source: { kind: 'native-store', stability: 'documented' },
       };
     },
     plan:
       options.plan ??
-      ((profile, item, act) =>
-        act === 'remove'
-          ? extensionActUnavailable({ kind: item.kind, id: item.id }, act, 'no-command', 'Example keeps it in a file')
-          : extensionCommandPlan({
-              target: { kind: item.kind, id: item.id },
-              act,
-              argv: ['example', 'mcp', act, item.id],
-              env: { EXAMPLE_HOME: profile.dataRoot },
-            })),
+      ((profile, item, act) => {
+        const target = { kind: item.kind, id: item.id };
+        const env = { EXAMPLE_HOME: profile.dataRoot };
+        if (act === 'remove') return extensionActUnavailable(target, act, 'no-command', 'Example keeps it in a file');
+        if (act === 'sign-in') {
+          return extensionTerminalPlan({
+            target,
+            act,
+            argv: ['example', 'mcp', 'login', item.id],
+            env,
+            reaches: ['every-profile'],
+          });
+        }
+        const verb = act === 'sign-out' ? 'logout' : act;
+        return extensionCommandPlan({ target, act, argv: ['example', 'mcp', verb, item.id], env });
+      }),
     ...(options.perform === undefined ? {} : { perform: options.perform }),
   };
   const providers = new Map([['example', { provider: PROVIDER, service }]]);
@@ -97,10 +114,16 @@ async function setup(options: { plan?: ExtensionService['plan']; perform?: Exten
   const run = vi.fn(async (request: UpdateCommandRequest) => {
     commands.push(request);
     request.onOutput(`${request.argv.join(' ')}\n`);
-    const [, , act, id] = request.argv;
-    if (edits && exit === 0 && id !== undefined) state.set(id, act === 'enable');
+    const [, , verb, id] = request.argv;
+    if (edits && exit === 0 && id !== undefined) {
+      if (verb === 'logout') auth.set(id, 'needs-sign-in');
+      else state.set(id, verb === 'enable');
+    }
     return { exitCode: exit };
   });
+  const spawnTerminal = vi.fn(async (_spec: TerminalSpec) => ({ runtimeSessionId: 'pty-1' }));
+  // only the terminal is asked of a host here
+  const host = options.host === undefined ? ({ spawnTerminal } as unknown as AgentHost) : options.host;
   const report = vi.fn();
   const runner = createExtensionActRunner({
     providers,
@@ -110,12 +133,15 @@ async function setup(options: { plan?: ExtensionService['plan']; perform?: Exten
     nativeDefaultProfileId: () => undefined,
     run,
     env: { PATH: '/usr/bin', HOME: '/Users/test', ANTHROPIC_API_KEY: 'sk-ant-secret', LANG: 'en_US.UTF-8' },
+    ...(host === null ? {} : { host }),
     report,
   });
   return {
     runner,
     work,
     state,
+    auth,
+    spawnTerminal,
     commands,
     run,
     reads,
@@ -254,6 +280,121 @@ describe('createExtensionActRunner', () => {
   });
 });
 
+describe("a server's sign-in and sign-out", () => {
+  it("opens the agent's own login in the host's terminal, and settles it by reading the agent again", async () => {
+    const t = await setup();
+    t.auth.set('linear', 'needs-sign-in');
+    const started = await t.runner.start({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: LINEAR,
+      act: 'sign-in',
+    });
+    expect(started).toMatchObject({
+      runtimeSessionId: 'pty-1',
+      profileId: 'work-example',
+      act: 'sign-in',
+      display: 'example mcp login linear',
+      reaches: ['every-profile'],
+      before: { id: 'linear', auth: 'needs-sign-in' },
+    });
+    // the agent's own folder, the plan's variables; the host merges them over its clean environment
+    expect(t.spawnTerminal).toHaveBeenCalledWith({
+      command: 'example',
+      args: ['mcp', 'login', 'linear'],
+      cwd: t.work.dataRoot,
+      env: { EXAMPLE_HOME: t.work.dataRoot },
+    });
+    expect(t.run).not.toHaveBeenCalled();
+    if (!('runtimeSessionId' in started)) throw new Error('the sign-in did not start');
+
+    // the person finishes in the browser; the terminal ends
+    t.auth.set('linear', 'signed-in');
+    expect(await t.runner.settle(started, { exitCode: 0 })).toMatchObject({
+      status: 'changed',
+      message: 'signed in',
+      display: 'example mcp login linear',
+      exitCode: 0,
+    });
+  });
+
+  it('says a cancelled sign-in left things as they were, and a refused one failed', async () => {
+    const t = await setup();
+    t.auth.set('linear', 'needs-sign-in');
+    const started = await t.runner.start({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: LINEAR,
+      act: 'sign-in',
+    });
+    if (!('runtimeSessionId' in started)) throw new Error('the sign-in did not start');
+    expect(await t.runner.settle(started, { exitCode: null, stopped: true })).toMatchObject({
+      status: 'unchanged',
+      message: 'Example still asks you to sign in',
+    });
+    expect(await t.runner.settle(started, { exitCode: 1 })).toMatchObject({
+      status: 'failed',
+      exitCode: 1,
+      message: 'example mcp login linear exited with 1',
+    });
+    // the host stopped waiting: the read alone decides
+    expect(await t.runner.settle(started)).toMatchObject({ status: 'unchanged' });
+  });
+
+  it('leaves it unconfirmed where the agent keeps its sign-ins out of any read', async () => {
+    const t = await setup();
+    const started = await t.runner.start({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: LINEAR,
+      act: 'sign-in',
+    });
+    if (!('runtimeSessionId' in started)) throw new Error('the sign-in did not start');
+    expect(await t.runner.settle(started, { exitCode: 0 })).toMatchObject({
+      status: 'unconfirmed',
+      message: 'Example says whether it is signed in only inside a session',
+    });
+  });
+
+  it('runs a sign-out as a command, decided by the read', async () => {
+    const t = await setup();
+    t.auth.set('linear', 'signed-in');
+    expect(
+      await t.runner.run({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'sign-out' }),
+    ).toMatchObject({ status: 'changed', message: 'signed out', display: 'example mcp logout linear' });
+    expect(t.auth.get('linear')).toBe('needs-sign-in');
+    // a second one has nothing to forget
+    expect(
+      await t.runner.run({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'sign-out' }),
+    ).toMatchObject({ status: 'unchanged', message: 'Example still asks you to sign in' });
+  });
+
+  it('runs a terminal plan only in a terminal, and a terminal only for a terminal plan', async () => {
+    const t = await setup();
+    expect(
+      await t.runner.run({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'sign-in' }),
+    ).toMatchObject({ status: 'failed', message: 'example mcp login linear runs in a terminal the person answers' });
+    expect(
+      await t.runner.start({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'sign-out' }),
+    ).toMatchObject({ status: 'failed', message: 'example mcp logout linear runs without a terminal' });
+    expect(
+      await t.runner.start({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'remove' }),
+    ).toMatchObject({ status: 'unavailable', message: 'Example keeps it in a file' });
+    expect(t.spawnTerminal).not.toHaveBeenCalled();
+    expect(t.run).not.toHaveBeenCalled();
+
+    const hostless = await setup({ host: null });
+    expect(
+      await hostless.runner.start({
+        providerId: 'example',
+        profileId: hostless.work.id,
+        target: LINEAR,
+        act: 'sign-in',
+      }),
+    ).toMatchObject({ status: 'failed', message: 'there is no terminal to run it in' });
+  });
+});
+
 describe('planning every act for items a read found', () => {
   it('answers each item and each act without reading again, and leaves out a malformed answer', async () => {
     const t = await setup({
@@ -295,9 +436,20 @@ describe('planning every act for items a read found', () => {
       'linear enable',
       'linear disable',
       'linear remove',
+      'linear sign-in',
+      'linear sign-out',
       'postgres enable',
       'postgres disable',
+      'postgres sign-in',
+      'postgres sign-out',
     ]);
+    // a skill has no sign-in: it is never asked for one
+    const skillPlans = await t.runner.plans({
+      providerId: 'example',
+      profileId: t.work.id,
+      items: [{ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true }],
+    });
+    expect(Array.isArray(skillPlans) && skillPlans.map((plan) => plan.act)).toEqual(['enable', 'disable', 'remove']);
     expect(t.reads).not.toHaveBeenCalled();
     expect(t.run).not.toHaveBeenCalled();
     expect(await t.runner.plans({ providerId: 'example', profileId: 'elsewhere', items: [] })).toMatchObject({

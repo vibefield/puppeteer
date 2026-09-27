@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25; the rest of C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26; the rest of C2, C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -716,6 +716,23 @@ the definition and, for a remote server, its sign-in; Hermes `hermes mcp remove`
 app's, an organization's or another agent's item changes where it comes from. Settings keys with no command
 (`skillOverrides`, `[skills] disabled`, `enabled: false`, `skill: deny`) stay the agent's: no act writes one. Turning
 one on for an agent that does not hold it needs its definition and secret kept once, and waits.
+
+C2's second slice, 2026-09-26: a remote server's sign-in and sign-out. `ExtensionActKind` gains `sign-in` and
+`sign-out`; a plan's run gains a third kind, `terminal` (argv plus the binding variables, run only in a terminal the
+person answers, since the agent's own login opens a browser and may ask for a pasted code); `no-sign-in` says a server
+has none of the agent's (it runs on the machine, speaks WebSocket, or sends its own `Authorization`); and a receipt may
+be `unconfirmed`, where the agent keeps its sign-ins out of any read. `runExtensionAct` refuses a terminal plan;
+`startExtensionAct` plans from a fresh read and opens it through the host's `spawnTerminal` (the profile login's
+path), and `settleExtensionAct` — which the host calls when that terminal ends, saying whether the person stopped it —
+reads the agent again: a sign-in is done when the agent says signed in. Per agent: Codex `codex mcp login` and `codex
+mcp logout` for a streamable HTTP server its `mcp list` says asks or holds one — off Windows Codex keeps the sign-in in
+the OS keychain under the server's name and a hash of its address, not its `CODEX_HOME` (`compute_store_key` in
+`rmcp-client/src/oauth.rs` at `rust-v0.150.0`; the Direct backend is the default there), so both reach
+`every-profile`; Claude Code `claude mcp login` and `claude mcp logout` (the report's shell forms, not probed), kept in
+the root's own keychain item, which no read opens, so its receipt is `unconfirmed`; OpenCode `opencode mcp auth` and
+`opencode mcp logout` under the `XDG_DATA_HOME` it binds (the server's definition is every profile's; its
+`mcp-auth.json` is the profile's); Hermes `hermes mcp login` for a server marked `auth: oauth`, with no command that
+signs out; Grok, Antigravity and Kimi sign in only inside their apps (`in-app`). A skill has no sign-in.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

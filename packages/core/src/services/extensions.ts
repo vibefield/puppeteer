@@ -223,13 +223,19 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
 
 /*
  * RFC 006 C2 — acts. A person asks for one server or skill an agent holds to be
- * turned on, turned off or removed; the adapter answers with a plan (the
- * agent's own command or protocol call, and what the act reaches beyond that
- * one item) or with why the agent cannot do it; the runtime runs the plan and
- * reads the agent again. The outcome is that second read, never the output.
+ * turned on, turned off or removed, or for a remote server's sign-in to be
+ * started or forgotten; the adapter answers with a plan (the agent's own
+ * command or protocol call, and what the act reaches beyond that one item) or
+ * with why the agent cannot do it; the runtime runs the plan and reads the
+ * agent again. The outcome is that second read, never the output.
  */
 
-export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove']);
+/**
+ * `sign-in` is the agent's own login to a remote server, which opens a browser
+ * and may ask for a pasted code, so it runs in a terminal the person answers;
+ * `sign-out` is the agent's own forgetting of that sign-in.
+ */
+export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove', 'sign-in', 'sign-out']);
 export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
 
 /** The item an act is about, by the key its inventory gave it. */
@@ -245,7 +251,7 @@ export const ExtensionReachSchema = z.enum([
   'definition',
   /** A remote server's stored sign-in goes with it. */
   'sign-in',
-  /** One config serves every profile of the agent. */
+  /** Every profile of the agent shares it: one config, or one keychain entry, serves them all. */
   'every-profile',
   /** It lives in a folder other profiles, and other agents, read. */
   'shared-folder',
@@ -266,6 +272,16 @@ export const ExtensionActRunSchema = z.discriminatedUnion('kind', [
     method: NonEmptyStringSchema,
     /** The call's parameters, for the adapter's own `perform`: names and switches, never a secret. */
     params: z.record(z.string(), z.unknown()).optional(),
+  }),
+  z.strictObject({
+    kind: z.literal('terminal'),
+    /**
+     * The executable and its arguments, run in a terminal the person sees and
+     * answers — a login that opens a browser or asks for a code — never without one.
+     */
+    argv: z.array(z.string().min(1).max(4_096)).min(1).max(64),
+    /** The variables that point the agent at the profile: paths, never a credential. */
+    env: z.record(EnvironmentNameSchema, z.string().max(4_096)).optional(),
   }),
 ]);
 export type ExtensionActRun = z.infer<typeof ExtensionActRunSchema>;
@@ -292,9 +308,11 @@ export const UnavailableExtensionActPlanSchema = z.strictObject({
    * `in-app`: only the agent's own app changes it. `no-command`: the agent
    * keeps the switch in a settings file only it may write. `not-own`: it comes
    * with a plugin, a project, an app or another agent, and changes there.
-   * `not-held`: the profile's agent does not hold it.
+   * `not-held`: the profile's agent does not hold it. `no-sign-in`: the item
+   * has no sign-in of the agent's to start or end — it runs on this machine,
+   * sends a key of its own, or the agent says it asks for none.
    */
-  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held']),
+  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in']),
   /** Why, in the agent's own terms. */
   message: NonEmptyStringSchema,
 });
@@ -331,9 +349,11 @@ export const ExtensionActReceiptSchema = z.strictObject({
    * `changed`: the second read shows it done. `unchanged`: the agent accepted
    * it and still holds it as before (another layer may decide). `failed`: the
    * agent refused or could not be run, and nothing changed. `unavailable`: the
-   * plan said the agent cannot, or the item was not held.
+   * plan said the agent cannot, or the item was not held. `unconfirmed`: the
+   * agent ran it and says whether it took only inside a session — a sign-in it
+   * keeps where no read looks.
    */
-  status: z.enum(['changed', 'unchanged', 'failed', 'unavailable']),
+  status: z.enum(['changed', 'unchanged', 'failed', 'unavailable', 'unconfirmed']),
   startedAt: TimestampSchema,
   finishedAt: TimestampSchema,
   /** What ran, as a person reads it. */
@@ -380,26 +400,52 @@ export function extensionNotOwnWords(label: string, item: ExtensionItem, lender?
   }
 }
 
-/** An available plan for one of the agent's own commands. */
-export function extensionCommandPlan(fields: {
+interface ArgvPlanFields {
   target: ExtensionActTarget;
   act: ExtensionActKind;
   argv: readonly string[];
   env?: Record<string, string>;
   reaches?: readonly ExtensionReach[];
-}): AvailableExtensionActPlan {
+}
+
+function argvPlan(kind: 'command' | 'terminal', fields: ArgvPlanFields): AvailableExtensionActPlan {
   return {
     target: fields.target,
     act: fields.act,
     available: true,
     runs: {
-      kind: 'command',
+      kind,
       argv: [...fields.argv],
       ...(fields.env !== undefined && Object.keys(fields.env).length > 0 ? { env: { ...fields.env } } : {}),
     },
     display: describeArgv(fields.argv),
     reaches: [...(fields.reaches ?? [])],
   };
+}
+
+/** An available plan for one of the agent's own commands. */
+export function extensionCommandPlan(fields: ArgvPlanFields): AvailableExtensionActPlan {
+  return argvPlan('command', fields);
+}
+
+/** An available plan for one of the agent's own commands that runs only in a terminal the person answers. */
+export function extensionTerminalPlan(fields: ArgvPlanFields): AvailableExtensionActPlan {
+  return argvPlan('terminal', fields);
+}
+
+/**
+ * Why a server has no sign-in of the agent's to start or end, in words a
+ * person reads — it runs on this machine, it speaks WebSocket (a header, never
+ * a sign-in), or it sends its own `Authorization` header — or undefined when
+ * it may have one. `label` is the agent's.
+ */
+export function extensionSignInAbsentWords(label: string, item: McpServerItem): string | undefined {
+  if (item.transport === 'stdio') return `${item.name} runs on this machine and has no sign-in`;
+  if (item.transport === 'ws') return `${label} reaches a WebSocket server with a header, never a sign-in`;
+  if (item.headers?.some((header) => header.toLowerCase() === 'authorization')) {
+    return `${item.name} sends its own key, so ${label} has no sign-in for it`;
+  }
+  return undefined;
 }
 
 /** Why an agent cannot do an act, in its own terms. */
@@ -430,7 +476,8 @@ export interface ExtensionService {
   plan?(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan;
   /**
    * Runs a protocol plan through the adapter's own transport. A command plan
-   * is the runtime's to run, in the clean environment with the plan's variables.
+   * is the runtime's to run, in the clean environment with the plan's
+   * variables; a terminal plan is the host's, in a terminal the person answers.
    */
   perform?(profile: AgentProfile, plan: AvailableExtensionActPlan, io: ExtensionActIo): Promise<ExtensionActOutcome>;
 }
