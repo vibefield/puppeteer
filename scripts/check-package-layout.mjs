@@ -503,6 +503,10 @@ export function auditPackageLayout(root = scriptRoot) {
       ),
     ),
   );
+  // The spawn-through host kit is what every host's shim and gateway run: the same boundary, every file of it.
+  issues.push(
+    ...launchConsumerBoundaryIssues(productionTypeScriptSources(root, 'packages/runtime/src/host/spawn-through')),
+  );
   issues.push(
     ...launchHostBoundaryIssues(
       new Map(
