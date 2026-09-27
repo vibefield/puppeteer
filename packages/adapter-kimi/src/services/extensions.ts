@@ -40,6 +40,7 @@ import {
   describeMcpUrl,
   extensionActUnavailable,
   extensionNotOwnWords,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -276,7 +277,18 @@ function serverItem(
   if (!target || target.length > 8_192) return undefined;
   const bearer = text(server.bearerTokenEnvVar);
   const env = names([...Object.keys(rec(server.env) ?? {}), ...(bearer ? [bearer] : [])], ENVIRONMENT_NAME);
-  const headers = names([...Object.keys(rec(server.headers) ?? {}), ...(bearer ? ['Authorization'] : [])], HEADER_NAME);
+  const sent = [...Object.keys(rec(server.headers) ?? {}), ...(bearer ? ['Authorization'] : [])];
+  const headers = names(sent, HEADER_NAME);
+  // Only mcp.json's own travel: a plugin's server runs from the plugin's
+  // folder. A stdio `cwd` is a folder a definition cannot carry.
+  const whole = fields.origin === 'own' && (transport !== 'stdio' || text(server.cwd) === undefined);
+  const travels = whole
+    ? mcpServerDefinition(
+        transport === 'stdio'
+          ? { transport, command, args: strings(server.args), env: Object.keys(rec(server.env) ?? {}) }
+          : { transport, url, headers: sent },
+      )
+    : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -286,6 +298,7 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env } : {}),
     ...(headers.length > 0 ? { headers } : {}),
+    ...(travels ? { definition: travels } : {}),
   };
 }
 
@@ -317,8 +330,9 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
     },
   };
 
-  // Acts (RFC 006 C2): Kimi has no command for either kind — its servers change
-  // only inside the app (`/mcp-config`), and one skill has no switch.
+  // Acts (RFC 006 C2): Kimi has no command for either kind — its servers are
+  // added and changed only inside the app (`/mcp-config`), so an add answers as
+  // every server act does, and one skill has no switch.
   function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own')

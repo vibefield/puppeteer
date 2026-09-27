@@ -4,10 +4,14 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  describeMcpDefinition,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type McpServerDefinition,
+  type McpServerItem,
 } from '@vibecook/puppeteer-core';
 import { createGrokExtensionService, parseGrokConfig } from './extensions.js';
 
@@ -374,6 +378,73 @@ describe('Grok extensions', () => {
     expect(inventory.items).toEqual([]);
     expect(inventory.unread).toBeUndefined();
   });
+
+  it('gives an own or borrowed server its definition when nothing in it was hidden, and a plugin’s server none', async () => {
+    const home = await tempHome();
+    const root = join(home, '.grok');
+    await write(
+      join(root, 'config.toml'),
+      [
+        '[mcp_servers.context7]',
+        'command = "npx"',
+        'args = ["-y", "@upstash/context7-mcp"]',
+        'env = { CONTEXT7_API_KEY = "ctx7sk-live-secret" }',
+        '',
+        '[mcp_servers.events]',
+        'type = "sse"',
+        'url = "https://events.example.com/sse"',
+        '',
+        '[mcp_servers.linear]',
+        'url = "https://mcp.linear.app/mcp"',
+        'headers = { Authorization = "Bearer lin_api_secret_value" }',
+        '',
+        '[mcp_servers.notes]',
+        'command = "node"',
+        'args = ["${HOME}/servers/notes.js"]',
+        '',
+        '[mcp_servers.postgres]',
+        'command = "npx"',
+        'args = ["-y", "@modelcontextprotocol/server-postgres", "postgresql://app:hunter2@localhost/dev"]',
+      ].join('\n'),
+    );
+    await write(join(home, '.claude.json'), {
+      mcpServers: { deepwiki: { type: 'http', url: 'https://mcp.deepwiki.com/mcp' } },
+    });
+    await write(join(home, '.cursor', 'mcp.json'), {
+      mcpServers: { docs: { url: 'https://docs.example.com/mcp?token=cursor-secret-value' } },
+    });
+    const review = join(root, 'installed-plugins', 'review-3f9c2a1b');
+    await write(join(review, '.grok-plugin', 'plugin.json'), { name: 'review' });
+    await write(join(review, '.mcp.json'), {
+      mcpServers: { house: { type: 'http', url: 'https://mcp.northlight.studio/house' } },
+    });
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createGrokExtensionService({ home, now }).inventory(nativeProfile(home)),
+    );
+    const document = JSON.stringify(inventory);
+    for (const secret of ['ctx7sk-live-secret', 'lin_api_secret_value', 'hunter2', 'cursor-secret-value']) {
+      expect(document).not.toContain(secret);
+    }
+    const definition = (id: string) => {
+      const server = find(inventory, 'mcp-server', id);
+      expect(server, id).toBeDefined();
+      return (server as McpServerItem).definition;
+    };
+    // The names the server reads travel; their values stay in Grok's config.
+    expect(definition('context7')).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp'],
+      env: ['CONTEXT7_API_KEY'],
+    });
+    expect(definition('events')).toEqual({ transport: 'sse', url: 'https://events.example.com/sse' });
+    expect(definition('claude:deepwiki')).toEqual({ transport: 'http', url: 'https://mcp.deepwiki.com/mcp' });
+    // A header, a variable inside the command line, anything masked, and a plugin's server stay behind.
+    for (const id of ['linear', 'notes', 'postgres', 'cursor:docs', 'plugin:review:house']) {
+      expect(definition(id), id).toBeUndefined();
+    }
+  });
 });
 
 describe('parseGrokConfig', () => {
@@ -460,6 +531,18 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+/** A server to add, as the runtime gives it: the server as Grok would hold it once added. */
+const added = (definition: McpServerDefinition, name = 'context7'): McpServerItem => ({
+  kind: 'mcp-server',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  transport: definition.transport,
+  target: describeMcpDefinition(definition),
+  ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+  definition,
+});
 
 describe('Grok extension acts', () => {
   const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
@@ -512,5 +595,101 @@ describe('Grok extension acts', () => {
     expect(grok.plan!(work, actServer({ transport: 'stdio', target: 'npx x' }), 'sign-out')).toMatchObject({
       reason: 'no-sign-in',
     });
+  });
+
+  it('adds a server with its own add, each variable named for Grok to expand and never given a value', () => {
+    const plan = grok.plan!(
+      actProfile('managed', '/profiles/work/grok'),
+      added({
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@upstash/context7-mcp', '--transport', 'stdio'],
+        env: ['CONTEXT7_API_KEY', 'CONTEXT7_REGION'],
+      }),
+      'add',
+    );
+    expect(ExtensionActPlanSchema.parse(plan)).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: [
+          '/opt/grok/bin/grok',
+          'mcp',
+          'add',
+          '--scope',
+          'user',
+          '--env',
+          'CONTEXT7_API_KEY=${CONTEXT7_API_KEY:-}',
+          '--env',
+          'CONTEXT7_REGION=${CONTEXT7_REGION:-}',
+          'context7',
+          '--',
+          'npx',
+          '-y',
+          '@upstash/context7-mcp',
+          '--transport',
+          'stdio',
+        ],
+        env: { GROK_HOME: '/profiles/work/grok' },
+      },
+      display:
+        '/opt/grok/bin/grok mcp add --scope user --env CONTEXT7_API_KEY=${CONTEXT7_API_KEY:-} --env CONTEXT7_REGION=${CONTEXT7_REGION:-} context7 -- npx -y @upstash/context7-mcp --transport stdio',
+      reaches: [],
+    });
+  });
+
+  it('adds a remote server over HTTP at its address, and none over SSE, which its add cannot say', () => {
+    const native = actProfile('native-default', '/Users/test/.grok');
+    const http = grok.plan!(native, added({ transport: 'http', url: 'https://mcp.linear.app/mcp' }, 'linear'), 'add');
+    expect(http).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['/opt/grok/bin/grok', 'mcp', 'add', '--scope', 'user', 'linear', 'https://mcp.linear.app/mcp'],
+      },
+      display: '/opt/grok/bin/grok mcp add --scope user linear https://mcp.linear.app/mcp',
+      reaches: [],
+    });
+    expect((http as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+    expect(
+      grok.plan!(native, added({ transport: 'sse', url: 'https://events.example.com/sse' }, 'events'), 'add'),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'events' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Grok adds a remote server by its command only over HTTP',
+    });
+    // Grok's add would take any other address for a command.
+    expect(grok.plan!(native, added({ transport: 'http', url: 'mcp.example.com/mcp' }, 'bare'), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+    });
+  });
+
+  it('adds only a server with a definition, under a name its command takes and its catalog loads', () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    const linear: McpServerDefinition = { transport: 'http', url: 'https://mcp.linear.app/mcp' };
+    for (const name of ['--scope', 'my server']) {
+      expect(grok.plan!(work, added(linear, name), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'no-command',
+        message: "Grok's commands do not take this server's name",
+      });
+    }
+    for (const name of ['1password', 'my__server', 'linear_']) {
+      expect(grok.plan!(work, added(linear, name), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+      });
+    }
+    expect(grok.plan!(work, actServer(), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Grok adds only a server, from its definition',
+    });
+    expect(grok.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
   });
 });

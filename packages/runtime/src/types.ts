@@ -16,6 +16,7 @@ import type {
   ExtensionInventory,
   ExtensionProvider,
   ExtensionService,
+  McpServerDefinition,
   McpServerItem,
   SkillItem,
   ProfileFailure,
@@ -92,6 +93,13 @@ export interface AgentProviderSessionOptions {
   profile?: AgentProfile | undefined;
   /** The host's say over the session's loopback ingress (stable ingress; adapters without one ignore it). */
   ingress?: HostIngress | undefined;
+  /**
+   * Values the host keeps for the run (the keys of MCP servers the agent's
+   * settings name as variables), for every process the provider starts for
+   * this run — the one that runs the agent's MCP servers above all. Beneath
+   * the provider's own variables; never logged, persisted, or put in a recipe.
+   */
+  environment?: Readonly<Record<string, string>> | undefined;
 }
 
 /**
@@ -415,6 +423,28 @@ export interface AgentRuntimeOptions {
   profiles?: ProfileRuntimeOptions;
   distribution?: DistributionRuntimeOptions;
   extensions?: ExtensionRuntimeOptions;
+  /**
+   * Values the host keeps for a run — the keys of MCP servers its agent's
+   * settings name as variables (RFC 006 C2) — asked once per spawn or resume,
+   * after the run's account resolved, and given to the processes the provider
+   * starts for it. The runtime never keeps them on the run, never captures them
+   * into a continuation or a creation fingerprint, never returns them in a
+   * prepared recipe, and never logs them; a name the environment itself or a
+   * process loader relies on (`PATH`, `HOME`, `NODE_OPTIONS`, a `*_HOME` root…)
+   * is dropped. A host that cannot answer lets the run start without them.
+   */
+  launchEnvironment?: (
+    run: LaunchEnvironmentRequest,
+  ) => Promise<Record<string, string> | undefined> | Record<string, string> | undefined;
+}
+
+/** The run a host's launch values are asked for. */
+export interface LaunchEnvironmentRequest {
+  providerId: string;
+  /** The set the run's account belongs to; the native set for a run in the provider's own root. */
+  profileSetId: string;
+  /** The run's account, when it has one. */
+  profileId?: string;
 }
 
 /** Host-injected persistence for the profile registry. */
@@ -482,8 +512,11 @@ export interface ExtensionActOptions {
   providerId: string;
   /** The provider's native default when absent. */
   profileId?: string;
+  /** For `add`, the server's name as the id. */
   target: ExtensionActTarget;
   act: ExtensionActKind;
+  /** What an `add` gives the agent: the server, and the names of the variables it reads. */
+  definition?: McpServerDefinition;
   /** The act's own output as it arrives: display text, never parsed. */
   onOutput?: (chunk: string) => void;
   /** Aborting stops the act and everything it started. */
@@ -776,7 +809,8 @@ export interface AgentRuntime {
   /**
    * RFC 006 C2: what an act on a server or skill the profile's agent holds
    * would run — the agent's own command or protocol call, and what it reaches
-   * beyond that one item — or why the agent cannot. Plans from a fresh read.
+   * beyond that one item — or why the agent cannot. Plans from a fresh read;
+   * an `add` plans a server the read finds the agent without.
    */
   planExtensionAct(
     options: Omit<ExtensionActOptions, 'onOutput' | 'signal'>,
@@ -807,6 +841,8 @@ export interface AgentRuntime {
     providerId: string,
     profileId: string | undefined,
     items: ReadonlyArray<McpServerItem | SkillItem>,
+    /** Servers a host would give the agent, by name: each one's add, planned against `items`. */
+    adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>,
   ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;

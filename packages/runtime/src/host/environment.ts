@@ -60,3 +60,37 @@ export function buildAgentEnvironment(request: AgentEnvironmentRequest = {}): Re
   if (home) environment.HOME = home;
   return { ...environment, ...request.allowed };
 }
+
+/**
+ * Names a host's launch value never takes: the environment's own (a path, the
+ * home, the terminal, the locale, the login), what changes how a process loads
+ * (`NODE_OPTIONS`, `LD_*`, `DYLD_*`, a Python path), and anything that points an
+ * agent at a folder (`XDG_*`, `*_HOME`, `*_DIR`) — an agent's root is its
+ * profile's binding, never a server's value.
+ */
+const RESERVED_LAUNCH_NAME =
+  /^(?:PATH|HOME|USER|LOGNAME|SHELL|PWD|OLDPWD|TERM|TERM_PROGRAM|TERM_PROGRAM_VERSION|COLORTERM|FORCE_COLOR|NO_COLOR|LANG|LC_[A-Z_]+|TZ|TMPDIR|TEMP|TMP|SYSTEMROOT|USERPROFILE|APPDATA|LOCALAPPDATA|NODE_OPTIONS|NODE_PATH|NODE_EXTRA_CA_CERTS|LD_[A-Z_]+|DYLD_[A-Z_]+|PYTHONPATH|PYTHONHOME|PYTHONSTARTUP|PYTHONUNBUFFERED|BUN_[A-Z_]+|XDG_[A-Z_]+|PUPPETEER_[A-Z0-9_]+|[A-Z0-9_]*_(?:HOME|DIR))$/iu;
+const LAUNCH_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u;
+/** A value larger than this is not a key. */
+const LAUNCH_VALUE_MAX = 32_768;
+
+/** Whether a host's launch value may take this name. */
+export function isLaunchValueName(name: string): boolean {
+  return LAUNCH_NAME.test(name) && !RESERVED_LAUNCH_NAME.test(name);
+}
+
+/**
+ * A host's launch values as a run may take them: well-formed names that are
+ * not reserved, and string values of a key's size with no NUL. Nothing, when
+ * nothing is left.
+ */
+export function launchValues(values: unknown): Readonly<Record<string, string>> | undefined {
+  if (values === null || typeof values !== 'object' || Array.isArray(values)) return undefined;
+  const kept: Record<string, string> = {};
+  for (const [name, value] of Object.entries(values as Record<string, unknown>)) {
+    if (!isLaunchValueName(name)) continue;
+    if (typeof value !== 'string' || value.length > LAUNCH_VALUE_MAX || value.includes('\0')) continue;
+    kept[name] = value;
+  }
+  return Object.keys(kept).length === 0 ? undefined : Object.freeze(kept);
+}

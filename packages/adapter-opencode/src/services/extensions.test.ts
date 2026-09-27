@@ -5,10 +5,14 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  describeMcpDefinition,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type McpServerDefinition,
+  type McpServerItem,
 } from '@vibecook/puppeteer-core';
 import { createOpenCodeExtensionService } from './extensions.js';
 
@@ -263,6 +267,45 @@ describe('OpenCode extensions', () => {
     });
   });
 
+  it("gives a server's definition only when no OpenCode reference, folder, masked part or header stays behind", async () => {
+    const home = await tempHome();
+    await write(join(home, '.config', 'opencode', 'opencode.json'), {
+      mcp: {
+        github: {
+          type: 'local',
+          command: ['npx', '-y', '@modelcontextprotocol/server-github'],
+          environment: { GITHUB_TOKEN: 'ghp_literalsecretvalue', GITHUB_HOST: '{env:GH_HOST}' },
+        },
+        docs: { type: 'remote', url: 'https://docs.example.com/mcp' },
+        'from-env': { type: 'local', command: ['node', '{env:SERVER_JS}'] },
+        'from-file': { type: 'local', command: ['uvx', 'mcp-server', '{file:~/.mcp-arg}'] },
+        tenant: { type: 'remote', url: 'https://{env:TENANT_HOST}/mcp' },
+        keyed: { type: 'remote', url: 'https://keyed.example.com/mcp', headers: { 'X-Api-Key': '{env:KEYED_KEY}' } },
+        masked: { type: 'local', command: ['uvx', 'mcp-server', '--api-key', 'abc'] },
+        folder: { type: 'local', command: ['node', 'server.js'], cwd: 'tools/mcp' },
+      },
+    });
+    const inventory = await read(home);
+    expect(JSON.stringify(inventory)).not.toContain('ghp_literalsecretvalue');
+    // The server reads what `environment` sets; GH_HOST is OpenCode's own to read.
+    expect(find(inventory, 'mcp-server', 'github')).toMatchObject({
+      env: ['GITHUB_TOKEN', 'GITHUB_HOST', 'GH_HOST'],
+      definition: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-github'],
+        env: ['GITHUB_TOKEN', 'GITHUB_HOST'],
+      },
+    });
+    expect(find(inventory, 'mcp-server', 'docs')).toMatchObject({
+      definition: { transport: 'http', url: 'https://docs.example.com/mcp' },
+    });
+    for (const id of ['from-env', 'from-file', 'tenant', 'keyed', 'masked', 'folder']) {
+      expect(find(inventory, 'mcp-server', id), id).toBeDefined();
+      expect(find(inventory, 'mcp-server', id), id).not.toHaveProperty('definition');
+    }
+  });
+
   it('says which document it could not read and lists what the others hold', async () => {
     const home = await tempHome();
     const config = join(home, '.config', 'opencode');
@@ -364,6 +407,18 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+/** A server as the runtime hands an add to the adapter: as the agent would hold it once added. */
+const added = (name: string, definition: McpServerDefinition): McpServerItem => ({
+  kind: 'mcp-server',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  transport: definition.transport,
+  target: describeMcpDefinition(definition),
+  ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+  definition,
+});
 
 describe('OpenCode extension acts', () => {
   it('has no command for a server or a skill', () => {
@@ -406,5 +461,109 @@ describe('OpenCode extension acts', () => {
     expect(
       opencode.plan!(actProfile('managed', '/p'), actServer({ transport: 'stdio', target: 'npx x' }), 'sign-in'),
     ).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
+
+  it('adds a server with its own non-interactive add, into the one config every profile reads', () => {
+    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const github: McpServerDefinition = {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+      env: ['GITHUB_TOKEN', 'GITHUB_HOST'],
+    };
+    // A managed profile binds only the data home; the config it writes is every profile's, so no variable.
+    expect(opencode.plan!(actProfile('managed', '/profiles/work/opencode'), added('github', github), 'add')).toEqual({
+      target: { kind: 'mcp-server', id: 'github' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: [
+          'opencode',
+          'mcp',
+          'add',
+          'github',
+          '--env',
+          'GITHUB_TOKEN={env:GITHUB_TOKEN}',
+          '--env',
+          'GITHUB_HOST={env:GITHUB_HOST}',
+          '--',
+          'npx',
+          '-y',
+          '@modelcontextprotocol/server-github',
+        ],
+      },
+      display:
+        'opencode mcp add github --env GITHUB_TOKEN={env:GITHUB_TOKEN} --env GITHUB_HOST={env:GITHUB_HOST} -- npx -y @modelcontextprotocol/server-github',
+      reaches: ['every-profile'],
+    });
+    for (const transport of ['http', 'sse'] as const) {
+      expect(
+        opencode.plan!(
+          actProfile('native-default', '/Users/test'),
+          added('linear', { transport, url: 'https://mcp.linear.app/mcp' }),
+          'add',
+        ),
+      ).toEqual({
+        target: { kind: 'mcp-server', id: 'linear' },
+        act: 'add',
+        available: true,
+        runs: { kind: 'command', argv: ['opencode', 'mcp', 'add', 'linear', '--url', 'https://mcp.linear.app/mcp'] },
+        display: 'opencode mcp add linear --url https://mcp.linear.app/mcp',
+        reaches: ['every-profile'],
+      });
+    }
+  });
+
+  it('adds only a server that carries a definition, under a name its commands take', () => {
+    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const work = actProfile('managed', '/p');
+    expect(opencode.plan!(work, actServer(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+    expect(opencode.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+    expect(
+      opencode.plan!(work, added('-rf', { transport: 'http', url: 'https://mcp.linear.app/mcp' }), 'add'),
+    ).toMatchObject({ available: false, reason: 'no-command' });
+  });
+
+  it('adds what a read found by its names alone: a value stays in the config it came from', async () => {
+    const home = await tempHome();
+    await write(join(home, '.config', 'opencode', 'opencode.json'), {
+      mcp: {
+        github: {
+          type: 'local',
+          command: ['npx', '-y', 'server-github'],
+          environment: { GITHUB_TOKEN: 'ghp_literalsecretvalue' },
+        },
+      },
+    });
+    const opencode = createOpenCodeExtensionService({ home, env: {}, now, executable: 'opencode' });
+    const server = find(
+      ExtensionInventorySchema.parse(await opencode.inventory(managedProfile(home))),
+      'mcp-server',
+      'github',
+    );
+    const definition = server?.kind === 'mcp-server' ? server.definition : undefined;
+    expect(definition).toBeDefined();
+    const plan = ExtensionActPlanSchema.parse(
+      opencode.plan!(managedProfile(home), added('github-work', definition!), 'add'),
+    );
+    expect(JSON.stringify(plan)).not.toContain('ghp_literalsecretvalue');
+    expect(plan).toMatchObject({
+      available: true,
+      runs: {
+        argv: [
+          'opencode',
+          'mcp',
+          'add',
+          'github-work',
+          '--env',
+          'GITHUB_TOKEN={env:GITHUB_TOKEN}',
+          '--',
+          'npx',
+          '-y',
+          'server-github',
+        ],
+      },
+    });
   });
 });

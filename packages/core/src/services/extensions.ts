@@ -95,6 +95,25 @@ export type McpTransport = z.infer<typeof McpTransportSchema>;
 const EnvironmentNameSchema = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,127}$/u);
 const HeaderNameSchema = z.string().regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,128}$/u);
 
+/**
+ * A server as a host gives it to another agent: what it runs or where it is,
+ * and the NAMES of the variables it reads. A variable's value is never part of
+ * it — the agent that takes the server names the variable in its own settings,
+ * and whoever starts the agent supplies the value.
+ */
+export const McpServerDefinitionSchema = z.discriminatedUnion('transport', [
+  z.strictObject({
+    transport: z.literal('stdio'),
+    command: z.string().trim().min(1).max(4_096),
+    // bounded so an agent's own add command, with a flag per variable, stays one command line
+    args: z.array(z.string().min(1).max(4_096)).max(24),
+    env: z.array(EnvironmentNameSchema).min(1).max(12).optional(),
+  }),
+  z.strictObject({ transport: z.literal('http'), url: z.string().trim().min(1).max(4_096) }),
+  z.strictObject({ transport: z.literal('sse'), url: z.string().trim().min(1).max(4_096) }),
+]);
+export type McpServerDefinition = z.infer<typeof McpServerDefinitionSchema>;
+
 export const McpServerItemSchema = z.strictObject({
   kind: z.literal('mcp-server'),
   ...itemBase,
@@ -110,6 +129,13 @@ export const McpServerItemSchema = z.strictObject({
   headers: z.array(HeaderNameSchema).max(64).optional(),
   /** What the agent says about signing in to it, read without a session. Absent: not known without one. */
   auth: z.enum(['signed-in', 'needs-sign-in']).optional(),
+  /**
+   * The server as another agent could take it, as {@link mcpServerDefinition}
+   * decides: only when its command line or address hides nothing (so the
+   * target above is the whole of it), names no variable inside itself, and it
+   * sends no header, whose value would stay behind.
+   */
+  definition: McpServerDefinitionSchema.optional(),
 });
 export type McpServerItem = z.infer<typeof McpServerItemSchema>;
 
@@ -223,19 +249,23 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
 
 /*
  * RFC 006 C2 — acts. A person asks for one server or skill an agent holds to be
- * turned on, turned off or removed, or for a remote server's sign-in to be
- * started or forgotten; the adapter answers with a plan (the agent's own
- * command or protocol call, and what the act reaches beyond that one item) or
- * with why the agent cannot do it; the runtime runs the plan and reads the
- * agent again. The outcome is that second read, never the output.
+ * turned on, turned off or removed, for a remote server's sign-in to be
+ * started or forgotten, or for a server the agent does not hold to be added
+ * from a definition the host keeps; the adapter answers with a plan (the
+ * agent's own command or protocol call, and what the act reaches beyond that
+ * one item) or with why the agent cannot do it; the runtime runs the plan and
+ * reads the agent again. The outcome is that second read, never the output.
  */
 
 /**
  * `sign-in` is the agent's own login to a remote server, which opens a browser
  * and may ask for a pasted code, so it runs in a terminal the person answers;
- * `sign-out` is the agent's own forgetting of that sign-in.
+ * `sign-out` is the agent's own forgetting of that sign-in. `add` gives the
+ * agent a server it does not hold, from a {@link McpServerDefinition}: the
+ * agent's own add, whose settings name each variable the server reads in the
+ * agent's own syntax — never its value.
  */
-export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove', 'sign-in', 'sign-out']);
+export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove', 'sign-in', 'sign-out', 'add']);
 export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
 
 /** The item an act is about, by the key its inventory gave it. */
@@ -310,9 +340,12 @@ export const UnavailableExtensionActPlanSchema = z.strictObject({
    * with a plugin, a project, an app or another agent, and changes there.
    * `not-held`: the profile's agent does not hold it. `no-sign-in`: the item
    * has no sign-in of the agent's to start or end — it runs on this machine,
-   * sends a key of its own, or the agent says it asks for none.
+   * sends a key of its own, or the agent says it asks for none. `held`: the
+   * agent already holds a server by that name, so an add would replace it.
+   * `unsupported`: the agent cannot take the server as defined — a transport it
+   * does not speak, or a variable it cannot read.
    */
-  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in']),
+  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in', 'held', 'unsupported']),
   /** Why, in the agent's own terms. */
   message: NonEmptyStringSchema,
 });
@@ -471,7 +504,10 @@ export interface ExtensionService {
   /**
    * RFC 006 C2: what an act on a server or skill this profile's agent holds
    * would run, without running it — or why the agent cannot. Pure: the runtime
-   * passes the item as a fresh read found it. Absent, the agent has no acts.
+   * passes the item as a fresh read found it. For `add`, it passes the server
+   * as the agent would hold it once added — never from a read, `origin: 'own'`,
+   * its `definition` set — and only when the agent holds none by that name.
+   * Absent, the agent has no acts.
    */
   plan?(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan;
   /**
@@ -543,6 +579,51 @@ export function describeMcpCommand(command: string, args: readonly string[] = []
     shown.push(maskArgument(arg));
   }
   return shown.map(quoteForShow).join(' ');
+}
+
+/**
+ * The definition a host may give another agent, from a server as its agent
+ * keeps it — or undefined when the server cannot travel: a WebSocket one, one
+ * that sends a header (its value stays behind), one whose command line or
+ * address a listing would mask (it may hold a key), one that names a variable
+ * inside itself (not every agent expands `${…}` there), or one too long for an
+ * agent's own add command. `env` is the names the server reads.
+ */
+export function mcpServerDefinition(server: {
+  transport: McpTransport;
+  command?: string | undefined;
+  args?: readonly string[] | undefined;
+  url?: string | undefined;
+  env?: readonly string[] | undefined;
+  headers?: readonly string[] | undefined;
+}): McpServerDefinition | undefined {
+  if (server.headers !== undefined && server.headers.length > 0) return undefined;
+  let candidate: unknown;
+  if (server.transport === 'stdio') {
+    if (server.command === undefined) return undefined;
+    const argv = [server.command, ...(server.args ?? [])];
+    if (argv.some((part) => part.includes('${'))) return undefined;
+    if (describeMcpCommand(server.command, server.args) !== describeArgv(argv)) return undefined;
+    candidate = {
+      transport: 'stdio',
+      command: server.command,
+      args: [...(server.args ?? [])],
+      ...(server.env !== undefined && server.env.length > 0 ? { env: [...server.env] } : {}),
+    };
+  } else if (server.transport === 'http' || server.transport === 'sse') {
+    if (server.url === undefined || server.url.includes('${')) return undefined;
+    if (describeMcpUrl(server.url) !== server.url.trim()) return undefined;
+    candidate = { transport: server.transport, url: server.url.trim() };
+  } else {
+    return undefined;
+  }
+  const parsed = McpServerDefinitionSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : undefined;
+}
+
+/** A definition's target as a listing shows it: the command line, or the address. */
+export function describeMcpDefinition(definition: McpServerDefinition): string {
+  return definition.transport === 'stdio' ? describeMcpCommand(definition.command, definition.args) : definition.url;
 }
 
 function maskValue(value: string): string {

@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26; the rest of C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27; the rest of C2, C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -733,6 +733,32 @@ the root's own keychain item, which no read opens, so its receipt is `unconfirme
 `opencode mcp logout` under the `XDG_DATA_HOME` it binds (the server's definition is every profile's; its
 `mcp-auth.json` is the profile's); Hermes `hermes mcp login` for a server marked `auth: oauth`, with no command that
 signs out; Grok, Antigravity and Kimi sign in only inside their apps (`in-app`). A skill has no sign-in.
+
+C2's third slice, 2026-09-27: a server added to an agent that holds none of it, from a definition a host keeps, with
+its keys kept by the host and given at launch. A read's `McpServerItem` gains `definition` (`McpServerDefinition`: a
+stdio command line with the NAMES of the variables it reads, or an http/sse address), set by `mcpServerDefinition` only
+when the agent's own command line or address needed no masking, names no variable inside itself, and sends no header —
+everything another agent needs except the values; adapters add their own exclusions (a working folder, a plugin's
+relative paths, a bearer the agent adds itself). `ExtensionActKind` gains `add`; `held` (the agent holds one of its own
+by that name, which its add would replace) and `unsupported` (a transport or a variable it cannot take) join the
+reasons. The runtime plans an add after a fresh read finds the name unheld, from the server as the agent would hold it
+(`origin: 'own'`, `definition` set), and the second read holding it is the receipt; `plans` answers adds for
+definitions without a read. Each agent's settings name every variable in its own syntax and never hold a value: Claude
+Code `claude mcp add <name> --scope user -e NAME=${NAME:-} -- …` (the empty default because Claude Code refuses a
+config naming a variable it has no value for), Grok `grok mcp add --scope user --env NAME=${NAME:-} <name> -- …`,
+OpenCode `opencode mcp add <name> --env NAME={env:NAME} -- …` into its one config (every profile), Codex a
+`config/value/write` of the whole `mcp_servers.<name>` table with `env_vars` — not `codex mcp add`, which starts an
+HTTP server's browser sign-in at once and names no forwarded variable (`run_add`, `cli/src/mcp_cmd.rs` at
+`rust-v0.150.0`); Antigravity keeps values only as literals, so a server that reads one is `unsupported` there; Hermes
+connects to a server and asks which of its tools to use before it saves (`cmd_mcp_add`, 0.21.4), and Kimi changes
+servers only in its app: both `in-app`. The forms are the reports', not probed. A host's values reach the processes
+through `AgentRuntimeOptions.launchEnvironment({ providerId, profileSetId, profileId? })`, asked once per spawn and
+resume after the account resolved (the native set for the provider's own root): the runtime checks the names (none
+the environment or a loader relies on, no `*_HOME`, `*_DIR` or `XDG_*` root), hands them to `createSession` as
+`environment`, keeps them out of the continuation it captures, and never keeps, fingerprints or logs them; a prepared
+recipe goes back to its caller without them. The built-ins merge them beneath the launch's own variables where the
+agent's MCP client runs — the terminal's environment, or the helper's (Codex's app-server, Grok's leader, whose cache
+key is now a digest).
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeArgv,
   describeMcpCommand,
+  describeMcpDefinition,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
   ExtensionActPlanSchema,
@@ -15,7 +16,10 @@ import {
   ExtensionInventorySchema,
   ExtensionItemSchema,
   ExtensionProviderSchema,
+  mcpServerDefinition,
+  McpServerDefinitionSchema,
   parseSkillFrontmatter,
+  type McpServerDefinition,
 } from './extensions.js';
 
 const inventory = (items: unknown[]) => ({
@@ -414,5 +418,112 @@ describe('extension acts (RFC 006 C2)', () => {
     expect(extensionSignInAbsentWords('Claude Code', server({ transport: 'ws', target: 'wss://x.example' }))).toBe(
       'Claude Code reaches a WebSocket server with a header, never a sign-in',
     );
+  });
+});
+
+describe('server definitions (RFC 006 C2, add)', () => {
+  it('travels only when nothing about it was hidden, and carries the names it reads, never a value', () => {
+    expect(
+      mcpServerDefinition({
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-github'],
+        env: ['GITHUB_TOKEN'],
+      }),
+    ).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+      env: ['GITHUB_TOKEN'],
+    });
+    expect(mcpServerDefinition({ transport: 'http', url: 'https://mcp.linear.app/mcp' })).toEqual({
+      transport: 'http',
+      url: 'https://mcp.linear.app/mcp',
+    });
+    expect(mcpServerDefinition({ transport: 'sse', url: ' https://mcp.example.com/sse ' })).toEqual({
+      transport: 'sse',
+      url: 'https://mcp.example.com/sse',
+    });
+  });
+
+  it('stays behind when it could hold a key, sends a header, names a variable inside itself, or speaks WebSocket', () => {
+    const cases = [
+      { transport: 'stdio', command: 'uvx', args: ['server', '--api-key', 'abc'] },
+      { transport: 'stdio', command: 'npx', args: ['server', 'postgres://me:pw@db/prod'] },
+      { transport: 'stdio', command: 'npx', args: ['server', '--token=${TOKEN}'] },
+      { transport: 'stdio', command: 'npx', args: ['ghp_0123456789abcdefghijklmnopqrstuvwxyz'] },
+      { transport: 'http', url: 'https://mcp.example.com/mcp?key=abc' },
+      { transport: 'http', url: 'https://me:pw@mcp.example.com/mcp' },
+      { transport: 'http', url: '${MCP_URL}' },
+      { transport: 'http', url: 'https://mcp.example.com/mcp', headers: ['Authorization'] },
+      { transport: 'ws', url: 'wss://mcp.example.com' },
+      { transport: 'stdio', args: ['x'] },
+      { transport: 'stdio', command: 'npx', args: Array.from({ length: 25 }, (_, index) => `a${index}`) },
+    ] as const;
+    for (const server of cases) expect(mcpServerDefinition(server), JSON.stringify(server)).toBeUndefined();
+  });
+
+  it('rides on a read server, and a definition never takes a value where only a name belongs', () => {
+    const definition: McpServerDefinition = {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', 'context7'],
+      env: ['API_KEY'],
+    };
+    expect(
+      ExtensionItemSchema.parse({
+        kind: 'mcp-server',
+        id: 'context7',
+        name: 'context7',
+        origin: 'own',
+        enabled: true,
+        transport: 'stdio',
+        target: describeMcpDefinition(definition),
+        env: ['API_KEY'],
+        definition,
+      }),
+    ).toMatchObject({ target: 'npx -y context7', definition });
+    expect(McpServerDefinitionSchema.safeParse({ ...definition, env: { API_KEY: 'x' } }).success).toBe(false);
+    expect(McpServerDefinitionSchema.safeParse({ ...definition, env: ['API KEY'] }).success).toBe(false);
+    expect(
+      McpServerDefinitionSchema.safeParse({ transport: 'http', url: 'https://x.example', env: ['A'] }).success,
+    ).toBe(false);
+  });
+
+  it('plans an add as the agent answers it, and says when it already holds one or cannot take it', () => {
+    const target = { kind: 'mcp-server', id: 'context7' } as const;
+    expect(
+      ExtensionActPlanSchema.parse(
+        extensionCommandPlan({
+          target,
+          act: 'add',
+          argv: [
+            'claude',
+            'mcp',
+            'add',
+            'context7',
+            '--scope',
+            'user',
+            '-e',
+            'API_KEY=${API_KEY}',
+            '--',
+            'npx',
+            'context7',
+          ],
+        }),
+      ),
+    ).toMatchObject({
+      act: 'add',
+      display: 'claude mcp add context7 --scope user -e API_KEY=${API_KEY} -- npx context7',
+    });
+    expect(
+      extensionActUnavailable(target, 'add', 'held', 'Claude Code already has a server named context7'),
+    ).toMatchObject({
+      available: false,
+      reason: 'held',
+    });
+    expect(
+      ExtensionActPlanSchema.parse(extensionActUnavailable(target, 'add', 'unsupported', 'Codex does not speak SSE')),
+    ).toMatchObject({ reason: 'unsupported' });
   });
 });

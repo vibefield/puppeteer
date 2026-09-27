@@ -53,6 +53,7 @@ import {
   extensionNotOwnWords,
   extensionSignInAbsentWords,
   extensionTerminalPlan,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -242,33 +243,53 @@ function references(value: unknown, into: string[]): void {
 const names = (values: Iterable<string>, pattern: RegExp): string[] =>
   [...new Set(values)].filter((value) => pattern.test(value)).slice(0, 64);
 
-/** One merged `mcp` entry as a listing may show it; a value with no known `type` is one OpenCode skips. */
+/** `{env:…}` or `{file:…}`: filled in by OpenCode alone, so meaningless in another agent's settings. */
+const OWN_REFERENCE = /\{(?:env|file):/u;
+
+/**
+ * One merged `mcp` entry as a listing may show it; a value with no known `type` is one OpenCode skips.
+ * Its definition, when Core's rules let it travel, comes from the raw values — never the sentinel form —
+ * and not at all when the command line or address holds an OpenCode reference, or a local server runs in
+ * a folder of its own (`cwd`), which a definition cannot carry.
+ */
 function serverItem(name: string, definition: Json, location: string | undefined): McpServerItem | undefined {
   const referenced: string[] = [];
   references(definition, referenced);
-  let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers'>;
+  let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers' | 'definition'>;
   if (definition.type === 'local') {
     const command = definition.command;
     if (!Array.isArray(command) || !command.every((part) => typeof part === 'string')) return undefined;
     const [executable, ...args] = command as string[];
     if (!text(executable)) return undefined;
-    const env = names([...Object.keys(rec(definition.environment) ?? {}), ...referenced], ENVIRONMENT_NAME);
+    // What the server reads is what `environment` sets; a `{env:…}` inside a value is OpenCode's to read.
+    const environment = Object.keys(rec(definition.environment) ?? {});
+    const env = names([...environment, ...referenced], ENVIRONMENT_NAME);
+    const travels =
+      text(definition.cwd) === undefined && !(command as string[]).some((part) => OWN_REFERENCE.test(part))
+        ? mcpServerDefinition({ transport: 'stdio', command: executable, args, env: environment })
+        : undefined;
     fields = {
       transport: 'stdio',
       target: fromSentinel(describeMcpCommand(toSentinel(executable!), args.map(toSentinel))),
       ...(env.length > 0 ? { env } : {}),
+      ...(travels ? { definition: travels } : {}),
     };
   } else if (definition.type === 'remote') {
     const url = text(definition.url);
     if (!url) return undefined;
     // OpenCode tries Streamable HTTP first and falls back to SSE on its own.
     const env = names(referenced, ENVIRONMENT_NAME);
-    const headers = names(Object.keys(rec(definition.headers) ?? {}), HEADER_NAME);
+    const declared = Object.keys(rec(definition.headers) ?? {});
+    const headers = names(declared, HEADER_NAME);
+    const travels = OWN_REFERENCE.test(url)
+      ? undefined
+      : mcpServerDefinition({ transport: 'http', url, headers: declared });
     fields = {
       transport: 'http',
       target: fromSentinel(describeMcpUrl(toSentinel(url))),
       ...(env.length > 0 ? { env } : {}),
       ...(headers.length > 0 ? { headers } : {}),
+      ...(travels ? { definition: travels } : {}),
     };
   } else {
     return undefined;
@@ -468,8 +489,42 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
   // under the data home it binds. `opencode mcp auth <name>` signs in (it
   // opens a browser and waits on a local callback, so a terminal) and
   // `opencode mcp logout <name>` forgets it.
+  // An add is `opencode mcp add <name>` in the non-interactive form the report
+  // reads from the 1.18.32 source (not probed): `--url` for a remote server,
+  // HTTP or SSE alike, the command after `--` for a local one, and each
+  // variable as `--env NAME={env:NAME}`, so the config names it and OpenCode
+  // fills it from its own environment when it loads. That form always writes
+  // the one global config, so it needs no profile variable and reaches every
+  // profile.
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (act === 'add') {
+      if (item.kind !== 'mcp-server' || item.definition === undefined) {
+        return extensionActUnavailable(target, act, 'unsupported', 'OpenCode adds only a server, from its definition');
+      }
+      if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+        return extensionActUnavailable(target, act, 'no-command', "OpenCode's commands do not take this server's name");
+      }
+      const { definition } = item;
+      return extensionCommandPlan({
+        target,
+        act,
+        argv:
+          definition.transport === 'stdio'
+            ? [
+                executable,
+                'mcp',
+                'add',
+                item.id,
+                ...(definition.env ?? []).flatMap((name) => ['--env', `${name}={env:${name}}`]),
+                '--',
+                definition.command,
+                ...definition.args,
+              ]
+            : [executable, 'mcp', 'add', item.id, '--url', definition.url],
+        reaches: ['every-profile'],
+      });
+    }
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('OpenCode', item, 'Claude Code'));
     }

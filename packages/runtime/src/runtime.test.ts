@@ -26,7 +26,7 @@ import { createWorkspace } from '@vibecook/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
-import type { AgentProvider, ProfileRegistrySnapshot, ProfileStore } from './types.js';
+import type { AgentProvider, LaunchEnvironmentRequest, ProfileRegistrySnapshot, ProfileStore } from './types.js';
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -3408,6 +3408,93 @@ describe('createAgentRuntime', () => {
       { set: { id: 'native', kind: 'native' }, isDefault: false },
       { set: { id: 'work', glyph: 'briefcase' }, isDefault: true, profiles: [] },
     ]);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("gives a run the host's launch values for its set, checked, and never in what the host persists", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-launch-values-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const base = fakeProvider('example', handles);
+    const given: Array<Readonly<Record<string, string>> | undefined> = [];
+    const captured: unknown[] = [];
+    const provider: AgentProvider = {
+      ...base,
+      descriptor: { id: 'example', label: 'Example' },
+      createSession(providerOptions) {
+        given.push(providerOptions.environment);
+        return base.createSession(providerOptions);
+      },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: { id: 'example', label: 'Example', resume: true },
+        continuation: {
+          capture: (options) => {
+            captured.push(options);
+            return undefined;
+          },
+          restore: () => undefined,
+        },
+      },
+    };
+    const asked: LaunchEnvironmentRequest[] = [];
+    let answer: 'values' | 'throw' = 'values';
+    const errors: Error[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+      onError: (error) => errors.push(error),
+      launchEnvironment: (run) => {
+        asked.push(run);
+        if (answer === 'throw') throw new Error('the keychain is locked');
+        if (run.profileSetId === 'native') return undefined;
+        // a key, beside names no launch value may take: the path, a loader, a root, a malformed one
+        return {
+          LINEAR_API_KEY: 'lin_api_secret',
+          PATH: '/tmp/elsewhere',
+          NODE_OPTIONS: '--require /tmp/x.js',
+          EXAMPLE_HOME: '/tmp/elsewhere',
+          'NOT A NAME': 'x',
+        };
+      },
+    });
+    const work = await runtime.createProfileSet({ label: 'Work', glyph: 'briefcase' });
+    if ('status' in work) throw new Error(work.message);
+    const account = await runtime.createProfile({ providerId: 'example', set: work.set.id });
+    if ('status' in account) throw new Error(account.message);
+    const spawn = async (options: Parameters<typeof runtime.spawn>[0]) => {
+      const spawned = await runtime.spawn(options);
+      if ('error' in spawned) throw new Error(spawned.error.message);
+      return spawned;
+    };
+
+    const inWork = await spawn({ agent: 'example', profileSet: 'work' });
+    expect(asked.at(-1)).toEqual({ providerId: 'example', profileSetId: 'work', profileId: account.id });
+    expect(given.at(-1)).toEqual({ LINEAR_API_KEY: 'lin_api_secret' });
+    // the adapter saw the account; the continuation the host persists never saw the values
+    expect(captured).toHaveLength(1);
+    expect(JSON.stringify(captured)).not.toContain('lin_api_secret');
+    expect(captured[0]).not.toHaveProperty('environment');
+    expect(JSON.stringify(inWork.info)).not.toContain('lin_api_secret');
+
+    // the provider's own root is the native set's, whose values the host keeps none of here
+    await spawn({ agent: 'example' });
+    expect(asked.at(-1)).toEqual({ providerId: 'example', profileSetId: 'native' });
+    expect(given.at(-1)).toBeUndefined();
+
+    // a resume starts processes again: it is asked again
+    const resumed = await runtime.resume({ continuation: inWork.info.continuation, profile: account.id });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(given.at(-1)).toEqual({ LINEAR_API_KEY: 'lin_api_secret' });
+
+    // a host that cannot answer lets the run start without them, and says so without the values
+    answer = 'throw';
+    await spawn({ agent: 'example', profileSet: 'work' });
+    expect(given.at(-1)).toBeUndefined();
+    expect(errors.map((error) => error.message)).toContain('the keychain is locked');
+
     await runtime.dispose();
     await rm(root, { recursive: true, force: true });
   });

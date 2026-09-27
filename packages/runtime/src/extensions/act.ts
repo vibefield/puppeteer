@@ -1,5 +1,6 @@
 import { stat } from 'node:fs/promises';
 import {
+  describeMcpDefinition,
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
   type AgentHost,
@@ -12,6 +13,7 @@ import {
   type ExtensionFailure,
   type ExtensionInventory,
   type ExtensionReach,
+  type McpServerDefinition,
   type McpServerItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
@@ -32,6 +34,11 @@ import type { ExtensionInventoryReader, ExtensionProviderEntry } from './invento
  * browser and may ask for a pasted code — so its plan runs in a terminal of
  * the host's: `start` opens it, the host says when it ended, and `settle`
  * reads the agent again for the receipt.
+ *
+ * An add gives the agent a server it does not hold, from a definition the host
+ * keeps: the fresh read must find no server by that name (an agent's add
+ * replaces one), the adapter plans from the server as the agent would hold
+ * it, and the second read holding it is the receipt.
  */
 
 /** An act is one small edit of the agent's own config: one that hangs is ended. */
@@ -41,8 +48,11 @@ export interface ExtensionActRequest {
   providerId: string;
   /** The native default's when none is named. */
   profileId?: string;
+  /** For `add`, the server's name as the target's id. */
   target: ExtensionActTarget;
   act: ExtensionActKind;
+  /** What an `add` gives the agent; only with `add`. */
+  definition?: McpServerDefinition;
   /** Opaque display text as it arrives; never parsed. */
   onOutput?: (chunk: string) => void;
   /** Aborting stops the act and everything it started. */
@@ -64,8 +74,8 @@ export interface StartedExtensionAct {
   display: string;
   reaches: ExtensionReach[];
   startedAt: string;
-  /** The item as the read the plan came from found it: the receipt compares against it. */
-  before: McpServerItem | SkillItem;
+  /** The item as the read the plan came from found it (none for an add): the receipt compares against it. */
+  before?: McpServerItem | SkillItem;
 }
 
 /** How a terminal act's terminal ended, as the host saw it; nothing when the host stopped waiting. */
@@ -103,6 +113,11 @@ export interface ExtensionActRunner {
     providerId: string;
     profileId?: string;
     items: ReadonlyArray<McpServerItem | SkillItem>;
+    /**
+     * Servers a host would give the agent, by name: each one's add, planned
+     * against `items` (a name the agent already holds answers `held`).
+     */
+    adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>;
   }): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** Runs an act whose plan needs no terminal: a command or a protocol call. */
   run(request: ExtensionActRequest): Promise<ExtensionActReceipt>;
@@ -133,6 +148,7 @@ const DONE: Record<ExtensionActKind, string> = {
   remove: 'removed',
   'sign-in': 'signed in',
   'sign-out': 'signed out',
+  add: 'added',
 };
 
 const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === 'sign-out';
@@ -140,14 +156,14 @@ const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === '
 /**
  * What the second read says an act did, beside what the agent answered when
  * it ran (`error`). A switch is done when the read shows it switched, a
- * removal when the item is gone, a sign-in or sign-out when the agent says so
- * — and an agent that keeps its sign-ins where no read looks leaves it
- * unconfirmed.
+ * removal when the item is gone, an add when it is there, a sign-in or
+ * sign-out when the agent says so — and an agent that keeps its sign-ins
+ * where no read looks leaves it unconfirmed.
  */
 function outcome(
   act: ExtensionActKind,
   label: string,
-  before: McpServerItem | SkillItem,
+  before: McpServerItem | SkillItem | undefined,
   after: McpServerItem | SkillItem | undefined,
   display: string,
   error: string | undefined,
@@ -157,6 +173,11 @@ function outcome(
     message: `${message}${error === undefined ? '' : `, though ${display} ${error}`}`,
   });
   const refused = { status: 'failed' as const, message: `${display} ${error}` };
+  if (act === 'add' || before === undefined) {
+    if (after !== undefined) return done(DONE.add);
+    if (error !== undefined) return refused;
+    return { status: 'unchanged', message: `${label} does not hold it` };
+  }
   if (signs(act)) {
     const was = before.kind === 'mcp-server' ? before.auth : undefined;
     const is = after?.kind === 'mcp-server' ? after.auth : undefined;
@@ -218,7 +239,9 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     // a fresh read: an act plans from what the agent holds now
     const inventory = await options.reader.inventory(providerId, target, { fresh: true });
     if ('status' in inventory) return { failure: inventory };
-    return { profile: resolved.profile, entry, item: find(inventory, request.target) };
+    const item =
+      request.act === 'add' ? ownServerNamed(inventory.items, request.target.id) : find(inventory, request.target);
+    return { profile: resolved.profile, entry, item };
   }
 
   function planFor(
@@ -226,6 +249,9 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     request: ExtensionActRequest | Omit<ExtensionActRequest, 'onOutput' | 'signal'>,
   ): ExtensionActPlan | ExtensionFailure {
     const { entry, profile, item } = located;
+    if (request.act === 'add') {
+      return planAdd(located, request.providerId, request.target, request.definition, item !== undefined);
+    }
     if (item === undefined) {
       return {
         target: request.target,
@@ -244,21 +270,72 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         message: 'a skill has no sign-in',
       };
     }
+    return answered(entry, profile, item, request.act, request.providerId);
+  }
+
+  /**
+   * An add, planned from the server as the agent would hold it once added —
+   * only for a server, from its definition, on an agent that has servers and
+   * holds none of its own by that name (the agent's add would replace it).
+   */
+  function planAdd(
+    located: Exclude<Located, { failure: ExtensionFailure }>,
+    providerId: string,
+    target: ExtensionActTarget,
+    definition: McpServerDefinition | undefined,
+    held: boolean,
+  ): ExtensionActPlan | ExtensionFailure {
+    const { entry, profile } = located;
+    const label = entry.provider.label;
+    const unavailable = (reason: 'held' | 'unsupported', message: string): ExtensionActPlan => ({
+      target,
+      act: 'add',
+      available: false,
+      reason,
+      message,
+    });
+    if (target.kind !== 'mcp-server') return unavailable('unsupported', 'only a server is added from a definition');
+    if (definition === undefined) return failure('invalid', providerId, "an add needs the server's definition");
+    if (entry.provider.support.mcpServers === undefined)
+      return unavailable('unsupported', `${label} has no MCP servers`);
+    if (held) return unavailable('held', `${label} already has a server named ${target.id}`);
+    const server: McpServerItem = {
+      kind: 'mcp-server',
+      id: target.id,
+      name: target.id,
+      origin: 'own',
+      enabled: true,
+      transport: definition.transport,
+      target: describeMcpDefinition(definition),
+      ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+      definition,
+    };
+    return answered(entry, profile, server, 'add', providerId);
+  }
+
+  /** The adapter's answer for one item and act, checked against the schema and against what was asked. */
+  function answered(
+    entry: ExtensionProviderEntry,
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    providerId: string,
+  ): ExtensionActPlan | ExtensionFailure {
     let answer: unknown;
     try {
-      answer = entry.service.plan!(profile, item, request.act);
+      answer = entry.service.plan!(profile, item, act);
     } catch (error) {
       options.report?.(error);
-      return failure('invalid', request.providerId, `${entry.provider.label} could not plan the act`);
+      return failure('invalid', providerId, `${entry.provider.label} could not plan the act`);
     }
     const parsed = ExtensionActPlanSchema.safeParse(answer);
     if (
       !parsed.success ||
-      parsed.data.act !== request.act ||
-      parsed.data.target.kind !== request.target.kind ||
-      parsed.data.target.id !== request.target.id
+      parsed.data.act !== act ||
+      parsed.data.target.kind !== item.kind ||
+      parsed.data.target.id !== item.id
     ) {
-      return failure('invalid', request.providerId, `${entry.provider.label} answered with a malformed act plan`);
+      return failure('invalid', providerId, `${entry.provider.label} answered with a malformed act plan`);
     }
     return parsed.data;
   }
@@ -331,7 +408,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     ran: {
       act: ExtensionActKind;
       target: ExtensionActTarget;
-      before: McpServerItem | SkillItem;
+      before?: McpServerItem | SkillItem;
       display: string;
       error: string | undefined;
     },
@@ -376,6 +453,17 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           // one malformed answer is reported and left out; the rest stand
           if (!('status' in plan)) plans.push(plan);
         }
+      }
+      for (const { name, definition } of request.adds ?? []) {
+        const target = { kind: 'mcp-server' as const, id: name };
+        const plan = planAdd(
+          { ...located, item: undefined },
+          providerId,
+          target,
+          definition,
+          ownServerNamed(request.items, name) !== undefined,
+        );
+        if (!('status' in plan)) plans.push(plan);
       }
       return plans;
     },
@@ -447,7 +535,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         ...(await readBack(request.providerId, profile.id, entry.provider.label, {
           act: request.act,
           target: request.target,
-          before: located.item!,
+          ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
           display: plan.display,
           error,
         })),
@@ -505,7 +593,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           display: plan.display,
           reaches: [...plan.reaches],
           startedAt: base.startedAt,
-          before: located.item!,
+          ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
         };
       } catch (error) {
         options.report?.(error);
@@ -538,13 +626,24 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         ...(await readBack(started.providerId, started.profileId, label, {
           act: started.act,
           target: started.target,
-          before: started.before,
+          ...(started.before === undefined ? {} : { before: started.before }),
           display: started.display,
           error,
         })),
       });
     },
   };
+}
+
+/** The agent's own server by that name or key: what an add would replace. */
+function ownServerNamed(
+  items: ReadonlyArray<ExtensionInventory['items'][number]>,
+  name: string,
+): McpServerItem | undefined {
+  return items.find(
+    (item): item is McpServerItem =>
+      item.kind === 'mcp-server' && item.origin === 'own' && (item.name === name || item.id === name),
+  );
 }
 
 function find(inventory: ExtensionInventory, target: ExtensionActTarget): McpServerItem | SkillItem | undefined {

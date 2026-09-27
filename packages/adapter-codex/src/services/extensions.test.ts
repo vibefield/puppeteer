@@ -4,10 +4,15 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AgentProfileSchema,
+  describeMcpDefinition,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActPlan,
   type ExtensionInventory,
   type ExtensionItem,
+  type McpServerDefinition,
+  type McpServerItem,
 } from '@vibecook/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
 import { createCodexExtensionService, type CodexExtensionOptions } from './extensions.js';
@@ -370,6 +375,11 @@ function service(server: ReturnType<typeof fakeAppServer>, overrides: Partial<Co
 const find = (inventory: ExtensionInventory, kind: ExtensionItem['kind'], id: string) =>
   inventory.items.find((item) => item.kind === kind && item.id === id);
 
+const definitionOf = (inventory: ExtensionInventory, id: string) => {
+  const item = find(inventory, 'mcp-server', id);
+  return item?.kind === 'mcp-server' ? item.definition : undefined;
+};
+
 describe('Codex extensions', () => {
   it('declares the kinds Codex has and which it reads', () => {
     const { provider } = service(fakeAppServer({}));
@@ -510,6 +520,83 @@ describe('Codex extensions', () => {
       plugin: 'documents@openai-primary-runtime',
     });
     expect(inventory.items.some((item) => item.name === 'repo-only')).toBe(false);
+  });
+
+  it('gives a server that hides nothing, sends no header and runs in no folder of its own its definition', async () => {
+    const { home, root } = await managedSetup();
+    const listing = [
+      ...(JSON.parse(LISTING) as unknown[]),
+      {
+        name: 'context7',
+        enabled: true,
+        transport: {
+          type: 'stdio',
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp'],
+          env: { CONTEXT7_API_KEY: 'ctx7-live-value' },
+          env_vars: ['CONTEXT7_REGION'],
+          cwd: null,
+        },
+        auth_status: 'unsupported',
+      },
+      {
+        name: 'rooted',
+        enabled: true,
+        transport: {
+          type: 'stdio',
+          command: 'node',
+          args: ['index.js'],
+          env: null,
+          env_vars: [],
+          cwd: '/opt/mcp/rooted',
+        },
+        auth_status: 'unsupported',
+      },
+      {
+        name: 'helper',
+        enabled: true,
+        transport: {
+          type: 'streamable_http',
+          url: 'https://mcp.helper.example/mcp',
+          bearer_token_env_var: null,
+          http_headers: null,
+          env_http_headers: null,
+          // `mcp list` prints only that one is set
+          http_headers_helper: '<redacted>',
+        },
+        auth_status: 'unknown',
+      },
+    ];
+    const inventory = ExtensionInventorySchema.parse(
+      await service(fakeAppServer(answersFor(home, root)), {
+        listServers: async () => JSON.stringify(listing),
+      }).inventory(managedProfile(root)),
+    );
+
+    // every variable the server reads, by name: those Codex sets and those it forwards
+    expect(definitionOf(inventory, 'context7')).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp'],
+      env: ['CONTEXT7_API_KEY', 'CONTEXT7_REGION'],
+    });
+    expect(definitionOf(inventory, 'documents_mcp')).toEqual({
+      transport: 'stdio',
+      command: 'node',
+      args: ['server.js'],
+      env: ['CODEX_HOME', 'PATH'],
+    });
+    expect(definitionOf(inventory, 'notion')).toEqual({ transport: 'http', url: 'https://mcp.notion.com/mcp' });
+    expect(definitionOf(inventory, 'sentry')).toEqual({ transport: 'http', url: 'https://mcp.sentry.dev/mcp' });
+    // a bearer variable, configured headers, a helper's, the account token Codex adds itself;
+    // a masked argument; a folder of its own
+    for (const id of ['linear', 'corp-search', 'helper', 'codex_apps', 'postgres', 'rooted']) {
+      expect(find(inventory, 'mcp-server', id), id).toBeDefined();
+      expect(definitionOf(inventory, id), id).toBeUndefined();
+    }
+    // what an item reports is as before: a helper's headers stay unnamed
+    expect(find(inventory, 'mcp-server', 'helper')).not.toHaveProperty('headers');
+    expect(JSON.stringify(inventory)).not.toContain('ctx7-live-value');
   });
 
   it('binds the native default to nothing, and to the given home only when one is given', async () => {
@@ -797,5 +884,169 @@ describe('Codex extension acts', () => {
       }),
     ).toEqual({ ok: false, error: 'was refused by Codex' });
     expect(said.join('')).not.toContain('no answer');
+  });
+
+  /** A server as the runtime hands it for an add: as Codex would hold it once added, from its definition. */
+  const adding = (name: string, definition: McpServerDefinition): McpServerItem => ({
+    kind: 'mcp-server',
+    id: name,
+    name,
+    origin: 'own',
+    enabled: true,
+    transport: definition.transport,
+    target: describeMcpDefinition(definition),
+    ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+    definition,
+  });
+  const context7: McpServerDefinition = {
+    transport: 'stdio',
+    command: 'npx',
+    args: ['-y', '@upstash/context7-mcp'],
+    env: ['CONTEXT7_API_KEY'],
+  };
+  const paramsOf = (plan: ExtensionActPlan) =>
+    plan.available && plan.runs.kind === 'protocol' ? plan.runs.params : undefined;
+
+  it('adds a server by writing its whole table to the config, each variable named for Codex to forward', async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(
+      ExtensionActPlanSchema.parse(codex.plan!(managedProfile(root), adding('context7', context7), 'add')),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'protocol',
+        method: 'config/value/write',
+        params: {
+          keyPath: 'mcp_servers.context7',
+          mergeStrategy: 'replace',
+          // `env_vars` names a variable Codex forwards from its own environment; `env` would hold a value
+          value: { command: 'npx', args: ['-y', '@upstash/context7-mcp'], env_vars: ['CONTEXT7_API_KEY'] },
+        },
+      },
+      display:
+        'config/value/write mcp_servers.context7 = {"command":"npx","args":["-y","@upstash/context7-mcp"],"env_vars":["CONTEXT7_API_KEY"]}',
+      reaches: [],
+    });
+    // a server that reads no variable names none
+    expect(
+      paramsOf(
+        codex.plan!(
+          managedProfile(root),
+          adding('fetch', { transport: 'stdio', command: 'uvx', args: ['mcp-server-fetch'] }),
+          'add',
+        ),
+      ),
+    ).toEqual({
+      keyPath: 'mcp_servers.fetch',
+      mergeStrategy: 'replace',
+      value: { command: 'uvx', args: ['mcp-server-fetch'] },
+    });
+    // a remote one is its address alone: its sign-in, if it asks for one, is a later act of its own
+    expect(
+      ExtensionActPlanSchema.parse(
+        codex.plan!(
+          managedProfile(root),
+          adding('notion', { transport: 'http', url: 'https://mcp.notion.com/mcp' }),
+          'add',
+        ),
+      ),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'notion' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'protocol',
+        method: 'config/value/write',
+        params: {
+          keyPath: 'mcp_servers.notion',
+          mergeStrategy: 'replace',
+          value: { url: 'https://mcp.notion.com/mcp' },
+        },
+      },
+      display: 'config/value/write mcp_servers.notion = {"url":"https://mcp.notion.com/mcp"}',
+      reaches: [],
+    });
+  });
+
+  it('adds no SSE server, no name its commands would not take, and nothing without a definition', async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    expect(
+      codex.plan!(
+        managedProfile(root),
+        adding('events', { transport: 'sse', url: 'https://mcp.example.com/sse' }),
+        'add',
+      ),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'events' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Codex reaches a remote server only over streamable HTTP',
+    });
+    // a dot would split `mcp_servers.<name>` into a nested key
+    expect(
+      codex.plan!(
+        managedProfile(root),
+        adding('odd.name', { transport: 'http', url: 'https://mcp.notion.com/mcp' }),
+        'add',
+      ),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'odd.name' },
+      act: 'add',
+      available: false,
+      reason: 'no-command',
+      message: "Codex's commands do not take this server's name",
+    });
+    const bare: McpServerItem = {
+      kind: 'mcp-server',
+      id: 'context7',
+      name: 'context7',
+      origin: 'own',
+      enabled: true,
+      transport: 'stdio',
+      target: 'npx -y @upstash/context7-mcp',
+    };
+    expect(codex.plan!(managedProfile(root), bare, 'add')).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Codex adds a server only from its definition',
+    });
+    expect(codex.plan!(managedProfile(root), skill, 'add')).toMatchObject({
+      target: { kind: 'skill', id: 'release-notes' },
+      available: false,
+      reason: 'unsupported',
+    });
+  });
+
+  it("performs an add on a private app-server in the profile's root, sending exactly the table it planned", async () => {
+    const { home, root } = await managedSetup();
+    const server = fakeAppServer({
+      initialize: () => ({ codexHome: root }),
+      'config/value/write': () => ({ status: 'ok', version: 'sha256:next', filePath: join(root, 'config.toml') }),
+    });
+    const codex = service(server, { home });
+    const plan = codex.plan!(managedProfile(root), adding('context7', context7), 'add');
+    if (!plan.available) throw new Error('expected a plan');
+    const output: string[] = [];
+    expect(await codex.perform!(managedProfile(root), plan, { onOutput: (chunk) => output.push(chunk) })).toEqual({
+      ok: true,
+    });
+    expect(server.spawns).toEqual([
+      { executable: '/opt/node/bin/codex', env: { CODEX_HOME: root, HOME: home }, cwd: root },
+    ]);
+    expect(server.requests.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'config/value/write']);
+    expect(server.requests[2]?.params).toEqual({
+      keyPath: 'mcp_servers.context7',
+      mergeStrategy: 'replace',
+      value: { command: 'npx', args: ['-y', '@upstash/context7-mcp'], env_vars: ['CONTEXT7_API_KEY'] },
+    });
+    expect(output.join('')).toBe(`${plan.display}\nCodex wrote it to its config.\n`);
+    expect(server.closed()).toBe(true);
   });
 });

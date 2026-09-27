@@ -42,6 +42,7 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -51,6 +52,7 @@ import {
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
+  type McpServerDefinition,
   type McpServerItem,
   type PluginItem,
   type SkillItem,
@@ -265,6 +267,8 @@ function serverItem(
   if (target.length > 8_192) return undefined;
   const env = names(Object.keys(rec(server.env) ?? {}), ENVIRONMENT_NAME);
   const headers = names(Object.keys(rec(server.headers) ?? {}), HEADER_NAME);
+  // A plugin's server comes and goes with its plugin, and may run from its folder: only the person's own travel.
+  const portable = fields.origin === 'own' ? definitionOf(server, transport) : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -273,7 +277,30 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env } : {}),
     ...(headers.length > 0 ? { headers } : {}),
+    ...(portable === undefined ? {} : { definition: portable }),
   };
+}
+
+/**
+ * The server as another agent could take it, which Core decides from the
+ * values as Antigravity keeps them, before any masking — every `env` and
+ * `headers` key, and `args` only when all text. None when the entry holds what
+ * a definition cannot carry: a working folder (`cwd`), a fixed OAuth client
+ * whose secret stays behind (`oauth`), or Google credentials
+ * (`authProviderType`).
+ */
+function definitionOf(server: Json, transport: McpServerItem['transport']): McpServerDefinition | undefined {
+  if (server.cwd !== undefined || server.oauth !== undefined || server.authProviderType !== undefined) return undefined;
+  const args = server.args ?? [];
+  if (!Array.isArray(args) || !args.every((arg): arg is string => typeof arg === 'string')) return undefined;
+  return mcpServerDefinition({
+    transport,
+    command: text(server.command),
+    args,
+    url: text(server.serverUrl),
+    env: Object.keys(rec(server.env) ?? {}),
+    headers: Object.keys(rec(server.headers) ?? {}),
+  });
 }
 
 /** Antigravity extension capability: the customization root and the CLI's builtin skills, per home. */
@@ -301,12 +328,17 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
   const homeOf = (profile: AgentProfile): string => (profile.kind === 'managed' ? profile.dataRoot : nativeHome);
 
   const executable = resolveAntigravityExecutable(options.executable, options.env ?? process.env);
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'managed' ? { HOME: profile.dataRoot, [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
 
   // Acts (RFC 006 C2): a server of the home's own `mcp_config.json` turns on and
   // off with `agy mcp enable|disable <name>` under the profile's HOME — only a
   // name the read found, since disabling an unknown one writes a stub. Removal
-  // was not probed and is not offered; skills switch only inside the app.
+  // was not probed and is not offered; skills switch only inside the app. A
+  // server a host keeps comes in with `agy mcp add`, stdio or Streamable HTTP,
+  // and never one that reads a variable: `--env` stores a literal value.
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
@@ -339,10 +371,55 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
       target,
       act,
       argv: [executable, 'mcp', act, item.id],
-      env:
-        profile.kind === 'managed'
-          ? { HOME: profile.dataRoot, [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: profile.dataRoot }
-          : {},
+      env: profileEnv(profile),
+    });
+  }
+
+  /**
+   * `agy mcp add` writes the server into the home's `mcp_config.json`: stdio,
+   * or Streamable HTTP when the positional after the name is an http(s)
+   * address, so an SSE server has no add. Antigravity reads a server's values
+   * only as literals in that file (`--env KEY=value` stores one), and a host
+   * keeps values out of an agent's files, so a server that reads a variable is
+   * not added. As the CLI's own help shows, the `--` before the command is how
+   * a command line with flags of its own reaches the server instead of
+   * `agy mcp add`.
+   */
+  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
+    if (item.kind !== 'mcp-server' || item.definition === undefined) {
+      return unsupported('Antigravity adds only a server, from its definition');
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        'add',
+        'no-command',
+        "Antigravity's commands do not take this server's name",
+      );
+    }
+    const { definition } = item;
+    let server: string[];
+    if (definition.transport === 'stdio') {
+      if (definition.env !== undefined) {
+        return unsupported("Antigravity reads a server's values only from its own file, never from a variable");
+      }
+      server = [item.id, '--', definition.command, ...definition.args];
+    } else if (definition.transport === 'sse') {
+      return unsupported('Antigravity adds a remote server by its command only as Streamable HTTP');
+    } else if (!/^https?:\/\//u.test(definition.url)) {
+      // Any other positional is a command to Antigravity's add.
+      return unsupported('Antigravity adds a remote server only at an http(s) address');
+    } else {
+      server = [item.id, definition.url];
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'add',
+      argv: [executable, 'mcp', 'add', ...server],
+      env: profileEnv(profile),
+      reaches: [],
     });
   }
 

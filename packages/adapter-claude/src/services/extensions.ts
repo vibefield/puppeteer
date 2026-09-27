@@ -38,6 +38,7 @@ import {
   extensionNotOwnWords,
   extensionSignInAbsentWords,
   extensionTerminalPlan,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -68,6 +69,8 @@ export interface ClaudeExtensionOptions {
 const MAX_STORE_BYTES = 64 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_SKILLS_PER_FOLDER = 512;
+/** A remote server's address has a scheme; `claude mcp add` would read one starting with a hyphen as a flag. */
+const REMOTE_ADDRESS = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//u;
 
 type Json = Record<string, unknown>;
 const rec = (value: unknown): Json | undefined =>
@@ -76,8 +79,8 @@ const text = (value: unknown): string | undefined => {
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed.length > 0 ? trimmed : undefined;
 };
-const strings = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+const isString = (value: unknown): value is string => typeof value === 'string';
+const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter(isString) : []);
 const ISO_WITH_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 /** A store file that is absent reads as empty; one that exists and cannot be parsed is a failure the caller reports. */
@@ -119,11 +122,11 @@ function transportOf(definition: Json): McpTransport | undefined {
  */
 function serverItem(
   name: string,
-  definition: unknown,
+  value: unknown,
   fields: Pick<McpServerItem, 'id' | 'origin' | 'enabled'> &
     Partial<Pick<McpServerItem, 'plugin' | 'project' | 'location'>>,
 ): McpServerItem | undefined {
-  const server = rec(definition);
+  const server = rec(value);
   if (!server || !text(name)) return undefined;
   const transport = transportOf(server);
   if (!transport) return undefined;
@@ -134,10 +137,24 @@ function serverItem(
         ? describeMcpUrl(text(server.url)!)
         : undefined;
   if (!target) return undefined;
-  const env = Object.keys(rec(server.env) ?? {}).filter((key) => /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u.test(key));
-  const headers = Object.keys(rec(server.headers) ?? {}).filter((key) =>
-    /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,128}$/u.test(key),
-  );
+  const envNames = Object.keys(rec(server.env) ?? {});
+  const headerNames = Object.keys(rec(server.headers) ?? {});
+  const env = envNames.filter((key) => /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u.test(key));
+  const headers = headerNames.filter((key) => /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,128}$/u.test(key));
+  // What another agent could take is decided from the server as Claude Code
+  // keeps it, before any masking and with every name it keeps: an argument that
+  // is not a string, or a name the listing drops, would make it another server.
+  const argsKept = server.args === undefined || (Array.isArray(server.args) && server.args.every(isString));
+  const definition = argsKept
+    ? mcpServerDefinition({
+        transport,
+        command: text(server.command),
+        args: strings(server.args),
+        url: text(server.url),
+        env: envNames,
+        headers: headerNames,
+      })
+    : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -146,6 +163,7 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env: env.slice(0, 64) } : {}),
     ...(headers.length > 0 ? { headers: headers.slice(0, 64) } : {}),
+    ...(definition ? { definition } : {}),
   };
 }
 
@@ -235,7 +253,64 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
   // terminal) and out with `claude mcp logout <name>`: the report's shell
   // forms, not probed. The sign-in lands in the root's own keychain item, and
   // no read here can see it (the keychain is never opened).
+  //
+  // An add is the report's `claude mcp add <name> -- <command> [args…]`, or
+  // `<name> <url>` with `--transport http|sse`, at user scope, the name first
+  // because `-e` takes every word after it; each variable goes in as
+  // `-e NAME=${NAME:-}`, never its value, since Claude Code expands `${VAR}` in
+  // command, args, env, url and headers from its own environment when it loads
+  // the server. The empty default is there because Claude Code refuses a config
+  // naming a variable it has no value and no default for: a Claude started
+  // without the host's values keeps its other servers, and this one gets none.
+  // The report's forms, not probed.
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
+
+  /** A user server lands in the profile's own app state, which no other profile reads. */
+  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
+    if (item.kind !== 'mcp-server') return unsupported('Claude Code adds a skill as a folder, not with a command');
+    const definition = item.definition;
+    if (definition === undefined) return unsupported('Claude Code adds a server only from its command line or address');
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        'add',
+        'no-command',
+        "Claude Code's commands do not take this server's name",
+      );
+    }
+    const add = [executable, 'mcp', 'add', item.id];
+    let argv: string[];
+    switch (definition.transport) {
+      case 'stdio':
+        argv = [
+          ...add,
+          '--scope',
+          'user',
+          ...(definition.env ?? []).flatMap((name) => ['-e', `${name}=\${${name}:-}`]),
+          '--',
+          definition.command,
+          ...definition.args,
+        ];
+        break;
+      case 'http':
+      case 'sse':
+        if (!REMOTE_ADDRESS.test(definition.url)) {
+          return unsupported('Claude Code reaches a remote server only at an address');
+        }
+        argv = [...add, definition.url, '--scope', 'user', '--transport', definition.transport];
+        break;
+      default:
+        return unsupported("Claude Code's mcp add takes a stdio, HTTP or SSE server");
+    }
+    return extensionCommandPlan({ target, act: 'add', argv, env: profileEnv(profile), reaches: [] });
+  }
+
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    // an add plans from the server as Claude Code would hold it once added, always its own
+    if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Claude Code', item));
@@ -261,8 +336,7 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
         "Claude Code's commands do not take this server's name",
       );
     }
-    const env: Record<string, string> =
-      profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
+    const env = profileEnv(profile);
     if (act === 'remove') {
       return extensionCommandPlan({
         target,

@@ -43,6 +43,7 @@ import {
   extensionCommandPlan,
   extensionNotOwnWords,
   extensionTerminalPlan,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -672,6 +673,17 @@ async function serverItem(
     // Whether the token file exists; it is never opened.
     auth = (await isFile(join(root, 'mcp-tokens', tokenFileName(name)))) ? 'signed-in' : 'needs-sign-in';
   }
+  // Only config.yaml's own travel: a package's server comes and goes with the
+  // package and may count on its folder. A stdio `cwd` is a folder a
+  // definition cannot carry. The server reads the `env` keys, never what fills them.
+  const whole = fields.origin === 'own' && (transport !== 'stdio' || text(definition.cwd) === undefined);
+  const travels = whole
+    ? mcpServerDefinition(
+        transport === 'stdio'
+          ? { transport, command, args, env: Object.keys(env) }
+          : { transport, url, headers: Object.keys(headers) },
+      )
+    : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -681,6 +693,7 @@ async function serverItem(
     ...(envNames.length > 0 ? { env: envNames } : {}),
     ...(headerNames.length > 0 ? { headers: headerNames } : {}),
     ...(auth ? { auth } : {}),
+    ...(travels ? { definition: travels } : {}),
   };
 }
 
@@ -960,7 +973,10 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
   // `hermes mcp remove <name>`. A skill's switch is a config key too. A server
   // its config marks `auth: oauth` signs in with `hermes mcp login <name>`,
   // which opens a browser or asks for a pasted code (so a terminal), into the
-  // root's `mcp-tokens/`; no command forgets that sign-in.
+  // root's `mcp-tokens/`; no command forgets that sign-in. `hermes mcp add`
+  // (0.21.4 `cmd_mcp_add`) connects to the server and asks which of its tools
+  // to use, and about signing in to an address, before it saves anything:
+  // without a person's answers it saves nothing, so no host adds a server.
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
@@ -968,6 +984,14 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
     }
     if (item.kind === 'skill') {
       return extensionActUnavailable(target, act, 'no-command', 'Hermes switches a skill only in its config.yaml');
+    }
+    if (act === 'add') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        'Hermes adds a server only in its own terminal: `hermes mcp add` connects to it and asks which of its tools to use',
+      );
     }
     if (act === 'sign-in' || act === 'sign-out') {
       // the read says "signed in" or "asks" only for a server marked `auth: oauth`

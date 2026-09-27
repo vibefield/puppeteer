@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
@@ -288,6 +289,55 @@ describe('Kimi Code extensions', () => {
     expect(moved.items.map((item) => item.id)).toEqual(['elsewhere']);
   });
 
+  it("gives a server's definition only from mcp.json, whole: no folder, masked part or header stays behind", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    await write(join(root, 'mcp.json'), {
+      mcpServers: {
+        context7: {
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp'],
+          env: { CONTEXT7_API_KEY: 'ctx-secret' },
+        },
+        docs: { url: 'https://docs.example.com/mcp' },
+        events: { transport: 'sse', url: 'https://events.example.com/sse' },
+        linear: { url: 'https://mcp.linear.app/mcp', bearerTokenEnvVar: 'LINEAR_TOKEN' },
+        masked: { command: 'uvx', args: ['mcp-server', '--api-key', 'abc'] },
+        folder: { command: 'node', args: ['server.js'], cwd: '/srv/mcp' },
+      },
+    });
+    const plugin = join(root, 'plugins', 'managed', 'timekeeper');
+    await write(join(root, 'plugins', 'installed.json'), {
+      version: 1,
+      plugins: [{ id: 'timekeeper', root: plugin, source: 'local-path', enabled: true }],
+    });
+    await write(join(plugin, 'kimi.plugin.json'), {
+      name: 'timekeeper',
+      mcpServers: { time: { command: 'uvx', args: ['mcp-server-time'] } },
+    });
+    const inventory = ExtensionInventorySchema.parse(
+      await createKimiExtensionService({ home, env: {}, now }).inventory(managedProfile(root)),
+    );
+    expect(JSON.stringify(inventory)).not.toContain('ctx-secret');
+    const definitionOf = (id: string) => {
+      const item = find(inventory, 'mcp-server', id);
+      expect(item, id).toBeDefined();
+      return item?.kind === 'mcp-server' ? item.definition : undefined;
+    };
+    expect(definitionOf('context7')).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp'],
+      env: ['CONTEXT7_API_KEY'],
+    });
+    expect(definitionOf('docs')).toEqual({ transport: 'http', url: 'https://docs.example.com/mcp' });
+    expect(definitionOf('events')).toEqual({ transport: 'sse', url: 'https://events.example.com/sse' });
+    // A bearer variable becomes an `Authorization` header, whose value would stay behind.
+    for (const id of ['linear', 'masked', 'folder', 'plugin-timekeeper:time']) {
+      expect(definitionOf(id), id).toBeUndefined();
+    }
+  });
+
   it('says which store it could not read and lists the rest', async () => {
     const home = await tempHome();
     const root = join(home, 'profiles', 'work', 'kimi-4c1d');
@@ -353,6 +403,30 @@ describe('Kimi extension acts', () => {
       available: false,
       reason: 'in-app',
       message: 'Kimi signs in to a server only inside the app, with /mcp-config',
+    });
+  });
+
+  it('adds a server only inside the app, in the words of every server act', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const context7 = actServer({
+      id: 'context7',
+      name: 'context7',
+      transport: 'stdio',
+      target: 'npx -y @upstash/context7-mcp',
+      env: ['CONTEXT7_API_KEY'],
+      definition: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@upstash/context7-mcp'],
+        env: ['CONTEXT7_API_KEY'],
+      },
+    });
+    expect(ExtensionActPlanSchema.parse(kimi.plan!(actProfile('managed', '/p'), context7, 'add'))).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi changes its servers only inside the app, with /mcp-config',
     });
   });
 });

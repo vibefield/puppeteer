@@ -22,7 +22,9 @@
  * every server the profile loads — its own, the plugins', and those the host
  * app adds — with each one's sign-in state. Its output carries environment
  * and header values; only their names are kept, and neither its output nor
- * its errors are ever repeated.
+ * its errors are ever repeated. A server that sends no header, runs in no
+ * folder of its own, and whose command line or address hides nothing also
+ * carries it whole as its definition, for a host to give another agent.
  *
  * What the reads do besides reading, per the source at rust-v0.150.0: `mcp
  * list` starts no server and opens no MCP session, but for an enabled HTTP
@@ -48,6 +50,14 @@
  * there, config/src/types.rs) — so every Codex profile holding that server at
  * that address shares it. A profile whose config sets
  * `mcp_oauth_credentials_store = "file"` keeps its own; that key is not read.
+ * A server the profile does not hold is added by the same `config/value/write`,
+ * replacing the whole `mcp_servers.<name>` table with the definition: its
+ * command, arguments and `env_vars` (the names Codex forwards to the server
+ * from its own environment, where the host puts each value), or its streamable
+ * HTTP address. Never `codex mcp add`, which has no flag that names a forwarded
+ * variable (its `--env` stores a value) and starts the browser login at once
+ * for a server that offers OAuth (`run_add` in codex-rs/cli/src/mcp_cmd.rs at
+ * rust-v0.150.0).
  *
  * Shapes: `SkillsListResponse`, `PluginInstalledResponse` and
  * `PluginReadResponse` in codex-rs/app-server-protocol/src/protocol/v2/plugin.rs,
@@ -69,6 +79,7 @@ import {
   extensionCommandPlan,
   extensionNotOwnWords,
   extensionTerminalPlan,
+  mcpServerDefinition,
   PUPPETEER_VERSION,
   type AgentProfile,
   type AvailableExtensionActPlan,
@@ -76,6 +87,7 @@ import {
   type ExtensionActKind,
   type ExtensionActOutcome,
   type ExtensionActPlan,
+  type ExtensionActTarget,
   type ExtensionFailure,
   type ExtensionInventory,
   type ExtensionItem,
@@ -120,6 +132,7 @@ const text = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const present = (value: unknown): boolean => value !== undefined && value !== null;
 const strings = (value: unknown): string[] => list(value).filter((item): item is string => typeof item === 'string');
 const bounded = (value: string | undefined, max: number): string | undefined =>
   value !== undefined && value.length <= max ? value : undefined;
@@ -252,51 +265,63 @@ function serversFrom(
     const name = bounded(text(entry?.name), 256);
     const transport = rec(entry?.transport);
     if (!entry || !name || !transport || typeof entry.enabled !== 'boolean' || seen.has(name)) continue;
-    let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers'>;
+    let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers' | 'definition'>;
     const type = text(transport.type);
+    const status = text(entry.auth_status);
     if (type === 'stdio') {
       const command = text(transport.command);
       if (!command) continue;
-      const env = names(
-        [
-          ...Object.keys(rec(transport.env) ?? {}),
-          ...list(transport.env_vars).flatMap((variable) => text(variable) ?? text(rec(variable)?.name) ?? []),
-        ],
-        ENVIRONMENT_NAME,
-      );
+      const args = strings(transport.args);
+      const variables = [
+        ...Object.keys(rec(transport.env) ?? {}),
+        ...list(transport.env_vars).flatMap((variable) => text(variable) ?? text(rec(variable)?.name) ?? []),
+      ];
+      const env = names(variables, ENVIRONMENT_NAME);
+      // No definition carries a working directory, and the command may not run without its own. Every
+      // name goes in unfiltered: one Core would not take keeps the server home rather than lose a variable.
+      const definition = present(transport.cwd)
+        ? undefined
+        : mcpServerDefinition({ transport: 'stdio', command, args, env: [...new Set(variables)] });
       fields = {
         transport: 'stdio',
-        target: describeMcpCommand(command, strings(transport.args)),
+        target: describeMcpCommand(command, args),
         ...(env.length > 0 ? { env } : {}),
+        ...(definition ? { definition } : {}),
       };
     } else if (type === 'streamable_http') {
       const url = text(transport.url);
       if (!url) continue;
       const bearer = text(transport.bearer_token_env_var);
+      const fixed = rec(transport.http_headers) ?? {};
       const fromEnvironment = rec(transport.env_http_headers) ?? {};
       const headers = names(
-        [
-          ...Object.keys(rec(transport.http_headers) ?? {}),
-          ...Object.keys(fromEnvironment),
-          ...(bearer ? ['Authorization'] : []),
-        ],
+        [...Object.keys(fixed), ...Object.keys(fromEnvironment), ...(bearer ? ['Authorization'] : [])],
         HEADER_NAME,
       );
       const env = names(
         [...Object.values(fromEnvironment).flatMap((value) => text(value) ?? []), ...(bearer ? [bearer] : [])],
         ENVIRONMENT_NAME,
       );
+      // A header's value stays behind, so any header keeps a server home: every one it is configured
+      // with, and the account token Codex adds itself, which it also reports as `bearer_token`
+      // (`compute_auth_status` in codex-rs/codex-mcp/src/mcp/auth.rs). A helper's are named only when it runs.
+      const bearing = present(transport.bearer_token_env_var) || status === 'bearer_token' || status === 'bearerToken';
+      const sent = [...Object.keys(fixed), ...Object.keys(fromEnvironment), ...(bearing ? ['Authorization'] : [])];
+      const definition = present(transport.http_headers_helper)
+        ? undefined
+        : mcpServerDefinition({ transport: 'http', url, headers: sent });
       fields = {
         transport: 'http',
         target: describeMcpUrl(url),
         ...(env.length > 0 ? { env } : {}),
         ...(headers.length > 0 ? { headers } : {}),
+        ...(definition ? { definition } : {}),
       };
     } else {
       continue;
     }
     if (fields.target.length > 8_192) continue;
-    const auth = authOf(text(entry.auth_status));
+    const auth = authOf(status);
     seen.add(name);
     items.push({
       kind: 'mcp-server',
@@ -420,6 +445,46 @@ async function skillsFrom(result: unknown): Promise<SkillItem[] | undefined> {
   return items;
 }
 
+/**
+ * An add, from the server as Codex would hold it: its whole `mcp_servers.<name>`
+ * table, written through the app-server (see above). The name is one segment
+ * of that key path, so it must be one `codex mcp` would take.
+ */
+function addPlan(target: ExtensionActTarget, item: McpServerItem | SkillItem): ExtensionActPlan {
+  if (item.kind !== 'mcp-server' || item.definition === undefined) {
+    return extensionActUnavailable(target, 'add', 'unsupported', 'Codex adds a server only from its definition');
+  }
+  if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+    return extensionActUnavailable(target, 'add', 'no-command', "Codex's commands do not take this server's name");
+  }
+  const { definition } = item;
+  if (definition.transport === 'sse') {
+    return extensionActUnavailable(
+      target,
+      'add',
+      'unsupported',
+      'Codex reaches a remote server only over streamable HTTP',
+    );
+  }
+  const value =
+    definition.transport === 'stdio'
+      ? {
+          command: definition.command,
+          args: [...definition.args],
+          ...(definition.env !== undefined ? { env_vars: [...definition.env] } : {}),
+        }
+      : { url: definition.url };
+  const keyPath = `mcp_servers.${item.id}`;
+  return {
+    target,
+    act: 'add',
+    available: true,
+    runs: { kind: 'protocol', method: 'config/value/write', params: { keyPath, mergeStrategy: 'replace', value } },
+    display: `config/value/write ${keyPath} = ${JSON.stringify(value)}`,
+    reaches: [],
+  };
+}
+
 /** Codex extension capability: one app-server session and one `mcp list` per inventory. */
 export function createCodexExtensionService(options: CodexExtensionOptions = {}): ExtensionService {
   const executable = resolveCodexExecutable(options.executable, options.env ?? process.env);
@@ -500,6 +565,8 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
 
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    // An add plans from a server no read found, so it answers apart from every act on one held.
+    if (act === 'add') return addPlan(target, item);
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Codex', item));
     }

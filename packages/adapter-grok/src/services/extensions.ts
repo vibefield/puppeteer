@@ -33,7 +33,9 @@
  * `grok mcp enable|disable <name>` and goes with `grok mcp remove <name>
  * --scope user`, which write the profile's `config.toml`. A borrowed server
  * changes in the agent it comes from; a skill's switch (`[skills] disabled`)
- * has no command.
+ * has no command. A server a host keeps comes in with `grok mcp add --scope
+ * user` into the same file, stdio or HTTP (never SSE), each variable it reads
+ * written as `${NAME}` for Grok to expand when it loads the server.
  */
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
@@ -46,6 +48,7 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
@@ -55,6 +58,7 @@ import {
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
+  type McpServerDefinition,
   type McpServerItem,
   type McpTransport,
   type PluginItem,
@@ -524,6 +528,9 @@ function serverItem(
   if (target.length > 8_192) return undefined;
   const env = Object.keys(rec(server.env) ?? {}).filter((key) => ENVIRONMENT_NAME.test(key));
   const headers = Object.keys(rec(server.headers) ?? {}).filter((key) => HEADER_NAME.test(key));
+  // A plugin's server comes and goes with its plugin, so only the root's own and the borrowed ones travel.
+  const portable =
+    fields.origin === 'own' || fields.origin === 'borrowed' ? definitionOf(server, transport) : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -532,7 +539,27 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env: env.slice(0, 64) } : {}),
     ...(headers.length > 0 ? { headers: headers.slice(0, 64) } : {}),
+    ...(portable === undefined ? {} : { definition: portable }),
   };
+}
+
+/**
+ * The server as another agent could take it, which Core decides from the
+ * values as Grok keeps them, before any masking. Every `env` and `headers` key
+ * goes in, not only the ones a listing shows, and `args` must be all text: a
+ * definition that dropped anything would not be the server Grok runs.
+ */
+function definitionOf(server: Json, transport: McpTransport): McpServerDefinition | undefined {
+  const args = server.args ?? [];
+  if (!Array.isArray(args) || !args.every((arg): arg is string => typeof arg === 'string')) return undefined;
+  return mcpServerDefinition({
+    transport,
+    command: text(server.command),
+    args,
+    url: text(server.url),
+    env: Object.keys(rec(server.env) ?? {}),
+    headers: Object.keys(rec(server.headers) ?? {}),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -561,8 +588,11 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
   const home = options.home ?? homedir();
   const now = options.now ?? (() => new Date());
   const executable = resolveGrokExecutable(options.executable, options.env ?? process.env);
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'native-default' ? {} : { [GROK_PROFILE_ROOT_VARIABLE]: profile.dataRoot };
 
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
     if (item.kind === 'skill') {
       return extensionActUnavailable(
@@ -596,8 +626,62 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
         act === 'remove'
           ? [executable, 'mcp', 'remove', item.id, '--scope', 'user']
           : [executable, 'mcp', act, item.id],
-      env: profile.kind === 'native-default' ? {} : { [GROK_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+      env: profileEnv(profile),
       reaches: act === 'remove' ? ['definition'] : [],
+    });
+  }
+
+  /**
+   * `grok mcp add --scope user` writes `[mcp_servers.<name>]` to the profile's
+   * config.toml: stdio, or HTTP when the positional after the name is an
+   * http(s) address, so an SSE server has no add. Each variable the server
+   * reads goes in as `--env NAME=${NAME:-}`, literal text Grok expands from its
+   * own environment when it loads the server, so the value stays with whoever
+   * starts Grok — and one started without it gives the server an empty value
+   * rather than a config it cannot load. The form is the report's, not probed as a whole; the `--`
+   * before the command is how a command line with flags of its own reaches the
+   * server instead of `grok mcp add`.
+   */
+  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
+    if (item.kind !== 'mcp-server' || item.definition === undefined) {
+      return unsupported('Grok adds only a server, from its definition');
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(target, 'add', 'no-command', "Grok's commands do not take this server's name");
+    }
+    // Its catalog keys a tool `<server>__<tool>` and skips a server whose name
+    // would make that ambiguous: the add would write a server no session loads.
+    if (!/^[A-Za-z_]/u.test(item.id) || item.id.includes('__') || item.id.endsWith('_')) {
+      return unsupported(
+        'Grok loads no server whose name starts with a digit, holds a double underscore or ends in an underscore',
+      );
+    }
+    const { definition } = item;
+    let server: string[];
+    if (definition.transport === 'stdio') {
+      server = [
+        ...(definition.env ?? []).flatMap((name) => ['--env', `${name}=\${${name}:-}`]),
+        item.id,
+        '--',
+        definition.command,
+        ...definition.args,
+      ];
+    } else if (definition.transport === 'sse') {
+      return unsupported('Grok adds a remote server by its command only over HTTP');
+    } else if (!/^https?:\/\//u.test(definition.url)) {
+      // Any other positional is a command to Grok's add.
+      return unsupported('Grok adds a remote server only at an http(s) address');
+    } else {
+      server = [item.id, definition.url];
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'add',
+      argv: [executable, 'mcp', 'add', '--scope', 'user', ...server],
+      env: profileEnv(profile),
+      reaches: [],
     });
   }
 

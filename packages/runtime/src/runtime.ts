@@ -127,6 +127,7 @@ import {
   createExtensionInventoryReader,
 } from './extensions/inventory.js';
 import { createExtensionActRunner } from './extensions/act.js';
+import { launchValues } from './host/environment.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
@@ -817,6 +818,32 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
   }
 
+  /**
+   * The host's launch values for a run, once its account resolved: the set
+   * the account belongs to, or the native set for the provider's own root.
+   * Checked, never kept on the run; nothing when the host keeps none or
+   * cannot answer — the run starts without them.
+   */
+  async function launchEnvironmentFor(
+    providerId: string,
+    profile: AgentProfile | undefined,
+    run: ManagedRun,
+  ): Promise<Readonly<Record<string, string>> | undefined> {
+    if (options.launchEnvironment === undefined) return undefined;
+    try {
+      return launchValues(
+        await options.launchEnvironment({
+          providerId,
+          profileSetId: profile?.set ?? run.profileSetId ?? NATIVE_PROFILE_SET_ID,
+          ...(profile === undefined ? {} : { profileId: profile.id }),
+        }),
+      );
+    } catch (error) {
+      report(error);
+      return undefined;
+    }
+  }
+
   function bindRunProfile(run: ManagedRun, profile: AgentProfile): void {
     run.profileId = profile.id;
     run.profileSetId = profile.set;
@@ -864,7 +891,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     providerOptions: AgentProviderSessionOptions,
     run: ManagedRun,
   ): void {
-    run.continuationState = provider.launch?.continuation?.capture(providerOptions);
+    // a host's launch values never reach what the host persists
+    const { environment: _values, ...captured } = providerOptions;
+    run.continuationState = provider.launch?.continuation?.capture(captured);
     // Validate before a provider allocates process/socket resources. The final
     // continuation is rebuilt with authoritative native identity afterward.
     continuationFor(provider, 'pending-native-session', run);
@@ -2715,9 +2744,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionActs.settle(started, ended);
     },
 
-    async extensionActPlans(providerId, profileId, items) {
+    async extensionActPlans(providerId, profileId, items, adds) {
       if (disposed) throw new Error('agent runtime is disposed');
-      return extensionActs.plans({ providerId, ...(profileId === undefined ? {} : { profileId }), items });
+      return extensionActs.plans({
+        providerId,
+        ...(profileId === undefined ? {} : { profileId }),
+        items,
+        ...(adds === undefined ? {} : { adds }),
+      });
     },
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {
@@ -2757,6 +2791,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, lease.error.code, lease.error.message);
         }
 
+        const environment = await launchEnvironmentFor(request.agent, profile, run);
         const providerOptions = {
           runtimeRunId: run.identity.runtimeRunId,
           cwd: lease.workspace.root,
@@ -2766,6 +2801,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           agentOptions: request.agentOptions,
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
+          ...(environment === undefined ? {} : { environment }),
         };
         let session: AgentAdapterBinding;
         try {

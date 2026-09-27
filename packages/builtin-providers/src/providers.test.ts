@@ -490,6 +490,68 @@ describe('createBuiltinProviders launch options', () => {
     );
   });
 
+  it("gives a created session the host's launch values beneath its own variables, where its MCP servers run", async () => {
+    const providers = createBuiltinProviders({
+      executables: { claude: '/opt/claude', codex: '/opt/codex', grok: '/opt/grok' },
+    });
+    const find = (id: string) => providers.find((provider) => provider.descriptor.id === id)!;
+    const environment = { LINEAR_API_KEY: 'lin_api_secret' };
+
+    // Claude runs its servers from the terminal's process
+    await find('claude').createSession({ cwd: '/work/repo', host, environment });
+    expect(adapters.createClaudeSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ env: { LINEAR_API_KEY: 'lin_api_secret' } }),
+    );
+
+    // Codex runs them from its app-server: the terminal gets nothing, and the binding wins
+    const codex = find('codex');
+    const profile: AgentProfile = {
+      id: 'p2',
+      provider: 'codex',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/codex/p2',
+      createdAt: '2026-09-06T00:00:00.000Z',
+    };
+    vi.mocked(codex.profiles!.bindingEnvironment).mockReturnValue({ CODEX_HOME: '/roots/codex/p2' });
+    adapters.normalizeCodexNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { env: { CODEX_HOME: '/roots/codex/p2' }, appServerEnv: { CODEX_HOME: '/roots/codex/p2' } },
+    } as ReturnType<typeof adapters.normalizeCodexNativeInvocation>);
+    await codex.createSession({
+      cwd: '/work/repo',
+      host,
+      profile,
+      environment: { ...environment, CODEX_HOME: '/elsewhere' },
+    });
+    expect(adapters.createCodexTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        env: { CODEX_HOME: '/roots/codex/p2' },
+        appServerEnv: { LINEAR_API_KEY: 'lin_api_secret', CODEX_HOME: '/roots/codex/p2' },
+      }),
+    );
+
+    // Grok runs them from its leader, one per environment: two sets' values never share one
+    const grok = find('grok');
+    await grok.createSession({ cwd: '/work/repo', host, environment });
+    await grok.createSession({ cwd: '/work/repo', host, environment: { LINEAR_API_KEY: 'another' } });
+    await grok.createSession({ cwd: '/work/repo', host, environment });
+    expect(adapters.createGrokBackend).toHaveBeenCalledTimes(2);
+    expect(adapters.createGrokBackend).toHaveBeenNthCalledWith(1, {
+      executable: '/opt/grok',
+      appServerEnv: { LINEAR_API_KEY: 'lin_api_secret' },
+      host,
+    });
+
+    // a prepared recipe goes back to its caller: it never takes them
+    await codex.prepareSession!({ cwd: '/work/repo', host, environment } as Parameters<
+      NonNullable<typeof codex.prepareSession>
+    >[0]);
+    expect(adapters.prepareCodexTuiSession).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ appServerEnv: expect.objectContaining(environment) }),
+    );
+  });
+
   it('leaves launches without a profile untouched by profile binding', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
       (provider) => provider.descriptor.id === 'claude',

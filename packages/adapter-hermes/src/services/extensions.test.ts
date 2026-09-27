@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
@@ -234,6 +235,13 @@ describe('Hermes extensions', () => {
       transport: 'stdio',
       target: 'npx -y @modelcontextprotocol/server-github',
       env: ['GITHUB_PERSONAL_ACCESS_TOKEN', 'LOG_LEVEL', 'GITHUB_TOKEN'],
+      // The server reads its `env` keys; `${GITHUB_TOKEN}` is Hermes's to fill, and no value travels.
+      definition: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-github'],
+        env: ['GITHUB_PERSONAL_ACCESS_TOKEN', 'LOG_LEVEL'],
+      },
     });
     expect(find(inventory, 'mcp-server', 'postgres')).toMatchObject({
       enabled: false,
@@ -270,6 +278,19 @@ describe('Hermes extensions', () => {
     // config.yaml's own `github` wins; the package's SSE server is refused.
     expect(find(inventory, 'mcp-server', 'plugin:review-pack:github')).toBeUndefined();
     expect(find(inventory, 'mcp-server', 'plugin:review-pack:old')).toBeUndefined();
+    // A definition travels only whole: never masked, with a header, or a package's.
+    expect(find(inventory, 'mcp-server', 'linear')).toMatchObject({
+      definition: { transport: 'http', url: 'https://mcp.linear.app/mcp' },
+    });
+    expect(find(inventory, 'mcp-server', 'legacy')).toMatchObject({
+      definition: { transport: 'sse', url: 'https://legacy.example.com/sse' },
+    });
+    expect(find(inventory, 'mcp-server', 'both')).toMatchObject({
+      definition: { transport: 'http', url: 'https://both.example.com/mcp' },
+    });
+    for (const id of ['postgres', 'search', 'plugin:review-pack:reviewer']) {
+      expect(find(inventory, 'mcp-server', id), id).not.toHaveProperty('definition');
+    }
 
     expect(find(inventory, 'plugin', 'disk-cleanup')).toEqual({
       kind: 'plugin',
@@ -387,6 +408,42 @@ describe('Hermes extensions', () => {
     expect(find(inventory, 'skill', 'gamma')).toMatchObject({ enabled: true });
   });
 
+  it("gives a server's definition only from config.yaml, whole: no folder of its own, no variable inside it", async () => {
+    const home = await tempHome();
+    const root = join(home, 'roots', 'h-2');
+    await write(
+      join(root, 'config.yaml'),
+      [
+        'mcp_servers:',
+        '  fetch: {command: uvx, args: [mcp-server-fetch]}',
+        '  templated: {command: node, args: ["${HOME}/server.js"]}',
+        '  folder: {command: node, args: [server.js], cwd: /srv/mcp}',
+        '  tenant: {url: "https://${TENANT}.example.com/mcp"}',
+        'plugins:',
+        '  enabled: [fetch-pack]',
+        '',
+      ].join('\n'),
+    );
+    const pack = join(root, 'plugins', 'fetch-pack');
+    await write(join(pack, 'plugin.json'), { $schema: PLUGIN_SCHEMA, name: 'fetch-pack' });
+    await write(join(pack, 'mcp.json'), {
+      $schema: MCP_SCHEMA,
+      mcpServers: { packaged: { type: 'stdio', command: 'uvx', args: ['mcp-server-time'] } },
+    });
+    const inventory = ExtensionInventorySchema.parse(
+      await createHermesExtensionService({ home, now }).inventory(managedProfile(root)),
+    );
+    const definitionOf = (id: string) => {
+      const item = find(inventory, 'mcp-server', id);
+      expect(item, id).toBeDefined();
+      return item?.kind === 'mcp-server' ? item.definition : undefined;
+    };
+    expect(definitionOf('fetch')).toEqual({ transport: 'stdio', command: 'uvx', args: ['mcp-server-fetch'] });
+    for (const id of ['templated', 'folder', 'tenant', 'plugin:fetch-pack:packaged']) {
+      expect(definitionOf(id), id).toBeUndefined();
+    }
+  });
+
   it('says every kind is unread when config.yaml cannot be read, and never repeats what it holds', async () => {
     const home = await tempHome();
     for (const [index, config] of [
@@ -493,5 +550,35 @@ describe('Hermes extension acts', () => {
       reason: 'no-command',
     });
     expect(hermes.plan!(work, actServer(), 'sign-in')).toMatchObject({ available: false, reason: 'no-sign-in' });
+  });
+
+  it('adds no server for a host: its own add asks which of the tools to use before it saves', () => {
+    const work = actProfile('managed', '/profiles/work/hermes');
+    const context7 = actServer({
+      id: 'context7',
+      name: 'context7',
+      transport: 'stdio',
+      target: 'npx -y @upstash/context7-mcp',
+      env: ['CONTEXT7_API_KEY'],
+      definition: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@upstash/context7-mcp'],
+        env: ['CONTEXT7_API_KEY'],
+      },
+    });
+    expect(ExtensionActPlanSchema.parse(hermes.plan!(work, context7, 'add'))).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: false,
+      reason: 'in-app',
+      message:
+        'Hermes adds a server only in its own terminal: `hermes mcp add` connects to it and asks which of its tools to use',
+    });
+    const linear = actServer({ definition: { transport: 'http', url: 'https://mcp.linear.app/mcp' } });
+    expect(hermes.plan!(actProfile('native-default', '/Users/test'), linear, 'add')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+    });
   });
 });

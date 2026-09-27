@@ -117,7 +117,7 @@ async function setup(
     const [, , verb, id] = request.argv;
     if (edits && exit === 0 && id !== undefined) {
       if (verb === 'logout') auth.set(id, 'needs-sign-in');
-      else state.set(id, verb === 'enable');
+      else state.set(id, verb === 'enable' || verb === 'add');
     }
     return { exitCode: exit };
   });
@@ -156,6 +156,116 @@ async function setup(
 }
 
 const LINEAR = { kind: 'mcp-server' as const, id: 'linear' };
+const CONTEXT7 = {
+  transport: 'stdio' as const,
+  command: 'npx',
+  args: ['-y', '@upstash/context7-mcp'],
+  env: ['CONTEXT7_API_KEY'],
+};
+
+describe('createExtensionActRunner, add', () => {
+  it('adds a server the agent does not hold, planned from the server as it would hold it, and reads again', async () => {
+    const planned: McpServerItem[] = [];
+    const t = await setup({
+      plan: (profile, item, act) => {
+        if (item.kind === 'mcp-server') planned.push(item);
+        return extensionCommandPlan({
+          target: { kind: item.kind, id: item.id },
+          act,
+          argv: ['example', 'mcp', act, item.id],
+          env: { EXAMPLE_HOME: profile.dataRoot },
+        });
+      },
+    });
+    const target = { kind: 'mcp-server' as const, id: 'context7' };
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target,
+      act: 'add',
+      definition: CONTEXT7,
+    });
+    expect(planned).toEqual([
+      {
+        kind: 'mcp-server',
+        id: 'context7',
+        name: 'context7',
+        origin: 'own',
+        enabled: true,
+        transport: 'stdio',
+        target: 'npx -y @upstash/context7-mcp',
+        env: ['CONTEXT7_API_KEY'],
+        definition: CONTEXT7,
+      },
+    ]);
+    expect(receipt).toMatchObject({
+      act: 'add',
+      target,
+      status: 'changed',
+      message: 'added',
+      display: 'example mcp add context7',
+    });
+    expect(t.state.get('context7')).toBe(true);
+    // a fresh read before, and the second read that decided the receipt
+    expect(t.reads).toHaveBeenCalledTimes(2);
+  });
+
+  it('says unchanged when the agent ran it and still does not hold it', async () => {
+    const t = await setup();
+    t.ignore();
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      definition: CONTEXT7,
+    });
+    expect(receipt).toMatchObject({ status: 'unchanged', message: 'Example does not hold it' });
+  });
+
+  it('answers held for a name the agent holds, unsupported for a skill, and invalid without a definition', async () => {
+    const t = await setup();
+    const ask = (fields: { id: string; kind?: 'mcp-server' | 'skill'; definition?: typeof CONTEXT7 }) =>
+      t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: fields.kind ?? 'mcp-server', id: fields.id },
+        act: 'add',
+        ...(fields.definition === undefined ? {} : { definition: fields.definition }),
+      });
+    expect(await ask({ id: 'linear', definition: CONTEXT7 })).toMatchObject({
+      available: false,
+      reason: 'held',
+      message: 'Example already has a server named linear',
+    });
+    expect(await ask({ id: 'notes', kind: 'skill', definition: CONTEXT7 })).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+    });
+    expect(await ask({ id: 'context7' })).toMatchObject({ status: 'invalid' });
+    expect(t.commands).toEqual([]);
+  });
+
+  it('plans adds beside the acts on what the agent holds, without reading again', async () => {
+    const t = await setup();
+    const plans = await t.runner.plans({
+      providerId: 'example',
+      profileId: t.work.id,
+      items: [server('linear', true)],
+      adds: [
+        { name: 'context7', definition: CONTEXT7 },
+        { name: 'linear', definition: { transport: 'http', url: 'https://mcp.linear.app/mcp' } },
+      ],
+    });
+    expect(Array.isArray(plans)).toBe(true);
+    const adds = (plans as Array<{ act: string }>).filter((plan) => plan.act === 'add');
+    expect(adds).toMatchObject([
+      { target: { id: 'context7' }, available: true, display: 'example mcp add context7' },
+      { target: { id: 'linear' }, available: false, reason: 'held' },
+    ]);
+    expect(t.reads).not.toHaveBeenCalled();
+  });
+});
 
 describe('createExtensionActRunner', () => {
   it("plans from a fresh read, then runs the agent's own command in the clean environment and reads again", async () => {

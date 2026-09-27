@@ -4,9 +4,14 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  describeMcpDefinition,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
+  McpServerDefinitionSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type McpServerDefinition,
+  type McpServerItem,
 } from '@vibecook/puppeteer-core';
 import { createClaudeExtensionService } from './extensions.js';
 
@@ -259,6 +264,57 @@ describe('Claude Code extensions', () => {
     expect(inventory.items.map((item) => item.id)).toEqual(['release-notes']);
   });
 
+  it('offers a server another agent could take only when nothing of it would stay behind', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'claude-0b7e2c4d');
+    await write(join(root, '.claude.json'), {
+      mcpServers: {
+        github: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-github'],
+          env: { GITHUB_TOKEN: 'ghp_northlightvalue0123456789' },
+        },
+        docs: { type: 'http', url: 'https://mcp.northlight.studio/docs' },
+        weather: { command: 'npx', args: ['-y', 'weather-mcp', 'sk-ant-api03-weathervalue0123456789'] },
+        linear: {
+          type: 'http',
+          url: 'https://mcp.linear.app/mcp',
+          headers: { Authorization: 'Bearer lin_api_secret_value' },
+        },
+        // Claude Code keeps args as strings: this one is not the server a definition would give
+        numbered: { command: 'node', args: ['server.js', '--port', 8080] },
+      },
+    });
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createClaudeExtensionService({ home, now }).inventory(managedProfile(root)),
+    );
+    const document = JSON.stringify(inventory);
+    for (const secret of ['ghp_northlightvalue', 'weathervalue', 'lin_api_secret_value']) {
+      expect(document).not.toContain(secret);
+    }
+
+    expect(find(inventory, 'mcp-server', 'github')).toHaveProperty('definition', {
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+      env: ['GITHUB_TOKEN'],
+    });
+    expect(find(inventory, 'mcp-server', 'docs')).toHaveProperty('definition', {
+      transport: 'http',
+      url: 'https://mcp.northlight.studio/docs',
+    });
+    // a key in its command line is masked, so the target is not the whole of it
+    expect(find(inventory, 'mcp-server', 'weather')).toMatchObject({ target: 'npx -y weather-mcp •••' });
+    // a header's value never travels
+    expect(find(inventory, 'mcp-server', 'linear')).toMatchObject({ headers: ['Authorization'] });
+    for (const id of ['weather', 'linear', 'numbered']) {
+      const server = find(inventory, 'mcp-server', id);
+      expect(server).toBeDefined();
+      expect(server).not.toHaveProperty('definition');
+    }
+  });
+
   it('reads an empty root as holding nothing', async () => {
     const home = await tempHome();
     const inventory = ExtensionInventorySchema.parse(
@@ -293,6 +349,18 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+/** The server an add plans from, as the runtime synthesizes it: never read, always the profile's own. */
+const addedServer = (name: string, definition: McpServerDefinition): McpServerItem => ({
+  kind: 'mcp-server',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  transport: definition.transport,
+  target: describeMcpDefinition(definition),
+  ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+  definition,
+});
 
 describe('Claude Code extension acts', () => {
   const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
@@ -363,5 +431,139 @@ describe('Claude Code extension acts', () => {
       ),
     ).toMatchObject({ available: false, reason: 'not-own' });
     expect(claude.plan!(work, actSkill(), 'disable')).toMatchObject({ available: false, reason: 'no-command' });
+  });
+
+  it("adds a stdio server at user scope, each variable named in Claude Code's own syntax and never its value", () => {
+    // values the host's environment holds: an add names the variables and never carries one
+    const values = { GITHUB_TOKEN: 'ghp_northlightvalue0123456789', GITHUB_HOST: 'github.northlight.example' };
+    const hosted = createClaudeExtensionService({ executable: 'claude', env: values, home: '/Users/test' });
+    const github = addedServer(
+      'github',
+      McpServerDefinitionSchema.parse({
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-github'],
+        env: ['GITHUB_TOKEN', 'GITHUB_HOST'],
+      }),
+    );
+    // the name before `-e`, which takes every word after it; `--` ends Claude Code's own options
+    const argv = [
+      'claude',
+      'mcp',
+      'add',
+      'github',
+      '--scope',
+      'user',
+      '-e',
+      'GITHUB_TOKEN=${GITHUB_TOKEN:-}',
+      '-e',
+      'GITHUB_HOST=${GITHUB_HOST:-}',
+      '--',
+      'npx',
+      '-y',
+      '@modelcontextprotocol/server-github',
+    ];
+    const plan = {
+      target: { kind: 'mcp-server', id: 'github' },
+      act: 'add',
+      available: true,
+      display:
+        'claude mcp add github --scope user -e GITHUB_TOKEN=${GITHUB_TOKEN:-} -e GITHUB_HOST=${GITHUB_HOST:-} -- npx -y @modelcontextprotocol/server-github',
+      reaches: [],
+    };
+    const work = ExtensionActPlanSchema.parse(
+      hosted.plan!(actProfile('managed', '/profiles/work/claude'), github, 'add'),
+    );
+    expect(work).toEqual({
+      ...plan,
+      runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+    });
+    // the native default is the root Claude Code finds with no variable at all
+    const native = ExtensionActPlanSchema.parse(
+      hosted.plan!(actProfile('native-default', '/Users/test/.claude'), github, 'add'),
+    );
+    expect(native).toEqual({ ...plan, runs: { kind: 'command', argv } });
+    for (const answer of [work, native]) {
+      const document = JSON.stringify(answer);
+      for (const value of Object.values(values)) expect(document).not.toContain(value);
+    }
+  });
+
+  it('adds a remote server at its address, over HTTP or SSE', () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    const docs = addedServer('docs', { transport: 'http', url: 'https://mcp.northlight.studio/docs' });
+    expect(ExtensionActPlanSchema.parse(claude.plan!(work, docs, 'add'))).toEqual({
+      target: { kind: 'mcp-server', id: 'docs' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: [
+          'claude',
+          'mcp',
+          'add',
+          'docs',
+          'https://mcp.northlight.studio/docs',
+          '--scope',
+          'user',
+          '--transport',
+          'http',
+        ],
+        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+      },
+      display: 'claude mcp add docs https://mcp.northlight.studio/docs --scope user --transport http',
+      reaches: [],
+    });
+    const events = addedServer('events', { transport: 'sse', url: 'https://mcp.northlight.studio/sse' });
+    expect(ExtensionActPlanSchema.parse(claude.plan!(work, events, 'add'))).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: [
+          'claude',
+          'mcp',
+          'add',
+          'events',
+          'https://mcp.northlight.studio/sse',
+          '--scope',
+          'user',
+          '--transport',
+          'sse',
+        ],
+      },
+      display: 'claude mcp add events https://mcp.northlight.studio/sse --scope user --transport sse',
+      reaches: [],
+    });
+  });
+
+  it("answers an add Claude Code's command cannot take: a name or address it would misread, no definition, a skill", () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    const docs = { transport: 'http', url: 'https://mcp.northlight.studio/docs' } as const;
+    for (const name of ['--scope', 'north light']) {
+      expect(claude.plan!(work, addedServer(name, docs), 'add')).toEqual({
+        target: { kind: 'mcp-server', id: name },
+        act: 'add',
+        available: false,
+        reason: 'no-command',
+        message: "Claude Code's commands do not take this server's name",
+      });
+    }
+    expect(claude.plan!(work, addedServer('docs', { ...docs, url: '--scope=project' }), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+    });
+    // an own server as a read found it carries no definition to add from
+    expect(claude.plan!(work, actServer(), 'add')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Claude Code adds a server only from its command line or address',
+    });
+    expect(claude.plan!(work, actSkill(), 'add')).toMatchObject({
+      target: { kind: 'skill', id: 'release-notes' },
+      available: false,
+      reason: 'unsupported',
+    });
   });
 });

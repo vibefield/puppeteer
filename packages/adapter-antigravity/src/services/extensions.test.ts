@@ -4,10 +4,14 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  describeMcpDefinition,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type McpServerDefinition,
+  type McpServerItem,
 } from '@vibecook/puppeteer-core';
 import { createAntigravityExtensionService } from './extensions.js';
 
@@ -289,6 +293,69 @@ describe('Antigravity extensions', () => {
     expect(inventory.items).toEqual([]);
     expect(inventory.unread).toBeUndefined();
   });
+
+  it('gives a server of the person’s own its definition when nothing in it was hidden, and a plugin’s server none', async () => {
+    const home = await tempHome();
+    const config = join(home, '.gemini', 'config');
+    await write(join(config, 'mcp_config.json'), {
+      mcpServers: {
+        context7: {
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp'],
+          env: { CONTEXT7_API_KEY: 'ctx7sk-literal-secret' },
+        },
+        deepwiki: { serverUrl: 'https://mcp.deepwiki.com/mcp' },
+        events: { serverUrl: 'https://events.example.com/sse', type: 'sse' },
+        linear: { serverUrl: 'https://mcp.linear.app/mcp', headers: { Authorization: 'Bearer lin_api_literal' } },
+        sentry: {
+          serverUrl: 'https://mcp.sentry.dev/mcp',
+          oauth: { clientId: 'sentry-client', clientSecret: 'oauth-client-secret' },
+        },
+        bigquery: { serverUrl: 'https://bigquery.googleapis.com/mcp', authProviderType: 'google_credentials' },
+        notes: { command: 'node', args: ['server.js'], cwd: '/Users/test/notes-server' },
+        github: {
+          command: 'docker',
+          args: [
+            'run',
+            '-i',
+            '-e',
+            'GITHUB_PERSONAL_ACCESS_TOKEN=ghp_literalsecret',
+            'ghcr.io/github/github-mcp-server',
+          ],
+        },
+      },
+    });
+    await write(join(config, 'plugins', 'review', 'plugin.json'), { name: 'review' });
+    await write(join(config, 'plugins', 'review', 'mcp_config.json'), {
+      mcpServers: { house: { serverUrl: 'https://mcp.northlight.studio/house' } },
+    });
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createAntigravityExtensionService({ home: '/nonexistent', now }).inventory(managedProfile(home)),
+    );
+    const document = JSON.stringify(inventory);
+    for (const secret of ['ctx7sk-literal-secret', 'lin_api_literal', 'oauth-client-secret', 'ghp_literalsecret']) {
+      expect(document).not.toContain(secret);
+    }
+    const definition = (id: string) => {
+      const server = find(inventory, 'mcp-server', id);
+      expect(server, id).toBeDefined();
+      return (server as McpServerItem).definition;
+    };
+    // The names the server reads travel; their literal values stay in Antigravity's file.
+    expect(definition('context7')).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp'],
+      env: ['CONTEXT7_API_KEY'],
+    });
+    expect(definition('deepwiki')).toEqual({ transport: 'http', url: 'https://mcp.deepwiki.com/mcp' });
+    expect(definition('events')).toEqual({ transport: 'sse', url: 'https://events.example.com/sse' });
+    // A header, an OAuth client, Google credentials, a working folder, anything masked, and a plugin's server stay behind.
+    for (const id of ['linear', 'sentry', 'bigquery', 'notes', 'github', 'plugin:review:house']) {
+      expect(definition(id), id).toBeUndefined();
+    }
+  });
 });
 
 // ── acts (RFC 006 C2) ──
@@ -315,6 +382,18 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+/** A server to add, as the runtime gives it: the server as Antigravity would hold it once added. */
+const added = (definition: McpServerDefinition, name = 'context7'): McpServerItem => ({
+  kind: 'mcp-server',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  transport: definition.transport,
+  target: describeMcpDefinition(definition),
+  ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
+  definition,
+});
 
 describe('Antigravity extension acts', () => {
   const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/Users/test' });
@@ -341,5 +420,89 @@ describe('Antigravity extension acts', () => {
       reason: 'in-app',
       message: 'Antigravity signs in to a server only in its /mcp panel',
     });
+  });
+
+  it("adds a server with its own add under the profile's HOME, the command line after `--`", () => {
+    const plan = agy.plan!(
+      actProfile('managed', '/profiles/work/antigravity'),
+      added({ transport: 'stdio', command: 'npx', args: ['-y', '@upstash/context7-mcp', '--transport', 'stdio'] }),
+      'add',
+    );
+    expect(ExtensionActPlanSchema.parse(plan)).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['agy', 'mcp', 'add', 'context7', '--', 'npx', '-y', '@upstash/context7-mcp', '--transport', 'stdio'],
+        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+      },
+      display: 'agy mcp add context7 -- npx -y @upstash/context7-mcp --transport stdio',
+      reaches: [],
+    });
+    const http = agy.plan!(
+      actProfile('native-default', '/Users/test'),
+      added({ transport: 'http', url: 'https://mcp.linear.app/mcp' }, 'linear'),
+      'add',
+    );
+    expect(http).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'mcp', 'add', 'linear', 'https://mcp.linear.app/mcp'] },
+      display: 'agy mcp add linear https://mcp.linear.app/mcp',
+      reaches: [],
+    });
+    expect((http as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it('adds no server that reads a variable, since Antigravity keeps only literal values, and none over SSE', () => {
+    const work = actProfile('managed', '/profiles/work/antigravity');
+    expect(
+      agy.plan!(
+        work,
+        added({
+          transport: 'stdio',
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp'],
+          env: ['CONTEXT7_API_KEY'],
+        }),
+        'add',
+      ),
+    ).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: "Antigravity reads a server's values only from its own file, never from a variable",
+    });
+    expect(
+      agy.plan!(work, added({ transport: 'sse', url: 'https://events.example.com/sse' }, 'events'), 'add'),
+    ).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Antigravity adds a remote server by its command only as Streamable HTTP',
+    });
+    // Antigravity's add would take any other address for a command.
+    expect(agy.plan!(work, added({ transport: 'http', url: 'mcp.example.com/mcp' }, 'bare'), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+    });
+  });
+
+  it('adds only a server with a definition, under a name its command takes', () => {
+    const work = actProfile('managed', '/profiles/work/antigravity');
+    const linear: McpServerDefinition = { transport: 'http', url: 'https://mcp.linear.app/mcp' };
+    for (const name of ['--version', 'my server']) {
+      expect(agy.plan!(work, added(linear, name), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'no-command',
+        message: "Antigravity's commands do not take this server's name",
+      });
+    }
+    expect(agy.plan!(work, actServer(), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Antigravity adds only a server, from its definition',
+    });
+    expect(agy.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
   });
 });
