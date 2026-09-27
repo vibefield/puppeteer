@@ -52,12 +52,14 @@ import {
   extensionCommandPlan,
   extensionNotOwnWords,
   extensionSignInAbsentWords,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -481,6 +483,12 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
 
   const shown = (path: string): string => (path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path);
 
+  /** The global config directory, first of those OpenCode scans: read per call, as `env` may be the process's. */
+  const configRootOf = (): string => {
+    const configHome = text(env.XDG_CONFIG_HOME);
+    return join(configHome && isAbsolute(configHome) ? configHome : join(home, '.config'), 'opencode');
+  };
+
   const executable = resolveOpenCodeExecutable(options.executable);
 
   // Acts (RFC 006 C2): OpenCode has no command that turns a server off or a
@@ -496,11 +504,36 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
   // fills it from its own environment when it loads. That form always writes
   // the one global config, so it needs no profile variable and reaches every
   // profile.
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // A skill a host keeps is placed as a link in the global config's `skills/`,
+  // the one folder of OpenCode's own, which every profile reads. OpenCode keys
+  // a skill by its frontmatter `name`, not its folder: the link is named for
+  // the host's name for it, and a removal goes by the folder the read found.
+  // Only a skill directly in that folder is taken away — the link goes, or the
+  // person's own folder moves to where the host keeps it; one in `skill/`
+  // beside it, `~/.opencode`, `OPENCODE_CONFIG_DIR`, `skills.paths` or
+  // `~/.agents/skills` changes where it is.
+  const skillPlan = (item: SkillItem, act: 'add' | 'remove', keepIn: string | undefined): ExtensionActPlan =>
+    extensionSkillFolderPlan({
+      label: 'OpenCode',
+      folder: join(configRootOf(), 'skills'),
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      reaches: ['every-profile'],
+      home,
+    });
+
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (act === 'add') {
-      if (item.kind !== 'mcp-server' || item.definition === undefined) {
-        return extensionActUnavailable(target, act, 'unsupported', 'OpenCode adds only a server, from its definition');
+      if (item.kind === 'skill') return skillPlan(item, act, undefined);
+      if (item.definition === undefined) {
+        return extensionActUnavailable(target, act, 'unsupported', 'OpenCode adds a server only from its definition');
       }
       if (!EXTENSION_COMMAND_NAME.test(item.id)) {
         return extensionActUnavailable(target, act, 'no-command', "OpenCode's commands do not take this server's name");
@@ -528,6 +561,7 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('OpenCode', item, 'Claude Code'));
     }
+    if (item.kind === 'skill' && act === 'remove') return skillPlan(item, act, options.keepIn);
     if (item.kind === 'mcp-server' && (act === 'sign-in' || act === 'sign-out')) {
       const absent = extensionSignInAbsentWords('OpenCode', item);
       if (absent !== undefined) return extensionActUnavailable(target, act, 'no-sign-in', absent);
@@ -557,8 +591,7 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
-      const configHome = text(env.XDG_CONFIG_HOME);
-      const configRoot = join(configHome && isAbsolute(configHome) ? configHome : join(home, '.config'), 'opencode');
+      const configRoot = configRootOf();
       const configFile = text(env.OPENCODE_CONFIG);
       const extraDirectory = text(env.OPENCODE_CONFIG_DIR);
       const content = text(env.OPENCODE_CONFIG_CONTENT);

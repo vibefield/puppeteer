@@ -1,10 +1,11 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extensionActUnavailable,
   extensionCommandPlan,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
   type AgentHost,
   type AgentProfile,
@@ -12,6 +13,7 @@ import {
   type ExtensionProvider,
   type ExtensionService,
   type McpServerItem,
+  type SkillItem,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
 import type { UpdateCommandRequest } from '../distribution/update.js';
@@ -223,7 +225,7 @@ describe('createExtensionActRunner, add', () => {
     expect(receipt).toMatchObject({ status: 'unchanged', message: 'Example does not hold it' });
   });
 
-  it('answers held for a name the agent holds, unsupported for a skill, and invalid without a definition', async () => {
+  it('answers held for a name the agent holds, and invalid without a definition or a skill without its folder', async () => {
     const t = await setup();
     const ask = (fields: { id: string; kind?: 'mcp-server' | 'skill'; definition?: typeof CONTEXT7 }) =>
       t.runner.plan({
@@ -238,10 +240,8 @@ describe('createExtensionActRunner, add', () => {
       reason: 'held',
       message: 'Example already has a server named linear',
     });
-    expect(await ask({ id: 'notes', kind: 'skill', definition: CONTEXT7 })).toMatchObject({
-      available: false,
-      reason: 'unsupported',
-    });
+    // a skill is added from the folder the host keeps it in, never from a server's definition
+    expect(await ask({ id: 'notes', kind: 'skill', definition: CONTEXT7 })).toMatchObject({ status: 'invalid' });
     expect(await ask({ id: 'context7' })).toMatchObject({ status: 'invalid' });
     expect(t.commands).toEqual([]);
   });
@@ -608,5 +608,250 @@ describe('the inventory reader, fresh', () => {
     release?.();
     await Promise.all([first, joined]);
     expect(reads).toHaveLength(2);
+  });
+});
+
+/**
+ * A fake agent whose skills are real folders: it reads `<root>/skills` (links
+ * followed, as the agents do) and plans with Core's folder placing, so every
+ * receipt comes from reading the folder again after the runtime's own steps.
+ */
+async function skillAgent(options: { named?: (folder: string) => string; skips?: (folder: string) => boolean } = {}) {
+  root = await mkdtemp(join(tmpdir(), 'puppeteer-skill-act-'));
+  const agentRoot = join(root, 'agent');
+  const skills = join(agentRoot, 'skills');
+  const kept = join(root, 'kept');
+  await mkdir(skills, { recursive: true });
+  await mkdir(kept, { recursive: true });
+  const work: AgentProfile = {
+    id: 'work-example',
+    provider: 'example',
+    label: 'Work',
+    kind: 'managed',
+    dataRoot: agentRoot,
+    createdAt: '1970-01-01T00:00:00.000Z',
+  };
+  const provider: ExtensionProvider = {
+    id: 'example',
+    label: 'Example',
+    support: { skills: { store: 'profile', changes: 'folder', read: true } },
+  };
+  const service: ExtensionService = {
+    provider,
+    inventory: async (profile): Promise<ExtensionInventory> => {
+      const items: SkillItem[] = [];
+      for (const name of (await readdir(skills)).sort()) {
+        if (options.skips?.(name) === true) continue;
+        const location = join(skills, name);
+        const linked = (await lstat(location)).isSymbolicLink();
+        try {
+          await readFile(join(location, 'SKILL.md'), 'utf8');
+        } catch {
+          continue;
+        }
+        const named = options.named?.(name) ?? name;
+        items.push({
+          kind: 'skill',
+          id: named,
+          name: named,
+          origin: 'own',
+          enabled: true,
+          location,
+          ...(linked ? { linkTarget: await readlink(location) } : {}),
+        });
+      }
+      return {
+        provider: 'example',
+        profileId: profile.id,
+        fetchedAt: '2026-09-27T09:00:00.000Z',
+        items,
+        source: { kind: 'native-store', stability: 'documented' },
+      };
+    },
+    plan: (_profile, item, act, options) =>
+      item.kind === 'skill' && (act === 'add' || act === 'remove')
+        ? extensionSkillFolderPlan({
+            label: 'Example',
+            folder: skills,
+            item,
+            act,
+            ...(options?.keepIn === undefined ? {} : { keepIn: options.keepIn }),
+            home: root!,
+          })
+        : extensionActUnavailable({ kind: item.kind, id: item.id }, act, 'no-command', 'Example has no switch'),
+  };
+  const providers = new Map([['example', { provider, service }]]);
+  const resolveProfile = async (_providerId: string, profileId: string) =>
+    profileId === work.id ? { profile: work } : { error: `unknown account profile: ${profileId}` };
+  const reader = createExtensionInventoryReader({ providers, resolveProfile, nativeDefaultProfileId: () => undefined });
+  const run = vi.fn();
+  const runner = createExtensionActRunner({
+    providers,
+    reader,
+    resolveProfile,
+    nativeDefaultProfileId: () => undefined,
+    run,
+    env: { PATH: '/usr/bin', HOME: root },
+  });
+  const skill = async (folder: string, body = 'Write the notes.') => {
+    await mkdir(folder, { recursive: true });
+    await writeFile(join(folder, 'SKILL.md'), `---\nname: ${folder.split('/').pop()}\n---\n${body}\n`);
+  };
+  return { runner, work, skills, kept, skill, run };
+}
+
+describe('createExtensionActRunner, skills placed', () => {
+  it("links a kept skill where the agent looks, says each step, and the second read's link is the receipt", async () => {
+    const t = await skillAgent();
+    const folder = join(t.kept, 'release-notes');
+    await t.skill(folder);
+    const output: string[] = [];
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      folder,
+      onOutput: (chunk) => output.push(chunk),
+    });
+    expect(receipt).toMatchObject({
+      status: 'changed',
+      message: 'added',
+      display: 'link ~/kept/release-notes → ~/agent/skills/release-notes',
+    });
+    expect(output.join('')).toBe('link ~/kept/release-notes → ~/agent/skills/release-notes\n');
+    expect(await readlink(join(t.skills, 'release-notes'))).toBe(folder);
+    // no command ran: the runtime placed the link itself
+    expect(t.run).not.toHaveBeenCalled();
+
+    // a second add finds it held, and the link taken away is the receipt of a remove
+    await expect(
+      t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'skill', id: 'release-notes' },
+        act: 'add',
+        folder,
+      }),
+    ).resolves.toMatchObject({ available: false, reason: 'held' });
+    const removed = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+    });
+    expect(removed).toMatchObject({ status: 'changed', message: 'removed' });
+    await expect(lstat(join(t.skills, 'release-notes'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await readFile(join(folder, 'SKILL.md'), 'utf8')).toContain('Write the notes.');
+  });
+
+  it('finds the skill where its link went, for an agent that names skills in their own words', async () => {
+    // OpenCode keys a skill by its SKILL.md `name`, which need not be its folder's
+    const t = await skillAgent({ named: (folder) => folder.replace(/-/gu, ' ').toUpperCase() });
+    const folder = join(t.kept, 'release-notes');
+    await t.skill(folder);
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      folder,
+    });
+    expect(receipt).toMatchObject({ status: 'changed', message: 'added' });
+  });
+
+  it('takes back a link the agent does not read, so nothing blocks the next try', async () => {
+    // Kimi skips a SKILL.md with no name or description; Grok, a path its settings ignore
+    const t = await skillAgent({ skips: (folder) => folder === 'unread' });
+    const folder = join(t.kept, 'unread');
+    await t.skill(folder);
+    const output: string[] = [];
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'unread' },
+      act: 'add',
+      folder,
+      onOutput: (chunk) => output.push(chunk),
+    });
+    expect(receipt).toMatchObject({
+      status: 'unchanged',
+      message: 'Example does not hold it, so what was placed was taken back',
+    });
+    await expect(lstat(join(t.skills, 'unread'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(output.join('')).toBe(
+      'link ~/kept/unread → ~/agent/skills/unread\nundone: link ~/kept/unread → ~/agent/skills/unread\n',
+    );
+  });
+
+  it("moves the agent's own folder to where the host keeps it, and a refused step is the failed receipt", async () => {
+    const t = await skillAgent();
+    await t.skill(join(t.skills, 'changelog'), 'mine');
+    const keepIn = join(t.kept, 'changelog');
+    const plans = await t.runner.plans({
+      providerId: 'example',
+      profileId: t.work.id,
+      items: [
+        {
+          kind: 'skill',
+          id: 'changelog',
+          name: 'changelog',
+          origin: 'own',
+          enabled: true,
+          location: join(t.skills, 'changelog'),
+        },
+      ],
+      skills: [
+        { name: 'changelog', folder: keepIn },
+        { name: 'release-notes', folder: join(t.kept, 'release-notes') },
+      ],
+      keep: t.kept,
+    });
+    expect(Array.isArray(plans) ? plans.map((plan) => [plan.act, plan.target.id, plan.available]) : plans).toEqual([
+      ['enable', 'changelog', false],
+      ['disable', 'changelog', false],
+      ['remove', 'changelog', true],
+      ['add', 'changelog', false],
+      ['add', 'release-notes', true],
+    ]);
+    const remove = Array.isArray(plans) ? plans.find((plan) => plan.act === 'remove') : undefined;
+    expect(remove).toMatchObject({
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(t.skills, 'changelog'), to: keepIn }] },
+    });
+
+    const moved = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'changelog' },
+      act: 'remove',
+      folder: keepIn,
+    });
+    expect(moved).toMatchObject({ status: 'changed', message: 'removed' });
+    expect(await readFile(join(keepIn, 'SKILL.md'), 'utf8')).toContain('mine');
+
+    // something already where the link would go: nothing is overwritten, and the read says so
+    await t.skill(join(t.kept, 'other'));
+    await mkdir(join(t.skills, 'other'));
+    const refused = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'skill', id: 'other' },
+      act: 'add',
+      folder: join(t.kept, 'other'),
+    });
+    expect(refused).toMatchObject({
+      status: 'failed',
+      message: 'the link at ~/agent/skills/other could not be made: something is already there',
+    });
+    // a relative folder is never planned at all
+    await expect(
+      t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'skill', id: 'x' },
+        act: 'add',
+        folder: 'kept/x',
+      }),
+    ).resolves.toMatchObject({ status: 'invalid' });
   });
 });

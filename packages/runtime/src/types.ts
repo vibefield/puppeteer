@@ -517,6 +517,12 @@ export interface ExtensionActOptions {
   act: ExtensionActKind;
   /** What an `add` gives the agent: the server, and the names of the variables it reads. */
   definition?: McpServerDefinition;
+  /**
+   * A skill's folder, absolute: for `add`, the one copy the host keeps, which
+   * the agent is given a link to where it looks for skills; for `remove`,
+   * where the host keeps the agent's own folder instead of leaving it.
+   */
+  folder?: string;
   /** The act's own output as it arrives: display text, never parsed. */
   onOutput?: (chunk: string) => void;
   /** Aborting stops the act and everything it started. */
@@ -843,6 +849,12 @@ export interface AgentRuntime {
     items: ReadonlyArray<McpServerItem | SkillItem>,
     /** Servers a host would give the agent, by name: each one's add, planned against `items`. */
     adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>,
+    skills?: {
+      /** Skills a host would give the agent, by name, each from the folder it keeps: each one's link. */
+      adds?: ReadonlyArray<{ name: string; folder: string }>;
+      /** The folder a host keeps skills in: the agent's own skill folder is planned to move there when it goes. */
+      keep?: string;
+    },
   ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;

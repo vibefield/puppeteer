@@ -43,10 +43,12 @@ import { fileURLToPath, URL } from 'node:url';
 import {
   extensionActUnavailable,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -746,9 +748,50 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     },
   };
 
-  // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the app.
-  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  const agentDirOf = (profile: AgentProfile): string =>
+    profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);
+
+  // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the
+  // app. A skill a host keeps is placed as a link in the profile's own
+  // `skills/` (Pi follows links there), and only a skill's folder directly in
+  // it is taken away: the link goes, or the person's own folder moves to where
+  // the host keeps it. A loose `.md` skill beside those folders is one file,
+  // not a folder a host keeps, so it stays; one nested deeper, in
+  // `~/.agents/skills` (every profile's, and other agents'), on a settings path
+  // or in a package changes where it is.
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'skill' && (act === 'add' || act === 'remove')) {
+      const folder = join(agentDirOf(profile), 'skills');
+      // A loose skill's location is its `.md` file; a folder skill's is the folder that holds `SKILL.md`.
+      if (
+        act === 'remove' &&
+        item.origin === 'own' &&
+        item.location !== undefined &&
+        dirname(item.location) === folder &&
+        item.location.endsWith('.md')
+      ) {
+        return extensionActUnavailable(
+          target,
+          act,
+          'no-command',
+          `${item.name} is a loose file in Pi's skills folder, and only a skill's folder is taken away`,
+        );
+      }
+      return extensionSkillFolderPlan({
+        label: 'Pi',
+        folder,
+        item,
+        act,
+        ...(options.keepIn === undefined ? {} : { keepIn: options.keepIn }),
+        home,
+      });
+    }
     if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
     return extensionActUnavailable(target, act, 'in-app', 'Pi filters its skills only with pi config');
   }
@@ -758,7 +801,7 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
-      const agentDir = profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);
+      const agentDir = agentDirOf(profile);
       const unread = new Map<ExtensionKind, string>();
       const note = (error: unknown): void => {
         if (!(error instanceof Unread)) throw error;

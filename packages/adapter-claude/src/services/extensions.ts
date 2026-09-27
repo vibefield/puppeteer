@@ -37,12 +37,14 @@ import {
   extensionCommandPlan,
   extensionNotOwnWords,
   extensionSignInAbsentWords,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -213,6 +215,11 @@ async function skillFolders(parent: string, skip: ReadonlySet<string> = new Set(
   return found.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** The folder Claude Code reads a person's skills from in one profile, the account's `synced/` inside it. */
+function skillsFolder(profile: AgentProfile): string {
+  return join(profile.dataRoot, 'skills');
+}
+
 function skillItem(
   skill: SkillFolder,
   fields: Pick<SkillItem, 'id' | 'origin' | 'enabled'> & Partial<Pick<SkillItem, 'plugin'>>,
@@ -263,14 +270,51 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
   // naming a variable it has no value and no default for: a Claude started
   // without the host's values keeps its other servers, and this one gets none.
   // The report's forms, not probed.
+  //
+  // A skill a host keeps is linked into the root's `skills/`, which Claude Code
+  // follows ("Symlinked skill folders in those three locations are read from
+  // the target and loaded once", its skills docs); a person's own goes as a
+  // link taken away, or a folder moved to where the host keeps it.
   const profileEnv = (profile: AgentProfile): Record<string, string> =>
     profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
 
+  // Grok and OpenCode also load the skills in the home's `~/.claude/skills`
+  // whatever their own profile, so a skill placed in or taken from the native
+  // default's reaches them; a managed root's folder is its own.
+  const borrowedSkills = join(home, '.claude', 'skills');
+
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: 'add' | 'remove',
+    keepIn: string | undefined,
+  ): ExtensionActPlan {
+    // `skills/synced` is the account's synced skills, which Claude Code writes
+    // itself; a case-folding disk (macOS's, Windows') takes `Synced` for it too.
+    if (act === 'add' && item.id.toLowerCase() === 'synced') {
+      return extensionActUnavailable(
+        { kind: 'skill', id: item.id },
+        act,
+        'unsupported',
+        "Claude Code keeps your account's synced skills in skills/synced",
+      );
+    }
+    const folder = skillsFolder(profile);
+    return extensionSkillFolderPlan({
+      label: 'Claude Code',
+      folder,
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      reaches: folder === borrowedSkills ? ['shared-folder'] : [],
+      home,
+    });
+  }
+
   /** A user server lands in the profile's own app state, which no other profile reads. */
-  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+  function planAdd(profile: AgentProfile, item: McpServerItem): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
-    if (item.kind !== 'mcp-server') return unsupported('Claude Code adds a skill as a folder, not with a command');
     const definition = item.definition;
     if (definition === undefined) return unsupported('Claude Code adds a server only from its command line or address');
     if (!EXTENSION_COMMAND_NAME.test(item.id)) {
@@ -308,9 +352,18 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
     return extensionCommandPlan({ target, act: 'add', argv, env: profileEnv(profile), reaches: [] });
   }
 
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
-    // an add plans from the server as Claude Code would hold it once added, always its own
-    if (act === 'add') return planAdd(profile, item);
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
+    if (item.kind === 'skill') {
+      if (act === 'add' || act === 'remove') return planSkill(profile, item, act, options.keepIn);
+    } else if (act === 'add') {
+      // an add plans from the server as Claude Code would hold it once added, always its own
+      return planAdd(profile, item);
+    }
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Claude Code', item));
@@ -519,10 +572,12 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
 
       // Skills: the person's, then the account's synced ones.
       const skillOn = (name: string) => text(skillOverrides[name]) !== 'off';
-      for (const skill of await skillFolders(join(root, 'skills'), new Set(['synced']))) {
+      // the folder an act plans in, so a remove finds the skill a read found in it
+      const skills = skillsFolder(profile);
+      for (const skill of await skillFolders(skills, new Set(['synced']))) {
         items.push(skillItem(skill, { id: skill.name, origin: 'own', enabled: skillOn(skill.name) }));
       }
-      for (const skill of await skillFolders(join(root, 'skills', 'synced'))) {
+      for (const skill of await skillFolders(join(skills, 'synced'))) {
         items.push(skillItem(skill, { id: `synced:${skill.name}`, origin: 'managed', enabled: skillOn(skill.name) }));
       }
 

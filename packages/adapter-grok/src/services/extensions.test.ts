@@ -12,6 +12,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createGrokExtensionService, parseGrokConfig } from './extensions.js';
 
@@ -691,5 +692,156 @@ describe('Grok extension acts', () => {
       message: 'Grok adds only a server, from its definition',
     });
     expect(grok.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+  });
+});
+
+// ── skills placed (RFC 006 C2) ──
+
+/** A skill to place, as the runtime gives it: the skill as Grok would hold it once linked. */
+const placed = (name: string, linkTarget?: string): SkillItem => ({
+  kind: 'skill',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  ...(linkTarget === undefined ? {} : { linkTarget }),
+});
+const held = (inventory: ExtensionInventory, id: string): SkillItem => {
+  const item = find(inventory, 'skill', id);
+  expect(item, id).toMatchObject({ kind: 'skill' });
+  return item as SkillItem;
+};
+
+describe('Grok skills placed', () => {
+  it("links a kept skill into the root's own skills folder, and the read finds the link as the root's own", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'grok-5c1e');
+    const kept = join(home, 'kept', 'release-notes');
+    await write(join(kept, 'SKILL.md'), skill('release-notes', 'Drafts release notes'));
+    const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home, now });
+    const work = managedProfile(root);
+
+    expect(ExtensionActPlanSchema.parse(grok.plan!(work, placed('release-notes', kept), 'add'))).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/profiles/work/grok-5c1e/skills/release-notes',
+      reaches: [],
+    });
+
+    // The runtime's step, taken here by hand: the second read follows the link.
+    await mkdir(join(root, 'skills'), { recursive: true });
+    await symlink(kept, join(root, 'skills', 'release-notes'));
+    const linked = held(ExtensionInventorySchema.parse(await grok.inventory(work)), 'release-notes');
+    expect(linked).toMatchObject({ origin: 'own', linkTarget: kept, description: 'Drafts release notes' });
+    // Taking it away takes the link, never the host's folder, even with somewhere to keep one.
+    expect(grok.plan!(work, linked, 'remove', { keepIn: join(home, 'kept', 'elsewhere') })).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(root, 'skills', 'release-notes') }] },
+      display: 'unlink ~/profiles/work/grok-5c1e/skills/release-notes',
+      reaches: [],
+    });
+  });
+
+  it("places into the native default's root under the name it is given, and only a folder by a name a folder takes", () => {
+    const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
+    const native = actProfile('native-default', '/Users/test/.grok');
+    // The key, as given: Grok's own lowercase name for it is its reading, not the folder's.
+    expect(grok.plan!(native, placed('Release_Notes', '/Users/test/kept/Release_Notes'), 'add')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [
+          { op: 'link', path: '/Users/test/.grok/skills/Release_Notes', target: '/Users/test/kept/Release_Notes' },
+        ],
+      },
+      display: 'link ~/kept/Release_Notes → ~/.grok/skills/Release_Notes',
+    });
+    expect(grok.plan!(native, placed('release-notes'), 'add')).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Grok takes a skill as a folder to link',
+    });
+    for (const name of ['../escape', '.hidden', 'team/notes']) {
+      expect(grok.plan!(native, placed(name, '/Users/test/kept/x'), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: `Grok cannot take a skill folder named ${name}`,
+      });
+    }
+  });
+
+  it("moves a real folder of the root's own to where the host keeps it, and with nowhere to keep it leaves it", async () => {
+    const home = await tempHome();
+    const root = join(home, '.grok');
+    await write(join(root, 'skills', 'release_notes', 'SKILL.md'), skill('Release Notes', 'Drafts release notes'));
+    const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home, now });
+    const native = nativeProfile(home);
+    const own = held(ExtensionInventorySchema.parse(await grok.inventory(native)), 'release_notes');
+    expect(own).toMatchObject({ name: 'release-notes', origin: 'own' });
+
+    const keepIn = join(home, 'kept', 'release-notes');
+    expect(grok.plan!(native, own, 'remove', { keepIn })).toEqual({
+      target: { kind: 'skill', id: 'release_notes' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(root, 'skills', 'release_notes'), to: keepIn }] },
+      display: 'move ~/.grok/skills/release_notes → ~/kept/release-notes',
+      reaches: [],
+    });
+    expect(grok.plan!(native, own, 'remove')).toEqual({
+      target: { kind: 'skill', id: 'release_notes' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message: "release-notes is a folder of Grok's own, and nothing keeps it if it goes",
+    });
+    // Its switch stays config.toml's.
+    expect(grok.plan!(native, own, 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+      message: 'Grok switches a skill only in its config.toml, with no command',
+    });
+  });
+
+  it('leaves a skill of the shared folder, and one Grok borrows, ships or a plugin brings, where it is', async () => {
+    const home = await tempHome();
+    const root = join(home, '.grok');
+    await populate(home, root);
+    const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home, now });
+    const native = nativeProfile(home);
+    const inventory = ExtensionInventorySchema.parse(await grok.inventory(native));
+    const remove = (id: string) =>
+      grok.plan!(native, held(inventory, id), 'remove', { keepIn: join(home, 'kept', 'elsewhere') });
+
+    expect(remove('agents:browser-use')).toEqual({
+      target: { kind: 'skill', id: 'agents:browser-use' },
+      act: 'remove',
+      available: false,
+      reason: 'not-own',
+      message: "browser-use is not in Grok's own skills folder, and changes where it is",
+    });
+    // A borrowed one is its lender's, linked or not, named as a person knows the lender.
+    for (const id of ['claude:changelog', 'claude:synced:brand']) {
+      expect(remove(id), id).toMatchObject({
+        available: false,
+        reason: 'not-own',
+        message: 'Grok loads it from Claude Code on This Mac, and it changes there',
+      });
+    }
+    expect(remove('cursor:cursor-rules')).toMatchObject({
+      reason: 'not-own',
+      message: 'Grok loads it from Cursor on This Mac, and it changes there',
+    });
+    expect(remove('bundled:imagine')).toMatchObject({ reason: 'not-own', message: 'It ships with Grok' });
+    expect(remove('plugin:review:house-style')).toMatchObject({
+      reason: 'not-own',
+      message: 'It comes with the review plugin and changes with it',
+    });
   });
 });

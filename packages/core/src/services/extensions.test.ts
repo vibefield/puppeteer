@@ -4,22 +4,28 @@ import {
   describeMcpCommand,
   describeMcpDefinition,
   describeMcpUrl,
+  describeFileSteps,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_SKILL_FOLDER_NAME,
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
   extensionActUnavailable,
   extensionCommandPlan,
+  extensionFilesPlan,
   extensionNotOwnWords,
   extensionSignInAbsentWords,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
   ExtensionFailureSchema,
   ExtensionInventorySchema,
   ExtensionItemSchema,
   ExtensionProviderSchema,
+  isNormalizedAbsolutePath,
   mcpServerDefinition,
   McpServerDefinitionSchema,
   parseSkillFrontmatter,
   type McpServerDefinition,
+  type SkillItem,
 } from './extensions.js';
 
 const inventory = (items: unknown[]) => ({
@@ -525,5 +531,122 @@ describe('server definitions (RFC 006 C2, add)', () => {
     expect(
       ExtensionActPlanSchema.parse(extensionActUnavailable(target, 'add', 'unsupported', 'Codex does not speak SSE')),
     ).toMatchObject({ reason: 'unsupported' });
+  });
+});
+
+describe('skills placed (RFC 006 C2, a skill kept once)', () => {
+  const folder = '/Users/me/.claude/skills';
+  const kept = '/Users/me/Library/Application Support/VibeField/agents/skills/work/release-notes';
+  const skill = (fields: Partial<SkillItem>): SkillItem => ({
+    kind: 'skill',
+    id: 'release-notes',
+    name: 'release-notes',
+    origin: 'own',
+    enabled: true,
+    ...fields,
+  });
+
+  it('takes only a normalized absolute path, and a folder name that stays one folder', () => {
+    for (const path of ['/Users/me/.claude/skills/x', 'C:\\Users\\me\\skills\\x', '/a']) {
+      expect(isNormalizedAbsolutePath(path)).toBe(true);
+    }
+    for (const path of ['', '/', 'skills/x', '~/x', '/a/../b', '/a/./b', '/a//b', '/a/b/', 'C:\\', '/a\u0000b']) {
+      expect(isNormalizedAbsolutePath(path)).toBe(false);
+    }
+    for (const name of ['release-notes', 'Release Notes', 'pdf_2', 'ünïcode']) {
+      expect(EXTENSION_SKILL_FOLDER_NAME.test(name)).toBe(true);
+    }
+    for (const name of ['', '.hidden', '..', 'a/b', 'a\\b', 'tab\there', 'x'.repeat(129)]) {
+      expect(EXTENSION_SKILL_FOLDER_NAME.test(name)).toBe(false);
+    }
+  });
+
+  it('shows each step on its own line, from the home when it is under it', () => {
+    const plan = extensionFilesPlan({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      steps: [
+        { op: 'move', from: kept, to: '/Users/me/.agents/skills/release-notes' },
+        { op: 'link', path: kept, target: '/Users/me/.agents/skills/release-notes' },
+      ],
+      reaches: ['shared-folder'],
+      home: '/Users/me',
+    });
+    expect(ExtensionActPlanSchema.parse(plan)).toEqual(plan);
+    expect(plan.display).toBe(
+      [
+        'move ~/Library/Application Support/VibeField/agents/skills/work/release-notes → ~/.agents/skills/release-notes',
+        'link ~/.agents/skills/release-notes → ~/Library/Application Support/VibeField/agents/skills/work/release-notes',
+      ].join('\n'),
+    );
+    expect(describeFileSteps([{ op: 'unlink', path: '/Users/me2/skills/x' }], '/Users/me')).toBe(
+      'unlink /Users/me2/skills/x',
+    );
+    // a relative path, a doubled separator or a fifth step is no plan
+    for (const steps of [
+      [{ op: 'unlink', path: 'skills/x' }],
+      [{ op: 'link', path: '/a//x', target: '/b' }],
+      Array.from({ length: 5 }, () => ({ op: 'unlink', path: '/a/x' })),
+    ]) {
+      expect(ExtensionActPlanSchema.safeParse({ ...plan, runs: { kind: 'files', steps } }).success).toBe(false);
+    }
+  });
+
+  it('links a kept folder in where the agent looks, and takes away only its own: a link goes, a folder moves to the host', () => {
+    const add = extensionSkillFolderPlan({
+      label: 'Claude Code',
+      folder,
+      item: skill({ linkTarget: kept }),
+      act: 'add',
+      home: '/Users/me',
+    });
+    expect(add).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'link', path: `${folder}/release-notes`, target: kept }] },
+      reaches: [],
+    });
+    expect(extensionSkillFolderPlan({ label: 'Claude Code', folder, item: skill({}), act: 'add' })).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+    });
+    expect(
+      extensionSkillFolderPlan({
+        label: 'Claude Code',
+        folder,
+        item: skill({ id: '../escape', linkTarget: kept }),
+        act: 'add',
+      }),
+    ).toMatchObject({ available: false, reason: 'unsupported' });
+
+    const linked = skill({ location: `${folder}/release-notes`, linkTarget: kept });
+    expect(
+      extensionSkillFolderPlan({ label: 'OpenCode', folder, item: linked, act: 'remove', reaches: ['every-profile'] }),
+    ).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: `${folder}/release-notes` }] },
+      reaches: ['every-profile'],
+    });
+    const own = skill({ location: `${folder}/release-notes` });
+    expect(
+      extensionSkillFolderPlan({ label: 'Claude Code', folder, item: own, act: 'remove', keepIn: kept }),
+    ).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: `${folder}/release-notes`, to: kept }] },
+    });
+    // with nowhere to keep it, the agent's own folder stays
+    expect(extensionSkillFolderPlan({ label: 'Claude Code', folder, item: own, act: 'remove' })).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    // a folder deeper down, somewhere else, or another origin's is not this folder's to take
+    for (const item of [
+      skill({ location: `${folder}/team/release-notes` }),
+      skill({ location: '/Users/me/.agents/skills/release-notes', shared: true }),
+      skill({ location: `${folder}/release-notes`, origin: 'plugin', plugin: 'docs' }),
+    ]) {
+      expect(
+        extensionSkillFolderPlan({ label: 'Claude Code', folder, item, act: 'remove', keepIn: kept }),
+      ).toMatchObject({ available: false, reason: 'not-own' });
+    }
   });
 });

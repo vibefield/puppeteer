@@ -25,7 +25,8 @@
  *   them; the first skill of a name wins. `skills.disabled` names the ones off
  *   (never `hermes-agent`). Hermes calls a skill in `skills/` bundled when
  *   `.bundled_manifest` lists it, hub-installed when `.hub/lock.json` does, and
- *   agent-created otherwise.
+ *   agent-created otherwise; a skill folder there that is a link, which Hermes
+ *   never makes, is the person's own.
  * Bundled plugins live in the install checkout, which every root on it shares;
  * those the root's config names are listed as bundled, and the backends and
  * platforms that load with no allow-list entry are not. Plugins pip installed
@@ -42,6 +43,7 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
@@ -967,6 +969,9 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
   };
 
   const executable = resolveHermesExecutable(options.executable);
+  // The native default is Hermes's own root, whatever path the profile carries.
+  const rootOf = (profile: AgentProfile): string =>
+    profile.kind === 'native-default' ? join(home, '.hermes') : profile.dataRoot;
 
   // Acts (RFC 006 C2): Hermes turns a server off only in its config.yaml
   // (`enabled: false`), so a server of the profile's own is only removed —
@@ -982,9 +987,7 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Hermes', item));
     }
-    if (item.kind === 'skill') {
-      return extensionActUnavailable(target, act, 'no-command', 'Hermes switches a skill only in its config.yaml');
-    }
+    if (item.kind === 'skill') return planSkill(profile, item, act);
     if (act === 'add') {
       return extensionActUnavailable(
         target,
@@ -1036,13 +1039,47 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
     });
   }
 
+  /**
+   * A skill a host keeps is placed as a link directly in the root's `skills/`,
+   * which Hermes's index walk follows (`iter_skill_index_files` walks with
+   * `os.walk(followlinks=True)`), and taking one away takes only such a link.
+   * A real folder there is Hermes's own — its hub's, which `.hub/lock.json`
+   * tracks, or its curator's — so it never moves, whatever keep a host offers;
+   * a skill in a category folder beneath is not the host's to take either.
+   */
+  function planSkill(profile: AgentProfile, item: SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (act !== 'add' && act !== 'remove') {
+      return extensionActUnavailable(target, act, 'no-command', 'Hermes switches a skill only in its config.yaml');
+    }
+    const folder = join(rootOf(profile), 'skills');
+    if (act === 'add' && (EXCLUDED_SKILL_DIRS.has(item.id) || item.id === '_org')) {
+      // its walk prunes these, and `_org` is the org mirror's: a link by such a name never reads as the person's skill
+      return extensionActUnavailable(target, act, 'unsupported', `Hermes passes over a skills folder named ${item.id}`);
+    }
+    if (
+      act === 'remove' &&
+      item.linkTarget === undefined &&
+      item.location !== undefined &&
+      dirname(item.location) === folder
+    ) {
+      // the only real folder there the read calls own is one the hub installed
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        `Hermes's skills hub installed ${item.name} and keeps track of it, so its folder stays where Hermes put it`,
+      );
+    }
+    return extensionSkillFolderPlan({ label: 'Hermes', folder, item, act, home });
+  }
+
   return {
     provider,
     plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
-      // The native default is Hermes's own root, whatever path the profile carries.
-      const root = profile.kind === 'native-default' ? join(home, '.hermes') : profile.dataRoot;
+      const root = rootOf(profile);
       // Puppeteer runs a managed root's Hermes with HOME set to the root, so
       // its `~` is the root; the native default's is the person's home.
       const tildeBase = profile.kind === 'managed' ? root : home;
@@ -1206,14 +1243,18 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
           const name = (frontmatter.name ?? basename(folder)).slice(0, MAX_SKILL_NAME).trim();
           if (!name || names.has(name)) continue;
           names.add(name);
+          const linkTarget = await linkTargetOf(folder);
           let origin: SkillItem['origin'];
           if (directory.own) origin = 'own';
           else if (file.startsWith(orgRoot)) origin = 'managed';
+          // A link is the person's, placed there: skill_manage and the hub
+          // write real folders, and the curator, which ages only skills marked
+          // `created_by: agent`, walks with `rglob`, which never follows a link.
+          else if (linkTarget) origin = 'own';
           else if (ledgers.bundled.has(name) || ledgers.bundled.has(basename(folder))) origin = 'bundled';
           else if (ledgers.hub.has(name) || ledgers.hub.has(basename(folder))) origin = 'own';
-          // Hermes's own word for everything else in `skills/`: the curator ages these.
+          // Hermes's own word for every other folder in `skills/`: the curator ages those skill_manage wrote.
           else origin = 'agent';
-          const linkTarget = await linkTargetOf(folder);
           items.push({
             kind: 'skill',
             id: name,

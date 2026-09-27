@@ -12,6 +12,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createClaudeExtensionService } from './extensions.js';
 
@@ -536,7 +537,7 @@ describe('Claude Code extension acts', () => {
     });
   });
 
-  it("answers an add Claude Code's command cannot take: a name or address it would misread, no definition, a skill", () => {
+  it("answers an add Claude Code's command cannot take: a name or address it would misread, no definition, no folder", () => {
     const work = actProfile('managed', '/profiles/work/claude');
     const docs = { transport: 'http', url: 'https://mcp.northlight.studio/docs' } as const;
     for (const name of ['--scope', 'north light']) {
@@ -560,10 +561,161 @@ describe('Claude Code extension acts', () => {
       reason: 'unsupported',
       message: 'Claude Code adds a server only from its command line or address',
     });
+    // a skill comes only as a folder to link
     expect(claude.plan!(work, actSkill(), 'add')).toMatchObject({
       target: { kind: 'skill', id: 'release-notes' },
       available: false,
       reason: 'unsupported',
+    });
+  });
+});
+
+describe('Claude Code skills placed', () => {
+  /** A skill as the runtime hands it for an add: the host's folder as its link, never read. */
+  const placing = (name: string, folder: string): SkillItem => ({
+    kind: 'skill',
+    id: name,
+    name,
+    origin: 'own',
+    enabled: true,
+    linkTarget: folder,
+  });
+
+  it("links a skill the host keeps into the root's skills folder; the native default's reaches the agents that borrow it", async () => {
+    const home = await tempHome();
+    const kept = join(home, 'kept', 'release-notes');
+    const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home });
+    const work = managedProfile(join(home, 'profiles', 'work', 'claude'));
+    expect(ExtensionActPlanSchema.parse(claude.plan!(work, placing('release-notes', kept), 'add'))).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [
+          { op: 'link', path: join(home, 'profiles', 'work', 'claude', 'skills', 'release-notes'), target: kept },
+        ],
+      },
+      display: 'link ~/kept/release-notes → ~/profiles/work/claude/skills/release-notes',
+      reaches: [],
+    });
+    // Grok and OpenCode read the home's ~/.claude/skills whatever their profile
+    expect(
+      ExtensionActPlanSchema.parse(claude.plan!(nativeProfile(home), placing('release-notes', kept), 'add')),
+    ).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'link', path: join(home, '.claude', 'skills', 'release-notes') }] },
+      display: 'link ~/kept/release-notes → ~/.claude/skills/release-notes',
+      reaches: ['shared-folder'],
+    });
+  });
+
+  it('takes away only its own: a link goes, a folder moves to where the host keeps it, or else stays', async () => {
+    const home = await tempHome();
+    const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home });
+    const work = managedProfile(join(home, 'profiles', 'work', 'claude'));
+    const location = join(work.dataRoot, 'skills', 'release-notes');
+    const keepIn = join(home, 'kept', 'release-notes');
+    expect(claude.plan!(work, actSkill({ location, linkTarget: keepIn }), 'remove')).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: location }] },
+      display: 'unlink ~/profiles/work/claude/skills/release-notes',
+      reaches: [],
+    });
+    expect(claude.plan!(work, actSkill({ location }), 'remove', { keepIn })).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: location, to: keepIn }] },
+      display: 'move ~/profiles/work/claude/skills/release-notes → ~/kept/release-notes',
+    });
+    expect(claude.plan!(work, actSkill({ location }), 'remove')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    // the switch stays a settings key
+    expect(claude.plan!(work, actSkill({ location }), 'disable', { keepIn })).toMatchObject({
+      available: false,
+      reason: 'no-command',
+      message: 'Claude Code turns a skill off only in its settings',
+    });
+  });
+
+  it("leaves the account's synced skills and a plugin's where they come from, and places none named synced", async () => {
+    const home = await tempHome();
+    const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home });
+    const work = managedProfile(join(home, 'profiles', 'work', 'claude'));
+    const keepIn = join(home, 'kept', 'brand');
+    const synced = actSkill({
+      id: 'synced:brand',
+      name: 'brand',
+      origin: 'managed',
+      location: join(work.dataRoot, 'skills', 'synced', 'brand'),
+    });
+    expect(claude.plan!(work, synced, 'remove', { keepIn })).toMatchObject({ available: false, reason: 'not-own' });
+    const plugin = actSkill({
+      id: 'plugin:review@northlight:house-style',
+      name: 'house-style',
+      origin: 'plugin',
+      plugin: 'review@northlight',
+      location: join(work.dataRoot, 'plugins', 'cache', 'northlight', 'review', 'skills', 'house-style'),
+    });
+    expect(claude.plan!(work, plugin, 'remove', { keepIn })).toEqual({
+      target: { kind: 'skill', id: 'plugin:review@northlight:house-style' },
+      act: 'remove',
+      available: false,
+      reason: 'not-own',
+      message: 'It comes with the review@northlight plugin and changes with it',
+    });
+    // a case-folding disk would take `Synced` for the account's folder too
+    for (const name of ['synced', 'Synced']) {
+      expect(claude.plan!(work, placing(name, join(home, 'kept', name)), 'add')).toEqual({
+        target: { kind: 'skill', id: name },
+        act: 'add',
+        available: false,
+        reason: 'unsupported',
+        message: "Claude Code keeps your account's synced skills in skills/synced",
+      });
+    }
+  });
+
+  it('plans from what its own read found, and a link placed where the plan says reads back as its own', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'claude');
+    const kept = join(home, 'kept');
+    await write(join(root, 'skills', 'changelog', 'SKILL.md'), skill('changelog', 'Writes the changelog entry'));
+    await write(join(kept, 'release-notes', 'SKILL.md'), skill('release-notes', 'Drafts release notes'));
+    const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home, now });
+    const work = managedProfile(root);
+    const skillIn = async (id: string): Promise<SkillItem> => {
+      const item = find(ExtensionInventorySchema.parse(await claude.inventory(work)), 'skill', id);
+      if (item?.kind !== 'skill') throw new Error(`the read found no skill ${id}`);
+      return item;
+    };
+
+    const changelog = await skillIn('changelog');
+    expect(claude.plan!(work, changelog, 'remove', { keepIn: join(kept, 'changelog') })).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'move', from: join(root, 'skills', 'changelog'), to: join(kept, 'changelog') }],
+      },
+    });
+    const add = claude.plan!(work, placing('release-notes', join(kept, 'release-notes')), 'add');
+    const step = add.available && add.runs.kind === 'files' ? add.runs.steps[0] : undefined;
+    if (step?.op !== 'link') throw new Error('expected a link step');
+    // the runtime's step, by hand: the second read is the receipt, and the link is the root's own
+    await symlink(step.target, step.path);
+    const placed = await skillIn('release-notes');
+    expect(placed).toMatchObject({
+      origin: 'own',
+      location: step.path,
+      linkTarget: join(kept, 'release-notes'),
+      description: 'Drafts release notes',
+    });
+    expect(claude.plan!(work, placed, 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: step.path }] },
     });
   });
 });

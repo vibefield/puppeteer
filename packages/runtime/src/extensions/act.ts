@@ -1,6 +1,8 @@
 import { stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   describeMcpDefinition,
+  EXTENSION_SKILL_FOLDER_NAME,
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
   type AgentHost,
@@ -8,17 +10,20 @@ import {
   type AvailableExtensionActPlan,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionActReceipt,
   type ExtensionActTarget,
   type ExtensionFailure,
   type ExtensionInventory,
   type ExtensionReach,
+  isNormalizedAbsolutePath,
   type McpServerDefinition,
   type McpServerItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { runUpdateCommand, type UpdateCommandResult, type UpdateCommandRunner } from '../distribution/update.js';
 import { buildAgentEnvironment } from '../host/environment.js';
+import { performFileSteps } from './files.js';
 import type { ExtensionInventoryReader, ExtensionProviderEntry } from './inventory.js';
 
 /**
@@ -39,6 +44,11 @@ import type { ExtensionInventoryReader, ExtensionProviderEntry } from './invento
  * keeps: the fresh read must find no server by that name (an agent's add
  * replaces one), the adapter plans from the server as the agent would hold
  * it, and the second read holding it is the receipt.
+ *
+ * A skill the host keeps is placed where the agent looks for skills: the
+ * adapter plans the folder's steps (a link, a link taken away, the agent's own
+ * folder moved to where the host keeps it) and the runtime performs them
+ * itself, checking each (./files.ts); the second read is the receipt here too.
  */
 
 /** An act is one small edit of the agent's own config: one that hangs is ended. */
@@ -48,11 +58,17 @@ export interface ExtensionActRequest {
   providerId: string;
   /** The native default's when none is named. */
   profileId?: string;
-  /** For `add`, the server's name as the target's id. */
+  /** For `add`, the server's or the skill's name as the target's id. */
   target: ExtensionActTarget;
   act: ExtensionActKind;
   /** What an `add` gives the agent; only with `add`. */
   definition?: McpServerDefinition;
+  /**
+   * A skill's folder, absolute: for `add`, the one copy the host keeps, which
+   * the agent is given a link to; for `remove`, where the host keeps the
+   * agent's own folder instead of leaving it.
+   */
+  folder?: string;
   /** Opaque display text as it arrives; never parsed. */
   onOutput?: (chunk: string) => void;
   /** Aborting stops the act and everything it started. */
@@ -118,6 +134,13 @@ export interface ExtensionActRunner {
      * against `items` (a name the agent already holds answers `held`).
      */
     adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>;
+    /** Skills a host would give the agent, by name, each from the folder it keeps: each one's link. */
+    skills?: ReadonlyArray<{ name: string; folder: string }>;
+    /**
+     * The folder a host keeps skills in: a skill of the agent's own that is a
+     * real folder is planned to move to `<keep>/<name>` when it goes.
+     */
+    keep?: string;
   }): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** Runs an act whose plan needs no terminal: a command or a protocol call. */
   run(request: ExtensionActRequest): Promise<ExtensionActReceipt>;
@@ -168,11 +191,13 @@ function outcome(
   display: string,
   error: string | undefined,
 ): Pick<ExtensionActReceipt, 'status' | 'message'> {
+  // a files plan's error is a whole clause; a command's follows the command it names
+  const said = (why: string | undefined) => (display === '' ? `${why}` : `${display} ${why}`);
   const done = (message: string): Pick<ExtensionActReceipt, 'status' | 'message'> => ({
     status: 'changed',
-    message: `${message}${error === undefined ? '' : `, though ${display} ${error}`}`,
+    message: `${message}${error === undefined ? '' : `, though ${said(error)}`}`,
   });
-  const refused = { status: 'failed' as const, message: `${display} ${error}` };
+  const refused = { status: 'failed' as const, message: said(error) };
   if (act === 'add' || before === undefined) {
     if (after !== undefined) return done(DONE.add);
     if (error !== undefined) return refused;
@@ -240,7 +265,11 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     const inventory = await options.reader.inventory(providerId, target, { fresh: true });
     if ('status' in inventory) return { failure: inventory };
     const item =
-      request.act === 'add' ? ownServerNamed(inventory.items, request.target.id) : find(inventory, request.target);
+      request.act !== 'add'
+        ? find(inventory, request.target)
+        : request.target.kind === 'skill'
+          ? ownSkillNamed(inventory.items, request.target.id)
+          : ownServerNamed(inventory.items, request.target.id);
     return { profile: resolved.profile, entry, item };
   }
 
@@ -250,7 +279,9 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
   ): ExtensionActPlan | ExtensionFailure {
     const { entry, profile, item } = located;
     if (request.act === 'add') {
-      return planAdd(located, request.providerId, request.target, request.definition, item !== undefined);
+      return request.target.kind === 'skill'
+        ? planSkillAdd(located, request.providerId, request.target, request.folder, item !== undefined)
+        : planAdd(located, request.providerId, request.target, request.definition, item !== undefined);
     }
     if (item === undefined) {
       return {
@@ -270,7 +301,51 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         message: 'a skill has no sign-in',
       };
     }
-    return answered(entry, profile, item, request.act, request.providerId);
+    const planOptions: ExtensionActPlanOptions =
+      item.kind === 'skill' && request.act === 'remove' && request.folder !== undefined
+        ? { keepIn: request.folder }
+        : {};
+    if (planOptions.keepIn !== undefined && !isNormalizedAbsolutePath(planOptions.keepIn)) {
+      return failure('invalid', request.providerId, 'a skill is kept only in an absolute folder');
+    }
+    return answered(entry, profile, item, request.act, request.providerId, planOptions);
+  }
+
+  /**
+   * A skill's add, planned from the skill as the agent would hold it once
+   * placed — a link to the folder the host keeps — on an agent that has skills
+   * and holds none of its own by that name (the link would go where it is).
+   */
+  function planSkillAdd(
+    located: Exclude<Located, { failure: ExtensionFailure }>,
+    providerId: string,
+    target: ExtensionActTarget,
+    folder: string | undefined,
+    held: boolean,
+  ): ExtensionActPlan | ExtensionFailure {
+    const { entry, profile } = located;
+    const label = entry.provider.label;
+    const unavailable = (reason: 'held' | 'unsupported', message: string): ExtensionActPlan => ({
+      target,
+      act: 'add',
+      available: false,
+      reason,
+      message,
+    });
+    if (folder === undefined || !isNormalizedAbsolutePath(folder)) {
+      return failure('invalid', providerId, "a skill's add needs the absolute folder the host keeps it in");
+    }
+    if (entry.provider.support.skills === undefined) return unavailable('unsupported', `${label} has no skills`);
+    if (held) return unavailable('held', `${label} already has a skill named ${target.id}`);
+    const skill: SkillItem = {
+      kind: 'skill',
+      id: target.id,
+      name: target.id,
+      origin: 'own',
+      enabled: true,
+      linkTarget: folder,
+    };
+    return answered(entry, profile, skill, 'add', providerId);
   }
 
   /**
@@ -320,10 +395,11 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     item: McpServerItem | SkillItem,
     act: ExtensionActKind,
     providerId: string,
+    planOptions: ExtensionActPlanOptions = {},
   ): ExtensionActPlan | ExtensionFailure {
     let answer: unknown;
     try {
-      answer = entry.service.plan!(profile, item, act);
+      answer = entry.service.plan!(profile, item, act, planOptions);
     } catch (error) {
       options.report?.(error);
       return failure('invalid', providerId, `${entry.provider.label} could not plan the act`);
@@ -411,6 +487,8 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       before?: McpServerItem | SkillItem;
       display: string;
       error: string | undefined;
+      /** Where a skill's steps placed it: an agent that names skills by their own words still holds it there. */
+      placed?: ReadonlySet<string>;
     },
   ): Promise<Pick<ExtensionActReceipt, 'status' | 'message'>> {
     const afterRead = await options.reader.inventory(providerId, profileId, { fresh: true });
@@ -423,7 +501,18 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
             : `${ran.display} ${ran.error}`,
       };
     }
-    return outcome(ran.act, label, ran.before, find(afterRead, ran.target), ran.display, ran.error);
+    const after =
+      ran.act === 'add' && ran.target.kind === 'skill'
+        ? (ownSkillNamed(afterRead.items, ran.target.id) ??
+          afterRead.items.find(
+            (item): item is SkillItem =>
+              item.kind === 'skill' &&
+              item.origin === 'own' &&
+              item.location !== undefined &&
+              ran.placed?.has(item.location) === true,
+          ))
+        : find(afterRead, ran.target);
+    return outcome(ran.act, label, ran.before, after, ran.display, ran.error);
   }
 
   return {
@@ -447,9 +536,21 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       if ('error' in resolved) return failure('not-found', providerId, resolved.error);
       const located = { profile: resolved.profile, entry };
       const plans: ExtensionActPlan[] = [];
+      // a real folder of the agent's own moves to where the host keeps skills, under its name
+      const keepIn = (item: McpServerItem | SkillItem, act: ExtensionActKind): { folder?: string } =>
+        request.keep !== undefined &&
+        item.kind === 'skill' &&
+        act === 'remove' &&
+        item.linkTarget === undefined &&
+        EXTENSION_SKILL_FOLDER_NAME.test(item.name)
+          ? { folder: join(request.keep, item.name) }
+          : {};
       for (const item of request.items) {
         for (const act of item.kind === 'mcp-server' ? SERVER_ACTS : SKILL_ACTS) {
-          const plan = planFor({ ...located, item }, { providerId, target: { kind: item.kind, id: item.id }, act });
+          const plan = planFor(
+            { ...located, item },
+            { providerId, target: { kind: item.kind, id: item.id }, act, ...keepIn(item, act) },
+          );
           // one malformed answer is reported and left out; the rest stand
           if (!('status' in plan)) plans.push(plan);
         }
@@ -462,6 +563,17 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           target,
           definition,
           ownServerNamed(request.items, name) !== undefined,
+        );
+        if (!('status' in plan)) plans.push(plan);
+      }
+      for (const { name, folder } of request.skills ?? []) {
+        const target = { kind: 'skill' as const, id: name };
+        const plan = planSkillAdd(
+          { ...located, item: undefined },
+          providerId,
+          target,
+          folder,
+          ownSkillNamed(request.items, name) !== undefined,
         );
         if (!('status' in plan)) plans.push(plan);
       }
@@ -496,7 +608,16 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       }
       let exitCode: number | undefined;
       let error: string | undefined;
-      if (plan.runs.kind === 'command') {
+      let takeBack: (() => Promise<boolean>) | undefined;
+      if (plan.runs.kind === 'files') {
+        const result = await performFileSteps(plan.runs.steps, {
+          ...(processEnv.HOME === undefined ? {} : { home: processEnv.HOME }),
+          ...(request.onOutput === undefined ? {} : { onOutput: request.onOutput }),
+          ...(options.report === undefined ? {} : { report: options.report }),
+        });
+        error = result.error;
+        takeBack = result.undo;
+      } else if (plan.runs.kind === 'command') {
         const result = await runCommand(
           profile,
           plan as AvailableExtensionActPlan & { runs: { kind: 'command' } },
@@ -530,16 +651,34 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         display: plan.display,
         ...(exitCode === undefined ? {} : { exitCode }),
       };
-      return receipt(profile.id, {
-        ...ran,
-        ...(await readBack(request.providerId, profile.id, entry.provider.label, {
-          act: request.act,
-          target: request.target,
-          ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
-          display: plan.display,
-          error,
-        })),
+      const read = await readBack(request.providerId, profile.id, entry.provider.label, {
+        act: request.act,
+        target: request.target,
+        ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
+        // a files plan's error names its step
+        display: plan.runs.kind === 'files' ? '' : plan.display,
+        error,
+        ...(plan.runs.kind === 'files'
+          ? {
+              placed: new Set(
+                plan.runs.steps.flatMap((step) =>
+                  step.op === 'link' ? [step.path] : step.op === 'move' ? [step.to] : [],
+                ),
+              ),
+            }
+          : {}),
       });
+      // A skill placed where the agent does not read it (a SKILL.md it skips) would sit
+      // there and block the next try: its steps are taken back, and the receipt says so.
+      if (request.act === 'add' && read.status === 'unchanged' && takeBack !== undefined) {
+        const whole = await takeBack();
+        return receipt(profile.id, {
+          ...ran,
+          status: 'unchanged',
+          message: `${read.message}, so ${whole ? 'what was placed was taken back' : 'what was placed could not all be taken back'}`,
+        });
+      }
+      return receipt(profile.id, { ...ran, ...read });
     },
 
     async start(request) {
@@ -643,6 +782,14 @@ function ownServerNamed(
   return items.find(
     (item): item is McpServerItem =>
       item.kind === 'mcp-server' && item.origin === 'own' && (item.name === name || item.id === name),
+  );
+}
+
+/** The agent's own skill by that name or key: where a link by that name would go, or one the agent reads already. */
+function ownSkillNamed(items: ReadonlyArray<ExtensionInventory['items'][number]>, name: string): SkillItem | undefined {
+  return items.find(
+    (item): item is SkillItem =>
+      item.kind === 'skill' && item.origin === 'own' && (item.name === name || item.id === name),
   );
 }
 

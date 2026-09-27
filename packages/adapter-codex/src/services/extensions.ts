@@ -57,7 +57,11 @@
  * HTTP address. Never `codex mcp add`, which has no flag that names a forwarded
  * variable (its `--env` stores a value) and starts the browser login at once
  * for a server that offers OAuth (`run_add` in codex-rs/cli/src/mcp_cmd.rs at
- * rust-v0.150.0).
+ * rust-v0.150.0). A skill a host keeps goes into `~/.agents/skills`, the one
+ * folder Codex reads a person's skills from: the host's copy moves in and a
+ * link to it stays where it was. Every Codex profile reads that folder, and
+ * Grok, Kimi, OpenCode and Pi do too, so a skill there is never taken away;
+ * only Codex's switch turns it off, for one profile.
  *
  * Shapes: `SkillsListResponse`, `PluginInstalledResponse` and
  * `PluginReadResponse` in codex-rs/app-server-protocol/src/protocol/v2/plugin.rs,
@@ -70,13 +74,16 @@
 
 import { execFile } from 'node:child_process';
 import { lstat, readlink, stat } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_SKILL_FOLDER_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
+  extensionFilesPlan,
   extensionNotOwnWords,
   extensionTerminalPlan,
   mcpServerDefinition,
@@ -110,9 +117,10 @@ const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,128}$/u;
 export interface CodexExtensionOptions {
   executable?: string;
   /**
-   * Home directory the native default root hangs off. When given, Codex's own
-   * processes get it as `HOME` and the profile's root as `CODEX_HOME`, so a
-   * host's tests never reach the real ones.
+   * Home directory the native default root and `~/.agents/skills` hang off;
+   * the process home when absent. When given, Codex's own processes get it as
+   * `HOME` and the profile's root as `CODEX_HOME`, so a host's tests never
+   * reach the real ones.
    */
   home?: string;
   env?: NodeJS.ProcessEnv;
@@ -450,8 +458,8 @@ async function skillsFrom(result: unknown): Promise<SkillItem[] | undefined> {
  * table, written through the app-server (see above). The name is one segment
  * of that key path, so it must be one `codex mcp` would take.
  */
-function addPlan(target: ExtensionActTarget, item: McpServerItem | SkillItem): ExtensionActPlan {
-  if (item.kind !== 'mcp-server' || item.definition === undefined) {
+function addPlan(target: ExtensionActTarget, item: McpServerItem): ExtensionActPlan {
+  if (item.definition === undefined) {
     return extensionActUnavailable(target, 'add', 'unsupported', 'Codex adds a server only from its definition');
   }
   if (!EXTENSION_COMMAND_NAME.test(item.id)) {
@@ -485,6 +493,38 @@ function addPlan(target: ExtensionActTarget, item: McpServerItem | SkillItem): E
   };
 }
 
+/**
+ * A skill a host keeps, placed where Codex reads a person's skills: the host's
+ * one copy moves into `~/.agents/skills` and a link is left where it was, so
+ * every link to the host's folder still resolves. That folder is every Codex
+ * profile's and other agents' too. Pure: the runtime checks each step.
+ */
+function skillAddPlan(item: SkillItem, sharedSkills: string, home: string): ExtensionActPlan {
+  const target: ExtensionActTarget = { kind: 'skill', id: item.id };
+  const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
+  const kept = item.linkTarget;
+  if (kept === undefined) {
+    return unsupported('Codex takes a skill only as a folder, which it keeps in ~/.agents/skills');
+  }
+  if (!EXTENSION_SKILL_FOLDER_NAME.test(item.id)) {
+    return unsupported(`Codex cannot keep a skill folder named ${item.id} in ~/.agents/skills`);
+  }
+  if (kept === sharedSkills || kept.startsWith(`${sharedSkills}${sep}`)) {
+    return unsupported(`Codex already reads ${item.name} where it is, in ~/.agents/skills`);
+  }
+  const placed = join(sharedSkills, item.id);
+  return extensionFilesPlan({
+    target,
+    act: 'add',
+    steps: [
+      { op: 'move', from: kept, to: placed },
+      { op: 'link', path: kept, target: placed },
+    ],
+    reaches: ['shared-folder'],
+    home,
+  });
+}
+
 /** Codex extension capability: one app-server session and one `mcp list` per inventory. */
 export function createCodexExtensionService(options: CodexExtensionOptions = {}): ExtensionService {
   const executable = resolveCodexExecutable(options.executable, options.env ?? process.env);
@@ -492,6 +532,9 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
   const spawnTransport = options.spawnTransport ?? ((spawnOptions) => spawnAppServerTransport(spawnOptions));
   const listServers = options.listServers ?? defaultListServers;
   const requestTimeoutMs = options.requestTimeoutMs ?? 15_000;
+  const home = options.home ?? homedir();
+  // Codex's `user` skill scope, `$HOME/.agents/skills`: the only folder it reads a person's skills from.
+  const sharedSkills = join(home, '.agents', 'skills');
 
   const provider: ExtensionProvider = {
     id: 'codex',
@@ -565,8 +608,8 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
 
   function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
-    // An add plans from a server no read found, so it answers apart from every act on one held.
-    if (act === 'add') return addPlan(target, item);
+    // An add plans from an item no read found, so it answers apart from every act on one held.
+    if (act === 'add') return item.kind === 'skill' ? skillAddPlan(item, sharedSkills, home) : addPlan(target, item);
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Codex', item));
     }
@@ -618,13 +661,14 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
         reaches: [],
       };
     }
-    // A skill of your own lives in ~/.agents/skills; Codex's switch for it is this profile's alone.
+    // A skill of your own lives in ~/.agents/skills; Codex's switch for it is this profile's alone, and taking
+    // the folder away would take it from every other profile and agent that reads it.
     if (act === 'remove') {
       return extensionActUnavailable(
         target,
         act,
         'no-command',
-        'Codex has no command that removes a skill: it lives in ~/.agents/skills, which every profile reads',
+        `${item.name} is in ~/.agents/skills, which every Codex profile and other agents read; Codex's switch turns it off here`,
       );
     }
     if (item.switchable !== true || item.location === undefined) {

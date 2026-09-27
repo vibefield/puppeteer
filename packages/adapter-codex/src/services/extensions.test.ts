@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
 import { createCodexExtensionService, type CodexExtensionOptions } from './extensions.js';
@@ -825,8 +826,8 @@ describe('Codex extension acts', () => {
   });
 
   it('switches a shared skill for this profile alone, and never removes one from the shared folder', async () => {
-    const { root } = await managedSetup();
-    const codex = service(fakeAppServer({}));
+    const { home, root } = await managedSetup();
+    const codex = service(fakeAppServer({}), { home });
     expect(codex.plan!(managedProfile(root), skill, 'disable')).toMatchObject({
       available: true,
       runs: {
@@ -837,13 +838,105 @@ describe('Codex extension acts', () => {
       display: 'skills/config/write release-notes enabled = false',
       reaches: [],
     });
-    expect(codex.plan!(managedProfile(root), skill, 'remove')).toMatchObject({
-      available: false,
-      reason: 'no-command',
-    });
+    // taking it away would take it from every profile and agent that reads the folder, even with a place to keep it
+    for (const options of [undefined, { keepIn: join(home, 'kept', 'release-notes') }]) {
+      expect(codex.plan!(managedProfile(root), skill, 'remove', options)).toEqual({
+        target: { kind: 'skill', id: 'release-notes' },
+        act: 'remove',
+        available: false,
+        reason: 'no-command',
+        message:
+          "release-notes is in ~/.agents/skills, which every Codex profile and other agents read; Codex's switch turns it off here",
+      });
+    }
     expect(
       codex.plan!(managedProfile(root), { ...skill, id: 'system:skill-creator', origin: 'bundled' }, 'disable'),
     ).toMatchObject({ available: false, reason: 'not-own', message: 'It ships with Codex' });
+    expect(
+      codex.plan!(
+        managedProfile(root),
+        { ...skill, id: 'plugin:documents@openai-primary-runtime:documents', origin: 'plugin', plugin: 'documents' },
+        'remove',
+      ),
+    ).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'It comes with the documents plugin and changes with it',
+    });
+  });
+
+  /** A skill as the runtime hands it for an add: the host's folder as its link target, never read. */
+  const placing = (name: string, folder?: string): SkillItem => ({
+    kind: 'skill',
+    id: name,
+    name,
+    origin: 'own',
+    enabled: true,
+    ...(folder === undefined ? {} : { linkTarget: folder }),
+  });
+
+  it('moves a skill the host keeps into ~/.agents/skills and leaves a link where it was, for every profile', async () => {
+    const { home, root } = await managedSetup();
+    const codex = service(fakeAppServer({}), { home });
+    const kept = join(home, 'kept', 'work', 'standup');
+    const placed = join(home, '.agents', 'skills', 'standup');
+    await write(join(kept, 'SKILL.md'), '---\nname: standup\n---\n');
+    const plan = ExtensionActPlanSchema.parse(codex.plan!(managedProfile(root), placing('standup', kept), 'add'));
+    expect(plan).toEqual({
+      target: { kind: 'skill', id: 'standup' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [
+          { op: 'move', from: kept, to: placed },
+          { op: 'link', path: kept, target: placed },
+        ],
+      },
+      display:
+        'move ~/kept/work/standup → ~/.agents/skills/standup\nlink ~/.agents/skills/standup → ~/kept/work/standup',
+      // Grok, Kimi, OpenCode and Pi read the folder too
+      reaches: ['shared-folder'],
+    });
+    // the native default reads the same folder, so it plans the same
+    expect(codex.plan!(nativeProfile(join(home, '.codex')), placing('standup', kept), 'add')).toEqual(plan);
+    // planning is pure: the host's folder has not moved, and nothing is made where it would go
+    expect((await lstat(kept)).isDirectory()).toBe(true);
+    await expect(lstat(placed)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('places no skill without a folder, under a name that is not one folder, or from inside ~/.agents/skills', async () => {
+    const { home, root } = await managedSetup();
+    const codex = service(fakeAppServer({}), { home });
+    const work = managedProfile(root);
+    const kept = (name: string) => join(home, 'kept', 'work', name);
+    expect(codex.plan!(work, placing('standup'), 'add')).toEqual({
+      target: { kind: 'skill', id: 'standup' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Codex takes a skill only as a folder, which it keeps in ~/.agents/skills',
+    });
+    for (const name of ['.standup', 'daily/standup', '..']) {
+      expect(codex.plan!(work, placing(name, kept('standup')), 'add')).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: `Codex cannot keep a skill folder named ${name} in ~/.agents/skills`,
+      });
+    }
+    // already where Codex reads it: nothing to move
+    for (const folder of [join(home, '.agents', 'skills', 'standup'), join(home, '.agents', 'skills')]) {
+      expect(codex.plan!(work, placing('standup', folder), 'add')).toEqual({
+        target: { kind: 'skill', id: 'standup' },
+        act: 'add',
+        available: false,
+        reason: 'unsupported',
+        message: 'Codex already reads standup where it is, in ~/.agents/skills',
+      });
+    }
+    // a sibling that only shares the prefix is not inside it
+    const sibling = join(home, '.agents', 'skills-kept', 'standup');
+    expect(codex.plan!(work, placing('standup', sibling), 'add')).toMatchObject({ available: true });
   });
 
   it("performs a protocol plan on a private app-server in the profile's root, and never repeats a refusal", async () => {
