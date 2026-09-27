@@ -248,6 +248,8 @@ export interface PrepareAgentInvocationOptions extends AgentNativeInvocation {
   creationRequestId?: string | undefined;
   externalRefs?: readonly ExternalRef[] | undefined;
   workspace?: AgentWorkspaceRequest | undefined;
+  /** The host's say over the session's loopback ingress (stable ingress), as for `prepareSession`. */
+  ingress?: HostIngress | undefined;
 }
 
 export interface AgentSessionInfo {

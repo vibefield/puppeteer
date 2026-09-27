@@ -2904,6 +2904,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         workspace: request.workspace,
         resume: normalized.resume,
         ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
+        ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
       });
       if ('error' in result) return result;
       const run = runs.get(result.runtimeRunId);

@@ -3656,6 +3656,46 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     await runtime.dispose();
   });
 
+  it('threads the host ingress through a prepared native invocation (spawn-through, PU-17)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-invocation-ingress-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const base = preparableProvider('one', hooks);
+    const seen: unknown[] = [];
+    const provider: AgentProvider = {
+      ...base,
+      launch: {
+        provider: {
+          id: 'one',
+          label: 'one',
+          resume: false,
+          nativeInvocation: { commands: [{ name: 'one', executable: '/opt/one' }], environmentVariables: [] },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' }),
+      },
+      async prepareSession(options) {
+        seen.push(options.ingress);
+        options.ingress?.onBound?.({ port: 4343, token: 'minted' });
+        return base.prepareSession!(options);
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+    const bound: unknown[] = [];
+    const prepared = await runtime.prepareInvocation({
+      providerId: 'one',
+      cwd: root,
+      argv: [],
+      environment: {},
+      implementation: { kind: 'native' },
+      ingress: { token: 'pinned', onBound: (value) => bound.push(value) },
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    expect(seen[0]).toMatchObject({ token: 'pinned' });
+    expect(bound).toEqual([{ port: 4343, token: 'minted' }]);
+    await runtime.cancelPrepared(prepared.preparationId);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('attaches to a running terminal through the provider and restores the run at the next epoch', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-'));
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-registry-'));
