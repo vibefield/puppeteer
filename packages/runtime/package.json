@@ -42,7 +42,8 @@
   "dependencies": {
     "@vibecook/puppeteer-core": "workspace:*",
     "@vibecook/puppeteer-record": "workspace:*",
-    "@vibecook/puppeteer-workspaces": "workspace:*"
+    "@vibecook/puppeteer-workspaces": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
