@@ -50,7 +50,8 @@ async function snapshot(directory: string): Promise<Record<string, string>> {
   return files;
 }
 
-describe('materializeShims', () => {
+// Launchers are run as processes, and a loaded host starts them slowly.
+describe('materializeShims', { timeout: 60_000 }, () => {
   it('writes launchers that quote every path and value for sh — proved by running one', async () => {
     const odd = `it's "quoted" $HOME \`not run\` \\ and *`;
     const result = await materializeShims({

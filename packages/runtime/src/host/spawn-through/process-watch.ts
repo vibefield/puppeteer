@@ -2,6 +2,12 @@ import { execFile } from 'node:child_process';
 
 export interface WatchProcessExitOptions {
   intervalMs?: number | undefined;
+  /**
+   * How long to wait, once the pid is gone, before `onExit`: a turn for the
+   * host's terminal to report the exit with its own meaning (completed,
+   * crashed, asked to stop), which a vanished pid cannot tell. Default 0.
+   */
+  graceMs?: number | undefined;
 }
 
 function processIsGone(pid: number): boolean {
@@ -16,25 +22,37 @@ function processIsGone(pid: number): boolean {
 
 /**
  * Watch a process the host did not spawn — an adopted agent is the shell's
- * child, so no exit event reaches the host. `onExit` fires once, at the first
- * poll that finds the pid gone; the returned function stops the watch. The
- * timer never holds the host's own exit. A pid reused between two polls is
+ * child, so no exit event reaches the host. `onExit` fires once, `graceMs`
+ * after the first poll that finds the pid gone; the returned function stops
+ * the watch, a pending grace included. No timer of it ever holds the host's
+ * own exit. A pid reused between two polls is
  * not seen: a host that must know compares {@link processStartedAt}.
  */
 export function watchProcessExit(
   pid: number,
-  { intervalMs = 500 }: WatchProcessExitOptions,
+  { intervalMs = 500, graceMs = 0 }: WatchProcessExitOptions,
   onExit: () => void,
 ): () => void {
   let watching = true;
+  let grace: NodeJS.Timeout | undefined;
   const stop = (): void => {
     watching = false;
     clearInterval(timer);
+    clearTimeout(grace);
   };
   const timer = setInterval(() => {
     if (!watching || !processIsGone(pid)) return;
-    stop();
-    onExit();
+    clearInterval(timer);
+    if (graceMs <= 0) {
+      stop();
+      onExit();
+      return;
+    }
+    grace = setTimeout(() => {
+      stop();
+      onExit();
+    }, graceMs);
+    grace.unref();
   }, intervalMs);
   timer.unref();
   return stop;

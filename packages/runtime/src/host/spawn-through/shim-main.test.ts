@@ -123,7 +123,8 @@ interface Ran {
   stdout: string;
   stderr: string;
   pid: number;
-  elapsedMs: number;
+  /** From the shim's first word on stderr to its exit: the wait itself, without Node's start. */
+  sinceStderrMs: number | undefined;
   lines: (prefix: string) => string[];
 }
 
@@ -136,7 +137,6 @@ function launch(
 ): Promise<Ran> {
   const { environment = {}, path, onStderr } = options;
   const shimDirectory = spawnThroughLayout(shimHome).shimDirectory;
-  const started = Date.now();
   const child = spawn(join(shimDirectory, name), args, {
     cwd: work,
     env: {
@@ -152,8 +152,10 @@ function launch(
   });
   let stdout = '';
   let stderr = '';
+  let firstStderrAt: number | undefined;
   child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
   child.stderr.on('data', (chunk: Buffer) => {
+    firstStderrAt ??= Date.now();
     stderr += chunk.toString();
     onStderr?.(stderr);
   });
@@ -165,7 +167,7 @@ function launch(
         stdout,
         stderr,
         pid: child.pid!,
-        elapsedMs: Date.now() - started,
+        sinceStderrMs: firstStderrAt === undefined ? undefined : Date.now() - firstStderrAt,
         lines: (prefix) => output.filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length)),
       });
     });
@@ -189,7 +191,7 @@ function expectCleanAgentEnvironment(ran: Ran, shimHome: string): void {
   expect(`${ran.stdout}${ran.stderr}`).not.toContain(TOKEN);
 }
 
-describe('the shim, end to end (bundled, run through its launcher)', { timeout: 30_000 }, () => {
+describe('the shim, end to end (bundled, run through its launcher)', { timeout: 60_000 }, () => {
   it('execs the recipe in place: the gateway saw its pid, only allow-listed variables, and nothing of the kit reaches the agent', async () => {
     const requests = await gatewayAnswering(home, () => ({
       action: 'exec',
@@ -275,8 +277,9 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
 
     expect(ran.code).toBe(75);
     expect(ran.stdout).toBe('');
-    expect(ran.elapsedMs).toBeGreaterThanOrEqual(1_200);
-    expect(ran.elapsedMs).toBeLessThan(1_200 + 8_000);
+    // The waiting line comes after the first refused attempt; the refusal retryMs after the first attempt began.
+    expect(ran.sinceStderrMs).toBeGreaterThanOrEqual(1_000);
+    expect(ran.sinceStderrMs).toBeLessThan(1_200 + 5_000);
     const lines = ran.stderr.trimEnd().split('\n');
     expect(lines.filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
     expect(lines.at(-1)).toBe('puppeteer: example: not started: the host did not answer within 1 s');

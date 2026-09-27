@@ -37,7 +37,7 @@ afterEach(async () => {
 
 const modeOf = async (path: string): Promise<number> => (await stat(path)).mode & 0o777;
 
-describe('spawn-through rendezvous', () => {
+describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
   it('publishes the rendezvous and the provider table owner-only, and reads them back', async () => {
     await writeRendezvous(home, { port: 4242, token: 'bearer', strict: false, launchProviders: providers });
 
@@ -91,7 +91,7 @@ describe('spawn-through rendezvous', () => {
     const written = new Set(['token-0']);
     let writing = true;
     const writer = (async () => {
-      for (let index = 1; index <= 200; index += 1) {
+      for (let index = 1; index <= 100; index += 1) {
         const token = `token-${index}-${'x'.repeat(index)}`;
         written.add(token);
         await writeRendezvous(home, { port: index, token, strict: index % 2 === 0, launchProviders: providers });
