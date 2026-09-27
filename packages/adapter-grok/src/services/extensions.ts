@@ -35,7 +35,10 @@
  * changes in the agent it comes from; a skill's switch (`[skills] disabled`)
  * has no command. A server a host keeps comes in with `grok mcp add --scope
  * user` into the same file, stdio or HTTP (never SSE), each variable it reads
- * written as `${NAME}` for Grok to expand when it loads the server.
+ * written as `${NAME}` for Grok to expand when it loads the server. A skill a
+ * host keeps is placed in the root's `skills/` as a link to the host's folder,
+ * and one of the root's own there goes: a link is taken away, a real folder
+ * moves to where the host keeps it.
  */
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
@@ -48,11 +51,13 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -591,21 +596,16 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
   const profileEnv = (profile: AgentProfile): Record<string, string> =>
     profile.kind === 'native-default' ? {} : { [GROK_PROFILE_ROOT_VARIABLE]: profile.dataRoot };
 
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    { keepIn }: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
+    if (item.kind === 'skill') return planSkill(profile, item, act, keepIn);
     if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
-    if (item.kind === 'skill') {
-      return extensionActUnavailable(
-        target,
-        act,
-        'no-command',
-        'Grok switches a skill only in its config.toml, with no command',
-      );
-    }
-    if (item.origin !== 'own') {
-      const lender = item.lender === undefined ? undefined : (LENDERS[item.lender] ?? item.lender);
-      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Grok', item, lender));
-    }
+    if (item.origin !== 'own') return notOwn(item, act);
     if (act === 'sign-in' || act === 'sign-out') {
       return item.transport === 'stdio'
         ? extensionActUnavailable(target, act, 'no-sign-in', `${item.name} runs on this machine and has no sign-in`)
@@ -631,6 +631,54 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
     });
   }
 
+  /** What another agent lends, a plugin brings or Grok ships changes where it comes from. */
+  function notOwn(item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+    const lender = item.lender === undefined ? undefined : (LENDERS[item.lender] ?? item.lender);
+    return extensionActUnavailable(
+      { kind: item.kind, id: item.id },
+      act,
+      'not-own',
+      extensionNotOwnWords('Grok', item, lender),
+    );
+  }
+
+  /**
+   * A person's skills in a profile are the folders in its root's `skills/`
+   * (`$GROK_HOME/skills`), each keyed by its folder's name rather than the
+   * lowercase name Grok gives it. A skill the host keeps is linked in there
+   * under that key, and one there goes: a link is taken away, a real folder
+   * moves to where the host keeps it or, with nowhere to keep it, stays.
+   * Whether Grok itself loads a skill whose folder is a link is unproven — the
+   * report says only that Grok reloads skills when those files change; the
+   * read here follows links, and the runtime's second read is the receipt.
+   * `~/.agents/skills`, and what Grok borrows, ships or a plugin brings, are
+   * not the root's to place or take away.
+   */
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: ExtensionActKind,
+    keepIn: string | undefined,
+  ): ExtensionActPlan {
+    if (act !== 'add' && act !== 'remove') {
+      return extensionActUnavailable(
+        { kind: 'skill', id: item.id },
+        act,
+        'no-command',
+        'Grok switches a skill only in its config.toml, with no command',
+      );
+    }
+    if (item.origin !== 'own') return notOwn(item, act);
+    return extensionSkillFolderPlan({
+      label: 'Grok',
+      folder: join(profile.dataRoot, 'skills'),
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      home,
+    });
+  }
+
   /**
    * `grok mcp add --scope user` writes `[mcp_servers.<name>]` to the profile's
    * config.toml: stdio, or HTTP when the positional after the name is an
@@ -642,12 +690,10 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
    * before the command is how a command line with flags of its own reaches the
    * server instead of `grok mcp add`.
    */
-  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+  function planAdd(profile: AgentProfile, item: McpServerItem): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
-    if (item.kind !== 'mcp-server' || item.definition === undefined) {
-      return unsupported('Grok adds only a server, from its definition');
-    }
+    if (item.definition === undefined) return unsupported('Grok adds only a server, from its definition');
     if (!EXTENSION_COMMAND_NAME.test(item.id)) {
       return extensionActUnavailable(target, 'add', 'no-command', "Grok's commands do not take this server's name");
     }

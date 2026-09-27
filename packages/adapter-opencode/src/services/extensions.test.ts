@@ -13,6 +13,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createOpenCodeExtensionService } from './extensions.js';
 
@@ -419,6 +420,20 @@ const added = (name: string, definition: McpServerDefinition): McpServerItem => 
   ...(definition.transport === 'stdio' && definition.env !== undefined ? { env: [...definition.env] } : {}),
   definition,
 });
+/** A skill as the runtime hands an add to the adapter: a link to the folder the host keeps. */
+const placed = (name: string, folder: string): SkillItem => ({
+  kind: 'skill',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  linkTarget: folder,
+});
+const heldSkill = (inventory: ExtensionInventory, id: string): SkillItem => {
+  const item = find(inventory, 'skill', id);
+  if (item?.kind !== 'skill') throw new Error(`no skill ${id}`);
+  return item;
+};
 
 describe('OpenCode extension acts', () => {
   it('has no command for a server or a skill', () => {
@@ -515,11 +530,10 @@ describe('OpenCode extension acts', () => {
     }
   });
 
-  it('adds only a server that carries a definition, under a name its commands take', () => {
+  it('adds a server only from its definition, under a name its commands take', () => {
     const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
     const work = actProfile('managed', '/p');
     expect(opencode.plan!(work, actServer(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
-    expect(opencode.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
     expect(
       opencode.plan!(work, added('-rf', { transport: 'http', url: 'https://mcp.linear.app/mcp' }), 'add'),
     ).toMatchObject({ available: false, reason: 'no-command' });
@@ -565,5 +579,134 @@ describe('OpenCode extension acts', () => {
         ],
       },
     });
+  });
+
+  it('places a kept skill as a link in the global skills folder, which every profile reads', async () => {
+    const home = await tempHome();
+    const kept = join(home, 'kept', 'release-notes');
+    const opencode = createOpenCodeExtensionService({ home, env: {}, now });
+    // A managed profile binds only the data home, so each profile is placed in the one folder.
+    for (const profile of [managedProfile(home), nativeProfile(home)]) {
+      expect(ExtensionActPlanSchema.parse(opencode.plan!(profile, placed('release-notes', kept), 'add'))).toEqual({
+        target: { kind: 'skill', id: 'release-notes' },
+        act: 'add',
+        available: true,
+        runs: {
+          kind: 'files',
+          steps: [{ op: 'link', path: join(home, '.config', 'opencode', 'skills', 'release-notes'), target: kept }],
+        },
+        display: 'link ~/kept/release-notes → ~/.config/opencode/skills/release-notes',
+        reaches: ['every-profile'],
+      });
+    }
+    // The folder moves with the config root OpenCode starts with.
+    const xdg = join(home, 'xdg');
+    expect(
+      createOpenCodeExtensionService({ home, env: { XDG_CONFIG_HOME: xdg } }).plan!(
+        managedProfile(home),
+        placed('release-notes', kept),
+        'add',
+      ),
+    ).toMatchObject({
+      runs: { steps: [{ op: 'link', path: join(xdg, 'opencode', 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/xdg/opencode/skills/release-notes',
+    });
+    // Only a folder to link, under a name that stays one folder.
+    const work = managedProfile(home);
+    expect(opencode.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+    for (const name of ['.hidden', 'team/notes']) {
+      expect(opencode.plan!(work, placed(name, kept), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+      });
+    }
+  });
+
+  it('takes away only a skill directly in the global skills folder: its link, or its own folder to the host', async () => {
+    const home = await tempHome();
+    const config = join(home, '.config', 'opencode');
+    const library = join(home, 'library', 'linked');
+    await write(join(library, 'SKILL.md'), skill('linked', 'Kept by the host'));
+    await mkdir(join(config, 'skills'), { recursive: true });
+    await symlink(library, join(config, 'skills', 'linked'));
+    await write(join(config, 'skills', 'mine', 'SKILL.md'), skill('mine', 'A folder of its own'));
+    await write(join(config, 'skills', 'team', 'nested', 'SKILL.md'), skill('nested', 'Deeper down'));
+    await write(join(config, 'skill', 'legacy', 'SKILL.md'), skill('legacy', 'In the singular folder'));
+    await write(join(config, 'opencode.json'), { skills: { paths: ['~/team-skills'] } });
+    await write(join(home, 'team-skills', 'sql', 'SKILL.md'), skill('sql', 'On a configured path'));
+    await write(join(home, '.opencode', 'skills', 'dotted', 'SKILL.md'), skill('dotted', 'In ~/.opencode'));
+    await write(join(home, '.agents', 'skills', 'shared', 'SKILL.md'), skill('shared', 'Every agent reads it'));
+    await write(join(home, '.claude', 'skills', 'house', 'SKILL.md'), skill('house', 'Claude Code’s own'));
+
+    const opencode = createOpenCodeExtensionService({ home, env: {}, now });
+    const work = managedProfile(home);
+    const inventory = ExtensionInventorySchema.parse(await opencode.inventory(work));
+    const remove = (id: string, keepIn?: string) =>
+      ExtensionActPlanSchema.parse(
+        opencode.plan!(work, heldSkill(inventory, id), 'remove', keepIn === undefined ? {} : { keepIn }),
+      );
+
+    // A link goes, even where the host would keep a folder.
+    expect(remove('linked', join(home, 'kept', 'linked'))).toEqual({
+      target: { kind: 'skill', id: 'linked' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(config, 'skills', 'linked') }] },
+      display: 'unlink ~/.config/opencode/skills/linked',
+      reaches: ['every-profile'],
+    });
+    const keepIn = join(home, 'kept', 'mine');
+    expect(remove('mine', keepIn)).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(config, 'skills', 'mine'), to: keepIn }] },
+      display: 'move ~/.config/opencode/skills/mine → ~/kept/mine',
+      reaches: ['every-profile'],
+    });
+    // With nowhere to keep it, the person's own folder stays.
+    expect(remove('mine')).toMatchObject({ available: false, reason: 'no-command' });
+    for (const id of ['nested', 'legacy', 'sql', 'dotted', 'shared']) {
+      expect(remove(id, join(home, 'kept', id)), id).toEqual({
+        target: { kind: 'skill', id },
+        act: 'remove',
+        available: false,
+        reason: 'not-own',
+        message: `${id} is not in OpenCode's own skills folder, and changes where it is`,
+      });
+    }
+    expect(remove('house', join(home, 'kept', 'house'))).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'OpenCode loads it from Claude Code on This Mac, and it changes there',
+    });
+    // Its switch is still only a key of the config.
+    expect(opencode.plan!(work, heldSkill(inventory, 'mine'), 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+  });
+
+  it('reads the link it planned back for every profile, and plans taking it away as an unlink', async () => {
+    const home = await tempHome();
+    const folder = join(home, 'kept', 'release-notes');
+    await write(join(folder, 'SKILL.md'), skill('release-notes', 'Drafts the notes'));
+    const opencode = createOpenCodeExtensionService({ home, env: {}, now });
+    const work = managedProfile(home);
+    const plan = ExtensionActPlanSchema.parse(opencode.plan!(work, placed('release-notes', folder), 'add'));
+    const step = plan.available && plan.runs.kind === 'files' ? plan.runs.steps[0] : undefined;
+    if (step?.op !== 'link') throw new Error('expected a link');
+    // The runtime performs the step itself; here, by hand.
+    await mkdir(dirname(step.path), { recursive: true });
+    await symlink(step.target, step.path);
+
+    for (const profile of [work, nativeProfile(home)]) {
+      const inventory = ExtensionInventorySchema.parse(await opencode.inventory(profile));
+      const held = heldSkill(inventory, 'release-notes');
+      expect(held).toMatchObject({ origin: 'own', enabled: true, location: step.path, linkTarget: folder });
+      expect(opencode.plan!(profile, held, 'remove')).toMatchObject({
+        available: true,
+        runs: { kind: 'files', steps: [{ op: 'unlink', path: step.path }] },
+        reaches: ['every-profile'],
+      });
+    }
   });
 });

@@ -12,6 +12,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createAntigravityExtensionService } from './extensions.js';
 
@@ -504,5 +505,98 @@ describe('Antigravity extension acts', () => {
       message: 'Antigravity adds only a server, from its definition',
     });
     expect(agy.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+  });
+});
+
+describe('Antigravity skills placed', () => {
+  it("links a kept skill into the bound home's .gemini/config/skills, and refuses one it cannot place", async () => {
+    const home = await tempHome();
+    const work = join(home, 'profiles', 'work', 'antigravity-3c1f');
+    const kept = join(home, 'kept', 'release-notes');
+    const service = createAntigravityExtensionService({ executable: 'agy', env: {}, home, now });
+    expect(
+      ExtensionActPlanSchema.parse(service.plan!(managedProfile(work), actSkill({ linkTarget: kept }), 'add')),
+    ).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'link', path: join(work, '.gemini', 'config', 'skills', 'release-notes'), target: kept }],
+      },
+      display: 'link ~/kept/release-notes → ~/profiles/work/antigravity-3c1f/.gemini/config/skills/release-notes',
+      reaches: [],
+    });
+    // The native default's is the process home's, whatever root the profile carries.
+    expect(service.plan!(nativeProfile(home), actSkill({ linkTarget: kept }), 'add')).toMatchObject({
+      available: true,
+      runs: { steps: [{ op: 'link', path: join(home, '.gemini', 'config', 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/.gemini/config/skills/release-notes',
+    });
+    // No folder to link, or a name that is not one folder Antigravity lists.
+    for (const fields of [{}, { id: '../escape', linkTarget: kept }, { id: '.hidden', linkTarget: kept }]) {
+      expect(service.plan!(managedProfile(work), actSkill(fields), 'add'), JSON.stringify(fields)).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+      });
+    }
+  });
+
+  it("takes away a link, or moves the person's own folder to where the host keeps it, and never a builtin or a plugin's", async () => {
+    const home = await tempHome();
+    const { library } = await populate(home);
+    const service = createAntigravityExtensionService({ executable: 'agy', env: {}, home, now });
+    const work = managedProfile(home);
+    const inventory = ExtensionInventorySchema.parse(await service.inventory(work));
+    const held = (id: string): SkillItem => {
+      const item = find(inventory, 'skill', id);
+      expect(item, id).toBeDefined();
+      return item as SkillItem;
+    };
+    const skills = join(home, '.gemini', 'config', 'skills');
+    const kept = join(home, 'kept', 'release-notes');
+    expect(held('changelog')).toMatchObject({ origin: 'own', linkTarget: library });
+
+    // A link goes, even with somewhere to keep it: the folder it points to stays where it is.
+    expect(
+      ExtensionActPlanSchema.parse(
+        service.plan!(work, held('changelog'), 'remove', { keepIn: join(home, 'kept', 'changelog') }),
+      ),
+    ).toEqual({
+      target: { kind: 'skill', id: 'changelog' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'changelog') }] },
+      display: 'unlink ~/.gemini/config/skills/changelog',
+      reaches: [],
+    });
+    // The person's own folder moves to where the host keeps it; with nowhere to keep it, it stays.
+    expect(
+      ExtensionActPlanSchema.parse(service.plan!(work, held('release-notes'), 'remove', { keepIn: kept })),
+    ).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(skills, 'release-notes'), to: kept }] },
+      display: 'move ~/.gemini/config/skills/release-notes → ~/kept/release-notes',
+      reaches: [],
+    });
+    expect(service.plan!(work, held('release-notes'), 'remove')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+    });
+    // What ships with Antigravity or comes with a plugin changes there.
+    expect(service.plan!(work, held('builtin:automation'), 'remove', { keepIn: kept })).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'It ships with Antigravity',
+    });
+    expect(service.plan!(work, held('plugin:review:house-style'), 'remove', { keepIn: kept })).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'It comes with the review plugin and changes with it',
+    });
+    // Placed or not, a skill switches only inside the app.
+    expect(service.plan!(work, held('changelog'), 'disable')).toMatchObject({ available: false, reason: 'in-app' });
   });
 });

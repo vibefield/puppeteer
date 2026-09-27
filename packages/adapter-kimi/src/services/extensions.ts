@@ -40,11 +40,13 @@ import {
   describeMcpUrl,
   extensionActUnavailable,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -332,13 +334,21 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
 
   // Acts (RFC 006 C2): Kimi has no command for either kind — its servers are
   // added and changed only inside the app (`/mcp-config`), so an add answers as
-  // every server act does, and one skill has no switch.
-  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // every server act does, and one skill has no switch. A skill is a folder
+  // where Kimi looks, though, so one is placed there and taken away (planSkill).
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    { keepIn }: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own')
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Kimi', item));
     if (item.kind === 'skill')
-      return extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
+      return act === 'add' || act === 'remove'
+        ? planSkill(profile, item, act, keepIn)
+        : extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
     return act === 'sign-in' || act === 'sign-out'
       ? extensionActUnavailable(
           target,
@@ -352,6 +362,45 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
           'in-app',
           'Kimi changes its servers only inside the app, with /mcp-config',
         );
+  }
+
+  /**
+   * A person's skills in a profile are the root's `skills/`
+   * (`$KIMI_CODE_HOME/skills`), a folder skill keyed by its folder's name and
+   * a flat one by its file's name without `.md`. A skill the host keeps is
+   * linked in there as a folder, and a folder skill there goes: a link is
+   * taken away, a real folder moves to where the host keeps it or, with
+   * nowhere to keep it, stays. A flat skill is one file, which only a folder's
+   * move could keep, so it stays. Whether Kimi Code itself loads a skill whose
+   * folder is a link is unproven — its source was read, never probed; the read
+   * here follows links and records where they point, and the runtime's second
+   * read is the receipt. `~/.agents/skills` is not the root's to change.
+   */
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: 'add' | 'remove',
+    keepIn: string | undefined,
+  ): ExtensionActPlan {
+    const folder = join(kimiCredentialRoot(profile, ambient, home), 'skills');
+    const flat =
+      item.location !== undefined && dirname(item.location) === folder && basename(item.location) !== item.id;
+    if (act === 'remove' && flat) {
+      return extensionActUnavailable(
+        { kind: 'skill', id: item.id },
+        act,
+        'no-command',
+        `${item.name} is a flat skill, one file in Kimi's skills folder, and only a skill's folder is taken away`,
+      );
+    }
+    return extensionSkillFolderPlan({
+      label: 'Kimi',
+      folder,
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      home,
+    });
   }
 
   return {

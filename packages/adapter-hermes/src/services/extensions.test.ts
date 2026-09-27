@@ -9,6 +9,7 @@ import {
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createHermesExtensionService } from './extensions.js';
 
@@ -334,7 +335,8 @@ describe('Hermes extensions', () => {
     });
     expect(find(inventory, 'skill', 'sql-review')).toMatchObject({ origin: 'agent', enabled: false });
     expect(find(inventory, 'skill', 'brand')).toMatchObject({ origin: 'managed' });
-    expect(find(inventory, 'skill', 'linked')).toMatchObject({ origin: 'agent', linkTarget: library });
+    // A link is the person's: Hermes writes only real folders, and its curator never follows one.
+    expect(find(inventory, 'skill', 'linked')).toMatchObject({ origin: 'own', linkTarget: library });
     expect(find(inventory, 'skill', 'drafted')).toMatchObject({ origin: 'own' });
     expect(find(inventory, 'skill', 'browser-use')).toMatchObject({
       origin: 'own',
@@ -580,5 +582,117 @@ describe('Hermes extension acts', () => {
       available: false,
       reason: 'in-app',
     });
+  });
+});
+
+describe('Hermes skills placed', () => {
+  it("links a kept skill directly into the root's skills/, and refuses one it cannot place", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'hermes', 'h-7a10');
+    const kept = join(home, 'kept', 'release-notes');
+    const hermes = createHermesExtensionService({ home, now });
+    expect(
+      ExtensionActPlanSchema.parse(hermes.plan!(managedProfile(root), actSkill({ linkTarget: kept }), 'add')),
+    ).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/profiles/hermes/h-7a10/skills/release-notes',
+      reaches: [],
+    });
+    // The native default's is the given home's `.hermes`, whatever path the profile carries.
+    expect(hermes.plan!(nativeProfile('/nowhere/.hermes'), actSkill({ linkTarget: kept }), 'add')).toMatchObject({
+      available: true,
+      runs: { steps: [{ op: 'link', path: join(home, '.hermes', 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/.hermes/skills/release-notes',
+    });
+    // No folder to link, a name that is not one folder, or one Hermes's walk passes over.
+    for (const fields of [
+      {},
+      { id: '../escape', linkTarget: kept },
+      { id: '.hidden', linkTarget: kept },
+      { id: 'node_modules', linkTarget: kept },
+      { id: '_org', linkTarget: kept },
+    ]) {
+      expect(hermes.plan!(managedProfile(root), actSkill(fields), 'add'), JSON.stringify(fields)).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+      });
+    }
+  });
+
+  it("reads a link in the root's skills/ as the person's own, and takes away only such a link", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'hermes', 'h-7a10');
+    const skills = join(root, 'skills');
+    await write(join(skills, '.bundled_manifest'), 'hermes-agent:4f2a\n');
+    await write(join(skills, '.hub', 'lock.json'), {
+      version: 1,
+      installed: { 'release-notes': { install_path: 'release-notes', source: 'skills.sh' } },
+    });
+    await write(join(skills, 'hermes-agent', 'SKILL.md'), skill('hermes-agent', 'How Hermes works'));
+    await write(join(skills, 'release-notes', 'SKILL.md'), skill('release-notes', 'Drafts release notes'));
+    await write(join(skills, 'notes', 'SKILL.md'), skill('notes', 'Written by the agent'));
+    const library = join(home, 'library');
+    await write(join(library, 'changelog', 'SKILL.md'), skill('changelog', 'Kept by the host'));
+    await write(join(library, 'arxiv', 'SKILL.md'), skill('arxiv', 'Linked into a category'));
+    await symlink(join(library, 'changelog'), join(skills, 'changelog'));
+    await mkdir(join(skills, 'research'));
+    await symlink(join(library, 'arxiv'), join(skills, 'research', 'arxiv'));
+
+    const hermes = createHermesExtensionService({ home, now });
+    const work = managedProfile(root);
+    const inventory = ExtensionInventorySchema.parse(await hermes.inventory(work));
+    const held = (id: string): SkillItem => {
+      const item = find(inventory, 'skill', id);
+      expect(item, id).toBeDefined();
+      return item as SkillItem;
+    };
+    expect(held('changelog')).toMatchObject({
+      origin: 'own',
+      location: join(skills, 'changelog'),
+      linkTarget: join(library, 'changelog'),
+    });
+    expect(held('arxiv')).toMatchObject({ origin: 'own', location: join(skills, 'research', 'arxiv') });
+    expect(held('release-notes')).toMatchObject({ origin: 'own', location: join(skills, 'release-notes') });
+    expect(held('release-notes')).not.toHaveProperty('linkTarget');
+    expect(held('notes')).toMatchObject({ origin: 'agent' });
+    expect(held('hermes-agent')).toMatchObject({ origin: 'bundled' });
+
+    const remove = (id: string) =>
+      ExtensionActPlanSchema.parse(hermes.plan!(work, held(id), 'remove', { keepIn: join(home, 'kept', id) }));
+    // A link goes, even with somewhere to keep it: the folder it points to is the host's.
+    expect(remove('changelog')).toEqual({
+      target: { kind: 'skill', id: 'changelog' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'changelog') }] },
+      display: 'unlink ~/profiles/hermes/h-7a10/skills/changelog',
+      reaches: [],
+    });
+    // The hub's folder never moves, whatever keep the host offers.
+    expect(remove('release-notes')).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message:
+        "Hermes's skills hub installed release-notes and keeps track of it, so its folder stays where Hermes put it",
+    });
+    // A link in a category folder, the curator's and the bundled ones are not the host's to take.
+    expect(remove('arxiv')).toMatchObject({ available: false, reason: 'not-own' });
+    expect(remove('notes')).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'Hermes wrote it itself, and changes it itself',
+    });
+    expect(remove('hermes-agent')).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'It ships with Hermes',
+    });
+    // A placed skill still has no switch a host can drive.
+    expect(hermes.plan!(work, held('changelog'), 'disable')).toMatchObject({ available: false, reason: 'no-command' });
   });
 });

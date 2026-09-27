@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27; the rest of C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day; the rest of C2, C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -759,6 +759,29 @@ the environment or a loader relies on, no `*_HOME`, `*_DIR` or `XDG_*` root), ha
 recipe goes back to its caller without them. The built-ins merge them beneath the launch's own variables where the
 agent's MCP client runs — the terminal's environment, or the helper's (Codex's app-server, Grok's leader, whose cache
 key is now a digest).
+
+C2's fourth slice, the same day: a skill a host keeps once, placed where each agent looks. The rule gains: a skill is
+placed where the agent's docs say skills go, as a link to the host's folder — never a settings key, which stays the
+agent's. A plan's run gains a fourth kind, `files`: steps (`link {path, target}`, `unlink {path}`, `move {from, to}`)
+the runtime performs itself (`extensions/files.ts`) and checks as it goes — a link only where nothing is, to a folder
+with a `SKILL.md`; `unlink` only a link, never the folder it points at; a move only of a real folder with a
+`SKILL.md`, to where nothing is (a copy that lands whole across disks) — each step said on the act's output, a failed
+step undoing the ones before it. A skill's `add` is planned from the skill as the agent would hold it once placed
+(`origin: 'own'`, `linkTarget` the host's folder) when the agent holds none of its own by that name, and Core's
+`extensionSkillFolderPlan` answers it for an agent with one folder per profile; its `remove` takes a link away, or
+moves the agent's own folder to where the host keeps it when the host names one (`plan`'s new `options.keepIn`), else
+leaves it (`no-command`). The receipt is the second read, found by name or by where the link went (OpenCode names a
+skill by its frontmatter), and a placing the agent turns out not to read — a `SKILL.md` it skips — is taken back, so
+nothing blocks the next try. `plans` answers skill adds (`skills`) and the moves to a host's folder (`keep`). Per
+agent: Claude Code `<root>/skills/<name>` (`synced` refused; the native default's `~/.claude/skills` reaches
+`shared-folder`, since Grok and OpenCode load it too); Codex reads a person's skills only from `~/.agents/skills`, so
+its add moves the host's copy there and leaves a link where it was (`shared-folder`), and a skill there is never taken
+away, only switched per profile; Grok `$GROK_HOME/skills`, Kimi `$KIMI_CODE_HOME/skills` (a flat skill is never
+taken), Pi `<agent dir>/skills` (a loose file never), Antigravity `~/.gemini/config/skills` under the profile's home;
+OpenCode its one config folder's `skills/` (`every-profile`); Hermes `$HERMES_HOME/skills`, which it walks with
+`followlinks=True`, and whose curator ages only skills recorded as written by the agent (a linked folder is read as the
+person's own, and a hub-installed folder is never moved). That Grok, Kimi and Antigravity follow a linked folder is
+their adapters' reading, not a probe: the second read is the check.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

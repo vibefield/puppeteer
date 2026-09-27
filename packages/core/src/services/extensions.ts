@@ -250,11 +250,13 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
 /*
  * RFC 006 C2 — acts. A person asks for one server or skill an agent holds to be
  * turned on, turned off or removed, for a remote server's sign-in to be
- * started or forgotten, or for a server the agent does not hold to be added
- * from a definition the host keeps; the adapter answers with a plan (the
- * agent's own command or protocol call, and what the act reaches beyond that
- * one item) or with why the agent cannot do it; the runtime runs the plan and
- * reads the agent again. The outcome is that second read, never the output.
+ * started or forgotten, for a server the agent does not hold to be added from
+ * a definition the host keeps, or for a skill the host keeps to be placed
+ * where the agent looks; the adapter answers with a plan (the agent's own
+ * command or protocol call, or the skill's folder steps, and what the act
+ * reaches beyond that one item) or with why the agent cannot do it; the
+ * runtime runs the plan and reads the agent again. The outcome is that second
+ * read, never the output.
  */
 
 /**
@@ -263,7 +265,10 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
  * `sign-out` is the agent's own forgetting of that sign-in. `add` gives the
  * agent a server it does not hold, from a {@link McpServerDefinition}: the
  * agent's own add, whose settings name each variable the server reads in the
- * agent's own syntax — never its value.
+ * agent's own syntax — never its value. For a skill, `add` places a link to a
+ * folder the host keeps where the agent's docs say skills go, and `remove`
+ * takes the link away — or moves the agent's own folder to where the host
+ * keeps it, when the host gives one.
  */
 export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove', 'sign-in', 'sign-out', 'add']);
 export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
@@ -288,7 +293,35 @@ export const ExtensionReachSchema = z.enum([
 ]);
 export type ExtensionReach = z.infer<typeof ExtensionReachSchema>;
 
-/** How an available act runs: the agent's own command, or a call on its protocol. */
+/**
+ * An absolute path, normalized: POSIX or a drive, no `.` or `..` segment, no
+ * doubled or trailing separator, never a NUL.
+ */
+const AbsolutePathSchema = z
+  .string()
+  .min(2)
+  .max(4_096)
+  .refine(isNormalizedAbsolutePath, 'expected a normalized absolute path');
+
+/**
+ * One step of a skill's placing, which the runtime performs itself and checks
+ * as it goes: `link` makes `path` a link to the folder `target` (only where
+ * nothing is), `unlink` takes away the link at `path` (only a link, never a
+ * folder), and `move` moves the real folder `from` (with its `SKILL.md`) to
+ * `to` (only where nothing is).
+ */
+export const ExtensionFileStepSchema = z.discriminatedUnion('op', [
+  z.strictObject({ op: z.literal('link'), path: AbsolutePathSchema, target: AbsolutePathSchema }),
+  z.strictObject({ op: z.literal('unlink'), path: AbsolutePathSchema }),
+  z.strictObject({ op: z.literal('move'), from: AbsolutePathSchema, to: AbsolutePathSchema }),
+]);
+export type ExtensionFileStep = z.infer<typeof ExtensionFileStepSchema>;
+
+/**
+ * How an available act runs: the agent's own command, a call on its protocol,
+ * the agent's own command in a terminal the person answers, or a skill's
+ * folder placed where the agent's docs say skills go.
+ */
 export const ExtensionActRunSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('command'),
@@ -312,6 +345,11 @@ export const ExtensionActRunSchema = z.discriminatedUnion('kind', [
     argv: z.array(z.string().min(1).max(4_096)).min(1).max(64),
     /** The variables that point the agent at the profile: paths, never a credential. */
     env: z.record(EnvironmentNameSchema, z.string().max(4_096)).optional(),
+  }),
+  z.strictObject({
+    kind: z.literal('files'),
+    /** In order; a step that fails undoes the ones before it. */
+    steps: z.array(ExtensionFileStepSchema).min(1).max(4),
   }),
 ]);
 export type ExtensionActRun = z.infer<typeof ExtensionActRunSchema>;
@@ -341,9 +379,10 @@ export const UnavailableExtensionActPlanSchema = z.strictObject({
    * `not-held`: the profile's agent does not hold it. `no-sign-in`: the item
    * has no sign-in of the agent's to start or end — it runs on this machine,
    * sends a key of its own, or the agent says it asks for none. `held`: the
-   * agent already holds a server by that name, so an add would replace it.
-   * `unsupported`: the agent cannot take the server as defined — a transport it
-   * does not speak, or a variable it cannot read.
+   * agent already holds one of its own by that name — a server its add would
+   * replace, a skill where the link would go. `unsupported`: the agent cannot
+   * take it as given — a transport it does not speak, a variable it cannot
+   * read, a skill that is not a folder.
    */
   reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in', 'held', 'unsupported']),
   /** Why, in the agent's own terms. */
@@ -467,6 +506,161 @@ export function extensionTerminalPlan(fields: ArgvPlanFields): AvailableExtensio
 }
 
 /**
+ * A name a skill's folder can take where the agent looks for skills: one
+ * segment, never a dot folder (the agents skip them), never a separator or a
+ * control character.
+ */
+export const EXTENSION_SKILL_FOLDER_NAME = /^(?!\.)[^/\\\u0000-\u001f\u007f]{1,128}$/u;
+
+/** Whether a path is absolute and already normalized: what a file step takes. */
+export function isNormalizedAbsolutePath(path: string): boolean {
+  if (path.includes('\u0000')) return false;
+  const drive = /^[A-Za-z]:\\/u.test(path);
+  if (!drive && !path.startsWith('/')) return false;
+  const separator = drive ? /\\/u : /\//u;
+  const segments = path.slice(drive ? 3 : 1).split(separator);
+  // the root alone is a path, never a place to link, unlink or move
+  if (segments.length === 1 && segments[0] === '') return false;
+  return segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+}
+
+function separatorOf(path: string): string {
+  return /^[A-Za-z]:\\/u.test(path) ? '\\' : '/';
+}
+
+/** `name` inside the folder `folder`, in the folder's own separator. */
+function childOf(folder: string, name: string): string {
+  return `${folder}${separatorOf(folder)}${name}`;
+}
+
+/** The folder a path sits in, in its own separator. */
+function parentOf(path: string): string {
+  return path.slice(0, path.lastIndexOf(separatorOf(path)));
+}
+
+/**
+ * File steps as a person reads them, one per line: where a link points and
+ * where it goes, what moves where. `home` shortens paths under it to `~`.
+ */
+export function describeFileSteps(steps: readonly ExtensionFileStep[], home?: string): string {
+  const show = (path: string): string => {
+    if (home === undefined || home === '') return path;
+    if (path === home) return '~';
+    const prefix = `${home}${separatorOf(home)}`;
+    return path.startsWith(prefix) ? `~${separatorOf(home)}${path.slice(prefix.length)}` : path;
+  };
+  return steps
+    .map((step) => {
+      switch (step.op) {
+        case 'link':
+          return `link ${show(step.target)} → ${show(step.path)}`;
+        case 'unlink':
+          return `unlink ${show(step.path)}`;
+        default:
+          return `move ${show(step.from)} → ${show(step.to)}`;
+      }
+    })
+    .join('\n');
+}
+
+/** An available plan whose steps the runtime performs itself: a skill's folder placed or taken away. */
+export function extensionFilesPlan(fields: {
+  target: ExtensionActTarget;
+  act: ExtensionActKind;
+  steps: readonly ExtensionFileStep[];
+  reaches?: readonly ExtensionReach[];
+  /** Paths under it are shown from `~`. */
+  home?: string;
+}): AvailableExtensionActPlan {
+  return {
+    target: fields.target,
+    act: fields.act,
+    available: true,
+    runs: { kind: 'files', steps: fields.steps.map((step) => ({ ...step })) },
+    display: describeFileSteps(fields.steps, fields.home),
+    reaches: [...(fields.reaches ?? [])],
+  };
+}
+
+/**
+ * A skill placed in, or taken from, the one folder where an agent looks for a
+ * person's skills in a profile — the placing every agent but Codex shares.
+ * `add` links the host's folder (the skill's `linkTarget`, as the runtime
+ * gives it) in as `<folder>/<id>`; `remove` takes the agent's own skill in that
+ * folder away: a link goes, and a real folder moves to where the host keeps it
+ * (`keepIn`) or, with none, stays. `label` is the agent's.
+ */
+export function extensionSkillFolderPlan(fields: {
+  label: string;
+  /** The folder the agent reads a person's skills from in this profile, absolute. */
+  folder: string;
+  item: SkillItem;
+  act: 'add' | 'remove';
+  keepIn?: string;
+  /** What that folder reaches beyond this profile: one folder for every profile. */
+  reaches?: readonly ExtensionReach[];
+  home?: string;
+}): ExtensionActPlan {
+  const { item, label, act } = fields;
+  const target: ExtensionActTarget = { kind: 'skill', id: item.id };
+  const reaches = fields.reaches ?? [];
+  if (act === 'add') {
+    if (item.linkTarget === undefined) {
+      return extensionActUnavailable(target, act, 'unsupported', `${label} takes a skill as a folder to link`);
+    }
+    if (!EXTENSION_SKILL_FOLDER_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        `${label} cannot take a skill folder named ${item.id}`,
+      );
+    }
+    return extensionFilesPlan({
+      target,
+      act,
+      steps: [{ op: 'link', path: childOf(fields.folder, item.id), target: item.linkTarget }],
+      reaches,
+      ...(fields.home === undefined ? {} : { home: fields.home }),
+    });
+  }
+  if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords(label, item));
+  if (item.location === undefined || parentOf(item.location) !== fields.folder) {
+    // the person's own, in another folder the agent reads (a shared one): it changes there
+    return extensionActUnavailable(
+      target,
+      act,
+      'not-own',
+      `${item.name} is not in ${label}'s own skills folder, and changes where it is`,
+    );
+  }
+  if (item.linkTarget !== undefined) {
+    return extensionFilesPlan({
+      target,
+      act,
+      steps: [{ op: 'unlink', path: item.location }],
+      reaches,
+      ...(fields.home === undefined ? {} : { home: fields.home }),
+    });
+  }
+  if (fields.keepIn !== undefined) {
+    return extensionFilesPlan({
+      target,
+      act,
+      steps: [{ op: 'move', from: item.location, to: fields.keepIn }],
+      reaches,
+      ...(fields.home === undefined ? {} : { home: fields.home }),
+    });
+  }
+  return extensionActUnavailable(
+    target,
+    act,
+    'no-command',
+    `${item.name} is a folder of ${label}'s own, and nothing keeps it if it goes`,
+  );
+}
+
+/**
  * Why a server has no sign-in of the agent's to start or end, in words a
  * person reads — it runs on this machine, it speaks WebSocket (a header, never
  * a sign-in), or it sends its own `Authorization` header — or undefined when
@@ -491,6 +685,15 @@ export function extensionActUnavailable(
   return { target, act, available: false, reason, message };
 }
 
+/** What a host adds to an act's plan beyond the item and the act. */
+export interface ExtensionActPlanOptions {
+  /**
+   * For a skill's `remove`: where the host keeps the agent's own folder instead
+   * of leaving it where it is — an absolute path where nothing is yet.
+   */
+  keepIn?: string;
+}
+
 /** One adapter-owned extensions capability, independent of live sessions. */
 export interface ExtensionService {
   readonly provider: ExtensionProvider;
@@ -504,16 +707,23 @@ export interface ExtensionService {
   /**
    * RFC 006 C2: what an act on a server or skill this profile's agent holds
    * would run, without running it — or why the agent cannot. Pure: the runtime
-   * passes the item as a fresh read found it. For `add`, it passes the server
-   * as the agent would hold it once added — never from a read, `origin: 'own'`,
-   * its `definition` set — and only when the agent holds none by that name.
+   * passes the item as a fresh read found it. For `add`, it passes the item as
+   * the agent would hold it once added — never from a read, `origin: 'own'` — a
+   * server with its `definition` set, a skill whose `linkTarget` is the folder
+   * the host keeps, and only when the agent holds none of its own by that name.
    * Absent, the agent has no acts.
    */
-  plan?(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan;
+  plan?(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    options?: ExtensionActPlanOptions,
+  ): ExtensionActPlan;
   /**
    * Runs a protocol plan through the adapter's own transport. A command plan
    * is the runtime's to run, in the clean environment with the plan's
-   * variables; a terminal plan is the host's, in a terminal the person answers.
+   * variables; a terminal plan is the host's, in a terminal the person answers;
+   * a files plan is the runtime's, step by step.
    */
   perform?(profile: AgentProfile, plan: AvailableExtensionActPlan, io: ExtensionActIo): Promise<ExtensionActOutcome>;
 }

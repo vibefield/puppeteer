@@ -2744,13 +2744,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionActs.settle(started, ended);
     },
 
-    async extensionActPlans(providerId, profileId, items, adds) {
+    async extensionActPlans(providerId, profileId, items, adds, skills) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionActs.plans({
         providerId,
         ...(profileId === undefined ? {} : { profileId }),
         items,
         ...(adds === undefined ? {} : { adds }),
+        ...(skills?.adds === undefined ? {} : { skills: skills.adds }),
+        ...(skills?.keep === undefined ? {} : { keep: skills.keep }),
       });
     },
 

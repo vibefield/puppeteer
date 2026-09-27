@@ -4,10 +4,12 @@ import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createPiExtensionService } from './extensions.js';
 
@@ -335,6 +337,20 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+/** A skill as the runtime hands an add to the adapter: a link to the folder the host keeps. */
+const placed = (name: string, folder: string): SkillItem => ({
+  kind: 'skill',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  linkTarget: folder,
+});
+const heldSkill = (inventory: ExtensionInventory, id: string): SkillItem => {
+  const item = find(inventory, 'skill', id);
+  if (item?.kind !== 'skill') throw new Error(`no skill ${id}`);
+  return item;
+};
 
 describe('Pi extension acts', () => {
   it('filters skills only inside the app', () => {
@@ -342,6 +358,157 @@ describe('Pi extension acts', () => {
     expect(pi.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({
       available: false,
       reason: 'in-app',
+    });
+  });
+
+  it("places a kept skill as a link in the profile's own skills folder", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const kept = join(home, 'kept', 'release-notes');
+    const pi = createPiExtensionService({ home, now });
+    const work = managedProfile(root);
+    expect(ExtensionActPlanSchema.parse(pi.plan!(work, placed('release-notes', kept), 'add'))).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'link', path: join(root, 'agent', 'skills', 'release-notes'), target: kept }],
+      },
+      display: 'link ~/kept/release-notes → ~/profiles/work/pi-7c1e/agent/skills/release-notes',
+      reaches: [],
+    });
+    // The native default's folder is `~/.pi/agent/skills`, under the home it was given.
+    expect(pi.plan!(nativeProfile(home), placed('release-notes', kept), 'add')).toMatchObject({
+      available: true,
+      runs: { steps: [{ op: 'link', path: join(home, '.pi', 'agent', 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/.pi/agent/skills/release-notes',
+      reaches: [],
+    });
+    // Only a folder to link, under a name that stays one folder.
+    expect(pi.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+    for (const name of ['.hidden', 'team/notes']) {
+      expect(pi.plan!(work, placed(name, kept), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+      });
+    }
+  });
+
+  it('takes away only a folder directly in its own skills folder: its link, or the folder itself to the host', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    const skills = join(agent, 'skills');
+    const tools = join(agent, 'npm', 'node_modules', '@acme', 'pi-tools');
+    await write(join(agent, 'settings.json'), {
+      packages: ['npm:@acme/pi-tools'],
+      skills: ['../extra-skills/deploy'],
+    });
+    await write(join(tools, 'package.json'), { name: '@acme/pi-tools', version: '1.2.0' });
+    await write(join(tools, 'skills', 'lint', 'SKILL.md'), skill('lint', 'Lints the change'));
+    const library = join(home, 'library', 'linked');
+    await write(join(library, 'SKILL.md'), skill('linked', 'Kept by the host'));
+    await mkdir(skills, { recursive: true });
+    await symlink(library, join(skills, 'linked'));
+    await write(join(skills, 'mine', 'SKILL.md'), skill('mine', 'A folder of its own'));
+    await write(join(skills, 'handoff.md'), skill('handoff', 'Writes a handoff note'));
+    await write(join(skills, 'team', 'nested', 'SKILL.md'), skill('nested', 'Deeper down'));
+    await write(join(root, 'extra-skills', 'deploy', 'SKILL.md'), skill('deploy', 'On a settings path'));
+    await write(
+      join(home, '.agents', 'skills', 'browser-use', 'SKILL.md'),
+      skill('browser-use', 'Every agent reads it'),
+    );
+
+    const pi = createPiExtensionService({ home, now });
+    const work = managedProfile(root);
+    const inventory = await read(home, root);
+    const remove = (id: string, keepIn?: string) =>
+      ExtensionActPlanSchema.parse(
+        pi.plan!(work, heldSkill(inventory, id), 'remove', keepIn === undefined ? {} : { keepIn }),
+      );
+
+    // A link goes, even where the host would keep a folder.
+    expect(remove('linked', join(home, 'kept', 'linked'))).toEqual({
+      target: { kind: 'skill', id: 'linked' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'linked') }] },
+      display: 'unlink ~/profiles/work/pi-7c1e/agent/skills/linked',
+      reaches: [],
+    });
+    const keepIn = join(home, 'kept', 'mine');
+    expect(remove('mine', keepIn)).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(skills, 'mine'), to: keepIn }] },
+      display: 'move ~/profiles/work/pi-7c1e/agent/skills/mine → ~/kept/mine',
+      reaches: [],
+    });
+    // With nowhere to keep it, the person's own folder stays.
+    expect(remove('mine')).toMatchObject({ available: false, reason: 'no-command' });
+    // A loose skill is one file, not a folder: it stays, wherever the host would keep it.
+    for (const keep of [join(home, 'kept', 'handoff'), undefined]) {
+      expect(remove('handoff.md', keep)).toEqual({
+        target: { kind: 'skill', id: 'handoff.md' },
+        act: 'remove',
+        available: false,
+        reason: 'no-command',
+        message: "handoff is a loose file in Pi's skills folder, and only a skill's folder is taken away",
+      });
+    }
+    for (const [id, name] of [
+      ['team/nested', 'nested'],
+      [`path:${join(root, 'extra-skills', 'deploy')}`, 'deploy'],
+      ['shared:browser-use', 'browser-use'],
+    ] as const) {
+      expect(remove(id, join(home, 'kept', name)), id).toEqual({
+        target: { kind: 'skill', id },
+        act: 'remove',
+        available: false,
+        reason: 'not-own',
+        message: `${name} is not in Pi's own skills folder, and changes where it is`,
+      });
+    }
+    expect(remove('plugin:npm:@acme/pi-tools:lint', join(home, 'kept', 'lint'))).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: 'It comes with the npm:@acme/pi-tools plugin and changes with it',
+    });
+    // Its switches are still `pi config`'s.
+    expect(pi.plan!(work, heldSkill(inventory, 'mine'), 'disable')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+    });
+  });
+
+  it('reads the link it planned back as its own skill, and plans taking it away as an unlink', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const folder = join(home, 'kept', 'release-notes');
+    await write(join(folder, 'SKILL.md'), skill('release-notes', 'Drafts the notes'));
+    const pi = createPiExtensionService({ home, now });
+    const work = managedProfile(root);
+    const plan = ExtensionActPlanSchema.parse(pi.plan!(work, placed('release-notes', folder), 'add'));
+    const step = plan.available && plan.runs.kind === 'files' ? plan.runs.steps[0] : undefined;
+    if (step?.op !== 'link') throw new Error('expected a link');
+    // The runtime performs the step itself; here, by hand.
+    await mkdir(dirname(step.path), { recursive: true });
+    await symlink(step.target, step.path);
+
+    const inventory = await read(home, root);
+    expect(heldSkill(inventory, 'release-notes')).toEqual({
+      kind: 'skill',
+      id: 'release-notes',
+      name: 'release-notes',
+      origin: 'own',
+      enabled: true,
+      description: 'Drafts the notes',
+      location: step.path,
+      linkTarget: folder,
+    });
+    expect(pi.plan!(work, heldSkill(inventory, 'release-notes'), 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: step.path }] },
     });
   });
 });

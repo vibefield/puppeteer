@@ -42,11 +42,13 @@ import {
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -333,18 +335,22 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
 
   // Acts (RFC 006 C2): a server of the home's own `mcp_config.json` turns on and
   // off with `agy mcp enable|disable <name>` under the profile's HOME — only a
-  // name the read found, since disabling an unknown one writes a stub. Removal
-  // was not probed and is not offered; skills switch only inside the app. A
-  // server a host keeps comes in with `agy mcp add`, stdio or Streamable HTTP,
-  // and never one that reads a variable: `--env` stores a literal value.
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // name the read found, since disabling an unknown one writes a stub. A
+  // server's removal was not probed and is not offered. A server a host keeps
+  // comes in with `agy mcp add`, stdio or Streamable HTTP, and never one that
+  // reads a variable: `--env` stores a literal value. Skills switch only inside
+  // the app, and are placed as folders (`planSkill`).
+  function plan(
+    profile: AgentProfile,
+    item: McpServerItem | SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
+    if (item.kind === 'skill') return planSkill(profile, item, act, options);
     if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
-    }
-    if (item.kind === 'skill') {
-      return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
     }
     if (act === 'sign-in' || act === 'sign-out') {
       return item.transport === 'stdio'
@@ -385,10 +391,10 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
    * a command line with flags of its own reaches the server instead of
    * `agy mcp add`.
    */
-  function planAdd(profile: AgentProfile, item: McpServerItem | SkillItem): ExtensionActPlan {
+  function planAdd(profile: AgentProfile, item: McpServerItem): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
     const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
-    if (item.kind !== 'mcp-server' || item.definition === undefined) {
+    if (item.definition === undefined) {
       return unsupported('Antigravity adds only a server, from its definition');
     }
     if (!EXTENSION_COMMAND_NAME.test(item.id)) {
@@ -421,6 +427,39 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
       env: profileEnv(profile),
       reaches: [],
     });
+  }
+
+  /**
+   * A skill the host keeps is linked into the bound home's
+   * `.gemini/config/skills/`, the one folder of the person's own skills;
+   * taking one away unlinks it, or moves a real folder of the person's to
+   * where the host keeps it. The builtins and a plugin's skills are not the
+   * person's to place or take. Whether Antigravity itself follows a linked
+   * skill folder is unproven (the 1.2.11 probe placed none; `/skills reload`
+   * would tell): the read here follows links, and the runtime's second read is
+   * the receipt.
+   */
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions,
+  ): ExtensionActPlan {
+    if (act === 'add' || act === 'remove') {
+      return extensionSkillFolderPlan({
+        label: 'Antigravity',
+        folder: join(homeOf(profile), ...CONFIG, 'skills'),
+        item,
+        act,
+        ...(act === 'remove' && options.keepIn !== undefined ? { keepIn: options.keepIn } : {}),
+        home: nativeHome,
+      });
+    }
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
+    }
+    return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
   }
 
   return {
