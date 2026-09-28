@@ -1,4 +1,5 @@
 import {
+  AgentLaunchCommandSchema,
   AgentNativeInvocationIntentSchema,
   type AgentNativeInvocationIntent,
   type TerminalSpec,
@@ -25,6 +26,63 @@ export const SPAWN_THROUGH_EXIT_REFUSED = 75;
 /** The shim's exit when it cannot run at all or finds no real executable (the shell's own "not found"). */
 export const SPAWN_THROUGH_EXIT_UNAVAILABLE = 127;
 
+/**
+ * Why a launch was not exec'd, one code per place the kit declines — stable,
+ * for a host to switch on (its own words, its records). The `reason` beside it
+ * is for people and logs, and may change.
+ */
+export const SPAWN_THROUGH_DECLINE_CODES = [
+  // The gateway's own: it could not read or trust the request.
+  'unauthenticated', // a wrong bearer, or a request of the wrong shape: one answer for both
+  'request-too-large', // over MAX_REQUEST_BYTES
+  'handler-failed', // the host's handler threw
+  // The request: its process identity or its intent does not parse.
+  'invalid-request',
+  // What the invocation is: not a session at all.
+  'passthrough', // the adapter says: a utility, a one-shot, an agent that lives elsewhere
+  'not-interactive', // its input or output is not a terminal: a one-shot run
+  // Where it is.
+  'outside-host-terminals', // no terminal of the host's holds the process
+  // A session in one of the host's terminals that the host cannot manage.
+  'unsupported-agent', // the runtime offers no managed native invocation for it
+  'invalid-invocation', // the runtime would not put it to the adapter, or the implementation does not fit
+  'rejected-argument', // the adapter's grammar: an argument the managed launch cannot carry
+  'imposter-unavailable', // the imposter route it asked for is not available beside this host
+  'prepare-failed',
+  'terminal-conflict', // the terminal already runs a managed session (the runtime's RUNTIME_SESSION_CONFLICT)
+  'adopt-failed',
+] as const;
+export type SpawnThroughDeclineCode = (typeof SPAWN_THROUGH_DECLINE_CODES)[number];
+
+/** A refusal's words: at most this many characters, on at most two lines. The shim holds them to it too. */
+export const MAX_REFUSAL_MESSAGE_LENGTH = 400;
+
+// Controls (C0, C1), format characters (bidirectional overrides among them), private use, unassigned, and
+// the Unicode line and paragraph separators some terminals break a line on.
+const UNPRINTABLE = /[\p{C}\p{Zl}\p{Zp}]/gu;
+
+/**
+ * Text for a person's terminal: printable characters only, at most two lines
+ * (a third and later join the second), at most
+ * {@link MAX_REFUSAL_MESSAGE_LENGTH} characters, `…` marking a cut. Empty when
+ * nothing printable is left.
+ */
+export function boundSpawnThroughText(text: string): string {
+  const [first, ...rest] = text
+    .split(/\r\n|\r|\n/u)
+    .map((line) => line.replace(UNPRINTABLE, ' ').replace(/\s+/gu, ' ').trim())
+    .filter((line) => line.length > 0);
+  const characters = Array.from([first, rest.join(' ')].filter(Boolean).join('\n'));
+  return characters.length <= MAX_REFUSAL_MESSAGE_LENGTH
+    ? characters.join('')
+    : `${characters.slice(0, MAX_REFUSAL_MESSAGE_LENGTH - 1).join('')}…`;
+}
+
+/** The kit's own sentence for a refusal: what a person reads when the host has no words of its own. */
+export function spawnThroughRefusalMessage({ reason }: { reason: string }): string {
+  return `not started, because it could not be run as a managed session: ${reason}`;
+}
+
 export interface SpawnThroughLaunchRequest extends AgentNativeInvocationIntent {
   type: 'launch';
   token: string;
@@ -33,6 +91,8 @@ export interface SpawnThroughLaunchRequest extends AgentNativeInvocationIntent {
   parentPid: number;
   /** A flag only. The host resolves the imposter's executable and state root. */
   imposter?: boolean;
+  /** The name the person typed (`ai` for the imposter's route), for the words a refused person reads. */
+  command?: string;
   /**
    * Whether the agent's input and output are both a terminal. A launch whose
    * input or output is not (`<name> "x" > out.txt`, a pipe) is a one-shot run,
@@ -55,22 +115,46 @@ export type SpawnThroughResponse =
   /** The launch is adopted: exec this recipe in place. */
   | { action: 'exec'; preparationId: string; launch: TerminalSpec }
   /** Not managed: exec the real executable with the original argv. */
-  | { action: 'fallback'; reason: string }
-  /** Strict hosts only: exec nothing, print `message`, exit {@link SPAWN_THROUGH_EXIT_REFUSED}. */
-  | { action: 'refuse'; reason: string; message: string }
+  | { action: 'fallback'; code: SpawnThroughDeclineCode; reason: string }
+  /**
+   * Strict hosts only: exec nothing, print `message` (bounded by
+   * {@link boundSpawnThroughText}), exit {@link SPAWN_THROUGH_EXIT_REFUSED}.
+   */
+  | { action: 'refuse'; code: SpawnThroughDeclineCode; reason: string; message: string }
   | { action: 'ack' };
 
+/** Why a launch was declined: the stable code, and the reason for people and logs. */
+export interface SpawnThroughDecline {
+  code: SpawnThroughDeclineCode;
+  reason: string;
+}
+
 /**
- * The answer to a launch the host will not manage: the real executable runs
- * unmanaged, or — for a strict host — nothing runs and the person is told why.
+ * The answer to a launch the host will not manage: without `refusal`, the
+ * real executable runs unmanaged; with it, nothing runs and the person reads
+ * `refusal.message`, bounded here — or the kit's own sentence when no words
+ * are given or none survive the bound.
  */
 export function declineSpawnThrough(
-  reason: string,
-  { strict }: { strict?: boolean | undefined },
+  decline: SpawnThroughDecline,
+  refusal?: { message?: string | undefined } | undefined,
 ): SpawnThroughResponse {
-  return strict === true
-    ? { action: 'refuse', reason, message: `not started, because it could not be run as a managed session: ${reason}` }
-    : { action: 'fallback', reason };
+  const { code, reason } = decline;
+  if (refusal === undefined) return { action: 'fallback', code, reason };
+  const message =
+    boundSpawnThroughText(refusal.message ?? '') || boundSpawnThroughText(spawnThroughRefusalMessage(decline));
+  return { action: 'refuse', code, reason, message };
+}
+
+/** Core's rule for a command name: what a launcher can be written for, and nothing a terminal would act on. */
+export function isSpawnThroughCommandName(value: unknown): value is string {
+  return typeof value === 'string' && AgentLaunchCommandSchema.shape.name.safeParse(value).data === value;
+}
+
+const DECLINE_CODES: ReadonlySet<string> = new Set(SPAWN_THROUGH_DECLINE_CODES);
+
+function isDeclineCode(value: unknown): value is SpawnThroughDeclineCode {
+  return typeof value === 'string' && DECLINE_CODES.has(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -113,15 +197,17 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
       'pid',
       'parentPid',
       'imposter',
+      'command',
       'interactive',
     ])
   ) {
     return undefined;
   }
-  const { pid, parentPid, imposter, interactive } = value;
+  const { pid, parentPid, imposter, command, interactive } = value;
   if (!positivePid(pid) || !positivePid(parentPid)) return undefined;
   if (imposter !== undefined && typeof imposter !== 'boolean') return undefined;
   if (interactive !== undefined && typeof interactive !== 'boolean') return undefined;
+  if (command !== undefined && !isSpawnThroughCommandName(command)) return undefined;
   const intent = AgentNativeInvocationIntentSchema.safeParse({
     providerId: value.providerId,
     cwd: value.cwd,
@@ -136,6 +222,7 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
     pid,
     parentPid,
     ...(imposter === true ? { imposter: true } : {}),
+    ...(typeof command === 'string' ? { command } : {}),
     // Absent: a shim from before this field, which never looked. Its launch is read as every launch was then.
     interactive: interactive ?? true,
   };
@@ -168,10 +255,12 @@ export function parseSpawnThroughResponse(value: unknown): SpawnThroughResponse 
       };
     }
     case 'fallback':
-      return typeof value.reason === 'string' ? { action: 'fallback', reason: value.reason } : undefined;
+      return isDeclineCode(value.code) && typeof value.reason === 'string'
+        ? { action: 'fallback', code: value.code, reason: value.reason }
+        : undefined;
     case 'refuse':
-      return typeof value.reason === 'string' && typeof value.message === 'string'
-        ? { action: 'refuse', reason: value.reason, message: value.message }
+      return isDeclineCode(value.code) && typeof value.reason === 'string' && typeof value.message === 'string'
+        ? { action: 'refuse', code: value.code, reason: value.reason, message: value.message }
         : undefined;
     case 'ack':
       return { action: 'ack' };

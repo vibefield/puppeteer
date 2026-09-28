@@ -24,6 +24,8 @@ import { spawnThroughLayout } from './layout.js';
 import {
   SPAWN_THROUGH_EXIT_REFUSED,
   SPAWN_THROUGH_EXIT_UNAVAILABLE,
+  boundSpawnThroughText,
+  isSpawnThroughCommandName,
   parseSpawnThroughResponse,
   type SpawnThroughResponse,
 } from './protocol.js';
@@ -34,9 +36,9 @@ const RESPONSE_TIMEOUT_MS = 28_000;
 /** Loopback connects at once or not at all; this only bounds a machine too loaded to say. */
 const CONNECT_TIMEOUT_MS = 2_000;
 
-function say(line: string): void {
-  // Gateway text reaches the person's terminal: no control character rides along with it.
-  process.stderr.write(`puppeteer: ${line.replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ')}\n`);
+function say(text: string): void {
+  // Gateway text reaches the person's terminal: printable characters only, on at most two lines, bounded.
+  process.stderr.write(`puppeteer: ${boundSpawnThroughText(text)}\n`);
 }
 
 function leave(line: string, code: number): never {
@@ -243,6 +245,7 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     pid: process.pid,
     parentPid: process.ppid,
     ...(imposter ? { imposter: true } : {}),
+    ...(isSpawnThroughCommandName(name) ? { command: name } : {}),
     // `isatty`, never `process.stdin.isTTY`: that getter opens the terminal as a stream, and libuv leaves
     // fd 0 non-blocking — a state the agent would inherit at exec.
     interactive: isatty(0) && isatty(1),

@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentLaunchProvider, AgentNativeInvocation } from '@vibecook/puppeteer-core';
 import type { ClassifyAgentInvocationResult } from '../../types.js';
-import { prepareSpawnThroughLaunch, type SpawnThroughHost } from './prepare.js';
-import type { SpawnThroughLaunchRequest } from './protocol.js';
+import { prepareSpawnThroughLaunch, type SpawnThroughHost, type SpawnThroughRefusal } from './prepare.js';
+import {
+  MAX_REFUSAL_MESSAGE_LENGTH,
+  type SpawnThroughDeclineCode,
+  type SpawnThroughLaunchRequest,
+} from './protocol.js';
 
 const provider = {
   id: 'example',
@@ -35,6 +39,7 @@ function launch(overrides: Partial<SpawnThroughLaunchRequest> = {}): SpawnThroug
     environment: {},
     pid: 456,
     parentPid: 123,
+    command: 'example',
     interactive: true,
     ...overrides,
   };
@@ -103,11 +108,13 @@ function scripted(script: Script = {}) {
   return { calls, runtime, host };
 }
 
-const refusal = (reason: string) => ({
+const refusal = (code: SpawnThroughDeclineCode, reason: string, message = defaultSentence(reason)) => ({
   action: 'refuse',
+  code,
   reason,
-  message: `not started, because it could not be run as a managed session: ${reason}`,
+  message,
 });
+const defaultSentence = (reason: string) => `not started, because it could not be run as a managed session: ${reason}`;
 
 describe('prepareSpawnThroughLaunch', () => {
   it('classifies, resolves the terminal, prepares, adopts, records — in that order — and answers exec', async () => {
@@ -207,6 +214,7 @@ describe('prepareSpawnThroughLaunch', () => {
     });
     await expect(prepareSpawnThroughLaunch(launch(), host)).resolves.toEqual({
       action: 'fallback',
+      code: 'adopt-failed',
       reason: 'terminal is busy',
     });
     expect(runtime.cancelPrepared).toHaveBeenCalledWith('preparation-1');
@@ -219,6 +227,7 @@ describe('prepareSpawnThroughLaunch', () => {
     const cases: (Script & {
       name: string;
       request?: Partial<SpawnThroughLaunchRequest>;
+      code: SpawnThroughDeclineCode;
       reason: string;
       reached: string[];
       /** What a strict host answers. A host that is not strict falls back, always. */
@@ -228,6 +237,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an invalid pid',
         request: { pid: 0 },
+        code: 'invalid-request',
         reason: 'invalid process identity',
         reached: [],
         strict: 'fallback',
@@ -235,6 +245,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an invalid intent',
         request: { cwd: '' },
+        code: 'invalid-request',
         reason: 'invalid launch request',
         reached: [],
         strict: 'fallback',
@@ -243,6 +254,7 @@ describe('prepareSpawnThroughLaunch', () => {
       ...(['utility', 'one-shot', 'elsewhere'] as const).map((kind) => ({
         name: `a ${kind} passthrough`,
         grammar: { status: 'passthrough', kind, reason: `a ${kind} invocation` } as const,
+        code: 'passthrough' as const,
         reason: `a ${kind} invocation`,
         reached: ['classify'],
         strict: 'fallback' as const,
@@ -250,6 +262,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an accepted grammar whose input or output is not a terminal',
         request: { interactive: false },
+        code: 'not-interactive',
         reason: 'its input or output is not a terminal: a one-shot run',
         reached: ['classify'],
         strict: 'fallback',
@@ -258,6 +271,7 @@ describe('prepareSpawnThroughLaunch', () => {
         name: 'a rejected grammar whose input or output is not a terminal',
         request: { interactive: false },
         grammar: { status: 'rejected', reason: 'cannot carry it', argument: '--other' },
+        code: 'not-interactive',
         reason: 'its input or output is not a terminal: a one-shot run',
         reached: ['classify'],
         strict: 'fallback',
@@ -265,6 +279,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an unknown provider whose input or output is not a terminal',
         request: { providerId: 'missing', interactive: false },
+        code: 'not-interactive',
         reason: 'its input or output is not a terminal: a one-shot run',
         reached: ['classify'],
         strict: 'fallback',
@@ -273,6 +288,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an accepted session no terminal of the host contains',
         ...NOWHERE,
+        code: 'outside-host-terminals',
         reason: 'not in a terminal this host owns',
         reached: ['classify', 'resolve'],
         strict: 'fallback',
@@ -281,6 +297,7 @@ describe('prepareSpawnThroughLaunch', () => {
         name: 'a rejected session no terminal of the host contains',
         ...NOWHERE,
         grammar: { status: 'rejected', reason: 'cannot carry it', argument: '--other' },
+        code: 'outside-host-terminals',
         reason: 'not in a terminal this host owns',
         reached: ['classify', 'resolve'],
         strict: 'fallback',
@@ -289,6 +306,7 @@ describe('prepareSpawnThroughLaunch', () => {
         name: 'an unknown provider no terminal of the host contains',
         ...NOWHERE,
         request: { providerId: 'missing' },
+        code: 'outside-host-terminals',
         reason: 'not in a terminal this host owns',
         reached: ['classify', 'resolve'],
         strict: 'fallback',
@@ -297,6 +315,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an unknown provider',
         request: { providerId: 'missing' },
+        code: 'unsupported-agent',
         reason: UNSUPPORTED.reason,
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -304,6 +323,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'a provider without the capability',
         request: { providerId: 'plain' },
+        code: 'unsupported-agent',
         reason: UNSUPPORTED.reason,
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -315,6 +335,7 @@ describe('prepareSpawnThroughLaunch', () => {
           code: 'INVALID_NATIVE_INVOCATION',
           reason: 'native invocation environment is not accepted by example: SECRET',
         },
+        code: 'invalid-invocation',
         reason: 'native invocation environment is not accepted by example: SECRET',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -322,6 +343,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'a provider the runtime classifies but does not list',
         runtime: { launchProviders: () => [plain] },
+        code: 'unsupported-agent',
         reason: 'agent does not support managed native invocation',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -329,6 +351,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'a rejected session, naming the argument',
         grammar: { status: 'rejected', reason: 'custom arguments are not compatible', argument: '--other' },
+        code: 'rejected-argument',
         reason: 'custom arguments are not compatible (--other)',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -338,6 +361,7 @@ describe('prepareSpawnThroughLaunch', () => {
         name: 'an imposter the agent does not advertise',
         request: { providerId: 'bare', imposter: true },
         host: { imposterBin: () => '/opt/ai' },
+        code: 'imposter-unavailable',
         reason: 'agent does not advertise a conformant pane imposter',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -345,6 +369,7 @@ describe('prepareSpawnThroughLaunch', () => {
       {
         name: 'an imposter this host cannot run',
         request: { imposter: true },
+        code: 'imposter-unavailable',
         reason: 'the puppeteer imposter is not installed beside the host',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
@@ -353,11 +378,12 @@ describe('prepareSpawnThroughLaunch', () => {
         name: 'an imposter without its isolated root',
         request: { imposter: true },
         host: { imposterBin: () => '/opt/ai' },
+        code: 'imposter-unavailable',
         reason: 'an isolated imposter state root is unavailable',
         reached: ['classify', 'resolve'],
         strict: 'refuse',
       },
-      // 6. Prepare, adopt.
+      // 6. Prepare, adopt: each failure keeps the runtime's own code distinguishable.
       {
         name: 'a failed preparation, naming its argument',
         runtime: {
@@ -365,7 +391,44 @@ describe('prepareSpawnThroughLaunch', () => {
             error: { code: 'INVALID_NATIVE_INVOCATION', message: 'the imposter cannot carry it', argument: '--x' },
           }),
         },
+        code: 'rejected-argument',
         reason: 'the imposter cannot carry it (--x)',
+        reached: ['classify', 'resolve', 'prepare'],
+        strict: 'refuse',
+      },
+      {
+        name: 'a preparation the implementation does not fit',
+        runtime: {
+          prepareInvocation: async () => ({
+            error: { code: 'INVALID_NATIVE_INVOCATION', message: 'imposter implementation does not match' },
+          }),
+        },
+        code: 'invalid-invocation',
+        reason: 'imposter implementation does not match',
+        reached: ['classify', 'resolve', 'prepare'],
+        strict: 'refuse',
+      },
+      {
+        name: 'a preparation of an agent the runtime no longer offers',
+        runtime: {
+          prepareInvocation: async () => ({
+            error: { code: 'NATIVE_INVOCATION_UNSUPPORTED', message: 'no longer offered' },
+          }),
+        },
+        code: 'unsupported-agent',
+        reason: 'no longer offered',
+        reached: ['classify', 'resolve', 'prepare'],
+        strict: 'refuse',
+      },
+      {
+        name: 'a failed preparation of any other kind',
+        runtime: {
+          prepareInvocation: async () => ({
+            error: { code: 'CREATION_REQUEST_CONFLICT', message: 'the run is already being created' },
+          }),
+        },
+        code: 'prepare-failed',
+        reason: 'the run is already being created',
         reached: ['classify', 'resolve', 'prepare'],
         strict: 'refuse',
       },
@@ -376,15 +439,29 @@ describe('prepareSpawnThroughLaunch', () => {
             error: { code: 'NATIVE_INVOCATION_PASSTHROUGH', message: 'not a session', passthrough: 'utility' },
           }),
         },
+        code: 'passthrough',
         reason: 'not a session',
         reached: ['classify', 'resolve', 'prepare'],
         strict: 'fallback',
+      },
+      {
+        name: 'a terminal that already runs a managed session',
+        runtime: {
+          adoptPrepared: async () => ({
+            error: { code: 'RUNTIME_SESSION_CONFLICT', message: 'terminal already has an active agent session' },
+          }),
+        },
+        code: 'terminal-conflict',
+        reason: 'terminal already has an active agent session',
+        reached: ['classify', 'resolve', 'prepare', 'adopt', 'cancel'],
+        strict: 'refuse',
       },
       {
         name: 'a failed adoption',
         runtime: {
           adoptPrepared: async () => ({ error: { code: 'PREPARATION_ADOPT_FAILED', message: 'terminal is busy' } }),
         },
+        code: 'adopt-failed',
         reason: 'terminal is busy',
         reached: ['classify', 'resolve', 'prepare', 'adopt', 'cancel'],
         strict: 'refuse',
@@ -392,12 +469,12 @@ describe('prepareSpawnThroughLaunch', () => {
     ];
 
     for (const strict of [false, true]) {
-      for (const { name, request, reason, reached, strict: answer, ...script } of cases) {
+      for (const { name, request, code, reason, reached, strict: answer, ...script } of cases) {
         const refused = strict && answer === 'refuse';
         it(`${name} (${strict ? 'strict' : 'not strict'}): ${refused ? 'refuse' : 'fallback'}`, async () => {
           const { calls, host } = scripted({ ...script, host: { ...script.host, strict } });
           const result = await prepareSpawnThroughLaunch(launch(request), host);
-          expect(result).toEqual(refused ? refusal(reason) : { action: 'fallback', reason });
+          expect(result).toEqual(refused ? refusal(code, reason) : { action: 'fallback', code, reason });
           expect(calls).toEqual(reached);
           expect(host.onAdopted).not.toHaveBeenCalled();
         });
@@ -416,6 +493,7 @@ describe('prepareSpawnThroughLaunch', () => {
             });
             await expect(prepareSpawnThroughLaunch(launch({ interactive, imposter }), host)).resolves.toEqual({
               action: 'fallback',
+              code: 'passthrough',
               reason: 'not a session',
             });
             expect(host.resolveTerminal).not.toHaveBeenCalled();
@@ -425,5 +503,87 @@ describe('prepareSpawnThroughLaunch', () => {
         }
       }
     }
+  });
+
+  describe("a refusal in the host's own words", () => {
+    const rejected = {
+      grammar: { status: 'rejected', reason: 'custom arguments are not compatible', argument: '--bare' } as const,
+    };
+
+    it('asks the host for the sentence, telling it the code, the reason, the argument, the agent and the command', async () => {
+      const words = vi.fn((refused: SpawnThroughRefusal) => `${refused.command} runs here only as a managed session`);
+      const { host } = scripted({ ...rejected, host: { strict: true, refusal: words } });
+      await expect(prepareSpawnThroughLaunch(launch(), host)).resolves.toEqual(
+        refusal(
+          'rejected-argument',
+          'custom arguments are not compatible (--bare)',
+          'example runs here only as a managed session',
+        ),
+      );
+      expect(words).toHaveBeenCalledWith({
+        code: 'rejected-argument',
+        reason: 'custom arguments are not compatible (--bare)',
+        argument: '--bare',
+        providerId: 'example',
+        command: 'example',
+      });
+
+      // A shim from before the request named its command: the agent's id stands in for it.
+      const { command: _command, ...older } = launch({ providerId: 'bare' });
+      await prepareSpawnThroughLaunch(older, host);
+      expect(words).toHaveBeenLastCalledWith(expect.objectContaining({ command: 'bare', providerId: 'bare' }));
+      await prepareSpawnThroughLaunch(launch({ command: 'ai', imposter: false }), host);
+      expect(words).toHaveBeenLastCalledWith(expect.objectContaining({ command: 'ai' }));
+    });
+
+    it('bounds the words: printable characters, two lines, and a length a terminal can hold', async () => {
+      const answer = async (text: string) => {
+        const { host } = scripted({ ...rejected, host: { strict: true, refusal: () => text } });
+        const result = await prepareSpawnThroughLaunch(launch(), host);
+        if (result.action !== 'refuse') throw new Error(`expected a refusal, got ${result.action}`);
+        return result.message;
+      };
+      await expect(answer('red \u001b[31mtext\u0007 and ‮flipped‬\u009b2J')).resolves.toBe(
+        'red [31mtext and flipped 2J',
+      );
+      await expect(answer('first line\r\nsecond line\nthird line\n\n')).resolves.toBe(
+        'first line\nsecond line third line',
+      );
+      const long = await answer('x'.repeat(MAX_REFUSAL_MESSAGE_LENGTH * 3));
+      expect(Array.from(long)).toHaveLength(MAX_REFUSAL_MESSAGE_LENGTH);
+      expect(long.endsWith('…')).toBe(true);
+    });
+
+    it("says the kit's own sentence when the host's words fail it", async () => {
+      for (const words of [
+        () => {
+          throw new Error('no words today');
+        },
+        () => '',
+        () => '\u0000\u001b \n\t',
+        () => 42 as never,
+      ]) {
+        const { host } = scripted({ ...rejected, host: { strict: true, refusal: words } });
+        await expect(prepareSpawnThroughLaunch(launch(), host)).resolves.toEqual(
+          refusal('rejected-argument', 'custom arguments are not compatible (--bare)'),
+        );
+      }
+    });
+
+    it('never asks for words when the launch runs as typed', async () => {
+      const words = vi.fn(() => 'refused');
+      for (const script of [
+        { ...rejected, host: { strict: false, refusal: words } },
+        { ...rejected, terminal: undefined, host: { strict: true, refusal: words } },
+        {
+          grammar: { status: 'passthrough', kind: 'utility', reason: 'x' } as const,
+          host: { strict: true, refusal: words },
+        },
+      ]) {
+        const { host } = scripted(script);
+        await expect(prepareSpawnThroughLaunch(launch(), host)).resolves.toMatchObject({ action: 'fallback' });
+      }
+      expect(words).not.toHaveBeenCalled();
+    });
   });
 });

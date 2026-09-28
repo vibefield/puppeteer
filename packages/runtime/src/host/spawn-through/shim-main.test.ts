@@ -11,7 +11,7 @@ import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
 import { startSpawnThroughGateway, type SpawnThroughGateway } from './gateway.js';
 import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
-import type { SpawnThroughRequest, SpawnThroughResponse } from './protocol.js';
+import { MAX_REFUSAL_MESSAGE_LENGTH, type SpawnThroughRequest, type SpawnThroughResponse } from './protocol.js';
 import { clearRendezvous, writeRendezvous } from './rendezvous.js';
 
 const TOKEN = 'bearer-never-printed';
@@ -266,6 +266,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
         // exec all the way: the launcher, the shim and the agent are the one pid the shell started.
         pid: ran.pid,
         parentPid: process.pid,
+        command: 'example',
         // The test's pipes are not a terminal.
         interactive: false,
       },
@@ -273,7 +274,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('says it is not interactive when its output is redirected to a file', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
     const redirected = await launch(home, 'example', ['to a file'], { stdoutFile: join(root, 'redirected.txt') });
     // Its output went where the person sent it: the real executable ran as typed.
     expect(redirected.lines('ARG ')).toEqual(['to a file']);
@@ -281,7 +282,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it.skipIf(!python)('says it is interactive only when its input and its output are both a terminal', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
     for (const tty of ['both', 'out', 'in'] as const) {
       const ran = await launch(home, 'example', [tty], { tty });
       expect(ran.lines('ARG '), tty).toEqual([tty]);
@@ -301,7 +302,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('falls back to the real executable with the original argv and cwd', async () => {
-    await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'not a session' }));
+    await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'not a session' }));
     const args = ['one two', "it's", '*', '--flag=x', ''];
     const ran = await launch(home, 'example', args);
 
@@ -315,6 +316,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   it('refuses: exit 75, the message on stderr (controls stripped), nothing run', async () => {
     await gatewayAnswering(home, () => ({
       action: 'refuse',
+      code: 'rejected-argument',
       reason: 'rejected',
       message: 'refused by the test\u001b[31m in red',
     }));
@@ -324,6 +326,26 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     expect(ran.stdout).toBe('');
     expect(ran.stderr).toContain('puppeteer: example: refused by the test [31m in red');
     expect(ran.stderr).not.toContain('\u001b');
+  });
+
+  it("prints a refusal's words as at most two lines of a bounded length, whatever the gateway sent", async () => {
+    await gatewayAnswering(home, () => ({
+      action: 'refuse',
+      code: 'rejected-argument',
+      reason: 'rejected',
+      message: `refused here \r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
+    }));
+    const ran = await launch(home, 'example');
+
+    expect(ran.code).toBe(75);
+    const lines = ran.stderr.trimEnd().split('\n');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('puppeteer: example: refused here');
+    expect(lines[1]!.startsWith('run it in another terminal and a third line xxx')).toBe(true);
+    expect(lines[1]!.endsWith('…')).toBe(true);
+    expect(Array.from(ran.stderr.trimEnd().slice('puppeteer: '.length)).length).toBeLessThanOrEqual(
+      MAX_REFUSAL_MESSAGE_LENGTH,
+    );
   });
 
   it('falls back at once when no gateway can be reached and the host is not strict', async () => {
@@ -421,7 +443,12 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('falls back without asking when the name has no provider row', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'refuse', reason: 'x', message: 'never asked' }));
+    const requests = await gatewayAnswering(home, () => ({
+      action: 'refuse',
+      code: 'rejected-argument',
+      reason: 'x',
+      message: 'never asked',
+    }));
     const ran = await launch(home, 'orphan', ['--version']);
     expect(ran.code).toBe(0);
     expect(ran.lines('REAL ')).toEqual(['orphan']);
@@ -445,13 +472,13 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('routes `ai --<provider>` as the imposter, and falls back to the chosen ai with the flag kept', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
     const onPath = await launch(home, 'ai', ['--example', 'hello']);
     expect(requests[0]).toMatchObject({ type: 'launch', providerId: 'example', argv: ['hello'], imposter: true });
     expect(onPath.lines('REAL ')).toEqual(['ai']);
     expect(onPath.lines('ARG ')).toEqual(['--example', 'hello']);
 
-    await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }), {
+    await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }), {
       imposterExecutable: join(real, 'chosen', 'ai'),
     });
     const chosen = await launch(home, 'ai', ['--example']);

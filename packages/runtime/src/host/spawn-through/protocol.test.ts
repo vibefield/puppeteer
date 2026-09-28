@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_REFUSAL_MESSAGE_LENGTH,
   MAX_REQUEST_BYTES,
+  SPAWN_THROUGH_DECLINE_CODES,
+  boundSpawnThroughText,
+  declineSpawnThrough,
   parseSpawnThroughRequest,
   parseSpawnThroughResponse,
   type SpawnThroughExecFailedRequest,
@@ -18,6 +22,7 @@ function launch(overrides: Record<string, unknown> = {}): SpawnThroughLaunchRequ
     environment: { EXAMPLE_HOME: '/profiles/example' },
     pid: 456,
     parentPid: 123,
+    command: 'example',
     interactive: true,
     ...overrides,
   } as SpawnThroughLaunchRequest;
@@ -52,6 +57,15 @@ describe('spawn-through protocol', () => {
       expect(parseSpawnThroughRequest(launch({ interactive })), String(interactive)).toBeUndefined();
     }
     expect(parseSpawnThroughRequest(execFailed({ interactive: true }))).toBeUndefined();
+  });
+
+  it("carries the typed command's name when it is one a launcher could have, and never needs it", () => {
+    const { command: _command, ...older } = launch();
+    expect(parseSpawnThroughRequest(older)).toEqual(older);
+    expect(parseSpawnThroughRequest(launch({ command: 'ai' }))).toEqual(launch({ command: 'ai' }));
+    for (const command of ['', ' example', 'ex ample', '-x', 'a\u001b[2J', 'x'.repeat(129), 7]) {
+      expect(parseSpawnThroughRequest(launch({ command })), JSON.stringify(command)).toBeUndefined();
+    }
   });
 
   it('refuses anything that is not a request object with a bounded token', () => {
@@ -112,8 +126,8 @@ describe('spawn-through protocol', () => {
         preparationId: 'p-1',
         launch: { command: '/managed', args: [], cwd: '/repo', env: { TOKEN: 'x' } },
       },
-      { action: 'fallback', reason: 'not managed' },
-      { action: 'refuse', reason: 'rejected', message: 'the gateway refused' },
+      { action: 'fallback', code: 'passthrough', reason: 'not managed' },
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'the gateway refused' },
       { action: 'ack' },
     ];
     for (const answer of answers) expect(parseSpawnThroughResponse(JSON.parse(JSON.stringify(answer)))).toEqual(answer);
@@ -136,9 +150,42 @@ describe('spawn-through protocol', () => {
       { action: 'exec', preparationId: 'p-1', launch: { command: '/managed', args: [1], cwd: '/repo' } },
       { action: 'exec', preparationId: 'p-1', launch: { command: '/managed', args: [], cwd: '/repo', env: { A: 1 } } },
       { action: 'fallback' },
-      { action: 'refuse', reason: 'rejected' },
+      { action: 'fallback', code: 'passthrough' },
+      // A decline carries its code: without one, or with one the kit never wrote, it is not an answer.
+      { action: 'fallback', reason: 'not managed' },
+      { action: 'fallback', code: 'because', reason: 'not managed' },
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected' },
+      { action: 'refuse', reason: 'rejected', message: 'the gateway refused' },
     ]) {
       expect(parseSpawnThroughResponse(value), JSON.stringify(value)).toBeUndefined();
     }
+  });
+
+  it('declines with a code: a fallback, or a refusal whose words are bounded and never empty', () => {
+    const decline = { code: 'rejected-argument', reason: 'cannot carry --bare' } as const;
+    expect(declineSpawnThrough(decline)).toEqual({ action: 'fallback', ...decline });
+    expect(declineSpawnThrough(decline, { message: 'refused here\nrun it elsewhere' })).toEqual({
+      action: 'refuse',
+      ...decline,
+      message: 'refused here\nrun it elsewhere',
+    });
+    const kitSentence = 'not started, because it could not be run as a managed session: cannot carry --bare';
+    for (const message of [undefined, '', ' \u001b\n\t ']) {
+      expect(declineSpawnThrough(decline, { message })).toEqual({ action: 'refuse', ...decline, message: kitSentence });
+    }
+    expect(new Set(SPAWN_THROUGH_DECLINE_CODES).size).toBe(SPAWN_THROUGH_DECLINE_CODES.length);
+  });
+
+  it('bounds text for a terminal: printable characters, two lines, a length', () => {
+    expect(boundSpawnThroughText('plain words')).toBe('plain words');
+    // C0 and C1 controls, DEL, bidirectional overrides and the Unicode line separators become spaces.
+    expect(boundSpawnThroughText('a\u001b[2Jb\u0007c\u007fd\u009be‮f⁦g h i')).toBe('a [2Jb c d e f g h i');
+    expect(boundSpawnThroughText('\n  one  \r\n\r\n  two \n three\rfour  ')).toBe('one\ntwo three four');
+    expect(boundSpawnThroughText('\u0000 \t\n')).toBe('');
+    const bounded = boundSpawnThroughText(`${'é'.repeat(MAX_REFUSAL_MESSAGE_LENGTH)}\n${'🙂'.repeat(10)}`);
+    expect(Array.from(bounded)).toHaveLength(MAX_REFUSAL_MESSAGE_LENGTH);
+    expect(bounded.endsWith('é…')).toBe(true);
+    // A cut never splits a character in two.
+    expect(Array.from(boundSpawnThroughText('🙂'.repeat(MAX_REFUSAL_MESSAGE_LENGTH + 1))).at(-2)).toBe('🙂');
   });
 });

@@ -5,8 +5,18 @@ import {
   type ExternalRef,
   type HostIngress,
 } from '@vibecook/puppeteer-core';
-import type { AdoptPreparedSessionResult, AgentRuntime, AgentWorkspaceRequest } from '../../types.js';
-import { declineSpawnThrough, type SpawnThroughLaunchRequest, type SpawnThroughResponse } from './protocol.js';
+import type {
+  AdoptPreparedSessionResult,
+  AgentRuntime,
+  AgentWorkspaceRequest,
+  PreparationFailure,
+} from '../../types.js';
+import {
+  declineSpawnThrough,
+  type SpawnThroughDeclineCode,
+  type SpawnThroughLaunchRequest,
+  type SpawnThroughResponse,
+} from './protocol.js';
 
 /** What a host adds to a typed launch. The intent itself is the shim's and cannot be overridden here. */
 export interface SpawnThroughLaunchOptions {
@@ -34,6 +44,14 @@ export interface SpawnThroughHost {
    * rule of refusal, {@link prepareSpawnThroughLaunch}). Default false.
    */
   strict?: boolean | undefined;
+  /**
+   * The words a person reads in their terminal when a launch is refused there,
+   * one or two lines; the shim prints them after `puppeteer: <command>: `. The
+   * kit bounds them (printable characters, two lines,
+   * `MAX_REFUSAL_MESSAGE_LENGTH`). Absent, throwing, or left empty by the
+   * bound: the kit's own sentence (`spawnThroughRefusalMessage`).
+   */
+  refusal?(refused: SpawnThroughRefusal): string;
   /** The host's record of the run, written before the shim is told to exec. */
   onAdopted(adopted: AdoptedSpawnThroughSession): void | Promise<void>;
   /** Absolute path to the imposter's `ai`, when this host can emulate. */
@@ -48,6 +66,17 @@ export interface AdoptedSpawnThroughSession {
   /** The shim's pid, which becomes the agent's at exec: the host watches it and reports its exit. */
   processId: number;
   preparationId: string;
+}
+
+/** A refusal, as a host words it ({@link SpawnThroughHost.refusal}). */
+export interface SpawnThroughRefusal {
+  code: SpawnThroughDeclineCode;
+  reason: string;
+  /** The first argument the managed launch could not carry, when the adapter named one. */
+  argument?: string;
+  providerId: string;
+  /** The name the person typed (`ai` for the imposter's route). */
+  command: string;
 }
 
 function positivePid(value: number): boolean {
@@ -84,6 +113,31 @@ function naming(reason: string, argument: string | undefined): string {
   return argument === undefined ? reason : `${reason} (${argument})`;
 }
 
+/** A failed preparation, kept distinguishable by the runtime's own code. */
+function preparationDecline(error: PreparationFailure['error']): SpawnThroughDeclineCode {
+  switch (error.code) {
+    case 'NATIVE_INVOCATION_PASSTHROUGH':
+      return 'passthrough';
+    case 'NATIVE_INVOCATION_UNSUPPORTED':
+      return 'unsupported-agent';
+    case 'INVALID_NATIVE_INVOCATION':
+      return error.argument === undefined ? 'invalid-invocation' : 'rejected-argument';
+    default:
+      return 'prepare-failed';
+  }
+}
+
+/** The host's words for a refusal, or none when it has none to give. */
+function hostWords(host: SpawnThroughHost, refused: SpawnThroughRefusal): string | undefined {
+  try {
+    const words = host.refusal?.(refused);
+    return typeof words === 'string' ? words : undefined;
+  } catch {
+    // A host that could not word its refusal still refuses: the kit's sentence says why.
+    return undefined;
+  }
+}
+
 /**
  * Turn one `launch` request into a managed session in the terminal that
  * contains it, or decline it. Every decline is judged by the rule of refusal
@@ -104,48 +158,67 @@ export async function prepareSpawnThroughLaunch(
 ): Promise<SpawnThroughResponse> {
   // What the rule reads, as each step establishes it.
   const invocation = { session: false, interactive: request.interactive, placed: false };
-  const decline = (reason: string): SpawnThroughResponse =>
-    declineSpawnThrough(reason, { strict: refuses(host.strict, invocation) });
+  const decline = (code: SpawnThroughDeclineCode, reason: string, argument?: string): SpawnThroughResponse => {
+    if (!refuses(host.strict, invocation)) return declineSpawnThrough({ code, reason });
+    const refused: SpawnThroughRefusal = {
+      code,
+      reason,
+      ...(argument === undefined ? {} : { argument }),
+      providerId: request.providerId,
+      // A shim from before the request carried its name.
+      command: request.command ?? request.providerId,
+    };
+    return declineSpawnThrough({ code, reason }, { message: hostWords(host, refused) });
+  };
 
   // 1. The request. One the kit cannot read names no process it could place.
-  if (!positivePid(request.pid) || !positivePid(request.parentPid)) return decline('invalid process identity');
+  if (!positivePid(request.pid) || !positivePid(request.parentPid)) {
+    return decline('invalid-request', 'invalid process identity');
+  }
   const intent = AgentNativeInvocationIntentSchema.safeParse({
     providerId: request.providerId,
     cwd: request.cwd,
     argv: request.argv,
     environment: request.environment,
   });
-  if (!intent.success) return decline('invalid launch request');
+  if (!intent.success) return decline('invalid-request', 'invalid launch request');
 
   // 2. What it is — the grammar alone; the implementation the host would run is judged at 5.
   const classified = host.runtime.classifyInvocation({ ...intent.data, implementation: { kind: 'native' } });
-  if (classified.status === 'passthrough') return decline(classified.reason);
+  if (classified.status === 'passthrough') return decline('passthrough', classified.reason);
   invocation.session = true;
-  if (!invocation.interactive) return decline('its input or output is not a terminal: a one-shot run');
+  if (!invocation.interactive) {
+    return decline('not-interactive', 'its input or output is not a terminal: a one-shot run');
+  }
 
   // 3. Where it is. An agent typed where the launcher's directory leaked (an editor's terminal, a
   // detached job) reaches the gateway too, and no terminal of the host's holds it.
   const terminal = await host.resolveTerminal({ pid: request.pid, parentPid: request.parentPid });
-  if (!terminal) return decline('not in a terminal this host owns');
+  if (!terminal) return decline('outside-host-terminals', 'not in a terminal this host owns');
   invocation.placed = true;
 
   // 4. Only now, a session in the host's terminal that the host cannot manage.
-  if (classified.status === 'unsupported') return decline(classified.reason);
+  if (classified.status === 'unsupported') {
+    const code = classified.code === 'NATIVE_INVOCATION_UNSUPPORTED' ? 'unsupported-agent' : 'invalid-invocation';
+    return decline(code, classified.reason);
+  }
   const provider = host.runtime.launchProviders().find((candidate) => candidate.id === intent.data.providerId);
   const capability = provider?.nativeInvocation;
-  if (!provider || !capability) return decline('agent does not support managed native invocation');
-  if (classified.status === 'rejected') return decline(naming(classified.reason, classified.argument));
+  if (!provider || !capability) return decline('unsupported-agent', 'agent does not support managed native invocation');
+  if (classified.status === 'rejected') {
+    return decline('rejected-argument', naming(classified.reason, classified.argument), classified.argument);
+  }
 
   // 5. The implementation.
   let implementation: AgentLaunchImplementation = { kind: 'native' };
   if (request.imposter) {
     const imposter = capability.imposter;
-    if (!imposter) return decline('agent does not advertise a conformant pane imposter');
+    if (!imposter) return decline('imposter-unavailable', 'agent does not advertise a conformant pane imposter');
     const executable = host.imposterBin?.();
-    if (!executable) return decline('the puppeteer imposter is not installed beside the host');
+    if (!executable) return decline('imposter-unavailable', 'the puppeteer imposter is not installed beside the host');
     if (imposter.state === 'isolated-root') {
       const stateRoot = host.imposterStateRoot?.(provider.id);
-      if (!stateRoot) return decline('an isolated imposter state root is unavailable');
+      if (!stateRoot) return decline('imposter-unavailable', 'an isolated imposter state root is unavailable');
       implementation = { kind: 'imposter', executable, stateRoot };
     } else {
       implementation = { kind: 'imposter', executable };
@@ -165,7 +238,8 @@ export async function prepareSpawnThroughLaunch(
     // strict host gives launchers only to agents whose adapters classify. A
     // passthrough the real implementation reveals runs as typed, as at 2.
     if (prepared.error.code === 'NATIVE_INVOCATION_PASSTHROUGH') invocation.session = false;
-    return decline(naming(prepared.error.message, prepared.error.argument));
+    const { argument } = prepared.error;
+    return decline(preparationDecline(prepared.error), naming(prepared.error.message, argument), argument);
   }
 
   const adopted = await host.runtime.adoptPrepared(prepared.preparationId, {
@@ -175,7 +249,8 @@ export async function prepareSpawnThroughLaunch(
   });
   if ('error' in adopted) {
     await host.runtime.cancelPrepared(prepared.preparationId);
-    return decline(adopted.error.message);
+    const code = adopted.error.code === 'RUNTIME_SESSION_CONFLICT' ? 'terminal-conflict' : 'adopt-failed';
+    return decline(code, adopted.error.message);
   }
 
   await host.onAdopted({
