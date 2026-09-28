@@ -13,6 +13,7 @@ import {
   type ExtensionProvider,
   type ExtensionService,
   type McpServerItem,
+  type PluginItem,
   type SkillItem,
   type TerminalSpec,
 } from '@vibecook/puppeteer-core';
@@ -853,5 +854,171 @@ describe('createExtensionActRunner, skills placed', () => {
         folder: 'kept/x',
       }),
     ).resolves.toMatchObject({ status: 'invalid' });
+  });
+});
+
+describe('createExtensionActRunner, plugins', () => {
+  /**
+   * A fake agent holding plugins: its "store" maps a key to whether the plugin
+   * is on and its version; the fake command edits it the way the agent's own
+   * would, and the newest version its marketplace has is `newest`.
+   */
+  async function plugins() {
+    root = await mkdtemp(join(tmpdir(), 'puppeteer-act-plugins-'));
+    const work: AgentProfile = {
+      id: 'work-example',
+      provider: 'example',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: root,
+      createdAt: '1970-01-01T00:00:00.000Z',
+    };
+    const store = new Map<string, { enabled: boolean; version: string }>([
+      ['review@northlight', { enabled: true, version: '1.2.0' }],
+    ]);
+    let newest = '1.3.0';
+    const provider: ExtensionProvider = {
+      ...PROVIDER,
+      support: { ...PROVIDER.support, plugins: { store: 'profile', changes: 'command', read: true } },
+    };
+    const plugin = (id: string, fields: { enabled: boolean; version: string }): PluginItem => ({
+      kind: 'plugin',
+      id,
+      name: id.split('@')[0]!,
+      origin: 'own',
+      marketplace: 'northlight',
+      ...fields,
+    });
+    const service: ExtensionService = {
+      provider,
+      inventory: async (profile): Promise<ExtensionInventory> => ({
+        provider: 'example',
+        profileId: profile.id,
+        fetchedAt: '2026-09-27T09:00:00.000Z',
+        items: [server('linear', true), ...[...store].map(([id, fields]) => plugin(id, fields))],
+        source: { kind: 'native-store', stability: 'documented' },
+      }),
+      plan: (profile, item, act) => {
+        const target = { kind: item.kind, id: item.id };
+        const verb = act === 'remove' ? 'uninstall --keep-data' : act === 'purge' ? 'uninstall' : act;
+        return extensionCommandPlan({
+          target,
+          act,
+          argv: ['example', item.kind === 'plugin' ? 'plugin' : 'mcp', ...verb.split(' '), item.id],
+          env: { EXAMPLE_HOME: profile.dataRoot },
+        });
+      },
+    };
+    const providers = new Map([['example', { provider, service }]]);
+    const resolveProfile = async (_providerId: string, profileId: string) =>
+      profileId === work.id ? { profile: work } : { error: `unknown account profile: ${profileId}` };
+    const reader = createExtensionInventoryReader({
+      providers,
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+    });
+    const commands: string[][] = [];
+    const run = vi.fn(async (request: UpdateCommandRequest) => {
+      commands.push([...request.argv]);
+      const [, , verb, ...rest] = request.argv;
+      const id = rest[rest.length - 1]!;
+      const held = store.get(id);
+      if (held !== undefined) {
+        if (verb === 'enable' || verb === 'disable') store.set(id, { ...held, enabled: verb === 'enable' });
+        else if (verb === 'update') store.set(id, { ...held, version: newest });
+        else if (verb === 'uninstall') store.delete(id);
+      }
+      return { exitCode: 0 };
+    });
+    const runner = createExtensionActRunner({
+      providers,
+      reader,
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+      run,
+      env: { PATH: '/usr/bin', HOME: '/Users/test' },
+    });
+    return {
+      runner,
+      work,
+      store,
+      commands,
+      newest: (version: string) => {
+        newest = version;
+      },
+    };
+  }
+
+  const REVIEW = { kind: 'plugin' as const, id: 'review@northlight' };
+
+  it("turns a plugin off and on with the agent's own command, and the second read is the receipt", async () => {
+    const t = await plugins();
+    const off = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'disable' });
+    expect(off).toMatchObject({
+      status: 'changed',
+      message: 'turned off',
+      display: 'example plugin disable review@northlight',
+    });
+    expect(t.store.get('review@northlight')?.enabled).toBe(false);
+    const on = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'enable' });
+    expect(on).toMatchObject({ status: 'changed', message: 'turned on' });
+  });
+
+  it('says an update moved the version, and that there was none newer when it did not', async () => {
+    const t = await plugins();
+    const updated = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'update' });
+    expect(updated).toMatchObject({ act: 'update', status: 'changed', message: 'updated 1.2.0 → 1.3.0' });
+    const again = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'update' });
+    expect(again).toMatchObject({ status: 'unchanged', message: 'Example still holds 1.3.0' });
+  });
+
+  it('removes a plugin keeping its data, or with it, each by the command its plan names', async () => {
+    const t = await plugins();
+    const purged = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'purge' });
+    expect(purged).toMatchObject({ status: 'changed', message: 'removed with its data' });
+    expect(t.commands.at(-1)).toEqual(['example', 'plugin', 'uninstall', 'review@northlight']);
+    t.store.set('review@northlight', { enabled: true, version: '1.3.0' });
+    const removed = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'remove' });
+    expect(removed).toMatchObject({ status: 'changed', message: 'removed' });
+    expect(t.commands.at(-1)).toEqual(['example', 'plugin', 'uninstall', '--keep-data', 'review@northlight']);
+  });
+
+  it("plans a held plugin's five acts beside a server's, and refuses what a plugin or a server cannot take", async () => {
+    const t = await plugins();
+    const inventory = [
+      server('linear', true),
+      {
+        kind: 'plugin' as const,
+        id: 'review@northlight',
+        name: 'review',
+        origin: 'own' as const,
+        enabled: true,
+        version: '1.2.0',
+      },
+    ];
+    const plans = await t.runner.plans({ providerId: 'example', profileId: t.work.id, items: inventory });
+    expect(Array.isArray(plans)).toBe(true);
+    const acts = (plans as Array<{ target: { kind: string }; act: string }>)
+      .filter((plan) => plan.target.kind === 'plugin')
+      .map((plan) => plan.act);
+    expect(acts).toEqual(['enable', 'disable', 'remove', 'purge', 'update']);
+    expect(
+      await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: LINEAR, act: 'update' }),
+    ).toMatchObject({ available: false, reason: 'unsupported', message: 'only a plugin is updated' });
+    expect(
+      await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'add' }),
+    ).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'only a server or a skill is added; a plugin is installed',
+    });
+    expect(
+      await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'sign-in' }),
+    ).toMatchObject({ available: false, reason: 'no-sign-in', message: 'a plugin has no sign-in' });
+    // a plugin the agent no longer holds is not planned from memory
+    t.store.delete('review@northlight');
+    expect(
+      await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'remove' }),
+    ).toMatchObject({ available: false, reason: 'not-held' });
   });
 });

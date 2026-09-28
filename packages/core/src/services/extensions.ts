@@ -69,6 +69,21 @@ const itemBase = {
   location: NonEmptyStringSchema.optional(),
 };
 
+const PartNameSchema = z.string().trim().min(1).max(256);
+
+/**
+ * What a plugin brings beside the servers and skills an inventory lists as
+ * items of their own (origin `plugin`): the names of its commands and agents,
+ * and the events its hooks run on — names only, read from its folder, so a
+ * person sees what it runs before trusting or removing it.
+ */
+export const PluginPartsSchema = z.strictObject({
+  commands: z.array(PartNameSchema).max(256).optional(),
+  agents: z.array(PartNameSchema).max(256).optional(),
+  hooks: z.array(PartNameSchema).max(64).optional(),
+});
+export type PluginParts = z.infer<typeof PluginPartsSchema>;
+
 export const PluginItemSchema = z.strictObject({
   kind: z.literal('plugin'),
   ...itemBase,
@@ -77,6 +92,11 @@ export const PluginItemSchema = z.strictObject({
   /** The marketplace item it was installed from. */
   marketplace: ItemIdSchema.optional(),
   description: z.string().trim().min(1).max(2_048).optional(),
+  /** Who made it, as its manifest says. */
+  author: z.string().trim().min(1).max(256).optional(),
+  /** Its homepage or repository, as {@link describeMcpUrl} renders an address: nothing that could be a secret. */
+  homepage: NonEmptyStringSchema.optional(),
+  brings: PluginPartsSchema.optional(),
 });
 export type PluginItem = z.infer<typeof PluginItemSchema>;
 
@@ -221,6 +241,14 @@ export const ExtensionKindSupportSchema = z.strictObject({
   changes: z.enum(['command', 'protocol', 'folder', 'in-app']),
   /** Whether this adapter's inventory reads them. */
   read: z.boolean(),
+  /** The agent's own word for the kind, where it has one of its own: Pi calls its plugins "Packages". */
+  label: z.string().trim().min(1).max(64).optional(),
+  /**
+   * A session this runtime starts does not load them: the agent loads them
+   * only when a person runs it themselves (OpenCode's hosted sessions run
+   * `--pure`). What the inventory says is on is on for those runs alone.
+   */
+  hostedSkips: z.literal(true).optional(),
 });
 export type ExtensionKindSupport = z.infer<typeof ExtensionKindSupportSchema>;
 
@@ -248,15 +276,15 @@ export const ExtensionFailureSchema = z.strictObject({
 export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
 
 /*
- * RFC 006 C2 — acts. A person asks for one server or skill an agent holds to be
- * turned on, turned off or removed, for a remote server's sign-in to be
- * started or forgotten, for a server the agent does not hold to be added from
- * a definition the host keeps, or for a skill the host keeps to be placed
- * where the agent looks; the adapter answers with a plan (the agent's own
- * command or protocol call, or the skill's folder steps, and what the act
- * reaches beyond that one item) or with why the agent cannot do it; the
- * runtime runs the plan and reads the agent again. The outcome is that second
- * read, never the output.
+ * RFC 006 C2 — acts. A person asks for one server, skill or plugin an agent
+ * holds to be turned on, turned off or removed (a plugin also updated), for a
+ * remote server's sign-in to be started or forgotten, for a server the agent
+ * does not hold to be added from a definition the host keeps, or for a skill
+ * the host keeps to be placed where the agent looks; the adapter answers with
+ * a plan (the agent's own command or protocol call, or the skill's folder
+ * steps, and what the act reaches beyond that one item) or with why the agent
+ * cannot do it; the runtime runs the plan and reads the agent again. The
+ * outcome is that second read, never the output.
  */
 
 /**
@@ -269,16 +297,35 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
  * folder the host keeps where the agent's docs say skills go, and `remove`
  * takes the link away — or moves the agent's own folder to where the host
  * keeps it, when the host gives one.
+ *
+ * For a plugin the agent holds: `update` is the agent's own update of it to
+ * the newest its marketplace has; `remove` is the agent's own uninstall,
+ * keeping the data the plugin stored apart from its files where the agent can
+ * keep it, so installing it again picks up where it left off; `purge` is the
+ * same uninstall with that data deleted too — offered only by an agent whose
+ * uninstall can do both.
  */
-export const ExtensionActKindSchema = z.enum(['enable', 'disable', 'remove', 'sign-in', 'sign-out', 'add']);
+export const ExtensionActKindSchema = z.enum([
+  'enable',
+  'disable',
+  'remove',
+  'sign-in',
+  'sign-out',
+  'add',
+  'update',
+  'purge',
+]);
 export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
 
 /** The item an act is about, by the key its inventory gave it. */
 export const ExtensionActTargetSchema = z.strictObject({
-  kind: z.enum(['mcp-server', 'skill']),
+  kind: z.enum(['mcp-server', 'skill', 'plugin']),
   id: ItemIdSchema,
 });
 export type ExtensionActTarget = z.infer<typeof ExtensionActTargetSchema>;
+
+/** What an act can be about: a server, a skill or a plugin the agent holds. */
+export type ExtensionActItem = McpServerItem | SkillItem | PluginItem;
 
 /** What an act changes beyond one agent's one item, said before it runs. */
 export const ExtensionReachSchema = z.enum([
@@ -446,6 +493,14 @@ export function describeArgv(argv: readonly string[]): string {
  * it as a flag) and never a path. Also safe as one segment of a dotted key.
  */
 export const EXTENSION_COMMAND_NAME = /^[A-Za-z0-9_][A-Za-z0-9_-]{0,127}$/u;
+
+/**
+ * A plugin's key an agent's own command can take as one argument: a name, and
+ * `@` the marketplace it came from where the agent keys plugins that way
+ * (`review@northlight`). Each part is letters, digits, `_`, `.` and `-`,
+ * never starting with a hyphen (a flag) or a dot, so never a path.
+ */
+export const EXTENSION_PLUGIN_NAME = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(?:@[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?$/u;
 
 /**
  * Why an item that is not the profile's own changes where it comes from, in
@@ -705,17 +760,17 @@ export interface ExtensionService {
    */
   inventory(profile: AgentProfile): Promise<ExtensionInventory | ExtensionFailure>;
   /**
-   * RFC 006 C2: what an act on a server or skill this profile's agent holds
-   * would run, without running it — or why the agent cannot. Pure: the runtime
-   * passes the item as a fresh read found it. For `add`, it passes the item as
-   * the agent would hold it once added — never from a read, `origin: 'own'` — a
-   * server with its `definition` set, a skill whose `linkTarget` is the folder
-   * the host keeps, and only when the agent holds none of its own by that name.
-   * Absent, the agent has no acts.
+   * RFC 006 C2: what an act on a server, skill or plugin this profile's agent
+   * holds would run, without running it — or why the agent cannot. Pure: the
+   * runtime passes the item as a fresh read found it. For `add`, it passes the
+   * item as the agent would hold it once added — never from a read, `origin:
+   * 'own'` — a server with its `definition` set, a skill whose `linkTarget` is
+   * the folder the host keeps, and only when the agent holds none of its own by
+   * that name. Absent, the agent has no acts.
    */
   plan?(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     options?: ExtensionActPlanOptions,
   ): ExtensionActPlan;

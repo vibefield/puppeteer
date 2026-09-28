@@ -390,6 +390,15 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+const actPlugin = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'plugin',
+    id: 'kimi-datasource',
+    name: 'kimi-datasource',
+    origin: 'own',
+    enabled: true,
+    ...fields,
+  }) as never;
 
 describe('Kimi extension acts', () => {
   it('changes nothing from outside the app', () => {
@@ -429,6 +438,33 @@ describe('Kimi extension acts', () => {
       reason: 'in-app',
       message: 'Kimi changes its servers only inside the app, with /mcp-config',
     });
+  });
+
+  it('changes a plugin only inside the app, whatever the act, and what a plugin brings with it', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const work = actProfile('managed', '/p');
+    // The runtime answers a plugin's add and sign-ins itself; asked anyway, Kimi says the same.
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update', 'add', 'sign-in', 'sign-out'] as const) {
+      expect(ExtensionActPlanSchema.parse(kimi.plan!(work, actPlugin(), act)), act).toEqual({
+        target: { kind: 'plugin', id: 'kimi-datasource' },
+        act,
+        available: false,
+        reason: 'in-app',
+        message:
+          'Kimi changes plugins only inside the app: `/plugins`, where Space turns one on or off and D removes it',
+      });
+    }
+    const brought = { origin: 'plugin', plugin: 'kimi-datasource' };
+    for (const [item, act] of [
+      [actServer({ id: 'plugin-kimi-datasource:data', name: 'data', ...brought }), 'disable'],
+      [actSkill({ id: 'plugin:kimi-datasource:query', name: 'query', ...brought }), 'remove'],
+    ] as const) {
+      expect(kimi.plan!(work, item, act), act).toMatchObject({
+        available: false,
+        reason: 'not-own',
+        message: 'It comes with the kimi-datasource plugin and changes with it',
+      });
+    }
   });
 });
 

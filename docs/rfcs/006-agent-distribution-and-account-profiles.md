@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day; the rest of C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day; the rest of C2 (a plugin installed, a marketplace), C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -782,6 +782,32 @@ OpenCode its one config folder's `skills/` (`every-profile`); Hermes `$HERMES_HO
 `followlinks=True`, and whose curator ages only skills recorded as written by the agent (a linked folder is read as the
 person's own, and a hub-installed folder is never moved). That Grok, Kimi and Antigravity follow a linked folder is
 their adapters' reading, not a probe: the second read is the check.
+
+C2's fifth slice, the same day: a plugin an agent holds, acted on through the agent's own command. `ExtensionActTarget`
+gains `plugin`, and `ExtensionActKind` gains `update` (the agent's own update of that one plugin to the newest its
+marketplace has) and `purge`: `remove` is the agent's own uninstall keeping the data the plugin stored apart from its
+files where the agent can keep it, so installing it again picks up where it left off, and `purge` is the same uninstall
+with that data deleted, offered only by an agent whose uninstall can do both. `plan` takes an `ExtensionActItem` (a
+server, a skill or a plugin); the runtime plans a held plugin's enable, disable, remove, purge and update, answers a
+plugin's `add` (an install, which is the next slice's) and sign-ins itself, and an update's receipt is the version
+moving (`updated 1.2.0 → 1.3.0`) or not (`still holds 1.3.0`). `PluginItem` gains `author`, `homepage` (masked as an
+address is) and `brings` — the names of its commands and agents and the events its hooks run on, read from its folder
+so a person sees what it runs; `ExtensionKindSupport` gains `label`, the agent's own word for a kind (Pi's
+"Packages"), and `hostedSkips`, a kind a session this runtime starts does not load (OpenCode's hosted sessions run
+`--pure`). `EXTENSION_PLUGIN_NAME` is a plugin key an agent's command takes as one argument (`review@northlight`).
+Per agent, from James's reports (the forms not probed as acts): Claude Code `claude plugin enable|disable <id> --scope
+user`, `uninstall <id> --scope user --keep-data` (`remove`) or without it (`purge`), `update <id> --scope user` — the
+native default's removal and update reach `shared-folder`, since Grok loads Claude Code's installed plugins from This
+Mac in every profile whatever Claude's own switch says, and the account's synced plugins are the organization's; Codex
+`codex plugin remove <id>` and its switch through the app-server's `config/value/write plugins.<id>.enabled`, with no
+update of one plugin (an upgrade of its marketplace is); Grok `grok plugin enable|disable|update <name>` and `uninstall
+<name> --confirm --keep-data` or `--confirm`, Claude Code's borrowed ones changing in Claude Code; Antigravity `agy
+plugin enable|disable|uninstall <name>`, whose uninstall takes the whole folder and exits 0 for a name it never had (the
+second read is the check; it is planned only where the folder bears the plugin's name), with no update; Hermes `hermes plugins disable|remove|update <name>` — a person's plugin
+turns on only in a terminal, where Hermes asks consent for what it may do, and a removal keeps `plugin-data/`; Pi `pi
+update|remove <source>` (the removal with `PI_OFFLINE=1`, so it installs nothing; a folder's package has no update), its switch
+only in `pi config`; Kimi
+Code only inside the app (`/plugins`); OpenCode no command that switches, removes or updates one.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

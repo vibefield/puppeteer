@@ -42,10 +42,12 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { fileURLToPath, URL } from 'node:url';
 import {
   extensionActUnavailable,
+  extensionCommandPlan,
   extensionNotOwnWords,
   extensionSkillFolderPlan,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -54,16 +56,19 @@ import {
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
-  type McpServerItem,
   type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
-import { piAgentDir } from './profiles.js';
+import { resolvePiExecutable } from '../detection.js';
+import { PI_PROFILE_ROOT_VARIABLE, piAgentDir } from './profiles.js';
 
 export interface PiExtensionOptions {
   /** Home directory the native default root and the shared skills folder hang off; defaults to the process home. */
   home?: string;
   now?: () => Date;
+  /** The executable an act runs; the adapter's own resolution when absent. */
+  executable?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 const MAX_SETTINGS_BYTES = 4 * 1024 * 1024;
@@ -74,6 +79,7 @@ const MAX_ENTRIES = 20_000;
 const MAX_DEPTH = 12;
 const RESOURCE_KINDS = ['extensions', 'skills', 'prompts', 'themes'] as const;
 const NPM_NAME = /^(?:@[A-Za-z0-9._~-]+\/)?[A-Za-z0-9._~-]+$/u;
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/u;
 
 type Json = Record<string, unknown>;
 const rec = (value: unknown): Json | undefined =>
@@ -651,6 +657,22 @@ function packageRef(source: string, agentDir: string, home: string): PackageRef 
   return { id: `local:${path}`, name: basename(path).replace(/\.(?:ts|js)$/u, ''), type: 'local', path };
 }
 
+/**
+ * The source Pi's own commands take for a package the read keyed: an `npm:`
+ * or `git:` identity as it is, a local package's absolute path. Nothing for a
+ * source a command could misread — nothing to name, a leading hyphen (a flag,
+ * to Pi or to the npm or git it runs), a control character — or a local path
+ * that is not absolute.
+ */
+function packageSource(id: string): string | undefined {
+  const [, form, rest] = /^(npm|git|local):(.*)$/su.exec(id) ?? [];
+  if (rest === undefined || rest.trim() === '' || rest.startsWith('-') || CONTROL_CHARACTER.test(rest)) {
+    return undefined;
+  }
+  if (form === 'local') return isAbsolute(rest) ? rest : undefined;
+  return id;
+}
+
 /** Whether a package entry, as configured, loads anything at all. */
 function packageLoadsSomething(entry: string | Json): boolean {
   if (typeof entry === 'string') return true;
@@ -741,15 +763,19 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     id: 'pi',
     label: 'Pi',
     support: {
-      // `pi install|remove` edit the agent directory's `packages`; a loose extension is a file in its `extensions/`.
-      plugins: { store: 'profile', changes: 'command', read: true },
+      // Pi calls them packages: `pi install|remove|update` edit the agent directory's `packages`. A loose extension
+      // is a file in its `extensions/`.
+      plugins: { store: 'profile', changes: 'command', read: true, label: 'Packages' },
       // The agent directory's `skills/` per profile, `~/.agents/skills` shared by every profile.
       skills: { store: 'mixed', changes: 'folder', read: true },
     },
   };
 
+  const executable = resolvePiExecutable(options.executable, options.env ?? process.env);
   const agentDirOf = (profile: AgentProfile): string =>
     profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'native-default' ? {} : { [PI_PROFILE_ROOT_VARIABLE]: agentDirOf(profile) };
 
   // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the
   // app. A skill a host keeps is placed as a link in the profile's own
@@ -761,10 +787,11 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
   // or in a package changes where it is.
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     options: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
+    if (item.kind === 'plugin') return planPlugin(profile, item, act);
     const target = { kind: item.kind, id: item.id };
     if (item.kind === 'skill' && (act === 'add' || act === 'remove')) {
       const folder = join(agentDirOf(profile), 'skills');
@@ -794,6 +821,74 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     }
     if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
     return extensionActUnavailable(target, act, 'in-app', 'Pi filters its skills only with pi config');
+  }
+
+  /**
+   * Pi calls its plugins packages, and names one to its own commands by the
+   * source it keys it with — the forms of the report's command table
+   * (draft/PI-PLUGINS-SKILLS-MCP.md), not probed as acts: `npm:<name>` and
+   * `git:<host>/<path>` as the read gives them, a local package by its
+   * absolute path (`packageSource`). A loose extension is no package: it is a
+   * file Pi finds where it is. Pi switches a package's parts only with the
+   * filters `pi config` writes, on an interactive screen, and `pi remove`,
+   * which takes the package's entry out of settings.json, is its one way to
+   * take it out. Pi installs any configured npm or git package it finds
+   * missing whenever it resolves its packages, so the removal runs with
+   * `PI_OFFLINE=1` and installs nothing on the way; an update has to fetch, so
+   * it cannot. An update always names its package: a bare `pi update` updates
+   * Pi itself.
+   */
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Pi installs a package from npm, git or a path');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Pi has no sign-in for a package');
+    }
+    if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
+    if (item.id.startsWith('extension:')) {
+      // an extension Pi loads from a file or folder, not a package: `pi config` filters it, and it changes where it is
+      return act === 'enable' || act === 'disable'
+        ? extensionActUnavailable(target, act, 'in-app', 'Pi turns an extension on and off only in `pi config`')
+        : extensionActUnavailable(
+            target,
+            act,
+            'no-command',
+            'It is an extension Pi loads from where it is, and changes there',
+          );
+    }
+    if (act === 'enable' || act === 'disable') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        "Pi turns a package's parts on and off only in `pi config`",
+      );
+    }
+    if (act === 'purge') {
+      return extensionActUnavailable(target, act, 'unsupported', "Pi's remove is its one way to take a package out");
+    }
+    // a package from a folder on this Mac is used where it is: there is nothing newer to fetch
+    if (act === 'update' && item.id.startsWith('local:')) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'A package from a folder on this Mac changes where it is',
+      );
+    }
+    const source = packageSource(item.id);
+    if (source === undefined) {
+      return extensionActUnavailable(target, act, 'no-command', "Pi's commands do not take this package's source");
+    }
+    const env = profileEnv(profile);
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, act, source],
+      env: act === 'remove' ? { ...env, PI_OFFLINE: '1' } : env,
+    });
   }
 
   return {

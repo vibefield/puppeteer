@@ -8,10 +8,12 @@ import {
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createAntigravityExtensionService } from './extensions.js';
@@ -383,6 +385,16 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+const actPlugin = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'plugin',
+    id: 'review',
+    name: 'review',
+    origin: 'own',
+    enabled: true,
+    location: '/profiles/work/antigravity/.gemini/config/plugins/review',
+    ...fields,
+  }) as never;
 /** A server to add, as the runtime gives it: the server as Antigravity would hold it once added. */
 const added = (definition: McpServerDefinition, name = 'context7'): McpServerItem => ({
   kind: 'mcp-server',
@@ -505,6 +517,189 @@ describe('Antigravity extension acts', () => {
       message: 'Antigravity adds only a server, from its definition',
     });
     expect(agy.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+  });
+
+  it("switches and uninstalls a plugin of the home's own under the profile's HOME, by the name the read found", () => {
+    const work = actProfile('managed', '/profiles/work/antigravity');
+    const commands: Array<[ExtensionActKind, string[]]> = [
+      ['enable', ['agy', 'plugin', 'enable', 'review']],
+      ['disable', ['agy', 'plugin', 'disable', 'review']],
+      ['remove', ['agy', 'plugin', 'uninstall', 'review']],
+    ];
+    for (const [act, argv] of commands) {
+      expect(ExtensionActPlanSchema.parse(agy.plan!(work, actPlugin(), act)), act).toEqual({
+        target: { kind: 'plugin', id: 'review' },
+        act,
+        available: true,
+        runs: {
+          kind: 'command',
+          argv,
+          env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+        },
+        display: argv.join(' '),
+        reaches: [],
+      });
+    }
+    const native = agy.plan!(
+      actProfile('native-default', '/Users/test'),
+      actPlugin({ location: '/Users/test/.gemini/config/plugins/review' }),
+      'remove',
+    );
+    expect(native).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'uninstall', 'review'] },
+    });
+    expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it('offers no purge or update, which Antigravity has no command for, and no name its commands cannot take', () => {
+    const work = actProfile('managed', '/profiles/work/antigravity');
+    expect(agy.plan!(work, actPlugin(), 'purge')).toEqual({
+      target: { kind: 'plugin', id: 'review' },
+      act: 'purge',
+      available: false,
+      reason: 'unsupported',
+      message: 'Antigravity keeps a plugin in one folder, which its uninstall takes whole',
+    });
+    expect(agy.plan!(work, actPlugin(), 'update')).toEqual({
+      target: { kind: 'plugin', id: 'review' },
+      act: 'update',
+      available: false,
+      reason: 'no-command',
+      message: 'Antigravity has no command that updates a plugin: install it again from its source',
+    });
+    // A name `agy plugin validate` accepts can still read as a flag.
+    for (const id of ['--help', '-v']) {
+      const flagged = actPlugin({ id, name: id, location: `/profiles/work/antigravity/.gemini/config/plugins/${id}` });
+      expect(agy.plan!(work, flagged, 'disable'), id).toMatchObject({
+        available: false,
+        reason: 'no-command',
+        message: "Antigravity's commands do not take this plugin's name",
+      });
+    }
+    expect(agy.plan!(work, actPlugin(), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Antigravity installs a plugin from its source',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(agy.plan!(work, actPlugin(), act), act).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Antigravity has no sign-in for a plugin',
+      });
+    }
+    expect(agy.plan!(work, actPlugin({ origin: 'managed' }), 'disable')).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: "Antigravity's app or your organization adds it, and changes it",
+    });
+    // Never `agy mcp update`: an update, and a removal that takes the data, are a plugin's alone.
+    expect(agy.plan!(work, actServer(), 'update')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'update',
+      available: false,
+      reason: 'unsupported',
+      message: 'Only a plugin is updated',
+    });
+    expect(agy.plan!(work, actSkill(), 'purge')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Only a plugin is removed with its data',
+    });
+  });
+
+  it('uninstalls only a plugin whose folder has its name, since the uninstall takes the folder by that name', () => {
+    const work = actProfile('managed', '/profiles/work/antigravity');
+    const copied = actPlugin({
+      id: 'other',
+      name: 'other',
+      location: '/profiles/work/antigravity/.gemini/config/plugins/dropped-in',
+    });
+    expect(agy.plan!(work, copied, 'remove')).toEqual({
+      target: { kind: 'plugin', id: 'other' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message: "Antigravity uninstalls a plugin by its folder's name, and this plugin's folder is named otherwise",
+    });
+    // Its switch is keyed by its name, as the read finds it on or off.
+    expect(agy.plan!(work, copied, 'disable')).toMatchObject({
+      available: true,
+      runs: { argv: ['agy', 'plugin', 'disable', 'other'] },
+    });
+  });
+});
+
+describe('Antigravity plugins described', () => {
+  it('says who made a plugin, its homepage and what it brings, by name only, with no key or email', async () => {
+    const home = await tempHome();
+    const config = join(home, '.gemini', 'config');
+    const review = join(config, 'plugins', 'review');
+    await write(join(review, 'plugin.json'), {
+      name: 'review',
+      author: { name: 'Northlight', email: 'dev@northlight.studio' },
+      homepage: 'https://northlight.studio/review?utm_source=agy&key=abc123',
+    });
+    await write(join(review, 'commands', 'review.md'), '# Review');
+    await write(join(review, 'commands', 'review.toml'), 'prompt = "Review"');
+    await write(join(review, 'commands', 'triage.md'), '# Triage');
+    await write(join(review, 'commands', '.DS_Store'), '');
+    await write(join(review, 'commands', 'nested', 'deep.md'), '# one folder down');
+    await write(join(review, 'agents', 'reviewer.md'), '---\nname: reviewer\n---\n');
+    // Antigravity keys a hook by its name, with the events it runs on inside.
+    await write(join(review, 'hooks.json'), {
+      'house-rules': {
+        PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: 'check --token ${SECRET_TOKEN}' }] }],
+        Stop: [{ type: 'command', command: 'notify' }],
+        enabled: true,
+      },
+      PostToolUse: [{ type: 'command', command: 'log' }],
+      description: 'House checks',
+    });
+    await write(join(config, 'plugins', 'quiet', 'plugin.json'), {
+      name: 'quiet',
+      author: 'ops@example.com',
+      repository: 'https://github.com/northlight/quiet',
+    });
+    // Copied in by hand under a folder of another name: described alike, and not uninstalled by its name.
+    await write(join(config, 'plugins', 'dropped-in', 'plugin.json'), { name: 'other' });
+    await write(join(config, 'plugins', 'dropped-in', 'agents', 'helper.md'), '# Helper');
+
+    const service = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/nonexistent', now });
+    const work = managedProfile(home);
+    const inventory = ExtensionInventorySchema.parse(await service.inventory(work));
+    const document = JSON.stringify(inventory);
+    for (const hidden of ['dev@northlight.studio', 'utm_source', 'abc123', 'ops@example.com', 'SECRET_TOKEN']) {
+      expect(document).not.toContain(hidden);
+    }
+    const plugin = (id: string): PluginItem => {
+      const item = find(inventory, 'plugin', id);
+      expect(item, id).toMatchObject({ kind: 'plugin' });
+      return item as PluginItem;
+    };
+    expect(plugin('review')).toMatchObject({
+      author: 'Northlight',
+      homepage: 'https://northlight.studio/review?•••',
+      brings: { commands: ['review', 'triage'], agents: ['reviewer'], hooks: ['PostToolUse', 'PreToolUse', 'Stop'] },
+    });
+    expect(plugin('quiet')).toMatchObject({ homepage: 'https://github.com/northlight/quiet' });
+    for (const field of ['author', 'brings']) expect(plugin('quiet')).not.toHaveProperty(field);
+    expect(plugin('other')).toMatchObject({
+      location: join(config, 'plugins', 'dropped-in'),
+      brings: { agents: ['helper'] },
+    });
+
+    // An act plans from the item as the read found it.
+    expect(service.plan!(work, plugin('review'), 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'uninstall', 'review'], env: { HOME: home } },
+    });
+    expect(service.plan!(work, plugin('other'), 'remove')).toMatchObject({ available: false, reason: 'no-command' });
+    expect(service.plan!(work, plugin('other'), 'enable')).toMatchObject({
+      available: true,
+      runs: { argv: ['agy', 'plugin', 'enable', 'other'] },
+    });
   });
 });
 

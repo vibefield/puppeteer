@@ -39,8 +39,10 @@
  * `mcp_servers.<name>.enabled` in the root's config.toml (its sign-in stays),
  * and goes with `codex mcp remove <name>`; a skill in `~/.agents/skills`
  * switches for this profile alone through `skills/config/write` on its
- * `SKILL.md`, and stays in the shared folder. A plugin's, a project's, the
- * app's or an organization's item changes where it comes from. A streamable
+ * `SKILL.md`, and stays in the shared folder. A plugin the profile installed
+ * turns on and off through the same write of its `plugins.<id>.enabled`, and
+ * goes with `codex plugin remove <id>`. A plugin's, a project's, the app's or
+ * an organization's item changes where it comes from. A streamable
  * HTTP server that asks for a sign-in gets `codex mcp login <name>`, in a
  * terminal the person answers (it opens a browser and waits for it), and one
  * signed in gets `codex mcp logout <name>`. Off Windows, Codex keeps that
@@ -80,6 +82,7 @@ import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   EXTENSION_SKILL_FOLDER_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
@@ -91,6 +94,7 @@ import {
   type AgentProfile,
   type AvailableExtensionActPlan,
   type ExtensionActIo,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActOutcome,
   type ExtensionActPlan,
@@ -494,6 +498,81 @@ function addPlan(target: ExtensionActTarget, item: McpServerItem): ExtensionActP
 }
 
 /**
+ * An act on a plugin the profile installed. `codex plugin add` writes
+ * `[plugins."<id>"] enabled = true` to the root's config.toml (the report,
+ * draft/CODEX-PLUGINS-SKILLS-MCP.md), so the switch is that key, written
+ * through the app-server as a server's is; the write splits its key path at
+ * each dot, so an id with one would name another table. A workspace-managed
+ * plugin keeps the workspace's state whatever a local `enabled = false` says,
+ * which is why it is not the profile's own. `codex plugin remove <id>` deletes
+ * the cached copy (the report; not probed), and is Codex's only uninstall.
+ * Codex has no update of one plugin: `codex plugin marketplace upgrade` brings
+ * a marketplace's plugins up to date.
+ */
+function pluginPlan(
+  executable: string,
+  profile: AgentProfile,
+  item: PluginItem,
+  act: ExtensionActKind,
+): ExtensionActPlan {
+  const target: ExtensionActTarget = { kind: 'plugin', id: item.id };
+  if (item.origin !== 'own') {
+    return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Codex', item));
+  }
+  if (act === 'add') {
+    return extensionActUnavailable(target, act, 'unsupported', 'Codex installs a plugin from its marketplace');
+  }
+  if (act === 'sign-in' || act === 'sign-out') {
+    return extensionActUnavailable(target, act, 'unsupported', 'Codex has no sign-in for a plugin');
+  }
+  if (act === 'purge') {
+    return extensionActUnavailable(
+      target,
+      act,
+      'unsupported',
+      'Codex removes a plugin one way, with `codex plugin remove`',
+    );
+  }
+  if (act === 'update') {
+    return extensionActUnavailable(
+      target,
+      act,
+      'no-command',
+      'Codex brings its plugins up to date when their marketplace is upgraded',
+    );
+  }
+  if (!EXTENSION_PLUGIN_NAME.test(item.id)) {
+    return extensionActUnavailable(target, act, 'no-command', "Codex's commands do not take this plugin's name");
+  }
+  if (act === 'remove') {
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: codexArgv(executable, ['plugin', 'remove', item.id]),
+      env: codexProfileBinding(profile),
+      reaches: [],
+    });
+  }
+  if (item.id.includes('.')) {
+    return extensionActUnavailable(target, act, 'no-command', "Codex's config cannot name this plugin's key");
+  }
+  const enabled = act === 'enable';
+  const keyPath = `plugins.${item.id}.enabled`;
+  return {
+    target,
+    act,
+    available: true,
+    runs: {
+      kind: 'protocol',
+      method: 'config/value/write',
+      params: { keyPath, mergeStrategy: 'replace', value: enabled },
+    },
+    display: `config/value/write ${keyPath} = ${enabled}`,
+    reaches: [],
+  };
+}
+
+/**
  * A skill a host keeps, placed where Codex reads a person's skills: the host's
  * one copy moves into `~/.agents/skills` and a link is left where it was, so
  * every link to the host's folder still resolves. That folder is every Codex
@@ -606,7 +685,8 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
     }
   }
 
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  function plan(profile: AgentProfile, item: ExtensionActItem, act: ExtensionActKind): ExtensionActPlan {
+    if (item.kind === 'plugin') return pluginPlan(executable, profile, item, act);
     const target = { kind: item.kind, id: item.id };
     // An add plans from an item no read found, so it answers apart from every act on one held.
     if (act === 'add') return item.kind === 'skill' ? skillAddPlan(item, sharedSkills, home) : addPlan(target, item);

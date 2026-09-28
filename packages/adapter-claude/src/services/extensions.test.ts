@@ -8,6 +8,7 @@ import {
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   McpServerDefinitionSchema,
+  type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
   type McpServerDefinition,
@@ -313,6 +314,105 @@ describe('Claude Code extensions', () => {
       const server = find(inventory, 'mcp-server', id);
       expect(server).toBeDefined();
       expect(server).not.toHaveProperty('definition');
+    }
+  });
+
+  it('says who made a plugin, where it lives and what it brings, read from inside its folder alone', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'claude');
+    const cache = join(root, 'plugins', 'cache');
+    const review = join(cache, 'northlight', 'review', '1.2.0');
+    const figma = join(cache, 'official', 'figma', '1.1.0');
+    const linked = join(cache, 'northlight', 'linked', '0.1.0');
+    const outside = join(home, 'elsewhere');
+    await write(join(root, 'settings.json'), { enabledPlugins: { 'review@northlight': true } });
+    await write(join(root, 'plugins', 'installed_plugins.json'), {
+      version: 2,
+      plugins: {
+        'review@northlight': [{ scope: 'user', version: '1.2.0', installPath: review }],
+        'figma@claude-plugins-official': [{ scope: 'user', version: '1.1.0', installPath: figma }],
+        'linked@northlight': [{ scope: 'user', version: '0.1.0', installPath: linked }],
+        'gone@northlight': [{ scope: 'user', version: '0.0.1', installPath: join(cache, 'northlight', 'gone') }],
+      },
+    });
+    // an author with an email, a homepage with a key in it, and every part
+    await write(join(review, '.claude-plugin', 'plugin.json'), {
+      name: 'review',
+      author: { name: 'Northlight Studio', email: 'plugins@northlight.studio', url: 'https://northlight.studio' },
+      homepage: 'https://user:pw@github.com/x/y?token=1',
+      repository: 'https://github.com/northlight/review',
+    });
+    await write(join(review, 'commands', 'review.md'), '# review');
+    await write(join(review, 'commands', 'lint.md'), '# lint');
+    await write(join(review, 'commands', '.draft.md'), '# hidden');
+    await write(join(review, 'commands', 'notes.txt'), 'not a command');
+    await write(join(review, 'commands', 'nested', 'deep.md'), '# nested');
+    await write(join(outside, 'stolen.md'), '# a link among the files');
+    await symlink(join(outside, 'stolen.md'), join(review, 'commands', 'stolen.md'));
+    // a part linked to a folder inside the plugin is its own
+    await write(join(review, 'parts', 'agents', 'reviewer.md'), '# reviewer');
+    await symlink(join(review, 'parts', 'agents'), join(review, 'agents'));
+    await write(join(review, 'hooks', 'hooks.json'), {
+      description: 'Checks each edit',
+      hooks: { PreToolUse: [], PostToolUse: [], 'not an event': [], '9Lives': [] },
+    });
+    // npm's person form, a repository object behind a homepage that is no address, events at the top level
+    await write(join(figma, '.claude-plugin', 'plugin.json'), {
+      name: 'figma',
+      author: 'Figma Design <plugins@figma.example> (https://figma.example)',
+      homepage: 'not an address',
+      repository: { type: 'git', url: 'https://github.com/figma/claude-plugin.git' },
+    });
+    await write(join(figma, 'hooks', 'hooks.json'), { SessionStart: [] });
+    // parts that are links out of the plugin, and addresses that are not http(s)
+    await write(join(linked, '.claude-plugin', 'plugin.json'), {
+      name: 'linked',
+      homepage: 'ftp://files.northlight.example/linked',
+      repository: 'github:northlight/linked',
+    });
+    await write(join(outside, 'commands', 'escape.md'), '# escape');
+    await write(join(outside, 'hooks.json'), { hooks: { Stop: [] } });
+    await symlink(join(outside, 'commands'), join(linked, 'commands'));
+    await mkdir(join(linked, 'hooks'), { recursive: true });
+    await symlink(join(outside, 'hooks.json'), join(linked, 'hooks', 'hooks.json'));
+    const toolkit = join(root, 'plugins', 'synced', 'toolkit');
+    await write(join(toolkit, '.claude-plugin', 'plugin.json'), { name: 'toolkit', author: 'Northlight' });
+    await write(join(toolkit, 'agents', 'planner.md'), '# planner');
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createClaudeExtensionService({ home, now }).inventory(managedProfile(root)),
+    );
+    const document = JSON.stringify(inventory);
+    for (const secret of ['plugins@northlight.studio', 'user:pw', 'token=1', 'plugins@figma.example']) {
+      expect(document).not.toContain(secret);
+    }
+    expect(find(inventory, 'plugin', 'review@northlight')).toEqual({
+      kind: 'plugin',
+      id: 'review@northlight',
+      name: 'review',
+      origin: 'own',
+      enabled: true,
+      version: '1.2.0',
+      marketplace: 'northlight',
+      location: review,
+      author: 'Northlight Studio',
+      homepage: 'https://•••@github.com/x/y?•••',
+      brings: { commands: ['lint', 'review'], agents: ['reviewer'], hooks: ['PostToolUse', 'PreToolUse'] },
+    });
+    expect(find(inventory, 'plugin', 'figma@claude-plugins-official')).toMatchObject({
+      author: 'Figma Design',
+      homepage: 'https://github.com/figma/claude-plugin.git',
+    });
+    expect(find(inventory, 'plugin', 'figma@claude-plugins-official')).toHaveProperty('brings', {
+      hooks: ['SessionStart'],
+    });
+    expect(find(inventory, 'plugin', 'toolkit@synced')).toMatchObject({ origin: 'managed', author: 'Northlight' });
+    expect(find(inventory, 'plugin', 'toolkit@synced')).toHaveProperty('brings', { agents: ['planner'] });
+    // nothing followed out of its folder, and a folder that is not there says nothing
+    for (const id of ['linked@northlight', 'gone@northlight']) {
+      const plugin = find(inventory, 'plugin', id);
+      expect(plugin, id).toBeDefined();
+      for (const field of ['author', 'homepage', 'brings']) expect(plugin, id).not.toHaveProperty(field);
     }
   });
 
@@ -717,5 +817,98 @@ describe('Claude Code skills placed', () => {
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: step.path }] },
     });
+  });
+});
+
+describe('Claude Code plugin acts', () => {
+  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
+  const actPlugin = (fields: Record<string, unknown> = {}) =>
+    ({
+      kind: 'plugin',
+      id: 'review@northlight',
+      name: 'review',
+      origin: 'own',
+      enabled: true,
+      version: '1.2.0',
+      marketplace: 'northlight',
+      ...fields,
+    }) as never;
+
+  it("turns a plugin on and off, updates it and uninstalls it with Claude Code's own commands, at user scope", () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    const forms: Record<string, string[]> = {
+      enable: ['claude', 'plugin', 'enable', 'review@northlight', '--scope', 'user'],
+      disable: ['claude', 'plugin', 'disable', 'review@northlight', '--scope', 'user'],
+      // a remove keeps what the plugin stored in plugins/data; a purge takes that too
+      remove: ['claude', 'plugin', 'uninstall', 'review@northlight', '--scope', 'user', '--keep-data'],
+      purge: ['claude', 'plugin', 'uninstall', 'review@northlight', '--scope', 'user'],
+      update: ['claude', 'plugin', 'update', 'review@northlight', '--scope', 'user'],
+    };
+    for (const [act, argv] of Object.entries(forms)) {
+      expect(ExtensionActPlanSchema.parse(claude.plan!(work, actPlugin(), act as ExtensionActKind)), act).toEqual({
+        target: { kind: 'plugin', id: 'review@northlight' },
+        act,
+        available: true,
+        runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+        display: argv.join(' '),
+        // a managed root's plugins are its own
+        reaches: [],
+      });
+    }
+  });
+
+  it('says an uninstall or an update in the native default reaches Grok, which loads every plugin installed there', () => {
+    const native = actProfile('native-default', '/Users/test/.claude');
+    for (const act of ['remove', 'purge', 'update'] as const) {
+      const plan = ExtensionActPlanSchema.parse(claude.plan!(native, actPlugin(), act));
+      expect(plan, act).toMatchObject({ available: true, runs: { kind: 'command' }, reaches: ['shared-folder'] });
+      // the root Claude Code finds with no variable at all
+      expect(plan, act).not.toHaveProperty('runs.env');
+    }
+    // Grok never reads enabledPlugins: a switch stays with Claude Code
+    for (const act of ['enable', 'disable'] as const) {
+      expect(claude.plan!(native, actPlugin(), act), act).toMatchObject({ available: true, reaches: [] });
+    }
+  });
+
+  it("leaves the account's synced plugins to claude.ai, and plans nothing Claude Code's commands cannot take", () => {
+    const work = actProfile('managed', '/profiles/work/claude');
+    const synced = actPlugin({
+      id: 'toolkit@synced',
+      name: 'toolkit',
+      origin: 'managed',
+      location: '/profiles/work/claude/plugins/synced/toolkit',
+    });
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update'] as const) {
+      expect(claude.plan!(work, synced, act)).toEqual({
+        target: { kind: 'plugin', id: 'toolkit@synced' },
+        act,
+        available: false,
+        reason: 'not-own',
+        message: 'It comes with your Claude account, from claude.ai, and changes there',
+      });
+    }
+    // a flag, a path, a space: never an argument of Claude Code's own
+    for (const id of ['--scope', '../review@northlight', '.review@northlight', 'review@north light']) {
+      expect(claude.plan!(work, actPlugin({ id }), 'remove')).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'remove',
+        available: false,
+        reason: 'no-command',
+        message: "Claude Code's commands do not take this plugin's name",
+      });
+    }
+    expect(claude.plan!(work, actPlugin(), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Claude Code installs a plugin from its marketplace',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(claude.plan!(work, actPlugin(), act)).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Claude Code has no sign-in for a plugin',
+      });
+    }
   });
 });

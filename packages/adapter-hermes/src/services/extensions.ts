@@ -40,6 +40,7 @@ import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
@@ -48,6 +49,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionInventory,
@@ -972,6 +974,8 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
   // The native default is Hermes's own root, whatever path the profile carries.
   const rootOf = (profile: AgentProfile): string =>
     profile.kind === 'native-default' ? join(home, '.hermes') : profile.dataRoot;
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'native-default' ? {} : { [HERMES_PROFILE_ROOT_VARIABLE]: profile.dataRoot };
 
   // Acts (RFC 006 C2): Hermes turns a server off only in its config.yaml
   // (`enabled: false`), so a server of the profile's own is only removed —
@@ -982,7 +986,8 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
   // (0.21.4 `cmd_mcp_add`) connects to the server and asks which of its tools
   // to use, and about signing in to an address, before it saves anything:
   // without a person's answers it saves nothing, so no host adds a server.
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  function plan(profile: AgentProfile, item: ExtensionActItem, act: ExtensionActKind): ExtensionActPlan {
+    if (item.kind === 'plugin') return planPlugin(profile, item, act);
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Hermes', item));
@@ -1021,7 +1026,7 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
         target,
         act,
         argv: [executable, 'mcp', 'login', item.id],
-        env: profile.kind === 'native-default' ? {} : { [HERMES_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+        env: profileEnv(profile),
       });
     }
     if (act !== 'remove') {
@@ -1034,9 +1039,70 @@ export function createHermesExtensionService(options: HermesExtensionOptions = {
       target,
       act,
       argv: [executable, 'mcp', 'remove', item.id],
-      env: profile.kind === 'native-default' ? {} : { [HERMES_PROFILE_ROOT_VARIABLE]: profile.dataRoot },
+      env: profileEnv(profile),
       reaches: ['definition'],
     });
+  }
+
+  /**
+   * A plugin's acts are Hermes's own `hermes plugins` commands (0.21.4, as its
+   * source reads, 2026-09-27; not probed as acts), each naming the plugin by
+   * its key. A bundled plugin's code is the install's, which every root on it
+   * shares, so only its place in this root's config is the host's: `enable`
+   * and `disable` write config.yaml alone, and `remove` refuses a bundled name.
+   * For one of the root's own:
+   * - `enable` installs its Python requirements into the install's shared venv
+   *   and asks, at a terminal, to allow each capability it declares — with no
+   *   one to answer, nothing is granted — so turning it on is the person's, in
+   *   a terminal of their own;
+   * - `disable` only writes config;
+   * - `remove` deletes its folder, its install record and its config entries,
+   *   and keeps `plugin-data/` and `.env`. No removal of Hermes's deletes
+   *   those, so there is no purge;
+   * - `update` moves a catalog install to the catalog's pin, and refuses one
+   *   pinned with `--ref`. A new commit that declares another capability asks
+   *   y/N first, and with no terminal to answer it fails: the receipt says so.
+   */
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (act === 'add') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        'Hermes installs a plugin from its catalog or a repository',
+      );
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Hermes has no sign-in for a plugin');
+    }
+    const bundled = item.origin === 'bundled';
+    if (item.origin !== 'own' && !(bundled && (act === 'enable' || act === 'disable'))) {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Hermes', item));
+    }
+    if (act === 'purge') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        "Hermes keeps a plugin's data in plugin-data when it removes it, and has no way to delete it",
+      );
+    }
+    // The read keys a bundled plugin `bundled:<name>`. A key a command could read as a path or a flag — a
+    // category plugin's `<category>/<dir>` — is never passed.
+    const key = bundled ? item.id.replace(/^bundled:/u, '') : item.id;
+    if (!EXTENSION_PLUGIN_NAME.test(key)) {
+      return extensionActUnavailable(target, act, 'no-command', "Hermes's commands do not take this plugin's name");
+    }
+    if (act === 'enable' && !bundled) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        `Hermes asks you to allow what a plugin may do as it turns on: run \`hermes plugins enable ${key}\` in a terminal`,
+      );
+    }
+    return extensionCommandPlan({ target, act, argv: [executable, 'plugins', act, key], env: profileEnv(profile) });
   }
 
   /**

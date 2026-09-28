@@ -8,6 +8,7 @@ import type {
   DistributionFailure,
   DistributionProvider,
   DistributionService,
+  ExtensionActItem,
   ExtensionActKind,
   ExtensionActPlan,
   ExtensionActReceipt,
@@ -17,8 +18,6 @@ import type {
   ExtensionProvider,
   ExtensionService,
   McpServerDefinition,
-  McpServerItem,
-  SkillItem,
   ProfileFailure,
   ProfileIdentity,
   ProfileProvider,
@@ -887,7 +886,7 @@ export interface AgentRuntime {
   extensionActPlans(
     providerId: string,
     profileId: string | undefined,
-    items: ReadonlyArray<McpServerItem | SkillItem>,
+    items: ReadonlyArray<ExtensionActItem>,
     /** Servers a host would give the agent, by name: each one's add, planned against `items`. */
     adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>,
     skills?: {

@@ -9,6 +9,7 @@ import {
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createHermesExtensionService } from './extensions.js';
@@ -694,5 +695,136 @@ describe('Hermes skills placed', () => {
     });
     // A placed skill still has no switch a host can drive.
     expect(hermes.plan!(work, held('changelog'), 'disable')).toMatchObject({ available: false, reason: 'no-command' });
+  });
+});
+
+describe('Hermes plugin acts', () => {
+  const HERMES = '/opt/hermes/bin/hermes';
+
+  /** The populated root, read, with a service whose acts run HERMES. */
+  async function readRoot() {
+    const { home, root } = await populatedRoot();
+    const hermes = createHermesExtensionService({ executable: HERMES, home, now });
+    const work = managedProfile(root);
+    const inventory = ExtensionInventorySchema.parse(await hermes.inventory(work));
+    const held = (id: string): PluginItem => {
+      const item = find(inventory, 'plugin', id);
+      if (item?.kind !== 'plugin') throw new Error(`no plugin ${id}`);
+      return item;
+    };
+    return { root, hermes, work, held };
+  }
+
+  it("turns a bundled plugin on and off in the root's own config, and leaves the rest of it to the install", async () => {
+    const { root, hermes, work, held } = await readRoot();
+    for (const act of ['enable', 'disable'] as const) {
+      expect(ExtensionActPlanSchema.parse(hermes.plan!(work, held('bundled:kanban'), act))).toEqual({
+        target: { kind: 'plugin', id: 'bundled:kanban' },
+        act,
+        available: true,
+        runs: { kind: 'command', argv: [HERMES, 'plugins', act, 'kanban'], env: { HERMES_HOME: root } },
+        display: `${HERMES} plugins ${act} kanban`,
+        reaches: [],
+      });
+    }
+    // Its code is the install's, which every root on it shares.
+    for (const act of ['remove', 'purge', 'update'] as const) {
+      expect(hermes.plan!(work, held('bundled:kanban'), act)).toEqual({
+        target: { kind: 'plugin', id: 'bundled:kanban' },
+        act,
+        available: false,
+        reason: 'not-own',
+        message: 'It ships with Hermes',
+      });
+    }
+    // A bundled plugin in a category folder is keyed by its path.
+    expect(hermes.plan!(work, held('bundled:image_gen/openai'), 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+      message: "Hermes's commands do not take this plugin's name",
+    });
+  });
+
+  it("turns off, removes and updates one of the root's own by command, and leaves turning one on to the person", async () => {
+    const { root, hermes, work, held } = await readRoot();
+    for (const act of ['disable', 'remove', 'update'] as const) {
+      expect(ExtensionActPlanSchema.parse(hermes.plan!(work, held('disk-cleanup'), act)), act).toEqual({
+        target: { kind: 'plugin', id: 'disk-cleanup' },
+        act,
+        available: true,
+        runs: { kind: 'command', argv: [HERMES, 'plugins', act, 'disk-cleanup'], env: { HERMES_HOME: root } },
+        display: `${HERMES} plugins ${act} disk-cleanup`,
+        reaches: [],
+      });
+    }
+    // Turning it on installs into the install's venv and asks what it may do: the person answers that.
+    expect(ExtensionActPlanSchema.parse(hermes.plan!(work, held('disk-cleanup'), 'enable'))).toEqual({
+      target: { kind: 'plugin', id: 'disk-cleanup' },
+      act: 'enable',
+      available: false,
+      reason: 'in-app',
+      message:
+        'Hermes asks you to allow what a plugin may do as it turns on: run `hermes plugins enable disk-cleanup` in a terminal',
+    });
+    expect(hermes.plan!(work, held('review-pack'), 'enable')).toMatchObject({
+      reason: 'in-app',
+      message:
+        'Hermes asks you to allow what a plugin may do as it turns on: run `hermes plugins enable review-pack` in a terminal',
+    });
+    // The native default is Hermes's own root: nothing points the command elsewhere.
+    const native = ExtensionActPlanSchema.parse(
+      hermes.plan!(nativeProfile('/nowhere/.hermes'), held('disk-cleanup'), 'update'),
+    );
+    expect(native).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: [HERMES, 'plugins', 'update', 'disk-cleanup'] },
+    });
+    expect(native).not.toHaveProperty('runs.env');
+  });
+
+  it('removes a plugin only as Hermes does, keeping its data: there is no purge', async () => {
+    const { hermes, work, held } = await readRoot();
+    for (const id of ['disk-cleanup', 'web/firecrawl']) {
+      expect(hermes.plan!(work, held(id), 'purge'), id).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'purge',
+        available: false,
+        reason: 'unsupported',
+        message: "Hermes keeps a plugin's data in plugin-data when it removes it, and has no way to delete it",
+      });
+    }
+  });
+
+  it("refuses a key its commands would read as a path, a plugin that is not the root's, and acts a plugin has none of", async () => {
+    const { hermes, work, held } = await readRoot();
+    for (const act of ['enable', 'disable', 'remove', 'update'] as const) {
+      expect(hermes.plan!(work, held('web/firecrawl'), act), act).toEqual({
+        target: { kind: 'plugin', id: 'web/firecrawl' },
+        act,
+        available: false,
+        reason: 'no-command',
+        message: "Hermes's commands do not take this plugin's name",
+      });
+    }
+    const managed: PluginItem = { kind: 'plugin', id: 'org-pack', name: 'org-pack', origin: 'managed', enabled: true };
+    for (const act of ['enable', 'disable', 'remove'] as const) {
+      expect(hermes.plan!(work, managed, act), act).toMatchObject({
+        available: false,
+        reason: 'not-own',
+        message: "Hermes's app or your organization adds it, and changes it",
+      });
+    }
+    expect(hermes.plan!(work, held('disk-cleanup'), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Hermes installs a plugin from its catalog or a repository',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(hermes.plan!(work, held('bundled:kanban'), act), act).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Hermes has no sign-in for a plugin',
+      });
+    }
   });
 });

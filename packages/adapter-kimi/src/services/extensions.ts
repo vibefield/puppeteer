@@ -44,6 +44,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -332,17 +333,31 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
     },
   };
 
-  // Acts (RFC 006 C2): Kimi has no command for either kind — its servers are
-  // added and changed only inside the app (`/mcp-config`), so an add answers as
-  // every server act does, and one skill has no switch. A skill is a folder
-  // where Kimi looks, though, so one is placed there and taken away (planSkill).
+  // Acts (RFC 006 C2): Kimi has no command for any kind. Its plugins change
+  // only in `/plugins` — Space turns one on or off, D removes it, and a
+  // reinstall over one is its update — since the local server's plugin routes
+  // would take a Kimi Code process of its own, and a route that changes a
+  // plugin is not Puppeteer's to call. So every plugin act answers in-app, a
+  // purge as well, though D leaves the plugin's copy under `plugins/managed/`;
+  // a server or skill a plugin brings changes with the plugin (not-own). Its
+  // servers are added and changed only inside the app (`/mcp-config`), so an
+  // add answers as every server act does, and one skill has no switch. A skill
+  // is a folder where Kimi looks, though, so one is placed there and taken away
+  // (planSkill).
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     { keepIn }: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'plugin')
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        'Kimi changes plugins only inside the app: `/plugins`, where Space turns one on or off and D removes it',
+      );
     if (item.origin !== 'own')
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Kimi', item));
     if (item.kind === 'skill')

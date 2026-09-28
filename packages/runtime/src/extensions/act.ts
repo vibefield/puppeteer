@@ -8,6 +8,7 @@ import {
   type AgentHost,
   type AgentProfile,
   type AvailableExtensionActPlan,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -27,8 +28,9 @@ import { performFileSteps } from './files.js';
 import type { ExtensionInventoryReader, ExtensionProviderEntry } from './inventory.js';
 
 /**
- * RFC 006 C2: an act on one server or skill a profile's agent holds — turned
- * on, turned off or removed — through the agent's own command or protocol.
+ * RFC 006 C2: an act on one server, skill or plugin a profile's agent holds —
+ * turned on, turned off or removed, a plugin also updated or removed with its
+ * data — through the agent's own command or protocol.
  * The adapter plans it from the item a fresh read found; the runtime runs a
  * command plan the way it runs an updater (no stdin, a process group of its
  * own, the clean environment plus the plan's variables that point the agent at
@@ -91,7 +93,7 @@ export interface StartedExtensionAct {
   reaches: ExtensionReach[];
   startedAt: string;
   /** The item as the read the plan came from found it (none for an add): the receipt compares against it. */
-  before?: McpServerItem | SkillItem;
+  before?: ExtensionActItem;
 }
 
 /** How a terminal act's terminal ended, as the host saw it; nothing when the host stopped waiting. */
@@ -128,7 +130,7 @@ export interface ExtensionActRunner {
   plans(request: {
     providerId: string;
     profileId?: string;
-    items: ReadonlyArray<McpServerItem | SkillItem>;
+    items: ReadonlyArray<ExtensionActItem>;
     /**
      * Servers a host would give the agent, by name: each one's add, planned
      * against `items` (a name the agent already holds answers `held`).
@@ -156,13 +158,17 @@ export interface ExtensionActRunner {
 
 const SERVER_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove', 'sign-in', 'sign-out'];
 const SKILL_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove'];
+const PLUGIN_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove', 'purge', 'update'];
+
+const actsOf = (item: ExtensionActItem): readonly ExtensionActKind[] =>
+  item.kind === 'mcp-server' ? SERVER_ACTS : item.kind === 'skill' ? SKILL_ACTS : PLUGIN_ACTS;
 
 type Located =
   | { failure: ExtensionFailure }
   | {
       profile: AgentProfile;
       entry: ExtensionProviderEntry;
-      item: McpServerItem | SkillItem | undefined;
+      item: ExtensionActItem | undefined;
     };
 
 const DONE: Record<ExtensionActKind, string> = {
@@ -172,6 +178,8 @@ const DONE: Record<ExtensionActKind, string> = {
   'sign-in': 'signed in',
   'sign-out': 'signed out',
   add: 'added',
+  update: 'updated',
+  purge: 'removed with its data',
 };
 
 const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === 'sign-out';
@@ -179,15 +187,15 @@ const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === '
 /**
  * What the second read says an act did, beside what the agent answered when
  * it ran (`error`). A switch is done when the read shows it switched, a
- * removal when the item is gone, an add when it is there, a sign-in or
- * sign-out when the agent says so — and an agent that keeps its sign-ins
- * where no read looks leaves it unconfirmed.
+ * removal when the item is gone, an add when it is there, an update when the
+ * version moved, a sign-in or sign-out when the agent says so — and an agent
+ * that keeps its sign-ins where no read looks leaves it unconfirmed.
  */
 function outcome(
   act: ExtensionActKind,
   label: string,
-  before: McpServerItem | SkillItem | undefined,
-  after: McpServerItem | SkillItem | undefined,
+  before: ExtensionActItem | undefined,
+  after: ExtensionActItem | undefined,
   display: string,
   error: string | undefined,
 ): Pick<ExtensionActReceipt, 'status' | 'message'> {
@@ -224,8 +232,21 @@ function outcome(
             : `${label} still asks you to sign in`,
     };
   }
-  const switched = act === 'remove' ? after === undefined : after !== undefined && after.enabled === (act === 'enable');
-  if (switched && (act === 'remove' || before.enabled !== after!.enabled)) return done(DONE[act]);
+  if (act === 'update') {
+    const was = before.kind === 'plugin' ? before.version : undefined;
+    const is = after?.kind === 'plugin' ? after.version : undefined;
+    if (after !== undefined && is !== was) {
+      return done(was !== undefined && is !== undefined ? `updated ${was} → ${is}` : DONE.update);
+    }
+    if (error !== undefined) return refused;
+    return {
+      status: 'unchanged',
+      message: after === undefined ? 'no longer there' : `${label} still holds ${is ?? 'the same version'}`,
+    };
+  }
+  const removal = act === 'remove' || act === 'purge';
+  const switched = removal ? after === undefined : after !== undefined && after.enabled === (act === 'enable');
+  if (switched && (removal || before.enabled !== after!.enabled)) return done(DONE[act]);
   if (error !== undefined) return refused;
   return {
     status: 'unchanged',
@@ -269,7 +290,9 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         ? find(inventory, request.target)
         : request.target.kind === 'skill'
           ? ownSkillNamed(inventory.items, request.target.id)
-          : ownServerNamed(inventory.items, request.target.id);
+          : request.target.kind === 'mcp-server'
+            ? ownServerNamed(inventory.items, request.target.id)
+            : undefined;
     return { profile: resolved.profile, entry, item };
   }
 
@@ -278,10 +301,28 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     request: ExtensionActRequest | Omit<ExtensionActRequest, 'onOutput' | 'signal'>,
   ): ExtensionActPlan | ExtensionFailure {
     const { entry, profile, item } = located;
+    const unavailable = (reason: 'unsupported' | 'no-sign-in', message: string): ExtensionActPlan => ({
+      target: request.target,
+      act: request.act,
+      available: false,
+      reason,
+      message,
+    });
     if (request.act === 'add') {
+      if (request.target.kind === 'plugin') {
+        // an agent installs a plugin its own way (a marketplace, a package, a folder): not an add
+        return unavailable('unsupported', 'only a server or a skill is added; a plugin is installed');
+      }
       return request.target.kind === 'skill'
         ? planSkillAdd(located, request.providerId, request.target, request.folder, item !== undefined)
         : planAdd(located, request.providerId, request.target, request.definition, item !== undefined);
+    }
+    // an update, and a removal that takes the data too, are a plugin's alone
+    if ((request.act === 'update' || request.act === 'purge') && request.target.kind !== 'plugin') {
+      return unavailable(
+        'unsupported',
+        `only a plugin is ${request.act === 'update' ? 'updated' : 'removed with its data'}`,
+      );
     }
     if (item === undefined) {
       return {
@@ -292,15 +333,8 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         message: `${entry.provider.label} does not hold ${request.target.id} in this profile`,
       };
     }
-    if (item.kind === 'skill' && signs(request.act)) {
-      return {
-        target: request.target,
-        act: request.act,
-        available: false,
-        reason: 'no-sign-in',
-        message: 'a skill has no sign-in',
-      };
-    }
+    if (item.kind !== 'mcp-server' && signs(request.act))
+      return unavailable('no-sign-in', `a ${item.kind} has no sign-in`);
     const planOptions: ExtensionActPlanOptions =
       item.kind === 'skill' && request.act === 'remove' && request.folder !== undefined
         ? { keepIn: request.folder }
@@ -392,7 +426,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
   function answered(
     entry: ExtensionProviderEntry,
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     providerId: string,
     planOptions: ExtensionActPlanOptions = {},
@@ -484,7 +518,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     ran: {
       act: ExtensionActKind;
       target: ExtensionActTarget;
-      before?: McpServerItem | SkillItem;
+      before?: ExtensionActItem;
       display: string;
       error: string | undefined;
       /** Where a skill's steps placed it: an agent that names skills by their own words still holds it there. */
@@ -537,7 +571,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       const located = { profile: resolved.profile, entry };
       const plans: ExtensionActPlan[] = [];
       // a real folder of the agent's own moves to where the host keeps skills, under its name
-      const keepIn = (item: McpServerItem | SkillItem, act: ExtensionActKind): { folder?: string } =>
+      const keepIn = (item: ExtensionActItem, act: ExtensionActKind): { folder?: string } =>
         request.keep !== undefined &&
         item.kind === 'skill' &&
         act === 'remove' &&
@@ -546,7 +580,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           ? { folder: join(request.keep, item.name) }
           : {};
       for (const item of request.items) {
-        for (const act of item.kind === 'mcp-server' ? SERVER_ACTS : SKILL_ACTS) {
+        for (const act of actsOf(item)) {
           const plan = planFor(
             { ...located, item },
             { providerId, target: { kind: item.kind, id: item.id }, act, ...keepIn(item, act) },
@@ -793,9 +827,9 @@ function ownSkillNamed(items: ReadonlyArray<ExtensionInventory['items'][number]>
   );
 }
 
-function find(inventory: ExtensionInventory, target: ExtensionActTarget): McpServerItem | SkillItem | undefined {
+function find(inventory: ExtensionInventory, target: ExtensionActTarget): ExtensionActItem | undefined {
   const item = inventory.items.find((candidate) => candidate.kind === target.kind && candidate.id === target.id);
-  return item?.kind === 'mcp-server' || item?.kind === 'skill' ? item : undefined;
+  return item?.kind === 'mcp-server' || item?.kind === 'skill' || item?.kind === 'plugin' ? item : undefined;
 }
 
 async function isDirectory(path: string): Promise<boolean> {
