@@ -3,6 +3,7 @@ import {
   MAX_REQUEST_BYTES,
   declineSpawnThrough,
   parseSpawnThroughRequest,
+  type SpawnThroughDeclineCode,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
 } from './protocol.js';
@@ -14,8 +15,10 @@ export interface SpawnThroughGatewayOptions {
   handle(request: SpawnThroughRequest): Promise<SpawnThroughResponse>;
   /**
    * Answer the gateway's own failures (a bad bearer, an oversize or unreadable
-   * request, a throwing handler) with `refuse` rather than `fallback`, so a
-   * strict host never lets a launch through unmanaged. Default false.
+   * request, a throwing handler) with `refuse` rather than `fallback`. Such a
+   * refusal is UNPLACED — the gateway cannot place a request it could not read
+   * or trust — so the shim obeys it only in one of the host's own terminals,
+   * by its own ancestry; anywhere else the agent runs as typed. Default false.
    */
   strict?: boolean | undefined;
 }
@@ -35,7 +38,8 @@ function writeResponse(socket: Socket, response: SpawnThroughResponse): void {
 /** One loopback listener: one JSON line in, one JSON line out, per connection. */
 export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptions): Promise<SpawnThroughGateway> {
   const { token, handle } = options;
-  const declined = (reason: string): SpawnThroughResponse => declineSpawnThrough(reason, { strict: options.strict });
+  const declined = (code: SpawnThroughDeclineCode, reason: string): SpawnThroughResponse =>
+    declineSpawnThrough({ code, reason }, options.strict === true ? { placed: false } : undefined);
   const sockets = new Set<Socket>();
   const server: Server = createServer((socket) => {
     sockets.add(socket);
@@ -53,24 +57,30 @@ export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptio
       input += chunk;
       if (Buffer.byteLength(input) > MAX_REQUEST_BYTES) {
         handled = true;
-        writeResponse(socket, declined('spawn-through request is too large'));
+        writeResponse(socket, declined('request-too-large', 'spawn-through request is too large'));
         return;
       }
       const newline = input.indexOf('\n');
       if (newline < 0) return;
       handled = true;
+      let request: SpawnThroughRequest | undefined;
+      try {
+        request = parseSpawnThroughRequest(JSON.parse(input.slice(0, newline)));
+      } catch {
+        request = undefined;
+      }
+      // A line that is not JSON, a malformed request and a wrong bearer get one
+      // answer: the gateway tells an unauthenticated caller nothing about its shape.
+      if (!request || request.token !== token) {
+        writeResponse(socket, declined('unauthenticated', 'spawn-through authentication failed'));
+        return;
+      }
+      const authenticated = request;
       void (async () => {
         try {
-          const request = parseSpawnThroughRequest(JSON.parse(input.slice(0, newline)));
-          // A malformed request and a wrong bearer get the same answer: the
-          // gateway tells an unauthenticated caller nothing about its shape.
-          if (!request || request.token !== token) {
-            writeResponse(socket, declined('spawn-through authentication failed'));
-            return;
-          }
-          writeResponse(socket, await handle(request));
+          writeResponse(socket, await handle(authenticated));
         } catch (error) {
-          writeResponse(socket, declined(error instanceof Error ? error.message : String(error)));
+          writeResponse(socket, declined('handler-failed', error instanceof Error ? error.message : String(error)));
         }
       })();
     });

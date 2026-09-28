@@ -18,24 +18,30 @@
 import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
+import { isatty } from 'node:tty';
 import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
 import { spawnThroughLayout } from './layout.js';
 import {
   SPAWN_THROUGH_EXIT_REFUSED,
   SPAWN_THROUGH_EXIT_UNAVAILABLE,
+  boundSpawnThroughText,
+  isSpawnThroughCommandName,
+  isSpawnThroughHostLabel,
   parseSpawnThroughResponse,
   type SpawnThroughResponse,
 } from './protocol.js';
+import { runPs } from './ps.js';
 import { DEFAULT_RETRY_MS, readLaunchProviders, readRendezvous, type SpawnThroughRendezvous } from './rendezvous.js';
+import { findOwningProcess, readTerminals } from './terminals.js';
 
 /** The answer must come within this, or the shim stops waiting (the gateway drops a socket at 30 s). */
 const RESPONSE_TIMEOUT_MS = 28_000;
 /** Loopback connects at once or not at all; this only bounds a machine too loaded to say. */
 const CONNECT_TIMEOUT_MS = 2_000;
 
-function say(line: string): void {
-  // Gateway text reaches the person's terminal: no control character rides along with it.
-  process.stderr.write(`puppeteer: ${line.replace(/[\u0000-\u001f\u007f-\u009f]/gu, ' ')}\n`);
+function say(text: string): void {
+  // Gateway text reaches the person's terminal: printable characters only, on at most two lines, bounded.
+  process.stderr.write(`puppeteer: ${boundSpawnThroughText(text)}\n`);
 }
 
 function leave(line: string, code: number): never {
@@ -49,7 +55,8 @@ type Asked =
   | { kind: 'unreachable' }
   | { kind: 'failed'; reason: string };
 
-function ask(rendezvous: SpawnThroughRendezvous, payload: object): Promise<Asked> {
+/** `host` names the host in the shim's own sentences: its label, or "the host". */
+function ask(rendezvous: SpawnThroughRendezvous, payload: object, host: string): Promise<Asked> {
   return new Promise<Asked>((resolveAsked) => {
     const socket = createConnection({ host: rendezvous.host, port: rendezvous.port });
     let response = '';
@@ -66,7 +73,7 @@ function ask(rendezvous: SpawnThroughRendezvous, payload: object): Promise<Asked
     socket.once('connect', () => {
       clearTimeout(connectTimer);
       socket.setTimeout(RESPONSE_TIMEOUT_MS, () =>
-        finish({ kind: 'failed', reason: 'the host did not answer in time' }),
+        finish({ kind: 'failed', reason: `${host} did not answer in time` }),
       );
       socket.write(`${JSON.stringify({ ...payload, token: rendezvous.token })}\n`);
     });
@@ -80,7 +87,7 @@ function ask(rendezvous: SpawnThroughRendezvous, payload: object): Promise<Asked
       } catch {
         parsed = undefined;
       }
-      finish(parsed ? { kind: 'answer', response: parsed } : { kind: 'failed', reason: 'the host answered nonsense' });
+      finish(parsed ? { kind: 'answer', response: parsed } : { kind: 'failed', reason: `${host} answered nonsense` });
     });
     // Refused, reset, or closed before an answer: a host that is gone or going.
     socket.once('error', () => finish({ kind: 'unreachable' }));
@@ -176,6 +183,11 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
 
   const launchProviders: AgentLaunchProvider[] = (await readLaunchProviders(home)) ?? [];
   let rendezvous = await readRendezvous(home);
+  // The host's name in the shim's own sentences: its latest readable word, else the launcher's.
+  const launcherLabel = isSpawnThroughHostLabel(process.env.PUPPETEER_SHIM_LABEL)
+    ? process.env.PUPPETEER_SHIM_LABEL
+    : undefined;
+  const theHost = (): string => rendezvous?.hostLabel ?? launcherLabel ?? 'the host';
 
   /**
    * `ai --<provider>` is the imposter's own invocation: the provider comes from
@@ -242,23 +254,52 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     pid: process.pid,
     parentPid: process.ppid,
     ...(imposter ? { imposter: true } : {}),
+    ...(isSpawnThroughCommandName(name) ? { command: name } : {}),
+    // `isatty`, never `process.stdin.isTTY`: that getter opens the terminal as a stream, and libuv leaves
+    // fd 0 non-blocking — a state the agent would inherit at exec.
+    interactive: isatty(0) && isatty(1),
   };
+
+  /**
+   * THE RULE OF REFUSAL, held here when the host cannot hold it — an answer
+   * the shim could not get or read, a refusal the host could not place: a
+   * strict shim waits, or refuses on its own authority, only for an
+   * interactive launch inside one of the host's terminals, found by walking
+   * its own ancestors against the shells the host lists (terminals.json).
+   * Anywhere the launcher's directory leaked to (an editor's terminal, a
+   * detached job), or when nobody can say, the agent runs as typed, at once.
+   * The process table is read once, and only if it is needed.
+   */
+  let inHostTerminal: Promise<boolean> | undefined;
+  const refusableHere = (): Promise<boolean> =>
+    (inHostTerminal ??= (async () => {
+      if (!launch.interactive) return false;
+      const terminals = await readTerminals(home);
+      if (!terminals) return false;
+      // No launcher is ever taken for `ps`.
+      const ps = (args: readonly string[]) => runPs(args, { ...process.env, PATH: cleanPath(process.env.PATH ?? '') });
+      return (await findOwningProcess({ pid: process.pid, owners: terminals, ps })) !== undefined;
+    })());
 
   // The host's latest readable word decides; the launcher's only while none has been readable.
   let strict = rendezvous?.strict ?? process.env.PUPPETEER_SHIM_STRICT === '1';
   let retryMs = rendezvous?.retryMs ?? DEFAULT_RETRY_MS;
-  const waitingSince = Date.now();
+  // The wait starts once the shim knows it may wait: reading the process table does not spend the host's time.
+  let waitingSince: number | undefined;
   let delayMs = 100;
   let waiting = false;
   let asked: Asked;
   for (;;) {
-    asked = rendezvous ? await ask(rendezvous, launch) : { kind: 'unreachable' };
+    asked = rendezvous ? await ask(rendezvous, launch, theHost()) : { kind: 'unreachable' };
     if (asked.kind !== 'unreachable' || !strict) break;
+    // Wait for the host only in one of its own terminals; anywhere else there is nothing to wait for.
+    if (!(await refusableHere())) return fallback();
+    waitingSince ??= Date.now();
     const remainingMs = waitingSince + retryMs - Date.now();
-    if (remainingMs <= 0) refuse(`not started: the host did not answer within ${Math.round(retryMs / 1_000)} s`);
+    if (remainingMs <= 0) refuse(`not started: ${theHost()} did not answer within ${Math.round(retryMs / 1_000)} s`);
     if (!waiting) {
       waiting = true;
-      say(`${name}: waiting for the host to start it as a managed session…`);
+      say(`${name}: waiting for ${theHost()} to start it as a managed session…`);
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, Math.min(delayMs, remainingMs)));
     delayMs = Math.min(delayMs * 2, 1_000);
@@ -271,27 +312,31 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
   }
 
   if (asked.kind !== 'answer') {
-    const reason = asked.kind === 'failed' ? asked.reason : 'the host is unreachable';
-    return strict ? refuse(`not started: ${reason}`) : fallback();
+    const reason = asked.kind === 'failed' ? asked.reason : `${theHost()} is unreachable`;
+    return strict && (await refusableHere()) ? refuse(`not started: ${reason}`) : fallback();
   }
   const response = asked.response;
   switch (response.action) {
     case 'fallback':
       return fallback();
     case 'refuse':
-      return refuse(response.message);
+      // A placed refusal is the host's word on its own terminal. One it could not place binds only in one.
+      return response.placed || (await refusableHere()) ? refuse(response.message) : fallback();
     case 'exec':
       try {
         return execInPlace(response.launch.command, response.launch.args, response.launch.cwd, response.launch.env);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // The host owns the preparation and its record: tell it, then fall through as for any decline.
-        if (rendezvous) await ask(rendezvous, { type: 'exec-failed', preparationId: response.preparationId, message });
+        if (rendezvous) {
+          await ask(rendezvous, { type: 'exec-failed', preparationId: response.preparationId, message }, theHost());
+        }
         process.chdir(originalCwd);
+        // The host answered `exec`, so it had placed this launch: a strict host's refusal needs no walk.
         return strict ? refuse(`not started: the managed launch could not run (${message})`) : fallback();
       }
     default:
-      return strict ? refuse('not started: the host answered nonsense') : fallback();
+      return strict && (await refusableHere()) ? refuse(`not started: ${theHost()} answered nonsense`) : fallback();
   }
 }
 

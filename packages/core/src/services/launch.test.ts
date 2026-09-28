@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AgentContinuationSchema, AgentLaunchProviderSchema, AgentNativeInvocationSchema } from './launch.js';
+import {
+  AgentContinuationSchema,
+  AgentLaunchProviderSchema,
+  AgentNativeInvocationPassthroughKindSchema,
+  AgentNativeInvocationSchema,
+} from './launch.js';
 
 describe('agent launch contracts', () => {
   it('accepts a bounded opaque continuation and rejects provider-shaped extras', () => {
@@ -38,6 +43,34 @@ describe('agent launch contracts', () => {
       },
     });
     expect(result.success).toBe(false);
+  });
+
+  it('carries whether an adapter classifies, absent reading as not', () => {
+    const provider = {
+      id: 'example',
+      label: 'Example',
+      resume: true,
+      nativeInvocation: { commands: [{ name: 'example', executable: '/opt/example' }], environmentVariables: [] },
+    };
+    for (const classifies of [true, false]) {
+      const withKey = { ...provider, nativeInvocation: { ...provider.nativeInvocation, classifies } };
+      expect(AgentLaunchProviderSchema.parse(withKey)).toEqual(withKey);
+    }
+    // Absent stays absent: nothing is invented for an adapter that never said.
+    expect(AgentLaunchProviderSchema.parse(provider).nativeInvocation).not.toHaveProperty('classifies');
+    for (const classifies of ['yes', 1, null]) {
+      expect(
+        AgentLaunchProviderSchema.safeParse({
+          ...provider,
+          nativeInvocation: { ...provider.nativeInvocation, classifies },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('names exactly three kinds of passthrough', () => {
+    expect(AgentNativeInvocationPassthroughKindSchema.options).toEqual(['utility', 'one-shot', 'elsewhere']);
+    expect(AgentNativeInvocationPassthroughKindSchema.safeParse('session').success).toBe(false);
   });
 
   it('validates native invocation payloads independently of adapter callbacks', () => {

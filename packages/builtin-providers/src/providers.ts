@@ -207,7 +207,13 @@ function withProfileBinding<
   const environment = profiles.bindingEnvironment(profile);
   if (Object.keys(environment).length === 0) return launch;
   const resolution = normalize({ providerId, cwd, argv: [], environment, implementation: { kind: 'native' } });
-  if (resolution.status === 'rejected') {
+  if (resolution.status === 'passthrough') {
+    // An empty argv is the bare session. A normalizer that calls it anything else is wrong about its own CLI.
+    throw new Error(
+      `profile ${profile.id} cannot bind ${providerId}: the adapter's normalizer calls an empty argv a ${resolution.kind} passthrough (${resolution.reason}), which is an adapter bug`,
+    );
+  }
+  if (resolution.status !== 'accepted') {
     throw new Error(`profile ${profile.id} cannot bind ${providerId}: ${resolution.reason}`);
   }
   const bound: Partial<Options> = resolution.options ?? {};

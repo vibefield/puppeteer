@@ -58,6 +58,7 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
     });
     expect(Date.parse(rendezvous!.writtenAt)).not.toBeNaN();
     expect(rendezvous).not.toHaveProperty('imposterExecutable');
+    expect(rendezvous).not.toHaveProperty('hostLabel');
     expect(await readLaunchProviders(home)).toEqual(providers);
 
     await writeRendezvous(home, {
@@ -67,6 +68,7 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
       retryMs: 1_500,
       launchProviders: [],
       imposterExecutable: '/opt/ai',
+      hostLabel: "Field's Host",
     });
     expect(await readRendezvous(home)).toMatchObject({
       port: 4343,
@@ -74,9 +76,41 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
       strict: true,
       retryMs: 1_500,
       imposterExecutable: '/opt/ai',
+      hostLabel: "Field's Host",
     });
     expect(await readLaunchProviders(home)).toEqual([]);
     expect((await readdir(home)).sort()).toEqual([RENDEZVOUS_FILE, LAUNCH_PROVIDERS_FILE].sort());
+  });
+
+  it('carries whether each adapter classifies through the provider table, and invents it for none', async () => {
+    const classifying: AgentLaunchProvider = {
+      id: 'classifying',
+      label: 'Classifying',
+      resume: true,
+      nativeInvocation: {
+        commands: [{ name: 'classifying', executable: '/real/classifying' }],
+        environmentVariables: [],
+        classifies: true,
+      },
+    };
+    const declared: AgentLaunchProvider = {
+      id: 'declared',
+      label: 'Declared',
+      resume: true,
+      nativeInvocation: {
+        commands: [{ name: 'declared', executable: '/real/declared' }],
+        environmentVariables: [],
+        classifies: false,
+      },
+    };
+    // `providers` says nothing about classifying.
+    const table = [classifying, declared, ...providers];
+    await writeRendezvous(home, { port: 4242, token: 'bearer', strict: true, launchProviders: table });
+
+    const read = await readLaunchProviders(home);
+    expect(read).toEqual(table);
+    expect(read!.map((provider) => provider.nativeInvocation?.classifies)).toEqual([true, false, undefined]);
+    expect(read![2]!.nativeInvocation).not.toHaveProperty('classifies');
   });
 
   it('holds an existing, looser home to owner-only', async () => {
@@ -161,6 +195,13 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
     // A newer writer's extra keys are not a reason to lose the host.
     await writeFile(join(home, RENDEZVOUS_FILE), JSON.stringify({ ...valid, later: true }));
     expect(await readRendezvous(home)).toEqual(valid);
+    // Nor is a label this shim cannot say: the host is kept, the label dropped.
+    for (const hostLabel of ['x'.repeat(65), '', 7, `a${String.fromCharCode(27)}[2Jb`]) {
+      await writeFile(join(home, RENDEZVOUS_FILE), JSON.stringify({ ...valid, hostLabel }));
+      const read = await readRendezvous(home);
+      expect(read, JSON.stringify(hostLabel)).toMatchObject(valid);
+      expect(read?.hostLabel, JSON.stringify(hostLabel)).toBeUndefined();
+    }
     await writeFile(join(home, LAUNCH_PROVIDERS_FILE), JSON.stringify([{ id: 'x' }]));
     expect(await readLaunchProviders(home)).toBeUndefined();
     await rm(join(home, RENDEZVOUS_FILE));
@@ -175,6 +216,9 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
       { port: 4242, token: '' },
       { port: 4242, token: 'x'.repeat(257) },
       { port: 4242, token: 'bearer', retryMs: -1 },
+      { port: 4242, token: 'bearer', hostLabel: '' },
+      { port: 4242, token: 'bearer', hostLabel: 'x'.repeat(65) },
+      { port: 4242, token: 'bearer', hostLabel: `two${String.fromCharCode(10)}lines` },
     ]) {
       await expect(
         writeRendezvous(home, { strict: false, launchProviders: providers, ...options }),

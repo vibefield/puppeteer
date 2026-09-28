@@ -13,6 +13,7 @@ const request: SpawnThroughRequest = {
   environment: {},
   pid: 456,
   parentPid: 123,
+  interactive: true,
 };
 
 /** One connection, as the shim makes it: write, then read one line. */
@@ -61,27 +62,29 @@ describe('spawn-through gateway', () => {
     });
     gateway = await startSpawnThroughGateway({ token: 'secret', handle });
 
-    await expect(ask(gateway.port, line({ ...request, token: 'guess' }))).resolves.toEqual({
+    const unauthenticated = {
       action: 'fallback',
+      code: 'unauthenticated',
       reason: 'spawn-through authentication failed',
-    });
-    await expect(ask(gateway.port, line({ ...request, unknown: true }))).resolves.toEqual({
-      action: 'fallback',
-      reason: 'spawn-through authentication failed',
-    });
+    };
+    await expect(ask(gateway.port, line({ ...request, token: 'guess' }))).resolves.toEqual(unauthenticated);
+    await expect(ask(gateway.port, line({ ...request, unknown: true }))).resolves.toEqual(unauthenticated);
+    // A line that is not JSON at all tells the caller no more than a wrong bearer does.
+    await expect(ask(gateway.port, 'not json\n')).resolves.toEqual(unauthenticated);
     expect(handle).not.toHaveBeenCalled();
     await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toEqual({
       action: 'fallback',
+      code: 'request-too-large',
       reason: 'spawn-through request is too large',
     });
-    await expect(ask(gateway.port, 'not json\n')).resolves.toMatchObject({ action: 'fallback' });
     await expect(ask(gateway.port, line(request))).resolves.toEqual({
       action: 'fallback',
+      code: 'handler-failed',
       reason: 'the runtime is disposed',
     });
   });
 
-  it('refuses instead when the host is strict, so no failure of its own lets a launch through', async () => {
+  it('refuses instead when the host is strict — unplaced, since it could not read or trust the request', async () => {
     gateway = await startSpawnThroughGateway({
       token: 'secret',
       strict: true,
@@ -91,12 +94,21 @@ describe('spawn-through gateway', () => {
     });
     await expect(ask(gateway.port, line({ ...request, token: 'guess' }))).resolves.toEqual({
       action: 'refuse',
+      code: 'unauthenticated',
       reason: 'spawn-through authentication failed',
       message: 'not started, because it could not be run as a managed session: spawn-through authentication failed',
+      placed: false,
+    });
+    await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toMatchObject({
+      action: 'refuse',
+      code: 'request-too-large',
+      placed: false,
     });
     await expect(ask(gateway.port, line(request))).resolves.toMatchObject({
       action: 'refuse',
+      code: 'handler-failed',
       reason: 'the runtime is disposed',
+      placed: false,
     });
   });
 

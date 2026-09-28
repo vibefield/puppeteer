@@ -146,6 +146,42 @@ describe('materializeShims', { timeout: 60_000 }, () => {
     expect(run.stdout).toContain('env:PUPPETEER_SHIM_STRICT=1\n');
   });
 
+  it("bakes the host's label in, quoted like every word, for when no rendezvous can be read", async () => {
+    const hostLabel = `Field's "Host" $HOME \`not run\``;
+    await materializeShims({ home, names: ['example'], script, runtime: { command: runtime }, hostLabel });
+    const run = spawnSync(join(spawnThroughLayout(home).shimDirectory, 'example'), [], {
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin', PUPPETEER_SHIM_LABEL: 'inherited' },
+    });
+    // The launcher's own label, not an inherited one.
+    expect(run.stdout).toContain(`env:PUPPETEER_SHIM_LABEL=${hostLabel}\n`);
+
+    // Without one, the launcher names none, and the shim says "the host".
+    await materializeShims({ home, names: ['example'], script, runtime: { command: runtime } });
+    expect(await readFile(join(spawnThroughLayout(home).shimDirectory, 'example'), 'utf8')).not.toContain(
+      'PUPPETEER_SHIM_LABEL',
+    );
+  });
+
+  it('refuses a label no shim could say, and writes nothing', async () => {
+    for (const hostLabel of [
+      '',
+      'x'.repeat(65),
+      `two${String.fromCharCode(10)}lines`,
+      `a${String.fromCharCode(27)}b`,
+    ]) {
+      await expect(
+        materializeShims({ home, names: ['example'], script, runtime: { command: runtime }, hostLabel }),
+        JSON.stringify(hostLabel),
+      ).rejects.toThrow(/not a host label/u);
+    }
+    await expect(stat(home)).rejects.toThrow();
+    // 64 characters, counted as code points: this emoji is one.
+    await expect(
+      materializeShims({ home, names: ['example'], script, runtime: { command: runtime }, hostLabel: '🙂'.repeat(64) }),
+    ).resolves.toMatchObject({ names: ['example'] });
+  });
+
   it('refuses a name or a runtime a launcher cannot be written for, and writes nothing', async () => {
     for (const name of ['', 'a b', '../x', '-x', '.hidden', "it's", 'a;b', 'x'.repeat(129), 'new\nline']) {
       await expect(
