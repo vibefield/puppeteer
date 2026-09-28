@@ -8,11 +8,16 @@
 // `--drive` walks the launcher end to end: (a) ⌥↵ opens the field on this
 // folder's past sessions; (b) typing filters them and ⇥ flips the scope;
 // (c) ⎋ closes the field back to the terminal and a second ⎋ dismisses the
-// launcher; (d) ⌥digit in a new pane launches a real agent there and the deck's
-// reaper terminates the shell it replaced; (e) a plain key in a third pane
-// dismisses the launcher and reaches the shell. The agent is the first
-// installed of GODVIEW_LAUNCHER_DRIVE_AGENTS (default: codex, opencode, pi,
-// grok, kimi); nothing is ever sent to it, and it is killed with the window.
+// launcher; (d) a click (`Input.dispatchMouseEvent`) in the field of a fresh
+// pane that is NOT the active one selects that pane and opens its field, and
+// ↓ and ⎋ then work there; (e) ⌥digit in a new pane launches a real agent
+// there and the deck's reaper terminates the shell it replaced; (f) a plain
+// key in another pane dismisses the launcher and reaches the shell; (g) a shell
+// that reported its folder as an OSC 7 `file://` URL still lists that folder's
+// sessions (skipped, and said so, when no OSC 7 arrives). The agent
+// is the first installed of GODVIEW_LAUNCHER_DRIVE_AGENTS (default: codex,
+// opencode, pi, grok, kimi); nothing is ever sent to it, and it is killed with
+// the window.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -37,12 +42,31 @@ const DRIVE_AGENTS = (process.env.GODVIEW_LAUNCHER_DRIVE_AGENTS ?? 'codex,openco
 
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
 
+/** A probe that has not answered in this long counts as no answer (a page that stopped answering must not hang the smoke). */
+const PROBE_MS = 10_000;
+
 async function until(what, probe, deadlineMs = DEADLINE_MS) {
   const deadline = Date.now() + deadlineMs;
+  let last;
   for (;;) {
-    const value = await probe().catch(() => undefined);
-    if (value) return value;
-    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+    let timer;
+    const answer = await Promise.race([
+      probe().then(
+        (value) => ({ value }),
+        (error) => ({ error: error instanceof Error ? error.message : String(error) }),
+      ),
+      new Promise((done) => {
+        timer = setTimeout(() => done({ silent: true }), PROBE_MS);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (answer.value) return answer.value;
+    last = answer.silent
+      ? `no answer in ${PROBE_MS} ms`
+      : answer.error
+        ? `threw ${answer.error}`
+        : JSON.stringify(answer.value);
+    if (Date.now() > deadline) throw new Error(`timed out waiting for ${what} (last probe: ${last ?? 'undefined'})`);
     await delay(250);
   }
 }
@@ -92,6 +116,14 @@ async function press(page, { key, code, keyCode, modifiers = 0, text }) {
   await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
 }
 
+/** One left click at a point of the page, down and up. */
+async function click(page, x, y) {
+  const base = { x, y, button: 'left', clickCount: 1, pointerType: 'mouse' };
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'mouse' });
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', buttons: 1, ...base });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', buttons: 0, ...base });
+}
+
 async function typeText(page, text) {
   for (const char of text) {
     const upper = char.toUpperCase();
@@ -135,10 +167,17 @@ const PAGE_HELPERS = `(() => {
     paneOf,
     paneElement,
     launcherIn: (paneId) => paneElement(paneId)?.querySelector('.vf-pane-launcher') ?? null,
+    // Ghosttea answers a terminal's focus by selecting its pane and focusing
+    // it once more a frame later; a key sent before that frame could open a
+    // field that the late focus then closes. So this settles two frames.
     focusTerminal: (paneId) => {
       const input = paneElement(paneId)?.querySelector('.terminal-input');
       input?.focus();
-      return input !== null && input !== undefined && document.activeElement === input;
+      return new Promise((done) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => done(input !== null && input !== undefined && document.activeElement === input)),
+        ),
+      );
     },
   };
   return true;
@@ -221,8 +260,8 @@ try {
         const rows = [...launcher.querySelectorAll('[role="option"]')].map((row) => row.textContent.replace(/\\s+/g, ' ').trim());
         const said = launcher.querySelector('.vf-pane-launcher-empty')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';
         if (rows.length === 0 && (said === '' || said.startsWith('Reading past sessions'))) return undefined;
-        const title = launcher.querySelector('[role="option"] .vf-pane-launcher-rt b')?.textContent.trim() ?? null;
-        return { rows: rows.length, first: title, said: rows.length ? null : said };
+        const titles = [...launcher.querySelectorAll('[role="option"] .vf-pane-launcher-rt b')].map((b) => b.textContent.trim());
+        return { rows: rows.length, titles, said: rows.length ? null : said };
       })()`);
     const flip = async (from) => {
       await press(page, { key: 'Tab', code: 'Tab', keyCode: 9 });
@@ -234,16 +273,19 @@ try {
     const scopeStart = await scopeNow();
     const scopeFlipped = await flip(scopeStart);
     const everything = await until('the wider list', () => listing(''));
+    // A word from a listed title (not the placeholder's "untitled session"). The
+    // typed list may hold MORE rows than the latest-five one it came from (a
+    // search keeps twelve per group), so the check is that the word finds a
+    // row whose title says it — never that the list only shrinks.
     const token =
-      (everything.first ?? '')
-        .split(/[^A-Za-z]+/)
-        .find((word) => word.length >= 4)
-        ?.toLowerCase() ?? 'zzqx';
+      everything.titles
+        .flatMap((title) => title.split(/[^A-Za-z]+/))
+        .map((word) => word.toLowerCase())
+        .find((word) => word.length >= 4 && word !== 'untitled' && word !== 'session') ?? 'zzqx';
     await typeText(page, token);
     const narrowed = await until('the list to follow the query', () => listing(token));
-    if (narrowed.rows > everything.rows) throw new Error('typing widened the list');
-    if (everything.rows > 0 && narrowed.rows === 0)
-      throw new Error(`a word from a listed title matched nothing: ${token}`);
+    if (token !== 'zzqx' && !narrowed.titles.some((title) => title.toLowerCase().includes(token)))
+      throw new Error(`a word from a listed title found no row titled with it: ${token}`);
     const scopeBack = await flip(scopeFlipped);
     console.log(
       `DRIVE (b) OK ${JSON.stringify({ scope: [scopeStart, scopeFlipped, scopeBack], rowsBefore: everything.rows, query: token, rowsAfter: narrowed.rows, said: narrowed.said })}`,
@@ -265,7 +307,6 @@ try {
     );
     console.log(`DRIVE (c) OK ${JSON.stringify({ ...closed, dismissed: true })}`);
 
-    // (d) ⌥digit in a new fresh pane launches an agent there; the reaper ends the shell.
     const split = async () => {
       const shell = await page.evaluate(
         `window.__launcherDrive.workspace().splitActive('horizontal').then((s) => s?.id)`,
@@ -284,6 +325,86 @@ try {
       );
       return { shell, paneId };
     };
+
+    // (d) Two fresh panes, A selected; a click in B's field selects B and opens
+    // its field, and B's keys are B's launcher's: ↓ moves, ⎋ closes, ⎋ dismisses.
+    const paneA = await split();
+    const paneB = await split();
+    await page.evaluate(`window.__launcherDrive.workspace().activateSession(${JSON.stringify(paneA.shell)})`);
+    await until('pane A to be the selected one, its terminal focused', () =>
+      page.evaluate(`(() => {
+        if (window.__launcherDrive.workspace().activePaneId !== ${JSON.stringify(paneA.paneId)}) return undefined;
+        return window.__launcherDrive.focusTerminal(${JSON.stringify(paneA.paneId)});
+      })()`),
+    );
+    const target = await until('B’s field to be on screen and hit', () =>
+      page.evaluate(`(() => {
+        const input = window.__launcherDrive.launcherIn(${JSON.stringify(paneB.paneId)})?.querySelector('input');
+        if (!input) return undefined;
+        const box = input.getBoundingClientRect();
+        if (box.width < 4 || box.height < 4) return undefined;
+        const x = box.left + Math.min(24, box.width / 2);
+        const y = box.top + box.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        const field = hit?.closest('.vf-pane-launcher-field');
+        const inB = hit?.closest('[data-pane-id]')?.getAttribute('data-pane-id') === ${JSON.stringify(paneB.paneId)};
+        return field && inB ? { x, y } : undefined;
+      })()`),
+    );
+    await click(page, target.x, target.y);
+    const clicked = await until('B to be selected with its field open and focused', () =>
+      page.evaluate(`(() => {
+        const launcher = window.__launcherDrive.launcherIn(${JSON.stringify(paneB.paneId)});
+        const input = launcher?.querySelector('input');
+        const selected = window.__launcherDrive.workspace().activePaneId;
+        if (selected !== ${JSON.stringify(paneB.paneId)} || !launcher?.classList.contains('is-open')) return undefined;
+        if (document.activeElement !== input) return undefined;
+        const rows = launcher.querySelectorAll('[role="option"]').length;
+        const said = launcher.querySelector('.vf-pane-launcher-empty, [role="status"]')?.textContent.trim() ?? '';
+        if (rows === 0 && (said === '' || said.startsWith('Reading past sessions'))) return undefined;
+        return { selected, open: true, focused: true, rows };
+      })()`),
+    );
+    const highlighted = () =>
+      page.evaluate(`(() => {
+        const launcher = window.__launcherDrive.launcherIn(${JSON.stringify(paneB.paneId)});
+        const options = [...(launcher?.querySelectorAll('[role="option"]') ?? [])];
+        return {
+          index: options.findIndex((option) => option.getAttribute('aria-selected') === 'true'),
+          open: launcher?.classList.contains('is-open') ?? false,
+          query: launcher?.querySelector('input')?.value ?? null,
+          focused: document.activeElement === launcher?.querySelector('input'),
+        };
+      })()`);
+    const before = await highlighted();
+    await press(page, { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 });
+    const moved = await until('↓ to act in B', async () => {
+      const now = await highlighted();
+      if (!now.open || !now.focused || now.query !== '') return undefined;
+      // With two rows or more ↓ moves the highlight; with fewer it is held, and the field stays as it was.
+      if (clicked.rows >= 2) return now.index === before.index + 1 ? now : undefined;
+      return now;
+    });
+    await press(page, { key: 'Escape', code: 'Escape', keyCode: 27 });
+    await until('⎋ to close B’s field with B’s terminal focused', () =>
+      page.evaluate(`(() => {
+        const pane = window.__launcherDrive.paneElement(${JSON.stringify(paneB.paneId)});
+        const launcher = window.__launcherDrive.launcherIn(${JSON.stringify(paneB.paneId)});
+        if (!launcher || launcher.classList.contains('is-open')) return undefined;
+        return document.activeElement === pane.querySelector('.terminal-input');
+      })()`),
+    );
+    await press(page, { key: 'Escape', code: 'Escape', keyCode: 27 });
+    await until('the second ⎋ to dismiss B’s launcher', () =>
+      page.evaluate(`window.__launcherDrive.launcherIn(${JSON.stringify(paneB.paneId)}) === null`),
+    );
+    const aStill = await page.evaluate(`window.__launcherDrive.launcherIn(${JSON.stringify(paneA.paneId)}) !== null`);
+    if (!aStill) throw new Error('keys aimed at B reached A’s launcher');
+    console.log(
+      `DRIVE (d) OK ${JSON.stringify({ clicked, highlight: [before.index, moved.index], closed: true, dismissed: true, aUntouched: aStill })}`,
+    );
+
+    // (e) ⌥digit in a new fresh pane launches an agent there; the reaper ends the shell.
     const second = await split();
     const choice = await page.evaluate(`(() => {
       const rows = [...window.__launcherDrive.launcherIn(${JSON.stringify(second.paneId)}).querySelectorAll('.vf-pane-launcher-agent')];
@@ -336,10 +457,10 @@ try {
       })()`),
     );
     console.log(
-      `DRIVE (d) OK ${JSON.stringify({ agent: choice.label, key: choice.keys, shellHadInput: inputBefore, ...launched, replacedShell: reaped })}`,
+      `DRIVE (e) OK ${JSON.stringify({ agent: choice.label, key: choice.keys, shellHadInput: inputBefore, ...launched, replacedShell: reaped })}`,
     );
 
-    // (e) A plain key in a third fresh pane is the shell's: the launcher leaves and the key arrives.
+    // (f) A plain key in a third fresh pane is the shell's: the launcher leaves and the key arrives.
     const third = await split();
     await press(page, { key: 'e', code: 'KeyE', keyCode: 69, text: 'e' });
     const typed = await until('the key to reach the shell', () =>
@@ -349,28 +470,92 @@ try {
         return gone && input ? { launcherGone: gone, shellHasInput: input } : undefined;
       })()`),
     );
-    console.log(`DRIVE (e) OK ${JSON.stringify(typed)}`);
+    console.log(`DRIVE (f) OK ${JSON.stringify(typed)}`);
+
+    // (g) Once a shell has reported its folder by OSC 7 (a `file://host/…`
+    // cwd), its launcher still asks main about a PATH: the field lists this
+    // folder's sessions as (a) did. Pane A kept its launcher through (d)–(f).
+    const reported = await until(
+      'pane A’s shell to report its folder by OSC 7',
+      () =>
+        page.evaluate(`(() => {
+          const cwd = window.__launcherDrive.paneOf(${JSON.stringify(paneA.shell)})?.session.cwd ?? '';
+          return /^file:/i.test(cwd) ? cwd : undefined;
+        })()`),
+      30_000,
+    ).catch(() => undefined);
+    if (!reported || !/^file:/i.test(reported) || opened.rows === 0) {
+      console.log(`DRIVE (g) SKIPPED ${JSON.stringify({ cwd: reported ?? null, rowsInA: opened.rows })}`);
+    } else {
+      await until('pane A’s terminal to take focus', () =>
+        page.evaluate(`(() => {
+          window.__launcherDrive.workspace().activateSession(${JSON.stringify(paneA.shell)});
+          return window.__launcherDrive.focusTerminal(${JSON.stringify(paneA.paneId)});
+        })()`),
+      );
+      await press(page, { key: 'Enter', code: 'Enter', keyCode: 13, modifiers: ALT });
+      const listed = await until('A’s field to list this folder’s sessions', () =>
+        page.evaluate(`(() => {
+          const launcher = window.__launcherDrive.launcherIn(${JSON.stringify(paneA.paneId)});
+          if (!launcher?.classList.contains('is-open')) return undefined;
+          const rows = launcher.querySelectorAll('[role="option"]').length;
+          const said = launcher.querySelector('.vf-pane-launcher-empty')?.textContent.replace(/\\s+/g, ' ').trim() ?? '';
+          if (rows === 0 && (said === '' || said.startsWith('Reading past sessions'))) return undefined;
+          return { rows, said: rows ? null : said };
+        })()`),
+      );
+      if (listed.rows === 0) throw new Error(`an OSC 7 folder listed nothing here: ${listed.said}`);
+      await press(page, { key: 'Escape', code: 'Escape', keyCode: 27 });
+      console.log(`DRIVE (g) OK ${JSON.stringify({ cwd: reported, ...listed })}`);
+    }
     console.log('LAUNCHER DRIVE OK');
   }
 } catch (error) {
   console.error(`LAUNCHER SMOKE FAILED: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
-  // What the page looked like when it failed: every launcher and where the keyboard was.
-  const state = await page
-    ?.evaluate(
-      `(() => ({
-        hasFocus: document.hasFocus(),
-        active: document.activeElement ? document.activeElement.tagName + '.' + document.activeElement.className : null,
-        activeInPane: document.activeElement?.closest('[data-pane-id]')?.getAttribute('data-pane-id') ?? null,
-        launchers: [...document.querySelectorAll('.vf-pane-launcher')].map((launcher) => ({
-          pane: launcher.closest('[data-pane-id]')?.getAttribute('data-pane-id') ?? null,
-          className: launcher.className,
-          text: launcher.textContent.replace(/\\s+/g, ' ').trim().slice(0, 300),
-        })),
-      }))()`,
-    )
-    .catch(() => undefined);
-  if (state) console.error(`LAUNCHER SMOKE STATE ${JSON.stringify(state)}`);
+  // What the page looked like when it failed: the panes, every launcher, where
+  // the keyboard was, and what main's history channel answers now. Bounded, so
+  // a page that stopped answering still ends the run with a line that says so.
+  const state = await Promise.race([
+    page
+      ?.evaluate(
+        `(async () => {
+          const workspace = window.__launcherDrive?.workspace?.();
+          const cwd = workspace?.panes.find((pane) => pane.id === workspace.activePaneId)?.session.cwd ?? undefined;
+          const recent = await Promise.race([
+            window.puppeteer
+              .launcherRecent({ scope: 'here', limit: 5, ...(cwd ? { cwd } : {}) })
+              .then((answer) => ({ status: answer.status, sessions: answer.sessions.length }))
+              .catch((error) => ({ threw: String(error) })),
+            new Promise((done) => setTimeout(() => done('no answer in 5 s'), 5000)),
+          ]);
+          // Whether the page is painting: an occluded window runs no animation frames.
+          const frames = await Promise.race([
+            new Promise((done) => requestAnimationFrame(() => done('painting'))),
+            new Promise((done) => setTimeout(() => done('no frame in 1 s'), 1000)),
+          ]);
+          return {
+            hasFocus: document.hasFocus(),
+            visibility: document.visibilityState,
+            frames,
+            active: document.activeElement ? document.activeElement.tagName + '.' + document.activeElement.className : null,
+            activeInPane: document.activeElement?.closest('[data-pane-id]')?.getAttribute('data-pane-id') ?? null,
+            activePaneId: workspace?.activePaneId ?? null,
+            panes: workspace?.panes.map((pane) => ({ id: pane.id, session: pane.session.id, cwd: pane.session.cwd ?? null })) ?? null,
+            launchers: [...document.querySelectorAll('.vf-pane-launcher')].map((launcher) => ({
+              pane: launcher.closest('[data-pane-id]')?.getAttribute('data-pane-id') ?? null,
+              className: launcher.className,
+              query: launcher.querySelector('input')?.value ?? null,
+              text: launcher.textContent.replace(/\\s+/g, ' ').trim().slice(0, 300),
+            })),
+            recent,
+          };
+        })()`,
+      )
+      .catch((error) => ({ unreadable: String(error) })),
+    delay(15_000).then(() => ({ unreadable: 'the page did not answer in 15 s' })),
+  ]);
+  console.error(`LAUNCHER SMOKE STATE ${JSON.stringify(state ?? { unreadable: 'no page connection' })}`);
 } finally {
   page?.close();
   child.kill('SIGTERM');
