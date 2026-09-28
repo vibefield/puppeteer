@@ -20,6 +20,7 @@ import {
   noMatchSentence,
   noSessionsSentence,
   orderAgents,
+  showsLauncher,
   toggleScope,
   type LauncherKeyEvent,
   type LauncherKeyState,
@@ -407,5 +408,29 @@ describe('buildLauncherResults', () => {
       { text: 'fold', match: true },
     ]);
     expect(markTerms('abc', [])).toEqual([{ text: 'abc', match: false }]);
+  });
+});
+
+describe('showsLauncher', () => {
+  const none = new Set<string>();
+  const fresh = new Set(['s1', 's2']);
+
+  it('draws on a fresh shell with no input, not put away', () => {
+    expect(showsLauncher('s1', { freshSessionIds: fresh, used: none, dismissed: none })).toBe(true);
+  });
+
+  it('never draws on a session the host did not call fresh (restored, attached, an agent, exited)', () => {
+    expect(showsLauncher('s9', { freshSessionIds: fresh, used: none, dismissed: none })).toBe(false);
+  });
+
+  it('goes once input reached the shell, from the launcher or the host, or once dismissed', () => {
+    expect(showsLauncher('s1', { freshSessionIds: fresh, used: new Set(['s1']), dismissed: none })).toBe(false);
+    expect(showsLauncher('s1', { freshSessionIds: fresh, used: none, dismissed: new Set(['s1']) })).toBe(false);
+    expect(
+      showsLauncher('s1', { freshSessionIds: fresh, used: none, dismissed: none, hasInput: (id) => id === 's1' }),
+    ).toBe(false);
+    expect(
+      showsLauncher('s2', { freshSessionIds: fresh, used: none, dismissed: none, hasInput: (id) => id === 's1' }),
+    ).toBe(true);
   });
 });

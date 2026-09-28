@@ -85,6 +85,29 @@ export function agentPreview(agent: LauncherAgent): string {
   return agent.preview ?? agent.label;
 }
 
+/* ── the gate (QL-D7) ──────────────────────────────────────────────────── */
+
+export interface LauncherGateInput {
+  /** Shells born in this view with no agent facet, not exited (QL-D7 a–c, the host's call). */
+  freshSessionIds: ReadonlySet<string>;
+  /** Sessions the launcher saw input reach: a key it let through, or a paste (QL-D7 d). */
+  used: ReadonlySet<string>;
+  /** Sessions whose launcher was put away with ⎋, or left after a launch or a resume. */
+  dismissed: ReadonlySet<string>;
+  /** The host's own knowledge of input, when it has any. */
+  hasInput?: ((sessionId: string) => boolean) | undefined;
+}
+
+/** Whether a pane showing this session draws the launcher. */
+export function showsLauncher(sessionId: string, gate: LauncherGateInput): boolean {
+  return (
+    gate.freshSessionIds.has(sessionId) &&
+    !gate.used.has(sessionId) &&
+    !gate.dismissed.has(sessionId) &&
+    gate.hasInput?.(sessionId) !== true
+  );
+}
+
 /* ── the keys (§23, QL-D2) ─────────────────────────────────────────────── */
 
 /** The fields of a `KeyboardEvent` the reducer reads. */

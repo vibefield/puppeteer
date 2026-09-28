@@ -16,10 +16,12 @@
     ".": "./src/index.ts",
     "./physics": "./src/views/swarm/physics/index.ts",
     "./deck": "./src/deck/index.ts",
+    "./launcher": "./src/launcher/index.ts",
     "./lab": "./src/views/swarm/lab/main.ts",
     "./styles/views.css": "./src/styles/views.css",
     "./styles/lab.css": "./src/views/swarm/lab/lab.css",
-    "./styles/deck-frame.css": "./src/styles/deck-frame.css"
+    "./styles/deck-frame.css": "./src/styles/deck-frame.css",
+    "./styles/pane-launcher.css": "./src/styles/pane-launcher.css"
   },
   "sideEffects": [
     "*.css",
@@ -44,13 +46,18 @@
         "types": "./dist/deck/index.d.ts",
         "import": "./dist/deck/index.js"
       },
+      "./launcher": {
+        "types": "./dist/launcher/index.d.ts",
+        "import": "./dist/launcher/index.js"
+      },
       "./lab": {
         "types": "./dist/views/swarm/lab/main.d.ts",
         "import": "./dist/views/swarm/lab/main.js"
       },
       "./styles/views.css": "./dist/styles/views.css",
       "./styles/lab.css": "./dist/views/swarm/lab/lab.css",
-      "./styles/deck-frame.css": "./dist/styles/deck-frame.css"
+      "./styles/deck-frame.css": "./dist/styles/deck-frame.css",
+      "./styles/pane-launcher.css": "./dist/styles/pane-launcher.css"
     }
   },
   "files": [
