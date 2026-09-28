@@ -64,6 +64,8 @@ let strictHome: string;
 /** Strict launchers that carry a host's label. */
 let labelledHome: string;
 let ptyRunner: string;
+/** A directory whose `ps` takes 2 s before it answers: a process table read on a machine under load. */
+let slowPs: string;
 const gateways: SpawnThroughGateway[] = [];
 /** This test process, as a shell of the host's: every launcher the test starts runs under it. */
 let thisShell: SpawnThroughTerminal;
@@ -81,6 +83,13 @@ beforeAll(async () => {
   for (const directory of [real, work, join(real, 'chosen')]) await mkdir(directory, { recursive: true });
   ptyRunner = join(root, 'pty-runner.py');
   await writeFile(ptyRunner, PTY_RUNNER);
+  slowPs = join(root, 'slow-ps');
+  await mkdir(slowPs);
+  await writeFile(
+    join(slowPs, 'ps'),
+    '#!/bin/sh\nsleep 2\nfor ps in /bin/ps /usr/bin/ps; do [ -x "$ps" ] && exec "$ps" "$@"; done\nexit 127\n',
+  );
+  await chmod(join(slowPs, 'ps'), 0o755);
   for (const [name, path] of [
     ['example', join(real, 'example')],
     ['orphan', join(real, 'orphan')],
@@ -435,12 +444,29 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
 
       expect(ran.code).toBe(75);
       expect(ran.lines('REAL ')).toEqual([]);
-      // The refusal comes retryMs after the first attempt began, which was after the launch.
+      // The refusal comes retryMs after the wait began, which was after the launch.
       expect(ran.elapsedMs).toBeGreaterThanOrEqual(1_200);
       expect(ran.sinceStderrMs).toBeLessThan(1_200 + 5_000);
       const lines = ran.stderr.trimEnd().split('\n');
       expect(lines.filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
       expect(lines.at(-1)).toBe('puppeteer: example: not started: the host did not answer within 1 s');
+    });
+
+    it('spends none of the wait on reading the process table: a slow ps still leaves it all, said first', async () => {
+      await strictAndUnreachable(1_200);
+      await writeTerminals(home, [thisShell]);
+      const ran = await launch(home, 'example', [], {
+        tty: 'both',
+        path: [spawnThroughLayout(home).shimDirectory, slowPs, real, '/usr/bin', '/bin'],
+      });
+
+      expect(ran.code).toBe(75);
+      expect(ran.stderr.trimEnd().split('\n')).toEqual([
+        'puppeteer: example: waiting for the host to start it as a managed session…',
+        'puppeteer: example: not started: the host did not answer within 1 s',
+      ]);
+      // The 2 s walk, then the whole 1.2 s wait.
+      expect(ran.elapsedMs).toBeGreaterThanOrEqual(2_000 + 1_200);
     });
 
     it("names the host by its label in its own sentences: the rendezvous's, else the launcher's", async () => {

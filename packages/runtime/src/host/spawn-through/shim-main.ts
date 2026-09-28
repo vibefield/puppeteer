@@ -284,7 +284,8 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
   // The host's latest readable word decides; the launcher's only while none has been readable.
   let strict = rendezvous?.strict ?? process.env.PUPPETEER_SHIM_STRICT === '1';
   let retryMs = rendezvous?.retryMs ?? DEFAULT_RETRY_MS;
-  const waitingSince = Date.now();
+  // The wait starts once the shim knows it may wait: reading the process table does not spend the host's time.
+  let waitingSince: number | undefined;
   let delayMs = 100;
   let waiting = false;
   let asked: Asked;
@@ -293,6 +294,7 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     if (asked.kind !== 'unreachable' || !strict) break;
     // Wait for the host only in one of its own terminals; anywhere else there is nothing to wait for.
     if (!(await refusableHere())) return fallback();
+    waitingSince ??= Date.now();
     const remainingMs = waitingSince + retryMs - Date.now();
     if (remainingMs <= 0) refuse(`not started: ${theHost()} did not answer within ${Math.round(retryMs / 1_000)} s`);
     if (!waiting) {
