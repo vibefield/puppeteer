@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  ClaudeHooksOffError,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
   prepareClaudeSession,
@@ -51,6 +52,8 @@ const BASE = {
   endpoint: 'http://127.0.0.1:4100/hooks',
   tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
   token: 'super-secret-token-value',
+  // An empty home: no test reads the machine's own user settings layer.
+  home: mkdtempSync(join(tmpdir(), 'prepare-home-')),
 };
 
 const prepared: PreparedClaudeSession[] = [];
@@ -363,6 +366,85 @@ describe('prepareClaudeSession', () => {
     it('a host’s own spawn keeps its default permission mode', async () => {
       const p = await prepare({ carriedArgs: undefined, prompt: undefined });
       expect(p.args.slice(-2)).toEqual(['--permission-mode', 'default']);
+    });
+  });
+
+  describe('the person’s hook switches', () => {
+    type Layers = { user?: object; project?: object; local?: object };
+    /** A home and a project holding the person's settings layers; the launch reads them from there. */
+    function person(layers: Layers): { home: string; cwd: string; settingsDir: string } {
+      const root = mkdtempSync(join(tmpdir(), 'prepare-switches-'));
+      const home = join(root, 'home');
+      const cwd = join(root, 'project');
+      mkdirSync(join(home, '.claude'), { recursive: true });
+      mkdirSync(join(cwd, '.claude'), { recursive: true });
+      if (layers.user) writeFileSync(join(home, '.claude', 'settings.json'), JSON.stringify(layers.user));
+      if (layers.project) writeFileSync(join(cwd, '.claude', 'settings.json'), JSON.stringify(layers.project));
+      if (layers.local) writeFileSync(join(cwd, '.claude', 'settings.local.json'), JSON.stringify(layers.local));
+      const settingsDir = join(root, 'launch');
+      mkdirSync(settingsDir);
+      return { home, cwd, settingsDir };
+    }
+    const settingsOf = (p: PreparedClaudeSession) => JSON.parse(readFileSync(p.settingsPath, 'utf8'));
+    const hooksOff = { disableAllHooks: true };
+
+    it('refuses a typed launch whose user, project or local settings switch every hook off, writing nothing', async () => {
+      for (const layer of ['user', 'project', 'local'] as const) {
+        const where = person({ [layer]: hooksOff });
+        const refusal = prepare({ ...where, refuseHooksOff: true });
+        await expect(refusal, layer).rejects.toBeInstanceOf(ClaudeHooksOffError);
+        await expect(refusal, layer).rejects.toMatchObject({
+          code: 'CLAUDE_HOOKS_OFF',
+          source: layer,
+          message: `your ${layer} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
+        });
+        expect(readdirSync(where.settingsDir), layer).toEqual([]);
+      }
+    });
+
+    it('launches when the switch is off, absent, overruled by a later layer, or in a layer the launch does not read', async () => {
+      for (const [label, layers, over] of [
+        ['off', { user: { disableAllHooks: false } }, {}],
+        ['absent', { user: { theme: 'dark' } }, {}],
+        ['a later layer', { user: hooksOff, local: { disableAllHooks: false } }, {}],
+        ['--setting-sources', { user: hooksOff }, { settingSources: ['project', 'local'] as const }],
+        ['--restricted', { user: hooksOff, project: hooksOff }, { readsNoSettingsFiles: true }],
+        ['the imposter', { user: hooksOff }, { env: { PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-home' } }],
+      ] as const) {
+        const where = person(layers);
+        await expect(prepare({ ...where, ...over, refuseHooksOff: true }), label).resolves.toBeDefined();
+      }
+    });
+
+    it('a host’s own spawn is not refused: it launches as it always has', async () => {
+      await expect(prepare({ ...person({ user: hooksOff }) })).resolves.toBeDefined();
+    });
+
+    it('restates a person’s allow-lists with the bridge’s entry added, keeping every entry of theirs', async () => {
+      const where = person({
+        user: { allowedHttpHookUrls: ['https://user.invalid/*'], httpHookAllowedEnvVars: ['USER_TOKEN'] },
+        local: { allowedHttpHookUrls: ['https://local.invalid/*'] },
+      });
+      const p = await prepare(where);
+      expect(settingsOf(p)).toMatchObject({
+        // The layer in force for each list: local's URLs, the user's variables.
+        allowedHttpHookUrls: ['https://local.invalid/*', 'http://127.0.0.1:4100/*'],
+        httpHookAllowedEnvVars: ['USER_TOKEN', 'PUPPETEER_HOOK_TOKEN'],
+      });
+      const empty = await prepare(person({ project: { httpHookAllowedEnvVars: [] } }));
+      expect(settingsOf(empty).httpHookAllowedEnvVars).toEqual(['PUPPETEER_HOOK_TOKEN']);
+      expect(settingsOf(empty)).not.toHaveProperty('allowedHttpHookUrls');
+    });
+
+    it('writes no allow-list of its own where the person has none: that would restrict their hooks', async () => {
+      const p = await prepare(person({ user: { theme: 'dark' } }));
+      expect(settingsOf(p)).not.toHaveProperty('allowedHttpHookUrls');
+      expect(settingsOf(p)).not.toHaveProperty('httpHookAllowedEnvVars');
+      const restricted = await prepare({
+        ...person({ user: { allowedHttpHookUrls: ['https://user.invalid/*'] } }),
+        readsNoSettingsFiles: true,
+      });
+      expect(settingsOf(restricted)).not.toHaveProperty('allowedHttpHookUrls');
     });
   });
 

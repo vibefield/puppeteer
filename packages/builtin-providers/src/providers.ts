@@ -23,6 +23,7 @@ import {
   type CreateAntigravityTuiSessionOptions,
 } from '@vibecook/puppeteer-adapter-antigravity';
 import {
+  CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeAccountUsageService,
   createClaudeDistributionService,
   createClaudeExtensionService,
@@ -381,7 +382,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resume: true,
           nativeInvocation: {
             commands: [{ name: 'claude', executable: resolved.claude ?? 'claude' }],
-            environmentVariables: ['CLAUDE_CONFIG_DIR'],
+            // The config root and every switch that stands for a flag: the session inherits them.
+            environmentVariables: [...CLAUDE_INVOCATION_ENVIRONMENT],
             imposter: { state: 'isolated-root' },
             // The adapter reads Claude's own grammar: its `rejected` is always a session it cannot carry.
             classifies: true,
@@ -493,8 +495,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           resumeInvocation: launch?.resumeInvocation,
           carriedArgs: typed?.carriedArgs,
           prompt: typed?.prompt,
-          existingStatusLine: typed?.existingStatusLine,
-          existingSubagentStatusLine: typed?.existingSubagentStatusLine,
+          readsNoSettingsFiles: typed?.readsNoSettingsFiles,
+          // A typed launch the person's settings would blind is refused, not run unobserved.
+          refuseHooksOff: typed?.typed === true,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           automate: host.automateTerminal,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation } from '@vibecook/puppeteer-core';
 import {
+  CLAUDE_INVOCATION_ENVIRONMENT,
   captureClaudeContinuationState,
   normalizeClaudeNativeInvocation,
   restoreClaudeContinuationState,
@@ -56,13 +57,59 @@ describe('Claude native invocation normalization', () => {
     });
     expect(normalizeClaudeNativeInvocation(invocation(['--restricted']))).toEqual({
       status: 'accepted',
-      options: {
-        typed: true,
-        carriedArgs: ['--restricted'],
-        existingStatusLine: null,
-        existingSubagentStatusLine: null,
-      },
+      options: { typed: true, carriedArgs: ['--restricted'], readsNoSettingsFiles: true },
     });
+  });
+
+  it('reads the shell environment the session inherits: every variable that changes what it is', () => {
+    expect(CLAUDE_INVOCATION_ENVIRONMENT).toEqual([
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_SIMPLE',
+      'CLAUDE_CODE_SAFE_MODE',
+      'CLAUDE_CODE_RESTRICTED',
+    ]);
+    const withEnvironment = (environment: Record<string, string>, argv: string[] = []) =>
+      normalizeClaudeNativeInvocation(invocation(argv, { environment }));
+    const blind = 'it turns off the hooks a managed session is observed through';
+    expect(withEnvironment({ CLAUDE_CODE_SIMPLE: '1' })).toEqual({
+      status: 'rejected',
+      reason: blind,
+      argument: 'CLAUDE_CODE_SIMPLE=1',
+    });
+    expect(withEnvironment({ CLAUDE_CODE_SIMPLE: '0' })).toEqual({ status: 'accepted', options: { typed: true } });
+    expect(withEnvironment({ CLAUDE_CODE_SAFE_MODE: 'true' })).toEqual({
+      status: 'rejected',
+      reason: blind,
+      argument: 'CLAUDE_CODE_SAFE_MODE=true',
+    });
+    expect(withEnvironment({ CLAUDE_CODE_SAFE_MODE: 'false' })).toEqual({
+      status: 'accepted',
+      options: { typed: true },
+    });
+    expect(withEnvironment({ CLAUDE_CODE_RESTRICTED: '1' })).toEqual({
+      status: 'accepted',
+      options: { typed: true, readsNoSettingsFiles: true },
+    });
+    expect(withEnvironment({ CLAUDE_CODE_RESTRICTED: 'off' })).toEqual({
+      status: 'accepted',
+      options: { typed: true },
+    });
+    // What is not a session is not one whatever the environment says; the argv's own refusal comes first.
+    expect(withEnvironment({ CLAUDE_CODE_SIMPLE: '1' }, ['--version'])).toMatchObject({
+      status: 'passthrough',
+      kind: 'utility',
+    });
+    expect(withEnvironment({ CLAUDE_CODE_SIMPLE: '1' }, ['-p', 'q'])).toMatchObject({ status: 'passthrough' });
+    expect(withEnvironment({ CLAUDE_CODE_SIMPLE: '1' }, ['--session-id', 'x'])).toMatchObject({
+      status: 'rejected',
+      argument: '--session-id',
+    });
+    // An imposter launch is refused the same way: the CLI it stands in for would run bare.
+    expect(
+      normalizeClaudeNativeInvocation(
+        invocation([], { environment: { CLAUDE_CODE_SIMPLE: '1' }, implementation: imposter }),
+      ),
+    ).toMatchObject({ status: 'rejected', argument: 'CLAUDE_CODE_SIMPLE=1' });
   });
 
   it('answers a passthrough, with its kind, for what is not a session', () => {

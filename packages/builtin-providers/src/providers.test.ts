@@ -158,7 +158,10 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   restoreAntigravityContinuationState: adapters.restoreAntigravityContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
+vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
+  // The adapter's own list, so the allow-list pin below reads what the adapter declares.
+  CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibecook/puppeteer-adapter-claude')>())
+    .CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeExtensionService: adapters.createClaudeExtensionService,
@@ -651,6 +654,17 @@ describe('createBuiltinProviders launch options', () => {
     expect(claude.launch!.provider.nativeInvocation!.classifies).toBe(true);
   });
 
+  it('takes from a Claude shell every variable that changes what the session is, and nothing else', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    // The switches stand for --bare, --safe-mode and --restricted; the session inherits them at exec.
+    expect(claude.launch!.provider.nativeInvocation!.environmentVariables).toEqual([
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_SIMPLE',
+      'CLAUDE_CODE_SAFE_MODE',
+      'CLAUDE_CODE_RESTRICTED',
+    ]);
+  });
+
   it('prepares a typed Claude launch as typed: the person’s name, their arguments and prompt, their permission mode only', async () => {
     const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
       (provider) => provider.descriptor.id === 'claude',
@@ -664,8 +678,7 @@ describe('createBuiltinProviders launch options', () => {
         title: 'mine',
         carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
         prompt: ['fix the bug'],
-        existingStatusLine: null,
-        existingSubagentStatusLine: null,
+        readsNoSettingsFiles: true,
       },
     });
     expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(expect.objectContaining({ title: true }));
@@ -675,8 +688,8 @@ describe('createBuiltinProviders launch options', () => {
         permissionMode: null,
         carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
         prompt: ['fix the bug'],
-        existingStatusLine: null,
-        existingSubagentStatusLine: null,
+        readsNoSettingsFiles: true,
+        refuseHooksOff: true,
       }),
     );
 
@@ -685,7 +698,8 @@ describe('createBuiltinProviders launch options', () => {
       expect.objectContaining({ permissionMode: 'plan' }),
     );
 
-    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream.
+    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream,
+    // and its launch is not refused for the person's settings.
     await claude.prepareSession!({ cwd: '/work/repo', title: 'host title', host, agentOptions: { model: 'sonnet' } });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -693,6 +707,7 @@ describe('createBuiltinProviders launch options', () => {
         permissionMode: undefined,
         carriedArgs: undefined,
         prompt: undefined,
+        refuseHooksOff: false,
       }),
     );
   });
@@ -733,11 +748,11 @@ describe('createBuiltinProviders launch options', () => {
 
     await claude.prepareSession!({ cwd: '/work/repo', host, profile, agentOptions: { permissionMode: 'plan' } });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan' }),
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan', refuseHooksOff: false }),
     );
     await claude.prepareSession!({ cwd: '/work/repo', host, profile });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined }),
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined, refuseHooksOff: false }),
     );
   });
 

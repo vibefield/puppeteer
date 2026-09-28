@@ -3,9 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   CLAUDE_BLINDING_TOKENS,
+  CLAUDE_ENVIRONMENT_SWITCHES,
   CLAUDE_INVOCATION_GRAMMAR_VERSION,
   CLAUDE_OPTIONS,
   CLAUDE_SUBCOMMANDS,
+  claudeSwitchIsOn,
+  readClaudeEnvironment,
   readClaudeInvocation,
   type ClaudeOptionArity,
 } from './invocation-grammar.js';
@@ -424,5 +427,53 @@ describe('Claude invocation grammar: commander’s reading', () => {
 
   it('a deep link is refused', () => {
     expect(read('--handle-uri', 'claude-cli://open')).toMatchObject({ status: 'rejected', argument: '--handle-uri' });
+  });
+});
+
+describe('Claude invocation grammar: the environment', () => {
+  const blind = 'it turns off the hooks a managed session is observed through';
+
+  it('reads a switch as the CLI does: 1, true, yes or on, in any case, trimmed', () => {
+    for (const on of ['1', 'true', 'yes', 'on', 'TRUE', 'On', ' yes ']) expect(claudeSwitchIsOn(on), on).toBe(true);
+    for (const off of [undefined, '', '0', 'false', 'no', 'off', '2', 'enabled', 'y']) {
+      expect(claudeSwitchIsOn(off), String(off)).toBe(false);
+    }
+  });
+
+  it('CLAUDE_CODE_SIMPLE stands for --bare: on, it is refused by name; off, nothing changes', () => {
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SIMPLE: '1' })).toEqual({
+      refusal: { reason: blind, argument: 'CLAUDE_CODE_SIMPLE=1' },
+      readsNoSettingsFiles: false,
+    });
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SIMPLE: 'yes' }).refusal?.argument).toBe('CLAUDE_CODE_SIMPLE=yes');
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SIMPLE: '0' })).toEqual({ readsNoSettingsFiles: false });
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SIMPLE: '' })).toEqual({ readsNoSettingsFiles: false });
+  });
+
+  it('CLAUDE_CODE_SAFE_MODE stands for --safe-mode: on, it is refused by name; off, nothing changes', () => {
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SAFE_MODE: 'true' })).toEqual({
+      refusal: { reason: blind, argument: 'CLAUDE_CODE_SAFE_MODE=true' },
+      readsNoSettingsFiles: false,
+    });
+    expect(readClaudeEnvironment({ CLAUDE_CODE_SAFE_MODE: 'false' })).toEqual({ readsNoSettingsFiles: false });
+  });
+
+  it('CLAUDE_CODE_RESTRICTED stands for --restricted: on, the session reads no settings files; off, it does', () => {
+    expect(readClaudeEnvironment({ CLAUDE_CODE_RESTRICTED: '1' })).toEqual({ readsNoSettingsFiles: true });
+    expect(readClaudeEnvironment({ CLAUDE_CODE_RESTRICTED: '0' })).toEqual({ readsNoSettingsFiles: false });
+    // A blinding switch is still refused beside it.
+    expect(readClaudeEnvironment({ CLAUDE_CODE_RESTRICTED: '1', CLAUDE_CODE_SIMPLE: 'on' }).refusal?.argument).toBe(
+      'CLAUDE_CODE_SIMPLE=on',
+    );
+  });
+
+  it('each switch does what the flag it stands for does', () => {
+    for (const row of CLAUDE_ENVIRONMENT_SWITCHES) {
+      const flag = CLAUDE_OPTIONS.find((option) => option.names.includes(row.flag));
+      expect(flag, row.name).toBeDefined();
+      expect(row.class, row.name).toBe(flag!.class);
+      expect(row.why, row.name).toBe(flag!.why);
+      expect(row.readsNoSettingsFiles === true, row.name).toBe(flag!.readsNoSettingsFiles === true);
+    }
   });
 });

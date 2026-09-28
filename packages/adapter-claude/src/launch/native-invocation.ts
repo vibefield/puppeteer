@@ -2,7 +2,17 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
 import type { ClaudeSettingSource } from '../observation/status-channel.js';
-import { readClaudeInvocation } from './invocation-grammar.js';
+import { CLAUDE_ENVIRONMENT_SWITCHES, readClaudeEnvironment, readClaudeInvocation } from './invocation-grammar.js';
+
+/**
+ * Every variable of a person's shell that changes what a Claude session is: the config root, and
+ * the switches that stand for flags. The provider's allow-list is exactly this, so a shim forwards
+ * them and the normalizer reads what the session will inherit.
+ */
+export const CLAUDE_INVOCATION_ENVIRONMENT: readonly string[] = [
+  'CLAUDE_CONFIG_DIR',
+  ...CLAUDE_ENVIRONMENT_SWITCHES.map((row) => row.name),
+];
 
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
 const ClaudeContinuationStateSchema = z.union([
@@ -37,9 +47,11 @@ export interface ClaudeNativeInvocationOptions {
   carriedArgs?: string[] | undefined;
   /** The operands as typed: the prompt, then any the CLI drops. */
   prompt?: string[] | undefined;
-  /** `--restricted`: Claude reads no settings files, so no status line in them is delegated to. */
-  existingStatusLine?: null | undefined;
-  existingSubagentStatusLine?: null | undefined;
+  /**
+   * `--restricted` or CLAUDE_CODE_RESTRICTED: Claude reads none of the person's settings files, so
+   * the recipe neither delegates to a status line in them nor reads their hook switches.
+   */
+  readsNoSettingsFiles?: true | undefined;
 }
 
 export interface RestoreClaudeContinuationOptions {
@@ -67,6 +79,9 @@ export function normalizeClaudeNativeInvocation(
       ...(reading.argument === undefined ? {} : { argument: reading.argument }),
     };
   }
+  // The session inherits the whole shell environment: a switch there is read as its flag would be.
+  const environment = readClaudeEnvironment(invocation.environment);
+  if (environment.refusal) return { status: 'rejected', ...environment.refusal };
 
   const options: ClaudeNativeInvocationOptions = { typed: true };
   if (reading.model !== undefined) options.model = reading.model;
@@ -78,10 +93,7 @@ export function normalizeClaudeNativeInvocation(
   if (reading.title !== undefined) options.title = reading.title;
   if (reading.carriedArgs.length > 0) options.carriedArgs = [...reading.carriedArgs];
   if (reading.prompt.length > 0) options.prompt = [...reading.prompt];
-  if (reading.readsNoSettingsFiles) {
-    options.existingStatusLine = null;
-    options.existingSubagentStatusLine = null;
-  }
+  if (reading.readsNoSettingsFiles || environment.readsNoSettingsFiles) options.readsNoSettingsFiles = true;
   const configDir = invocation.environment.CLAUDE_CONFIG_DIR;
   if (configDir) options.configDir = resolve(invocation.cwd, configDir);
   if (invocation.implementation.kind === 'imposter') {

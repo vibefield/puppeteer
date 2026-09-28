@@ -496,6 +496,64 @@ export const CLAUDE_ENTRY_RULES: readonly ClaudeEntryRule[] = [
 export const CLAUDE_BLINDING_TOKENS: readonly string[] = ['--bare', '--safe-mode'];
 
 /**
+ * An environment variable that changes what a session IS, as the flag it stands for does. A
+ * typed `claude` inherits the whole shell environment at exec, so these are read too: the
+ * provider forwards exactly them to the normalizer (with the config root).
+ */
+export interface ClaudeEnvironmentSwitch {
+  readonly name: string;
+  /** The flag the variable does the work of. */
+  readonly flag: string;
+  readonly class: 'rejected' | 'carried';
+  /** For a rejected switch, the clause a person reads; for a carried one, what it does. */
+  readonly why: string;
+  readonly readsNoSettingsFiles?: true;
+}
+
+/**
+ * In Claude Code 2.1.283 each is read through one parser, whatever reads it (findings.md §7.5):
+ * CLAUDE_CODE_SIMPLE does what --bare does (no hook fires: live F01), CLAUDE_CODE_SAFE_MODE what
+ * --safe-mode does (none fires: F03), and CLAUDE_CODE_RESTRICTED what --restricted does (the
+ * managed hooks fire, the person's settings files are not read: F04).
+ */
+export const CLAUDE_ENVIRONMENT_SWITCHES: readonly ClaudeEnvironmentSwitch[] = [
+  { name: 'CLAUDE_CODE_SIMPLE', flag: '--bare', class: 'rejected', why: HOOKS_OFF },
+  { name: 'CLAUDE_CODE_SAFE_MODE', flag: '--safe-mode', class: 'rejected', why: HOOKS_OFF },
+  {
+    name: 'CLAUDE_CODE_RESTRICTED',
+    flag: '--restricted',
+    class: 'carried',
+    why: 'restricted mode; it keeps --settings, so the managed hooks still fire',
+    readsNoSettingsFiles: true,
+  },
+];
+
+/** The CLI's own reading of a switch: on for 1, true, yes or on, in any case, trimmed; off for anything else. */
+export function claudeSwitchIsOn(value: string | undefined): boolean {
+  return value !== undefined && ['1', 'true', 'yes', 'on'].includes(value.toLowerCase().trim());
+}
+
+/** What the switches in a launch's environment make of an interactive session. */
+export interface ClaudeEnvironmentReading {
+  /** The first switch that is on and blinds, named as the person set it (`CLAUDE_CODE_SIMPLE=1`). */
+  readonly refusal?: { readonly reason: string; readonly argument: string };
+  readonly readsNoSettingsFiles: boolean;
+}
+
+export function readClaudeEnvironment(environment: Readonly<Record<string, string>>): ClaudeEnvironmentReading {
+  let readsNoSettingsFiles = false;
+  for (const row of CLAUDE_ENVIRONMENT_SWITCHES) {
+    const value = environment[row.name];
+    if (!claudeSwitchIsOn(value)) continue;
+    if (row.class === 'rejected') {
+      return { refusal: { reason: row.why, argument: `${row.name}=${value}` }, readsNoSettingsFiles };
+    }
+    if (row.readsNoSettingsFiles === true) readsNoSettingsFiles = true;
+  }
+  return { readsNoSettingsFiles };
+}
+
+/**
  * `claude [options] import [codex|gemini|cursor] [--dry-run] [--yes[=<digest>]]` is rewritten to
  * `claude [options] -- "/import …"` before the parser runs: an interactive session that runs
  * /import (when the CLI has the feature on; otherwise it exits with an error).

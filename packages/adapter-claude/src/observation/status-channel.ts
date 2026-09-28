@@ -276,23 +276,32 @@ async function statusChannelsFromFile(path: string): Promise<ClaudeStatusChannel
   }
 }
 
+/**
+ * The person's settings files a launch reads, low to high precedence (user < shared project <
+ * local project) whatever order the caller listed the sources in. Claude's own flag and policy
+ * layers rank above all three.
+ */
+export function claudeSettingsLayers(
+  cwd: string,
+  options: ResolveClaudeStatusChannelsOptions = {},
+): Array<{ source: ClaudeSettingSource; path: string }> {
+  const sources = new Set<ClaudeSettingSource>(options.settingSources ?? ['user', 'project', 'local']);
+  const absolute = resolve(cwd);
+  const userConfigRoot = options.configDir ? resolve(options.configDir) : join(options.home ?? homedir(), '.claude');
+  const layers: Array<{ source: ClaudeSettingSource; path: string }> = [];
+  if (sources.has('user')) layers.push({ source: 'user', path: join(userConfigRoot, 'settings.json') });
+  if (sources.has('project')) layers.push({ source: 'project', path: join(absolute, '.claude', 'settings.json') });
+  if (sources.has('local')) layers.push({ source: 'local', path: join(absolute, '.claude', 'settings.local.json') });
+  return layers;
+}
+
 /** Resolve normal user/project/local layers without modifying provider settings. */
 export async function resolveClaudeStatusChannels(
   cwd: string,
   options: ResolveClaudeStatusChannelsOptions = {},
 ): Promise<ClaudeStatusChannelSettings> {
-  const sources = new Set<ClaudeSettingSource>(options.settingSources ?? ['user', 'project', 'local']);
-  const candidates: string[] = [];
-  const absolute = resolve(cwd);
-  const userConfigRoot = options.configDir ? resolve(options.configDir) : join(options.home ?? homedir(), '.claude');
-  // Resolve low to high precedence, independent of the order in which the
-  // caller listed sources: user < shared project < local project.
-  if (sources.has('user')) candidates.push(join(userConfigRoot, 'settings.json'));
-  if (sources.has('project')) candidates.push(join(absolute, '.claude', 'settings.json'));
-  if (sources.has('local')) candidates.push(join(absolute, '.claude', 'settings.local.json'));
-
   let resolved: ClaudeStatusChannelSettings = {};
-  for (const path of candidates) {
+  for (const { path } of claudeSettingsLayers(cwd, options)) {
     resolved = { ...resolved, ...(await statusChannelsFromFile(path)) };
   }
   return resolved;

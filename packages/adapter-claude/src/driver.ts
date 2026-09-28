@@ -196,7 +196,7 @@ export interface ClaudeSession extends AgentAdapterBinding {
 export interface PrepareClaudeTuiSessionOptions
   extends
     Omit<CreateClaudeSessionOptions, 'ports'>,
-    Pick<PrepareClaudeSessionOptions, 'carriedArgs' | 'prompt' | 'existingStatusLine' | 'existingSubagentStatusLine'> {
+    Pick<PrepareClaudeSessionOptions, 'carriedArgs' | 'prompt' | 'home' | 'readsNoSettingsFiles' | 'refuseHooksOff'> {
   /** Route semantic automation to a terminal after the preparation is adopted. */
   automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
 }
@@ -330,8 +330,9 @@ export async function prepareClaudeTuiSession(
       fileChangeMatcher: options.fileChangeMatcher,
       carriedArgs: options.carriedArgs,
       prompt: options.prompt,
-      existingStatusLine: options.existingStatusLine,
-      existingSubagentStatusLine: options.existingSubagentStatusLine,
+      home: options.home,
+      readsNoSettingsFiles: options.readsNoSettingsFiles,
+      refuseHooksOff: options.refuseHooksOff,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
