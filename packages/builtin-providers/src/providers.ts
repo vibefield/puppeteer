@@ -519,6 +519,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             commands: [{ name: 'codex', executable: resolved.codex ?? 'codex' }],
             environmentVariables: ['CODEX_HOME'],
             imposter: { state: 'isolated-root' },
+            classifies: true,
           },
         },
         normalizeInvocation: normalizeCodexNativeInvocation,
@@ -553,16 +554,20 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
       async prepareSession({ cwd, resume, host, agentOptions, profile }) {
+        const own = agentOptions as CodexProviderOptions | undefined;
         const launch = withProfileBinding(
           'codex',
           cwd,
           profile,
           services.codex.profiles,
           normalizeCodexNativeInvocation,
-          agentOptions as CodexProviderOptions | undefined,
+          own,
         );
         return prepareCodexTuiSession({
           cwd,
@@ -573,9 +578,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           model: launch?.model,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
+          // The launch's own word only: a profile binding normalizes an empty argv as
+          // well, and must not start a host's own spawn from the configuration.
+          permissionDefaults: own?.permissionDefaults,
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
     },
