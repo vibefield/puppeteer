@@ -5,6 +5,7 @@ import {
   AccountUsageProviderSchema,
   AgentContinuationSchema,
   AgentLaunchProviderSchema,
+  AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
   DistributionProviderSchema,
@@ -26,6 +27,8 @@ import {
   type AgentInstallation,
   type AgentLaunchProvider,
   type AgentMonitorState,
+  type AgentNativeInvocation,
+  type AgentNativeInvocationResolution,
   type AgentProfile,
   type AgentAdapterBinding,
   type AgentProviderDescriptor,
@@ -77,6 +80,7 @@ import type {
   AgentWorkspaceInfo,
   CancelPreparedSessionResult,
   CheckReleasesOptions,
+  ClassifyAgentInvocationResult,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileOptions,
@@ -2278,6 +2282,98 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return preparationFailure('PREPARATION_NOT_FOUND', `prepared session not found: ${preparationId}`);
   }
 
+  /**
+   * Every check `prepareInvocation` makes before it prepares anything, and all
+   * that `classifyInvocation` makes: the schema, the provider and its
+   * capability, the environment allow-list, the imposter's shape, then the
+   * adapter's word on the argv. Pure: no run, no profile, no file, no process.
+   * Only an accepted invocation carries the adapter's resolution onward, and
+   * only `prepareInvocation` reads it.
+   */
+  function classifyNativeInvocation(request: AgentNativeInvocation):
+    | Exclude<ClassifyAgentInvocationResult, { status: 'accepted' }>
+    | {
+        status: 'accepted';
+        invocation: AgentNativeInvocation;
+        provider: AgentProvider;
+        resolution: Extract<AgentNativeInvocationResolution, { status: 'accepted' }>;
+      } {
+    const unsupported = (
+      code: Extract<ClassifyAgentInvocationResult, { status: 'unsupported' }>['code'],
+      reason: string,
+    ) => ({ status: 'unsupported' as const, code, reason });
+    const parsed = AgentNativeInvocationSchema.safeParse({
+      providerId: request.providerId,
+      cwd: request.cwd,
+      argv: request.argv,
+      environment: request.environment,
+      implementation: request.implementation,
+    });
+    if (!parsed.success) return unsupported('INVALID_NATIVE_INVOCATION', 'native invocation failed schema validation');
+    const invocation = parsed.data;
+    const provider = providers.get(invocation.providerId);
+    const service = provider?.launch;
+    const capability = launchProvidersById.get(invocation.providerId)?.nativeInvocation;
+    if (!provider || !service?.normalizeInvocation || !capability || !provider.prepareSession) {
+      return unsupported(
+        'NATIVE_INVOCATION_UNSUPPORTED',
+        `agent provider does not support native terminal invocation: ${invocation.providerId}`,
+      );
+    }
+    const allowedEnvironment = new Set(capability.environmentVariables);
+    const unexpectedEnvironment = Object.keys(invocation.environment).find((name) => !allowedEnvironment.has(name));
+    if (unexpectedEnvironment) {
+      return unsupported(
+        'INVALID_NATIVE_INVOCATION',
+        `native invocation environment is not accepted by ${invocation.providerId}: ${unexpectedEnvironment}`,
+      );
+    }
+    if (invocation.implementation.kind === 'imposter') {
+      const imposter = capability.imposter;
+      const validStateRoot =
+        imposter?.state === 'isolated-root'
+          ? invocation.implementation.stateRoot !== undefined
+          : invocation.implementation.stateRoot === undefined;
+      if (!imposter || !validStateRoot) {
+        return unsupported(
+          'INVALID_NATIVE_INVOCATION',
+          `imposter implementation does not match ${invocation.providerId} launch capabilities`,
+        );
+      }
+    }
+
+    const normalizationFailed = unsupported(
+      'INVALID_NATIVE_INVOCATION',
+      `native invocation normalization failed for ${invocation.providerId}`,
+    );
+    let normalized: AgentNativeInvocationResolution;
+    try {
+      normalized = service.normalizeInvocation(invocation);
+    } catch (error) {
+      report(error);
+      return normalizationFailed;
+    }
+    switch (normalized.status) {
+      case 'accepted':
+        return { status: 'accepted', invocation, provider, resolution: normalized };
+      case 'passthrough': {
+        // Hosts switch on the kind: an adapter's unknown kind is its bug, not a fourth kind.
+        const kind = AgentNativeInvocationPassthroughKindSchema.safeParse(normalized.kind);
+        return kind.success
+          ? { status: 'passthrough', kind: kind.data, reason: normalized.reason }
+          : normalizationFailed;
+      }
+      case 'rejected':
+        return {
+          status: 'rejected',
+          reason: normalized.reason,
+          ...(typeof normalized.argument === 'string' ? { argument: normalized.argument } : {}),
+        };
+      default:
+        return normalizationFailed;
+    }
+  }
+
   async function cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult> {
     const preparation = preparations.get(preparationId);
     if (!preparation) {
@@ -2840,63 +2936,31 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       });
     },
 
+    classifyInvocation(invocation) {
+      const classified = classifyNativeInvocation(invocation);
+      return classified.status === 'accepted' ? { status: 'accepted' } : classified;
+    },
+
     async prepareInvocation(request) {
       if (disposed) throw new Error('agent runtime is disposed');
-      const parsed = AgentNativeInvocationSchema.safeParse({
-        providerId: request.providerId,
-        cwd: request.cwd,
-        argv: request.argv,
-        environment: request.environment,
-        implementation: request.implementation,
-      });
-      if (!parsed.success) {
-        return preparationFailure('INVALID_NATIVE_INVOCATION', 'native invocation failed schema validation');
+      const classified = classifyNativeInvocation(request);
+      switch (classified.status) {
+        case 'unsupported':
+          return preparationFailure(classified.code, classified.reason);
+        case 'passthrough':
+          return {
+            error: { code: 'NATIVE_INVOCATION_PASSTHROUGH', message: classified.reason, passthrough: classified.kind },
+          };
+        case 'rejected':
+          return {
+            error: {
+              code: 'INVALID_NATIVE_INVOCATION',
+              message: classified.reason,
+              ...(classified.argument === undefined ? {} : { argument: classified.argument }),
+            },
+          };
       }
-      const invocation = parsed.data;
-      const provider = providers.get(invocation.providerId);
-      const service = provider?.launch;
-      const capability = launchProvidersById.get(invocation.providerId)?.nativeInvocation;
-      if (!provider || !service?.normalizeInvocation || !capability || !provider.prepareSession) {
-        return preparationFailure(
-          'NATIVE_INVOCATION_UNSUPPORTED',
-          `agent provider does not support native terminal invocation: ${invocation.providerId}`,
-        );
-      }
-      const allowedEnvironment = new Set(capability.environmentVariables);
-      const unexpectedEnvironment = Object.keys(invocation.environment).find((name) => !allowedEnvironment.has(name));
-      if (unexpectedEnvironment) {
-        return preparationFailure(
-          'INVALID_NATIVE_INVOCATION',
-          `native invocation environment is not accepted by ${invocation.providerId}: ${unexpectedEnvironment}`,
-        );
-      }
-      if (invocation.implementation.kind === 'imposter') {
-        const imposter = capability.imposter;
-        const validStateRoot =
-          imposter?.state === 'isolated-root'
-            ? invocation.implementation.stateRoot !== undefined
-            : invocation.implementation.stateRoot === undefined;
-        if (!imposter || !validStateRoot) {
-          return preparationFailure(
-            'INVALID_NATIVE_INVOCATION',
-            `imposter implementation does not match ${invocation.providerId} launch capabilities`,
-          );
-        }
-      }
-
-      let normalized;
-      try {
-        normalized = service.normalizeInvocation(invocation);
-      } catch (error) {
-        report(error);
-        return preparationFailure(
-          'INVALID_NATIVE_INVOCATION',
-          `native invocation normalization failed for ${invocation.providerId}`,
-        );
-      }
-      if (normalized.status === 'rejected') {
-        return preparationFailure('INVALID_NATIVE_INVOCATION', normalized.reason);
-      }
+      const { invocation, provider, resolution: normalized } = classified;
       const result = await runtime.prepareSession({
         agent: invocation.providerId,
         cwd: invocation.cwd,

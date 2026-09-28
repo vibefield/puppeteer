@@ -18,6 +18,7 @@ function launch(overrides: Record<string, unknown> = {}): SpawnThroughLaunchRequ
     environment: { EXAMPLE_HOME: '/profiles/example' },
     pid: 456,
     parentPid: 123,
+    interactive: true,
     ...overrides,
   } as SpawnThroughLaunchRequest;
 }
@@ -30,12 +31,27 @@ const overlong = 'x'.repeat(8_193);
 
 describe('spawn-through protocol', () => {
   it('round-trips both request types through their wire form', () => {
-    for (const request of [launch(), launch({ imposter: true }), execFailed(), execFailed({ message: '' })]) {
+    for (const request of [
+      launch(),
+      launch({ imposter: true }),
+      launch({ interactive: false }),
+      execFailed(),
+      execFailed({ message: '' }),
+    ]) {
       expect(parseSpawnThroughRequest(JSON.parse(JSON.stringify(request)))).toEqual(request);
     }
     // `imposter: false` is the default, so it is not carried.
     expect(parseSpawnThroughRequest(launch({ imposter: false }))).toEqual(launch());
     expect(MAX_REQUEST_BYTES).toBe(64 * 1024);
+  });
+
+  it('reads a launch without `interactive` — a shim from before it — as interactive, and only a boolean as either', () => {
+    const { interactive: _interactive, ...older } = launch();
+    expect(parseSpawnThroughRequest(older)).toEqual(launch({ interactive: true }));
+    for (const interactive of ['false', 0, 1, null]) {
+      expect(parseSpawnThroughRequest(launch({ interactive })), String(interactive)).toBeUndefined();
+    }
+    expect(parseSpawnThroughRequest(execFailed({ interactive: true }))).toBeUndefined();
   });
 
   it('refuses anything that is not a request object with a bounded token', () => {

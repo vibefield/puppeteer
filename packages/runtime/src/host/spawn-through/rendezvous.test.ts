@@ -79,6 +79,37 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
     expect((await readdir(home)).sort()).toEqual([RENDEZVOUS_FILE, LAUNCH_PROVIDERS_FILE].sort());
   });
 
+  it('carries whether each adapter classifies through the provider table, and invents it for none', async () => {
+    const classifying: AgentLaunchProvider = {
+      id: 'classifying',
+      label: 'Classifying',
+      resume: true,
+      nativeInvocation: {
+        commands: [{ name: 'classifying', executable: '/real/classifying' }],
+        environmentVariables: [],
+        classifies: true,
+      },
+    };
+    const declared: AgentLaunchProvider = {
+      id: 'declared',
+      label: 'Declared',
+      resume: true,
+      nativeInvocation: {
+        commands: [{ name: 'declared', executable: '/real/declared' }],
+        environmentVariables: [],
+        classifies: false,
+      },
+    };
+    // `providers` says nothing about classifying.
+    const table = [classifying, declared, ...providers];
+    await writeRendezvous(home, { port: 4242, token: 'bearer', strict: true, launchProviders: table });
+
+    const read = await readLaunchProviders(home);
+    expect(read).toEqual(table);
+    expect(read!.map((provider) => provider.nativeInvocation?.classifies)).toEqual([true, false, undefined]);
+    expect(read![2]!.nativeInvocation).not.toHaveProperty('classifies');
+  });
+
   it('holds an existing, looser home to owner-only', async () => {
     await mkdir(home, { mode: 0o755 });
     await chmod(home, 0o755);

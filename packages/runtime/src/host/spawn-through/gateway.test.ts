@@ -13,6 +13,7 @@ const request: SpawnThroughRequest = {
   environment: {},
   pid: 456,
   parentPid: 123,
+  interactive: true,
 };
 
 /** One connection, as the shim makes it: write, then read one line. */

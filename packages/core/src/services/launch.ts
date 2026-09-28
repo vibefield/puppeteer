@@ -53,6 +53,13 @@ export const AgentNativeInvocationCapabilitySchema = z
         state: z.enum(['none', 'isolated-root']),
       })
       .optional(),
+    /**
+     * True when the normalizer tells a utility, a one-shot and an elsewhere
+     * invocation apart from a session (`passthrough`), so that its `rejected`
+     * means a session it cannot carry. Absent reads false. A strict host gives
+     * a launcher only to an agent whose adapter classifies.
+     */
+    classifies: z.boolean().optional(),
   })
   .superRefine((capability, context) => {
     const commandNames = new Set<string>();
@@ -123,9 +130,28 @@ export const AgentNativeInvocationSchema = z.strictObject({
 });
 export type AgentNativeInvocation = z.infer<typeof AgentNativeInvocationSchema>;
 
-/** Private adapter output. `options` never crosses the provider seam. */
+/**
+ * What an invocation that is not a managed session IS — a fact the adapter
+ * states from its own CLI grammar; every host lets it run as typed.
+ * `utility` runs no agent (help, version, a management subcommand);
+ * `one-shot` runs an agent non-interactively in this process (print and exec
+ * modes); `elsewhere` starts or opens an agent that does not live in this
+ * process (background, cloud, attach).
+ */
+export const AgentNativeInvocationPassthroughKindSchema = z.enum(['utility', 'one-shot', 'elsewhere']);
+export type AgentNativeInvocationPassthroughKind = z.infer<typeof AgentNativeInvocationPassthroughKindSchema>;
+
+/**
+ * Private adapter output. `options` never crosses the provider seam.
+ * `accepted`: an interactive session here, every argument carried.
+ * `passthrough`: not a session at all (see {@link AgentNativeInvocationPassthroughKind}).
+ * `rejected`: an interactive session here that the managed launch cannot
+ * carry; `argument` is the first token the adapter could not carry.
+ */
 export type AgentNativeInvocationResolution<Options = unknown> =
-  { status: 'accepted'; resume?: string; options?: Options } | { status: 'rejected'; reason: string };
+  | { status: 'accepted'; resume?: string; options?: Options }
+  | { status: 'passthrough'; kind: AgentNativeInvocationPassthroughKind; reason: string }
+  | { status: 'rejected'; reason: string; argument?: string };
 
 /** Pure adapter service: normalize one vendor CLI grammar into adapter options. */
 export interface AgentNativeInvocationNormalizer<Options = unknown> {

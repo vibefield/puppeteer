@@ -37,6 +37,7 @@ import type {
   BoundIngress,
   HostIngress,
   AgentNativeInvocation,
+  AgentNativeInvocationPassthroughKind,
   AgentNativeInvocationResolution,
   AgentProviderDescriptor,
   AgentMonitorHandle,
@@ -330,15 +331,42 @@ export type PreparationErrorCode =
   | 'RUNTIME_SESSION_CONFLICT'
   | 'PREPARATION_ADOPT_FAILED'
   | 'NATIVE_INVOCATION_UNSUPPORTED'
-  | 'INVALID_NATIVE_INVOCATION';
+  | 'INVALID_NATIVE_INVOCATION'
+  /** The adapter says the invocation is not a session: the host runs it as typed. */
+  | 'NATIVE_INVOCATION_PASSTHROUGH';
 
 export interface PreparationFailure {
   runtimeRunId?: RuntimeRunId;
   runtimeEpoch?: number;
   externalRefs?: ExternalRef[];
   terminalOutcome?: CreationRequestTerminalOutcome;
-  error: { code: PreparationErrorCode; message: string };
+  error: {
+    code: PreparationErrorCode;
+    message: string;
+    /** With `NATIVE_INVOCATION_PASSTHROUGH`: what the invocation is instead of a session. */
+    passthrough?: AgentNativeInvocationPassthroughKind;
+    /** With an adapter's rejection: the first argument its managed launch could not carry. */
+    argument?: string;
+  };
 }
+
+/**
+ * What a native invocation IS, by the adapter's grammar ({@link AgentRuntime.classifyInvocation}):
+ * `accepted` a session the managed launch carries; `passthrough` not a session
+ * at all; `rejected` a session it cannot carry. `unsupported` is every failure
+ * that is not the adapter's word: no such provider or capability, a request
+ * outside the schema or the environment allow-list, a normalizer that threw.
+ * The adapter's options never cross this door.
+ */
+export type ClassifyAgentInvocationResult =
+  | { status: 'accepted' }
+  | { status: 'passthrough'; kind: AgentNativeInvocationPassthroughKind; reason: string }
+  | { status: 'rejected'; reason: string; argument?: string }
+  | {
+      status: 'unsupported';
+      code: Extract<PreparationErrorCode, 'NATIVE_INVOCATION_UNSUPPORTED' | 'INVALID_NATIVE_INVOCATION'>;
+      reason: string;
+    };
 
 export interface PreparedAgentSessionInfo {
   preparationId: string;
@@ -860,7 +888,20 @@ export interface AgentRuntime {
   ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
-  /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */
+  /**
+   * Host SPI: what a native CLI invocation is, by its adapter's grammar — the
+   * checks {@link prepareInvocation} makes before it prepares anything, and
+   * nothing else. Pure: no run, no preparation, no profile lookup, no file, no
+   * process. A terminal host asks this first, so a version query or a one-shot
+   * runs as typed before the host looks for a terminal.
+   */
+  classifyInvocation(invocation: AgentNativeInvocation): ClassifyAgentInvocationResult;
+  /**
+   * Host SPI: normalize a native CLI invocation and prepare its adapter-owned
+   * recipe. An invocation that is not a session fails with
+   * `NATIVE_INVOCATION_PASSTHROUGH` (and its kind); one the adapter cannot
+   * carry, with `INVALID_NATIVE_INVOCATION` (and the argument, when it names one).
+   */
   prepareInvocation(options: PrepareAgentInvocationOptions): Promise<PrepareAgentSessionResult>;
   /** Low-level provider-composition API. Terminal hosts use prepareInvocation(). */
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;

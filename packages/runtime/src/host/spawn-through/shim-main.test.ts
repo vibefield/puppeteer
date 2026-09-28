@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, realpathSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -24,12 +24,42 @@ const REPORT = [
   'env | sort | sed "s/^/ENV /"',
 ].join('\n');
 
+/**
+ * Runs a command with its stdin, its stdout or both on a fresh pty (argv[1]:
+ * `in`, `out`, `both`), copying what the pty shows to our stdout; stderr stays
+ * the caller's. The one way a test puts the shim in a real terminal.
+ */
+const PTY_RUNNER = `
+import os, pty, subprocess, sys
+master, slave = pty.openpty()
+mode = sys.argv[1]
+child = subprocess.Popen(sys.argv[2:], stdin=slave if mode in ("in", "both") else None,
+                         stdout=slave if mode in ("out", "both") else None)
+os.close(slave)
+while True:
+    try:
+        data = os.read(master, 65536)
+    except OSError:
+        break
+    if not data:
+        break
+    os.write(1, data)
+sys.exit(child.wait())
+`;
+
+/** An absolute python3 with the pty module, or undefined: the rows that need a terminal skip without one. */
+const python = (() => {
+  const found = spawnSync('python3', ['-c', 'import pty, sys; print(sys.executable)'], { encoding: 'utf8' });
+  return found.status === 0 ? found.stdout.trim() : undefined;
+})();
+
 const providers: AgentLaunchProvider[] = [];
 let root: string;
 let real: string;
 let work: string;
 let home: string;
 let strictHome: string;
+let ptyRunner: string;
 const gateways: SpawnThroughGateway[] = [];
 
 beforeAll(async () => {
@@ -39,6 +69,8 @@ beforeAll(async () => {
   home = join(root, 'home');
   strictHome = join(root, 'strict-home');
   for (const directory of [real, work, join(real, 'chosen')]) await mkdir(directory, { recursive: true });
+  ptyRunner = join(root, 'pty-runner.py');
+  await writeFile(ptyRunner, PTY_RUNNER);
   for (const [name, path] of [
     ['example', join(real, 'example')],
     ['orphan', join(real, 'orphan')],
@@ -128,17 +160,31 @@ interface Ran {
   lines: (prefix: string) => string[];
 }
 
-/** Run a launcher the way a shell does: its own process, the pane's environment. */
+/**
+ * Run a launcher the way a shell does: its own process, the pane's
+ * environment. Its stdio are pipes — not a terminal — unless `tty` puts its
+ * stdin, stdout or both on a pty, or `stdoutFile` redirects its stdout.
+ */
 function launch(
   shimHome: string,
   name: string,
   args: string[] = [],
-  options: { environment?: Record<string, string>; path?: string[]; onStderr?: (text: string) => void } = {},
+  options: {
+    environment?: Record<string, string>;
+    path?: string[];
+    onStderr?: (text: string) => void;
+    tty?: 'in' | 'out' | 'both';
+    stdoutFile?: string;
+  } = {},
 ): Promise<Ran> {
-  const { environment = {}, path, onStderr } = options;
+  const { environment = {}, path, onStderr, tty, stdoutFile } = options;
   const shimDirectory = spawnThroughLayout(shimHome).shimDirectory;
-  const child = spawn(join(shimDirectory, name), args, {
+  const launcher = join(shimDirectory, name);
+  if (tty && !python) throw new Error('a pty needs python3');
+  const redirected = stdoutFile === undefined ? undefined : openSync(stdoutFile, 'w');
+  const child = spawn(tty ? python! : launcher, tty ? [ptyRunner, tty, launcher, ...args] : args, {
     cwd: work,
+    stdio: ['pipe', redirected ?? 'pipe', 'pipe'],
     env: {
       PATH: (path ?? [shimDirectory, real, '/usr/bin', '/bin']).join(delimiter),
       HOME: root,
@@ -150,17 +196,21 @@ function launch(
       ...environment,
     },
   });
+  if (redirected !== undefined) closeSync(redirected);
   let stdout = '';
   let stderr = '';
   let firstStderrAt: number | undefined;
-  child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
-  child.stderr.on('data', (chunk: Buffer) => {
+  child.stdout?.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
+  child.stderr!.on('data', (chunk: Buffer) => {
     firstStderrAt ??= Date.now();
     stderr += chunk.toString();
     onStderr?.(stderr);
   });
   return new Promise((resolve) => {
     child.once('close', (code) => {
+      // A pty ends its lines with CR LF.
+      if (stdoutFile !== undefined) stdout = readFileSync(stdoutFile, 'utf8');
+      stdout = stdout.replaceAll('\r\n', '\n');
       const output = stdout.split('\n');
       resolve({
         code,
@@ -216,8 +266,28 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
         // exec all the way: the launcher, the shim and the agent are the one pid the shell started.
         pid: ran.pid,
         parentPid: process.pid,
+        // The test's pipes are not a terminal.
+        interactive: false,
       },
     ]);
+  });
+
+  it('says it is not interactive when its output is redirected to a file', async () => {
+    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }));
+    const redirected = await launch(home, 'example', ['to a file'], { stdoutFile: join(root, 'redirected.txt') });
+    // Its output went where the person sent it: the real executable ran as typed.
+    expect(redirected.lines('ARG ')).toEqual(['to a file']);
+    expect(requests.map((request) => request.type === 'launch' && request.interactive)).toEqual([false]);
+  });
+
+  it.skipIf(!python)('says it is interactive only when its input and its output are both a terminal', async () => {
+    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', reason: 'test' }));
+    for (const tty of ['both', 'out', 'in'] as const) {
+      const ran = await launch(home, 'example', [tty], { tty });
+      expect(ran.lines('ARG '), tty).toEqual([tty]);
+    }
+    // The first had a terminal at both ends: the control that the flag is true at all.
+    expect(requests.map((request) => request.type === 'launch' && request.interactive)).toEqual([true, false, false]);
   });
 
   it("lets the recipe's own variables stand, a runtime variable's name among them", async () => {

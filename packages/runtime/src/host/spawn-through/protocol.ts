@@ -33,6 +33,12 @@ export interface SpawnThroughLaunchRequest extends AgentNativeInvocationIntent {
   parentPid: number;
   /** A flag only. The host resolves the imposter's executable and state root. */
   imposter?: boolean;
+  /**
+   * Whether the agent's input and output are both a terminal. A launch whose
+   * input or output is not (`<name> "x" > out.txt`, a pipe) is a one-shot run,
+   * never a session, whatever its argv says.
+   */
+  interactive: boolean;
 }
 
 /** The shim could not exec the recipe it was given; the preparation is the host's to cancel. */
@@ -97,13 +103,25 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
   }
   if (value.type !== 'launch') return undefined;
   if (
-    !hasOnlyKeys(value, ['type', 'token', 'providerId', 'cwd', 'argv', 'environment', 'pid', 'parentPid', 'imposter'])
+    !hasOnlyKeys(value, [
+      'type',
+      'token',
+      'providerId',
+      'cwd',
+      'argv',
+      'environment',
+      'pid',
+      'parentPid',
+      'imposter',
+      'interactive',
+    ])
   ) {
     return undefined;
   }
-  const { pid, parentPid, imposter } = value;
+  const { pid, parentPid, imposter, interactive } = value;
   if (!positivePid(pid) || !positivePid(parentPid)) return undefined;
   if (imposter !== undefined && typeof imposter !== 'boolean') return undefined;
+  if (interactive !== undefined && typeof interactive !== 'boolean') return undefined;
   const intent = AgentNativeInvocationIntentSchema.safeParse({
     providerId: value.providerId,
     cwd: value.cwd,
@@ -118,6 +136,8 @@ export function parseSpawnThroughRequest(value: unknown): SpawnThroughRequest | 
     pid,
     parentPid,
     ...(imposter === true ? { imposter: true } : {}),
+    // Absent: a shim from before this field, which never looked. Its launch is read as every launch was then.
+    interactive: interactive ?? true,
   };
 }
 

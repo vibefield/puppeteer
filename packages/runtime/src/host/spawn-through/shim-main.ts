@@ -18,6 +18,7 @@
 import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
+import { isatty } from 'node:tty';
 import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
 import { spawnThroughLayout } from './layout.js';
 import {
@@ -242,6 +243,9 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     pid: process.pid,
     parentPid: process.ppid,
     ...(imposter ? { imposter: true } : {}),
+    // `isatty`, never `process.stdin.isTTY`: that getter opens the terminal as a stream, and libuv leaves
+    // fd 0 non-blocking — a state the agent would inherit at exec.
+    interactive: isatty(0) && isatty(1),
   };
 
   // The host's latest readable word decides; the launcher's only while none has been readable.
