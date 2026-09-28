@@ -97,6 +97,17 @@ directory, setting its mode, and renaming it over the name: no reader sees a hal
 
 Call `materializeShims` at every start: the launchers name the runtime and the bundle of the host that wrote them.
 
+Where the home lives is the host's choice, and two facts bind it:
+
+- **A home under the system temp directory is emptied by the operating system's cleaner.** macOS deletes the files
+  there that were not accessed for about three days, nightly, and leaves the directories — seen on 105 homes that
+  hosts had left behind, every file gone and every directory kept. A host that lives longer keeps its home elsewhere,
+  or re-runs `materializeShims` and `writeRendezvous` on a timer with the values it started with: both are
+  idempotent, so a home nothing touched is rewritten by nothing, and what the cleaner took comes back.
+- **The home's path is permanent for a host whose shells outlive it.** It lives in every integrated shell's
+  environment (`PUPPETEER_SHIM_DIR`, and the `PATH` built from it), so a host that restarts under shells it left
+  running comes back to the same path: a new one reaches only the shells born after it.
+
 ## 4. The rendezvous, and why it is files
 
 A shell's environment names only its shim directory. Everything that changes with the host lives in files the shim
@@ -157,8 +168,8 @@ The label line is written only for a `hostLabel`: the launcher's say, like `stri
 readable — the moment the shim speaks for a host that is gone.
 
 - `runtime.command` is an absolute path; `runtime.args` lead the shim; `runtime.env` holds what the runtime itself needs
-  (a packaged Electron app runs the shim with its own binary and `ELECTRON_RUN_AS_NODE=1`). Every word is single-quoted
-  for `sh`, so a home under `Application Support`, or with a quote in it, is safe.
+  — `ELECTRON_RUN_AS_NODE=1` for the host's own Electron binary, the last choice of runtime (§9). Every word is
+  single-quoted for `sh`, so a home under `Application Support`, or with a quote in it, is safe.
 - The shim removes every `runtime.env` name before it execs anything, so the agent never inherits them — name only
   variables the runtime needs. A recipe that sets one of those names itself keeps its value: the recipe is exact.
 - The variables are exported on their own lines: POSIX leaves unspecified whether assignments prefixed to `exec` are
@@ -469,7 +480,12 @@ await clearRendezvous(home, { token });
 The duties, one by one:
 
 - **Choose the runtime**: an absolute Node.js with `process.execve` (22.15 or later on the 22 line, 23.11 or later on
-  the 23 line, any from 24), or the host's Electron binary with `ELECTRON_RUN_AS_NODE=1`.
+  the 23 line, any from 24); the host's Electron binary with `ELECTRON_RUN_AS_NODE=1` only when no such Node exists.
+  The order is a measurement: under Electron 43.1.0 as Node, `process.execve` itself took a median of 4.3 s
+  (78 ms–11.3 s, n=8) against 65 ms under Node on the same host at load average 165–185, and a launcher's fallback
+  end to end a median of 13.1 s against 0.77 s (n=8) at load 229–282. The cause was not found, and no number was
+  taken on an idle host. A host pins the Node it found at startup: if that Node is uninstalled while the host runs,
+  the launchers fail until the host chooses again.
 - **Resolve the real executables** before writing the table, and decide the names; a name the table lacks is never
   intercepted by the gateway.
 - **Resolve terminals from your own evidence** (Godview matches the shell's pid to the request's `parentPid`, then its
