@@ -33,13 +33,35 @@ describe('Codex native invocation normalization', () => {
     });
   });
 
-  it("keeps today's accepted forms exactly", () => {
-    expect(normalize([])).toEqual({ status: 'accepted' });
+  it("keeps today's resume forms exactly, and starts a bare codex from the person's configuration", () => {
+    expect(normalize([])).toEqual({ status: 'accepted', options: { permissionDefaults: 'configuration' } });
     expect(normalize(['resume'])).toEqual({ status: 'accepted', options: { resumeInvocation: ['resume'] } });
     expect(normalize(['resume', '--all'])).toEqual({
       status: 'accepted',
       options: { resumeInvocation: ['resume', '--all'] },
     });
+  });
+
+  it('leaves to the configuration only what a typed launch did not name, and never for a resume or the imposter', () => {
+    expect(normalize(['-s', 'read-only'])).toEqual({
+      status: 'accepted',
+      options: { sandbox: 'read-only', permissionDefaults: 'configuration' },
+    });
+    expect(normalize(['-a', 'never'])).toEqual({
+      status: 'accepted',
+      options: { approvalPolicy: 'never', permissionDefaults: 'configuration' },
+    });
+    for (const [argv, over] of [
+      [['resume', THREAD], {}],
+      [['resume', '--last'], {}],
+      [['resume', THREAD, 'go on'], {}],
+      [[], imposter],
+    ] as Array<[string[], Partial<AgentNativeInvocation>]>) {
+      const resolution = normalize(argv, over);
+      expect(resolution.status, argv.join(' ')).toBe('accepted');
+      const options = resolution.status === 'accepted' ? resolution.options : undefined;
+      expect(options?.permissionDefaults, argv.join(' ')).toBeUndefined();
+    }
   });
 
   it('owns app-server environment, imposter selection, and continuation state', () => {
@@ -206,9 +228,13 @@ describe('Codex invocation classes', () => {
 
 describe('what a managed Codex session carries', () => {
   it('carries a typed prompt for the TUI to submit, whatever it starts with', () => {
-    expect(normalize(['fix the bug'])).toEqual({ status: 'accepted', options: { prompt: 'fix the bug' } });
-    expect(normalize(['--', '-v is broken'])).toEqual({ status: 'accepted', options: { prompt: '-v is broken' } });
-    expect(normalize(['--', 'resume'])).toEqual({ status: 'accepted', options: { prompt: 'resume' } });
+    const fresh = { permissionDefaults: 'configuration' };
+    expect(normalize(['fix the bug'])).toEqual({ status: 'accepted', options: { prompt: 'fix the bug', ...fresh } });
+    expect(normalize(['--', '-v is broken'])).toEqual({
+      status: 'accepted',
+      options: { prompt: '-v is broken', ...fresh },
+    });
+    expect(normalize(['--', 'resume'])).toEqual({ status: 'accepted', options: { prompt: 'resume', ...fresh } });
     expect(normalize(['resume', THREAD, 'keep going'])).toEqual({
       status: 'accepted',
       resume: THREAD,
@@ -217,17 +243,18 @@ describe('what a managed Codex session carries', () => {
   });
 
   it("maps the thread's own start parameters", () => {
+    const fresh = { permissionDefaults: 'configuration' };
     expect(normalize(['-m', 'gpt-5', '-s', 'read-only', '-a', 'never'])).toEqual({
       status: 'accepted',
-      options: { model: 'gpt-5', sandbox: 'read-only', approvalPolicy: 'never' },
+      options: { model: 'gpt-5', sandbox: 'read-only', approvalPolicy: 'never', ...fresh },
     });
     expect(normalize(['--model=gpt-5', '--sandbox=workspace-write', '--ask-for-approval=on-request'])).toEqual({
       status: 'accepted',
-      options: { model: 'gpt-5', sandbox: 'workspace-write', approvalPolicy: 'on-request' },
+      options: { model: 'gpt-5', sandbox: 'workspace-write', approvalPolicy: 'on-request', ...fresh },
     });
     expect(normalize(['--dangerously-bypass-approvals-and-sandbox'])).toEqual({
       status: 'accepted',
-      options: { sandbox: 'danger-full-access', approvalPolicy: 'never' },
+      options: { sandbox: 'danger-full-access', approvalPolicy: 'never', ...fresh },
     });
   });
 
@@ -243,24 +270,26 @@ describe('what a managed Codex session carries', () => {
             '--enable=x',
           ],
           tuiArguments: ['--config=model_reasoning_effort=high', '--search', '--disable=goals', '--enable=x'],
+          permissionDefaults: 'configuration',
         },
       },
     );
   });
 
   it('carries TUI presentation and images, each value its own option, in typed order', () => {
+    const fresh = { permissionDefaults: 'configuration' };
     expect(normalize(['--no-alt-screen'])).toEqual({
       status: 'accepted',
-      options: { tuiArguments: ['--no-alt-screen'] },
+      options: { tuiArguments: ['--no-alt-screen'], ...fresh },
     });
     // clap reads `b.png` as a second image, not as the prompt (parse batch3).
     expect(normalize(['-i', 'a.png', 'b.png'])).toEqual({
       status: 'accepted',
-      options: { tuiArguments: ['--image=a.png', '--image=b.png'] },
+      options: { tuiArguments: ['--image=a.png', '--image=b.png'], ...fresh },
     });
     expect(normalize(['fix it', '-i', 'a.png', '--no-alt-screen'])).toEqual({
       status: 'accepted',
-      options: { prompt: 'fix it', tuiArguments: ['--image=a.png', '--no-alt-screen'] },
+      options: { prompt: 'fix it', tuiArguments: ['--image=a.png', '--no-alt-screen'], ...fresh },
     });
     expect(normalize(['resume', THREAD, '--no-alt-screen'])).toEqual({
       status: 'accepted',
@@ -290,20 +319,34 @@ describe('what a managed Codex session carries', () => {
     expect(normalize(['-c', 'k=1', '-c', 'k=2'])).toMatchObject({ status: 'accepted' });
   });
 
-  it('refuses a -c the recipe would override, and a -c codex cannot read', () => {
-    for (const setting of [
-      'sandbox_mode="read-only"',
-      'approval_policy=never',
-      'sandbox_workspace_write.network_access=true',
-      'projects."/repo".trust_level="trusted"',
-      'profile=work',
+  it('refuses a -c for a setting no probe has shown reaching the thread, each with its own reason', () => {
+    const sandboxedOrApproved =
+      'it changes how commands are sandboxed or approved, which a managed session cannot pass on yet';
+    for (const [setting, reason] of [
+      ['sandbox_mode="read-only"', sandboxedOrApproved],
+      ['approval_policy=never', sandboxedOrApproved],
+      ['sandbox_workspace_write.network_access=true', sandboxedOrApproved],
+      ['approvals_reviewer="user"', 'it changes who reviews approvals, which a managed session cannot pass on yet'],
+      ['default_permissions=":read-only"', 'it picks a permission profile, which a managed session cannot pass on yet'],
+      [
+        'permissions.probe={network={enabled=false}}',
+        'it defines a permission profile, which a managed session cannot pass on yet',
+      ],
+      [
+        'sandbox_permissions=["disk-full-read-access"]',
+        'it grants the sandbox extra permissions, which a managed session cannot pass on yet',
+      ],
+      [
+        'projects."/repo".trust_level="trusted"',
+        'it changes which folders codex trusts, which a managed session cannot pass on yet',
+      ],
+      ['profile=work', 'it selects a settings profile, which a managed session cannot pass on yet'],
+      ['"sandbox_mode" = "read-only"', sandboxedOrApproved],
     ]) {
-      expect(normalize(['-c', setting]), setting).toEqual({
-        status: 'rejected',
-        reason: 'a managed session sets the sandbox and approvals itself, so this setting would not take effect',
-        argument: '-c',
-      });
+      expect(normalize(['-c', setting!]), setting).toEqual({ status: 'rejected', reason, argument: '-c' });
     }
+    // Only a setting's own key: an inherited property name is just an unknown setting, carried.
+    expect(normalize(['-c', 'constructor=1'])).toMatchObject({ status: 'accepted' });
     expect(normalize(['-c', 'nonsense'])).toEqual({ status: 'rejected', reason: '-c needs key=value', argument: '-c' });
   });
 
@@ -318,10 +361,13 @@ describe('what a managed Codex session carries', () => {
   });
 
   it("carries to the imposter only the thread's start parameters its app-server takes", () => {
-    expect(normalize(['-m', 'x', '-s', 'read-only'], imposter)).toMatchObject({
+    const started = normalize(['-m', 'x', '-s', 'read-only'], imposter);
+    expect(started).toMatchObject({
       status: 'accepted',
       options: { model: 'x', sandbox: 'read-only', executable: '/opt/ai' },
     });
+    // The imposter has no configuration to read: its thread keeps the adapter's defaults.
+    expect(started.status === 'accepted' ? started.options?.permissionDefaults : 'rejected').toBeUndefined();
     for (const [argv, argument] of [
       [['fix it'], 'fix it'],
       [['--no-alt-screen'], '--no-alt-screen'],
@@ -347,6 +393,7 @@ describe('what a managed Codex session carries', () => {
     });
     expect(resolution.status).toBe('accepted');
     const options = resolution.status === 'accepted' ? resolution.options : undefined;
+    expect(options).toMatchObject({ permissionDefaults: 'configuration' });
     const state = captureCodexContinuationState(options, '/repo', {});
     expect(JSON.parse(state!)).toEqual({ version: 2, home: '/codex-home' });
     expect(restoreCodexContinuationState(state)).toEqual({

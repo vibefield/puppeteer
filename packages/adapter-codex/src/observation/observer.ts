@@ -67,6 +67,13 @@ export interface CreateCodexObserverOptions {
         model?: string | undefined;
         sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
         approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
+        /**
+         * Who decides a sandbox or approval policy left unset here: `'adapter'` (the
+         * default) starts the thread with workspace-write and on-request; `'configuration'`
+         * leaves it out of `thread/start`, and the app-server takes it from its own
+         * configuration, as it does for a typed `codex`.
+         */
+        permissionDefaults?: 'adapter' | 'configuration' | undefined;
       }
     | undefined;
 }
@@ -392,11 +399,19 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   // before returning so callers can spawn `codex resume <id> --remote` with a
   // ready join key and the panel can leave `preparing` immediately.
   if (opts.start) {
+    // The one place a managed thread's unset permissions are decided. Left out of
+    // thread/start, they come from the app-server's own configuration, and the model is
+    // told exactly what a typed `codex` tells it (0.157.1 probes S24/S25 and S27/S28:
+    // identical permission text). The explicit defaults override a config.toml (S26
+    // measured it), so they stay only for a caller that is not a typed launch.
+    const fromConfiguration = opts.start.permissionDefaults === 'configuration';
+    const sandbox = opts.start.sandbox ?? (fromConfiguration ? undefined : 'workspace-write');
+    const approvalPolicy = opts.start.approvalPolicy ?? (fromConfiguration ? undefined : 'on-request');
     const startResult = await client.request('thread/start', {
       cwd: opts.start.cwd,
       model: opts.start.model,
-      sandbox: opts.start.sandbox ?? 'workspace-write',
-      approvalPolicy: opts.start.approvalPolicy ?? 'on-request',
+      ...(sandbox ? { sandbox } : {}),
+      ...(approvalPolicy ? { approvalPolicy } : {}),
     });
     const thread = rec(rec(startResult)?.thread);
     const tid = str(thread?.id) ?? str(thread?.sessionId);
@@ -420,8 +435,8 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       opts.start.model,
       {
         ...(opts.start.model ? { model: opts.start.model } : {}),
-        approvalPolicy: opts.start.approvalPolicy ?? 'on-request',
-        sandboxPolicy: opts.start.sandbox ?? 'workspace-write',
+        ...(approvalPolicy ? { approvalPolicy } : {}),
+        ...(sandbox ? { sandboxPolicy: sandbox } : {}),
       },
       true,
     );

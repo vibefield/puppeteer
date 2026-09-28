@@ -131,6 +131,24 @@ describe('Codex TUI preparation', () => {
     await session.dispose();
   });
 
+  it("lets a typed launch's unset permissions come from the configuration, and a host's spawn keep the defaults", async () => {
+    const startOf = (call: number): { permissionDefaults?: unknown } =>
+      (fakes.createObserver.mock.calls[call]![0] as { start: { permissionDefaults?: unknown } }).start;
+
+    const typed = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: host(),
+      permissionDefaults: 'configuration',
+    });
+    expect(startOf(0)).toEqual({ cwd: '/work/repo', permissionDefaults: 'configuration' });
+    await typed.dispose();
+
+    const spawned = await createCodexTuiSession({ cwd: '/work/repo', host: host(), executable: 'codex' });
+    expect(startOf(1).permissionDefaults).toBeUndefined();
+    await spawned.dispose();
+  });
+
   it("carries typed arguments after the adapter's --remote, the prompt last, and settings to the server", async () => {
     const prepared = await prepareCodexTuiSession({
       cwd: '/work/repo',

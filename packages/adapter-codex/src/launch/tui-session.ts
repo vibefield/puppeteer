@@ -60,6 +60,14 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   model?: string | undefined;
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
   approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
+  /**
+   * Who decides the sandbox and approval policy `sandbox`/`approvalPolicy` leave unset on
+   * a fresh thread: `'adapter'` (the default) starts it with workspace-write and on-request;
+   * `'configuration'` lets the private app-server take them from its configuration, as a
+   * typed `codex` does. A typed launch passes `'configuration'`; a host's own spawn keeps
+   * the default unless it names its permissions.
+   */
+  permissionDefaults?: 'adapter' | 'configuration' | undefined;
   /** Decide structured approval requests from the controller-owned app-server connection. Default: deny. */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
@@ -149,6 +157,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
                 model: opts.model,
                 sandbox: opts.sandbox,
                 approvalPolicy: opts.approvalPolicy,
+                permissionDefaults: opts.permissionDefaults,
               },
             }),
     });

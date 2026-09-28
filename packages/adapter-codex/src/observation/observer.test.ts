@@ -199,6 +199,58 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  describe('who decides the permissions left unset', () => {
+    const configuredPermission = (projection: ReturnType<typeof projectAgentEvents>): unknown =>
+      projection.monitorBatches
+        .flatMap(({ updates }) => updates as Array<{ key?: string; value?: { raw?: unknown } }>)
+        .find(({ key }) => key === 'provider-permission-configured')?.value?.raw;
+
+    it("keeps the adapter's explicit defaults for a caller that is not a typed launch (a host's own spawn)", async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+      const projection = projectAgentEvents(obs);
+      expect(t.calls().find((call) => call.method === 'thread/start')?.params).toMatchObject({
+        cwd: '/tmp/ws',
+        sandbox: 'workspace-write',
+        approvalPolicy: 'on-request',
+      });
+      expect(configuredPermission(projection)).toBe('approval:on-request; sandbox:workspace-write');
+      projection.dispose();
+      await obs.dispose();
+    });
+
+    it("leaves them out of thread/start for a typed launch, so the app-server's configuration decides", async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({
+        transport: t.transport,
+        start: { cwd: '/tmp/ws', permissionDefaults: 'configuration' },
+      });
+      const projection = projectAgentEvents(obs);
+      const params = t.calls().find((call) => call.method === 'thread/start')?.params;
+      expect(params).toMatchObject({ cwd: '/tmp/ws' });
+      expect(params).not.toHaveProperty('sandbox');
+      expect(params).not.toHaveProperty('approvalPolicy');
+      expect(configuredPermission(projection)).toBeUndefined();
+      projection.dispose();
+      await obs.dispose();
+    });
+
+    it('sends what a typed launch named and leaves only the rest to the configuration', async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({
+        transport: t.transport,
+        start: { cwd: '/tmp/ws', sandbox: 'read-only', permissionDefaults: 'configuration' },
+      });
+      const projection = projectAgentEvents(obs);
+      const params = t.calls().find((call) => call.method === 'thread/start')?.params;
+      expect(params).toMatchObject({ cwd: '/tmp/ws', sandbox: 'read-only' });
+      expect(params).not.toHaveProperty('approvalPolicy');
+      expect(configuredPermission(projection)).toBe('sandbox:read-only');
+      projection.dispose();
+      await obs.dispose();
+    });
+  });
+
   it('keeps the observed TUI run alive and degrades monitor readiness when its app-server rail closes', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });

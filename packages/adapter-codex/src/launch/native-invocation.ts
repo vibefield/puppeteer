@@ -17,22 +17,24 @@ const CodexContinuationStateSchema = z.union([
     .refine((value) => value.home !== undefined || value.imposterRoot !== undefined),
 ]);
 
+const SANDBOXED_OR_APPROVED =
+  'it changes how commands are sandboxed or approved, which a managed session cannot pass on yet';
+
 /**
- * Settings the recipe's own thread/start parameters decide: the managed thread is
- * always started with an explicit sandbox and approval policy, so a `-c` for one of
- * these would reach the server and change nothing.
+ * Settings a typed `-c` names that the managed recipe does not carry, each with the
+ * clause a person reads. No probe has shown them reaching the thread as they do typed.
  */
-const RECIPE_DECIDES = new Set([
-  'approval_policy',
-  'approvals_reviewer',
-  'default_permissions',
-  'permissions',
-  'profile',
-  'projects',
-  'sandbox_mode',
-  'sandbox_permissions',
-  'sandbox_workspace_write',
-]);
+const NOT_CARRIED: Readonly<Record<string, string>> = {
+  approval_policy: SANDBOXED_OR_APPROVED,
+  approvals_reviewer: 'it changes who reviews approvals, which a managed session cannot pass on yet',
+  default_permissions: 'it picks a permission profile, which a managed session cannot pass on yet',
+  permissions: 'it defines a permission profile, which a managed session cannot pass on yet',
+  profile: 'it selects a settings profile, which a managed session cannot pass on yet',
+  projects: 'it changes which folders codex trusts, which a managed session cannot pass on yet',
+  sandbox_mode: SANDBOXED_OR_APPROVED,
+  sandbox_permissions: 'it grants the sandbox extra permissions, which a managed session cannot pass on yet',
+  sandbox_workspace_write: SANDBOXED_OR_APPROVED,
+};
 
 export interface CodexNativeInvocationOptions {
   resumeInvocation?: string[] | undefined;
@@ -43,6 +45,12 @@ export interface CodexNativeInvocationOptions {
   model?: string | undefined;
   sandbox?: CreateCodexTuiSessionOptions['sandbox'];
   approvalPolicy?: CreateCodexTuiSessionOptions['approvalPolicy'];
+  /**
+   * A typed launch of a new thread: the sandbox and approval policy the person did not
+   * type come from their configuration, as they do typed. Never set for a resume, which
+   * starts nothing, nor for the imposter, which has no configuration to read.
+   */
+  permissionDefaults?: 'configuration' | undefined;
   /** Typed settings for the private app-server's own command line. */
   appServerArguments?: string[] | undefined;
   /** Typed arguments for the TUI's command line, after the adapter's `--remote`. */
@@ -143,13 +151,11 @@ function carry(
           refuse(use.index, '-c needs key=value', use.token);
           continue;
         }
-        setting = value.slice(0, equals).trim();
-        if (RECIPE_DECIDES.has(setting.split('.')[0]!.replace(/^["']|["']$/gu, ''))) {
-          refuse(
-            use.index,
-            'a managed session sets the sandbox and approvals itself, so this setting would not take effect',
-            use.token,
-          );
+        // A dotted TOML key, quotes and spaces dropped: `"sandbox_mode"` is sandbox_mode.
+        setting = value.slice(0, equals).replace(/["'\s]/gu, '');
+        const family = setting.split('.')[0]!;
+        if (Object.hasOwn(NOT_CARRIED, family)) {
+          refuse(use.index, NOT_CARRIED[family]!, use.token);
           continue;
         }
       }
@@ -235,6 +241,7 @@ function carry(
   }
   if (appServerArguments.length > 0) options.appServerArguments = appServerArguments;
   if (tuiArguments.length > 0) options.tuiArguments = tuiArguments;
+  if (!session.resume && !imposter) options.permissionDefaults = 'configuration';
   return { ...(resume ? { resume } : {}), options };
 }
 
