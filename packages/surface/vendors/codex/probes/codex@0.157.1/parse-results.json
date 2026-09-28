@@ -1676,6 +1676,167 @@
       ],
       "exit": 0,
       "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"bogus\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"bogus\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"read-only\"",
+        "approval_policy = \"never\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"untrusted\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"on-failure\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "config1",
+      "typed": [
+        "-c",
+        "approval_policy=\"bogus\""
+      ],
+      "configToml": [],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration"
+    },
+    {
+      "batch": "config1",
+      "typed": [
+        "-c",
+        "approval_policy=\"untrusted\"",
+        "-c",
+        "sandbox_mode=\"danger-full-access\""
+      ],
+      "configToml": [],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-a",
+        "never",
+        "-c",
+        "sandbox_mode=\"read-only\""
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-s",
+        "workspace-write",
+        "-c",
+        "approval_policy=\"never\"",
+        "-c",
+        "sandbox_workspace_write.network_access=true",
+        "-c",
+        "sandbox_workspace_write.writable_roots=[\"/tmp/codex-extra\"]"
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-c",
+        "sandbox_workspace_write.network_access=bogus"
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-c",
+        "sandbox_mode=\"bogus\""
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"untrusted\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration",
+      "lastLine": "approval_policy = \"untrusted\" is no longer supported; remove this setting"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     under development  false"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"read-only\"",
+        "approval_policy = \"never\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     under development  false"
     }
   ]
 }

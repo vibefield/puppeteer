@@ -18,7 +18,11 @@ outside any repository, a credential-free `config.toml` pointing at a loopback R
 (`test-support/live-model.ts`), a pseudo-terminal the harness owns. No model was reached and no session file was
 written under the owner's home. The only runs against the owner's real `CODEX_HOME` were help forms
 (`codex --help`, `codex resume --help`, `codex <subcommand> --help` for all 27 subcommands); codex creates
-`$CODEX_HOME/tmp` at every start, which already existed. 23 live sessions (S1–S23) of a permitted 25.
+`$CODEX_HOME/tmp` at every start, which already existed. 35 live sessions: S1–S23 within the lane's bound of 25,
+and S24–S35 for the follow-up on the person's own permissions, on the orchestrator's allowance of 12 more — all
+hermetic. Two rollouts appeared under the owner's home during that follow-up; both are the owner's own (a
+`vscode` session born before it began and its `guardian` subagent, working in the owner's checkout), not these
+probes', whose homes were isolated.
 
 ## Method 1 — session-free parse probes
 
@@ -53,6 +57,12 @@ What clap does at 0.157.1 (batch in `parse-results.json`):
 | `-V` works after `resume`, `exec`, `fork`; `login -V` is an error | batch3 |
 | A root value before a subcommand is validated when the subcommand runs (`--sandbox bogus mcp list` → exit 2) | batch4 |
 | `codex --no-daemon` cannot be combined with `--remote` (the binary's own message) | strings |
+| The config loader rejects a bad `approval_policy`/`sandbox_mode` in `config.toml` or `-c`; `approval_policy = "untrusted"` is "no longer supported; remove this setting"; `on-failure` still loads | config1, config3 |
+| Both homes of the follow-up load, and so do its `-c`/`-s`/`-a` forms; a bad value under `-c` fails the load | config2, config3 |
+
+`config-probe.mjs` is the method behind the config batches: each case writes `config.toml` lines into an empty
+isolated `CODEX_HOME` and runs `codex [options] features list`, which loads the configuration and starts no
+session.
 
 ## Method 2 — live, hermetic
 
@@ -75,7 +85,11 @@ whether the prompt arrived; and from the PTY, whether the alternate screen was e
 output stays with the prober; `live-results.json` is a whitelisted digest of it — screens, directories and
 prompts dropped, thread ids and every other UUID redacted (UUIDv7 encodes the capture time), the worktree path
 scrubbed — and every file here passes `checkCaptureFile` from `@vibecook/puppeteer-surface/sanitize` with no
-issue. `live-cases.json` is the case list as run, prompts redacted the same way.
+issue. `live-cases.json` is the case list as run, prompts redacted the same way. From S24 on, each request also
+records `permissionsDigest` and `filesystemDigest`: the first 16 hex of the sha256 of the exact
+`<permissions instructions>` and `<filesystem>` blocks codex writes for the model (the case directory replaced
+by `<root>`). Equal digests mean the model was told, byte for byte, the same thing about its sandbox, its
+approvals and its writable roots.
 
 | # | Mode | Typed / carried | Observed |
 | --- | --- | --- | --- |
@@ -103,6 +117,25 @@ issue. `live-cases.json` is the case list as run, prompts redacted the same way.
 | S22 | recipe | `-m -s read-only -a never --no-alt-screen -c … --search --disable goals --enable multi_agent_v2 -i img -- "- <prompt>"` | every observable above at once; `--enable multi_agent_v2` swaps the `multi_agent_v1` tools for `collaboration`; the dash-leading prompt arrives |
 | S23 | recipe | `--dangerously-bypass-approvals-and-sandbox <prompt>` | = S11; the prompt arrives |
 
+The follow-up: the person's own permissions. Home A's `config.toml` sets `sandbox_mode = "read-only"` and
+`approval_policy = "never"`; home B's `sandbox_mode = "danger-full-access"` and `approval_policy = "on-request"`
+(plain values: no profiles). Digests are permissions / filesystem.
+
+| # | Home | Mode | Typed / started | Observed |
+| --- | --- | --- | --- | --- |
+| S24 | A | control | `codex` | `29dad5ed6993c5e7` / `cad731d04e12db55`: read-only, "Approval policy is currently never" |
+| S25 | A | managed | `thread/start {cwd}` — sandbox and approvalPolicy left out | = S24; the server answers `readOnly`/`never`; the TUI's `turn/start` says never |
+| S26 | A | managed | as the recipe was: explicit `workspace-write`/`on-request` | `5f3fe02bf1469a5e` / `cf88e8febcedab0d`: workspace-write, on-request — the config.toml ignored; the TUI's `turn/start` says on-request, adopting the thread's policy over its own configuration |
+| S27 | B | control | `codex` | `937f202d991330e3` / `f921d4975ea6ea88`: danger-full-access, live web search |
+| S28 | B | managed | `thread/start {cwd}`, both left out | = S27; the server answers `dangerFullAccess`/`on-request` |
+| S29 | B | control | `-a never -c sandbox_mode="read-only"` | `29dad5ed6993c5e7` / `cad731d04e12db55` (= S24) |
+| S30 | B | recipe | the same, the `-c` on both lines | the TUI refused: "Error: Permission overrides are not supported when resuming a remote task." |
+| S31 | B | control | `-s workspace-write -c approval_policy="never" -c sandbox_workspace_write.network_access=true -c 'sandbox_workspace_write.writable_roots=["<extra>"]'` | `b45c9df489c442b6` / `fcfa7dc79c8fc410`: workspace-write, never, the extra directory writable |
+| S32 | B | recipe | the same, the `-c`s on both lines | the TUI refused: "Error: sandbox_workspace_write.writable_roots overrides are not supported with --remote. Configure additional workspace roots on the server." |
+| S33 | A | recipe | `codex` (production: `permissionDefaults: 'configuration'`) | = S24 |
+| S34 | B | recipe | as S30, the permission `-c` on the app-server's line alone | = S29 |
+| S35 | B | recipe | as S32, the permission `-c`s on the app-server's line alone | = S31 |
+
 ## What they settle
 
 - **Start parameters.** `-m`, `-s`, `-a` and `--dangerously-bypass-approvals-and-sandbox` land on the thread's
@@ -112,8 +145,16 @@ issue. `live-cases.json` is the case list as run, prompts redacted the same way.
   a thread the controller already holds is ignored (S13, S14). `-c`, `--enable`, `--disable` go on the private
   app-server's own command line, where codex parses them itself, and on the TUI's, which reads its own
   (S19 = S17/S18; S22). `--search` is the server's `web_search = live` — what the typed TUI makes of it (S14,
-  S18) — plus the TUI's own flag. A `-c` for the sandbox, approvals, permissions, a profile or a project's trust
-  would be overridden by the recipe's explicit start parameters, so it is rejected.
+  S18) — plus the TUI's own flag.
+- **The person's own permissions.** Left out of `thread/start`, the sandbox and the approval policy come from
+  the app-server's own configuration, byte for byte what a typed `codex` tells the model (S24 = S25,
+  S27 = S28); the explicit defaults the recipe used to send override a `config.toml` (S26). A typed launch now
+  leaves out whichever the person did not type (S33 = S24; `-a` alone S34 = S29; `-s` alone S35 = S31).
+- **Permission settings.** `-c sandbox_mode`, `-c approval_policy` and `-c sandbox_workspace_write.*` reach the
+  thread from the app-server's line as they do typed (S34 = S29, S35 = S31). They go to that line alone: the
+  TUI refuses them on a remote resume (S30, S32) and takes the thread's policy instead (S25, S26).
+  `approvals_reviewer`, `default_permissions`, `permissions`, `sandbox_permissions`, `profile` and `projects`
+  are unprobed and stay refused.
 - **TUI.** The prompt (after `--`), `-i` with or without a prompt, and `--no-alt-screen` land on the TUI's line
   (S8/S9, S20/S21, S3/S4, S22).
 - **Rejected on evidence:** `--add-dir` (S12, S15; the start parameter needs the experimental API, S16);
@@ -139,6 +180,12 @@ issue. `live-cases.json` is the case list as run, prompts redacted the same way.
   typed `codex` on the owner's machine uses the shared daemon, a separate server, so the recipe matches it there.
 - **No typed control for `--enable`.** S22 shows the feature switched on in the managed session; that it means
   the same typed rests on the help ("Equivalent to `-c features.<name>=true`") and on `--disable`'s controls.
+- **S30 and S32 are the first recipe runs of the permission settings,** which then went to the TUI's line as
+  well; the TUI refused to start. The recipe changed (the app-server's line alone) and S34/S35 re-ran them.
+- **Home B is not `untrusted`.** 0.157.1's config loader refuses `approval_policy = "untrusted"` (config1,
+  config3), so the second home pairs `danger-full-access` with `on-request`.
+- **Three managed starts for home A, two for home B.** S26 measures the old explicit defaults once; home B has
+  no such run, as its divergence is the same explicit parameters overriding a `config.toml`.
 
 ## Rejected and unprobed — what a probe would have to show
 
@@ -152,3 +199,7 @@ issue. `live-cases.json` is the case list as run, prompts redacted the same way.
 | `resume --last --all`, a word after `--last`/`--all`, `resume <name>` | the same picker probe, per form |
 | `-c`/`--enable`/`--disable`/`--search` into `resume` | a resumed thread's settings, typed vs managed |
 | `fork` | a managed fork recipe first; there is none |
+| `-c approvals_reviewer` | the reviewer a typed thread starts with (typed-remote with `-C`, or the model's permission text if it shows), and the recipe's with the setting on the app-server's line |
+| `-c default_permissions`, `-c permissions.*` | a permission profile: typed vs the recipe (both on the app-server's line), equal permission and filesystem digests |
+| `-c sandbox_permissions` | the same comparison for the legacy list |
+| `-c profile`, `-c projects.*` | a selected settings profile, and an untrusted working directory made trusted: typed vs managed. Every probe here ran in a trusted workspace; what an untrusted directory gives typed and managed is not measured |

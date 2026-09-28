@@ -371,5 +371,197 @@
       "--dangerously-bypass-approvals-and-sandbox",
       "<redacted:prompt>"
     ]
+  },
+  {
+    "batch": "P7",
+    "case": "S24-control-configA",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": [
+      "--no-daemon"
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P7",
+    "case": "S25-managed-omitted-configA",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "start": {},
+    "paste": true
+  },
+  {
+    "batch": "P7",
+    "case": "S26-managed-explicit-configA",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "paste": true
+  },
+  {
+    "batch": "P7",
+    "case": "S27-control-configB",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "--no-daemon"
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P7",
+    "case": "S28-managed-omitted-configB",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "start": {},
+    "paste": true
+  },
+  {
+    "batch": "P8",
+    "case": "S29-control-configB-a-never-c-sandbox",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "--no-daemon",
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P8",
+    "case": "S30-recipe-configB-a-never-c-sandbox",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P8",
+    "case": "S31-control-configB-s-ww-c-approval-ww",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "--no-daemon",
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P8",
+    "case": "S32-recipe-configB-s-ww-c-approval-ww",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P8",
+    "case": "S33-recipe-configA-bare",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": [],
+    "paste": true
+  },
+  {
+    "batch": "P9",
+    "case": "S34-recipe-configB-a-never-c-sandbox-server-only",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "batch": "P9",
+    "case": "S35-recipe-configB-s-ww-c-approval-ww-server-only",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
   }
 ]

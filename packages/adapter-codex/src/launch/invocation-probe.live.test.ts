@@ -13,6 +13,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'vitest';
@@ -135,6 +136,9 @@ function summarizeModelRequest(body: unknown, root: string): Record<string, unkn
   const markers: string[] = [];
   let promptDelivered = false;
   const images: string[] = [];
+  // The exact text codex writes for the model about permissions and the filesystem: equal
+  // digests between a typed run and the managed recipe mean the model was told the same thing.
+  const blocks: Record<string, string> = {};
   for (const item of Array.isArray(record.input) ? record.input : []) {
     const message = item as { role?: unknown; content?: unknown; type?: unknown };
     const parts = Array.isArray(message.content) ? message.content : [];
@@ -143,6 +147,13 @@ function summarizeModelRequest(body: unknown, root: string): Record<string, unkn
       if (p.type === 'input_image') images.push(String(message.role));
       if (typeof p.text !== 'string') continue;
       if (p.text.includes(PROMPT)) promptDelivered = true;
+      for (const [name, pattern] of [
+        ['permissions', /<permissions instructions>[\s\S]*?<\/permissions instructions>/u],
+        ['filesystem', /<filesystem>[\s\S]*?<\/filesystem>/u],
+      ] as const) {
+        const found = pattern.exec(p.text)?.[0];
+        if (found && blocks[name] === undefined) blocks[name] = scrub(found);
+      }
       for (const line of p.text.split('\n')) {
         if (
           /sandbox_mode|approval_policy|approval|writable roots|network access|<cwd>|permission_profile/iu.test(line)
@@ -152,6 +163,8 @@ function summarizeModelRequest(body: unknown, root: string): Record<string, unkn
       }
     }
   }
+  const digest = (text: string | undefined): string | undefined =>
+    text === undefined ? undefined : createHash('sha256').update(text).digest('hex').slice(0, 16);
   return {
     model: record.model,
     tools,
@@ -162,6 +175,9 @@ function summarizeModelRequest(body: unknown, root: string): Record<string, unkn
     promptDelivered,
     images,
     markers,
+    permissionsDigest: digest(blocks.permissions),
+    filesystemDigest: digest(blocks.filesystem),
+    blocks,
   };
 }
 

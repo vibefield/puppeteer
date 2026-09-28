@@ -559,13 +559,35 @@ decide where each carried argument lands in the recipe `codex resume <thread> --
 
 The managed recipe carries `-m`/`-s`/`-a` and `--dangerously-bypass-approvals-and-sandbox` as `thread/start`
 parameters; `-c`/`--enable`/`--disable` on the private app-server's own command line (codex parses them there)
-and the TUI's; `--search` as the server's `web_search=live` plus the TUI's flag; the prompt (after `--`), `-i`
-and `--no-alt-screen` on the TUI's line. Each was compared with the typed command at the request that reaches
-the model, and the whole recipe was run through the production path.
+and the TUI's — except a sandbox or approval setting, which goes to the app-server's line alone; `--search` as
+the server's `web_search=live` plus the TUI's flag; the prompt (after `--`), `-i` and `--no-alt-screen` on the
+TUI's line. Each was compared with the typed command at the request that reaches the model, and the whole recipe
+was run through the production path.
 
-**A divergence that predates this work (unchanged — today's forms stay as they are):** the observer starts
-every managed thread with explicit `sandbox: workspace-write` and `approvalPolicy: on-request` unless the typed
-argv says otherwise, while a typed TUI starts its thread with values of its own (S18 shows it sends them
-explicitly). A `sandbox_mode` or `approval_policy` in a person's `config.toml` that differs from those defaults
-therefore holds typed and not managed — from reading `observation/observer.ts`, not probed with such a config.
-The grammar rejects a `-c` for those settings for the same reason.
+## The person's own permissions (2026-09-27, S24–S35)
+
+The first version of this section (534ed2e) recorded, from reading the observer and without a probe, that every
+managed thread started with an explicit `workspace-write` / `on-request`, so a `sandbox_mode` or
+`approval_policy` in a person's `config.toml` held typed and not managed. Measured since, with two isolated
+homes (A: `read-only` / `never`; B: `danger-full-access` / `on-request`), by digests of the exact permission and
+filesystem text codex writes for the model:
+
+- **It was a defect.** Home A typed (S24) is read-only / never; the managed thread with the explicit defaults
+  (S26) is workspace-write / on-request, and even the TUI's own `turn/start` then says on-request: **a TUI that
+  resumes a thread adopts the thread's approval policy over its own `config.toml`**.
+- **`thread/start` without `sandbox` and `approvalPolicy` takes both from the app-server's own configuration**,
+  byte for byte what a typed `codex` tells the model: S24 = S25, S27 = S28.
+- **Now:** a typed launch leaves out of `thread/start` whichever of the two the person did not type
+  (`permissionDefaults: 'configuration'`, decided in one place in `observation/observer.ts`); a host's own spawn,
+  `createCodexTuiSession` and the imposter keep the explicit defaults. Verified through the production path:
+  bare `codex` S33 = S24; `-a never` with `-c sandbox_mode="read-only"` S34 = S29; `-s workspace-write` with
+  `-c approval_policy` and `-c sandbox_workspace_write.*` S35 = S31.
+- **The TUI refuses permission overrides on a remote resume**, whatever their spelling: `-s`/`-a` (S7),
+  `-c sandbox_mode` ("Permission overrides are not supported when resuming a remote task", S30) and
+  `-c sandbox_workspace_write.writable_roots` ("not supported with --remote. Configure additional workspace roots
+  on the server", S32). So they reach a managed thread only through the server that starts it.
+- **`approval_policy = "untrusted"` is refused by 0.157.1's config loader** ("no longer supported; remove this
+  setting"); `on-failure` still loads.
+- **Not measured:** an untrusted working directory (every probe ran in a trusted one), a selected `profile`,
+  permission profiles (`default_permissions`, `permissions`), `approvals_reviewer` and `sandbox_permissions`;
+  a `-c` for any of these stays refused.
