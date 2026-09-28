@@ -20,7 +20,7 @@ import type { Transport } from '../transport/app-server-client.js';
 function controllable(
   resumeFailuresBeforeSuccess: number,
   historyResult: unknown = {},
-  options: { deferRead?: boolean } = {},
+  options: { deferRead?: boolean; deferCatalog?: boolean } = {},
 ) {
   let onMsg: ((m: unknown) => void) | undefined;
   let onCls: ((i: { code: number | null; signal: string | null }) => void) | undefined;
@@ -29,6 +29,7 @@ function controllable(
   const calls: { method?: string; params?: unknown }[] = [];
   const sent: Record<string, unknown>[] = [];
   let deferredReadId: number | undefined;
+  let deferredCatalogId: number | undefined;
   const transport: Transport = {
     send: (m) => {
       const msg = m as { id?: number; method?: string; params?: unknown };
@@ -45,6 +46,8 @@ function controllable(
           } else {
             onMsg?.({ jsonrpc: '2.0', id: msg.id, result: {} });
           }
+        } else if (msg.method === 'model/list' && options.deferCatalog) {
+          deferredCatalogId = msg.id;
         } else if (msg.method === 'thread/read') {
           if (options.deferRead) deferredReadId = msg.id;
           else onMsg?.({ jsonrpc: '2.0', id: msg.id, result: historyResult });
@@ -76,6 +79,11 @@ function controllable(
     resumeAttempts: () => resumeAttempts,
     calls: () => calls,
     sent: () => sent,
+    releaseCatalog: (result: unknown = {}) => {
+      if (deferredCatalogId === undefined) throw new Error('model/list is not pending');
+      onMsg?.({ jsonrpc: '2.0', id: deferredCatalogId, result });
+      deferredCatalogId = undefined;
+    },
     releaseRead: () => {
       if (deferredReadId === undefined) throw new Error('thread/read is not pending');
       onMsg?.({ jsonrpc: '2.0', id: deferredReadId, result: historyResult });
@@ -155,6 +163,69 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
 
     off();
+    await obs.dispose();
+  });
+
+  it('reaches native readiness without a catalog reply or fresh-thread history reads', async () => {
+    const t = controllable(0, {}, { deferCatalog: true });
+    const contextRead = vi.spyOn(rolloutContext, 'readLastCodexContextWindow');
+    try {
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws', model: 'model-a' } });
+      const projection = projectAgentEvents(obs);
+      expect(obs.sessionId).toBe('th-owned');
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(t.calls().map((call) => call.method)).not.toContain('thread/read');
+      expect(contextRead).not.toHaveBeenCalled();
+      // The model can change before optional metadata arrives. Enrich the
+      // latest identity, never restore the model from the bootstrap response.
+      const candidates: AdapterEventCandidate[] = [];
+      obs.events.onCandidate((candidate) => candidates.push(candidate));
+      t.deliver({
+        jsonrpc: '2.0',
+        method: 'thread/settings/updated',
+        params: { threadId: 'th-owned', model: 'model-b' },
+      });
+      t.releaseCatalog({
+        data: [
+          { id: 'model-a', displayName: 'A' },
+          { id: 'model-b', displayName: 'B' },
+        ],
+      });
+      await vi.waitFor(() =>
+        expect(candidates.filter((c) => c.type === 'model:updated').at(-1)?.event).toMatchObject({
+          model: { id: 'model-b', displayName: 'B' },
+        }),
+      );
+      const correction = candidates.filter((c) => c.type === 'monitor:batch').at(-1)?.event;
+      expect(correction).toMatchObject({
+        batch: {
+          phase: 'correction',
+          updates: expect.arrayContaining([
+            expect.objectContaining({
+              family: 'model',
+              key: 'observed',
+              value: expect.objectContaining({ providerModelId: 'model-b', displayName: 'B' }),
+            }),
+          ]),
+        },
+      });
+      await obs.dispose();
+    } finally {
+      contextRead.mockRestore();
+    }
+  });
+
+  it.each(['dispose', 'rail-close'] as const)('does not publish late catalog evidence after %s', async (ending) => {
+    const t = controllable(0, {}, { deferCatalog: true });
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws', model: 'model-a' } });
+    const candidates: AdapterEventCandidate[] = [];
+    obs.events.onCandidate((candidate) => candidates.push(candidate));
+    if (ending === 'dispose') await obs.dispose();
+    else t.fireClose();
+    const count = candidates.length;
+    t.releaseCatalog({ data: [{ id: 'model-a', displayName: 'A' }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(candidates).toHaveLength(count);
     await obs.dispose();
   });
 

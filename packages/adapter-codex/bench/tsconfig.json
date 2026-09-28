@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "codex-startup-baseline": ["../src/observation/observer.ts"],
+      "codex-startup-baseline-process": ["../src/transport/app-server-process.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

@@ -25,6 +25,7 @@ import {
   type AgentAdapterEventSource,
   type AgentEvent,
   type AgentEventSource,
+  type AgentModelIdentity,
   type ObservationLevel,
 } from '@vibecook/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
@@ -103,9 +104,11 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
 
   const client = new AppServerClient(opts.transport);
   const modelNames = new Map<string, string>();
+  let currentModel: AgentModelIdentity | null = null;
   const normalizer = new CodexNotificationNormalizer((modelId) => modelNames.get(modelId));
   const monitorEvidence = new CodexMonitorEvidence({
     nativeSessionId: () => sessionId,
+    pendingModelCatalog: true,
     modelDisplayName: (modelId) => modelNames.get(modelId),
   });
   let sessionId: string | undefined;
@@ -144,9 +147,18 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   emitMonitorBatch(capabilitiesBatch);
 
   function apply(event: AgentEvent, source: AgentEventSource, nativeEvent?: unknown, replay = false): void {
+    if (event.type === 'model:updated') currentModel = event.model;
     if (event.type === 'context-window:updated') contextWindowObserved = true;
     if (event.type === 'context-window:invalidated') contextWindowObserved = false;
     events.publish(event, source, nativeEvent, 'authoritative', replay);
+  }
+
+  function enrichCurrentModelName(): void {
+    const model = currentModel;
+    const displayName = model && modelNames.get(model.id);
+    if (model && displayName && model.displayName !== displayName) {
+      apply({ type: 'model:updated', model: { ...model, displayName } }, 'native-protocol', { method: 'model/list' });
+    }
   }
 
   function consumeNotification(method: string, params: Record<string, unknown>, replayed = false): void {
@@ -247,7 +259,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
    * still writing it). Controller-owned mode materializes first so this is a
    * single success.
    */
-  async function attach(threadId: string, thread: Record<string, unknown> | undefined): Promise<void> {
+  async function attach(threadId: string, thread: Record<string, unknown> | undefined, fresh = false): Promise<void> {
     if (attached || attaching) return;
     attaching = true;
     sessionId = threadId;
@@ -265,13 +277,17 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
         let history = resumed;
         applyEnvironmentFromResponse(resumed);
-        try {
-          history = rec(await client.request('thread/read', { threadId, includeTurns: true })) ?? resumed;
-          threadPath = str(rec(history?.thread)?.path) ?? threadPath;
-        } catch {
-          // History enrichment must never prevent live resume attachment.
+        if (!fresh) {
+          try {
+            history = rec(await client.request('thread/read', { threadId, includeTurns: true })) ?? resumed;
+            threadPath = str(rec(history?.thread)?.path) ?? threadPath;
+          } catch {
+            // History enrichment must never prevent live resume attachment.
+          }
         }
-        const contextWindow = threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
+        // A thread this connection just created has no prior turns or usage.
+        // Existing and externally discovered threads retain the replay barrier.
+        const contextWindow = !fresh && threadPath ? await readLastCodexContextWindow(threadPath) : undefined;
         apply({ type: 'session:started', nativeSessionId: threadId }, 'native-hook');
         // A resumed history can exceed the event source's 256-event startup
         // buffer and evict session:started (leaving the monitor "Starting").
@@ -379,21 +395,30 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
 
   await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
   client.notify('initialized');
-  try {
-    const catalog = rec(await client.request('model/list', {}));
-    const models = Array.isArray(catalog?.data) ? catalog.data : Array.isArray(catalog?.models) ? catalog.models : [];
-    for (const value of models) {
-      const model = rec(value);
-      const displayName = str(model?.displayName);
-      if (!displayName) continue;
-      const id = str(model?.id);
-      const wireModel = str(model?.model);
-      if (id) modelNames.set(id, displayName);
-      if (wireModel) modelNames.set(wireModel, displayName);
+  // Display names are optional metadata. Neither a slow catalog nor its request
+  // timeout belongs on the native thread's ready path.
+  void (async () => {
+    try {
+      const catalog = rec(await client.request('model/list', {}));
+      const models = Array.isArray(catalog?.data) ? catalog.data : Array.isArray(catalog?.models) ? catalog.models : [];
+      for (const value of models) {
+        const model = rec(value);
+        const displayName = str(model?.displayName);
+        if (!displayName) continue;
+        const id = str(model?.id);
+        const wireModel = str(model?.model);
+        if (id) modelNames.set(id, displayName);
+        if (wireModel) modelNames.set(wireModel, displayName);
+      }
+    } catch {
+      // A missing/older model-list method must not prevent session attachment.
     }
-  } catch {
-    // A missing/older model-list method must not prevent session attachment.
-  }
+    // Release retained claims even when the transport closed during lookup.
+    const catalogBatch = monitorEvidence.modelCatalogBatch(new Date().toISOString());
+    if (disposed || railClosed) return;
+    emitMonitorBatch(catalogBatch);
+    enrichCurrentModelName();
+  })();
 
   // Controller-owned bootstrap: create + materialize, or resume a known id,
   // before returning so callers can spawn `codex resume <id> --remote` with a
@@ -424,7 +449,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     // Without this, thread/resume and `codex resume --remote` fail with
     // "no rollout found" until the user types.
     await client.request('thread/inject_items', { threadId: tid, items: [...MATERIALIZE_ITEMS] });
-    await attach(tid, thread);
+    await attach(tid, thread, true);
     if (!attached) {
       await client.close();
       throw new Error(`codex observer failed to attach to owned thread ${tid}`);

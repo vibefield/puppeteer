@@ -535,6 +535,48 @@ The runtime coalesces concurrent calls per provider/account, throttles successfu
 retries after failure, and aborts outstanding work on disposal. Unsupported providers are a no-op.
 The helper never starts a session or a model turn, and one provider's failure does not stop another.
 
+### Measuring startup
+
+The opt-in native Codex benchmark lives in `packages/adapter-codex/bench`. It measures private
+app-server creation through observer readiness, which is one stage of a typed terminal launch.
+It does **not** measure the shell, gateway, TUI initialization, renderer, or physical presentation.
+
+```sh
+CODEX_STARTUP_LIVE=1 \
+CODEX_STARTUP_SAMPLES=12 \
+CODEX_STARTUP_BASELINE=<commit-before-change> \
+CODEX_STARTUP_CACHE=prewarmed \
+CODEX_STARTUP_OUT=/absolute/path/startup.json \
+pnpm --filter @vibecook/puppeteer-adapter-codex bench:startup
+```
+
+This uses the installed CLI and its native account/cache. Each sample creates an empty thread,
+never sends a model turn, and archives that thread before disposing the observer and private server.
+Set `CODEX_STARTUP_PHASE=server` to isolate spawn-to-bound-endpoint readiness; that mode creates
+no threads and its archive flag is therefore false. The default `observer` phase creates and archives
+threads. The CLI is `codex` by default (`CODEX_STARTUP_EXECUTABLE` overrides it); thread cwd defaults to the
+user home (`CODEX_STARTUP_CWD` overrides it). No protocol payloads, credentials or conversation text
+are written. Retained native disk cache is explicitly **not cache-cold**. `prewarmed` warms that cache
+before each sample, outside the measured interval; `existing` leaves it alone.
+
+The baseline and unchanged null arm load the observer and app-server process module from the chosen
+Git revision; other dependencies are shared with the current tree. This comparison is valid when
+those shared dependencies have compatible behavior. One warmup is recorded and excluded. Raw rows,
+per-method timings, source hashes, CLI/host versions, load, failures and cleanup outcomes accompany
+nearest-rank p50/p95 and paired comparisons. A difference below the p95 absolute baseline/null
+variation is reported as unresolved. Small samples do not establish a tail improvement.
+
+`CODEX_STARTUP_CATALOG_DELAY_MS` injects a delay into delivery of `model/list` replies. Use it for a
+labeled fault-injection experiment, never as a native latency result. Display names are optional
+metadata: observer readiness does not await them. A late catalog enriches current model claims only,
+without restoring stale identities, replaying usage, or publishing after transport closure/disposal.
+Fresh owned threads avoid empty history/context-log reads; resumed or externally discovered threads
+retain their history replay barrier. Native empty-inject materialization remains required before a
+fresh thread can be resumed. Server stderr activity checks whether the Unix socket actually exists;
+the 50 ms polling fallback still covers silent startup. No startup polling or socket checks
+continue after readiness. A 10 ms polling experiment did not resolve a gain above its native null
+control, so it was not retained.
+
 ## 10. Limits
 
 - **POSIX only.** The shim needs `execve`; a Windows host does not intercept. The shim's own walk needs a `ps` that

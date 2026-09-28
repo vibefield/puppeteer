@@ -2,7 +2,7 @@
   "name": "@vibecook/puppeteer-adapter-codex",
   "version": "0.1.8",
   "type": "module",
-  "description": "Codex native adapter: app-server (JSON-RPC) structured driver — notification normalizer, session driver, structured injection.",
+  "description": "Codex native adapter: app-server (JSON-RPC) structured driver \u2014 notification normalizer, session driver, structured injection.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
@@ -36,7 +36,8 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "prepack": "pnpm build",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p bench/tsconfig.json",
+    "bench:startup": "vitest run --config bench/vitest.config.ts"
   },
   "engines": {
     "node": ">=22.18.0"
