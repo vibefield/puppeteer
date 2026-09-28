@@ -17,6 +17,11 @@ const CommandNameSchema = z
   .min(1)
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u);
+const HistoryKindSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-z0-9][a-z0-9._-]*$/u);
 const EnvironmentVariableSchema = z
   .string()
   .min(1)
@@ -91,6 +96,13 @@ export type AgentNativeInvocationCapability = z.infer<typeof AgentNativeInvocati
 export const AgentLaunchProviderSchema = z.strictObject({
   ...AgentProviderDescriptorSchema.shape,
   resume: z.boolean(),
+  /**
+   * The runtime kinds an external transcript index (Rosetta's `/api/runtimes`)
+   * files this agent's native sessions under. A host joins an indexed session
+   * to the provider that resumes it through these, never through a table of
+   * its own. Absent when the agent keeps no native record such an index reads.
+   */
+  historyKinds: z.array(HistoryKindSchema).min(1).max(8).optional(),
   nativeInvocation: AgentNativeInvocationCapabilitySchema.optional(),
 });
 export type AgentLaunchProvider = z.infer<typeof AgentLaunchProviderSchema>;

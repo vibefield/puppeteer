@@ -380,6 +380,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.claude,
           resume: true,
+          historyKinds: ['claude-code'],
           nativeInvocation: {
             commands: [{ name: 'claude', executable: resolved.claude ?? 'claude' }],
             // The config root and every switch that stands for a flag: the session inherits them.
@@ -527,6 +528,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.codex,
           resume: true,
+          historyKinds: ['codex'],
           nativeInvocation: {
             commands: [{ name: 'codex', executable: resolved.codex ?? 'codex' }],
             environmentVariables: ['CODEX_HOME'],
@@ -633,6 +635,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
           resume: true,
+          historyKinds: ['grok'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'grok', executable: resolved.grok ?? 'grok' }],
@@ -709,6 +712,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
           resume: true,
+          historyKinds: ['kimi-code'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'kimi', executable: resolved.kimi ?? 'kimi' }],
@@ -792,6 +796,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
           resume: true,
+          historyKinds: ['opencode'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'opencode', executable: resolved.opencode ?? 'opencode' }],
@@ -875,6 +880,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
           resume: true,
+          historyKinds: ['antigravity'],
           nativeInvocation: {
             classifies: true,
             commands: [
@@ -967,6 +973,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
           resume: true,
+          historyKinds: ['copilot'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'copilot', executable: resolved.copilot ?? 'copilot' }],
@@ -1053,6 +1060,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
           resume: true,
+          historyKinds: ['pi'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'pi', executable: resolved.pi ?? 'pi' }],
@@ -1132,6 +1140,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,
           resume: true,
+          historyKinds: ['hermes'],
           nativeInvocation: {
             classifies: true,
             commands: [{ name: 'hermes', executable: resolved.hermes ?? 'hermes' }],

@@ -393,6 +393,7 @@ function cloneLaunch(launch: TerminalSpec): TerminalSpec {
 function cloneLaunchProvider(provider: AgentLaunchProvider): AgentLaunchProvider {
   return {
     ...provider,
+    ...(provider.historyKinds ? { historyKinds: [...provider.historyKinds] } : {}),
     ...(provider.nativeInvocation
       ? {
           nativeInvocation: {

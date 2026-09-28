@@ -1,6 +1,11 @@
 import { tmpdir } from 'node:os';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterBinding, AgentHost, AgentProfile } from '@vibecook/puppeteer-core';
+import {
+  AgentLaunchProviderSchema,
+  type AgentAdapterBinding,
+  type AgentHost,
+  type AgentProfile,
+} from '@vibecook/puppeteer-core';
 import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 
 const adapters = vi.hoisted(() => {
@@ -413,6 +418,24 @@ describe('createBuiltinProviders launch options', () => {
       expect(provider.distribution?.provider.label).toBe(provider.descriptor.label);
       expect(provider.profiles?.provider.id).toBe(provider.descriptor.id);
     }
+  });
+
+  it('names the history kind of every executable provider, each owned by one provider', () => {
+    const owners = new Map<string, string>();
+    for (const provider of createBuiltinProviders()) {
+      const kinds = AgentLaunchProviderSchema.parse(provider.launch?.provider).historyKinds;
+      if (provider.descriptor.id === 'acp') {
+        expect(kinds).toBeUndefined();
+        continue;
+      }
+      expect(kinds?.length).toBeGreaterThan(0);
+      for (const kind of kinds ?? []) {
+        expect(owners.get(kind)).toBeUndefined();
+        owners.set(kind, provider.descriptor.id);
+      }
+    }
+    expect(owners.get('claude-code')).toBe('claude');
+    expect(owners.get('kimi-code')).toBe('kimi');
   });
 
   it('prewarms Codex with the configured executable and selected account, without launching a session', async () => {
