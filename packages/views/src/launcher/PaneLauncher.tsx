@@ -35,10 +35,13 @@ import type {
 export const LAUNCHER_LEAVE_MS = 120;
 
 /**
- * The longest a click in a resting pane's field waits for the pane's own focus
- * before the field opens anyway (a window that paints no frames never settles).
+ * How many frames a click in a resting pane's field waits for the pane's own
+ * focus to land before the field opens anyway. Counted in frames, not time:
+ * a loaded host can take longer than any timeout between two frames, and a
+ * timer that fired first would open the field just before the selection's
+ * focus took it away again.
  */
-export const LAUNCHER_ACTIVATION_SETTLE_MS = 250;
+export const LAUNCHER_ACTIVATION_SETTLE_FRAMES = 4;
 
 /**
  * What `DeckLaunchers`' window key listener asks of the launcher in the
@@ -314,11 +317,12 @@ export function PaneLauncher({
   };
 
   // A pointer in a resting pane's launcher selects the pane first. Selecting it
-  // makes Ghosttea focus the pane's terminal a frame later, and that focus asks
-  // for itself again the frame after; a field that took the click's focus at
-  // once would lose it and close. So a click in the field does not focus it:
-  // the field opens two frames after the pane's own focus lands (or after
-  // `LAUNCHER_ACTIVATION_SETTLE_MS`, whichever is first).
+  // makes Ghosttea focus the pane's terminal on the next frame (a callback it
+  // queues before any of ours), and that focus queues itself once more for the
+  // frame after; a field that took the click's focus at once would lose it and
+  // close. So a click in the field does not focus it: the field opens two
+  // frames after the pane holds the keyboard, or after
+  // `LAUNCHER_ACTIVATION_SETTLE_FRAMES` if it never comes to.
   const onRootPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const activate = callbacks.current.onActivate;
     if (active || !activate) return;
@@ -327,23 +331,27 @@ export function PaneLauncher({
     event.preventDefault();
     if (pendingOpen.current) return;
     let settled = false;
+    let frames = 0;
+    let landedAt: number | undefined;
+    let frame = 0;
     const undo = (): void => {
       settled = true;
-      window.removeEventListener('focusin', onFocusIn);
-      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frame);
       if (pendingOpen.current === undo) pendingOpen.current = undefined;
     };
-    const openField = (): void => {
+    const tick = (): void => {
       if (settled) return;
+      frames += 1;
+      if (landedAt === undefined && pane.contains(document.activeElement)) landedAt = frames;
+      const ready = landedAt !== undefined ? frames - landedAt >= 2 : frames >= LAUNCHER_ACTIVATION_SETTLE_FRAMES;
+      if (!ready) {
+        frame = window.requestAnimationFrame(tick);
+        return;
+      }
       undo();
       if (alive.current) inputRef.current?.focus();
     };
-    const onFocusIn = (focus: FocusEvent): void => {
-      if (!(focus.target instanceof Node) || !pane.contains(focus.target)) return;
-      window.requestAnimationFrame(() => window.requestAnimationFrame(openField));
-    };
-    window.addEventListener('focusin', onFocusIn);
-    const timer = window.setTimeout(openField, LAUNCHER_ACTIVATION_SETTLE_MS);
+    frame = window.requestAnimationFrame(tick);
     pendingOpen.current = undo;
   };
 
