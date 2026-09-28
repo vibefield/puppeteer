@@ -278,7 +278,7 @@ let lastFocusedWindow: BrowserWindow | undefined;
 let spawnThroughGateway: SpawnThroughGateway | undefined;
 /** The shim home: per process, removed at quit. The kit owns what is inside it. */
 let spawnThroughDirectory: string | undefined;
-/** What a shell the daemon births needs: the kit's integration, which names the home and nothing else. */
+/** The kit's shell integration, for every shell the daemon births: it names the shim home, never the gateway. */
 let spawnThroughEnvironment: Record<string, string> | undefined;
 let remoteSessionsEnabled = true;
 const wiredAutomationClients = new WeakSet<GhostteaAutomationClient>();
