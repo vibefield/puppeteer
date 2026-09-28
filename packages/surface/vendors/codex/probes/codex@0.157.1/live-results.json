@@ -1,0 +1,1678 @@
+{
+  "codex": "0.157.1",
+  "sessions": [
+    {
+      "session": "S1",
+      "case": "S1-managed-baseline",
+      "batch": "P1",
+      "startedAt": null,
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>"
+      ],
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><roo"
+        ]
+      },
+      "turnRequests": 0,
+      "tuiSent": [
+        {
+          "method": "initialize"
+        },
+        {
+          "method": "initialized"
+        },
+        {
+          "method": "account/read"
+        },
+        {
+          "method": "thread/read"
+        },
+        {
+          "method": "model/list"
+        },
+        {
+          "method": "configRequirements/read"
+        },
+        {
+          "method": "collaborationMode/list"
+        },
+        {
+          "method": "hooks/list"
+        },
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "thread/turns/list"
+        },
+        {
+          "method": "thread/items/list"
+        },
+        {
+          "method": "thread/loaded/list"
+        },
+        {
+          "method": "thread/list"
+        },
+        {
+          "method": "thread/list"
+        },
+        {
+          "method": "thread/goal/get"
+        },
+        {
+          "method": "thread/read"
+        },
+        {
+          "method": "thread/turns/list"
+        },
+        {
+          "method": "skills/list"
+        },
+        {
+          "method": "plugin/list"
+        },
+        {
+          "method": "skills/list"
+        },
+        {
+          "method": "plugin/list"
+        },
+        {
+          "method": "plugin/list"
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "plugin/list"
+        },
+        {
+          "method": "config/read"
+        }
+      ],
+      "alternateScreen": null,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S2",
+      "case": "S2-control-bare",
+      "batch": "P1",
+      "startedAt": null,
+      "mode": "control",
+      "typed": [],
+      "noTurn": true,
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": null,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S3",
+      "case": "S3-managed-start-model-sandbox-approval",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:52:06.066Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--no-alt-screen"
+      ],
+      "threadStart": {
+        "model": "probe-model-x",
+        "sandbox": "read-only",
+        "approvalPolicy": "never"
+      },
+      "threadStartAnswer": {
+        "model": "probe-model-x",
+        "sandbox": {
+          "type": "readOnly",
+          "networkAccess": false
+        },
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "probe-model-x",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "never",
+            "model": "probe-model-x",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "probe-model-x",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": false,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S4",
+      "case": "S4-control-model-sandbox-approval",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:52:17.830Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "-m",
+        "probe-model-x",
+        "-s",
+        "read-only",
+        "-a",
+        "never",
+        "--no-alt-screen"
+      ],
+      "request": {
+        "model": "probe-model-x",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": null,
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": false,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S5",
+      "case": "S5-managed-tui-config-search-adddir",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:52:28.129Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--add-dir",
+        "<root>/extra"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "outcome": "timed out waiting for TUI drawn",
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": null,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S6",
+      "case": "S6-control-config-search-adddir",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:53:35.803Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--add-dir",
+        "<root>/extra"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": "high",
+        "reasoningSummary": null,
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/extra`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root><root><root>/extra</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><path><root>/extra</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/extra/.git</path></entry><entry access=\"read\"><path><r"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S7",
+      "case": "S7-managed-tui-model-sandbox-approval",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:53:48.001Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "-m",
+        "probe-model-y",
+        "-s",
+        "read-only",
+        "-a",
+        "never"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "noTurn": true,
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S8",
+      "case": "S8-managed-prompt-image",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:55:00.439Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "<redacted:prompt>",
+        "--remote",
+        "<addr>",
+        "-i",
+        "<root>/workspace/pixel.png"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [
+          "user"
+        ],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "image",
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S9",
+      "case": "S9-control-prompt-image",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:55:10.600Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "<redacted:prompt>",
+        "-i",
+        "<root>/workspace/pixel.png"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": null,
+        "promptDelivered": true,
+        "imagesFrom": [
+          "user"
+        ],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S10",
+      "case": "S10-managed-start-danger-never",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:55:23.335Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>"
+      ],
+      "threadStart": {
+        "sandbox": "danger-full-access",
+        "approvalPolicy": "never"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "dangerFullAccess"
+        },
+        "approvalPolicy": "never",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"disabled\"><file_system type=\"unrestricted\" /></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "never",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S11",
+      "case": "S11-control-bypass",
+      "batch": "P2",
+      "startedAt": "2026-09-28T00:55:38.249Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "--dangerously-bypass-approvals-and-sandbox"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": null,
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"disabled\"><file_system type=\"unrestricted\" /></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S12",
+      "case": "S12-typed-remote-config-search-adddir-disable",
+      "batch": "P3",
+      "startedAt": "2026-09-28T00:58:47.115Z",
+      "mode": "typed-remote",
+      "typed": [
+        "--remote",
+        "<addr>",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--add-dir",
+        "<root>/extra",
+        "--disable",
+        "goals"
+      ],
+      "outcome": "the TUI exited before the prompt could be pasted",
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": false,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S13",
+      "case": "S13-managed-tui-config",
+      "batch": "P3",
+      "startedAt": "2026-09-28T00:58:53.950Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "-c",
+        "model_reasoning_effort=high"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "model_reasoning_effort": "high",
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S14",
+      "case": "S14-managed-tui-search",
+      "batch": "P3",
+      "startedAt": "2026-09-28T00:59:06.332Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--search"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "live"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S15",
+      "case": "S15-managed-tui-adddir",
+      "batch": "P3",
+      "startedAt": "2026-09-28T00:59:18.376Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--add-dir",
+        "<root>/extra"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "outcome": "the TUI exited before the prompt could be pasted",
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": false,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S16",
+      "case": "S16-managed-appserver-config-roots",
+      "batch": "P4",
+      "startedAt": "2026-09-28T01:04:18.033Z",
+      "mode": "managed",
+      "appServerArguments": [
+        "-c",
+        "model_reasoning_effort=high",
+        "-c",
+        "web_search=live",
+        "--disable",
+        "goals"
+      ],
+      "outcome": "thread/start.runtimeWorkspaceRoots requires experimentalApi capability",
+      "request": null,
+      "turnRequests": 0,
+      "tuiSent": [],
+      "alternateScreen": null,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S17",
+      "case": "S17-control-config-search-adddir-disable",
+      "batch": "P4",
+      "startedAt": "2026-09-28T01:04:21.391Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--add-dir",
+        "<root>/extra",
+        "--disable",
+        "goals"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": "high",
+        "reasoningSummary": null,
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/extra`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root><root><root>/extra</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><path><root>/extra</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/extra/.git</path></entry><entry access=\"read\"><path><r"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S18",
+      "case": "S18-typed-remote-config-search-disable",
+      "batch": "P4",
+      "startedAt": "2026-09-28T01:04:32.218Z",
+      "mode": "typed-remote",
+      "typed": [
+        "--remote",
+        "<addr>",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--disable",
+        "goals"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": "high",
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `<worktree>/packages/adapter-codex`, `/private/tmp`, `<root>/tmp`.",
+          "user: <filesystem><workspace_roots><root><worktree>/packages/adapter-codex</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><worktree>/packages/adapter-codex</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><worktree>/packages/adapter-codex/.git</path></entry><entry access=\"read\"><path><volume path>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+            "sandbox": "workspace-write",
+            "cwdSent": false,
+            "config": {
+              "web_search": "live",
+              "features": {
+                "goals": false
+              },
+              "model_reasoning_effort": "high"
+            },
+            "threadSource": "user",
+            "ephemeral": false
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": "high",
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S19",
+      "case": "S19-managed-appserver-config-search-disable",
+      "batch": "P5",
+      "startedAt": "2026-09-28T01:06:30.197Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--disable",
+        "goals"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "appServerArguments": [
+        "-c",
+        "model_reasoning_effort=high",
+        "-c",
+        "web_search=live",
+        "--disable",
+        "goals"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": "high",
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "features": {
+                "goals": false
+              },
+              "web_search": "live",
+              "model_reasoning_effort": "high"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": "high",
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S20",
+      "case": "S20-managed-image-no-prompt",
+      "batch": "P5",
+      "startedAt": "2026-09-28T01:06:49.736Z",
+      "mode": "managed",
+      "typed": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--image=<root>/workspace/pixel.png"
+      ],
+      "threadStart": {
+        "sandbox": "workspace-write",
+        "approvalPolicy": "on-request"
+      },
+      "threadStartAnswer": {
+        "model": "puppeteer-codex-live",
+        "sandbox": {
+          "type": "workspaceWrite",
+          "writableRoots": [],
+          "networkAccess": false,
+          "excludeTmpdirEnvVar": false,
+          "excludeSlashTmp": false
+        },
+        "approvalPolicy": "on-request",
+        "approvalsReviewer": "user"
+      },
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": false,
+        "imagesFrom": [
+          "user"
+        ],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 2,
+      "tuiSent": [
+        {
+          "method": "thread/resume",
+          "params": {
+            "model": null,
+            "sandbox": null,
+            "approvalPolicy": null,
+            "config": {
+              "web_search": "cached"
+            }
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "image"
+            ]
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "the turn",
+            "approvalPolicy": "on-request",
+            "model": "puppeteer-codex-live",
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": 1,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        },
+        {
+          "method": "thread/start",
+          "params": {
+            "model": "puppeteer-codex-live",
+            "approvalPolicy": "never",
+            "approvalsReviewer": null,
+            "sandbox": "read-only",
+            "cwdSent": true,
+            "config": "(the title thread’s own feature switches)",
+            "threadSource": "thread_title",
+            "ephemeral": true
+          }
+        },
+        {
+          "method": "turn/start",
+          "params": {
+            "purpose": "thread title",
+            "approvalPolicy": null,
+            "model": null,
+            "effort": null,
+            "sandboxPolicy": null,
+            "workspaceRoots": null,
+            "inputTypes": [
+              "text"
+            ]
+          }
+        }
+      ],
+      "alternateScreen": true,
+      "processesSweptAfter": 2
+    },
+    {
+      "session": "S21",
+      "case": "S21-control-image-no-prompt",
+      "batch": "P5",
+      "startedAt": "2026-09-28T01:07:07.465Z",
+      "mode": "control",
+      "typed": [
+        "--no-daemon",
+        "-i",
+        "<root>/workspace/pixel.png"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": false
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": null,
+        "promptDelivered": false,
+        "imagesFrom": [
+          "user"
+        ],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `writable_roots`. Editing files in other directories requires approval. Network access is restricted.",
+          "developer: The writable roots are `/private/tmp`, `<root>/tmp`, `<root>/workspace`.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry><entry access=\"write\"><path><root>/workspace</path></entry><entry access=\"write\"><special>:slash_tmp</special></entry><entry access=\"write\"><special>:tmpdir</special></entry><entry access=\"read\"><path><root>/workspace/.git</path></entry><entry access=\"read\"><path><root>/workspace/.agents</path></entry><entry access=\"read\"><path><root>/workspace/.codex</path></entry></file_system></permission_profile></"
+        ]
+      },
+      "turnRequests": 2,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S22",
+      "case": "S22-recipe-everything-carried",
+      "batch": "P6",
+      "startedAt": "2026-09-28T01:30:11.908Z",
+      "mode": "recipe",
+      "typed": [
+        "-m",
+        "probe-model-x",
+        "-s",
+        "read-only",
+        "-a",
+        "never",
+        "--no-alt-screen",
+        "-c",
+        "model_reasoning_effort=high",
+        "--search",
+        "--disable",
+        "goals",
+        "--enable",
+        "multi_agent_v2",
+        "-i",
+        "<root>/workspace/pixel.png",
+        "--",
+        "<redacted:prompt>"
+      ],
+      "normalized": {
+        "model": "probe-model-x",
+        "sandbox": "read-only",
+        "approvalPolicy": "never",
+        "prompt": "<redacted:prompt>",
+        "appServerArguments": [
+          "--config=model_reasoning_effort=high",
+          "--config=web_search=live",
+          "--disable=goals",
+          "--enable=multi_agent_v2"
+        ],
+        "tuiArguments": [
+          "--no-alt-screen",
+          "--config=model_reasoning_effort=high",
+          "--search",
+          "--disable=goals",
+          "--enable=multi_agent_v2",
+          "--image=<root>/workspace/pixel.png"
+        ]
+      },
+      "tuiLaunch": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--no-alt-screen",
+        "--config=model_reasoning_effort=high",
+        "--search",
+        "--disable=goals",
+        "--enable=multi_agent_v2",
+        "--image=<root>/workspace/pixel.png",
+        "--",
+        "<redacted:prompt>"
+      ],
+      "request": {
+        "model": "probe-model-x",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:collaboration",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": "high",
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [
+          "user"
+        ],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `read-only`: The sandbox only permits reading files. Network access is restricted.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"managed\"><file_system type=\"restricted\"><entry access=\"read\"><special>:root</special></entry></file_system></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": false,
+      "processesSweptAfter": 0
+    },
+    {
+      "session": "S23",
+      "case": "S23-recipe-bypass-prompt",
+      "batch": "P6",
+      "startedAt": "2026-09-28T01:30:27.872Z",
+      "mode": "recipe",
+      "typed": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "<redacted:prompt>"
+      ],
+      "normalized": {
+        "sandbox": "danger-full-access",
+        "approvalPolicy": "never",
+        "prompt": "<redacted:prompt>"
+      },
+      "tuiLaunch": [
+        "resume",
+        "<thread>",
+        "--remote",
+        "<addr>",
+        "--",
+        "<redacted:prompt>"
+      ],
+      "request": {
+        "model": "puppeteer-codex-live",
+        "tools": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search"
+        ],
+        "webSearch": {
+          "type": "web_search",
+          "external_web_access": true
+        },
+        "reasoningEffort": null,
+        "reasoningSummary": "auto",
+        "promptDelivered": true,
+        "imagesFrom": [],
+        "permissionLines": [
+          "developer: Filesystem sandboxing defines which files can be read or written. `sandbox_mode` is `danger-full-access`: No filesystem sandboxing - all commands are permitted. Network access is enabled.",
+          "developer: Approval policy is currently never. Do not provide the `sandbox_permissions` for any reason, commands will be rejected.",
+          "user: <filesystem><workspace_roots><root><root>/workspace</root></workspace_roots><permission_profile type=\"disabled\"><file_system type=\"unrestricted\" /></permission_profile></filesystem>"
+        ]
+      },
+      "turnRequests": 1,
+      "tuiSent": [],
+      "alternateScreen": true,
+      "processesSweptAfter": 1
+    }
+  ]
+}

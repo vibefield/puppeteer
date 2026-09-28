@@ -522,3 +522,50 @@ real leaks in the legacy C1 app-server capture and
 public repo. Both are now sanitized and the gate is clean. That is twice this
 capture has been found leaking by a rule written for something else, which is
 the argument for the sanitizer's deliberately broad defaults.
+
+---
+
+# C7 — The typed invocation at 0.157.1 (2026-09-27)
+
+**Probed:** 2026-09-27, `codex-cli` **0.157.1**, macOS arm64: 163 session-free parse probes and 23 hermetic
+live sessions (isolated `CODEX_HOME`, loopback model, no account). Record and results:
+`probes/codex@0.157.1/`. They classify every option and subcommand of `codex --help` and
+`codex resume --help` for a managed launch (`packages/adapter-codex/src/launch/invocation-grammar.ts`), and
+decide where each carried argument lands in the recipe `codex resume <thread> --remote <addr>`.
+
+## What changed in the topology since C6
+
+- **A typed `codex` now runs on a shared daemon.** `daemon_auto_start` is a stable, on-by-default feature: a
+  bare `codex` installs a copy of itself under `$CODEX_HOME/packages/app-server-daemon/` and starts
+  `codex app-server --listen unix:// --managed-daemon` detached, with its control socket at
+  `$CODEX_HOME/app-server-control/app-server-control.sock`, and the TUI joins it. `--no-daemon` runs the server
+  in the TUI's own process; `--no-daemon` cannot be combined with `--remote`.
+- **A TUI on `--remote` does not start what it resumes.** On `resume <id> --remote` it sends `thread/resume`
+  with `model`, `sandbox` and `approvalPolicy` null and `config` = its own overrides; the server does not apply
+  that config to a thread it already holds (a typed `-c model_reasoning_effort=high` or `--search` given only to
+  the TUI never reaches the model). In each `turn/start` the TUI repeats the thread's own approval policy, model
+  and effort — it adopts the thread's settings.
+- **What the TUI refuses on a remote resume:** `-s`/`-a` ("Permission overrides are not supported when resuming
+  a remote task") and `--add-dir` ("not supported with --remote. Configure additional workspace roots on the
+  server"). `thread/start.runtimeWorkspaceRoots` requires the `experimentalApi` capability.
+- **A bare `--remote` TUI sends no `cwd`** in its `thread/start`: the server works in its own directory.
+- **`--search` is `web_search = "live"`**: the TUI's own translation, in the `config` it sends.
+- **The prompt and images.** `resume <id> <prompt> --remote` submits the prompt at once, images from `-i` with
+  it; `-i` without a prompt is submitted as its own first turn — typed and managed alike.
+- **`reasoning.summary`**: a thread on a separate server (the daemon, the managed recipe, a typed `--remote`)
+  asks for `summary: auto`; an in-process `--no-daemon` session sends none.
+
+## Consequences for the adapter
+
+The managed recipe carries `-m`/`-s`/`-a` and `--dangerously-bypass-approvals-and-sandbox` as `thread/start`
+parameters; `-c`/`--enable`/`--disable` on the private app-server's own command line (codex parses them there)
+and the TUI's; `--search` as the server's `web_search=live` plus the TUI's flag; the prompt (after `--`), `-i`
+and `--no-alt-screen` on the TUI's line. Each was compared with the typed command at the request that reaches
+the model, and the whole recipe was run through the production path.
+
+**A divergence that predates this work (unchanged — today's forms stay as they are):** the observer starts
+every managed thread with explicit `sandbox: workspace-write` and `approvalPolicy: on-request` unless the typed
+argv says otherwise, while a typed TUI starts its thread with values of its own (S18 shows it sends them
+explicitly). A `sandbox_mode` or `approval_policy` in a person's `config.toml` that differs from those defaults
+therefore holds typed and not managed — from reading `observation/observer.ts`, not probed with such a config.
+The grammar rejects a `-c` for those settings for the same reason.
