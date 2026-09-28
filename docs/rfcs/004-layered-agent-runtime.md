@@ -125,18 +125,31 @@ Native launch grammar is another adapter concern. Each built-in provider may exp
 
 - a Zod-validated `AgentLaunchProvider` descriptor for resume support, intercepted command names, a complete safe
   environment allow-list, and any conformance-gated Imposter topology;
-- a pure native-invocation normalizer implemented in that adapter's `launch/native-invocation.ts`;
+- a pure native-invocation normalizer implemented in that adapter's `launch/native-invocation.ts`, which also says
+  what each invocation is (below);
 - an optional continuation codec for credential-free provider state such as an effective configuration, durable
   Imposter root, or data root. The opaque JSON is validated by a strict, versioned adapter-owned Zod schema.
 
 Runtime exposes `spawn()` and `resume({ continuation })` to products. `AgentContinuation` is one opaque persisted value;
 products do not reconstruct native argv or `agentOptions`. It exposes only a generic `native | imposter` identity;
 provider topology remains opaque. Terminal hosts use the separate `launchProviders()` →
-`prepareInvocation()` → `adoptPrepared()` SPI. The host authenticates requests, finds the containing terminal, resolves
-trusted executables/state roots, and performs `exec`; the adapter parses argv and chooses hooks, app servers, ACP,
-sockets, durable logs, private HTTP/SSE services, or gateway attachment. A host builds that path from the
-`@vibecook/puppeteer-runtime/spawn-through` kit — the shim, its launchers and shell integration, the rendezvous and the
-loopback gateway — and supplies only its terminals, runtime and records (`docs/guides/spawn-through-hosts.md`).
+`prepareInvocation()` → `adoptPrepared()` SPI, with `classifyInvocation()` to ask first what an invocation is. The
+host authenticates requests, finds the containing terminal, resolves trusted executables/state roots, and performs
+`exec`; the adapter parses argv and chooses hooks, app servers, ACP, sockets, durable logs, private HTTP/SSE services,
+or gateway attachment. A host builds that path from the `@vibecook/puppeteer-runtime/spawn-through` kit — the shim,
+its launchers and shell integration, the rendezvous and the loopback gateway — and supplies only its terminals,
+runtime and records (`docs/guides/spawn-through-hosts.md`).
+
+What an invocation is, only the adapter says. Its normalizer answers `accepted` for an interactive session in this
+process that the managed launch carries; `passthrough` for one that is no session at all, with its kind — `utility`
+runs no agent, `one-shot` runs one non-interactively in this process, `elsewhere` starts or opens one that does not live
+in this process; and `rejected` for a session the managed launch cannot carry, naming the `argument` it could not.
+`classifyInvocation()` asks exactly that and prepares nothing; `prepareInvocation()` answers a passthrough with
+`NATIVE_INVOCATION_PASSTHROUGH` and a rejection with `INVALID_NATIVE_INVOCATION`. An adapter declares
+`nativeInvocation.classifies: true` only when its normalizer tells every utility, one-shot and elsewhere invocation from
+a session, so that its `rejected` means a session it cannot carry. The boundary is fixed: the adapter states the fact;
+a host owns the policy for its own terminals, where a strict host refuses an interactive session it cannot manage; the
+kit never refuses what is not a session in a terminal the host owns. Neither Runtime nor the kit holds a CLI grammar.
 
 Godview therefore contains no built-in provider list, native resume parser, environment branch, transport switch,
 Imposter allow-list, or provider label switch. A repository-wide production-source check rejects provider mechanics and

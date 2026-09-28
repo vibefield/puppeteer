@@ -820,6 +820,22 @@ Add focused tests for:
 
 Use synthetic builders in the adapter’s `test-support/`; load real captured truth only from Surface-owned fixtures in tests that are explicitly validating the projection.
 
+### 7.6 Classify every native invocation
+
+A terminal host hands `launch/native-invocation.ts` whatever a person typed after the command name and acts on its answer alone: it manages the session, runs the command as typed, or — when strict, in one of its own terminals — refuses it. So the normalizer says what every invocation is, not only how to carry a session:
+
+| Answer                          | What the invocation is                                         | For example                                                                      |
+| ------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `accepted`                      | an interactive session in this process, every argument carried | the bare command; a resume                                                       |
+| `passthrough`, kind `utility`   | it runs no agent                                               | `--version`, `--help`, a login or management subcommand                          |
+| `passthrough`, kind `one-shot`  | it runs the agent non-interactively, in this process           | a print or exec mode                                                             |
+| `passthrough`, kind `elsewhere` | it starts or opens an agent that does not live in this process | a background, cloud, or attach command                                           |
+| `rejected`, with `argument`     | an interactive session the managed launch cannot carry         | an option the managed recipe cannot pass on, or one the vendor does not document |
+
+Classify from the vendor’s grammar, held as data. The Codex adapter is the reference: `packages/adapter-codex/src/launch/invocation-grammar.ts` has one row per option and subcommand of the release’s `--help` — its arity, its class, where a carried option lands in the managed recipe, and the evidence that decided it — and one walker that reads argv the way the vendor’s own parser does. A census beside it (`invocation-grammar.test.ts`) holds every row to that help, captured verbatim in `__fixtures__/`, in both directions: an option the help shows without a row fails, and so does a row the help does not show unless a recorded probe found it hidden. A new release therefore fails with exactly the options and subcommands that are new or changed until each is classed on evidence, and the probes that settle a row are recorded under `packages/surface/vendors/<vendor>/probes/`. An option the grammar does not know is `rejected`, never guessed at.
+
+Then declare `classifies: true` on the launch descriptor’s `nativeInvocation`. It is a promise a strict host relies on: such a host gives a launcher only to agents whose adapters classify, and in its own terminals it refuses every interactive invocation the adapter rejects — so an adapter that answers `rejected` for its own `--version` would refuse a person’s version query. Leave the flag absent until every utility, one-shot, and elsewhere invocation answers `passthrough`, and test each class.
+
 ---
 
 ## 8. Use the normalization devkit as the design loop
@@ -959,8 +975,8 @@ Update:
   - one `AgentProvider` entry with a strict `{ id, label }` descriptor;
   - optional adapter-owned `AccountUsageService` composition;
   - `createSession` and optional `prepareSession`;
-  - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, and any
-    conformant Imposter topology;
+  - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, any
+    conformant Imposter topology, and `classifies` once the normalizer classifies every invocation (§7.6);
   - `launch.normalizeInvocation` delegated to the adapter's `launch/native-invocation.ts`;
   - an opaque, credential-free continuation codec when resume depends on an agent home/configuration root or
     implementation topology. Its JSON payload crosses persistence and therefore uses a strict, versioned Zod schema;
@@ -976,9 +992,10 @@ executables, raw environment maps, app-server wiring, native resume argv, or pro
 Runtime registration makes provider-neutral identity and launch capability available to consumers. Godview discovers
 provider ids and display labels through `providers()` and `launchProviders()`, and builds its terminal host on the
 spawn-through kit (`@vibecook/puppeteer-runtime/spawn-through`, [the host guide](spawn-through-hosts.md)): the kit
-creates shims from declared commands, forwards only declared environment names, authenticates, hands the intent to
-`prepareInvocation()`, and adopts, falls back or `exec`s; Godview supplies PID-to-terminal matching, its records and the
-exit report. Neither parses vendor argv, chooses adapter transports, or assembles provider options.
+creates shims from declared commands, forwards only declared environment names, authenticates, asks
+`classifyInvocation()` what the intent is before it hands a session to `prepareInvocation()`, and adopts, falls back or
+`exec`s; Godview supplies PID-to-terminal matching, its records and the exit report. Neither parses vendor argv, chooses
+adapter transports, or assembles provider options.
 
 Resume uses the `AgentContinuation` returned on every `AgentSessionInfo`: persist it opaquely and pass it to
 `runtime.resume()`. Product snapshots must not split it back into provider id, native session id, and launch
@@ -1237,7 +1254,7 @@ This is the review checklist for files commonly missed during a first adaptation
 
 ### Product applications
 
-- [ ] launch descriptor, native-invocation normalizer, continuation codec, and adjacent adapter tests
+- [ ] launch descriptor, native-invocation normalizer with its invocation grammar and help census, continuation codec, and adjacent adapter tests
 - [ ] Godview product branding only; no provider mechanics in shim, spawn-through, or restore
 - [ ] product-app typecheck, tests, bundle, and smoke for every app changed
 
