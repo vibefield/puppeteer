@@ -634,6 +634,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'grok', executable: resolved.grok ?? 'grok' }],
             environmentVariables: ['GROK_HOME'],
             imposter: { state: 'isolated-root' },
@@ -709,6 +710,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'kimi', executable: resolved.kimi ?? 'kimi' }],
             environmentVariables: ['KIMI_CODE_HOME'],
             imposter: { state: 'isolated-root' },
@@ -791,6 +793,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'opencode', executable: resolved.opencode ?? 'opencode' }],
             environmentVariables: ['XDG_DATA_HOME'],
             imposter: { state: 'isolated-root' },
@@ -873,6 +876,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [
               { name: 'agy', executable: resolved.antigravity ?? 'agy' },
               { name: 'antigravity', executable: resolved.antigravity ?? 'agy' },
@@ -964,6 +968,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'copilot', executable: resolved.copilot ?? 'copilot' }],
             environmentVariables: ['COPILOT_HOME'],
             imposter: { state: 'isolated-root' },
@@ -1049,6 +1054,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'pi', executable: resolved.pi ?? 'pi' }],
             environmentVariables: ['PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR'],
             imposter: { state: 'isolated-root' },
@@ -1127,6 +1133,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,
           resume: true,
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'hermes', executable: resolved.hermes ?? 'hermes' }],
             environmentVariables: ['HERMES_HOME'],
           },

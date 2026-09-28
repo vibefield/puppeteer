@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
 import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
 
@@ -18,17 +19,27 @@ export function normalizeHermesNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<HermesNativeInvocationOptions> {
   if (invocation.providerId !== 'hermes') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   if (invocation.implementation.kind === 'imposter') {
     return { status: 'rejected', reason: 'Hermes does not advertise a conformant pane imposter' };
   }
   let resume: string | undefined;
   const options: HermesNativeInvocationOptions = {};
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     if (argument === '--resume') {
-      const value = invocation.argv[index + 1];
-      if (resume || !value || value === '.' || value === '..' || !SAFE_NATIVE_SESSION_ID.test(value)) {
-        return { status: 'rejected', reason: 'custom arguments are not compatible with the managed Hermes launch' };
+      const value = argv[index + 1];
+      if (
+        resume ||
+        !value ||
+        value === 'latest' ||
+        value === '.' ||
+        value === '..' ||
+        !SAFE_NATIVE_SESSION_ID.test(value)
+      ) {
+        return { status: 'rejected', reason: 'the managed Hermes launch requires an exact session id', argument };
       }
       resume = value;
       index += 1;
@@ -38,7 +49,7 @@ export function normalizeHermesNativeInvocation(
       options.yolo = true;
       continue;
     }
-    return { status: 'rejected', reason: 'custom arguments are not compatible with the managed Hermes launch' };
+    return { status: 'rejected', reason: 'the managed Hermes launch requires an exact session id', argument };
   }
   const home = invocation.environment.HERMES_HOME;
   if (home) options.hermesHome = resolve(invocation.cwd, home);

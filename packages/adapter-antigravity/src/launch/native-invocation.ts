@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
 import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
 const SAFE_ID = /^[A-Za-z0-9._-]+$/u;
@@ -33,32 +34,37 @@ export function normalizeAntigravityNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<AntigravityNativeInvocationOptions> {
   if (invocation.providerId !== 'antigravity') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
   const options: AntigravityNativeInvocationOptions = {};
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     const separator = argument.indexOf('=');
     const flag = separator < 0 ? argument : argument.slice(0, separator);
     const inlineValue = separator < 0 ? undefined : argument.slice(separator + 1);
     if (flag === '--conversation') {
-      const value = inlineValue ?? invocation.argv[++index];
-      if (resume || !value || !SAFE_ID.test(value)) return { status: 'rejected', reason: REJECTED };
+      const value = inlineValue ?? argv[++index];
+      if (resume || !value || value === '.' || value === '..' || value.startsWith('-') || !SAFE_ID.test(value))
+        return { status: 'rejected', reason: REJECTED, argument };
       resume = value;
       continue;
     }
     if (flag === '--dangerously-skip-permissions') {
-      if (inlineValue !== undefined || options.skipPermissions) return { status: 'rejected', reason: REJECTED };
+      if (inlineValue !== undefined || options.skipPermissions)
+        return { status: 'rejected', reason: REJECTED, argument };
       options.skipPermissions = true;
       continue;
     }
     if (flag === '--sandbox') {
-      if (inlineValue !== undefined || options.sandbox) return { status: 'rejected', reason: REJECTED };
+      if (inlineValue !== undefined || options.sandbox) return { status: 'rejected', reason: REJECTED, argument };
       options.sandbox = true;
       continue;
     }
     if (flag === '--add-dir') {
-      const value = inlineValue ?? invocation.argv[++index];
-      if (!value || value.startsWith('-')) return { status: 'rejected', reason: REJECTED };
+      const value = inlineValue ?? argv[++index];
+      if (!value || value.startsWith('-')) return { status: 'rejected', reason: REJECTED, argument };
       (options.addDirs ??= []).push(resolve(invocation.cwd, value));
       continue;
     }
@@ -74,13 +80,13 @@ export function normalizeAntigravityNativeInvocation(
               : flag === '--project'
                 ? 'project'
                 : undefined;
-    const value = field ? (inlineValue ?? invocation.argv[++index]) : undefined;
+    const value = field ? (inlineValue ?? argv[++index]) : undefined;
     if (!field || !value || value.startsWith('-') || options[field] !== undefined)
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     if (field === 'effort' && !['low', 'medium', 'high'].includes(value))
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     if (field === 'mode' && !['default', 'accept-edits', 'plan'].includes(value))
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     (options as Record<string, unknown>)[field] = value;
   }
   const home = invocation.environment.PUPPETEER_ANTIGRAVITY_HOME;

@@ -17,12 +17,14 @@ const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): 
 
 describe('Copilot native invocation normalization', () => {
   it('keeps resume distinct from fresh session identity', () => {
-    expect(
-      normalizeCopilotNativeInvocation(invocation(['--resume=session-1', '--name=named-session', '--allow-all'])),
-    ).toEqual({
+    expect(normalizeCopilotNativeInvocation(invocation(['--resume=session-1', '--allow-all']))).toEqual({
       status: 'accepted',
       resume: 'session-1',
-      options: { name: 'named-session', allowAll: true },
+      options: { allowAll: true },
+    });
+    expect(normalizeCopilotNativeInvocation(invocation(['--resume=session-1', '--name=named-session']))).toMatchObject({
+      status: 'rejected',
+      argument: '--name',
     });
     expect(normalizeCopilotNativeInvocation(invocation(['--session-id', 'fresh-session'])).status).toBe('rejected');
     expect(normalizeCopilotNativeInvocation(invocation(['--resume', '../escape'])).status).toBe('rejected');

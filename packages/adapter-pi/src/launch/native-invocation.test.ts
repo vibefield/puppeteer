@@ -17,7 +17,7 @@ const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): 
 
 describe('Pi native invocation normalization', () => {
   it('accepts the documented session selector and rejects the interactive picker as managed resume', () => {
-    expect(normalizePiNativeInvocation(invocation(['--session=01abcdef', '--thinking=high']))).toEqual({
+    expect(normalizePiNativeInvocation(invocation(['--session', '01abcdef', '--thinking', 'high']))).toEqual({
       status: 'accepted',
       resume: '01abcdef',
       options: { thinking: 'high' },

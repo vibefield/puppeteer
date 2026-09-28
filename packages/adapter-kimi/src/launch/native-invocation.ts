@@ -1,9 +1,10 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
 import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
 import type { KimiPermissionMode } from '../driver.js';
 
-const SESSION_FLAGS = new Set(['-S', '-r', '--resume', '--session']);
+const SESSION_FLAGS = new Set(['--session']);
 const SAFE_NATIVE_SESSION_ID = /^[A-Za-z0-9._-]+$/u;
 const REJECTED = 'custom arguments are not compatible with the managed Kimi launch';
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
@@ -37,27 +38,30 @@ export function normalizeKimiNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<KimiNativeInvocationOptions> {
   if (invocation.providerId !== 'kimi') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
   const options: KimiNativeInvocationOptions = {};
 
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     if (SESSION_FLAGS.has(argument)) {
-      const value = invocation.argv[index + 1];
+      const value = argv[index + 1];
       if (resume || !value || value === '.' || value === '..' || !SAFE_NATIVE_SESSION_ID.test(value)) {
-        return { status: 'rejected', reason: REJECTED };
+        return { status: 'rejected', reason: REJECTED, argument };
       }
       resume = value;
       index += 1;
       continue;
     }
     if (argument === '--yolo' || argument === '--auto') {
-      if (options.permissionMode) return { status: 'rejected', reason: REJECTED };
+      if (options.permissionMode) return { status: 'rejected', reason: REJECTED, argument };
       options.permissionMode = argument === '--yolo' ? 'yolo' : 'auto';
       continue;
     }
     if (argument === '--plan') {
-      if (options.plan) return { status: 'rejected', reason: REJECTED };
+      if (options.plan) return { status: 'rejected', reason: REJECTED, argument };
       options.plan = true;
       continue;
     }
@@ -69,15 +73,20 @@ export function normalizeKimiNativeInvocation(
           : argument === '--agent-file'
             ? 'agentFile'
             : undefined;
-    const value = field ? invocation.argv[index + 1] : undefined;
+    const value = field ? argv[index + 1] : undefined;
     if (!field || !value || value.startsWith('-') || options[field] !== undefined) {
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     }
     options[field] = value;
     index += 1;
   }
 
-  if (resume && (options.agent || options.agentFile)) return { status: 'rejected', reason: REJECTED };
+  if ((resume && (options.agent || options.agentFile)) || (options.agent && options.agentFile))
+    return {
+      status: 'rejected',
+      reason: 'session and agent selection cannot be combined',
+      argument: options.agentFile ? '--agent-file' : '--agent',
+    };
   const nativeHome = invocation.environment.KIMI_CODE_HOME;
   if (nativeHome) options.kimiHome = resolve(invocation.cwd, nativeHome);
   if (invocation.implementation.kind === 'imposter') {

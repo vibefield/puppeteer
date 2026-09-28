@@ -265,6 +265,20 @@ classify answers `rejected` for its own version query too, and a strict host wou
 launcher only to agents whose adapters classify** (read the flag from `runtime.launchProviders()`); typed by name, any
 other agent runs as the shell runs it. Absent reads as `false`.
 
+The builtin vendor providers now classify: Claude Code, Codex, Grok, Kimi, OpenCode, Hermes,
+Antigravity, Copilot, and Pi. ACP remains a protocol provider without a command launcher.
+Each adapter owns its versioned grammar and captured help under `src/launch/`; option and command
+censuses hold that grammar to its evidence. Classification is separate from the support ledger's
+native-TUI promotion status. See [the rollout and validation record](strict-agent-rollout.md).
+
+The seven newer grammars preserve their adapters' existing launch subsets, with native aliases
+normalized into those same options. Unsupported interactive prompts, configuration overrides,
+session pickers, and other unpreserved options are refused with the argument named. They are
+never silently removed. Utilities and explicit non-interactive modes still run as typed.
+In particular, Hermes's `-p` selects a profile, `chat -q` can seed an interactive session, and
+`sessions browse` can relaunch into one; Pi's parser does not recognize `--option=value`; and
+Antigravity checks whole help/version tokens even after `--`. These are adapter rules, not host policy.
+
 ### Why a strict host never refuses outside its own terminals
 
 The launcher's directory leaks. A shell the host births puts the shim directory at the head of `PATH`, and every
