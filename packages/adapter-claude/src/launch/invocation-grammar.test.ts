@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  CLAUDE_BLINDING_TOKENS,
   CLAUDE_INVOCATION_GRAMMAR_VERSION,
   CLAUDE_OPTIONS,
   CLAUDE_SUBCOMMANDS,
@@ -186,6 +187,19 @@ describe('Claude invocation grammar: the classes', () => {
     expect(read('--system-prompt', '--safe-mode')).toEqual({ ...blind, argument: '--safe-mode' });
     // After `--` it is a prompt.
     expect(read('--', '--bare')).toMatchObject({ status: 'accepted', prompt: ['--bare'] });
+    // Where the raw scan does not reach — nothing is read past an unknown token — the rows refuse.
+    expect(read('--bare', '--yolo')).toEqual({ ...blind, argument: '--bare' });
+    expect(read('--safe-mode', '--yolo')).toEqual({ ...blind, argument: '--safe-mode' });
+    // The raw scan and the table say the same thing.
+    for (const token of CLAUDE_BLINDING_TOKENS) {
+      expect(
+        CLAUDE_OPTIONS.find((row) => row.names.includes(token)),
+        token,
+      ).toMatchObject({
+        class: 'rejected',
+        why: blind.reason,
+      });
+    }
   });
 
   it('rejected: identity and place', () => {
