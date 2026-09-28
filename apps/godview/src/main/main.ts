@@ -3,7 +3,6 @@ import {
   accessSync,
   chmodSync,
   constants,
-  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -119,12 +118,17 @@ import {
   setRestoredSessionAlias,
 } from './session-recovery.js';
 import {
+  materializeShims,
   prepareSpawnThroughLaunch,
+  shellIntegrationEnvironment,
   startSpawnThroughGateway,
+  watchProcessExit,
+  writeRendezvous,
   type SpawnThroughGateway,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
-} from './spawn-through.js';
+} from '@vibecook/puppeteer-runtime/spawn-through';
+import { containingTerminalSession } from './containing-terminal.js';
 import { orderNativeTabs } from './native-tab-order.js';
 import { resolveProcessCwd } from './process-cwd.js';
 import { GodviewTabRegistry } from './tab-registry.js';
@@ -270,13 +274,16 @@ let systemShutdownRequested = false;
 let recoveringBackend: Promise<void> | undefined;
 let lastFocusedWindow: BrowserWindow | undefined;
 let spawnThroughGateway: SpawnThroughGateway | undefined;
+/** The shim home: per process, removed at quit. The kit owns what is inside it. */
 let spawnThroughDirectory: string | undefined;
-let spawnThroughEnvironment: NodeJS.ProcessEnv | undefined;
+/** What a shell the daemon births needs: the kit's integration, which names the home and nothing else. */
+let spawnThroughEnvironment: Record<string, string> | undefined;
 let remoteSessionsEnabled = true;
 const wiredAutomationClients = new WeakSet<GhostteaAutomationClient>();
 const managedTerminalIds = new Set<string>();
 const exitCleanups = new Set<Promise<unknown>>();
-const adoptedProcessMonitors = new Map<string, NodeJS.Timeout>();
+/** Each adopted agent's exit watch, by its terminal: the function stops it. */
+const adoptedProcessMonitors = new Map<string, () => void>();
 const adoptedPreparationSessions = new Map<string, string>();
 const pendingTerminalHandoffs = new Map<string, { window: BrowserWindow; timer: NodeJS.Timeout }>();
 
@@ -755,20 +762,10 @@ function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
 }
 
 function stopAdoptedProcessMonitor(runtimeSessionId: string): void {
-  const timer = adoptedProcessMonitors.get(runtimeSessionId);
-  if (timer) clearInterval(timer);
+  adoptedProcessMonitors.get(runtimeSessionId)?.();
   adoptedProcessMonitors.delete(runtimeSessionId);
   for (const [preparationId, sessionId] of adoptedPreparationSessions) {
     if (sessionId === runtimeSessionId) adoptedPreparationSessions.delete(preparationId);
-  }
-}
-
-function processIsAlive(processId: number): boolean {
-  try {
-    process.kill(processId, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 
@@ -793,18 +790,15 @@ function finishAdoptedProcess(runtimeSessionId: string, reason = 'process-exited
 function monitorAdoptedProcess(runtimeSessionId: string, processId: number, preparationId: string): void {
   stopAdoptedProcessMonitor(runtimeSessionId);
   adoptedPreparationSessions.set(preparationId, runtimeSessionId);
-  const timer = setInterval(() => {
-    if (processIsAlive(processId)) return;
-    clearInterval(timer);
-    // Ghosttea's session-exited event carries completed/crashed/requested
-    // termination semantics. Give that authoritative event one bounded turn
-    // before the PID poller falls back to an unknown process exit.
-    const fallback = setTimeout(() => finishAdoptedProcess(runtimeSessionId), ADOPTED_PROCESS_EXIT_GRACE_MS);
-    fallback.unref?.();
-    adoptedProcessMonitors.set(runtimeSessionId, fallback);
-  }, 500);
-  timer.unref?.();
-  adoptedProcessMonitors.set(runtimeSessionId, timer);
+  // Ghosttea's session-exited event carries completed/crashed/requested
+  // termination semantics. Give that authoritative event one bounded turn
+  // before the PID watch falls back to an unknown process exit.
+  adoptedProcessMonitors.set(
+    runtimeSessionId,
+    watchProcessExit(processId, { graceMs: ADOPTED_PROCESS_EXIT_GRACE_MS }, () =>
+      finishAdoptedProcess(runtimeSessionId),
+    ),
+  );
 }
 
 function restoreManifestPath(): string {
@@ -1573,8 +1567,14 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
     return { action: 'ack' };
   }
   await ensureBackend();
+  // The session resolveTerminal matched is the one onAdopted records: the kit asks for it first.
+  let terminal: SessionSummary | undefined;
   return prepareSpawnThroughLaunch(request, {
     runtime: agentRuntime,
+    resolveTerminal: async ({ pid, parentPid }) => {
+      terminal = containingTerminalSession(await backend!.automation.listSessions(), { pid, parentPid });
+      return terminal && { terminalSessionId: terminal.id };
+    },
     imposterBin: () => imposterExecutable,
     imposterStateRoot: (providerId) => {
       const directory = join(app.getPath('userData'), 'imposter', providerId);
@@ -1582,8 +1582,8 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       chmodSync(directory, 0o700);
       return directory;
     },
-    listSessions: () => backend!.automation.listSessions(),
-    onAdopted: ({ info: adopted, session, processId, preparationId }) => {
+    onAdopted: ({ info: adopted, processId, preparationId }) => {
+      const session = terminal!;
       // Adoption is synchronous, so a project seen before is dealt at once and
       // a new folder is folded afterwards and the record re-broadcast.
       const known = projectRegistry.known(projectSource(adopted.workspace));
@@ -1623,41 +1623,28 @@ async function initializeSpawnThrough(): Promise<void> {
   const canUseImposter = launchProviders.some((provider) => provider.nativeInvocation?.imposter !== undefined);
   const names = [...availableNames, ...(canUseImposter ? ['ai'] : [])];
   if (names.length === 0) return;
+  const home = join(app.getPath('temp'), `godview-agent-shims-${process.pid}`);
+  rmSync(home, { recursive: true, force: true });
+  spawnThroughDirectory = home;
+  // The launchers run the shim on this app's own binary as Node: Godview has no
+  // other Node to name, and a pane's PATH may hold none, or one too old to exec.
+  await materializeShims({
+    home,
+    names,
+    script: join(__dirname, 'agent-shim.cjs'),
+    runtime: { command: process.execPath, env: { ELECTRON_RUN_AS_NODE: '1' } },
+  });
   const token = randomBytes(32).toString('hex');
-  spawnThroughGateway = await startSpawnThroughGateway(token, handleSpawnThroughRequest);
-  spawnThroughDirectory = join(app.getPath('temp'), `godview-agent-shims-${process.pid}`);
-  rmSync(spawnThroughDirectory, { recursive: true, force: true });
-  mkdirSync(spawnThroughDirectory, { recursive: true, mode: 0o700 });
-  for (const name of names) {
-    const destination = join(spawnThroughDirectory, name);
-    copyFileSync(join(__dirname, 'agent-shim.cjs'), destination);
-    chmodSync(destination, 0o700);
-  }
-  const zDotDirectory = join(spawnThroughDirectory, 'zdot');
-  mkdirSync(zDotDirectory, { recursive: true, mode: 0o700 });
-  for (const file of ['.zshenv', '.zprofile', '.zshrc', '.zlogin']) {
-    writeFileSync(
-      join(zDotDirectory, file),
-      [
-        '_puppeteer_zdotdir="${PUPPETEER_ORIGINAL_ZDOTDIR:-$HOME}"',
-        `if [[ -r "$_puppeteer_zdotdir/${file}" ]]; then source "$_puppeteer_zdotdir/${file}"; fi`,
-        'export PATH="$PUPPETEER_SHIM_DIR:$PATH"',
-        'unset _puppeteer_zdotdir',
-        '',
-      ].join('\n'),
-      { mode: 0o600 },
-    );
-  }
-  spawnThroughEnvironment = {
-    PUPPETEER_SPAWN_PORT: String(spawnThroughGateway.port),
-    PUPPETEER_SPAWN_TOKEN: token,
-    PUPPETEER_SHIM_DIR: spawnThroughDirectory,
-    PUPPETEER_ORIGINAL_ZDOTDIR: process.env.ZDOTDIR ?? '',
-    PUPPETEER_LAUNCH_PROVIDERS: JSON.stringify(launchProviders),
-    ...(imposterExecutable ? { PUPPETEER_IMPOSTER_EXECUTABLE: imposterExecutable } : {}),
-    PATH: `${spawnThroughDirectory}${delimiter}${originalPath}`,
-    ZDOTDIR: zDotDirectory,
-  };
+  spawnThroughGateway = await startSpawnThroughGateway({ token, handle: handleSpawnThroughRequest });
+  // Not strict: no host turns it on before PU-9a (docs/guides/spawn-through-hosts.md §7).
+  await writeRendezvous(home, {
+    port: spawnThroughGateway.port,
+    token,
+    strict: false,
+    launchProviders,
+    imposterExecutable,
+  });
+  spawnThroughEnvironment = shellIntegrationEnvironment({ home, shell: defaultShell(), environment: process.env });
 }
 
 function usableCwd(value: unknown): string | undefined {

@@ -80,14 +80,16 @@ await Promise.all([
     target: 'node22',
     external: ['electron'],
   }),
+  // The spawn-through shim is the kit's, bundled into the one CommonJS file
+  // materializeShims copies into the shim home. No shebang: the launcher
+  // execs the runtime Godview names on it.
   build({
     ...shared,
-    entryPoints: [join(root, 'src/shim/agent-shim.ts')],
+    entryPoints: [requireFromGodview.resolve('@vibecook/puppeteer-runtime/spawn-through/shim')],
     outfile: join(dist, 'agent-shim.cjs'),
     platform: 'node',
     format: 'cjs',
     target: 'node22',
-    banner: { js: '#!/usr/bin/env node' },
   }),
   build({
     ...shared,
