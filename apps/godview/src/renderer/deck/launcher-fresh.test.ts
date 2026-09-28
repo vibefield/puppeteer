@@ -103,6 +103,24 @@ describe('replacing the fresh shell (QL-D8)', () => {
     expect(planLauncherReplace(panes, 'fresh', rule)).toEqual(expected);
   });
 
+  it('selects again the pane the person moved to during the launch', () => {
+    const panes = [pane('p1', 'fresh'), pane('p2', 'other')];
+    expect(planLauncherReplace(panes, 'fresh', unused, 'p2')).toEqual({
+      place: 'mount',
+      terminate: false,
+      restoreSessionId: 'other',
+    });
+    // Still on the launcher's pane, or none known: nothing to restore.
+    expect(planLauncherReplace(panes, 'fresh', unused, 'p1')).toEqual({ place: 'mount', terminate: false });
+    expect(planLauncherReplace(panes, 'fresh', unused, undefined)).toEqual({ place: 'mount', terminate: false });
+    // The pane closed and the agent is split in: the selection stays where the person put it.
+    expect(planLauncherReplace([pane('p2', 'other')], 'fresh', unused, 'p2')).toEqual({
+      place: 'add',
+      terminate: false,
+      restoreSessionId: 'other',
+    });
+  });
+
   it('asks the reaper’s rule about the fresh shell itself', () => {
     const asked: string[] = [];
     planLauncherReplace([pane('p1', 'fresh', { exited: true })], 'fresh', (candidate) => {

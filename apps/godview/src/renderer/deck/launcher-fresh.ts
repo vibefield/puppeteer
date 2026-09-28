@@ -71,15 +71,25 @@ export interface LauncherReplacePlan {
    * only when the pane it leaves was the last one showing it.
    */
   terminate: boolean;
+  /**
+   * The session of the pane that was selected when the agent arrived, when
+   * that was not the launcher's pane: the person moved on during a slow
+   * launch, and placing the agent (which selects its pane) must not take
+   * the selection from them. Selected again right after.
+   */
+  restoreSessionId?: string;
 }
 
 export function planLauncherReplace<Session extends PaneUseSession>(
-  panes: readonly { session: Session }[],
+  panes: readonly { id: string; session: Session }[],
   freshSessionId: string,
   used: (session: Session) => boolean,
+  activePaneId?: string | undefined,
 ): LauncherReplacePlan {
   const showing = panes.filter((pane) => pane.session.id === freshSessionId);
+  const active = panes.find((pane) => pane.id === activePaneId);
+  const restore = active && active.session.id !== freshSessionId ? { restoreSessionId: active.session.id } : {};
   const [first] = showing;
-  if (!first) return { place: 'add', terminate: false };
-  return { place: 'mount', terminate: showing.length === 1 && used(first.session) };
+  if (!first) return { place: 'add', terminate: false, ...restore };
+  return { place: 'mount', terminate: showing.length === 1 && used(first.session), ...restore };
 }

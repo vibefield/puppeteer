@@ -71,6 +71,20 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * A selected pane takes the keyboard into its terminal a frame later. When
+ * the keyboard was in the host's own chrome (outside every pane) as an agent
+ * arrived, it goes back there once that has happened.
+ */
+function keepHostFocus(focused: Element | null): void {
+  if (!(focused instanceof HTMLElement) || focused === document.body || focused.closest('[data-pane-id]')) return;
+  window.requestAnimationFrame(() =>
+    window.requestAnimationFrame(() => {
+      if (focused.isConnected && document.activeElement !== focused) focused.focus({ preventScroll: true });
+    }),
+  );
+}
+
 export interface AppDeckLaunchersProps {
   deckRef: RefObject<HTMLElement | null>;
   workspace: GhostteaWorkspaceContext | undefined;
@@ -121,21 +135,30 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
   const profileByKey = useRef(new Map<string, string>());
 
   const port = useMemo<LauncherPort>(() => {
-    /** Mount `session` where the fresh shell was, after the launcher's leave; the shell is ended (above). */
+    /**
+     * Mount `session` where the fresh shell was, after the launcher's leave;
+     * the shell is ended (above). A Godview tab is its own window and
+     * renderer, so the workspace here is always the one the launch started
+     * in: a tab switch during a launch cannot aim the mount at another tab.
+     */
     const replace = (freshSessionId: string, session: SessionSummary): void => {
       window.setTimeout(() => {
         const current = latest.current.workspace;
         if (!current) return;
-        const plan = planLauncherReplace(current.panes, freshSessionId, latest.current.used);
+        const plan = planLauncherReplace(current.panes, freshSessionId, latest.current.used, current.activePaneId);
+        const focused = document.activeElement;
         if (plan.place === 'add') {
           // The pane closed while the agent started: keep the agent on screen.
           current.addSession(session);
-          return;
+        } else {
+          // Ghosttea mounts into the ACTIVE pane; activating the shell's pane first targets it.
+          current.activateSession(freshSessionId);
+          current.mountSession(session);
+          if (plan.terminate) runtime.terminate(freshSessionId);
         }
-        // Ghosttea mounts into the ACTIVE pane; activating the shell's pane first targets it.
-        current.activateSession(freshSessionId);
-        current.mountSession(session);
-        if (plan.terminate) runtime.terminate(freshSessionId);
+        // Placing the agent selected its pane; the person had moved on during the launch.
+        if (plan.restoreSessionId) current.activateSession(plan.restoreSessionId);
+        keepHostFocus(focused);
       }, LAUNCHER_LEAVE_MS);
     };
     const settle = (freshSessionId: string, result: CreateAgentSessionResult): LauncherOutcome => {
