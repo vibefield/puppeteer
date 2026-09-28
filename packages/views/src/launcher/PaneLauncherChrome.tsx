@@ -1,4 +1,4 @@
-import type { CSSProperties, FocusEvent as ReactFocusEvent, ReactNode, Ref } from 'react';
+import type { CSSProperties, FocusEvent as ReactFocusEvent, ReactNode, RefObject } from 'react';
 import type { SnippetSegment } from '../find/find-model.js';
 import { AgentIcon } from '../icons/AgentIcon.js';
 import {
@@ -49,7 +49,12 @@ export interface PaneLauncherChromeProps {
   busy?: LauncherBusy | undefined;
   /** One line under the rows: why a launch or a resume was refused. */
   failure?: string | undefined;
-  inputRef?: Ref<HTMLInputElement> | undefined;
+  /**
+   * The field's element. An object ref, not `Ref<T>`: a host type-checking
+   * this source against its own copy of `@types/react` would otherwise meet
+   * two unrelated callback-ref cleanup types (a `unique symbol` each).
+   */
+  inputRef?: RefObject<HTMLInputElement | null> | undefined;
   onQueryChange?: ((query: string) => void) | undefined;
   onOpen?: (() => void) | undefined;
   onFieldBlur?: ((event: ReactFocusEvent<HTMLInputElement>) => void) | undefined;
