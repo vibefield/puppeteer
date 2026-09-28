@@ -364,6 +364,27 @@ describe('Kimi Code extensions', () => {
     expect(inventory.items).toEqual([]);
     expect(inventory.unread).toBeUndefined();
   });
+
+  it("reads a skill's type past a crafted run of spaces in one pass, and still drops a comment after it", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    // no `#` after the run, where `\s+#.*$` would backtrack over it from every space
+    await write(
+      join(root, 'skills', 'crafted', 'SKILL.md'),
+      skill('crafted', 'A crafted type line', `type: flow${' '.repeat(20_000)}x\n`),
+    );
+    await write(
+      join(root, 'skills', 'commented', 'SKILL.md'),
+      skill('commented', 'Slash only', 'type: flow  # a note\n'),
+    );
+    const started = performance.now();
+    const inventory = ExtensionInventorySchema.parse(
+      await createKimiExtensionService({ home, env: {}, now }).inventory(managedProfile(root)),
+    );
+    expect(performance.now() - started).toBeLessThan(2_000);
+    // a type Kimi does not load leaves the skill out; a comment after a loaded one does not
+    expect(inventory.items.map((item) => item.id)).toEqual(['commented']);
+  });
 });
 
 // ── acts (RFC 006 C2) ──
@@ -464,6 +485,97 @@ describe('Kimi extension acts', () => {
         reason: 'not-own',
         message: 'It comes with the kimi-datasource plugin and changes with it',
       });
+    }
+  });
+});
+
+// ── installs and marketplaces (RFC 006 C2) ──
+
+const EVERY_ACT = ['enable', 'disable', 'remove', 'sign-in', 'sign-out', 'add', 'update', 'purge', 'install'] as const;
+const actMarketplace = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'marketplace',
+    id: 'owner/kimi-plugins',
+    name: 'owner/kimi-plugins',
+    origin: 'own',
+    enabled: true,
+    source: 'owner/kimi-plugins',
+    ...fields,
+  }) as never;
+
+describe('Kimi installs and marketplaces', () => {
+  it('installs a plugin only inside the app, from its catalog tabs or from a source there', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const work = actProfile('managed', '/p');
+    // as the runtime hands a catalog entry: the plugin as Kimi would hold it once installed
+    const listed = { id: 'kimi-webbridge', name: 'Kimi WebBridge', marketplace: 'kimi' };
+    expect(
+      ExtensionActPlanSchema.parse(
+        kimi.plan!(work, actPlugin({ id: 'kimi-webbridge', name: 'Kimi WebBridge' }), 'install', { listed }),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: 'kimi-webbridge' },
+      act: 'install',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi Code installs plugins only inside the app: `/plugins`, from its Official and Curated tabs',
+    });
+    const source = 'https://github.com/obra/superpowers';
+    expect(
+      ExtensionActPlanSchema.parse(
+        kimi.plan!(work, actPlugin({ id: source, name: source }), 'install', { source, holds: ['kimi-datasource'] }),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: source },
+      act: 'install',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi Code installs one from a folder or an address inside the app: `/plugins install <path-or-url>`',
+    });
+  });
+
+  it('has no marketplace to add, fetch again or remove: its one catalog is inside the app', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    for (const act of EVERY_ACT) {
+      expect(ExtensionActPlanSchema.parse(kimi.plan!(actProfile('managed', '/p'), actMarketplace(), act)), act).toEqual(
+        {
+          target: { kind: 'marketplace', id: 'owner/kimi-plugins' },
+          act,
+          available: false,
+          reason: 'unsupported',
+          message: 'Kimi Code has one catalog, inside the app',
+        },
+      );
+    }
+    // nothing to read without the network, so no catalog; and still no marketplaces kind
+    expect(kimi.catalog).toBeUndefined();
+    expect(kimi.provider.support).not.toHaveProperty('marketplaces');
+  });
+
+  it('answers every act on every kind with a plan the schema takes, and never throws', () => {
+    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const items = [
+      actPlugin(),
+      actMarketplace(),
+      actServer(),
+      actSkill({ linkTarget: '/Users/test/kept/release-notes' }),
+    ];
+    const options = [
+      undefined,
+      { source: 'https://github.com/obra/superpowers', holds: [] },
+      { listed: { id: 'kimi-datasource', name: 'kimi-datasource', marketplace: 'kimi' } },
+      { keepIn: '/Users/test/kept/elsewhere' },
+    ];
+    for (const profile of [actProfile('managed', '/p'), actProfile('native-default', '/Users/test/.kimi-code')]) {
+      for (const item of items) {
+        for (const act of EVERY_ACT) {
+          for (const option of options) {
+            const { kind, id } = item as { kind: string; id: string };
+            const plan = ExtensionActPlanSchema.parse(kimi.plan!(profile, item, act, option));
+            expect(plan, `${kind} ${act}`).toMatchObject({ target: { kind, id }, act });
+          }
+        }
+      }
     }
   });
 });

@@ -97,6 +97,11 @@ export const PluginItemSchema = z.strictObject({
   /** Its homepage or repository, as {@link describeMcpUrl} renders an address: nothing that could be a secret. */
   homepage: NonEmptyStringSchema.optional(),
   brings: PluginPartsSchema.optional(),
+  /**
+   * The agent keeps it at this version — an exact package version, a commit
+   * or tag it was installed at — and its own update never moves it.
+   */
+  pinned: z.literal(true).optional(),
 });
 export type PluginItem = z.infer<typeof PluginItemSchema>;
 
@@ -249,6 +254,18 @@ export const ExtensionKindSupportSchema = z.strictObject({
    * `--pure`). What the inventory says is on is on for those runs alone.
    */
   hostedSkips: z.literal(true).optional(),
+  /**
+   * What the agent takes as a source when a person gives one, in its own
+   * words: for plugins, what it installs one from (a package, a repository, a
+   * folder); for marketplaces, where it adds a catalog from. Absent, it takes
+   * none: its plugins come only from its marketplaces.
+   */
+  sources: z.string().trim().min(1).max(256).optional(),
+  /**
+   * For plugins: the agent lists plugins it could install in catalogs a host
+   * can read ({@link ExtensionService.catalog}).
+   */
+  catalog: z.literal(true).optional(),
 });
 export type ExtensionKindSupport = z.infer<typeof ExtensionKindSupportSchema>;
 
@@ -274,6 +291,187 @@ export const ExtensionFailureSchema = z.strictObject({
   retryable: z.boolean(),
 });
 export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
+
+/*
+ * RFC 006 C2 — catalogs. What a profile's agent could install: the plugins
+ * listed by the marketplaces it knows, read from the catalogs it already
+ * fetched — files it keeps, or its protocol's local listing. Reading a catalog
+ * never fetches one: it is as fresh as the agent's last fetch of it
+ * (`updatedAt`), and that fetch is an act of the agent's own, `update` on the
+ * marketplace. A catalog carries no secret: an address is masked as a server's
+ * is, and a listing's own text is description, never instruction.
+ */
+
+/**
+ * What a listed plugin would bring, by name, as its catalog entry says before
+ * it is installed: beside a plugin's parts, its servers and skills, and the
+ * tools it gives the agent where the agent names them (Hermes).
+ */
+export const CatalogPartsSchema = z.strictObject({
+  ...PluginPartsSchema.shape,
+  servers: z.array(PartNameSchema).max(64).optional(),
+  skills: z.array(PartNameSchema).max(256).optional(),
+  tools: z.array(PartNameSchema).max(256).optional(),
+});
+export type CatalogParts = z.infer<typeof CatalogPartsSchema>;
+
+/**
+ * What the agent asks, or does, before a listed plugin's code runs, said
+ * ahead where the catalog says so:
+ * - `look`: the agent shows what the plugin adds and asks before installing it.
+ * - `command`: its source is a command the agent runs to fetch it, and the
+ *   agent asks the person to accept that command first (so it installs only in
+ *   a terminal the person answers).
+ * - `fetch`: a package manager fetches it, running its install scripts as
+ *   the person — the command, as a person reads it.
+ * - `values`: it asks for values (keys, tokens) by these names when installed.
+ * - `consent`: it declares what it may do, and the agent asks consent when it
+ *   is turned on — for these `capabilities`, where the catalog names them.
+ * - `scan`: the agent scans its code when it installs it, and refuses what it
+ *   finds dangerous.
+ * - `sign-in`: the apps it uses ask for a sign-in the first time a session
+ *   uses them.
+ */
+export const CatalogAskSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('look') }),
+  z.strictObject({ kind: z.literal('command'), command: NonEmptyStringSchema }),
+  z.strictObject({ kind: z.literal('fetch'), command: NonEmptyStringSchema }),
+  z.strictObject({ kind: z.literal('values'), names: z.array(z.string().trim().min(1).max(128)).min(1).max(32) }),
+  z.strictObject({
+    kind: z.literal('consent'),
+    capabilities: z.array(z.string().trim().min(1).max(256)).min(1).max(16).optional(),
+  }),
+  z.strictObject({ kind: z.literal('scan') }),
+  z.strictObject({ kind: z.literal('sign-in'), apps: z.array(z.string().trim().min(1).max(128)).min(1).max(16) }),
+]);
+export type CatalogAsk = z.infer<typeof CatalogAskSchema>;
+
+export const CatalogPluginSchema = z.strictObject({
+  /**
+   * The id the agent's inventory gives the plugin once it is installed: what
+   * an `install` names, and how a host tells a listed plugin is held.
+   */
+  id: ItemIdSchema,
+  name: z.string().trim().min(1).max(256),
+  /** The marketplace item that lists it. */
+  marketplace: ItemIdSchema,
+  description: z.string().trim().min(1).max(2_048).optional(),
+  author: z.string().trim().min(1).max(256).optional(),
+  category: z.string().trim().min(1).max(64).optional(),
+  /** The version the catalog lists: what an install or an update takes. Semver, or a commit where the marketplace pins one. */
+  version: z.string().trim().min(1).max(128).optional(),
+  /** Its homepage or repository, as {@link describeMcpUrl} renders an address. */
+  homepage: NonEmptyStringSchema.optional(),
+  brings: CatalogPartsSchema.optional(),
+  /** The agent features it, first in its own list. */
+  featured: z.literal(true).optional(),
+  asks: z.array(CatalogAskSchema).max(8).optional(),
+  /**
+   * Why the agent will not install it in this profile, in its own words: an
+   * organization's policy, a removal from its catalog, a platform it does not
+   * run on.
+   */
+  blocked: NonEmptyStringSchema.optional(),
+  /**
+   * The plugin the agent holds from this entry, by its inventory id — the
+   * agent's own record of what it installed from where, which can name the
+   * plugin its own way. Present: it is installed.
+   */
+  held: ItemIdSchema.optional(),
+  /**
+   * The copy the agent holds is older than what the catalog lists, by the
+   * agent's own rule — its version, or the commit it pins. Only with `held`.
+   */
+  newer: z.literal(true).optional(),
+});
+export type CatalogPlugin = z.infer<typeof CatalogPluginSchema>;
+
+export const CatalogMarketplaceSchema = z.strictObject({
+  /** The marketplace item's id: the same key the inventory gives it. */
+  id: ItemIdSchema,
+  name: z.string().trim().min(1).max(256),
+  /** Where its catalog comes from: `owner/repo`, an address, or a folder. */
+  source: NonEmptyStringSchema.optional(),
+  /** When the agent last fetched its catalog. */
+  updatedAt: TimestampSchema.optional(),
+  /**
+   * `own`: added by the person; `bundled`: the agent's own, which it adds
+   * itself; `managed`: an organization's or an app's; `borrowed`: another
+   * agent's, which this agent reads (`lender`).
+   */
+  origin: ExtensionOriginSchema,
+  /** The agent whose marketplace this agent reads; only with origin `borrowed`. */
+  lender: AgentProviderIdSchema.optional(),
+  /** Every profile of the agent reads it from one place. */
+  shared: z.literal(true).optional(),
+  /** Its catalog could not be read, and why; none of its plugins are listed. */
+  unread: NonEmptyStringSchema.optional(),
+});
+export type CatalogMarketplace = z.infer<typeof CatalogMarketplaceSchema>;
+
+/**
+ * A marketplace the agent adds by itself later — the first time it runs in a
+ * profile — which this profile does not have yet. With a `source`, a host may
+ * add it sooner with the agent's own add; without one, it is only said (an
+ * add of the host's would stand beside the one the agent makes).
+ */
+export const CatalogSuggestionSchema = z.strictObject({
+  name: z.string().trim().min(1).max(256),
+  source: NonEmptyStringSchema.optional(),
+  /** When the agent adds it itself, in its words. */
+  message: NonEmptyStringSchema,
+});
+export type CatalogSuggestion = z.infer<typeof CatalogSuggestionSchema>;
+
+export const ExtensionCatalogSchema = z
+  .strictObject({
+    provider: AgentProviderIdSchema,
+    profileId: AgentProfileIdSchema,
+    fetchedAt: TimestampSchema,
+    marketplaces: z.array(CatalogMarketplaceSchema).max(256),
+    plugins: z.array(CatalogPluginSchema).max(8_192),
+    suggested: z.array(CatalogSuggestionSchema).max(4).optional(),
+    source: ExtensionSourceSchema,
+  })
+  .superRefine((catalog, context) => {
+    const marketplaces = new Set<string>();
+    catalog.marketplaces.forEach((marketplace, index) => {
+      if (marketplaces.has(marketplace.id)) {
+        context.addIssue({
+          code: 'custom',
+          message: `duplicate marketplace id: ${marketplace.id}`,
+          path: ['marketplaces', index, 'id'],
+        });
+      }
+      marketplaces.add(marketplace.id);
+    });
+    const plugins = new Set<string>();
+    catalog.plugins.forEach((plugin, index) => {
+      if (plugin.newer === true && plugin.held === undefined) {
+        context.addIssue({
+          code: 'custom',
+          message: 'only a held plugin is newer in its catalog',
+          path: ['plugins', index, 'newer'],
+        });
+      }
+      if (plugins.has(plugin.id)) {
+        context.addIssue({
+          code: 'custom',
+          message: `duplicate plugin id: ${plugin.id}`,
+          path: ['plugins', index, 'id'],
+        });
+      }
+      plugins.add(plugin.id);
+      if (!marketplaces.has(plugin.marketplace)) {
+        context.addIssue({
+          code: 'custom',
+          message: `plugin ${plugin.id} names a marketplace the catalog does not: ${plugin.marketplace}`,
+          path: ['plugins', index, 'marketplace'],
+        });
+      }
+    });
+  });
+export type ExtensionCatalog = z.infer<typeof ExtensionCatalogSchema>;
 
 /*
  * RFC 006 C2 — acts. A person asks for one server, skill or plugin an agent
@@ -303,7 +501,15 @@ export type ExtensionFailure = z.infer<typeof ExtensionFailureSchema>;
  * keeping the data the plugin stored apart from its files where the agent can
  * keep it, so installing it again picks up where it left off; `purge` is the
  * same uninstall with that data deleted too — offered only by an agent whose
- * uninstall can do both.
+ * uninstall can do both. For one it does not hold, `install` is the agent's
+ * own install: of a plugin its marketplaces list, by the catalog's id, or —
+ * for an agent that installs from a source a person gives (a package, a
+ * repository, a folder) — of that source.
+ *
+ * For a marketplace: `add` is the agent's own adding of one from a source,
+ * which fetches its catalog; `update` is the agent's own fetch of its catalog
+ * again (what "check for updates" runs); `remove` is the agent's own removal
+ * of it.
  */
 export const ExtensionActKindSchema = z.enum([
   'enable',
@@ -314,18 +520,23 @@ export const ExtensionActKindSchema = z.enum([
   'add',
   'update',
   'purge',
+  'install',
 ]);
 export type ExtensionActKind = z.infer<typeof ExtensionActKindSchema>;
 
-/** The item an act is about, by the key its inventory gave it. */
+/**
+ * The item an act is about, by the key its inventory gave it — for an
+ * `install`, the key its catalog gave it, or the source a person gave; for a
+ * marketplace's `add`, its source.
+ */
 export const ExtensionActTargetSchema = z.strictObject({
-  kind: z.enum(['mcp-server', 'skill', 'plugin']),
+  kind: z.enum(['mcp-server', 'skill', 'plugin', 'marketplace']),
   id: ItemIdSchema,
 });
 export type ExtensionActTarget = z.infer<typeof ExtensionActTargetSchema>;
 
-/** What an act can be about: a server, a skill or a plugin the agent holds. */
-export type ExtensionActItem = McpServerItem | SkillItem | PluginItem;
+/** What an act can be about: a server, a skill, a plugin or a marketplace. */
+export type ExtensionActItem = McpServerItem | SkillItem | PluginItem | MarketplaceItem;
 
 /** What an act changes beyond one agent's one item, said before it runs. */
 export const ExtensionReachSchema = z.enum([
@@ -337,6 +548,8 @@ export const ExtensionReachSchema = z.enum([
   'every-profile',
   /** It lives in a folder other profiles, and other agents, read. */
   'shared-folder',
+  /** The plugins installed from it go with it: a marketplace's removal. */
+  'plugins',
 ]);
 export type ExtensionReach = z.infer<typeof ExtensionReachSchema>;
 
@@ -427,11 +640,13 @@ export const UnavailableExtensionActPlanSchema = z.strictObject({
    * has no sign-in of the agent's to start or end — it runs on this machine,
    * sends a key of its own, or the agent says it asks for none. `held`: the
    * agent already holds one of its own by that name — a server its add would
-   * replace, a skill where the link would go. `unsupported`: the agent cannot
+   * replace, a skill where the link would go, a plugin or a marketplace an
+   * install or an add would take again. `blocked`: an organization's policy
+   * keeps the agent from it in this profile. `unsupported`: the agent cannot
    * take it as given — a transport it does not speak, a variable it cannot
-   * read, a skill that is not a folder.
+   * read, a skill that is not a folder, a source it does not install from.
    */
-  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in', 'held', 'unsupported']),
+  reason: z.enum(['in-app', 'no-command', 'not-own', 'not-held', 'no-sign-in', 'held', 'blocked', 'unsupported']),
   /** Why, in the agent's own terms. */
   message: NonEmptyStringSchema,
 });
@@ -747,6 +962,38 @@ export interface ExtensionActPlanOptions {
    * of leaving it where it is — an absolute path where nothing is yet.
    */
   keepIn?: string;
+  /**
+   * For a plugin's `install`: the source a person gave — a package, a
+   * repository, a folder — as {@link isExtensionSource} allows; the item's id
+   * is the same string. Absent, the item is one the agent's catalog lists.
+   */
+  source?: string;
+  /**
+   * With `source`: the ids of the plugins the agent holds now, so an agent
+   * that names a plugin by its source's identity (a package's name without its
+   * version) can say it holds that one already.
+   */
+  holds?: readonly string[];
+  /**
+   * For an `install` from a catalog: the entry that lists it, as the fresh read
+   * found it — its asks can make the install one the person answers in a
+   * terminal (a command the agent asks them to accept).
+   */
+  listed?: CatalogPlugin;
+}
+
+/**
+ * A source a person gives for an agent's own install or marketplace add, as
+ * one argument of its command: one line, no spaces, never a flag, and never an
+ * address that carries a sign-in (userinfo) or a query — a listing would mask
+ * those, so they are refused rather than run.
+ */
+export function isExtensionSource(source: string): boolean {
+  if (source.length === 0 || source.length > 1_024 || source !== source.trim()) return false;
+  if (/[\s\u0000-\u001f\u007f]/u.test(source) || source.startsWith('-')) return false;
+  const address = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]*)/u.exec(source);
+  if (address !== null && address[1]!.includes('@')) return false;
+  return !source.includes('?');
 }
 
 /** One adapter-owned extensions capability, independent of live sessions. */
@@ -760,13 +1007,24 @@ export interface ExtensionService {
    */
   inventory(profile: AgentProfile): Promise<ExtensionInventory | ExtensionFailure>;
   /**
-   * RFC 006 C2: what an act on a server, skill or plugin this profile's agent
-   * holds would run, without running it — or why the agent cannot. Pure: the
-   * runtime passes the item as a fresh read found it. For `add`, it passes the
-   * item as the agent would hold it once added — never from a read, `origin:
-   * 'own'` — a server with its `definition` set, a skill whose `linkTarget` is
-   * the folder the host keeps, and only when the agent holds none of its own by
-   * that name. Absent, the agent has no acts.
+   * What the profile's agent could install: the plugins listed by the
+   * marketplaces it knows, from the catalogs it already fetched. Never
+   * fetches a catalog and never starts a session. Absent, the agent has no
+   * catalog a host can read.
+   */
+  catalog?(profile: AgentProfile): Promise<ExtensionCatalog | ExtensionFailure>;
+  /**
+   * RFC 006 C2: what an act on a server, skill, plugin or marketplace this
+   * profile's agent holds would run, without running it — or why the agent
+   * cannot. Pure: the runtime passes the item as a fresh read found it. For
+   * `add`, it passes the item as the agent would hold it once added — never
+   * from a read, `origin: 'own'` — a server with its `definition` set, a skill
+   * whose `linkTarget` is the folder the host keeps, a marketplace whose
+   * `source` (and id) is the one given, and only when the agent holds none by
+   * that name or source. For `install`, the plugin as the agent would hold it
+   * once installed: from its catalog entry, or, with `options.source`, named
+   * by that source; only when the agent holds none by that id. Absent, the
+   * agent has no acts.
    */
   plan?(
     profile: AgentProfile,
@@ -791,15 +1049,24 @@ const SECRET_NAME =
 const TOKEN_PREFIX = /^(?:sk-|sk_|ghp_|gho_|ghu_|ghs_|github_pat_|xox[abpr]-|AKIA|AIza|glpat-|hf_)/u;
 /** `scheme://[userinfo@]host[path][?query][#fragment]`, the parts a listing may show and must drop. */
 const ADDRESS = /^([A-Za-z][A-Za-z0-9+.-]*):\/\/(?:([^@/?#]*)@)?([^/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/u;
+/**
+ * What {@link ADDRESS} reads in one pass: one line, no control character, as
+ * long as Core shows. Across a line break it backtracks for as long as the
+ * text is long, and the text comes from files anyone may write — a catalog.
+ */
+const MAX_ADDRESS = 8_192;
+const NOT_ONE_LINE = /[\u0000-\u001f\u007f\u2028\u2029]/u;
 const ENV_REFERENCE = /^\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}$/u;
 
 /**
  * An MCP server's address as a host may show it: scheme, host and path. The
  * userinfo, query and fragment go — a query marks itself with `?•••` — and an
- * address that does not parse is masked whole.
+ * address that does not parse, or is longer than a listing shows or not one
+ * line, is masked whole.
  */
 export function describeMcpUrl(raw: string): string {
   const trimmed = raw.trim();
+  if (trimmed.length > MAX_ADDRESS || NOT_ONE_LINE.test(trimmed)) return MASK;
   if (ENV_REFERENCE.test(trimmed)) return trimmed;
   const address = ADDRESS.exec(trimmed);
   if (!address || address[3] === '') return MASK;
@@ -957,7 +1224,10 @@ export function parseSkillFrontmatter(text: string): SkillFrontmatter {
     } else if (/^'(?:[^']|'')*'$/u.test(rest)) {
       value = rest.slice(1, -1).replace(/''/gu, "'");
     } else {
-      value = rest.replace(/\s+#.*$/u, '');
+      // A comment starts at a `#` after a space. Found by a scan: `\s+#.*$` backtracks over a long run of spaces,
+      // and a plugin's skills are anyone's to write.
+      const comment = rest.search(/\s#/u);
+      value = comment < 0 ? rest : rest.slice(0, comment);
     }
     value = value.trim();
     if (value !== '' && result[key] === undefined) result[key] = value;

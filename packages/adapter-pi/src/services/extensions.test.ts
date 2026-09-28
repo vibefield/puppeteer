@@ -1,12 +1,15 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  ExtensionActKindSchema,
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type CatalogPlugin,
+  type ExtensionActItem,
   type ExtensionInventory,
   type ExtensionItem,
   type PluginItem,
@@ -71,7 +74,14 @@ describe('Pi extensions', () => {
       id: 'pi',
       label: 'Pi',
       support: {
-        plugins: { store: 'profile', changes: 'command', read: true, label: 'Packages' },
+        plugins: {
+          store: 'profile',
+          changes: 'command',
+          read: true,
+          label: 'Packages',
+          sources:
+            'An npm package (npm:name), a git repository (git:host/path, or its https or ssh address), or a folder on this Mac',
+        },
         skills: { store: 'mixed', changes: 'folder', read: true },
       },
     });
@@ -135,6 +145,7 @@ describe('Pi extensions', () => {
       },
     ]);
 
+    // Its source names an exact version, which Pi's update never moves.
     expect(find(inventory, 'plugin', 'npm:@acme/pi-tools')).toEqual({
       kind: 'plugin',
       id: 'npm:@acme/pi-tools',
@@ -144,6 +155,7 @@ describe('Pi extensions', () => {
       version: '1.2.0',
       description: 'Lint and format tools for Pi',
       location: tools,
+      pinned: true,
     });
     expect(find(inventory, 'plugin', 'git:github.com/northlight/pi-review')).toMatchObject({
       name: 'pi-review',
@@ -151,6 +163,8 @@ describe('Pi extensions', () => {
       version: '2.0.1',
       location: review,
     });
+    // A tag or a branch Pi fetches again.
+    expect(find(inventory, 'plugin', 'git:github.com/northlight/pi-review')).not.toHaveProperty('pinned');
     expect(find(inventory, 'plugin', `local:${join(agent, 'local-ext.ts')}`)).toMatchObject({
       name: 'local-ext',
       enabled: true,
@@ -523,7 +537,7 @@ describe('Pi package acts', () => {
     const root = join(home, 'profiles', 'work', 'pi-7c1e');
     const agent = join(root, 'agent');
     await write(join(agent, 'settings.json'), {
-      packages: ['npm:@acme/pi-tools@1.2.0', 'git:github.com/northlight/pi-review@v2', './local-ext.ts'],
+      packages: ['npm:@acme/pi-tools@^1.2.0', 'git:github.com/northlight/pi-review@v2', './local-ext.ts'],
     });
     await write(join(agent, 'npm', 'node_modules', '@acme', 'pi-tools', 'package.json'), {
       name: '@acme/pi-tools',
@@ -594,6 +608,93 @@ describe('Pi package acts', () => {
       runs: { kind: 'command', argv: [PI, 'update', 'npm:@acme/pi-tools'] },
     });
     expect(update).not.toHaveProperty('runs.env');
+  });
+
+  it('reads a package its source pins, an exact npm version or a git commit, as pinned, and plans no update for it', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    const commit = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
+    await write(join(agent, 'settings.json'), {
+      packages: [
+        'npm:@acme/pi-tools@1.2.0',
+        'npm:pi-lint@v2.0.0-beta.1+build.5',
+        'npm:pi-notes@^1.0.0',
+        'npm:pi-latest@latest',
+        { source: `git:github.com/northlight/pi-review@${commit}`, skills: [] },
+        'git:github.com/northlight/pi-branch@main',
+        'git:github.com/northlight/pi-tagged@v2.1.0',
+        './local-ext.ts',
+      ],
+    });
+    await write(join(agent, 'npm', 'node_modules', '@acme', 'pi-tools', 'package.json'), {
+      name: '@acme/pi-tools',
+      version: '1.2.0',
+    });
+    await write(join(agent, 'npm', 'node_modules', 'pi-lint', 'package.json'), {
+      name: 'pi-lint',
+      version: '2.0.0-beta.1',
+    });
+    await write(join(agent, 'local-ext.ts'), 'export default () => {};\n');
+    const pi = createPiExtensionService({ executable: PI, home, now });
+    const work = managedProfile(root);
+    const inventory = ExtensionInventorySchema.parse(await pi.inventory(work));
+    const pinned = inventory.items.filter((item) => item.kind === 'plugin' && item.pinned === true);
+    expect(pinned.map((item) => item.id)).toEqual([
+      'npm:@acme/pi-tools',
+      'npm:pi-lint',
+      'git:github.com/northlight/pi-review',
+    ]);
+    const held = (id: string): PluginItem => {
+      const item = find(inventory, 'plugin', id);
+      if (item?.kind !== 'plugin') throw new Error(`no package ${id}`);
+      return item;
+    };
+    for (const [id, at] of [
+      ['npm:@acme/pi-tools', '1.2.0'],
+      ['npm:pi-lint', '2.0.0-beta.1'],
+      // not cloned yet: its version is the commit its source names
+      ['git:github.com/northlight/pi-review', commit],
+    ] as const) {
+      expect(ExtensionActPlanSchema.parse(pi.plan!(work, held(id), 'update')), id).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'update',
+        available: false,
+        reason: 'no-command',
+        message: `Pi keeps ${id} at ${at}; its update never moves a pinned version`,
+      });
+    }
+    // A range, a tag or a branch Pi fetches again, and a branch moves.
+    for (const id of [
+      'npm:pi-notes',
+      'npm:pi-latest',
+      'git:github.com/northlight/pi-branch',
+      'git:github.com/northlight/pi-tagged',
+    ]) {
+      expect(pi.plan!(work, held(id), 'update'), id).toMatchObject({
+        available: true,
+        runs: { kind: 'command', argv: [PI, 'update', id] },
+      });
+    }
+    // A pinned package is still removed by its own command.
+    expect(pi.plan!(work, held('npm:@acme/pi-tools'), 'remove')).toMatchObject({ available: true });
+    // The plan reads the item alone: a service that read nothing plans a pinned one the same.
+    const fresh = createPiExtensionService({ executable: PI, home: '/Users/test' });
+    const item: PluginItem = {
+      kind: 'plugin',
+      id: 'npm:pi-pinned',
+      name: 'pi-pinned',
+      origin: 'own',
+      enabled: true,
+      pinned: true,
+    };
+    expect(fresh.plan!(actProfile('managed', '/profiles/other/pi'), item, 'update')).toEqual({
+      target: { kind: 'plugin', id: 'npm:pi-pinned' },
+      act: 'update',
+      available: false,
+      reason: 'no-command',
+      message: 'Pi keeps npm:pi-pinned where its source pins it; its update never moves a pinned version',
+    });
   });
 
   it("switches a package's parts only in pi config, and has no removal that takes more", async () => {
@@ -684,5 +785,327 @@ describe('Pi package acts', () => {
         message: 'Pi has no sign-in for a package',
       });
     }
+  });
+});
+
+describe('Pi installs', () => {
+  const PI = '/opt/pi/bin/pi';
+  const HOME = '/Users/test';
+  const AGENT = '/profiles/work/pi-7c1e/agent';
+  const pi = createPiExtensionService({ executable: PI, home: HOME, now });
+  const work = actProfile('managed', '/profiles/work/pi-7c1e');
+  /** The plugin as the runtime hands an install from a source a person gave to the adapter. */
+  const fromSource = (source: string): PluginItem => ({
+    kind: 'plugin',
+    id: source,
+    name: source,
+    origin: 'own',
+    enabled: true,
+  });
+  const install = (source: string, holds: readonly string[] = [], profile = work) =>
+    ExtensionActPlanSchema.parse(pi.plan!(profile, fromSource(source), 'install', { source, holds }));
+
+  it('installs a source Pi takes with its own command, answering its one question, and never offline', () => {
+    for (const [source, argument] of [
+      ['npm:@acme/pi-tools', 'npm:@acme/pi-tools'],
+      ['npm:@acme/pi-tools@1.2.0', 'npm:@acme/pi-tools@1.2.0'],
+      ['npm:pi-review@^2.1.0', 'npm:pi-review@^2.1.0'],
+      ['npm:pi-review@latest', 'npm:pi-review@latest'],
+      ['git:github.com/northlight/pi-review', 'git:github.com/northlight/pi-review'],
+      ['git:github.com/northlight/pi-review@v2', 'git:github.com/northlight/pi-review@v2'],
+      ['git:northlight/pi-review', 'git:northlight/pi-review'],
+      ['git:git@github.com:northlight/pi-review', 'git:git@github.com:northlight/pi-review'],
+      ['https://github.com/northlight/pi-review', 'https://github.com/northlight/pi-review'],
+      ['https://gitlab.com/acme/tools.git', 'https://gitlab.com/acme/tools.git'],
+      ['ssh://git.example.com/acme/tools', 'ssh://git.example.com/acme/tools'],
+      ['git://github.com/northlight/pi-review', 'git://github.com/northlight/pi-review'],
+      // Pi reads a bare scp address as a folder: it goes with the `git:` Pi needs
+      ['git@github.com:northlight/pi-review.git', 'git:git@github.com:northlight/pi-review.git'],
+      // a folder goes as its whole path, `~` at the home Pi sees
+      ['/Users/test/packs/local-pack', '/Users/test/packs/local-pack'],
+      ['~/packs/local-pack', '/Users/test/packs/local-pack'],
+      ['/Users/test/packs/ext.ts', '/Users/test/packs/ext.ts'],
+    ] as const) {
+      expect(install(source), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: true,
+        runs: { kind: 'command', argv: [PI, 'install', argument, '--no-approve'], env: { PI_CODING_AGENT_DIR: AGENT } },
+        display: `${PI} install ${argument} --no-approve`,
+        reaches: [],
+      });
+    }
+    // The native default is Pi's own directory: nothing points the command elsewhere.
+    const native = install('npm:@acme/pi-tools', [], actProfile('native-default', '/Users/test/.pi/agent'));
+    expect(native).toMatchObject({
+      available: true,
+      runs: { argv: [PI, 'install', 'npm:@acme/pi-tools', '--no-approve'] },
+    });
+    expect(native).not.toHaveProperty('runs.env');
+  });
+
+  it("refuses a source Pi would misread, in Pi's terms", () => {
+    const npm = 'Pi installs an npm package by its name: npm:<name>, or npm:<name>@<version>';
+    const git = 'Pi takes a repository as git:<host>/<path>, or as its https or ssh address';
+    const whole = "Give the folder's whole path";
+    const normalized = "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end";
+    const any = "Pi installs npm:<name>, git:<host>/<path>, an https or ssh address, or a folder's whole path";
+    for (const [source, message] of [
+      ['http://github.com/northlight/pi-review', 'Pi fetches a repository over https or ssh'],
+      [
+        'github:northlight/pi-review',
+        'Pi reads github:northlight/pi-review as a folder: give git:github:northlight/pi-review',
+      ],
+      ['./local-pack', whole],
+      ['../packs/local-pack', whole],
+      ['local-pack', whole],
+      ['packs/local-pack', whole],
+      ['~other/pack', whole],
+      ['~', whole],
+      // a `.` or `..` would move it off the folder it names
+      ['/Users/test/packs/../packs/ext.ts', normalized],
+      ['~/../../etc', normalized],
+      ['~/./x', normalized],
+      ['/Users/test/packs/', normalized],
+      ['~/packs//local-pack', normalized],
+      ['file:///Users/test/packs/local-pack', whole],
+      ['npm:', npm],
+      ['npm:-g', npm],
+      ['npm:.hidden', npm],
+      ['npm:@acme/', npm],
+      ['npm:pi-review@file:../evil', npm],
+      ['npm:pi-review@git+ssh://git@github.com/x/y', npm],
+      ['git:pi-review', git],
+      ['git:', git],
+      ['https://example.com/pack', git],
+      ['ssh://example.com', git],
+      ['ftp://example.com/pack', any],
+      ['https://token@github.com/northlight/pi-review', any],
+      ['https://github.com/northlight/pi-review?ref=main', any],
+      ['-rf', any],
+      ['npm:pi review', any],
+    ] as const) {
+      expect(pi.plan!(work, fromSource(source), 'install', { source, holds: [] }), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: false,
+        reason: 'unsupported',
+        message,
+      });
+    }
+  });
+
+  it('says it holds a package by the identity Pi keys it with, whatever version or spelling the source gives', () => {
+    const holds = ['npm:@acme/pi-tools', 'git:github.com/northlight/pi-review', 'local:/Users/test/packs/local-pack'];
+    for (const [source, id] of [
+      ['npm:@acme/pi-tools@2.0.0', 'npm:@acme/pi-tools'],
+      ['git:github.com/northlight/pi-review@v3', 'git:github.com/northlight/pi-review'],
+      ['https://github.com/northlight/pi-review.git', 'git:github.com/northlight/pi-review'],
+      ['git@github.com:northlight/pi-review', 'git:github.com/northlight/pi-review'],
+      ['git://github.com/northlight/pi-review', 'git:github.com/northlight/pi-review'],
+    ] as const) {
+      expect(install(source, holds), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: false,
+        reason: 'held',
+        message: `Pi already has ${id}; update it instead`,
+      });
+    }
+    expect(install('~/packs/local-pack', holds)).toMatchObject({
+      available: false,
+      reason: 'held',
+      message: 'Pi already has local:/Users/test/packs/local-pack, and loads it where it is',
+    });
+    // Another package of the same scope, or another repository of the same owner, is not held.
+    expect(install('npm:@acme/pi-lint', holds)).toMatchObject({ available: true });
+    expect(install('git:github.com/northlight/pi-notes', holds)).toMatchObject({ available: true });
+  });
+
+  it('has no catalog to install from, and no marketplaces', () => {
+    const listed: CatalogPlugin = { id: 'pi-review', name: 'pi-review', marketplace: 'pi.dev' };
+    expect(
+      ExtensionActPlanSchema.parse(
+        pi.plan!(
+          work,
+          { kind: 'plugin', id: 'pi-review', name: 'pi-review', origin: 'own', enabled: true },
+          'install',
+          {
+            listed,
+          },
+        ),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: 'pi-review' },
+      act: 'install',
+      available: false,
+      reason: 'unsupported',
+      message: 'Pi has no catalog of its own: find packages at pi.dev/packages and add one by its source',
+    });
+    const marketplace: ExtensionActItem = {
+      kind: 'marketplace',
+      id: 'acme/pi-packages',
+      name: 'acme/pi-packages',
+      origin: 'own',
+      enabled: true,
+      source: 'acme/pi-packages',
+    };
+    for (const act of ExtensionActKindSchema.options) {
+      expect(ExtensionActPlanSchema.parse(pi.plan!(work, marketplace, act)), act).toEqual({
+        target: { kind: 'marketplace', id: 'acme/pi-packages' },
+        act,
+        available: false,
+        reason: 'unsupported',
+        message: 'Pi installs packages from npm, git or a folder; it has no marketplaces',
+      });
+    }
+  });
+
+  it('answers every act on every kind with a plan for that item, never a throw', () => {
+    const items: ExtensionActItem[] = [
+      {
+        kind: 'plugin',
+        id: 'npm:@acme/pi-tools',
+        name: '@acme/pi-tools',
+        origin: 'own',
+        enabled: true,
+        version: '1.2.0',
+      },
+      { kind: 'plugin', id: 'git:github.com/northlight/pi-review', name: 'pi-review', origin: 'own', enabled: true },
+      { kind: 'plugin', id: `local:${AGENT}/local-ext.ts`, name: 'local-ext', origin: 'own', enabled: true },
+      { kind: 'plugin', id: `extension:${AGENT}/extensions/notify.ts`, name: 'notify', origin: 'own', enabled: true },
+      { kind: 'plugin', id: 'npm:org-pack', name: 'org-pack', origin: 'managed', enabled: true },
+      { kind: 'marketplace', id: 'pi.dev', name: 'pi.dev', origin: 'bundled', enabled: true },
+      actSkill({ location: `${AGENT}/skills/release-notes` }),
+      actSkill({
+        id: 'shared:browser-use',
+        name: 'browser-use',
+        shared: true,
+        location: '/Users/test/.agents/skills/browser-use',
+      }),
+      actSkill({ id: 'plugin:npm:@acme/pi-tools:lint', name: 'lint', origin: 'plugin', plugin: 'npm:@acme/pi-tools' }),
+      actServer(),
+    ];
+    const variants = [
+      {},
+      { source: 'npm:@acme/pi-lint', holds: ['npm:@acme/pi-tools'] },
+      { listed: { id: 'pi-review', name: 'pi-review', marketplace: 'pi.dev' } },
+      { keepIn: '/Users/test/kept/release-notes' },
+    ];
+    for (const item of items) {
+      for (const act of ExtensionActKindSchema.options) {
+        for (const options of variants) {
+          const label = `${item.kind} ${item.id} ${act} ${JSON.stringify(options)}`;
+          const plan = ExtensionActPlanSchema.parse(pi.plan!(work, item, act, options));
+          expect(plan.target, label).toEqual({ kind: item.kind, id: item.id });
+          expect(plan.act, label).toBe(act);
+          if (act === 'install' && item.kind !== 'plugin' && item.kind !== 'marketplace') {
+            expect(plan, label).toMatchObject({ available: false, message: 'Pi installs only packages' });
+          }
+        }
+      }
+    }
+  });
+
+  it('reads back what an install left as the identity it said it would hold', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    const service = createPiExtensionService({ executable: PI, home, now });
+    const profile = managedProfile(root);
+    const localPack = join(home, 'packs', 'local-pack');
+    const planned = [
+      'npm:@acme/pi-tools@1.2.0',
+      'git@github.com:northlight/pi-review.git',
+      'git://gitlab.com/acme/tools',
+      '~/packs/local-pack',
+    ].map((source) => {
+      const plan = ExtensionActPlanSchema.parse(
+        service.plan!(profile, fromSource(source), 'install', { source, holds: [] }),
+      );
+      if (!plan.available || plan.runs.kind !== 'command') throw new Error(`no install of ${source}`);
+      return plan.runs.argv[2]!;
+    });
+    // What Pi does, by hand: a remote source's string as given, a local one relative to the agent directory.
+    await write(join(agent, 'settings.json'), {
+      packages: planned.map((argument) => (argument.startsWith('/') ? relative(agent, argument) : argument)),
+    });
+    await write(join(agent, 'npm', 'node_modules', '@acme', 'pi-tools', 'package.json'), {
+      name: '@acme/pi-tools',
+      version: '1.2.0',
+    });
+    await write(join(agent, 'git', 'github.com', 'northlight', 'pi-review', 'package.json'), {
+      name: 'pi-review',
+      version: '2.0.1',
+    });
+    await write(join(agent, 'git', 'gitlab.com', 'acme', 'tools', 'package.json'), { name: 'tools', version: '0.4.0' });
+    await write(join(localPack, 'package.json'), { name: 'local-pack', version: '0.1.0' });
+
+    const inventory = await read(home, root);
+    expect(inventory.unread).toBeUndefined();
+    expect(idsOf(inventory, 'plugin')).toEqual([
+      'npm:@acme/pi-tools',
+      'git:github.com/northlight/pi-review',
+      'git:gitlab.com/acme/tools',
+      `local:${localPack}`,
+    ]);
+    expect(find(inventory, 'plugin', 'git:gitlab.com/acme/tools')).toMatchObject({
+      version: '0.4.0',
+      location: join(agent, 'git', 'gitlab.com', 'acme', 'tools'),
+    });
+    // Asked again, each is held by the id the read gives it.
+    const holds = idsOf(inventory, 'plugin');
+    for (const source of [
+      'npm:@acme/pi-tools',
+      'https://github.com/northlight/pi-review',
+      'git:gitlab.com/acme/tools',
+      localPack,
+    ]) {
+      expect(service.plan!(profile, fromSource(source), 'install', { source, holds }), source).toMatchObject({
+        available: false,
+        reason: 'held',
+      });
+    }
+  });
+});
+
+describe('Pi reads crafted text in time', () => {
+  // settings.json is the person's, but a package's manifest is its author's, and the read runs on the host's
+  // event loop: each value here is one that a backtracking pattern once took seconds, or much longer, over.
+  it('reads settings and a package whose values are built to backtrack, in well under two seconds', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    const tools = join(agent, 'npm', 'node_modules', 'tools');
+    // a folder name as long as a name may be, and a skill ten folders down
+    const name = 'a'.repeat(200);
+    const deep = Array(10).fill('a'.repeat(40));
+    await write(join(agent, 'settings.json'), {
+      packages: [
+        // Pi's spec pattern tried each `/` against the rest of the spec
+        `npm:${'/'.repeat(20_000)}@`,
+        // several `*` in one segment backtracked over a long name: here fifty-one
+        { source: 'npm:tools', skills: [`!${Array(50).fill('*a').join('')}*b`] },
+      ],
+      // and across segments, each segment's choices multiplied by the next's
+      skills: [`!${Array(10).fill('*a*').join('/')}/b`],
+    });
+    await write(join(tools, 'package.json'), {
+      name: 'tools',
+      version: '1.0.0',
+      pi: { skills: ['skills', `!${'*a'.repeat(10_000)}*b`] },
+    });
+    await write(join(tools, 'skills', name, 'SKILL.md'), skill('long-named', 'Lives in a folder with a long name'));
+    await write(join(agent, 'skills', ...deep, 'SKILL.md'), skill('deep', 'Lives ten folders down'));
+
+    const started = performance.now();
+    const inventory = await read(home, root);
+    expect(performance.now() - started).toBeLessThan(2_000);
+
+    expect(inventory.unread).toBeUndefined();
+    expect(idsOf(inventory, 'plugin')).toEqual(['npm:tools']);
+    // no filter names a `b`, so both skills stay on
+    expect(find(inventory, 'skill', 'plugin:npm:tools:long-named')).toMatchObject({ enabled: true });
+    expect(find(inventory, 'skill', deep.join('/'))).toMatchObject({ name: 'deep', enabled: true });
   });
 });

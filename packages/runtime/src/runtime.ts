@@ -132,6 +132,7 @@ import {
   createExtensionInventoryReader,
 } from './extensions/inventory.js';
 import { createExtensionActRunner } from './extensions/act.js';
+import { createExtensionCatalogReader } from './extensions/catalog.js';
 import { launchValues } from './host/environment.js';
 import { boundSpawnThroughText } from './host/spawn-through/protocol.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
@@ -676,9 +677,19 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         : undefined,
     report,
   });
+  const extensionCatalogs = createExtensionCatalogReader({
+    providers: extensionProviderEntries,
+    resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, { allowRetired: true }),
+    nativeDefaultProfileId: (providerId) =>
+      profileRegistryProviders.get(providerId)?.provider.support.nativeDefaultRoot
+        ? nativeDefaultProfileId(providerId)
+        : undefined,
+    report,
+  });
   const extensionActs = createExtensionActRunner({
     providers: extensionProviderEntries,
     reader: extensionReader,
+    catalogs: extensionCatalogs,
     // a retired account's agent is no longer the profile's: acts need a live one
     resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, {}),
     nativeDefaultProfileId: (providerId) =>
@@ -2844,6 +2855,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionReader.inventory(providerId, profileId);
     },
 
+    async extensionCatalog(providerId: string, profileId?: string, options?: { fresh?: boolean }) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionCatalogs.catalog(providerId, profileId, options);
+    },
+
     async planExtensionAct(request) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionActs.plan(request);
@@ -2864,7 +2880,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionActs.settle(started, ended);
     },
 
-    async extensionActPlans(providerId, profileId, items, adds, skills) {
+    async extensionActPlans(providerId, profileId, items, adds, skills, offers) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionActs.plans({
         providerId,
@@ -2873,6 +2889,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         ...(adds === undefined ? {} : { adds }),
         ...(skills?.adds === undefined ? {} : { skills: skills.adds }),
         ...(skills?.keep === undefined ? {} : { keep: skills.keep }),
+        ...(offers?.installs === undefined ? {} : { installs: offers.installs }),
+        ...(offers?.sources === undefined ? {} : { sources: offers.sources }),
+        ...(offers?.only === true ? { offersOnly: true } : {}),
       });
     },
 

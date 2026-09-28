@@ -33,9 +33,8 @@
  */
 
 import { execFile } from 'node:child_process';
-import { access, constants } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, delimiter, dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type {
   AgentProfile,
@@ -50,7 +49,7 @@ import type {
 import { SignInServiceIdSchema } from '@vibecook/puppeteer-core';
 import { resolveHermesExecutable } from '../detection.js';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
-import { hermesPythonFromWrapper, readHermesWrapperHead } from './distribution.js';
+import { hermesPythonFromWrapper, readHermesWrapper, type HermesWrapperRead } from './distribution.js';
 
 /** Hermes's native root variable; also the provider's launch allow-list entry. */
 export const HERMES_PROFILE_ROOT_VARIABLE = HERMES_HOME_ENV;
@@ -184,9 +183,6 @@ export type HermesProfileExec = (
   options: { env: NodeJS.ProcessEnv },
 ) => Promise<{ stdout: string }>;
 
-/** Injected wrapper read so unit tests never touch a real install: the head of the file `executable` names. */
-export type HermesWrapperRead = (executable: string, env: NodeJS.ProcessEnv) => Promise<string | undefined>;
-
 const defaultProfileExec: HermesProfileExec = async (file, args, options) => {
   const { stdout } = await execFileAsync(file, [...args], {
     timeout: VERIFY_TIMEOUT_MS,
@@ -195,25 +191,6 @@ const defaultProfileExec: HermesProfileExec = async (file, args, options) => {
     env: options.env,
   });
   return { stdout };
-};
-
-/** The first `executable` on PATH, which is the one the launch runs; a path is read as given. */
-const defaultReadWrapper: HermesWrapperRead = async (executable, env) => {
-  const candidates = /[/\\]/u.test(executable)
-    ? [executable]
-    : (env.PATH ?? '')
-        .split(delimiter)
-        .filter((directory) => directory.length > 0)
-        .map((directory) => join(directory, executable));
-  for (const candidate of candidates) {
-    try {
-      await access(candidate, constants.X_OK);
-      return await readHermesWrapperHead(candidate);
-    } catch {
-      // Not an executable file here; the next PATH entry decides.
-    }
-  }
-  return undefined;
 };
 
 const NOUS_PORTAL: SignInService = { id: 'nous', label: 'Nous Research' };
@@ -412,7 +389,7 @@ export function createHermesProfileService(options: HermesProfileServiceOptions 
   const ambient = options.env ?? process.env;
   const executable = resolveHermesExecutable(options.executable);
   const exec = options.exec ?? defaultProfileExec;
-  const readWrapper = options.readWrapper ?? defaultReadWrapper;
+  const readWrapper = options.readWrapper ?? readHermesWrapper;
   const now = options.now ?? (() => new Date());
 
   const provider: ProfileProvider = {
