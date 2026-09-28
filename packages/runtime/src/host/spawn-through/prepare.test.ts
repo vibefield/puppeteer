@@ -108,11 +108,13 @@ function scripted(script: Script = {}) {
   return { calls, runtime, host };
 }
 
+/** Every refusal the kit answers is placed: the rule refuses only once the host resolved the terminal. */
 const refusal = (code: SpawnThroughDeclineCode, reason: string, message = defaultSentence(reason)) => ({
   action: 'refuse',
   code,
   reason,
   message,
+  placed: true,
 });
 const defaultSentence = (reason: string) => `not started, because it could not be run as a managed session: ${reason}`;
 
@@ -543,7 +545,7 @@ describe('prepareSpawnThroughLaunch', () => {
         if (result.action !== 'refuse') throw new Error(`expected a refusal, got ${result.action}`);
         return result.message;
       };
-      await expect(answer('red \u001b[31mtext\u0007 and ‮flipped‬\u009b2J')).resolves.toBe(
+      await expect(answer('red \u001b[31mtext\u0007 and \u202eflipped\u202c\u009b2J')).resolves.toBe(
         'red [31mtext and flipped 2J',
       );
       await expect(answer('first line\r\nsecond line\nthird line\n\n')).resolves.toBe(

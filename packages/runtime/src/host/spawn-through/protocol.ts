@@ -119,8 +119,12 @@ export type SpawnThroughResponse =
   /**
    * Strict hosts only: exec nothing, print `message` (bounded by
    * {@link boundSpawnThroughText}), exit {@link SPAWN_THROUGH_EXIT_REFUSED}.
+   * `placed`: the host resolved the terminal that holds the process, and the
+   * shim obeys. An unplaced refusal (the gateway could not read or trust the
+   * request) binds only where the shim finds itself in one of the host's
+   * terminals, by its own ancestry (terminals.ts).
    */
-  | { action: 'refuse'; code: SpawnThroughDeclineCode; reason: string; message: string }
+  | { action: 'refuse'; code: SpawnThroughDeclineCode; reason: string; message: string; placed: boolean }
   | { action: 'ack' };
 
 /** Why a launch was declined: the stable code, and the reason for people and logs. */
@@ -133,17 +137,18 @@ export interface SpawnThroughDecline {
  * The answer to a launch the host will not manage: without `refusal`, the
  * real executable runs unmanaged; with it, nothing runs and the person reads
  * `refusal.message`, bounded here — or the kit's own sentence when no words
- * are given or none survive the bound.
+ * are given or none survive the bound. `placed` says whether the host
+ * resolved the terminal that holds the process.
  */
 export function declineSpawnThrough(
   decline: SpawnThroughDecline,
-  refusal?: { message?: string | undefined } | undefined,
+  refusal?: { message?: string | undefined; placed: boolean } | undefined,
 ): SpawnThroughResponse {
   const { code, reason } = decline;
   if (refusal === undefined) return { action: 'fallback', code, reason };
   const message =
     boundSpawnThroughText(refusal.message ?? '') || boundSpawnThroughText(spawnThroughRefusalMessage(decline));
-  return { action: 'refuse', code, reason, message };
+  return { action: 'refuse', code, reason, message, placed: refusal.placed };
 }
 
 /** Core's rule for a command name: what a launcher can be written for, and nothing a terminal would act on. */
@@ -259,8 +264,11 @@ export function parseSpawnThroughResponse(value: unknown): SpawnThroughResponse 
         ? { action: 'fallback', code: value.code, reason: value.reason }
         : undefined;
     case 'refuse':
-      return isDeclineCode(value.code) && typeof value.reason === 'string' && typeof value.message === 'string'
-        ? { action: 'refuse', code: value.code, reason: value.reason, message: value.message }
+      return isDeclineCode(value.code) &&
+        typeof value.reason === 'string' &&
+        typeof value.message === 'string' &&
+        typeof value.placed === 'boolean'
+        ? { action: 'refuse', code: value.code, reason: value.reason, message: value.message, placed: value.placed }
         : undefined;
     case 'ack':
       return { action: 'ack' };

@@ -12,3 +12,4 @@ export * from './layout.js';
 export * from './materialize.js';
 export * from './shell-integration.js';
 export * from './process-watch.js';
+export * from './terminals.js';

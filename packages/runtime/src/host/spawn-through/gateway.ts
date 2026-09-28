@@ -15,8 +15,10 @@ export interface SpawnThroughGatewayOptions {
   handle(request: SpawnThroughRequest): Promise<SpawnThroughResponse>;
   /**
    * Answer the gateway's own failures (a bad bearer, an oversize or unreadable
-   * request, a throwing handler) with `refuse` rather than `fallback`, so a
-   * strict host never lets a launch through unmanaged. Default false.
+   * request, a throwing handler) with `refuse` rather than `fallback`. Such a
+   * refusal is UNPLACED — the gateway cannot place a request it could not read
+   * or trust — so the shim obeys it only in one of the host's own terminals,
+   * by its own ancestry; anywhere else the agent runs as typed. Default false.
    */
   strict?: boolean | undefined;
 }
@@ -37,7 +39,7 @@ function writeResponse(socket: Socket, response: SpawnThroughResponse): void {
 export async function startSpawnThroughGateway(options: SpawnThroughGatewayOptions): Promise<SpawnThroughGateway> {
   const { token, handle } = options;
   const declined = (code: SpawnThroughDeclineCode, reason: string): SpawnThroughResponse =>
-    declineSpawnThrough({ code, reason }, options.strict === true ? {} : undefined);
+    declineSpawnThrough({ code, reason }, options.strict === true ? { placed: false } : undefined);
   const sockets = new Set<Socket>();
   const server: Server = createServer((socket) => {
     sockets.add(socket);

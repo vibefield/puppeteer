@@ -127,7 +127,8 @@ describe('spawn-through protocol', () => {
         launch: { command: '/managed', args: [], cwd: '/repo', env: { TOKEN: 'x' } },
       },
       { action: 'fallback', code: 'passthrough', reason: 'not managed' },
-      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'the gateway refused' },
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused', placed: true },
+      { action: 'refuse', code: 'unauthenticated', reason: 'unreadable', message: 'refused', placed: false },
       { action: 'ack' },
     ];
     for (const answer of answers) expect(parseSpawnThroughResponse(JSON.parse(JSON.stringify(answer)))).toEqual(answer);
@@ -154,24 +155,33 @@ describe('spawn-through protocol', () => {
       // A decline carries its code: without one, or with one the kit never wrote, it is not an answer.
       { action: 'fallback', reason: 'not managed' },
       { action: 'fallback', code: 'because', reason: 'not managed' },
-      { action: 'refuse', code: 'rejected-argument', reason: 'rejected' },
-      { action: 'refuse', reason: 'rejected', message: 'the gateway refused' },
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', placed: true },
+      { action: 'refuse', reason: 'rejected', message: 'refused', placed: true },
+      // Whether the host placed it decides whether the shim obeys: a refusal that does not say is no answer.
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused' },
+      { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused', placed: 'yes' },
     ]) {
       expect(parseSpawnThroughResponse(value), JSON.stringify(value)).toBeUndefined();
     }
   });
 
-  it('declines with a code: a fallback, or a refusal whose words are bounded and never empty', () => {
+  it('declines with a code: a fallback, or a refusal that says whether it was placed and whose words are never empty', () => {
     const decline = { code: 'rejected-argument', reason: 'cannot carry --bare' } as const;
     expect(declineSpawnThrough(decline)).toEqual({ action: 'fallback', ...decline });
-    expect(declineSpawnThrough(decline, { message: 'refused here\nrun it elsewhere' })).toEqual({
+    expect(declineSpawnThrough(decline, { message: 'refused here\nrun it elsewhere', placed: true })).toEqual({
       action: 'refuse',
       ...decline,
       message: 'refused here\nrun it elsewhere',
+      placed: true,
     });
     const kitSentence = 'not started, because it could not be run as a managed session: cannot carry --bare';
     for (const message of [undefined, '', ' \u001b\n\t ']) {
-      expect(declineSpawnThrough(decline, { message })).toEqual({ action: 'refuse', ...decline, message: kitSentence });
+      expect(declineSpawnThrough(decline, { message, placed: false })).toEqual({
+        action: 'refuse',
+        ...decline,
+        message: kitSentence,
+        placed: false,
+      });
     }
     expect(new Set(SPAWN_THROUGH_DECLINE_CODES).size).toBe(SPAWN_THROUGH_DECLINE_CODES.length);
   });
@@ -179,7 +189,9 @@ describe('spawn-through protocol', () => {
   it('bounds text for a terminal: printable characters, two lines, a length', () => {
     expect(boundSpawnThroughText('plain words')).toBe('plain words');
     // C0 and C1 controls, DEL, bidirectional overrides and the Unicode line separators become spaces.
-    expect(boundSpawnThroughText('a\u001b[2Jb\u0007c\u007fd\u009be‮f⁦g h i')).toBe('a [2Jb c d e f g h i');
+    expect(boundSpawnThroughText('a\u001b[2Jb\u0007c\u007fd\u009be\u202ef\u2066g\u2028h\u2029i')).toBe(
+      'a [2Jb c d e f g h i',
+    );
     expect(boundSpawnThroughText('\n  one  \r\n\r\n  two \n three\rfour  ')).toBe('one\ntwo three four');
     expect(boundSpawnThroughText('\u0000 \t\n')).toBe('');
     const bounded = boundSpawnThroughText(`${'é'.repeat(MAX_REFUSAL_MESSAGE_LENGTH)}\n${'🙂'.repeat(10)}`);

@@ -84,7 +84,7 @@ describe('spawn-through gateway', () => {
     });
   });
 
-  it('refuses instead when the host is strict, so no failure of its own lets a launch through', async () => {
+  it('refuses instead when the host is strict — unplaced, since it could not read or trust the request', async () => {
     gateway = await startSpawnThroughGateway({
       token: 'secret',
       strict: true,
@@ -97,11 +97,18 @@ describe('spawn-through gateway', () => {
       code: 'unauthenticated',
       reason: 'spawn-through authentication failed',
       message: 'not started, because it could not be run as a managed session: spawn-through authentication failed',
+      placed: false,
+    });
+    await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toMatchObject({
+      action: 'refuse',
+      code: 'request-too-large',
+      placed: false,
     });
     await expect(ask(gateway.port, line(request))).resolves.toMatchObject({
       action: 'refuse',
       code: 'handler-failed',
       reason: 'the runtime is disposed',
+      placed: false,
     });
   });
 

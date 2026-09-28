@@ -168,7 +168,8 @@ export async function prepareSpawnThroughLaunch(
       // A shim from before the request carried its name.
       command: request.command ?? request.providerId,
     };
-    return declineSpawnThrough({ code, reason }, { message: hostWords(host, refused) });
+    // The rule refuses only after `resolveTerminal` answered: every refusal from here is placed.
+    return declineSpawnThrough({ code, reason }, { message: hostWords(host, refused), placed: true });
   };
 
   // 1. The request. One the kit cannot read names no process it could place.

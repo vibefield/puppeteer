@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { closeSync, openSync, readFileSync, realpathSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer, type AddressInfo } from 'node:net';
@@ -11,8 +11,10 @@ import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
 import { startSpawnThroughGateway, type SpawnThroughGateway } from './gateway.js';
 import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
+import { processStartedAt } from './process-watch.js';
 import { MAX_REFUSAL_MESSAGE_LENGTH, type SpawnThroughRequest, type SpawnThroughResponse } from './protocol.js';
 import { clearRendezvous, writeRendezvous } from './rendezvous.js';
+import { TERMINALS_FILE, writeTerminals, type SpawnThroughTerminal } from './terminals.js';
 
 const TOKEN = 'bearer-never-printed';
 const SECRET = 'secret-ingress-token';
@@ -61,6 +63,11 @@ let home: string;
 let strictHome: string;
 let ptyRunner: string;
 const gateways: SpawnThroughGateway[] = [];
+/** This test process, as a shell of the host's: every launcher the test starts runs under it. */
+let thisShell: SpawnThroughTerminal;
+/** A process that is no ancestor of any launch: a shell of the host's somewhere else. */
+let elsewhere: ChildProcess;
+let elsewhereShell: SpawnThroughTerminal;
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'pst-'));
@@ -106,25 +113,34 @@ beforeAll(async () => {
   const names = ['example', 'orphan', 'missing', 'ai'];
   await materializeShims({ home, names, script, runtime });
   await materializeShims({ home: strictHome, names, script, runtime, strict: true });
+
+  thisShell = { pid: process.pid, startedAt: (await processStartedAt(process.pid))! };
+  elsewhere = spawn('sleep', ['600'], { stdio: 'ignore' });
+  elsewhereShell = { pid: elsewhere.pid!, startedAt: (await processStartedAt(elsewhere.pid!))! };
+  expect([thisShell.startedAt, elsewhereShell.startedAt]).not.toContain(undefined);
 }, 60_000);
 
 afterEach(async () => {
   for (const gateway of gateways.splice(0)) await gateway.close();
   await clearRendezvous(home);
   await clearRendezvous(strictHome);
+  for (const shimHome of [home, strictHome]) await rm(join(shimHome, TERMINALS_FILE), { force: true });
 });
 afterAll(async () => {
+  elsewhere?.kill();
   await rm(root, { recursive: true, force: true });
 });
 
+/** A gateway answering `answer`, published in the rendezvous; a strict host is strict in both places. */
 async function gatewayAnswering(
   shimHome: string,
   answer: (request: SpawnThroughRequest) => SpawnThroughResponse,
-  rendezvous: { strict?: boolean; retryMs?: number; imposterExecutable?: string } = {},
+  rendezvous: { strict?: boolean; retryMs?: number; imposterExecutable?: string; token?: string } = {},
 ): Promise<SpawnThroughRequest[]> {
   const requests: SpawnThroughRequest[] = [];
   const gateway = await startSpawnThroughGateway({
     token: TOKEN,
+    strict: rendezvous.strict,
     handle: async (request) => {
       requests.push(request);
       return answer(request);
@@ -133,7 +149,8 @@ async function gatewayAnswering(
   gateways.push(gateway);
   await writeRendezvous(shimHome, {
     port: gateway.port,
-    token: TOKEN,
+    // A token other than the gateway's is a bearer it will not take.
+    token: rendezvous.token ?? TOKEN,
     strict: rendezvous.strict ?? false,
     launchProviders: providers,
     ...(rendezvous.retryMs === undefined ? {} : { retryMs: rendezvous.retryMs }),
@@ -157,6 +174,8 @@ interface Ran {
   pid: number;
   /** From the shim's first word on stderr to its exit: the wait itself, without Node's start. */
   sinceStderrMs: number | undefined;
+  /** From the launch to its exit, all of it. */
+  elapsedMs: number;
   lines: (prefix: string) => string[];
 }
 
@@ -182,6 +201,7 @@ function launch(
   const launcher = join(shimDirectory, name);
   if (tty && !python) throw new Error('a pty needs python3');
   const redirected = stdoutFile === undefined ? undefined : openSync(stdoutFile, 'w');
+  const launchedAt = Date.now();
   const child = spawn(tty ? python! : launcher, tty ? [ptyRunner, tty, launcher, ...args] : args, {
     cwd: work,
     stdio: ['pipe', redirected ?? 'pipe', 'pipe'],
@@ -218,6 +238,7 @@ function launch(
         stderr,
         pid: child.pid!,
         sinceStderrMs: firstStderrAt === undefined ? undefined : Date.now() - firstStderrAt,
+        elapsedMs: Date.now() - launchedAt,
         lines: (prefix) => output.filter((line) => line.startsWith(prefix)).map((line) => line.slice(prefix.length)),
       });
     });
@@ -318,6 +339,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       action: 'refuse',
       code: 'rejected-argument',
       reason: 'rejected',
+      placed: true,
       message: 'refused by the test\u001b[31m in red',
     }));
     const ran = await launch(home, 'example');
@@ -333,7 +355,8 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       action: 'refuse',
       code: 'rejected-argument',
       reason: 'rejected',
-      message: `refused here \r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
+      placed: true,
+      message: `refused here\u2028\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
     }));
     const ran = await launch(home, 'example');
 
@@ -362,52 +385,180 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     expect(absent.lines('ARG ')).toEqual(['b']);
   });
 
-  it('when strict and unreachable, waits retryMs saying so once, then refuses with exit 75', async () => {
-    const port = await deadPort();
-    await writeRendezvous(home, { port, token: TOKEN, strict: true, retryMs: 1_200, launchProviders: providers });
+  it('obeys a placed refusal wherever it runs: no list of shells, not even a terminal', async () => {
+    await gatewayAnswering(
+      home,
+      () => ({
+        action: 'refuse',
+        code: 'rejected-argument',
+        reason: 'r',
+        message: 'refused as it stands',
+        placed: true,
+      }),
+      { strict: true },
+    );
     const ran = await launch(home, 'example');
 
     expect(ran.code).toBe(75);
     expect(ran.stdout).toBe('');
-    // The waiting line comes after the first refused attempt; the refusal retryMs after the first attempt began.
-    expect(ran.sinceStderrMs).toBeGreaterThanOrEqual(1_000);
-    expect(ran.sinceStderrMs).toBeLessThan(1_200 + 5_000);
-    const lines = ran.stderr.trimEnd().split('\n');
-    expect(lines.filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
-    expect(lines.at(-1)).toBe('puppeteer: example: not started: the host did not answer within 1 s');
+    expect(ran.stderr).toBe('puppeteer: example: refused as it stands\n');
   });
 
-  it('when the launcher is strict and no rendezvous exists, uses a gateway that appears during the wait', async () => {
-    // A host that ran before left its provider table; its rendezvous went with it.
-    await writeRendezvous(strictHome, {
-      port: await deadPort(),
-      token: TOKEN,
-      strict: true,
-      launchProviders: providers,
-    });
-    await clearRendezvous(strictHome);
-    let announced: () => void = () => undefined;
-    const waiting = new Promise<void>((resolve) => {
-      announced = resolve;
-    });
-    const running = launch(strictHome, 'example', [], {
-      onStderr: (text) => {
-        if (text.includes('waiting for the host')) announced();
-      },
-    });
-    // The host arrives only once the shim has said it waits for one.
-    await waiting;
-    const requests = await gatewayAnswering(
-      strictHome,
-      () => ({ action: 'exec', preparationId: 'p-2', launch: { command: '/bin/sh', args: RECIPE_REPORT, cwd: root } }),
-      { strict: true },
-    );
-    const ran = await running;
+  /**
+   * The rule of refusal, held by the shim when the host cannot hold it: a
+   * strict shim waits or refuses on its own authority only for an interactive
+   * launch under one of the shells the host lists. Every launch here runs in a
+   * pty under this test process, which `thisShell` lists as a host's shell.
+   */
+  describe.skipIf(!python)("strict, when the host cannot answer or place it: only in the host's own terminals", () => {
+    const strictAndUnreachable = async (retryMs = 30_000): Promise<void> => {
+      await writeRendezvous(home, {
+        port: await deadPort(),
+        token: TOKEN,
+        strict: true,
+        retryMs,
+        launchProviders: providers,
+      });
+    };
+    /** Far inside the 30 s a strict shim would wait: it never waited at all. */
+    const AT_ONCE_MS = 15_000;
 
-    expect(ran.code).toBe(0);
-    expect(ran.lines('RECIPE')).toEqual(['']);
-    expect(requests).toHaveLength(1);
-    expect(ran.stderr.split('\n').filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
+    it("under one of the host's shells: waits retryMs saying so once, then refuses with exit 75", async () => {
+      await strictAndUnreachable(1_200);
+      await writeTerminals(home, [elsewhereShell, thisShell]);
+      const ran = await launch(home, 'example', [], { tty: 'both' });
+
+      expect(ran.code).toBe(75);
+      expect(ran.lines('REAL ')).toEqual([]);
+      // The refusal comes retryMs after the first attempt began, which was after the launch.
+      expect(ran.elapsedMs).toBeGreaterThanOrEqual(1_200);
+      expect(ran.sinceStderrMs).toBeLessThan(1_200 + 5_000);
+      const lines = ran.stderr.trimEnd().split('\n');
+      expect(lines.filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
+      expect(lines.at(-1)).toBe('puppeteer: example: not started: the host did not answer within 1 s');
+    });
+
+    it("under none of the host's shells: runs as typed, at once", async () => {
+      await strictAndUnreachable();
+      await writeTerminals(home, [elsewhereShell]);
+      const ran = await launch(home, 'example', ['elsewhere'], { tty: 'both' });
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('REAL ')).toEqual(['example']);
+      expect(ran.lines('ARG ')).toEqual(['elsewhere']);
+      expect(ran.stderr).toBe('');
+      expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
+    });
+
+    it('under a listed pid that another process now holds (another start): runs as typed, at once', async () => {
+      await strictAndUnreachable();
+      await writeTerminals(home, [{ pid: thisShell.pid, startedAt: '2000-01-01T00:00:00.000Z' }]);
+      const ran = await launch(home, 'example', ['reused'], { tty: 'both' });
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('ARG ')).toEqual(['reused']);
+      expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
+    });
+
+    it("with no list of the host's shells: runs as typed, at once — nobody can say it is one", async () => {
+      await strictAndUnreachable();
+      const ran = await launch(home, 'example', ['unlisted'], { tty: 'both' });
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('ARG ')).toEqual(['unlisted']);
+      expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
+    });
+
+    it("not interactive, even under one of the host's shells: runs as typed, at once", async () => {
+      await strictAndUnreachable();
+      await writeTerminals(home, [thisShell]);
+      const ran = await launch(home, 'example', ['piped']);
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('ARG ')).toEqual(['piped']);
+      expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
+    });
+
+    it("not strict, under one of the host's shells: runs as typed, at once, as it always did", async () => {
+      await writeRendezvous(home, { port: await deadPort(), token: TOKEN, strict: false, launchProviders: providers });
+      await writeTerminals(home, [thisShell]);
+      const ran = await launch(home, 'example', ['relaxed'], { tty: 'both' });
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('ARG ')).toEqual(['relaxed']);
+      expect(ran.stderr).toBe('');
+      expect(ran.elapsedMs).toBeLessThan(AT_ONCE_MS);
+    });
+
+    it("obeys an unplaced refusal — a wrong bearer, an oversize request — only under one of the host's shells", async () => {
+      // Over 64 KiB of argv: the gateway answers before it reads the request.
+      const oversize = Array.from({ length: 10 }, (_, index) => `${index}${'x'.repeat(7_000)}`);
+      const unplaced: { name: string; rendezvous: { strict: boolean; token?: string }; args: string[] }[] = [
+        { name: 'a wrong bearer', rendezvous: { strict: true, token: 'not-the-bearer' }, args: ['x'] },
+        { name: 'an oversize request', rendezvous: { strict: true }, args: oversize },
+      ];
+      for (const listed of [true, false]) {
+        for (const { name, rendezvous, args } of unplaced) {
+          const requests = await gatewayAnswering(home, () => ({ action: 'ack' }), rendezvous);
+          await (listed ? writeTerminals(home, [thisShell]) : rm(join(home, TERMINALS_FILE), { force: true }));
+          const ran = await launch(home, 'example', args, { tty: 'both' });
+
+          // The host's handler never saw it: the gateway could neither read nor trust it.
+          expect(requests, name).toEqual([]);
+          if (listed) {
+            expect(ran.code, name).toBe(75);
+            expect(ran.lines('REAL '), name).toEqual([]);
+            expect(ran.stderr, name).toMatch(
+              /^puppeteer: example: not started, because it could not be run as a managed/u,
+            );
+          } else {
+            expect(ran.code, name).toBe(0);
+            expect(ran.lines('REAL '), name).toEqual(['example']);
+            expect(ran.lines('ARG '), name).toEqual(args);
+          }
+          for (const gateway of gateways.splice(0)) await gateway.close();
+        }
+      }
+    });
+
+    it('when the launcher is strict and no rendezvous exists, uses a gateway that appears during the wait', async () => {
+      // A host that ran before left its provider table and its list of shells; its rendezvous went with it.
+      await writeRendezvous(strictHome, {
+        port: await deadPort(),
+        token: TOKEN,
+        strict: true,
+        launchProviders: providers,
+      });
+      await clearRendezvous(strictHome);
+      await writeTerminals(strictHome, [thisShell]);
+      let announced: () => void = () => undefined;
+      const waiting = new Promise<void>((resolve) => {
+        announced = resolve;
+      });
+      const running = launch(strictHome, 'example', [], {
+        tty: 'both',
+        onStderr: (text) => {
+          if (text.includes('waiting for the host')) announced();
+        },
+      });
+      // The host arrives only once the shim has said it waits for one.
+      await waiting;
+      const requests = await gatewayAnswering(
+        strictHome,
+        () => ({
+          action: 'exec',
+          preparationId: 'p-2',
+          launch: { command: '/bin/sh', args: RECIPE_REPORT, cwd: root },
+        }),
+        { strict: true },
+      );
+      const ran = await running;
+
+      expect(ran.code).toBe(0);
+      expect(ran.lines('RECIPE')).toEqual(['']);
+      expect(requests).toMatchObject([{ type: 'launch', interactive: true }]);
+      expect(ran.stderr.split('\n').filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
+    });
   });
 
   it('reports exec-failed when the recipe cannot run, then falls back — or refuses when strict', async () => {
@@ -448,6 +599,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       code: 'rejected-argument',
       reason: 'x',
       message: 'never asked',
+      placed: true,
     }));
     const ran = await launch(home, 'orphan', ['--version']);
     expect(ran.code).toBe(0);

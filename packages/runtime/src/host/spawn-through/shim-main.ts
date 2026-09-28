@@ -29,7 +29,9 @@ import {
   parseSpawnThroughResponse,
   type SpawnThroughResponse,
 } from './protocol.js';
+import { runPs } from './ps.js';
 import { DEFAULT_RETRY_MS, readLaunchProviders, readRendezvous, type SpawnThroughRendezvous } from './rendezvous.js';
+import { findOwningProcess, readTerminals } from './terminals.js';
 
 /** The answer must come within this, or the shim stops waiting (the gateway drops a socket at 30 s). */
 const RESPONSE_TIMEOUT_MS = 28_000;
@@ -251,6 +253,27 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     interactive: isatty(0) && isatty(1),
   };
 
+  /**
+   * THE RULE OF REFUSAL, held here when the host cannot hold it — an answer
+   * the shim could not get or read, a refusal the host could not place: a
+   * strict shim waits, or refuses on its own authority, only for an
+   * interactive launch inside one of the host's terminals, found by walking
+   * its own ancestors against the shells the host lists (terminals.json).
+   * Anywhere the launcher's directory leaked to (an editor's terminal, a
+   * detached job), or when nobody can say, the agent runs as typed, at once.
+   * The process table is read once, and only if it is needed.
+   */
+  let inHostTerminal: Promise<boolean> | undefined;
+  const refusableHere = (): Promise<boolean> =>
+    (inHostTerminal ??= (async () => {
+      if (!launch.interactive) return false;
+      const terminals = await readTerminals(home);
+      if (!terminals) return false;
+      // No launcher is ever taken for `ps`.
+      const ps = (args: readonly string[]) => runPs(args, { ...process.env, PATH: cleanPath(process.env.PATH ?? '') });
+      return (await findOwningProcess({ pid: process.pid, owners: terminals, ps })) !== undefined;
+    })());
+
   // The host's latest readable word decides; the launcher's only while none has been readable.
   let strict = rendezvous?.strict ?? process.env.PUPPETEER_SHIM_STRICT === '1';
   let retryMs = rendezvous?.retryMs ?? DEFAULT_RETRY_MS;
@@ -261,6 +284,8 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
   for (;;) {
     asked = rendezvous ? await ask(rendezvous, launch) : { kind: 'unreachable' };
     if (asked.kind !== 'unreachable' || !strict) break;
+    // Wait for the host only in one of its own terminals; anywhere else there is nothing to wait for.
+    if (!(await refusableHere())) return fallback();
     const remainingMs = waitingSince + retryMs - Date.now();
     if (remainingMs <= 0) refuse(`not started: the host did not answer within ${Math.round(retryMs / 1_000)} s`);
     if (!waiting) {
@@ -279,14 +304,15 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
 
   if (asked.kind !== 'answer') {
     const reason = asked.kind === 'failed' ? asked.reason : 'the host is unreachable';
-    return strict ? refuse(`not started: ${reason}`) : fallback();
+    return strict && (await refusableHere()) ? refuse(`not started: ${reason}`) : fallback();
   }
   const response = asked.response;
   switch (response.action) {
     case 'fallback':
       return fallback();
     case 'refuse':
-      return refuse(response.message);
+      // A placed refusal is the host's word on its own terminal. One it could not place binds only in one.
+      return response.placed || (await refusableHere()) ? refuse(response.message) : fallback();
     case 'exec':
       try {
         return execInPlace(response.launch.command, response.launch.args, response.launch.cwd, response.launch.env);
@@ -295,10 +321,11 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
         // The host owns the preparation and its record: tell it, then fall through as for any decline.
         if (rendezvous) await ask(rendezvous, { type: 'exec-failed', preparationId: response.preparationId, message });
         process.chdir(originalCwd);
+        // The host answered `exec`, so it had placed this launch: a strict host's refusal needs no walk.
         return strict ? refuse(`not started: the managed launch could not run (${message})`) : fallback();
       }
     default:
-      return strict ? refuse('not started: the host answered nonsense') : fallback();
+      return strict && (await refusableHere()) ? refuse('not started: the host answered nonsense') : fallback();
   }
 }
 
