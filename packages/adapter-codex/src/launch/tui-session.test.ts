@@ -131,6 +131,90 @@ describe('Codex TUI preparation', () => {
     await session.dispose();
   });
 
+  it("carries typed arguments after the adapter's --remote, the prompt last, and settings to the server", async () => {
+    const prepared = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: host(),
+      appServerArguments: ['--config=web_search=live', '--disable=goals'],
+      tuiArguments: ['--image=/work/a.png', '--image=/work/b.png', '--search', '--no-alt-screen'],
+      prompt: '-v is broken',
+    });
+
+    const args = prepared.launch.args;
+    expect(args).toEqual([
+      'resume',
+      'thread-1',
+      '--remote',
+      'unix:///tmp/codex.sock',
+      '--image=/work/a.png',
+      '--image=/work/b.png',
+      '--search',
+      '--no-alt-screen',
+      '--',
+      '-v is broken',
+    ]);
+    // Said once: one --remote, and its value is the adapter's address, never the prompt.
+    expect(args.filter((argument) => argument === '--remote')).toHaveLength(1);
+    expect(args[args.indexOf('--remote') + 1]).toBe('unix:///tmp/codex.sock');
+    // A carried variadic follows the address, and the prompt follows `--`: neither can be swallowed.
+    expect(args.findIndex((argument) => argument.startsWith('--image'))).toBeGreaterThan(args.indexOf('--remote') + 1);
+    expect(args.slice(-2)).toEqual(['--', '-v is broken']);
+    expect(fakes.spawnServer).toHaveBeenCalledWith({
+      executable: '/opt/codex',
+      args: ['--config=web_search=live', '--disable=goals'],
+    });
+    await prepared.dispose();
+  });
+
+  it('carries TUI arguments after the picker, and starts the server with no arguments when none were typed', async () => {
+    fakes.createObserver.mockResolvedValue({
+      sessionId: undefined,
+      observationLevel: () => 'structured',
+      threadPath: () => undefined,
+      events: { onCandidate: fakes.observerOnCandidate },
+      attachThread: vi.fn(),
+      dispose: fakes.observerDispose,
+    });
+    const prepared = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: host(),
+      resumeInvocation: ['resume', '--last'],
+      tuiArguments: ['--no-alt-screen'],
+    });
+    expect(prepared.launch.args).toEqual([
+      'resume',
+      '--last',
+      '--remote',
+      'unix:///tmp/codex-tap.sock',
+      '--no-alt-screen',
+    ]);
+    expect(fakes.spawnServer).toHaveBeenCalledWith({ executable: '/opt/codex' });
+    await prepared.dispose();
+  });
+
+  it('refuses a recipe clap would misread before it starts anything', async () => {
+    const base = { cwd: '/work/repo', executable: '/opt/codex', host: host() };
+    await expect(
+      prepareCodexTuiSession({ ...base, resumeInvocation: ['resume', '--last'], prompt: 'go on' }),
+    ).rejects.toThrow('carries a prompt only into a thread it owns');
+    for (const tuiArguments of [
+      ['--remote', 'ws://127.0.0.1:1'],
+      ['--remote=ws://127.0.0.1:1'],
+      ['--'],
+      ['--remote-auth-token-env=T'],
+    ]) {
+      await expect(prepareCodexTuiSession({ ...base, tuiArguments })).rejects.toThrow(
+        'must not carry the remote transport',
+      );
+    }
+    await expect(
+      prepareCodexTuiSession({ ...base, appServerArguments: ['--listen=ws://127.0.0.1:1'] }),
+    ).rejects.toThrow('must not carry the listener');
+    expect(fakes.spawnServer).not.toHaveBeenCalled();
+  });
+
   it('preserves the native resume picker and binds its selected thread lazily', async () => {
     let selectedThread: string | undefined;
     const attachThread = vi.fn(async (threadId: string) => {

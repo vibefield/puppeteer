@@ -519,6 +519,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             commands: [{ name: 'codex', executable: resolved.codex ?? 'codex' }],
             environmentVariables: ['CODEX_HOME'],
             imposter: { state: 'isolated-root' },
+            classifies: true,
           },
         },
         normalizeInvocation: normalizeCodexNativeInvocation,
@@ -553,6 +554,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
       async prepareSession({ cwd, resume, host, agentOptions, profile }) {
@@ -576,6 +580,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
     },
