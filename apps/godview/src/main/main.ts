@@ -131,6 +131,7 @@ import {
   type SpawnThroughResponse,
 } from '@vibecook/puppeteer-runtime/spawn-through';
 import { containingTerminalSession } from './containing-terminal.js';
+import { sweepStaleShimHomes, type ShimHomeSweep } from './shim-home-sweep.js';
 import { chooseShimRuntime, describeShimRuntime } from './shim-runtime.js';
 import { orderNativeTabs } from './native-tab-order.js';
 import { resolveProcessCwd } from './process-cwd.js';
@@ -1606,6 +1607,21 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
 
 async function initializeSpawnThrough(): Promise<void> {
   if (spawnThroughGateway || process.platform === 'win32') return;
+  // The homes of Godviews that never reached their own cleanup. Listing the
+  // temp directory is the slow part, and nothing of this start waits on it.
+  await Promise.all([sweepStaleShimHomes(app.getPath('temp')).then(reportShimHomeSweep), startSpawnThrough()]);
+}
+
+function reportShimHomeSweep(sweep: ShimHomeSweep): void {
+  if (sweep.examined > 0) {
+    console.log(`[main] stale spawn-through homes: ${sweep.removed.length} removed of ${sweep.examined} examined`);
+  }
+  for (const { path, message } of sweep.failed) {
+    process.stderr.write(`[main] stale spawn-through homes: ${path}: ${message}\n`);
+  }
+}
+
+async function startSpawnThrough(): Promise<void> {
   const availableNames = new Set<string>();
   const launchProviders = agentRuntime.launchProviders().flatMap((provider) => {
     const capability = provider.nativeInvocation;
