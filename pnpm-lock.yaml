@@ -5,14 +5,14 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@vibecook/ghosttea': link:../electron-ghostty/packages/ghosttea
-  '@vibecook/ghosttea-client': link:../electron-ghostty/packages/ghosttea-client
-  '@vibecook/ghosttea-electron': link:../electron-ghostty/packages/ghosttea-electron
-  '@vibecook/ghosttea-frame': link:../electron-ghostty/packages/ghosttea-frame
-  '@vibecook/ghosttea-native-tabs': link:../electron-ghostty/packages/ghosttea-native-tabs
-  '@vibecook/ghosttea-protocol': link:../electron-ghostty/packages/ghosttea-protocol
-  '@vibecook/ghosttea-react': link:../electron-ghostty/packages/ghosttea-react
-  '@vibecook/ghosttead': link:../electron-ghostty/packages/ghosttead
+  '@vibecook/ghosttea': link:../ghosttea-0.11.2/packages/ghosttea
+  '@vibecook/ghosttea-client': link:../ghosttea-0.11.2/packages/ghosttea-client
+  '@vibecook/ghosttea-electron': link:../ghosttea-0.11.2/packages/ghosttea-electron
+  '@vibecook/ghosttea-frame': link:../ghosttea-0.11.2/packages/ghosttea-frame
+  '@vibecook/ghosttea-native-tabs': link:../ghosttea-0.11.2/packages/ghosttea-native-tabs
+  '@vibecook/ghosttea-protocol': link:../ghosttea-0.11.2/packages/ghosttea-protocol
+  '@vibecook/ghosttea-react': link:../ghosttea-0.11.2/packages/ghosttea-react
+  '@vibecook/ghosttead': link:../ghosttea-0.11.2/packages/ghosttead
 
 importers:
 
@@ -40,20 +40,20 @@ importers:
         specifier: ^2.5.0
         version: 2.5.6
       '@vibecook/ghosttea-electron':
-        specifier: link:../../../electron-ghostty/packages/ghosttea-electron
-        version: link:../../../electron-ghostty/packages/ghosttea-electron
+        specifier: link:../../../ghosttea-0.11.2/packages/ghosttea-electron
+        version: link:../../../ghosttea-0.11.2/packages/ghosttea-electron
       '@vibecook/ghosttea-native-tabs':
-        specifier: link:../../../electron-ghostty/packages/ghosttea-native-tabs
-        version: link:../../../electron-ghostty/packages/ghosttea-native-tabs
+        specifier: link:../../../ghosttea-0.11.2/packages/ghosttea-native-tabs
+        version: link:../../../ghosttea-0.11.2/packages/ghosttea-native-tabs
       '@vibecook/ghosttea-protocol':
-        specifier: link:../../../electron-ghostty/packages/ghosttea-protocol
-        version: link:../../../electron-ghostty/packages/ghosttea-protocol
+        specifier: link:../../../ghosttea-0.11.2/packages/ghosttea-protocol
+        version: link:../../../ghosttea-0.11.2/packages/ghosttea-protocol
       '@vibecook/ghosttea-react':
-        specifier: link:../../../electron-ghostty/packages/ghosttea-react
-        version: link:../../../electron-ghostty/packages/ghosttea-react
+        specifier: link:../../../ghosttea-0.11.2/packages/ghosttea-react
+        version: link:../../../ghosttea-0.11.2/packages/ghosttea-react
       '@vibecook/ghosttead':
-        specifier: link:../../../electron-ghostty/packages/ghosttead
-        version: link:../../../electron-ghostty/packages/ghosttead
+        specifier: link:../../../ghosttea-0.11.2/packages/ghosttead
+        version: link:../../../ghosttea-0.11.2/packages/ghosttead
       '@vibecook/puppeteer-builtin-providers':
         specifier: workspace:*
         version: link:../../packages/builtin-providers

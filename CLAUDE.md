@@ -129,6 +129,6 @@ Live adapter proofs are opt-in and skipped by default: `CLAUDE_NATIVE_TUI_LIVE=1
 
 ## Applications and releases
 
-Ghosttea owns PTYs. Applications consume its exact pinned npm packages and supply `AgentHost`; no sibling checkout is required. Never import `@vibecook/ghosttead` from Electron main code—it is ESM-only. The Godview build stages its binary, and app changes should be checked with `pnpm godview:smoke` when native behavior is affected.
+Ghosttea owns PTYs. Applications supply `AgentHost`. During the terminal performance source window, `pnpm-workspace.yaml` links Ghosttea packages from `../ghosttea-0.11.2`, the same checkout VibeField uses. Run `npm run build:sdk`, `npm run build:ghosttea-native-tabs` and `cargo build --release -p ghosttead --locked` there after a fresh checkout (the Godview build stages that checkout's daemon binary). Rebuild its generated JavaScript after source edits; remove the overrides once the fixes ship in npm. Never import `@vibecook/ghosttead` from Electron main code—it is ESM-only. The Godview build stages its binary, and app changes should be checked with `pnpm godview:smoke` when native behavior is affected.
 
 Release Please owns versions and tags. Never hand-bump package versions. Public packages release in lockstep, and publishing uses npm trusted publishing through `.github/workflows/release.yml`.

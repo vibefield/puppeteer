@@ -1,3 +1,5 @@
+@import './deck-zoom.css';
+
 /* The deck's pane frame, decided 2026-09-10 (design-system record §07) — the
    package's copy since PU-14, imported by a host beside `views.css`.
 

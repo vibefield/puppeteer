@@ -2656,10 +2656,11 @@ async function runAppearanceSmoke(): Promise<void> {
   if (!basename(app.getPath('userData')).startsWith('godview-appearance-smoke-')) {
     throw new Error('appearance smoke requires its isolated temporary user-data profile');
   }
+  const lightThemeName = defaultAppearanceProfiles().light.name;
   await activateManagedAppearanceMode('light');
   let document = await backend!.automation.getConfigDocument();
-  if (!document.contents.includes('# Theme: Ghosttea Light')) {
-    throw new Error('appearance smoke did not activate Ghosttea Light');
+  if (!document.contents.includes(`# Theme: ${lightThemeName}`)) {
+    throw new Error(`appearance smoke did not activate ${lightThemeName}`);
   }
 
   const current = await backend!.automation.getConfig();
@@ -2680,7 +2681,7 @@ async function runAppearanceSmoke(): Promise<void> {
   await activateManagedAppearanceMode('light');
   document = await backend!.automation.getConfigDocument();
   if (
-    !document.contents.includes('# Theme: Ghosttea Light') ||
+    !document.contents.includes(`# Theme: ${lightThemeName}`) ||
     !document.contents.includes('background-opacity = 0.57')
   ) {
     throw new Error('appearance smoke did not restore light colors with shared appearance settings');
@@ -2691,7 +2692,7 @@ async function runAppearanceSmoke(): Promise<void> {
   const persisted = parseAppearanceProfiles(readFileSync(terminalAppearanceProfilesPath, 'utf8'));
   if (
     !document.contents.includes('# Theme: Appearance Smoke Dark') ||
-    persisted.light.name !== 'Ghosttea Light' ||
+    persisted.light.name !== lightThemeName ||
     persisted.dark.name !== 'Appearance Smoke Dark'
   ) {
     throw new Error('appearance smoke did not preserve independent light and dark selections');

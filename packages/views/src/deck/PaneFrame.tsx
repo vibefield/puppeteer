@@ -102,7 +102,7 @@ export function PaneFrameChrome({
     .join(' ');
   const showStop = model.verb?.kind === 'stop' && verbs.stop !== undefined;
   const showResume = model.verb?.kind === 'resume' && verbs.resume !== undefined;
-  const showZoom = model.verb !== undefined && verbs.zoom !== undefined;
+  const showZoom = verbs.zoom !== undefined;
   const showVerbs = showStop || showResume || showZoom;
   const zoomLabel = zoomed ? 'Restore' : 'Fullscreen';
   return (

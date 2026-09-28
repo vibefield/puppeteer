@@ -21,6 +21,7 @@ import {
   GhostteaWorkspace,
   TERMINAL_THEMES,
   type GhostteaPaneRehydration,
+  type GhostteaPaneClose,
   type GhostteaWorkspaceContext,
   type GhostteaWorkspacePaneDecoration,
 } from '@vibecook/ghosttea-react/workspace';
@@ -68,7 +69,13 @@ import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
 import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
-import { DECK_FRAMED_CLASS, DeckFrames } from '@vibecook/puppeteer-views';
+import {
+  DECK_FRAMED_CLASS,
+  DeckFrames,
+  UnusedPaneSessions,
+  useDeckZoom,
+  zoomLayoutApplied,
+} from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
@@ -213,6 +220,8 @@ function Godview() {
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
+  const unusedPanes = useRef(new UnusedPaneSessions());
+  const zoom = useDeckZoom(deckRef, workspace?.activePaneId, undefined, active);
   const settings = useWorkspaceSettings(deckRef);
   const palette = useMonitorPalette();
   const profiles = useAgentProfiles();
@@ -447,7 +456,7 @@ function Godview() {
         process: processCwd,
         fallback: fallbackCwd,
       });
-      return terminalRuntime.createSession({
+      const session = await terminalRuntime.createSession({
         executable: platform.defaultShell,
         args: [],
         ...(source.cwd ? { cwd: source.cwd } : {}),
@@ -457,6 +466,8 @@ function Godview() {
         persistence: 'terminate-with-app',
         programKind: 'interactive-shell',
       });
+      unusedPanes.current.created(session.id);
+      return session;
     },
     [agentsBySession, platform.defaultShell],
   );
@@ -514,7 +525,27 @@ function Godview() {
     (session: SessionSummary): void => workspace?.mountSession(session),
     [workspace],
   );
-  const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession);
+  const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
+  const closePane = useCallback(
+    ({ session, remainingSessionIds }: GhostteaPaneClose): void => {
+      const used =
+        terminalRuntime.sessionHasInput(session.id) ||
+        session.exited ||
+        session.activity.kind === 'foreground-job' ||
+        agentsBySession.get(session.id)?.agent !== undefined ||
+        terminalRuntime.remoteSession(session.id) !== undefined;
+      if (unusedPanes.current.closed(session.id, remainingSessionIds, used)) terminalRuntime.terminate(session.id);
+    },
+    [agentsBySession],
+  );
+  const zoomedPaneId = zoomLayoutApplied(zoom.state.phase) ? zoom.state.paneId : null;
+  const paneVisibility = useMemo(
+    () =>
+      Object.fromEntries(
+        (workspace?.panes ?? []).map((pane) => [pane.id, zoomedPaneId === null || pane.id === zoomedPaneId]),
+      ),
+    [workspace, zoomedPaneId],
+  );
 
   const updateParameter = useCallback(
     (key: string, value: number): void => {
@@ -703,7 +734,7 @@ function Godview() {
 
       <section
         ref={deckRef}
-        className={`vf-godview-terminal-deck ${DECK_FRAMED_CLASS}`}
+        className={`vf-godview-terminal-deck vf-deck-zoom ${DECK_FRAMED_CLASS}`}
         aria-label="Terminal panes"
         style={
           {
@@ -724,6 +755,9 @@ function Godview() {
             paneMeta={persistPaneRecovery}
             createSplitSession={createSplitSession}
             splitSizing="equal"
+            onPaneClose={closePane}
+            onTogglePaneZoom={zoom.toggle}
+            paneVisibility={paneVisibility}
             onRehydratePane={rehydratePane}
             claimExistingSessions={window.desktop.claimExistingSessions}
             enableRemoteSessions={window.desktop.remoteSessionsEnabled}
@@ -742,6 +776,7 @@ function Godview() {
           fallbackCwdBySession={frameFallbackCwds}
           verbs={frameVerbs}
           frame={AppPaneFrame}
+          zoomedPaneId={zoomedPaneId}
         />
       </section>
     </div>

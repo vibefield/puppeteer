@@ -5,8 +5,9 @@ import { ghostteadPath } from '@vibecook/ghosttead';
 import { resolveSidecarPath } from '@vibecook/truffle';
 import { build } from 'esbuild';
 import { chmod, cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +25,15 @@ let stagedGhosttead;
 try {
   stagedGhosttead = ghostteadPath();
 } catch (error) {
-  console.warn(`ghosttead not staged: ${error.message}`);
+  // Source-linked SDKs carry no npm prebuild. Resolve the binary from that
+  // same checkout, never a second terminal engine hidden behind another path.
+  const checkout = resolve(dirname(requireFromGodview.resolve('@vibecook/ghosttead')), '../../..');
+  const built = join(checkout, 'target', 'release', ghostteadBinary);
+  if (existsSync(join(checkout, 'Cargo.toml')) && existsSync(built)) stagedGhosttead = built;
+  else
+    console.warn(
+      `ghosttead not staged: ${error.message}. Build the linked checkout with cargo build --release -p ghosttead --locked.`,
+    );
 }
 // Truffle's sidecar is staged the same way, so remote sessions need no Truffle
 // checkout beside this repo either. Absent on platforms with no prebuild, which

@@ -4,14 +4,14 @@ packages:
 # Temporary sibling-checkout overrides for Godview development. Remove this
 # block and run pnpm install to return to the versions in package.json.
 overrides:
-  '@vibecook/ghosttea': link:../electron-ghostty/packages/ghosttea
-  '@vibecook/ghosttea-client': link:../electron-ghostty/packages/ghosttea-client
-  '@vibecook/ghosttea-electron': link:../electron-ghostty/packages/ghosttea-electron
-  '@vibecook/ghosttea-frame': link:../electron-ghostty/packages/ghosttea-frame
-  '@vibecook/ghosttea-native-tabs': link:../electron-ghostty/packages/ghosttea-native-tabs
-  '@vibecook/ghosttea-protocol': link:../electron-ghostty/packages/ghosttea-protocol
-  '@vibecook/ghosttea-react': link:../electron-ghostty/packages/ghosttea-react
-  '@vibecook/ghosttead': link:../electron-ghostty/packages/ghosttead
+  '@vibecook/ghosttea': link:../ghosttea-0.11.2/packages/ghosttea
+  '@vibecook/ghosttea-client': link:../ghosttea-0.11.2/packages/ghosttea-client
+  '@vibecook/ghosttea-electron': link:../ghosttea-0.11.2/packages/ghosttea-electron
+  '@vibecook/ghosttea-frame': link:../ghosttea-0.11.2/packages/ghosttea-frame
+  '@vibecook/ghosttea-native-tabs': link:../ghosttea-0.11.2/packages/ghosttea-native-tabs
+  '@vibecook/ghosttea-protocol': link:../ghosttea-0.11.2/packages/ghosttea-protocol
+  '@vibecook/ghosttea-react': link:../ghosttea-0.11.2/packages/ghosttea-react
+  '@vibecook/ghosttead': link:../ghosttea-0.11.2/packages/ghosttead
 allowBuilds:
   '@parcel/watcher': true
   '@vibecook/truffle': true
