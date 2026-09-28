@@ -291,8 +291,10 @@
     color 120ms ease;
 }
 
+/* The ink, not the pane colour: colour is kept to its four places (the focus
+   rule, the caret, a matched word, a pressed row). */
 .vf-pane-launcher-agent:focus-visible {
-  outline: 1px solid var(--pane-color);
+  outline: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
   outline-offset: -1px;
 }
 

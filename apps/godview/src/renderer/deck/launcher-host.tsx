@@ -116,15 +116,15 @@ export interface AppDeckLaunchersProps {
  */
 export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneColors }: AppDeckLaunchersProps) {
   const runtime = useGhostteaRuntime();
-  const panes = workspace?.panes;
+  const panes = useMemo(() => workspace?.panes ?? [], [workspace?.panes]);
 
   // Ghosttea's birth receipt covers the first pane and every split; restored,
   // claimed and main-seeded shells have none.
   const fresh = useMemo(
-    () => freshSessionIds(panes ?? [], (id) => runtime.sessionCreatedHere(id), used),
+    () => freshSessionIds(panes, (id) => runtime.sessionCreatedHere(id), used),
     [panes, runtime, used],
   );
-  const cwdBySession = useMemo(() => launcherCwds(fresh, panes ?? [], fallbackCwds), [fallbackCwds, fresh, panes]);
+  const cwdBySession = useMemo(() => launcherCwds(fresh, panes, fallbackCwds), [fallbackCwds, fresh, panes]);
   const hasInput = useCallback((sessionId: string): boolean => runtime.sessionHasInput(sessionId), [runtime]);
 
   const { agents, refresh } = useLauncherAgents(fresh.size > 0);
@@ -219,7 +219,7 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
   return (
     <DeckLaunchers
       deckRef={deckRef}
-      panes={panes ?? []}
+      panes={panes}
       activePaneId={workspace?.activePaneId}
       onActivatePane={activatePane}
       freshSessionIds={fresh}

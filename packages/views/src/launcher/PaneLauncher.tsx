@@ -87,8 +87,9 @@ function reasonOf(error: unknown): string {
   return error instanceof Error && error.message ? error.message : 'no answer';
 }
 
+/** Ghosttea's terminal input; any textarea in the pane for a host that names it otherwise. */
 function focusTerminal(pane: HTMLElement): void {
-  pane.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+  (pane.querySelector<HTMLElement>('.terminal-input') ?? pane.querySelector<HTMLElement>('textarea'))?.focus();
 }
 
 /**
