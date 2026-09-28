@@ -461,29 +461,38 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
+        // A typed launch is prepared, never created. What the person typed is read from the
+        // invocation's own options: the profile binding normalizes an empty argv of its own, which
+        // binds the environment and says nothing of the argv.
+        const typed = agentOptions as ClaudeProviderOptions | undefined;
         const launch = withProfileBinding(
           'claude',
           cwd,
           profile,
           services.claude.profiles,
           normalizeClaudeNativeInvocation,
-          agentOptions as ClaudeProviderOptions | undefined,
+          typed,
         );
-        const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
+        const sessionTitle = typed?.title ?? title;
+        const { executable, providerVersion } = await claudeLaunchFor(resume, sessionTitle, launch);
         const prepared = await prepareClaudeTuiSession({
           cwd,
           resume,
-          title,
+          title: sessionTitle,
           executable,
           env: launch?.env,
           providerVersion,
-          permissionMode: launch?.permissionMode,
+          permissionMode: typed?.typed === true ? (typed.permissionMode ?? null) : launch?.permissionMode,
           model: launch?.model,
           effort: launch?.effort,
           settingSources: launch?.settingSources,
           configDir: launch?.configDir,
           fileChangeMatcher: launch?.fileChangeMatcher,
           resumeInvocation: launch?.resumeInvocation,
+          carriedArgs: typed?.carriedArgs,
+          prompt: typed?.prompt,
+          existingStatusLine: typed?.existingStatusLine,
+          existingSubagentStatusLine: typed?.existingSubagentStatusLine,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           automate: host.automateTerminal,

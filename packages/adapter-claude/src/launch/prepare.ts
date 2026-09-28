@@ -6,8 +6,10 @@
  *
  * The command is native-interactive ONLY (§16.3): never -p/--print/
  * --output-format/--input-format — those select structured print mode, a
- * different process class. The token VALUE rides `env` (injected into the
- * process, resolved by Claude's env interpolation), never the on-disk settings.
+ * different process class. A typed launch's own arguments ride after the
+ * managed flags, and invocation-grammar.ts carries none of those. The token
+ * VALUE rides `env` (injected into the process, resolved by Claude's env
+ * interpolation), never the on-disk settings.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -42,7 +44,11 @@ export interface PrepareClaudeSessionOptions {
   executable?: string | undefined;
   /** Adapter-normalized additions; generated hook/auth values always win. */
   env?: Record<string, string> | undefined;
-  permissionMode?: string | undefined;
+  /**
+   * Passed to `--permission-mode`; `default` when absent. `null` passes none, so Claude decides
+   * as it does when typed (the person's settings, `--dangerously-skip-permissions`, an agent).
+   */
+  permissionMode?: string | null | undefined;
   /** Model alias or full model id passed to Claude Code's `--model`. */
   model?: string | undefined;
   /** Open-ended Claude effort value passed to `--effort`. */
@@ -67,6 +73,16 @@ export interface PrepareClaudeSessionOptions {
   resume?: string | undefined;
   /** Native resume/continue argv when Claude must choose the session after launch. */
   resumeInvocation?: string[] | undefined;
+  /**
+   * A typed launch's own arguments, verbatim and in the person's order, after the managed flags:
+   * a trailing option of the person's can then never take a managed flag for its value.
+   */
+  carriedArgs?: readonly string[] | undefined;
+  /**
+   * A typed launch's operands, last and after `--`: no option before them (a managed one or the
+   * person's) can take one for its value, and a prompt that starts with `-` stays a prompt.
+   */
+  prompt?: readonly string[] | undefined;
   /** Override the settings-file directory (tests); default is an mkdtemp dir. */
   settingsDir?: string | undefined;
 }
@@ -294,7 +310,10 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   if (options.settingSources !== undefined) {
     args.push('--setting-sources', options.settingSources.join(','));
   }
-  args.push('--settings', settingsPath, '--permission-mode', options.permissionMode ?? 'default');
+  args.push('--settings', settingsPath);
+  if (options.permissionMode !== null) args.push('--permission-mode', options.permissionMode ?? 'default');
+  args.push(...(options.carriedArgs ?? []));
+  if (options.prompt !== undefined && options.prompt.length > 0) args.push('--', ...options.prompt);
 
   const executable = options.executable ?? 'claude';
   const isScript = SCRIPT_EXECUTABLE.test(executable);

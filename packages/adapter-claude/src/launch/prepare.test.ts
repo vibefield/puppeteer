@@ -12,6 +12,8 @@ import {
   type PreparedClaudeSession,
 } from './prepare.js';
 import { generateHookSettings } from './settings.js';
+import { readClaudeInvocation } from './invocation-grammar.js';
+import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
 
 function runStatusLine(command: string, input: string, env: Record<string, string>): Promise<string> {
@@ -265,6 +267,103 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toContain('--permission-mode');
     expect(p.args[p.args.indexOf('--permission-mode') + 1]).toBe('default');
     expect(p.args).not.toContain('--name');
+  });
+
+  describe('a typed launch', () => {
+    /** The recipe for a typed `claude <argv>`, as the provider hands the adapter's options on. */
+    async function typedLaunch(argv: string[]) {
+      const resolution = normalizeClaudeNativeInvocation({
+        providerId: 'claude',
+        cwd: BASE.cwd,
+        argv,
+        environment: {},
+        implementation: { kind: 'native' },
+      });
+      if (resolution.status !== 'accepted') throw new Error(`not accepted: ${JSON.stringify(resolution)}`);
+      const options = resolution.options!;
+      return prepare({
+        ...(resolution.resume === undefined ? {} : { resume: resolution.resume }),
+        resumeInvocation: options.resumeInvocation,
+        title: options.title,
+        model: options.model,
+        permissionMode: options.permissionMode ?? null,
+        carriedArgs: options.carriedArgs,
+        prompt: options.prompt,
+      });
+    }
+
+    /** Where the person's part of the recipe starts: after the managed launch's own flags. */
+    function personPart(args: string[]): string[] {
+      const settings = args.indexOf('--settings');
+      const mode = args[settings + 2] === '--permission-mode' ? 2 : 0;
+      return args.slice(settings + 2 + mode);
+    }
+
+    it('puts the managed flags first, the carried arguments next in the person’s order, the prompt last after `--`', async () => {
+      const p = await typedLaunch(['fix the bug', '--add-dir', '../lib', '../docs', '--verbose', '--model', 'opus']);
+      expect(p.args).toEqual([
+        '--session-id',
+        p.sessionId,
+        '--model',
+        'opus',
+        '--settings',
+        p.settingsPath,
+        '--add-dir',
+        '../lib',
+        '../docs',
+        '--verbose',
+        '--',
+        'fix the bug',
+      ]);
+    });
+
+    it('a trailing variadic of the person’s takes no managed flag, and the prompt stays the prompt', async () => {
+      const p = await typedLaunch(['fix it', '--add-dir', 'a', 'b']);
+      expect(p.args.slice(-5)).toEqual(['--add-dir', 'a', 'b', '--', 'fix it']);
+      // Every managed flag comes before the person's first argument.
+      for (const flag of ['--session-id', '--settings'])
+        expect(p.args.indexOf(flag)).toBeLessThan(p.args.indexOf('--add-dir'));
+      // Read back, the person's part means what was typed: two directories and a prompt.
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({
+        status: 'accepted',
+        carriedArgs: ['--add-dir', 'a', 'b'],
+        prompt: ['fix it'],
+      });
+    });
+
+    it('a managed flag’s value is never read as the prompt: a resume picker is followed by a flag, the prompt by `--`', async () => {
+      const p = await typedLaunch(['-r', '--', 'where were we']);
+      expect(p.args[0]).toBe('-r');
+      expect(p.args[1]!.startsWith('-')).toBe(true);
+      expect(p.args.slice(-2)).toEqual(['--', 'where were we']);
+      expect(readClaudeInvocation(p.args.slice(-2))).toMatchObject({ status: 'accepted', prompt: ['where were we'] });
+    });
+
+    it('a prompt that looks like a flag stays a prompt', async () => {
+      const p = await typedLaunch(['--', '--help']);
+      expect(p.args.slice(-2)).toEqual(['--', '--help']);
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({ status: 'accepted', prompt: ['--help'] });
+    });
+
+    it('says each thing once: no permission mode of its own, one --name, the person’s mode when given', async () => {
+      const bare = await typedLaunch([]);
+      expect(bare.args).toEqual(['--session-id', bare.sessionId, '--settings', bare.settingsPath]);
+      const skip = await typedLaunch(['--dangerously-skip-permissions']);
+      expect(skip.args).not.toContain('--permission-mode');
+      expect(skip.args.filter((argument) => argument === '--dangerously-skip-permissions')).toHaveLength(1);
+      const both = await typedLaunch(['--permission-mode', 'plan', '--dangerously-skip-permissions']);
+      expect(both.args.filter((argument) => argument === '--permission-mode')).toHaveLength(1);
+      expect(both.args[both.args.indexOf('--permission-mode') + 1]).toBe('plan');
+      expect(both.args).toContain('--dangerously-skip-permissions');
+      const named = await typedLaunch(['-n', 'mine']);
+      expect(named.args.filter((argument) => argument === '--name' || argument === '-n')).toEqual(['--name']);
+      expect(named.args[named.args.indexOf('--name') + 1]).toBe('mine');
+    });
+
+    it('a host’s own spawn keeps its default permission mode', async () => {
+      const p = await prepare({ carriedArgs: undefined, prompt: undefined });
+      expect(p.args.slice(-2)).toEqual(['--permission-mode', 'default']);
+    });
   });
 
   /** A config root holding one conversation, the way Claude lays its projects out. */
