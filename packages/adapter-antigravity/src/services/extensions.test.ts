@@ -5,12 +5,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
   describeMcpDefinition,
+  ExtensionActKindSchema,
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
+  type MarketplaceItem,
   type McpServerDefinition,
   type McpServerItem,
   type PluginItem,
@@ -138,8 +141,14 @@ describe('Antigravity extensions', () => {
       id: 'antigravity',
       label: 'Antigravity',
       support: {
-        plugins: { store: 'profile', changes: 'command', read: true },
-        marketplaces: { store: 'profile', changes: 'command', read: false },
+        plugins: {
+          store: 'profile',
+          changes: 'command',
+          read: true,
+          sources: 'A folder on this Mac, or a GitHub repository',
+        },
+        // Its marketplaces are the app's, behind a flag its account is served: no command reaches them.
+        marketplaces: { store: 'profile', changes: 'in-app', read: false },
         mcpServers: { store: 'profile', changes: 'command', read: true },
         skills: { store: 'profile', changes: 'folder', read: true },
       },
@@ -793,5 +802,333 @@ describe('Antigravity skills placed', () => {
     });
     // Placed or not, a skill switches only inside the app.
     expect(service.plan!(work, held('changelog'), 'disable')).toMatchObject({ available: false, reason: 'in-app' });
+  });
+});
+
+// ── installs and marketplaces (RFC 006 C2) ──
+
+/** A plugin as the runtime hands an install from a source to the adapter: named by the source a person gave. */
+const sourced = (source: string): PluginItem => ({
+  kind: 'plugin',
+  id: source,
+  name: source,
+  origin: 'own',
+  enabled: true,
+});
+
+describe('Antigravity plugin installs', () => {
+  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/Users/test' });
+  const work = actProfile('managed', '/profiles/work/antigravity');
+  const native = actProfile('native-default', '/Users/test/.gemini/antigravity-cli');
+  const install = (source: string, holds: readonly string[] = [], profile = work) =>
+    ExtensionActPlanSchema.parse(agy.plan!(profile, sourced(source), 'install', { source, holds }));
+  const marketplace: MarketplaceItem = {
+    kind: 'marketplace',
+    id: 'agent-marketplace',
+    name: 'Agent Marketplace',
+    origin: 'managed',
+    enabled: true,
+  };
+
+  it("installs from a folder or a GitHub repository with its own install, under the profile's HOME", () => {
+    expect(install('/Users/test/code/review')).toEqual({
+      target: { kind: 'plugin', id: '/Users/test/code/review' },
+      act: 'install',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['agy', 'plugin', 'install', '/Users/test/code/review'],
+        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+      },
+      display: 'agy plugin install /Users/test/code/review',
+      reaches: [],
+    });
+    // `~/` is the person's home, never the profile's HOME: the command is given the whole path.
+    expect(install('~/code/review')).toMatchObject({
+      target: { kind: 'plugin', id: '~/code/review' },
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'install', '/Users/test/code/review'] },
+      display: 'agy plugin install /Users/test/code/review',
+    });
+    for (const source of [
+      'https://github.com/northlight/review',
+      'https://github.com/northlight/review.git',
+      'https://github.com/northlight/review/',
+      'https://github.com/northlight/agy-plugins/tree/main/plugins/review',
+      'https://github.com/north-light/review.plugin/tree/v1.2.0',
+      // A Gemini CLI extension, and another profile's copy of a plugin, are folders like any other.
+      '/Users/test/.gemini/extensions/review',
+      '/Users/test/.gemini/config/plugins/review',
+    ]) {
+      expect(install(source), source).toMatchObject({
+        target: { kind: 'plugin', id: source },
+        available: true,
+        runs: { kind: 'command', argv: ['agy', 'plugin', 'install', source] },
+        reaches: [],
+      });
+    }
+    // The native default runs under the process's own home.
+    const nativePlan = install('https://github.com/northlight/review', [], native);
+    expect(nativePlan).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'install', 'https://github.com/northlight/review'] },
+    });
+    expect((nativePlan as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it('refuses a source Antigravity would not take as given', () => {
+    const generic = 'Antigravity installs a plugin from a folder on this Mac or a GitHub repository';
+    const whole = "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end";
+    const at = "Antigravity reads `@` in a source as a marketplace's plugin: give a folder whose path has none";
+    const own = "This is Antigravity's own folder: give the folder the plugin came from";
+    const refusals: Array<[source: string, message: string, profile?: typeof work]> = [
+      ['review', generic],
+      ['./code/review', generic],
+      ['code/review', generic],
+      ['~', generic],
+      ['~other/review', generic],
+      ['northlight/review', generic],
+      ['github:northlight/review', generic],
+      ['git@github.com:northlight/review.git', generic],
+      ['http://github.com/northlight/review', generic],
+      ['https://www.github.com/northlight/review', generic],
+      ['https://gitlab.com/northlight/review', generic],
+      ['https://github.com:443/northlight/review', generic],
+      ['https://github.com/northlight', generic],
+      ['https://github.com/northlight/review/blob/main/plugin.json', generic],
+      ['https://github.com/northlight/..', generic],
+      ['https://github.com/northlight/review/tree/main/../secrets', generic],
+      ['https://github.com/northlight/review/tree/main//plugins', generic],
+      // What the runtime already refuses stays refused here: a flag, a sign-in, a query.
+      ['--help', generic],
+      ['https://me:token@github.com/northlight/review', generic],
+      ['https://github.com/northlight/review?ref=main', generic],
+      ['/Users/test/code/review/', whole],
+      ['/Users/test/code/../review', whole],
+      ['~/code/../review', whole],
+      ['~/', whole],
+      ['/Users/test/code/review@2', at],
+      ['~/code/@northlight/review', at],
+      // Its own plugins folder, anything in it, and the `.gemini` above it, in the home the profile binds.
+      ['/profiles/work/antigravity/.gemini/config/plugins/review', own],
+      ['/profiles/work/antigravity/.gemini/config/plugins', own],
+      ['/profiles/work/antigravity/.gemini', own],
+      ['/Users/test/.gemini/config/plugins/review', own, native],
+      ['~/.gemini', own, native],
+    ];
+    for (const [source, message, profile] of refusals) {
+      expect(install(source, [], profile), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: false,
+        reason: 'unsupported',
+        message,
+      });
+    }
+  });
+
+  it('answers held for a plugin it has by the name the source would most likely give it', () => {
+    const holds = ['review', 'data-tools'];
+    for (const source of [
+      '/Users/test/code/review',
+      '~/code/review',
+      'https://github.com/northlight/review',
+      'https://github.com/northlight/review.git/',
+      'https://github.com/northlight/review/tree/main',
+      'https://github.com/northlight/agy-plugins/tree/main/plugins/review',
+    ]) {
+      expect(install(source, holds), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: false,
+        reason: 'held',
+        message: 'Antigravity already has review; its install would replace it',
+      });
+    }
+    for (const source of [
+      'https://github.com/northlight/agy-plugins',
+      'https://github.com/northlight/review/tree/main/plugins/lint',
+      '/Users/test/code/review-2',
+    ]) {
+      expect(install(source, holds), source).toMatchObject({ available: true });
+    }
+  });
+
+  it('installs from its Agent Marketplace only inside the app, and has no command for a marketplace', () => {
+    const inApp = 'Antigravity installs from its Agent Marketplace only inside the app (`/plugin`)';
+    const listed = { id: 'data-tools', name: 'data-tools', marketplace: 'agent-marketplace' };
+    expect(
+      ExtensionActPlanSchema.parse(
+        agy.plan!(
+          work,
+          actPlugin({ id: 'data-tools', name: 'data-tools', marketplace: 'agent-marketplace' }),
+          'install',
+          {
+            listed,
+          },
+        ),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: 'data-tools' },
+      act: 'install',
+      available: false,
+      reason: 'in-app',
+      message: inApp,
+    });
+    // A `<name>@<marketplace>` given as a source is that install too.
+    expect(install('data-tools@agent-marketplace')).toMatchObject({
+      available: false,
+      reason: 'in-app',
+      message: inApp,
+    });
+    for (const act of ['add', 'update', 'remove'] as const) {
+      expect(ExtensionActPlanSchema.parse(agy.plan!(work, marketplace, act)), act).toEqual({
+        target: { kind: 'marketplace', id: 'agent-marketplace' },
+        act,
+        available: false,
+        reason: 'in-app',
+        message: "Antigravity's marketplaces come with the app: it has no command that adds, fetches or removes one",
+      });
+    }
+  });
+
+  it('answers every act on every kind, with a source or without, and never throws', () => {
+    const items: ExtensionActItem[] = [actServer(), actSkill(), actPlugin(), marketplace];
+    for (const item of items) {
+      for (const act of ExtensionActKindSchema.options) {
+        for (const options of [{}, { source: '/Users/test/code/review', holds: [] }, { source: '-rf' }]) {
+          const plan = ExtensionActPlanSchema.parse(agy.plan!(work, item, act, options));
+          expect(plan.target, `${item.kind} ${act}`).toEqual({ kind: item.kind, id: item.id });
+          expect(plan.act).toBe(act);
+        }
+      }
+    }
+    // Never `agy mcp install`: only a plugin is installed.
+    for (const item of [actServer(), actSkill(), marketplace]) {
+      expect(agy.plan!(work, item, 'install', { source: '/Users/test/code/review' })).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Only a plugin is installed',
+      });
+    }
+  });
+
+  it('reads back what its install copies in, under the name its manifest gives it', async () => {
+    const home = await tempHome();
+    const service = createAntigravityExtensionService({ executable: 'agy', env: {}, home, now });
+    const profile = managedProfile(join(home, 'profiles', 'work', 'antigravity-3c1f'));
+    const source = join(home, 'code', 'review-src');
+    await write(join(source, 'plugin.json'), { name: 'review', version: '1.0.0' });
+    expect(service.plan!(profile, sourced(source), 'install', { source, holds: [] })).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'install', source] },
+    });
+    // What the install does: a copy into plugins/<manifest name>/, and no switch in config.json.
+    await write(join(profile.dataRoot, '.gemini', 'config', 'plugins', 'review', 'plugin.json'), {
+      name: 'review',
+      version: '1.0.0',
+    });
+    const inventory = ExtensionInventorySchema.parse(await service.inventory(profile));
+    // The folder's name guessed review-src; the manifest named it review, and the second read finds that one.
+    expect(inventory.items.filter((item) => item.kind === 'plugin')).toEqual([
+      {
+        kind: 'plugin',
+        id: 'review',
+        name: 'review',
+        origin: 'own',
+        enabled: true,
+        location: join(profile.dataRoot, '.gemini', 'config', 'plugins', 'review'),
+        version: '1.0.0',
+      },
+    ]);
+  });
+});
+
+describe('Antigravity files anyone may write', () => {
+  it('reads plugins and servers crafted to make a pattern backtrack in one pass, and shows no address', async () => {
+    const home = await tempHome();
+    const config = join(home, '.gemini', 'config');
+    // About 20k characters each, in the shapes that backtracked: `(@` ran cubic in `\([^)]*(?::\/\/|@)[^)]*\)`,
+    // a run of `<` quadratic in `<[^>]*>`, and a long word with no `@` quadratic in `\S+@\S+`.
+    const authors: Record<string, string> = {
+      'paren-at': '(@'.repeat(10_000),
+      angle: `Jo ${'<'.repeat(20_000)}`,
+      word: `Jo ${'a'.repeat(20_000)}`,
+      parens: `Jo ${'('.repeat(20_000)}`,
+      mixed: 'Jo <(@ a@b (http://x.io '.repeat(800),
+      ats: `Jo ${'@'.repeat(20_000)}`,
+    };
+    for (const [name, author] of Object.entries(authors)) {
+      await write(join(config, 'plugins', name, 'plugin.json'), {
+        name,
+        author,
+        homepage: `https://northlight.studio/${'a'.repeat(20_000)}`,
+        repository: { url: `https://${'@'.repeat(20_000)}` },
+        description: 'x '.repeat(10_000),
+      });
+      await write(join(config, 'plugins', name, 'hooks.json'), {
+        ['P'.repeat(20_000)]: [],
+        [name]: { ['S'.repeat(20_000)]: [] },
+      });
+      await write(join(config, 'plugins', name, 'commands', `${'c'.repeat(200)}.md`), '# a long name');
+    }
+    const servers = JSON.stringify({
+      mcpServers: {
+        crafted: { command: 'node', args: [`--${'a.'.repeat(10_000)}!`, `API_KEY=${'x'.repeat(20_000)}`] },
+        keyed: {
+          command: 'node',
+          args: ['server.js'],
+          env: { ['E'.repeat(20_000)]: 'value', GOOD: 'value' },
+          headers: { ['H'.repeat(20_000)]: 'value' },
+        },
+      },
+    });
+    // JSONC, as Antigravity allows it: a long comment of comment openers, a long block, a trailing comma.
+    await write(
+      join(config, 'mcp_config.json'),
+      `// ${'/*'.repeat(10_000)}\n/* ${'*'.repeat(20_000)} */\n${servers.slice(0, -1)},}`,
+    );
+    await write(
+      join(config, 'skills', 'long', 'SKILL.md'),
+      `---\nname: long\ndescription: ${'d'.repeat(20_000)}\n---\n`,
+    );
+
+    const started = performance.now();
+    const inventory = ExtensionInventorySchema.parse(
+      await createAntigravityExtensionService({ home: '/nonexistent', now }).inventory(managedProfile(home)),
+    );
+    expect(performance.now() - started).toBeLessThan(2_000);
+
+    expect(JSON.stringify(inventory)).not.toContain('a@b');
+    const plugins = inventory.items.filter((item): item is PluginItem => item.kind === 'plugin');
+    expect(plugins.map((plugin) => plugin.id)).toEqual(['angle', 'ats', 'mixed', 'paren-at', 'parens', 'word']);
+    // Too long to be a name once the addresses go, and every address gone: only `Jo` is left of one.
+    expect(plugins.map((plugin) => plugin.author)).toEqual([
+      undefined,
+      'Jo',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    for (const plugin of plugins) {
+      expect(plugin, plugin.id).not.toHaveProperty('homepage');
+      expect(plugin.brings, plugin.id).toEqual({ commands: ['c'.repeat(200)] });
+      expect(plugin.description!.length, plugin.id).toBeLessThanOrEqual(2_048);
+    }
+    // A command line too long to show is no server to list; a name too long to be a variable's is left out.
+    expect(find(inventory, 'mcp-server', 'crafted')).toBeUndefined();
+    expect(find(inventory, 'mcp-server', 'keyed')).toEqual({
+      kind: 'mcp-server',
+      id: 'keyed',
+      name: 'keyed',
+      origin: 'own',
+      enabled: true,
+      location: join(config, 'mcp_config.json'),
+      transport: 'stdio',
+      target: 'node server.js',
+      env: ['GOOD'],
+    });
+    expect(find(inventory, 'skill', 'long')).toMatchObject({ description: 'd'.repeat(2_048) });
   });
 });

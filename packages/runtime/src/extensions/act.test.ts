@@ -9,9 +9,11 @@ import {
   extensionTerminalPlan,
   type AgentHost,
   type AgentProfile,
+  type ExtensionCatalog,
   type ExtensionInventory,
   type ExtensionProvider,
   type ExtensionService,
+  type MarketplaceItem,
   type McpServerItem,
   type PluginItem,
   type SkillItem,
@@ -19,6 +21,7 @@ import {
 } from '@vibecook/puppeteer-core';
 import type { UpdateCommandRequest } from '../distribution/update.js';
 import { createExtensionActRunner } from './act.js';
+import { createExtensionCatalogReader } from './catalog.js';
 import { createExtensionInventoryReader } from './inventory.js';
 
 const PROVIDER: ExtensionProvider = {
@@ -1020,5 +1023,483 @@ describe('createExtensionActRunner, plugins', () => {
     expect(
       await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: REVIEW, act: 'remove' }),
     ).toMatchObject({ available: false, reason: 'not-held' });
+  });
+});
+
+describe('createExtensionActRunner, installs and marketplaces', () => {
+  /**
+   * A fake agent with marketplaces: its catalog lists what they hold, its
+   * "store" what it installed; the fake command edits both the way the
+   * agent's own would — an install from a source names the plugin its own way,
+   * and a marketplace takes the name its catalog gives it.
+   */
+  async function markets(options: { sources?: boolean } = {}) {
+    root = await mkdtemp(join(tmpdir(), 'puppeteer-act-markets-'));
+    const work: AgentProfile = {
+      id: 'work-example',
+      provider: 'example',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: root,
+      createdAt: '1970-01-01T00:00:00.000Z',
+    };
+    const installed = new Map<string, string>([['review@northlight', '1.2.0']]);
+    const from = new Map<string, string>();
+    const along = new Map<string, string>();
+    const marketplaces = new Map<string, { source: string; updatedAt?: string }>([
+      ['northlight', { source: 'northlight/plugins', updatedAt: '2026-09-27T09:00:00.000Z' }],
+    ]);
+    let fetchedAt = '2026-09-27T10:00:00.000Z';
+    let moves = true;
+    const provider: ExtensionProvider = {
+      ...PROVIDER,
+      support: {
+        ...PROVIDER.support,
+        plugins: {
+          store: 'profile',
+          changes: 'command',
+          read: true,
+          ...(options.sources === true ? { sources: 'A package, or a folder' } : {}),
+        },
+        marketplaces: { store: 'profile', changes: 'command', read: true, sources: 'A repository' },
+      },
+    };
+    const catalogReads = vi.fn();
+    const catalog = async (profile: AgentProfile): Promise<ExtensionCatalog> => {
+      catalogReads();
+      return {
+        provider: 'example',
+        profileId: profile.id,
+        fetchedAt: '2026-09-27T11:00:00.000Z',
+        marketplaces: [...marketplaces].map(([id, market]) => ({
+          id,
+          name: id,
+          source: market.source,
+          origin: 'own',
+          ...(market.updatedAt === undefined ? {} : { updatedAt: market.updatedAt }),
+        })),
+        plugins: [
+          { id: 'review@northlight', name: 'review', marketplace: 'northlight', version: '1.3.0' },
+          { id: 'lint@northlight', name: 'lint', marketplace: 'northlight', version: '2.0.0', description: 'Lints' },
+          {
+            id: 'telemetry@northlight',
+            name: 'telemetry',
+            marketplace: 'northlight',
+            blocked: 'Your organization turned telemetry off',
+          },
+        ].filter((plugin) => marketplaces.has(plugin.marketplace)),
+        source: { kind: 'native-store', stability: 'documented' },
+      };
+    };
+    const service: ExtensionService = {
+      provider,
+      inventory: async (profile): Promise<ExtensionInventory> => ({
+        provider: 'example',
+        profileId: profile.id,
+        fetchedAt: '2026-09-27T09:00:00.000Z',
+        items: [
+          ...[...marketplaces].map(([id, market]): MarketplaceItem => ({
+            kind: 'marketplace',
+            id,
+            name: id,
+            origin: 'own',
+            enabled: true,
+            source: market.source,
+            ...(market.updatedAt === undefined ? {} : { updatedAt: market.updatedAt }),
+          })),
+          ...[...installed].map(([id, version]): PluginItem => ({
+            kind: 'plugin',
+            id,
+            name: id.split('@')[0]!,
+            origin: 'own',
+            enabled: true,
+            version,
+            ...(from.has(id) ? { marketplace: from.get(id)! } : {}),
+          })),
+        ],
+        source: { kind: 'native-store', stability: 'documented' },
+      }),
+      catalog,
+      plan: (profile, item, act, planOptions) => {
+        const target = { kind: item.kind, id: item.id };
+        const env = { EXAMPLE_HOME: profile.dataRoot };
+        if (item.kind === 'marketplace') {
+          const verb = act === 'add' ? 'add' : act === 'update' ? 'update' : 'remove';
+          return extensionCommandPlan({
+            target,
+            act,
+            argv: ['example', 'marketplace', verb, act === 'add' ? item.source! : item.id],
+            env,
+            ...(act === 'remove' ? { reaches: ['every-profile' as const] } : {}),
+          });
+        }
+        const verb = act === 'install' && planOptions?.source !== undefined ? 'install-from' : act;
+        return extensionCommandPlan({ target, act, argv: ['example', 'plugin', verb, item.id], env });
+      },
+    };
+    const providers = new Map([['example', { provider, service }]]);
+    const resolveProfile = async (_providerId: string, profileId: string) =>
+      profileId === work.id ? { profile: work } : { error: `unknown account profile: ${profileId}` };
+    const reader = createExtensionInventoryReader({
+      providers,
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+    });
+    const catalogs = createExtensionCatalogReader({
+      providers,
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+    });
+    const commands: string[][] = [];
+    const run = vi.fn(async (request: UpdateCommandRequest) => {
+      commands.push([...request.argv]);
+      const [, noun, verb, id] = request.argv;
+      if (noun === 'plugin' && verb === 'install') installed.set(id!, id === 'lint@northlight' ? '2.0.0' : '1.3.0');
+      if (noun === 'plugin' && verb === 'install-from' && id === '/Users/test/bundle') {
+        // a folder of several plugins installs each of them
+        installed.set('alpha@local', '1.0.0');
+        installed.set('beta@local', '1.0.0');
+      } else if (noun === 'plugin' && verb === 'install-from') {
+        installed.set(`${id!.replace(/^npm:/u, '')}@npm`, '0.1.0');
+      }
+      if (noun === 'marketplace' && verb === 'add') marketplaces.set('northlight-extra', { source: id! });
+      if (noun === 'marketplace' && verb === 'update' && moves) {
+        marketplaces.set(id!, { ...marketplaces.get(id!)!, updatedAt: fetchedAt });
+        for (const [plugin, version] of along) installed.set(plugin, version);
+      }
+      if (noun === 'marketplace' && verb === 'remove') marketplaces.delete(id!);
+      return { exitCode: 0 };
+    });
+    const runner = createExtensionActRunner({
+      providers,
+      reader,
+      catalogs,
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+      run,
+      env: { PATH: '/usr/bin', HOME: '/Users/test' },
+    });
+    return {
+      runner,
+      catalogs,
+      catalogReads,
+      work,
+      installed,
+      marketplaces,
+      commands,
+      fetched: (at: string | undefined, move = true) => {
+        if (at !== undefined) fetchedAt = at;
+        moves = move;
+      },
+      installedFrom: (plugin: string, marketplace: string) => from.set(plugin, marketplace),
+      alsoUpdates: (plugin: string, version: string) => along.set(plugin, version),
+    };
+  }
+
+  const LINT = { kind: 'plugin' as const, id: 'lint@northlight' };
+  const NORTHLIGHT = { kind: 'marketplace' as const, id: 'northlight' };
+
+  it('installs a plugin its catalog lists, planned from the entry, and the second read holding it is the receipt', async () => {
+    const t = await markets();
+    const plan = await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: LINT, act: 'install' });
+    expect(plan).toMatchObject({ available: true, display: `example plugin install lint@northlight` });
+    const receipt = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: LINT, act: 'install' });
+    expect(receipt).toMatchObject({ act: 'install', status: 'changed', message: 'installed 2.0.0' });
+    expect(t.installed.get('lint@northlight')).toBe('2.0.0');
+  });
+
+  it('refuses an install of a plugin it holds, one no catalog lists, and one its organization blocks', async () => {
+    const t = await markets();
+    expect(
+      await t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'plugin', id: 'review@northlight' },
+        act: 'install',
+      }),
+    ).toMatchObject({ available: false, reason: 'held', message: 'Example already has review' });
+    expect(
+      await t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'plugin', id: 'ghost@northlight' },
+        act: 'install',
+      }),
+    ).toMatchObject({
+      status: 'not-found',
+      message: 'no marketplace Example knows lists ghost@northlight in this profile',
+    });
+    expect(
+      await t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'plugin', id: 'telemetry@northlight' },
+        act: 'install',
+      }),
+    ).toMatchObject({ available: false, reason: 'blocked', message: 'Your organization turned telemetry off' });
+    const refused = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'plugin', id: 'ghost@northlight' },
+      act: 'install',
+    });
+    expect(refused).toMatchObject({ status: 'failed' });
+    expect(t.commands).toEqual([]);
+  });
+
+  it('installs from a source only where the agent takes one, and finds the plugin it named its own way', async () => {
+    const plain = await markets();
+    const source = { kind: 'plugin' as const, id: 'npm:pi-web' };
+    expect(
+      await plain.runner.plan({
+        providerId: 'example',
+        profileId: plain.work.id,
+        target: source,
+        act: 'install',
+        source: 'npm:pi-web',
+      }),
+    ).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Example installs plugins only from its marketplaces',
+    });
+
+    const t = await markets({ sources: true });
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: source,
+      act: 'install',
+      source: 'npm:pi-web',
+    });
+    expect(receipt).toMatchObject({
+      status: 'changed',
+      message: 'installed 0.1.0',
+      display: 'example plugin install-from npm:pi-web',
+    });
+    const bundle = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: { kind: 'plugin', id: '/Users/test/bundle' },
+      act: 'install',
+      source: '/Users/test/bundle',
+    });
+    expect(bundle).toMatchObject({ status: 'changed', message: 'installed alpha, beta' });
+    for (const bad of [
+      '--global',
+      'https://me:secret@example.com/repo',
+      'git+https://example.com/repo?token=x',
+      'two words',
+    ]) {
+      expect(
+        await t.runner.plan({
+          providerId: 'example',
+          profileId: t.work.id,
+          target: { kind: 'plugin', id: bad },
+          act: 'install',
+          source: bad,
+        }),
+      ).toMatchObject({ status: 'invalid' });
+    }
+  });
+
+  it('adds a marketplace from its source, found by the name its catalog gives it; one it has answers held', async () => {
+    const t = await markets();
+    const target = { kind: 'marketplace' as const, id: 'northlight/extra' };
+    const receipt = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target,
+      act: 'add',
+      source: 'northlight/extra',
+    });
+    expect(receipt).toMatchObject({
+      status: 'changed',
+      message: 'added northlight-extra',
+      display: 'example marketplace add northlight/extra',
+    });
+    expect(
+      await t.runner.plan({
+        providerId: 'example',
+        profileId: t.work.id,
+        target: { kind: 'marketplace', id: 'northlight/plugins' },
+        act: 'add',
+        source: 'northlight/plugins',
+      }),
+    ).toMatchObject({ available: false, reason: 'held', message: 'Example already has northlight' });
+  });
+
+  it("fetches a marketplace's catalog again, decided by the time the agent keeps for it", async () => {
+    const t = await markets();
+    const fetched = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: NORTHLIGHT,
+      act: 'update',
+    });
+    expect(fetched).toMatchObject({ status: 'changed', message: 'fetched its catalog again' });
+    t.fetched(undefined, false);
+    const same = await t.runner.run({ providerId: 'example', profileId: t.work.id, target: NORTHLIGHT, act: 'update' });
+    expect(same).toMatchObject({ status: 'unchanged', message: 'Example holds the catalog it had' });
+    t.marketplaces.set('northlight', { source: 'northlight/plugins' });
+    const untimed = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: NORTHLIGHT,
+      act: 'update',
+    });
+    expect(untimed).toMatchObject({ status: 'unconfirmed', message: 'Example does not say when it last fetched it' });
+    // a fetch that also moved a plugin installed from it says so
+    t.fetched('2026-09-27T12:00:00.000Z', true);
+    t.installedFrom('review@northlight', 'northlight');
+    t.alsoUpdates('review@northlight', '1.4.0');
+    const along = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: NORTHLIGHT,
+      act: 'update',
+    });
+    expect(along).toMatchObject({
+      status: 'changed',
+      message: 'fetched its catalog again; Example also updated review 1.2.0 → 1.4.0',
+    });
+    const removed = await t.runner.run({
+      providerId: 'example',
+      profileId: t.work.id,
+      target: NORTHLIGHT,
+      act: 'remove',
+    });
+    expect(removed).toMatchObject({ status: 'changed', message: 'removed' });
+    expect(
+      await t.runner.plan({ providerId: 'example', profileId: t.work.id, target: NORTHLIGHT, act: 'purge' }),
+    ).toMatchObject({ available: false, reason: 'unsupported' });
+  });
+
+  it("plans a marketplace's fetch and removal with the items, and each listed plugin's install", async () => {
+    const t = await markets();
+    const catalog = await t.catalogs.catalog('example', t.work.id);
+    expect('status' in catalog).toBe(false);
+    const items: Array<MarketplaceItem | PluginItem> = [
+      {
+        kind: 'marketplace',
+        id: 'northlight',
+        name: 'northlight',
+        origin: 'own',
+        enabled: true,
+        source: 'northlight/plugins',
+      },
+      { kind: 'plugin', id: 'review@northlight', name: 'review', origin: 'own', enabled: true, version: '1.2.0' },
+    ];
+    const plans = await t.runner.plans({
+      providerId: 'example',
+      profileId: t.work.id,
+      items,
+      installs: (catalog as ExtensionCatalog).plugins,
+    });
+    expect(Array.isArray(plans)).toBe(true);
+    const said = (
+      plans as Array<{ target: { kind: string; id: string }; act: string; available: boolean; reason?: string }>
+    )
+      .filter((plan) => plan.target.kind === 'marketplace' || plan.act === 'install')
+      .map((plan) => `${plan.act} ${plan.target.id} ${plan.available ? 'available' : plan.reason}`);
+    expect(said).toEqual([
+      'update northlight available',
+      'remove northlight available',
+      'install review@northlight held',
+      'install lint@northlight available',
+      'install telemetry@northlight blocked',
+    ]);
+  });
+
+  it('plans a typed source without reading the agent: an install from it, and a marketplace added from it', async () => {
+    const t = await markets({ sources: true });
+    const items: Array<MarketplaceItem | PluginItem> = [
+      {
+        kind: 'marketplace',
+        id: 'northlight',
+        name: 'northlight',
+        origin: 'own',
+        enabled: true,
+        source: 'northlight/plugins',
+      },
+    ];
+    const plans = await t.runner.plans({
+      providerId: 'example',
+      profileId: t.work.id,
+      items,
+      sources: { plugins: ['npm:pi-web'], marketplaces: ['northlight/extra', 'northlight/plugins'] },
+    });
+    const said = (
+      plans as Array<{ target: { id: string }; act: string; available: boolean; reason?: string; display?: string }>
+    )
+      .filter((plan) => plan.act === 'install' || plan.act === 'add')
+      .map((plan) => `${plan.act} ${plan.target.id} ${plan.available ? plan.display : plan.reason}`);
+    expect(said).toEqual([
+      'install npm:pi-web example plugin install-from npm:pi-web',
+      'add northlight/extra example marketplace add northlight/extra',
+      'add northlight/plugins held',
+    ]);
+  });
+
+  it('reads a catalog through the adapter, coalesced, and refuses one that names a marketplace it does not list', async () => {
+    const t = await markets();
+    const [a, b] = await Promise.all([
+      t.catalogs.catalog('example', t.work.id),
+      t.catalogs.catalog('example', t.work.id),
+    ]);
+    expect(a).toBe(b);
+    expect(t.catalogReads).toHaveBeenCalledTimes(1);
+    expect(await t.catalogs.catalog('nobody', t.work.id)).toMatchObject({ status: 'unsupported' });
+    expect(await t.catalogs.catalog('example', 'elsewhere')).toMatchObject({ status: 'not-found' });
+  });
+});
+
+describe('the catalog reader, checked', () => {
+  it('answers invalid for a plugin whose marketplace the catalog does not list, and unsupported without a catalog', async () => {
+    const work: AgentProfile = {
+      id: 'work-example',
+      provider: 'example',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/tmp/none',
+      createdAt: '1970-01-01T00:00:00.000Z',
+    };
+    const withMarkets: ExtensionProvider = {
+      ...PROVIDER,
+      support: { ...PROVIDER.support, marketplaces: { store: 'profile', changes: 'command', read: true } },
+    };
+    const service: ExtensionService = {
+      provider: withMarkets,
+      inventory: async () => ({ status: 'unavailable', message: 'unused', retryable: false }),
+      catalog: async (profile) => ({
+        provider: 'example',
+        profileId: profile.id,
+        fetchedAt: '2026-09-27T11:00:00.000Z',
+        marketplaces: [],
+        plugins: [{ id: 'lint@elsewhere', name: 'lint', marketplace: 'elsewhere' }],
+        source: { kind: 'native-store', stability: 'documented' },
+      }),
+    };
+    const resolveProfile = async () => ({ profile: work });
+    const reader = createExtensionCatalogReader({
+      providers: new Map([['example', { provider: withMarkets, service }]]),
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+    });
+    expect(await reader.catalog('example', work.id)).toMatchObject({
+      status: 'invalid',
+      message: expect.stringContaining('names a marketplace the catalog does not'),
+    });
+    const bare = createExtensionCatalogReader({
+      providers: new Map([
+        ['example', { provider: PROVIDER, service: { provider: PROVIDER, inventory: service.inventory } }],
+      ]),
+      resolveProfile,
+      nativeDefaultProfileId: () => undefined,
+    });
+    expect(await bare.catalog('example', work.id)).toMatchObject({
+      status: 'unsupported',
+      message: 'Example has no catalog to read',
+    });
   });
 });

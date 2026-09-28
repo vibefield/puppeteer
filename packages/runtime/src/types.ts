@@ -5,6 +5,7 @@ import type {
   AgentContinuation,
   AgentInstallation,
   AgentProfile,
+  CatalogPlugin,
   DistributionFailure,
   DistributionProvider,
   DistributionService,
@@ -13,6 +14,7 @@ import type {
   ExtensionActPlan,
   ExtensionActReceipt,
   ExtensionActTarget,
+  ExtensionCatalog,
   ExtensionFailure,
   ExtensionInventory,
   ExtensionProvider,
@@ -511,11 +513,20 @@ export interface ExtensionActOptions {
   providerId: string;
   /** The provider's native default when absent. */
   profileId?: string;
-  /** For `add`, the server's name as the id. */
+  /**
+   * For `add`, the server's name as the id — or a marketplace's source; for
+   * `install`, the catalog's id for the plugin, or the source a person gave.
+   */
   target: ExtensionActTarget;
   act: ExtensionActKind;
   /** What an `add` gives the agent: the server, and the names of the variables it reads. */
   definition?: McpServerDefinition;
+  /**
+   * For a plugin's `install` from a source a person gave (a package, a
+   * repository, a folder), and a marketplace's `add`: that source, as
+   * `isExtensionSource` allows; the target's id is the same string.
+   */
+  source?: string;
   /**
    * A skill's folder, absolute: for `add`, the one copy the host keeps, which
    * the agent is given a link to where it looks for skills; for `remove`,
@@ -812,6 +823,20 @@ export interface AgentRuntime {
    */
   extensionInventory(providerId: string, profileId?: string): Promise<ExtensionInventory | ExtensionFailure>;
   /**
+   * RFC 006 C2: what one profile's agent could install — the plugins listed by
+   * the marketplaces it knows — read from the catalogs the agent already
+   * fetched; the provider's native default when no profile is named. Never
+   * fetches a catalog (the agent's own `update` on a marketplace does).
+   */
+  extensionCatalog(
+    providerId: string,
+    profileId?: string,
+    options?: {
+      /** A read of its own, never one that began earlier: after an act, what the agent holds now. */
+      fresh?: boolean;
+    },
+  ): Promise<ExtensionCatalog | ExtensionFailure>;
+  /**
    * RFC 006 C2: what an act on a server or skill the profile's agent holds
    * would run — the agent's own command or protocol call, and what it reaches
    * beyond that one item — or why the agent cannot. Plans from a fresh read;
@@ -853,6 +878,20 @@ export interface AgentRuntime {
       adds?: ReadonlyArray<{ name: string; folder: string }>;
       /** The folder a host keeps skills in: the agent's own skill folder is planned to move there when it goes. */
       keep?: string;
+    },
+    offers?: {
+      /**
+       * Plugins the agent's catalog lists, as a host offers them: each one's
+       * install, planned against `items` (one the agent holds answers `held`).
+       */
+      installs?: ReadonlyArray<CatalogPlugin>;
+      /**
+       * Sources a person gave, before anything runs: each plugin source's
+       * install and each marketplace source's add, planned against `items`.
+       */
+      sources?: { plugins?: readonly string[]; marketplaces?: readonly string[] };
+      /** Plan only these offers; `items` then only say what the agent holds. */
+      only?: boolean;
     },
   ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */

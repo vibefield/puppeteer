@@ -11,6 +11,7 @@ export * from './profiles/roots.js';
 export * from './profiles/onboarding.js';
 export * from './extensions/inventory.js';
 export * from './extensions/act.js';
+export * from './extensions/catalog.js';
 export * from './identity/runtime-identity.js';
 export * from './identity/creation-registry.js';
 export * from './monitor/clock.js';

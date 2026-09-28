@@ -137,9 +137,11 @@ function splitFrontmatter(markdown: string): { block?: string; body: string } {
 function loadedType(block: string | undefined): boolean {
   const line = block?.split('\n').find((entry) => /^type\s*:/u.test(entry));
   if (line === undefined) return true;
-  const value = line
-    .replace(/^type\s*:/u, '')
-    .replace(/\s+#.*$/u, '')
+  const typed = line.replace(/^type\s*:/u, '');
+  // A comment is a `#` after whitespace and all that follows it, found in one pass: `\s+#.*$` would
+  // backtrack over a long run of spaces with no `#` after it, and a SKILL.md is anyone's to write.
+  const comment = /\s#/u.exec(typed);
+  const value = (comment === null ? typed : typed.slice(0, comment.index))
     .trim()
     .replace(/^(['"])(.*)\1$/u, '$2')
     .trim();
@@ -344,13 +346,31 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
   // add answers as every server act does, and one skill has no switch. A skill
   // is a folder where Kimi looks, though, so one is placed there and taken away
   // (planSkill).
+  //
+  // Installs are the app's too: its one catalog is fetched from Kimi's own
+  // address each time `/plugins` opens (nothing under the root keeps it, so
+  // there is no catalog to read here), and a folder, zip or GitHub address
+  // installs through `/plugins install`. It has no list of marketplaces to add
+  // to, fetch or remove from — `/plugins marketplace <source>` only browses
+  // another catalog once.
   function plan(
     profile: AgentProfile,
     item: ExtensionActItem,
     act: ExtensionActKind,
-    { keepIn }: ExtensionActPlanOptions = {},
+    { keepIn, source }: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'marketplace')
+      return extensionActUnavailable(target, act, 'unsupported', 'Kimi Code has one catalog, inside the app');
+    if (item.kind === 'plugin' && act === 'install')
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        source === undefined
+          ? 'Kimi Code installs plugins only inside the app: `/plugins`, from its Official and Curated tabs'
+          : 'Kimi Code installs one from a folder or an address inside the app: `/plugins install <path-or-url>`',
+      );
     if (item.kind === 'plugin')
       return extensionActUnavailable(
         target,

@@ -6,14 +6,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
   describeMcpDefinition,
+  ExtensionActKindSchema,
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
+  type MarketplaceItem,
   type McpServerDefinition,
   type McpServerItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createOpenCodeExtensionService } from './extensions.js';
@@ -74,7 +78,14 @@ describe('OpenCode extensions', () => {
       label: 'OpenCode',
       support: {
         // A hosted session runs `--pure`, which loads only OpenCode's built-in plugins, never one the read lists.
-        plugins: { store: 'shared', changes: 'command', read: true, hostedSkips: true },
+        // It installs from a source a person names, and has no marketplaces.
+        plugins: {
+          store: 'shared',
+          changes: 'command',
+          read: true,
+          hostedSkips: true,
+          sources: 'An npm package, or a folder with a package.json',
+        },
         mcpServers: { store: 'shared', changes: 'in-app', read: true },
         skills: { store: 'shared', changes: 'folder', read: true },
       },
@@ -384,6 +395,76 @@ describe('OpenCode extensions', () => {
     expect(inventory.items).toEqual([]);
     expect(inventory.unread).toBeUndefined();
   });
+
+  it('lists what only the TUI’s documents declare, by the same rules, and nothing else in them', async () => {
+    const home = await tempHome();
+    const config = join(home, '.config', 'opencode');
+    await write(join(config, 'opencode.json'), { plugin: ['opencode-wakatime@1.2.3', '@acme/both'] });
+    // `opencode plugin` writes a package whose only entry is the TUI's into tui.json instead.
+    await write(join(config, 'tui.json'), {
+      $schema: 'https://opencode.ai/tui.json',
+      plugin: ['oc-theme-dusk@0.4.0', ['@acme/both@2.0.0', { compact: true }], './themes/local'],
+      plugin_enabled: { 'oc-theme-dusk': false },
+      mcp: { ignored: { type: 'local', command: ['never-read'] } },
+      skills: { paths: ['~/never-read'] },
+    });
+    await write(join(config, 'tui.jsonc'), '{\n  // the later of the pair\n  "plugin": ["oc-theme-dusk@0.5.0",],\n}');
+    await write(join(home, '.opencode', 'tui.json'), { plugin: ['oc-keys'] });
+    await write(join(home, 'extra', 'tui.jsonc'), { plugin: ['oc-extra'] });
+    await write(join(home, 'custom-tui.json'), { plugin: ['oc-custom'] });
+    await write(join(home, 'never-read', 'hidden', 'SKILL.md'), skill('hidden', 'In a path only tui.json names'));
+
+    const inventory = await read(home, {
+      OPENCODE_CONFIG_DIR: join(home, 'extra'),
+      OPENCODE_TUI_CONFIG: join(home, 'custom-tui.json'),
+    });
+    expect(inventory.unread).toBeUndefined();
+    const local = pathToFileURL(join(config, 'themes', 'local')).href;
+    expect(inventory.items.map((item) => `${item.kind} ${item.id}`)).toEqual([
+      'plugin opencode-wakatime',
+      'plugin @acme/both',
+      'plugin oc-theme-dusk',
+      `plugin ${local}`,
+      'plugin oc-custom',
+      'plugin oc-keys',
+      'plugin oc-extra',
+    ]);
+    // The later document of the TUI's wins; one the server declares too keeps the server's declaration.
+    expect(find(inventory, 'plugin', 'oc-theme-dusk')).toEqual({
+      kind: 'plugin',
+      id: 'oc-theme-dusk',
+      name: 'oc-theme-dusk',
+      origin: 'own',
+      shared: true,
+      enabled: true,
+      version: '0.5.0',
+      location: join(config, 'tui.jsonc'),
+    });
+    expect(find(inventory, 'plugin', '@acme/both')).toEqual({
+      kind: 'plugin',
+      id: '@acme/both',
+      name: '@acme/both',
+      origin: 'own',
+      shared: true,
+      enabled: true,
+      location: join(config, 'opencode.json'),
+    });
+    expect(find(inventory, 'plugin', local)).toMatchObject({
+      name: 'local',
+      location: join(config, 'themes', 'local'),
+    });
+
+    // A TUI document that cannot be read leaves the plugins unread, and nothing else.
+    const broken = await tempHome();
+    await write(join(broken, '.config', 'opencode', 'tui.json'), '{ "plugin": [');
+    await write(join(broken, '.config', 'opencode', 'opencode.json'), {
+      plugin: ['opencode-wakatime'],
+      mcp: { docs: { type: 'remote', url: 'https://docs.example.com/mcp' } },
+    });
+    const partial = await read(broken);
+    expect(partial.unread).toEqual([{ kind: 'plugin', message: '~/.config/opencode/tui.json could not be read' }]);
+    expect(partial.items.map((item) => item.id)).toEqual(['opencode-wakatime', 'docs']);
+  });
 });
 
 // ── acts (RFC 006 C2) ──
@@ -482,6 +563,8 @@ describe('OpenCode extension acts', () => {
       add: ['unsupported', 'OpenCode adds a plugin only with `opencode plugin`, from a package a person names'],
       'sign-in': ['unsupported', noSignIn],
       'sign-out': ['unsupported', noSignIn],
+      // With no source a person named, an install would come from a catalog.
+      install: ['unsupported', 'OpenCode has no marketplace: it installs a plugin from a package a person names'],
     };
     for (const [act, [reason, message]] of Object.entries(answers)) {
       const plan = opencode.plan!(actProfile('managed', '/p'), actPlugin(), act as ExtensionActKind);
@@ -764,5 +847,296 @@ describe('OpenCode extension acts', () => {
         reaches: ['every-profile'],
       });
     }
+  });
+});
+
+// ── installs (RFC 006 C2) ──
+
+/** A plugin as the runtime hands an install from a source to the adapter: named by the source a person gave. */
+const sourced = (source: string): PluginItem => ({
+  kind: 'plugin',
+  id: source,
+  name: source,
+  origin: 'own',
+  enabled: true,
+});
+
+describe('OpenCode plugin installs', () => {
+  const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+  const work = actProfile('managed', '/profiles/work/opencode');
+  const install = (source: string, holds: readonly string[] = [], profile = work) =>
+    ExtensionActPlanSchema.parse(opencode.plan!(profile, sourced(source), 'install', { source, holds }));
+  const marketplace: MarketplaceItem = {
+    kind: 'marketplace',
+    id: 'acme/plugins',
+    name: 'acme/plugins',
+    origin: 'own',
+    enabled: true,
+    source: 'acme/plugins',
+  };
+
+  it('installs a package or a folder with its own command, global and pure, into the config every profile reads', () => {
+    expect(install('opencode-wakatime@1.2.3')).toEqual({
+      target: { kind: 'plugin', id: 'opencode-wakatime@1.2.3' },
+      act: 'install',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['opencode', 'plugin', 'opencode-wakatime@1.2.3', '--global', '--pure'],
+        env: { XDG_DATA_HOME: '/profiles/work/opencode/data' },
+      },
+      display: 'opencode plugin opencode-wakatime@1.2.3 --global --pure',
+      reaches: ['every-profile'],
+    });
+    for (const source of [
+      'opencode-wakatime',
+      'opencode-wakatime@latest',
+      '@acme/opencode-review',
+      '@acme/opencode-review@next',
+      'oc-theme.dusk_2@2.0.0-beta.1+build.5',
+      '/Users/test/code/opencode-notify',
+      'file:///Users/test/code/opencode-notify',
+      'file:///Users/test/code/My%20Plugin',
+    ]) {
+      expect(install(source), source).toMatchObject({
+        target: { kind: 'plugin', id: source },
+        available: true,
+        runs: { kind: 'command', argv: ['opencode', 'plugin', source, '--global', '--pure'] },
+        reaches: ['every-profile'],
+      });
+    }
+    // The native default binds nothing: its data home is OpenCode's own.
+    const native = install('opencode-wakatime', [], actProfile('native-default', '/Users/test/.local/share/opencode'));
+    expect(native).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['opencode', 'plugin', 'opencode-wakatime', '--global', '--pure'] },
+    });
+    expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it('refuses a source OpenCode would not keep as given, in its own terms', () => {
+    const relative = "Give the folder's whole path: OpenCode would read a relative one from its config's folder";
+    const unnormalized = "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end";
+    const address = "Give the folder's whole path instead of this `file://` address";
+    const repository = 'OpenCode installs a plugin from npm or a folder, not from a repository or an address';
+    const range = 'Name one version or tag of the package, not a range';
+    const other = 'OpenCode installs a plugin from an npm package, by its name, or from a folder, by its whole path';
+    const refusals: Array<[source: string, message: string]> = [
+      ['./plugins/notify', relative],
+      ['../notify', relative],
+      ['~/code/opencode-notify', "Give the folder's whole path, from `/`"],
+      ['/Users/test/code/../notify', unnormalized],
+      ['/Users/test/code/notify/', unnormalized],
+      ['/Users/test//code/notify', unnormalized],
+      // An address resolves its own dots, and OpenCode keys the spec as it is written: only a whole path's own.
+      ['file:///Users/test/code/./notify', address],
+      ['file:///Users/test/code/notify/', address],
+      ['file://elsewhere/Users/test/notify', address],
+      ['file://localhost/Users/test/code/notify', address],
+      ['file:///Users/test/code/pl%C3%BCgin/%2E%2E/notify', address],
+      ['opencode-wakatime@^1.2.0', range],
+      ['opencode-wakatime@~1.2', range],
+      ['@acme/opencode-review@>=1', range],
+      ['opencode-wakatime@1.x||2', range],
+      ['git+https://github.com/acme/opencode-review.git', repository],
+      ['github:acme/opencode-review', repository],
+      ['https://registry.example.com/opencode-review-1.0.0.tgz', repository],
+      ['acme/opencode-review', other],
+      ['OpenCode-Wakatime', other],
+      ['npm:opencode-wakatime', other],
+      ['opencode-wakatime@', other],
+      [`opencode-${'x'.repeat(206)}`, other],
+      // What the runtime already refuses stays refused here: a flag, a sign-in, a query.
+      ['--global', other],
+      ['https://me:secret@registry.example.com/x.tgz', other],
+      ['opencode-wakatime?token=x', other],
+    ];
+    for (const [source, message] of refusals) {
+      expect(install(source), source).toEqual({
+        target: { kind: 'plugin', id: source },
+        act: 'install',
+        available: false,
+        reason: 'unsupported',
+        message,
+      });
+    }
+    // npm's longest name is still a name.
+    expect(install(`opencode-${'x'.repeat(205)}`)).toMatchObject({ available: true });
+    // An auth flow OpenCode builds in: its loader skips the package.
+    expect(install('opencode-copilot-auth@0.0.9')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'OpenCode has opencode-copilot-auth built in, and skips the package',
+    });
+  });
+
+  it('answers held for a package it lists at any version, or a folder it lists, where its command changes nothing', () => {
+    const holds = ['opencode-wakatime', '@acme/opencode-review', 'file:///Users/test/code/opencode-notify'];
+    expect(install('opencode-wakatime@2.0.0', holds)).toEqual({
+      target: { kind: 'plugin', id: 'opencode-wakatime@2.0.0' },
+      act: 'install',
+      available: false,
+      reason: 'held',
+      message:
+        'OpenCode already lists opencode-wakatime in its plugin list; its own command leaves that entry as it is',
+    });
+    expect(install('@acme/opencode-review@next', holds)).toMatchObject({
+      reason: 'held',
+      message:
+        'OpenCode already lists @acme/opencode-review in its plugin list; its own command leaves that entry as it is',
+    });
+    for (const source of ['/Users/test/code/opencode-notify', 'file:///Users/test/code/opencode-notify']) {
+      expect(install(source, holds), source).toMatchObject({
+        available: false,
+        reason: 'held',
+        message:
+          'OpenCode already lists /Users/test/code/opencode-notify in its plugin list; its own command leaves that entry as it is',
+      });
+    }
+    // Another scope, another name or another folder is another plugin.
+    for (const source of ['@other/opencode-review', 'opencode-wakatime-pro', '/Users/test/code/opencode-notify-2']) {
+      expect(install(source, holds), source).toMatchObject({ available: true });
+    }
+  });
+
+  it('has no marketplace: nothing installs from a catalog, and no marketplace act has a command', () => {
+    const listed = { id: 'review@northlight', name: 'review', marketplace: 'northlight' };
+    expect(
+      ExtensionActPlanSchema.parse(
+        opencode.plan!(work, actPlugin({ id: listed.id, name: listed.name, marketplace: 'northlight' }), 'install', {
+          listed,
+        }),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: 'review@northlight' },
+      act: 'install',
+      available: false,
+      reason: 'unsupported',
+      message: 'OpenCode has no marketplace: it installs a plugin from a package a person names',
+    });
+    for (const act of ['add', 'update', 'remove'] as const) {
+      expect(ExtensionActPlanSchema.parse(opencode.plan!(work, marketplace, act)), act).toEqual({
+        target: { kind: 'marketplace', id: 'acme/plugins' },
+        act,
+        available: false,
+        reason: 'unsupported',
+        message: 'OpenCode has no marketplaces',
+      });
+    }
+  });
+
+  it('answers every act on every kind, with a source or without, and never throws', () => {
+    const items: ExtensionActItem[] = [
+      actServer(),
+      actSkill(),
+      actPlugin(),
+      actPlugin({ id: 'file:///Users/test/.config/opencode/plugins/notify.ts', name: 'notify' }),
+      marketplace,
+    ];
+    for (const item of items) {
+      for (const act of ExtensionActKindSchema.options) {
+        for (const options of [{}, { source: 'opencode-wakatime', holds: [] }, { source: '-rf' }]) {
+          const plan = ExtensionActPlanSchema.parse(opencode.plan!(work, item, act, options));
+          expect(plan.target, `${item.kind} ${act}`).toEqual({ kind: item.kind, id: item.id });
+          expect(plan.act).toBe(act);
+        }
+      }
+    }
+    for (const item of [actServer(), actSkill()]) {
+      expect(opencode.plan!(work, item, 'install', { source: 'opencode-wakatime' })).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Only a plugin is installed',
+      });
+    }
+  });
+
+  it('reads back what its command writes, by the key a held install is refused on', async () => {
+    const home = await tempHome();
+    const config = join(home, '.config', 'opencode');
+    const folder = join(home, 'code', 'opencode-notify');
+    const service = createOpenCodeExtensionService({ home, env: {}, now, executable: 'opencode' });
+    const profile = managedProfile(home);
+    // What `opencode plugin <source> --global` writes: the source as given, into opencode.json or — for a
+    // package whose only entry is the TUI's — tui.json.
+    await write(join(config, 'opencode.json'), { plugin: ['@acme/opencode-review@next', folder] });
+    await write(join(config, 'tui.json'), { plugin: ['oc-theme-dusk@0.4.0'] });
+    const inventory = ExtensionInventorySchema.parse(await service.inventory(profile));
+    const holds = inventory.items.filter((item) => item.kind === 'plugin').map((item) => item.id);
+    expect(holds).toEqual(['@acme/opencode-review', pathToFileURL(folder).href, 'oc-theme-dusk']);
+    for (const source of ['@acme/opencode-review@next', folder, pathToFileURL(folder).href, 'oc-theme-dusk@0.5.0']) {
+      expect(service.plan!(profile, sourced(source), 'install', { source, holds }), source).toMatchObject({
+        available: false,
+        reason: 'held',
+      });
+    }
+  });
+});
+
+describe('OpenCode config anyone may write', () => {
+  it('reads documents crafted to make a pattern backtrack in one pass', async () => {
+    const home = await tempHome();
+    const config = join(home, '.config', 'opencode');
+    // About 20k characters each: a `{env:` with no `}` after it ran every one to the end of the value, a wait
+    // as long as the value squared, and a definition has many values.
+    const unclosed = '{env:'.repeat(4_000);
+    const environment = Object.fromEntries(Array.from({ length: 12 }, (_, index) => [`KEY_${index}`, unclosed]));
+    const document = {
+      mcp: {
+        crafted: { type: 'local', command: ['node', 'server.js'], environment },
+        remote: { type: 'remote', url: `https://mcp.example.com/${unclosed}`, headers: { 'X-Key': unclosed } },
+        long: { type: 'local', command: ['node', `--${'a.'.repeat(10_000)}!`] },
+      },
+      plugin: [`opencode-wakatime@${'1.'.repeat(10_000)}`, `@${'a'.repeat(20_000)}`, `./${'a/'.repeat(10_000)}`],
+      skills: { paths: [`~/${'s/'.repeat(10_000)}`] },
+    };
+    // JSONC, as OpenCode reads it: a long comment of comment openers, a long block, a trailing comma.
+    await write(
+      join(config, 'opencode.jsonc'),
+      `// ${'/*'.repeat(10_000)}\n/* ${'*'.repeat(20_000)} */\n${JSON.stringify(document).slice(0, -1)},}`,
+    );
+    await write(join(config, 'tui.json'), { plugin: [`oc-theme-${unclosed}`, 'oc-theme-dusk'] });
+    await write(join(home, '.agents', 'skills', 'long', 'SKILL.md'), skill('long', 'd'.repeat(20_000)));
+
+    const started = performance.now();
+    const inventory = await read(home);
+    expect(performance.now() - started).toBeLessThan(2_000);
+
+    expect(inventory.unread).toBeUndefined();
+    // No `}` closes them, so no value names a variable; the keys still do.
+    expect(find(inventory, 'mcp-server', 'crafted')).toMatchObject({
+      target: 'node server.js',
+      env: Array.from({ length: 12 }, (_, index) => `KEY_${index}`),
+    });
+    expect(find(inventory, 'mcp-server', 'remote')).toMatchObject({ target: '•••', headers: ['X-Key'] });
+    expect(find(inventory, 'mcp-server', 'remote')).not.toHaveProperty('env');
+    // A command line too long to show, and plugin ids too long to key, are left out.
+    expect(find(inventory, 'mcp-server', 'long')).toBeUndefined();
+    expect(inventory.items.filter((item) => item.kind === 'plugin').map((item) => item.id)).toEqual([
+      'opencode-wakatime',
+      'oc-theme-dusk',
+    ]);
+    expect(find(inventory, 'plugin', 'opencode-wakatime')).not.toHaveProperty('version');
+    expect(find(inventory, 'skill', 'long')).toMatchObject({ description: 'd'.repeat(2_048) });
+  });
+
+  it('finds each `{env:NAME}` as OpenCode does, the first `}` closing it', async () => {
+    const home = await tempHome();
+    await write(join(home, '.config', 'opencode', 'opencode.json'), {
+      mcp: {
+        mixed: {
+          type: 'local',
+          command: ['node', 'server.js'],
+          environment: {
+            // An empty one is none; one inside another ends at the first `}`; one never closed is none.
+            A: '{env:}{env:ONE}x{env: TWO }{env:{env:THREE}}',
+            B: 'prefix-{env:FOUR}-{env:FIVE',
+          },
+        },
+      },
+    });
+    const inventory = await read(home);
+    // `{env:{env:THREE}` names `{env:THREE`, no variable's name, as OpenCode's own substitution reads it.
+    expect(find(inventory, 'mcp-server', 'mixed')).toMatchObject({ env: ['A', 'B', 'ONE', 'TWO', 'FOUR'] });
   });
 });

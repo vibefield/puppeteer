@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day; the rest of C2 (a plugin installed, a marketplace), C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day, its sixth (an agent's catalogs read, a plugin installed, a marketplace added, fetched again or removed) the same day; C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -808,6 +808,50 @@ turns on only in a terminal, where Hermes asks consent for what it may do, and a
 update|remove <source>` (the removal with `PI_OFFLINE=1`, so it installs nothing; a folder's package has no update), its switch
 only in `pi config`; Kimi
 Code only inside the app (`/plugins`); OpenCode no command that switches, removes or updates one.
+
+C2's sixth slice, the same day: an agent's catalogs, a plugin installed, and a marketplace. `ExtensionService.catalog`
+answers what a profile's agent could install — the plugins listed by the marketplaces it knows — from the catalogs it
+already fetched: file reads only, never a process or the network (a catalog is as fresh as the agent's last fetch, and
+that fetch is the agent's own act). A `CatalogPlugin` carries the catalog's key (what an install takes), what its
+listing says it would bring (`CatalogParts`: commands, agents, hook events, servers, skills, tools), what the agent asks
+or does before its code runs (`CatalogAsk`: a look, a command it asks the person to accept, a package manager's fetch,
+values by name, consent, a scan, apps that sign in), why the agent will not install it here (`blocked`), the plugin the
+agent holds from it by the agent's own install record (`held`, which can be named apart from the key) and whether its
+copy is older (`newer`, by the agent's own rule); a `CatalogSuggestion` is a marketplace the agent adds by itself later
+— added now with its own add where a source is given, only said where an add of the host's would stand beside the
+agent's. `ExtensionActKind` gains `install` (from a catalog entry, or from a source a person gave where the plugins
+support names what the agent takes, `sources`, checked by `isExtensionSource`: one argument, never a flag, never an
+address with a sign-in or a query) and `ExtensionActTarget` gains `marketplace` (`add` from a source, `update` — its
+catalog fetched again — and `remove`); `ExtensionReach` gains `plugins` (a marketplace's removal takes what was
+installed from it, its fetch updates it), the unavailable reasons gain `blocked`, `PluginItem` gains `pinned` and
+plugins support `catalog`. The runtime reads a catalog through the adapter (`extensionCatalog`, schema-checked,
+coalesced), plans an install from a fresh read of the catalog (a plugin it holds answers `held`), plans a typed source
+against what a read already found (a pure plan: no read, since reading some agents starts one), and takes the second
+read for the receipt: an install is done when the agent holds the plugin by its key, or holds exactly one it did not
+before (every one, named, where a folder held several); a marketplace's add likewise, or by its source; a fetch when the
+time the agent keeps for the marketplace moved — and a fetch that moved the version of a plugin installed from it says
+so. Installs, updates and adds run with a fifteen-minute limit (a clone, a package manager). Per agent, from four
+read-only research passes over James's reports, the adapters and the agents' own sources (nothing probed): Claude Code
+reads each marketplace's `.claude-plugin/marketplace.json` in its clone, installs with `claude plugin install
+<name>@<marketplace> --scope user -y` (a source that is a command runs in a terminal without `-y`, where the person
+accepts it; S4e1's `update` gains `-y`, which install and update need with no terminal), and adds, fetches and removes
+marketplaces with `claude plugin marketplace add|update|remove` (a removal takes its plugins; the official marketplace,
+which Claude Code adds at a profile's first session, is suggested); Codex reads its configured, curated and personal
+catalogs from files (the app-server's start runs network tasks that can reinstall plugins, so the catalog never starts
+one) and keys a plugin by the name its catalog gives itself, as Codex does (a catalog renamed since it was added lists
+nothing, and says so), installs with `codex plugin add <key> --json` (never the app-server's install, which opens a
+browser per OAuth server), and adds, upgrades and removes marketplaces with `codex plugin marketplace
+add|upgrade|remove` — an upgrade reinstalls the plugins installed from it (`plugins`); Grok reads its sources' clones in
+`marketplace-cache/` and the git marketplaces it borrows from Claude Code, installs a folder with `grok plugin install
+<folder> --trust` (a catalog install's argument is not yet known: said, not run), and adds, fetches and removes its own
+marketplaces; Hermes reads its reviewed catalog (the checkout's `plugin-catalog/` and the profile's fetched copy, by
+Hermes's own merge) and installs by name or from a repository in a terminal (it asks for values, whether to turn it on,
+and consent), its own-plugin switch and its update now terminal plans too; Pi installs a package with `pi install
+<source> --no-approve`; OpenCode with `opencode plugin <source> --global --pure` (one config for every profile);
+Antigravity with `agy plugin install <folder or GitHub address>`; Kimi Code only inside the app. A catalog, a plugin's
+manifest and a skill's file are anyone's to write, and a host reads them on its own event loop: every pattern that reads
+them runs in one pass (`describeMcpUrl` masks an address longer than a listing shows, or not on one line, before it
+parses one), and a value past Core's bounds is left out rather than failing the whole read.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

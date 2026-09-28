@@ -17,11 +17,13 @@ import {
   extensionSignInAbsentWords,
   extensionSkillFolderPlan,
   extensionTerminalPlan,
+  ExtensionCatalogSchema,
   ExtensionFailureSchema,
   ExtensionInventorySchema,
   ExtensionItemSchema,
   ExtensionKindSupportSchema,
   ExtensionProviderSchema,
+  isExtensionSource,
   isNormalizedAbsolutePath,
   mcpServerDefinition,
   McpServerDefinitionSchema,
@@ -191,6 +193,23 @@ describe('describeMcpUrl', () => {
     expect(describeMcpUrl('${MCP_URL}')).toBe('${MCP_URL}');
     expect(describeMcpUrl('not a url with sk-abc')).toBe('•••');
   });
+
+  it('masks an address longer than a listing shows, or across a line, in one pass however it is crafted', () => {
+    expect(describeMcpUrl(`https://h/${'a'.repeat(8_182)}`)).toHaveLength(8_192);
+    expect(describeMcpUrl(`https://h/${'a'.repeat(8_183)}`)).toBe('•••');
+    expect(describeMcpUrl('https://mcp.example.com/a#x\ny')).toBe('•••');
+    expect(describeMcpUrl('https://mcp.example.com/a\u2028b')).toBe('•••');
+    // Each of these backtracked for seconds before the guard: a catalog is anyone's to write.
+    const started = performance.now();
+    for (const crafted of [
+      `https://${'a'.repeat(8_000)}#x\ny`,
+      `https://${'@'.repeat(8_000)}#\ny`,
+      `https://${'@'.repeat(1_000_000)}#\ny`,
+    ]) {
+      expect(describeMcpUrl(crafted)).toBe('•••');
+    }
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
 });
 
 describe('describeMcpCommand', () => {
@@ -280,6 +299,20 @@ describe('parseSkillFrontmatter', () => {
     expect(parseSkillFrontmatter('\n---\nname: late\n---\n')).toEqual({});
     expect(parseSkillFrontmatter('# Just a body')).toEqual({});
     expect(parseSkillFrontmatter('---\nname: unterminated\n')).toEqual({});
+  });
+
+  it('drops a comment after a plain value, in one pass however long the line', () => {
+    expect(parseSkillFrontmatter('---\nname: notes   # the short name\ndescription: a#b c\n---\n')).toEqual({
+      name: 'notes',
+      description: 'a#b c',
+    });
+    // A long run of spaces backtracked for as long as it was long; a plugin's skills are anyone's to write.
+    const started = performance.now();
+    const spaces = parseSkillFrontmatter(`---\nname: a${' '.repeat(200_000)}b\n---\n`);
+    const comment = parseSkillFrontmatter(`---\nname: a${' '.repeat(200_000)}# note\n---\n`);
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(spaces.name).toBe(`a${' '.repeat(200_000)}b`);
+    expect(comment.name).toBe('a');
   });
 });
 
@@ -724,5 +757,122 @@ describe('plugins acted on (RFC 006 C2, a plugin an agent holds)', () => {
       ExtensionKindSupportSchema.safeParse({ store: 'shared', changes: 'command', read: true, hostedSkips: false })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('catalogs and installs (RFC 006 C2, a plugin installed, a marketplace)', () => {
+  const catalog = (fields: Record<string, unknown> = {}) => ({
+    provider: 'example',
+    profileId: 'example:native-default',
+    fetchedAt: '2026-09-27T11:00:00.000Z',
+    marketplaces: [
+      {
+        id: 'northlight',
+        name: 'Northlight',
+        source: 'northlight/plugins',
+        origin: 'own',
+        updatedAt: '2026-09-27T09:00:00.000Z',
+      },
+    ],
+    plugins: [
+      {
+        id: 'review@northlight',
+        name: 'review',
+        marketplace: 'northlight',
+        version: '1.3.0',
+        brings: { commands: ['review'], servers: ['github'], skills: ['house-style'], hooks: ['PreToolUse'] },
+        asks: [{ kind: 'look' }, { kind: 'fetch', command: 'npx -y @northlight/review' }],
+        featured: true,
+      },
+    ],
+    source: { kind: 'native-store', stability: 'documented' },
+    ...fields,
+  });
+
+  it('reads a catalog of marketplaces and the plugins they list', () => {
+    expect(ExtensionCatalogSchema.safeParse(catalog()).success).toBe(true);
+    expect(
+      ExtensionCatalogSchema.safeParse(
+        catalog({
+          suggested: [{ name: 'Northlight', source: 'northlight/plugins', message: 'Example adds it itself' }],
+        }),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('refuses a plugin listed twice, one naming a marketplace the catalog lacks, and an ask it does not know', () => {
+    const twice = catalog();
+    twice.plugins.push({ ...(twice.plugins[0] as (typeof twice.plugins)[number]) });
+    expect(ExtensionCatalogSchema.safeParse(twice).success).toBe(false);
+    expect(
+      ExtensionCatalogSchema.safeParse(
+        catalog({ plugins: [{ id: 'lint@elsewhere', name: 'lint', marketplace: 'elsewhere' }] }),
+      ).success,
+    ).toBe(false);
+    expect(
+      ExtensionCatalogSchema.safeParse(
+        catalog({ plugins: [{ id: 'x@northlight', name: 'x', marketplace: 'northlight', asks: [{ kind: 'pray' }] }] }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('plans an install and a marketplace act, and says why one is blocked', () => {
+    const install = extensionCommandPlan({
+      target: { kind: 'plugin', id: 'review@northlight' },
+      act: 'install',
+      argv: ['example', 'plugin', 'install', 'review@northlight'],
+    });
+    expect(ExtensionActPlanSchema.safeParse(install).success).toBe(true);
+    const add = extensionCommandPlan({
+      target: { kind: 'marketplace', id: 'northlight/plugins' },
+      act: 'add',
+      argv: ['example', 'plugin', 'marketplace', 'add', 'northlight/plugins'],
+    });
+    expect(ExtensionActPlanSchema.safeParse(add).success).toBe(true);
+    expect(
+      ExtensionActPlanSchema.safeParse(
+        extensionActUnavailable({ kind: 'plugin', id: 'x@y' }, 'install', 'blocked', 'Your organization turned it off'),
+      ).success,
+    ).toBe(true);
+  });
+
+  it('takes a source only as one plain argument: never a flag, a sign-in in an address, or a query', () => {
+    for (const source of [
+      'npm:pi-web-tools',
+      '@scope/pkg@1.2.3',
+      'owner/repo',
+      'https://github.com/owner/repo.git',
+      'git@github.com:owner/repo.git',
+      '/Users/me/plugins/review',
+      '~/plugins/review',
+      'owner/repo#v1.2',
+    ]) {
+      expect(isExtensionSource(source), source).toBe(true);
+    }
+    for (const source of [
+      '',
+      '--global',
+      '-y',
+      'two words',
+      ' owner/repo',
+      'owner/repo\n',
+      'https://me:secret@example.com/repo',
+      'https://token@example.com/repo',
+      'https://example.com/repo?token=abc',
+      'x'.repeat(1_025),
+    ]) {
+      expect(isExtensionSource(source), source).toBe(false);
+    }
+  });
+
+  it("carries the agent's words for what it installs from", () => {
+    expect(
+      ExtensionKindSupportSchema.safeParse({
+        store: 'profile',
+        changes: 'command',
+        read: true,
+        sources: 'An npm package, a git repository, or a folder',
+      }).success,
+    ).toBe(true);
   });
 });

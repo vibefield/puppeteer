@@ -1,10 +1,12 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
+  type CatalogPlugin,
   describeMcpDefinition,
   EXTENSION_SKILL_FOLDER_NAME,
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
+  isExtensionSource,
   type AgentHost,
   type AgentProfile,
   type AvailableExtensionActPlan,
@@ -18,12 +20,15 @@ import {
   type ExtensionInventory,
   type ExtensionReach,
   isNormalizedAbsolutePath,
+  type MarketplaceItem,
   type McpServerDefinition,
   type McpServerItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { runUpdateCommand, type UpdateCommandResult, type UpdateCommandRunner } from '../distribution/update.js';
 import { buildAgentEnvironment } from '../host/environment.js';
+import type { ExtensionCatalogReader } from './catalog.js';
 import { performFileSteps } from './files.js';
 import type { ExtensionInventoryReader, ExtensionProviderEntry } from './inventory.js';
 
@@ -51,20 +56,46 @@ import type { ExtensionInventoryReader, ExtensionProviderEntry } from './invento
  * adapter plans the folder's steps (a link, a link taken away, the agent's own
  * folder moved to where the host keeps it) and the runtime performs them
  * itself, checking each (./files.ts); the second read is the receipt here too.
+ *
+ * An install takes a plugin the agent does not hold: one its marketplaces list
+ * (a fresh read of its catalog must list it), or one from a source a person
+ * gives, where the agent installs from sources. A marketplace is added from a
+ * source, fetched again (`update`) or removed. The receipt of an install or an
+ * add is the second read holding it — by its id, or as the one plugin or
+ * marketplace the first read did not have; of a fetch, the marketplace's time
+ * moving.
  */
 
 /** An act is one small edit of the agent's own config: one that hangs is ended. */
 const ACT_TIMEOUT_MS = 2 * 60_000;
+/**
+ * An install, an update, and a marketplace's add or fetch go to the network —
+ * a clone, a package manager, dependencies — and take longer before one is
+ * called hung.
+ */
+const FETCH_TIMEOUT_MS = 15 * 60_000;
+const timeoutOf = (act: ExtensionActKind): number =>
+  act === 'install' || act === 'update' || act === 'add' ? FETCH_TIMEOUT_MS : ACT_TIMEOUT_MS;
 
 export interface ExtensionActRequest {
   providerId: string;
   /** The native default's when none is named. */
   profileId?: string;
-  /** For `add`, the server's or the skill's name as the target's id. */
+  /**
+   * For `add`, the server's or the skill's name as the target's id — or a
+   * marketplace's source; for `install`, the catalog's id for the plugin, or
+   * the source a person gave.
+   */
   target: ExtensionActTarget;
   act: ExtensionActKind;
   /** What an `add` gives the agent; only with `add`. */
   definition?: McpServerDefinition;
+  /**
+   * For a plugin's `install` from a source a person gave (a package, a
+   * repository, a folder), and a marketplace's `add`: that source, as
+   * `isExtensionSource` allows; the target's id is the same string.
+   */
+  source?: string;
   /**
    * A skill's folder, absolute: for `add`, the one copy the host keeps, which
    * the agent is given a link to; for `remove`, where the host keeps the
@@ -94,6 +125,8 @@ export interface StartedExtensionAct {
   startedAt: string;
   /** The item as the read the plan came from found it (none for an add): the receipt compares against it. */
   before?: ExtensionActItem;
+  /** For an install or a marketplace's add: the ids of that kind the agent held before, so the one it gained is known. */
+  known?: string[];
 }
 
 /** How a terminal act's terminal ended, as the host saw it; nothing when the host stopped waiting. */
@@ -107,6 +140,8 @@ export interface ExtensionActEnd {
 export interface ExtensionActRunnerOptions {
   providers: ReadonlyMap<string, ExtensionProviderEntry>;
   reader: ExtensionInventoryReader;
+  /** The catalogs an install from a marketplace is found in; without one, only a source installs. */
+  catalogs?: ExtensionCatalogReader;
   resolveProfile(providerId: string, profileId: string): Promise<{ profile: AgentProfile } | { error: string }>;
   nativeDefaultProfileId(providerId: string): string | undefined;
   /** Injected so tests never run an agent. */
@@ -139,10 +174,23 @@ export interface ExtensionActRunner {
     /** Skills a host would give the agent, by name, each from the folder it keeps: each one's link. */
     skills?: ReadonlyArray<{ name: string; folder: string }>;
     /**
+     * Plugins the agent's catalog lists, as a host offers them: each one's
+     * install, planned against `items` (a plugin the agent holds answers `held`).
+     */
+    installs?: ReadonlyArray<CatalogPlugin>;
+    /**
+     * Sources a person gave, as a host offers them before anything runs: each
+     * plugin source's install and each marketplace source's add, planned
+     * against `items` — never a read of their own.
+     */
+    sources?: { plugins?: readonly string[]; marketplaces?: readonly string[] };
+    /**
      * The folder a host keeps skills in: a skill of the agent's own that is a
      * real folder is planned to move to `<keep>/<name>` when it goes.
      */
     keep?: string;
+    /** Plan only the offers (adds, installs, sources); `items` then only say what the agent holds. */
+    offersOnly?: boolean;
   }): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** Runs an act whose plan needs no terminal: a command or a protocol call. */
   run(request: ExtensionActRequest): Promise<ExtensionActReceipt>;
@@ -156,12 +204,12 @@ export interface ExtensionActRunner {
   settle(started: StartedExtensionAct, ended?: ExtensionActEnd): Promise<ExtensionActReceipt>;
 }
 
-const SERVER_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove', 'sign-in', 'sign-out'];
-const SKILL_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove'];
-const PLUGIN_ACTS: readonly ExtensionActKind[] = ['enable', 'disable', 'remove', 'purge', 'update'];
-
-const actsOf = (item: ExtensionActItem): readonly ExtensionActKind[] =>
-  item.kind === 'mcp-server' ? SERVER_ACTS : item.kind === 'skill' ? SKILL_ACTS : PLUGIN_ACTS;
+const ACTS: Record<ExtensionActItem['kind'], readonly ExtensionActKind[]> = {
+  'mcp-server': ['enable', 'disable', 'remove', 'sign-in', 'sign-out'],
+  skill: ['enable', 'disable', 'remove'],
+  plugin: ['enable', 'disable', 'remove', 'purge', 'update'],
+  marketplace: ['update', 'remove'],
+};
 
 type Located =
   | { failure: ExtensionFailure }
@@ -169,6 +217,12 @@ type Located =
       profile: AgentProfile;
       entry: ExtensionProviderEntry;
       item: ExtensionActItem | undefined;
+      /** For an install from a catalog: the entry that lists it. */
+      listed?: CatalogPlugin;
+      /** For an install or a marketplace's add: the ids of that kind the agent holds now. */
+      known?: string[];
+      /** For a marketplace's fetch: the versions of the plugins installed from it, by id. */
+      versions?: Record<string, string>;
     };
 
 const DONE: Record<ExtensionActKind, string> = {
@@ -180,6 +234,7 @@ const DONE: Record<ExtensionActKind, string> = {
   add: 'added',
   update: 'updated',
   purge: 'removed with its data',
+  install: 'installed',
 };
 
 const signs = (act: ExtensionActKind): boolean => act === 'sign-in' || act === 'sign-out';
@@ -206,8 +261,11 @@ function outcome(
     message: `${message}${error === undefined ? '' : `, though ${said(error)}`}`,
   });
   const refused = { status: 'failed' as const, message: said(error) };
-  if (act === 'add' || before === undefined) {
-    if (after !== undefined) return done(DONE.add);
+  if (act === 'add' || act === 'install' || before === undefined) {
+    if (after !== undefined) {
+      if (act !== 'install') return done(after.kind === 'marketplace' ? `added ${after.name}` : DONE.add);
+      return done(after.kind === 'plugin' && after.version !== undefined ? `installed ${after.version}` : DONE.install);
+    }
     if (error !== undefined) return refused;
     return { status: 'unchanged', message: `${label} does not hold it` };
   }
@@ -231,6 +289,17 @@ function outcome(
             ? `${label} still holds a sign-in`
             : `${label} still asks you to sign in`,
     };
+  }
+  if (act === 'update' && before.kind === 'marketplace') {
+    // a catalog fetched again: the time the agent keeps for it moved
+    const was = before.updatedAt;
+    const is = after?.kind === 'marketplace' ? after.updatedAt : undefined;
+    if (after !== undefined && is !== undefined && is !== was) return done('fetched its catalog again');
+    if (error !== undefined) return refused;
+    if (after === undefined) return { status: 'unchanged', message: 'no longer there' };
+    return is === undefined
+      ? { status: 'unconfirmed', message: `${label} does not say when it last fetched it` }
+      : { status: 'unchanged', message: `${label} holds the catalog it had` };
   }
   if (act === 'update') {
     const was = before.kind === 'plugin' ? before.version : undefined;
@@ -285,6 +354,43 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     // a fresh read: an act plans from what the agent holds now
     const inventory = await options.reader.inventory(providerId, target, { fresh: true });
     if ('status' in inventory) return { failure: inventory };
+    const profile = resolved.profile;
+    const known = (kind: ExtensionActItem['kind']) =>
+      inventory.items.filter((candidate) => candidate.kind === kind).map((candidate) => candidate.id);
+    if (request.act === 'install' && request.target.kind === 'plugin') {
+      const held = find(inventory, request.target);
+      if (request.source !== undefined) return { profile, entry, item: held, known: known('plugin') };
+      // from a marketplace: a fresh read of the agent's catalog must list it
+      if (options.catalogs === undefined) {
+        return {
+          failure: failure('unsupported', providerId, `${entry.provider.label} has no catalog to install from`),
+        };
+      }
+      const catalog = await options.catalogs.catalog(providerId, target, { fresh: true });
+      if ('status' in catalog) return { failure: catalog };
+      const listed = catalog.plugins.find((candidate) => candidate.id === request.target.id);
+      if (listed === undefined) {
+        return {
+          failure: failure(
+            'not-found',
+            providerId,
+            `no marketplace ${entry.provider.label} knows lists ${request.target.id} in this profile`,
+          ),
+        };
+      }
+      // the agent's own record can name what it installed from an entry its own way
+      const heldFrom =
+        held ?? (listed.held === undefined ? undefined : find(inventory, { kind: 'plugin', id: listed.held }));
+      return { profile, entry, item: heldFrom, listed, known: known('plugin') };
+    }
+    if (request.act === 'add' && request.target.kind === 'marketplace') {
+      const held = inventory.items.find(
+        (candidate): candidate is MarketplaceItem =>
+          candidate.kind === 'marketplace' &&
+          (candidate.id === request.target.id || candidate.source === request.target.id),
+      );
+      return { profile, entry, item: held, known: known('marketplace') };
+    }
     const item =
       request.act !== 'add'
         ? find(inventory, request.target)
@@ -293,7 +399,11 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           : request.target.kind === 'mcp-server'
             ? ownServerNamed(inventory.items, request.target.id)
             : undefined;
-    return { profile: resolved.profile, entry, item };
+    if (request.act === 'update' && request.target.kind === 'marketplace') {
+      // an agent's fetch may update the plugins installed from it too: the receipt says so
+      return { profile, entry, item, versions: versionsFrom(inventory, request.target.id) };
+    }
+    return { profile, entry, item };
   }
 
   function planFor(
@@ -308,6 +418,16 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       reason,
       message,
     });
+    if (request.act === 'install') {
+      if (request.target.kind !== 'plugin') return unavailable('unsupported', 'only a plugin is installed');
+      return planInstall(located, request.providerId, request.target, request.source);
+    }
+    if (request.target.kind === 'marketplace') {
+      if (request.act === 'add') return planMarketplaceAdd(located, request.providerId, request.target, request.source);
+      if (request.act !== 'update' && request.act !== 'remove') {
+        return unavailable('unsupported', 'a marketplace is added, fetched again or removed');
+      }
+    }
     if (request.act === 'add') {
       if (request.target.kind === 'plugin') {
         // an agent installs a plugin its own way (a marketplace, a package, a folder): not an add
@@ -317,12 +437,12 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         ? planSkillAdd(located, request.providerId, request.target, request.folder, item !== undefined)
         : planAdd(located, request.providerId, request.target, request.definition, item !== undefined);
     }
-    // an update, and a removal that takes the data too, are a plugin's alone
-    if ((request.act === 'update' || request.act === 'purge') && request.target.kind !== 'plugin') {
-      return unavailable(
-        'unsupported',
-        `only a plugin is ${request.act === 'update' ? 'updated' : 'removed with its data'}`,
-      );
+    // a removal that takes the data too is a plugin's alone; an update a plugin's or a marketplace's (above)
+    if (request.act === 'purge' && request.target.kind !== 'plugin') {
+      return unavailable('unsupported', 'only a plugin is removed with its data');
+    }
+    if (request.act === 'update' && request.target.kind !== 'plugin' && request.target.kind !== 'marketplace') {
+      return unavailable('unsupported', 'only a plugin is updated');
     }
     if (item === undefined) {
       return {
@@ -335,6 +455,8 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     }
     if (item.kind !== 'mcp-server' && signs(request.act))
       return unavailable('no-sign-in', `a ${item.kind} has no sign-in`);
+    if (item.kind === 'marketplace' && !ACTS.marketplace.includes(request.act))
+      return unavailable('unsupported', 'a marketplace is added, fetched again or removed');
     const planOptions: ExtensionActPlanOptions =
       item.kind === 'skill' && request.act === 'remove' && request.folder !== undefined
         ? { keepIn: request.folder }
@@ -422,6 +544,108 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
     return answered(entry, profile, server, 'add', providerId);
   }
 
+  /**
+   * An install, planned from the plugin as the agent would hold it once
+   * installed: from the catalog entry that lists it, or named by the source a
+   * person gave — only for an agent that installs from sources — and only
+   * when the agent holds none by that id.
+   */
+  function planInstall(
+    located: Exclude<Located, { failure: ExtensionFailure }>,
+    providerId: string,
+    target: ExtensionActTarget,
+    source: string | undefined,
+  ): ExtensionActPlan | ExtensionFailure {
+    const { entry, profile, item: held, listed } = located;
+    const label = entry.provider.label;
+    const unavailable = (reason: 'held' | 'unsupported' | 'blocked', message: string): ExtensionActPlan => ({
+      target,
+      act: 'install',
+      available: false,
+      reason,
+      message,
+    });
+    const support = entry.provider.support.plugins;
+    if (source !== undefined && (!isExtensionSource(source) || source !== target.id)) {
+      return failure('invalid', providerId, 'a source is one line naming a package, a repository or a folder');
+    }
+    if (support === undefined) return unavailable('unsupported', `${label} has no plugins`);
+    if (source !== undefined && support.sources === undefined) {
+      return unavailable('unsupported', `${label} installs plugins only from its marketplaces`);
+    }
+    if (source === undefined && listed === undefined) {
+      return failure('invalid', providerId, 'an install needs the catalog entry that lists it, or a source');
+    }
+    if (held !== undefined || listed?.held !== undefined) {
+      return unavailable('held', `${label} already has ${held?.name ?? listed!.name}`);
+    }
+    if (listed?.blocked !== undefined) return unavailable('blocked', listed.blocked);
+    const plugin: PluginItem =
+      listed === undefined || source !== undefined
+        ? { kind: 'plugin', id: target.id, name: target.id, origin: 'own', enabled: true }
+        : {
+            kind: 'plugin',
+            id: listed.id,
+            name: listed.name,
+            origin: 'own',
+            enabled: true,
+            marketplace: listed.marketplace,
+            ...(listed.version === undefined ? {} : { version: listed.version }),
+            ...(listed.description === undefined ? {} : { description: listed.description }),
+            ...(listed.author === undefined ? {} : { author: listed.author }),
+            ...(listed.homepage === undefined ? {} : { homepage: listed.homepage }),
+          };
+    return answered(
+      entry,
+      profile,
+      plugin,
+      'install',
+      providerId,
+      source === undefined ? { ...(listed === undefined ? {} : { listed }) } : { source, holds: located.known ?? [] },
+    );
+  }
+
+  /**
+   * A marketplace's add, planned from the marketplace as the agent would hold
+   * it once added — named by its source until the agent reads its own name
+   * from the catalog — only when the agent holds none from that source.
+   */
+  function planMarketplaceAdd(
+    located: Exclude<Located, { failure: ExtensionFailure }>,
+    providerId: string,
+    target: ExtensionActTarget,
+    source: string | undefined,
+  ): ExtensionActPlan | ExtensionFailure {
+    const { entry, profile, item: held } = located;
+    const label = entry.provider.label;
+    if (source === undefined || !isExtensionSource(source) || source !== target.id) {
+      return failure(
+        'invalid',
+        providerId,
+        "a marketplace's add needs its source: one line naming a repository, an address or a folder",
+      );
+    }
+    const unavailable = (reason: 'held' | 'unsupported', message: string): ExtensionActPlan => ({
+      target,
+      act: 'add',
+      available: false,
+      reason,
+      message,
+    });
+    if (entry.provider.support.marketplaces === undefined)
+      return unavailable('unsupported', `${label} has no marketplaces`);
+    if (held !== undefined) return unavailable('held', `${label} already has ${held.name}`);
+    const marketplace: MarketplaceItem = {
+      kind: 'marketplace',
+      id: source,
+      name: source,
+      origin: 'own',
+      enabled: true,
+      source,
+    };
+    return answered(entry, profile, marketplace, 'add', providerId);
+  }
+
   /** The adapter's answer for one item and act, checked against the schema and against what was asked. */
   function answered(
     entry: ExtensionProviderEntry,
@@ -471,7 +695,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         argv: plan.runs.argv,
         env: environment,
         cwd,
-        timeoutMs: ACT_TIMEOUT_MS,
+        timeoutMs: timeoutOf(plan.act),
         ...(request.signal === undefined ? {} : { signal: request.signal }),
         onOutput: (chunk) => {
           if (request.onOutput === undefined) return;
@@ -523,6 +747,10 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       error: string | undefined;
       /** Where a skill's steps placed it: an agent that names skills by their own words still holds it there. */
       placed?: ReadonlySet<string>;
+      /** For an install or a marketplace's add: the ids of that kind the agent held before. */
+      known?: readonly string[];
+      /** For a marketplace's fetch: the versions of the plugins installed from it before. */
+      versions?: Readonly<Record<string, string>>;
     },
   ): Promise<Pick<ExtensionActReceipt, 'status' | 'message'>> {
     const afterRead = await options.reader.inventory(providerId, profileId, { fresh: true });
@@ -536,17 +764,39 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       };
     }
     const after =
-      ran.act === 'add' && ran.target.kind === 'skill'
-        ? (ownSkillNamed(afterRead.items, ran.target.id) ??
-          afterRead.items.find(
-            (item): item is SkillItem =>
-              item.kind === 'skill' &&
-              item.origin === 'own' &&
-              item.location !== undefined &&
-              ran.placed?.has(item.location) === true,
-          ))
-        : find(afterRead, ran.target);
-    return outcome(ran.act, label, ran.before, after, ran.display, ran.error);
+      ran.act === 'install' || (ran.act === 'add' && ran.target.kind === 'marketplace')
+        ? gained(afterRead, ran.target, ran.known)
+        : ran.act === 'add' && ran.target.kind === 'skill'
+          ? (ownSkillNamed(afterRead.items, ran.target.id) ??
+            afterRead.items.find(
+              (item): item is SkillItem =>
+                item.kind === 'skill' &&
+                item.origin === 'own' &&
+                item.location !== undefined &&
+                ran.placed?.has(item.location) === true,
+            ))
+          : find(afterRead, ran.target);
+    // an install from a folder of several plugins gains each of them: the receipt names them all
+    if (ran.act === 'install' && ran.known !== undefined && find(afterRead, ran.target) === undefined) {
+      const known = ran.known;
+      const fresh = afterRead.items.filter((item) => item.kind === 'plugin' && !known.includes(item.id));
+      if (fresh.length > 1) {
+        return {
+          status: 'changed',
+          message: `installed ${fresh.map((item) => item.name).join(', ')}${ran.error === undefined ? '' : `, though ${ran.display} ${ran.error}`}`,
+        };
+      }
+    }
+    const said = outcome(ran.act, label, ran.before, after, ran.display, ran.error);
+    if (ran.versions === undefined) return said;
+    // what else the fetch changed: the plugins installed from it whose version moved
+    const now = versionsFrom(afterRead, ran.target.id);
+    const moved = Object.entries(ran.versions)
+      .filter(([id, version]) => now[id] !== undefined && now[id] !== version)
+      .map(([id, version]) => `${nameOf(afterRead, id)} ${version} → ${now[id]}`);
+    return moved.length === 0
+      ? said
+      : { ...said, message: `${said.message}; ${label} also updated ${moved.join(', ')}` };
   }
 
   return {
@@ -579,8 +829,8 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
         EXTENSION_SKILL_FOLDER_NAME.test(item.name)
           ? { folder: join(request.keep, item.name) }
           : {};
-      for (const item of request.items) {
-        for (const act of actsOf(item)) {
+      for (const item of request.offersOnly === true ? [] : request.items) {
+        for (const act of ACTS[item.kind]) {
           const plan = planFor(
             { ...located, item },
             { providerId, target: { kind: item.kind, id: item.id }, act, ...keepIn(item, act) },
@@ -608,6 +858,38 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           target,
           folder,
           ownSkillNamed(request.items, name) !== undefined,
+        );
+        if (!('status' in plan)) plans.push(plan);
+      }
+      const knownOf = (kind: 'plugin' | 'marketplace') =>
+        request.items.filter((candidate) => candidate.kind === kind).map((candidate) => candidate.id);
+      for (const source of request.sources?.plugins ?? []) {
+        const target = { kind: 'plugin' as const, id: source };
+        const held = request.items.find(
+          (candidate): candidate is PluginItem => candidate.kind === 'plugin' && candidate.id === source,
+        );
+        const plan = planInstall({ ...located, item: held, known: knownOf('plugin') }, providerId, target, source);
+        if (!('status' in plan)) plans.push(plan);
+      }
+      for (const source of request.sources?.marketplaces ?? []) {
+        const target = { kind: 'marketplace' as const, id: source };
+        const held = request.items.find(
+          (candidate): candidate is MarketplaceItem =>
+            candidate.kind === 'marketplace' && (candidate.id === source || candidate.source === source),
+        );
+        const plan = planMarketplaceAdd({ ...located, item: held }, providerId, target, source);
+        if (!('status' in plan)) plans.push(plan);
+      }
+      for (const listed of request.installs ?? []) {
+        const held = request.items.find(
+          (candidate): candidate is PluginItem =>
+            candidate.kind === 'plugin' && (candidate.id === listed.id || candidate.id === listed.held),
+        );
+        const plan = planInstall(
+          { ...located, item: held, listed },
+          providerId,
+          { kind: 'plugin', id: listed.id },
+          undefined,
         );
         if (!('status' in plan)) plans.push(plan);
       }
@@ -688,7 +970,11 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
       const read = await readBack(request.providerId, profile.id, entry.provider.label, {
         act: request.act,
         target: request.target,
-        ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
+        ...(request.act === 'add' || request.act === 'install' || located.item === undefined
+          ? {}
+          : { before: located.item }),
+        ...(located.known === undefined ? {} : { known: located.known }),
+        ...(located.versions === undefined ? {} : { versions: located.versions }),
         // a files plan's error names its step
         display: plan.runs.kind === 'files' ? '' : plan.display,
         error,
@@ -766,7 +1052,10 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           display: plan.display,
           reaches: [...plan.reaches],
           startedAt: base.startedAt,
-          ...(request.act === 'add' || located.item === undefined ? {} : { before: located.item }),
+          ...(request.act === 'add' || request.act === 'install' || located.item === undefined
+            ? {}
+            : { before: located.item }),
+          ...(located.known === undefined ? {} : { known: [...located.known] }),
         };
       } catch (error) {
         options.report?.(error);
@@ -800,6 +1089,7 @@ export function createExtensionActRunner(options: ExtensionActRunnerOptions): Ex
           act: started.act,
           target: started.target,
           ...(started.before === undefined ? {} : { before: started.before }),
+          ...(started.known === undefined ? {} : { known: started.known }),
           display: started.display,
           error,
         })),
@@ -827,9 +1117,44 @@ function ownSkillNamed(items: ReadonlyArray<ExtensionInventory['items'][number]>
   );
 }
 
+/** The versions of the plugins installed from one marketplace, by id. */
+function versionsFrom(inventory: ExtensionInventory, marketplace: string): Record<string, string> {
+  const versions: Record<string, string> = {};
+  for (const item of inventory.items) {
+    if (item.kind === 'plugin' && item.marketplace === marketplace && item.version !== undefined) {
+      versions[item.id] = item.version;
+    }
+  }
+  return versions;
+}
+
+function nameOf(inventory: ExtensionInventory, id: string): string {
+  return inventory.items.find((item) => item.kind === 'plugin' && item.id === id)?.name ?? id;
+}
+
 function find(inventory: ExtensionInventory, target: ExtensionActTarget): ExtensionActItem | undefined {
-  const item = inventory.items.find((candidate) => candidate.kind === target.kind && candidate.id === target.id);
-  return item?.kind === 'mcp-server' || item?.kind === 'skill' || item?.kind === 'plugin' ? item : undefined;
+  return inventory.items.find((candidate) => candidate.kind === target.kind && candidate.id === target.id);
+}
+
+/**
+ * What an install or a marketplace's add left the agent holding: the item by
+ * the id it was asked by (a marketplace also by its source), else the one item
+ * of that kind the read before did not have — the agent names a plugin from a
+ * source, and a marketplace from its catalog, its own way.
+ */
+function gained(
+  inventory: ExtensionInventory,
+  target: ExtensionActTarget,
+  known: readonly string[] | undefined,
+): ExtensionActItem | undefined {
+  const named =
+    find(inventory, target) ??
+    (target.kind === 'marketplace'
+      ? inventory.items.find((candidate) => candidate.kind === 'marketplace' && candidate.source === target.id)
+      : undefined);
+  if (named !== undefined || known === undefined) return named;
+  const fresh = inventory.items.filter((candidate) => candidate.kind === target.kind && !known.includes(candidate.id));
+  return fresh.length === 1 ? fresh[0] : undefined;
 }
 
 async function isDirectory(path: string): Promise<boolean> {

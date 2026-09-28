@@ -11,12 +11,12 @@ import {
   type ProfileIdentity,
 } from '@vibecook/puppeteer-core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { HermesWrapperRead } from './distribution.js';
 import {
   createHermesProfileService,
   hermesProfileIdentityFrom,
   HERMES_PROFILE_ROOT_VARIABLE,
   type HermesProfileExec,
-  type HermesWrapperRead,
 } from './profiles.js';
 
 const execFileAsync = promisify(execFile);
