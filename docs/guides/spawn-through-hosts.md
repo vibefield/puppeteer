@@ -511,6 +511,30 @@ The duties, one by one:
 - **Survive your own restart**: persist what `onAdopted` gave you with `processStartedAt(processId)`, and re-attach only
   a pid whose start time still matches — a reused pid is not your agent.
 
+### Background cache prewarming
+
+`prewarmTerminalAgents` is exported from `@vibecook/puppeteer-runtime`. Both terminal hosts use this
+helper; provider-specific cache work remains in adapters. Call it without awaiting it on the pane's
+creation path, once launchers are available and when a new terminal opens. Hosts may pass an already
+filtered `providers` list so an installed but unoffered agent is never warmed.
+
+```ts
+void prewarmTerminalAgents({
+  runtime,
+  providers: offeredLaunchProviders,
+  defaults: paneProfileDefaults,
+  profileIds: selectedPaneProfileIds,
+  available: executableIsInstalled,
+}).catch(() => undefined);
+```
+
+Explicit pane account ids override stored pane defaults. A provider with no pane binding uses
+`runtime.prewarm(providerId, null)`: native invocation environment, without consulting the managed-spawn
+default profile set. Calling `runtime.prewarm(providerId)` directly still warms the managed-spawn default.
+The runtime coalesces concurrent calls per provider/account, throttles successful warming for 60 seconds,
+retries after failure, and aborts outstanding work on disposal. Unsupported providers are a no-op.
+The helper never starts a session or a model turn, and one provider's failure does not stop another.
+
 ## 10. Limits
 
 - **POSIX only.** The shim needs `execve`; a Windows host does not intercept. The shim's own walk needs a `ps` that

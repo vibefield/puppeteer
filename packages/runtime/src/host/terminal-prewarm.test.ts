@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
-import { prewarmTerminalAgents } from './agent-prewarm.js';
+import { prewarmTerminalAgents } from '../index.js';
 
 function setup() {
   const provider = (id: string): AgentLaunchProvider => ({
@@ -18,17 +18,17 @@ function setup() {
           { id: 'account-2', provider: 'codex' },
         ] as AgentProfile[],
     ),
-    prewarm: vi.fn(async (_providerId: string, _profileId?: string) => undefined),
+    prewarm: vi.fn(async (_providerId: string, _profileId?: string | null) => undefined),
   };
 }
 
-describe('Godview background prewarming', () => {
+describe('terminal host background prewarming', () => {
   it('warms only installed providers and uses the account selected for new panes', async () => {
     const runtime = setup();
     await prewarmTerminalAgents({ runtime, defaults: { codex: 'account-1' }, available: (bin) => bin !== 'missing' });
     expect(runtime.prewarm.mock.calls).toEqual([
       ['codex', 'account-1'],
-      ['example', undefined],
+      ['example', null],
     ]);
   });
 
@@ -49,7 +49,37 @@ describe('Godview background prewarming', () => {
     runtime.prewarm.mockRejectedValueOnce(new Error('offline'));
     await expect(prewarmTerminalAgents({ runtime, defaults: {}, available: () => true })).resolves.toBeUndefined();
     expect(runtime.profiles).not.toHaveBeenCalled();
-    expect(runtime.prewarm).toHaveBeenCalledWith('codex', undefined);
-    expect(runtime.prewarm).toHaveBeenCalledWith('example', undefined);
+    expect(runtime.prewarm).toHaveBeenCalledWith('codex', null);
+    expect(runtime.prewarm).toHaveBeenCalledWith('example', null);
+  });
+
+  it('respects the host offering and its resolved executable paths', async () => {
+    const runtime = setup();
+    await prewarmTerminalAgents({
+      runtime,
+      providers: [
+        {
+          id: 'example',
+          label: 'Example',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'example', executable: '/installed/example' }],
+            environmentVariables: [],
+          },
+        },
+      ],
+      defaults: {},
+      available: (bin) => bin === '/installed/example',
+    });
+    expect(runtime.prewarm.mock.calls).toEqual([['example', null]]);
+  });
+
+  it('isolates a synchronous provider failure from the other providers', async () => {
+    const runtime = setup();
+    runtime.prewarm.mockImplementationOnce(() => {
+      throw new Error('unavailable');
+    });
+    await expect(prewarmTerminalAgents({ runtime, defaults: {}, available: () => true })).resolves.toBeUndefined();
+    expect(runtime.prewarm).toHaveBeenCalledWith('example', null);
   });
 });

@@ -788,8 +788,9 @@ export interface AgentRuntime {
   accountUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
   /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
   launchProviders(): readonly AgentLaunchProvider[];
-  /** Warm a provider's native caches in the background; unsupported providers are a no-op. */
-  prewarm(providerId: string, profileId?: string): Promise<void>;
+  /** Warm native caches; unsupported providers are a no-op. Omit the account for the
+   * managed-spawn default, or pass null for the native invocation environment. */
+  prewarm(providerId: string, profileId?: string | null): Promise<void>;
   /** Enumerate every adapter that advertises distribution facts. */
   distributionProviders(): readonly DistributionProvider[];
   /** Discover and classify installed executables; cached until refresh. */

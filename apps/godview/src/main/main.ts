@@ -29,11 +29,11 @@ import {
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentHost } from '@vibecook/puppeteer-core';
 import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
-import { prewarmTerminalAgents } from './agent-prewarm.js';
 import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
+  prewarmTerminalAgents,
   type AgentRuntime,
   type AgentWorkspaceFinal,
   type AgentWorkspaceInfo,

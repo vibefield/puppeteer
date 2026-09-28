@@ -2532,8 +2532,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       if (!provider?.prewarm) return;
       // Warm what the next spawn will use: the named account, else the default
       // set's for this provider (a plain spawn's), else the provider's own root.
+      // A shell without an account binding explicitly passes null: its native environment.
       const target =
-        profileId ?? (profileRegistryProviders.has(providerId) ? await defaultAccountFor(providerId) : undefined);
+        profileId === null
+          ? undefined
+          : (profileId ?? (profileRegistryProviders.has(providerId) ? await defaultAccountFor(providerId) : undefined));
       const key = JSON.stringify([providerId, target ?? null]);
       const pending = pendingPrewarms.get(key);
       if (pending) return pending;
