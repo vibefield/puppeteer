@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
 import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
 import type { OwnActionRecord } from '@vibecook/puppeteer-record';
 import type { HistorySearchStatus } from '../protocol.js';
@@ -14,22 +17,42 @@ import {
   launcherSessions,
   parseLauncherRecentRequest,
   parseResumeNativeSessionRequest,
+  physicalPath,
   registerLauncherIpc,
   resolveLauncherProject,
   type LauncherFs,
   type LauncherServiceOptions,
 } from './launcher-ipc.js';
 
-/** A file system of named directories and files; everything else is absent. */
-function fakeFs(directories: readonly string[], files: Record<string, string> = {}): LauncherFs {
+/**
+ * A file system of named directories and files; everything else is absent.
+ * `links` maps a symlinked prefix to where it points.
+ */
+function fakeFs(
+  directories: readonly string[],
+  files: Record<string, string> = {},
+  links: Record<string, string> = {},
+): LauncherFs {
   const dirs = new Set(directories);
+  const physical = (given: string): string => {
+    const path = given.length > 1 ? given.replace(/\/+$/u, '') : given;
+    for (const [link, target] of Object.entries(links)) {
+      if (path === link || path.startsWith(`${link}/`)) return target + path.slice(link.length);
+    }
+    return path;
+  };
   return {
-    isDirectory: (path) => dirs.has(path),
-    isFile: (path) => path in files,
-    read: (path) => {
-      const contents = files[path];
+    isDirectory: async (path) => dirs.has(physical(path)),
+    isFile: async (path) => physical(path) in files,
+    read: async (path) => {
+      const contents = files[physical(path)];
       if (contents === undefined) throw new Error(`ENOENT: ${path}`);
       return contents;
+    },
+    realpath: async (path) => {
+      const real = physical(path);
+      if (!dirs.has(real) && !(real in files)) throw new Error(`ENOENT: ${path}`);
+      return real;
     },
   };
 }
@@ -78,20 +101,20 @@ const READY: HistorySearchStatus = {
 };
 
 describe('project resolution (QL-D9)', () => {
-  it('finds the git root of a folder, and a worktree’s repository through its commondir', () => {
+  it('finds the git root of a folder, and a worktree’s repository through its commondir', async () => {
     const repo = fakeFs(['/w/app', '/w/app/.git', '/w/app/src']);
-    expect(gitRootsOf('/w/app/src/deep', repo)).toEqual(['/w/app']);
+    expect(await gitRootsOf('/w/app/src/deep', repo)).toEqual(['/w/app']);
     const worktree = fakeFs(['/w/app', '/w/app/.git', '/w/app/.git/worktrees/feat', '/w/lanes/feat'], {
       '/w/lanes/feat/.git': 'gitdir: /w/app/.git/worktrees/feat\n',
       '/w/app/.git/worktrees/feat/commondir': '../..\n',
     });
-    expect(gitRootsOf('/w/lanes/feat/pkg', worktree)).toEqual(['/w/lanes/feat', '/w/app']);
-    expect(gitRootsOf('/tmp/loose', fakeFs([]))).toEqual([]);
+    expect(await gitRootsOf('/w/lanes/feat/pkg', worktree)).toEqual(['/w/lanes/feat', '/w/app']);
+    expect(await gitRootsOf('/tmp/loose', fakeFs([]))).toEqual([]);
   });
 
-  it('keeps a worktree whose repository moved as its own root', () => {
+  it('keeps a worktree whose repository moved as its own root', async () => {
     const orphan = fakeFs(['/w/lanes/feat'], { '/w/lanes/feat/.git': 'gitdir: /gone/.git/worktrees/feat' });
-    expect(gitRootsOf('/w/lanes/feat', orphan)).toEqual(['/w/lanes/feat']);
+    expect(await gitRootsOf('/w/lanes/feat', orphan)).toEqual(['/w/lanes/feat']);
   });
 
   const projects: HistoryProject[] = [
@@ -100,23 +123,36 @@ describe('project resolution (QL-D9)', () => {
     { id: 'p-docs', name: 'docs', rootPaths: ['/w/app/docs/'] },
   ];
 
-  it('prefers the project holding the git root, reaching a worktree’s repository when the worktree is unlisted', () => {
+  it('prefers the project holding the git root, reaching a worktree’s repository when the worktree is unlisted', async () => {
     const worktree = fakeFs(['/w/app', '/w/app/.git', '/w/app/.git/worktrees/feat'], {
       '/w/lanes/feat/.git': 'gitdir: /w/app/.git/worktrees/feat',
       '/w/app/.git/worktrees/feat/commondir': '../..',
     });
-    expect(resolveLauncherProject('/w/lanes/feat/src', projects, worktree)?.id).toBe('p-app');
+    expect((await resolveLauncherProject('/w/lanes/feat/src', projects, worktree))?.id).toBe('p-app');
     const repo = fakeFs(['/w/app/.git']);
     // The git root wins over a longer root path the folder also lies under.
-    expect(resolveLauncherProject('/w/app/docs/guide', projects, repo)?.id).toBe('p-app');
+    expect((await resolveLauncherProject('/w/app/docs/guide', projects, repo))?.id).toBe('p-app');
   });
 
-  it('falls back to the longest root path the folder lies under, and to none', () => {
+  it('falls back to the longest root path the folder lies under, and to none', async () => {
     const none = fakeFs([]);
-    expect(resolveLauncherProject('/w/app/docs/guide', projects, none)?.id).toBe('p-docs');
-    expect(resolveLauncherProject('/w/other', projects, none)?.id).toBe('p-w');
-    expect(resolveLauncherProject('/elsewhere', projects, none)).toBeUndefined();
-    expect(resolveLauncherProject('/w/application', [projects[0]!], none)).toBeUndefined();
+    expect((await resolveLauncherProject('/w/app/docs/guide', projects, none))?.id).toBe('p-docs');
+    expect((await resolveLauncherProject('/w/other', projects, none))?.id).toBe('p-w');
+    expect(await resolveLauncherProject('/elsewhere', projects, none)).toBeUndefined();
+    expect(await resolveLauncherProject('/w/application', [projects[0]!], none)).toBeUndefined();
+  });
+
+  it('meets the daemon’s physical roots from a symlinked folder (the fake’s links)', async () => {
+    const linked = fakeFs(['/real/app', '/real/app/.git', '/real/app/src'], {}, { '/home/app': '/real/app' });
+    expect(await physicalPath('/home/app/src/', linked)).toBe('/real/app/src');
+    expect(await physicalPath('/home/app/missing', linked)).toBe('/home/app/missing');
+    expect(await gitRootsOf('/home/app/src', linked)).toEqual(['/real/app']);
+    const real: HistoryProject = { id: 'p-real', name: 'app', rootPaths: ['/real/app'] };
+    expect((await resolveLauncherProject('/home/app/src', [real], linked))?.id).toBe('p-real');
+    // Outside a repository, the longest root is matched on the physical path too.
+    const loose = fakeFs(['/real/notes', '/real/notes/a'], {}, { '/home/notes': '/real/notes' });
+    const notes: HistoryProject = { id: 'p-notes', name: 'notes', rootPaths: ['/real/notes'] };
+    expect((await resolveLauncherProject('/home/notes/a', [notes], loose))?.id).toBe('p-notes');
   });
 
   it('matches folders by whole path segments', () => {
@@ -140,8 +176,8 @@ describe('launcher sessions', () => {
   const project: HistoryProject = { id: 'p1', name: 'app', rootPaths: ['/w/app'] };
   const fs = fakeFs(['/w/app', '/w/app/src', '/w/elsewhere']);
 
-  it('joins each row to the provider whose history kinds hold its runtime kind, and to the profile of its data root', () => {
-    const [alpha, beta, odd, flag] = launcherSessions({
+  it('joins each row to the provider whose history kinds hold its runtime kind, and to the profile of its data root', async () => {
+    const [alpha, beta, odd, flag] = await launcherSessions({
       rows: [
         listed('a', { projectId: 'p1', cwd: '/w/app', title: 'Named' }),
         listed('b', { runtimeId: 'rt-beta', cwd: '/w/app' }),
@@ -152,7 +188,7 @@ describe('launcher sessions', () => {
       providers: PROVIDERS,
       profiles,
       project,
-      cwd: '/w/app',
+      cwds: ['/w/app'],
       fs,
     });
     expect(alpha).toMatchObject({
@@ -170,8 +206,8 @@ describe('launcher sessions', () => {
     expect(flag).toMatchObject({ providerId: 'alpha', resumable: false, unresumable: "can't resume" });
   });
 
-  it('titles, dates and places each row', () => {
-    const rows = launcherSessions({
+  it('titles, dates and places each row', async () => {
+    const rows = await launcherSessions({
       rows: [
         listed('t', { title: '  ', summary: 'A summary', lastActivityAt: 9_000, projectId: 'p1' }),
         listed('u', { updatedAt: 0, projectId: 'p2', cwd: '/w/app/src' }),
@@ -181,7 +217,7 @@ describe('launcher sessions', () => {
       providers: PROVIDERS,
       profiles: [],
       project,
-      cwd: '/w/app',
+      cwds: ['/w/app'],
       fs,
     });
     expect(rows.map((row) => [row.title, row.lastAt, row.here])).toEqual([
@@ -192,14 +228,14 @@ describe('launcher sessions', () => {
     expect(rows[2]).toMatchObject({ resumable: false, unresumable: 'folder is gone' });
   });
 
-  it('places rows by folder when the pane lies in no project', () => {
-    const rows = launcherSessions({
+  it('places rows by folder when the pane lies in no project', async () => {
+    const rows = await launcherSessions({
       rows: [listed('in', { cwd: '/w/app/src' }), listed('out', { cwd: '/w/elsewhere' }), listed('none')],
       runtimes,
       providers: PROVIDERS,
       profiles: [],
       project: undefined,
-      cwd: '/w/app',
+      cwds: ['/w/app'],
       fs,
     });
     expect(rows.map((row) => row.here)).toEqual([true, false, false]);
@@ -346,6 +382,43 @@ describe('createLauncherService', () => {
     ]);
     await launcher.recent({ cwd: '/w/app', scope: 'all', limit: 30 });
     expect(asked.at(-1)).toEqual({ limit: 30 });
+  });
+
+  it('orders by a launch main noted at once, not after the record cache expires', async () => {
+    const clock = { now: 1_000 };
+    let reads = 0;
+    const launcher = createLauncherService({
+      runtime: {
+        launchProviders: () => PROVIDERS,
+        distributionProviders: () => PROVIDERS as never,
+        inspectInstallations: async () => undefined as never,
+        profiles: async () => [],
+      },
+      profileDefaults: () => ({}),
+      readRecords: async () => {
+        reads += 1;
+        return [allocated('alpha', '1970-01-01T00:00:00.500Z')];
+      },
+      history: {
+        catalogue: async () => ({ answered: false, status: READY }),
+        recent: async () => ({}),
+        search: async () => ({}),
+      } as never,
+      fs: fakeFs([]),
+      now: () => clock.now,
+    });
+    const order = async () => (await launcher.agents()).map((row) => [row.providerId, row.lastLaunchedAt ?? null]);
+    expect(await order()).toEqual([
+      ['alpha', 500],
+      ['beta', null],
+      ['gamma', null],
+      ['wire', null],
+    ]);
+    clock.now = 1_200;
+    launcher.noteLaunched('gamma');
+    expect((await order()).find(([id]) => id === 'gamma')).toEqual(['gamma', 1_200]);
+    // The cache was dropped: the record is read again, and the noted launch still counts.
+    expect(reads).toBe(2);
   });
 
   it('matches a folder outside every project by cwd over the newest sessions', async () => {
@@ -560,5 +633,36 @@ describe('the launcher’s channels', () => {
       error: { message: 'it is not a session this launcher listed; open the field again' },
     });
     expect(resumed).toEqual([]);
+  });
+});
+
+describe('a symlinked pane folder on the real file system', () => {
+  const root = mkdtempSync(join(tmpdir(), 'launcher-ipc-'));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, 'repo', '.git'), { recursive: true });
+  mkdirSync(join(root, 'repo', 'src'));
+  symlinkSync(join(root, 'repo'), join(root, 'link'));
+  // The daemon records physical roots; the OS temp dir is itself behind a link on macOS.
+  const physicalRepo = realpathSync(join(root, 'repo'));
+
+  it('resolves to the project the daemon filed under the physical root', async () => {
+    expect(await gitRootsOf(join(root, 'link', 'src'))).toEqual([physicalRepo]);
+    const project: HistoryProject = { id: 'p-repo', name: 'repo', rootPaths: [physicalRepo] };
+    expect((await resolveLauncherProject(join(root, 'link', 'src'), [project]))?.id).toBe('p-repo');
+  });
+
+  it('lists a session recorded under the physical folder as here, from the linked one', async () => {
+    const rows = await launcherSessions({
+      rows: [listed('in', { cwd: join(physicalRepo, 'src') }), listed('out', { cwd: tmpdir() })],
+      runtimes: [{ id: 'rt-alpha', kind: 'alpha-code' }],
+      providers: PROVIDERS,
+      profiles: [],
+      project: undefined,
+      cwds: [join(root, 'link'), await physicalPath(join(root, 'link'))],
+    });
+    expect(rows.map((row) => [row.key, row.here, row.resumable])).toEqual([
+      ['in', true, true],
+      ['out', false, true],
+    ]);
   });
 });

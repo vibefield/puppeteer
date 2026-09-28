@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron';
 import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
@@ -61,32 +61,44 @@ const UNTITLED = 'untitled session';
 
 /* ── the file system, as far as a launcher asks it ─────────────────────── */
 
+/**
+ * Asynchronous throughout: `recent()` stats a folder per listed session and
+ * walks up for `.git`, and none of that may stall main's event loop.
+ */
 export interface LauncherFs {
-  isDirectory(path: string): boolean;
-  isFile(path: string): boolean;
-  read(path: string): string;
+  isDirectory(path: string): Promise<boolean>;
+  isFile(path: string): Promise<boolean>;
+  read(path: string): Promise<string>;
+  /** The physical path, every symlink resolved; rejects for a path that does not exist. */
+  realpath(path: string): Promise<string>;
 }
 
 export const NODE_LAUNCHER_FS: LauncherFs = {
-  isDirectory: (path) => {
-    try {
-      return statSync(path).isDirectory();
-    } catch {
-      return false;
-    }
-  },
-  isFile: (path) => {
-    try {
-      return statSync(path).isFile();
-    } catch {
-      return false;
-    }
-  },
-  read: (path) => readFileSync(path, 'utf8'),
+  isDirectory: (path) =>
+    stat(path).then(
+      (info) => info.isDirectory(),
+      () => false,
+    ),
+  isFile: (path) =>
+    stat(path).then(
+      (info) => info.isFile(),
+      () => false,
+    ),
+  read: (path) => readFile(path, 'utf8'),
+  realpath: (path) => realpath(path),
 };
 
 function trimSlash(path: string): string {
   return path.length > 1 && path.endsWith(sep) ? path.slice(0, -1) : path;
+}
+
+/**
+ * The physical form of an absolute path, as the history daemon records
+ * project roots (rosetta's `root_paths` are real paths): a symlinked pane
+ * folder must meet them. A path that does not exist stays as it was.
+ */
+export async function physicalPath(path: string, fs: LauncherFs = NODE_LAUNCHER_FS): Promise<string> {
+  return fs.realpath(path).then(trimSlash, () => trimSlash(resolve(path)));
 }
 
 /** `path` is `folder` or lies under it. */
@@ -97,22 +109,23 @@ export function isWithin(path: string, folder: string): boolean {
 }
 
 /**
- * The git roots a folder belongs to, nearest first: the working tree holding
- * `.git`, and — when `.git` is a worktree's file — the repository it was cut
- * from, read through the worktree's own `commondir`. None outside a repository.
+ * The git roots a folder belongs to, nearest first, as physical paths: the
+ * working tree holding `.git`, and — when `.git` is a worktree's file — the
+ * repository it was cut from, read through the worktree's own `commondir`.
+ * None outside a repository.
  */
-export function gitRootsOf(cwd: string, fs: LauncherFs = NODE_LAUNCHER_FS): string[] {
-  let folder = resolve(cwd);
+export async function gitRootsOf(cwd: string, fs: LauncherFs = NODE_LAUNCHER_FS): Promise<string[]> {
+  let folder = await physicalPath(cwd, fs);
   for (;;) {
     const dotGit = join(folder, '.git');
-    if (fs.isDirectory(dotGit)) return [folder];
-    if (fs.isFile(dotGit)) {
+    if (await fs.isDirectory(dotGit)) return [folder];
+    if (await fs.isFile(dotGit)) {
       const roots = [folder];
       try {
-        const pointer = /^gitdir:\s*(.+)$/mu.exec(fs.read(dotGit))?.[1]?.trim();
+        const pointer = /^gitdir:\s*(.+)$/mu.exec(await fs.read(dotGit))?.[1]?.trim();
         if (pointer) {
           const gitDir = resolve(folder, pointer);
-          const common = resolve(gitDir, fs.read(join(gitDir, 'commondir')).trim());
+          const common = await physicalPath(resolve(gitDir, (await fs.read(join(gitDir, 'commondir'))).trim()), fs);
           if (basename(common) === '.git' && dirname(common) !== folder) roots.push(dirname(common));
         }
       } catch {
@@ -130,20 +143,22 @@ export function gitRootsOf(cwd: string, fs: LauncherFs = NODE_LAUNCHER_FS): stri
  * The pane folder's project (QL-D9): the one whose roots hold the folder's git
  * root (a worktree's or the repository's it was cut from), else the project
  * with the longest root the folder lies under. None when neither matches.
+ * The folder is compared as given and as its physical path.
  */
-export function resolveLauncherProject(
+export async function resolveLauncherProject(
   cwd: string,
   projects: readonly HistoryProject[],
   fs: LauncherFs = NODE_LAUNCHER_FS,
-): HistoryProject | undefined {
-  for (const root of gitRootsOf(cwd, fs)) {
+): Promise<HistoryProject | undefined> {
+  for (const root of await gitRootsOf(cwd, fs)) {
     const owner = projects.find((project) => project.rootPaths.some((path) => trimSlash(path) === root));
     if (owner) return owner;
   }
+  const forms = [...new Set([trimSlash(cwd), await physicalPath(cwd, fs)])];
   let best: { project: HistoryProject; length: number } | undefined;
   for (const project of projects) {
     for (const path of project.rootPaths) {
-      if (!isWithin(cwd, path)) continue;
+      if (!forms.some((form) => isWithin(form, path))) continue;
       const length = trimSlash(path).length;
       if (!best || length > best.length) best = { project, length };
     }
@@ -231,7 +246,8 @@ export interface LauncherSessionsInput {
   profiles: readonly AgentProfile[];
   /** The pane folder's project; without one, `here` is the folder itself. */
   project: HistoryProject | undefined;
-  cwd: string | undefined;
+  /** The pane folder, as given and as its physical path (`here` matches either). */
+  cwds: readonly string[];
   fs?: LauncherFs;
 }
 
@@ -241,8 +257,13 @@ export interface LauncherSessionsInput {
  * data root the daemon read the row from, so a resume binds the account the
  * conversation lives in.
  */
-export function launcherSessions(input: LauncherSessionsInput): LauncherSessionRow[] {
+export async function launcherSessions(input: LauncherSessionsInput): Promise<LauncherSessionRow[]> {
   const fs = input.fs ?? NODE_LAUNCHER_FS;
+  // One stat per distinct folder, all at once.
+  const folders = [...new Set(input.rows.flatMap((row) => (row.cwd === undefined ? [] : [row.cwd])))];
+  const present = new Map(
+    await Promise.all(folders.map(async (folder) => [folder, await fs.isDirectory(folder)] as const)),
+  );
   const runtimes = new Map(input.runtimes.map((runtime) => [runtime.id, runtime] as const));
   const byKind = new Map<string, AgentLaunchProvider>();
   for (const provider of input.providers) {
@@ -260,13 +281,13 @@ export function launcherSessions(input: LauncherSessionsInput): LauncherSessionR
         : undefined;
     const here = input.project
       ? row.projectId === input.project.id
-      : input.cwd !== undefined && row.cwd !== undefined && isWithin(row.cwd, input.cwd);
+      : row.cwd !== undefined && input.cwds.some((cwd) => isWithin(row.cwd!, cwd));
     const lastAt = row.lastActivityAt ?? (row.updatedAt > 0 ? row.updatedAt : undefined);
     // An id a resume could not carry as an argv token is not offered at all.
     const unresumable =
       !provider?.resume || !RESUME_ID.test(row.nativeSessionId)
         ? "can't resume"
-        : row.cwd !== undefined && !fs.isDirectory(row.cwd)
+        : row.cwd !== undefined && present.get(row.cwd) !== true
           ? 'folder is gone'
           : undefined;
     return {
@@ -355,6 +376,12 @@ export interface LauncherService {
    * in an existing folder, under a profile of its own agent.
    */
   resumeOptions(request: ResumeNativeSessionRequest): Promise<ResumeAgentOptions | { refused: string }>;
+  /**
+   * A launch or a resume was just allocated for this provider (main's own
+   * word, not the renderer's): the next `agents()` orders by it at once,
+   * rather than after the record cache's few seconds.
+   */
+  noteLaunched(providerId: string, atMs?: number): void;
 }
 
 function servedKey(providerId: string, nativeSessionId: string): string {
@@ -365,6 +392,8 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
   const fs = options.fs ?? NODE_LAUNCHER_FS;
   const now = options.now ?? Date.now;
   let records: { at: number; value: Promise<Map<string, number>> } | undefined;
+  /** Launches main saw allocated since the record was last read. */
+  const noted = new Map<string, number>();
   /** The sessions `recent()` listed as resumable, by provider and native id, with when. */
   const served = new Map<string, number>();
 
@@ -382,14 +411,26 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     }
   }
 
-  function lastLaunched(): Promise<Map<string, number>> {
+  async function lastLaunched(): Promise<Map<string, number>> {
     if (!records || now() - records.at >= RECORDS_TTL_MS) {
       records = {
         at: now(),
         value: options.readRecords().then(lastLaunchedByProvider, () => new Map<string, number>()),
       };
     }
-    return records.value;
+    const read = await records.value;
+    if (noted.size === 0) return read;
+    const merged = new Map(read);
+    for (const [providerId, at] of noted) {
+      if (at > (merged.get(providerId) ?? Number.NEGATIVE_INFINITY)) merged.set(providerId, at);
+    }
+    return merged;
+  }
+
+  function noteLaunched(providerId: string, atMs = now()): void {
+    noted.set(providerId, Math.max(atMs, noted.get(providerId) ?? Number.NEGATIVE_INFINITY));
+    // The record will hold it too; read it afresh next time rather than trust a cache from before.
+    records = undefined;
   }
 
   async function agents(): Promise<LauncherAgentRow[]> {
@@ -414,7 +455,7 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     const catalogue = await options.history.catalogue();
     if (!catalogue.answered) return { status: launcherHistoryStatus(catalogue.status, false), sessions: [] };
     const cwd = request.cwd;
-    const project = cwd ? resolveLauncherProject(cwd, catalogue.projects, fs) : undefined;
+    const project = cwd ? await resolveLauncherProject(cwd, catalogue.projects, fs) : undefined;
     const limit = request.limit ?? DEFAULT_RECENT_LIMIT;
     if (request.scope === 'here' && !cwd) {
       return { status: launcherHistoryStatus(catalogue.status, true), sessions: [] };
@@ -427,13 +468,13 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     });
     if (!listing.answered) return { status: launcherHistoryStatus(listing.status, false), sessions: [] };
     const profiles = await options.runtime.profiles().catch((): AgentProfile[] => []);
-    const sessions = launcherSessions({
+    const sessions = await launcherSessions({
       rows: listing.sessions,
       runtimes: catalogue.runtimes,
       providers: options.runtime.launchProviders(),
       profiles,
       project,
-      cwd,
+      cwds: cwd ? [...new Set([cwd, await physicalPath(cwd, fs)])] : [],
       fs,
     });
     const answer = (unprojected ? sessions.filter((session) => session.here) : sessions).slice(0, limit);
@@ -446,7 +487,7 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     let project: HistoryProject | undefined;
     if (request.scope === 'here' && request.cwd) {
       const catalogue = await options.history.catalogue();
-      if (catalogue.answered) project = resolveLauncherProject(request.cwd, catalogue.projects, fs);
+      if (catalogue.answered) project = await resolveLauncherProject(request.cwd, catalogue.projects, fs);
     }
     const response = await options.history.search(
       { query: request.query, nativeSessionIds: [], limit: request.limit ?? DEFAULT_RECENT_LIMIT, prefix: true },
@@ -463,7 +504,7 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     if (listedAt === undefined || now() - listedAt >= SERVED_TTL_MS) {
       return { refused: 'it is not a session this launcher listed; open the field again' };
     }
-    if (request.cwd && !fs.isDirectory(request.cwd)) return { refused: 'its folder is gone' };
+    if (request.cwd && !(await fs.isDirectory(request.cwd))) return { refused: 'its folder is gone' };
     if (request.profileId) {
       const profiles = await options.runtime.profiles().catch((): AgentProfile[] => []);
       const known = profiles.some((profile) => profile.id === request.profileId && profile.provider === provider.id);
@@ -476,7 +517,7 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     };
   }
 
-  return { agents, recent, words, resumeOptions };
+  return { agents, recent, words, resumeOptions, noteLaunched };
 }
 
 /* ── IPC ───────────────────────────────────────────────────────────────── */

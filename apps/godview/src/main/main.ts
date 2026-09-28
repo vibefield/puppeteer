@@ -1565,6 +1565,8 @@ async function registerSpawnedAgent(
   }
   rememberAgent(info, session);
   if (owner) tabs.get(owner)?.sessionIds.add(result.runtimeSessionId);
+  // The launcher's rows order by last launch: this one counts from now, not after its record cache expires.
+  launcherService.noteLaunched(result.provider.id);
   return info;
 }
 
@@ -3089,7 +3091,7 @@ function checkpointAndExitForSystemShutdown(event?: { preventDefault?: () => voi
 
 registerIpc();
 // The empty pane launcher's questions (QL-1); resuming by native id goes through the same registration as a resume.
-registerLauncherIpc(ipcMain, {
+const launcherService = registerLauncherIpc(ipcMain, {
   ownerOf: (event) => {
     const owner = BrowserWindow.fromWebContents(event.sender);
     return owner && tabs.get(owner) ? owner : undefined;
