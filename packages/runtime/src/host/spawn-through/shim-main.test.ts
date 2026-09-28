@@ -598,8 +598,13 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
           if (text.includes('waiting for the host')) announced();
         },
       });
-      // The host arrives only once the shim has said it waits for one.
-      await waiting;
+      // The host arrives only once the shim has said it waits for one. A launch that ends before saying so
+      // (it fell through, or never started) fails here with what it printed, rather than hanging the test.
+      const ended = await Promise.race([waiting.then(() => undefined), running]);
+      if (ended) {
+        const { code, stdout, stderr } = ended;
+        throw new Error(`the launch ended before it said it waits: ${JSON.stringify({ code, stdout, stderr })}`);
+      }
       const requests = await gatewayAnswering(
         strictHome,
         () => ({
