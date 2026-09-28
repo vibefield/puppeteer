@@ -83,6 +83,7 @@ import {
   resolveHistoryOrigin,
 } from './history-search.js';
 import { createHistorySettingsStore } from './history-settings.js';
+import { registerLauncherIpc } from './launcher-ipc.js';
 import { acknowledgeAgentFailureForIpc, connectMonitorIpcRelay, MonitorIpcRelay } from './monitor-ipc.js';
 import {
   APPEARANCE_BLOCK_START,
@@ -3087,6 +3088,18 @@ function checkpointAndExitForSystemShutdown(event?: { preventDefault?: () => voi
 }
 
 registerIpc();
+// The empty pane launcher's questions (QL-1); resuming by native id goes through the same registration as a resume.
+registerLauncherIpc(ipcMain, {
+  ownerOf: (event) => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    return owner && tabs.get(owner) ? owner : undefined;
+  },
+  runtime: agentRuntime,
+  profileDefaults: () => profileDefaultsStore.read(),
+  readRecords: () => recorder.read(),
+  history: historySearch,
+  resume: (options, owner) => resumeAgentSession(options, owner),
+});
 app
   .whenReady()
   .then(async () => {

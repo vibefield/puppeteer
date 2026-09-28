@@ -696,3 +696,68 @@ describe('createHistorySearchService', () => {
     expect(d.asked.filter((path) => path.startsWith('/api/sessions?'))).toHaveLength(4);
   });
 });
+
+describe('the launcher catalogue and recent sessions', () => {
+  const PROJECTS = {
+    projects: [{ id: 'p1', name: 'rosetta', root_paths: ['/w/rosetta', '/w/rosetta-wt'], git_repo: 'x' }],
+  };
+  const RUNTIMES = {
+    runtimes: [{ id: 'rt1', kind: 'claude-code', data_root: '/home/.claude', enabled: true, discovered_at: 1 }],
+  };
+
+  it('reads projects and runtimes once per window, and top-level sessions by project from the pinned wire', async () => {
+    let clock = 1_000;
+    const d = daemon(20, (url) => {
+      if (url.pathname === '/api/status') return { body: CURRENT_WIRE.status };
+      if (url.pathname === '/api/projects') return { body: PROJECTS };
+      if (url.pathname === '/api/runtimes') return { body: RUNTIMES };
+      if (url.pathname === '/api/sessions') return { body: CURRENT_WIRE.sessions };
+      if (url.pathname === '/api/search') return { body: { state: READY, hits: [] } };
+      return undefined;
+    });
+    const service = createHistorySearchService({ fetch: d.fetch, origin: () => ORIGIN, now: () => clock });
+
+    const first = await service.catalogue();
+    expect(first.answered && first.projects).toEqual([
+      { id: 'p1', name: 'rosetta', rootPaths: ['/w/rosetta', '/w/rosetta-wt'] },
+    ]);
+    expect(first.answered && first.runtimes).toEqual([{ id: 'rt1', kind: 'claude-code', dataRoot: '/home/.claude' }]);
+    await service.catalogue();
+    expect(d.asked.filter((path) => path === '/api/projects')).toHaveLength(1);
+    clock += 20_000;
+    await service.catalogue();
+    expect(d.asked.filter((path) => path === '/api/projects')).toHaveLength(2);
+
+    const recent = await service.recent({ project: 'p1', limit: 100 });
+    expect(d.asked).toContain('/api/sessions?limit=100&project=p1');
+    expect(recent.answered && recent.sessions).toEqual([
+      {
+        id: 's1',
+        nativeSessionId: 'native-s1',
+        runtimeId: 'rt1',
+        projectId: 'p1',
+        cwd: '/w/rosetta',
+        title: 'Named',
+        summary: 'A summary',
+        startedAt: 10_000,
+        updatedAt: 20_000,
+        lastActivityAt: 19_000,
+      },
+    ]);
+
+    await service.search({ query: 'puppet', nativeSessionIds: [] }, { project: 'p1' });
+    expect(d.asked.find((path) => path.startsWith('/api/search'))).toContain('project=p1');
+  });
+
+  it('says a silent daemon is not reachable rather than listing nothing', async () => {
+    const fetch = (async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+    }) as unknown as typeof globalThis.fetch;
+    const service = createHistorySearchService({ fetch, origin: () => ORIGIN });
+    const catalogue = await service.catalogue();
+    expect(catalogue.answered).toBe(false);
+    expect(catalogue.status).toMatchObject({ reachable: false, detail: 'no history daemon is listening' });
+    const recent = await service.recent({ limit: 10 });
+    expect(recent.answered).toBe(false);
+  });
+});

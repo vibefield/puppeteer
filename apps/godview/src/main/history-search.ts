@@ -50,6 +50,9 @@ const FACTS_TTL_MS = 15_000;
 const MISS_TTL_MS = 3_000;
 const VERSION_TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 8_000;
+/** Projects and runtimes change when an agent first runs somewhere new; a short cache keeps a launcher's questions cheap. */
+const CATALOGUE_TTL_MS = 15_000;
+const MAX_RECENT_LIMIT = 500;
 
 /* ── origins ───────────────────────────────────────────────────────────── */
 
@@ -330,6 +333,98 @@ function decodeHits(body: unknown): DaemonHit[] | undefined {
   return hits;
 }
 
+/** A rosetta project: a git root with its worktrees grouped, or a plain folder. */
+export interface HistoryProject {
+  id: string;
+  name: string;
+  rootPaths: string[];
+}
+
+/** A rosetta runtime: one agent install's data root, filed under its kind. */
+export interface HistoryRuntime {
+  id: string;
+  kind: string;
+  /** The agent data root the daemon reads, which is a profile's root when one was bound. */
+  dataRoot?: string;
+}
+
+/** A top-level session as the daemon lists it, newest first. */
+export interface HistoryListedSession {
+  id: string;
+  nativeSessionId: string;
+  runtimeId: string;
+  projectId?: string;
+  cwd?: string;
+  title?: string;
+  summary?: string;
+  startedAt?: number;
+  updatedAt: number;
+  /** Timestamped conversation evidence; absent until the daemon has read any. */
+  lastActivityAt?: number;
+}
+
+function decodeProjects(body: unknown): HistoryProject[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.projects)) return undefined;
+  const projects: HistoryProject[] = [];
+  for (const value of body.projects) {
+    if (!isRecord(value)) return undefined;
+    const id = asString(value.id);
+    if (!id) return undefined;
+    const roots = Array.isArray(value.root_paths) ? value.root_paths : [];
+    projects.push({
+      id,
+      name: asString(value.name) ?? id,
+      rootPaths: roots.filter((root): root is string => typeof root === 'string' && root !== ''),
+    });
+  }
+  return projects;
+}
+
+function decodeRuntimes(body: unknown): HistoryRuntime[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.runtimes)) return undefined;
+  const runtimes: HistoryRuntime[] = [];
+  for (const value of body.runtimes) {
+    if (!isRecord(value)) return undefined;
+    const id = asString(value.id);
+    const kind = asString(value.kind);
+    if (!id || !kind) return undefined;
+    const dataRoot = asString(value.data_root);
+    runtimes.push({ id, kind, ...(dataRoot ? { dataRoot } : {}) });
+  }
+  return runtimes;
+}
+
+function decodeListedSessions(body: unknown): HistoryListedSession[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.sessions)) return undefined;
+  const sessions: HistoryListedSession[] = [];
+  for (const value of body.sessions) {
+    if (!isRecord(value)) return undefined;
+    const id = asString(value.id);
+    const nativeSessionId = asString(value.native_session_id);
+    const runtimeId = asString(value.runtime_id);
+    if (!id || !nativeSessionId || !runtimeId) return undefined;
+    const projectId = asString(value.project_id);
+    const cwd = asString(value.cwd);
+    const title = asString(value.title);
+    const summary = asString(value.summary);
+    const startedAt = asFiniteNumber(value.started_at);
+    const lastActivityAt = isRecord(value.activity) ? asFiniteNumber(value.activity.last_at) : undefined;
+    sessions.push({
+      id,
+      nativeSessionId,
+      runtimeId,
+      ...(projectId ? { projectId } : {}),
+      ...(cwd ? { cwd } : {}),
+      ...(title ? { title } : {}),
+      ...(summary ? { summary } : {}),
+      ...(startedAt !== undefined ? { startedAt } : {}),
+      updatedAt: asFiniteNumber(value.updated_at) ?? 0,
+      ...(lastActivityAt !== undefined ? { lastActivityAt } : {}),
+    });
+  }
+  return sessions;
+}
+
 const READINESS: readonly HistorySearchReadiness[] = ['ready', 'building', 'catching-up', 'stale', 'failed'];
 
 interface DaemonSearchState {
@@ -369,8 +464,30 @@ export interface HistorySearchService {
   status(): Promise<HistorySearchStatus>;
   /** Title, summary, cwd, and canonical ids for live runs, by provider-native id. */
   facts(nativeSessionIds: readonly string[]): Promise<HistorySessionFacts[]>;
-  search(request: HistorySearchRequest): Promise<HistorySearchResponse>;
+  /** Words said or heard; `scope.project` narrows to one rosetta project. */
+  search(request: HistorySearchRequest, scope?: HistorySearchScope): Promise<HistorySearchResponse>;
+  /** The daemon's projects and runtimes, cached briefly per daemon generation. */
+  catalogue(): Promise<HistoryCatalogueResponse>;
+  /** Top-level sessions newest first, in one project or in all of them. */
+  recent(request: HistoryRecentRequest): Promise<HistoryRecentResponse>;
 }
+
+export interface HistorySearchScope {
+  project?: string;
+}
+
+export type HistoryCatalogueResponse =
+  | { answered: true; status: HistorySearchStatus; projects: HistoryProject[]; runtimes: HistoryRuntime[] }
+  | { answered: false; status: HistorySearchStatus };
+
+export interface HistoryRecentRequest {
+  project?: string;
+  limit: number;
+}
+
+export type HistoryRecentResponse =
+  | { answered: true; status: HistorySearchStatus; sessions: HistoryListedSession[] }
+  | { answered: false; status: HistorySearchStatus };
 
 type Failure = { ok: false; failure: string; reachable: boolean };
 type Result<T> = { ok: true; value: T } | Failure;
@@ -407,6 +524,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     canonicalReady?: boolean | undefined;
     search?: DaemonSearchState | undefined;
     cache: SessionCache;
+    catalogue?: { projects: HistoryProject[]; runtimes: HistoryRuntime[]; at: number } | undefined;
   }
 
   function emptyCache(): SessionCache {
@@ -458,6 +576,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
       daemon.cache = emptyCache();
       daemon.search = undefined;
       daemon.canonicalReady = undefined;
+      daemon.catalogue = undefined;
     }
     daemon.version = { value: version, at: now() };
     if (epoch !== undefined) daemon.projectionEpoch = epoch;
@@ -674,7 +793,7 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     return sessionRow(daemon, cache, result.value.rootSessionId, budget);
   }
 
-  async function search(request: HistorySearchRequest): Promise<HistorySearchResponse> {
+  async function search(request: HistorySearchRequest, scope?: HistorySearchScope): Promise<HistorySearchResponse> {
     const daemon = selectedDaemon();
     if (!daemon) return unanswered();
     const who = await identity(daemon);
@@ -724,6 +843,8 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
       effectiveLimit = scoped ? V17_SEARCH_LIMIT : limit;
       params.set('limit', String(effectiveLimit));
     }
+    // Every supported protocol filters search by project.
+    if (scope?.project) params.set('project', scope.project);
     const result = await call(daemon, '/api/search?' + params.toString(), cache);
     if (!result.ok) return unanswered(daemon, result);
     const body = result.value.body;
@@ -762,5 +883,50 @@ export function createHistorySearchService(options: HistorySearchServiceOptions)
     return { status: statusOf(daemon), answered: true, hits, clipped };
   }
 
-  return { status, facts, search };
+  async function catalogue(): Promise<HistoryCatalogueResponse> {
+    const daemon = selectedDaemon();
+    if (!daemon) return { answered: false, status: statusOf() };
+    const who = await identity(daemon);
+    if (!who.ok) return { answered: false, status: statusOf(daemon, who) };
+    const known = daemon.catalogue;
+    if (known && now() - known.at < CATALOGUE_TTL_MS) {
+      return { answered: true, status: statusOf(daemon), projects: known.projects, runtimes: known.runtimes };
+    }
+    const [projectsResult, runtimesResult] = await Promise.all([
+      call(daemon, '/api/projects'),
+      call(daemon, '/api/runtimes'),
+    ]);
+    if (!projectsResult.ok) return { answered: false, status: statusOf(daemon, projectsResult) };
+    if (!runtimesResult.ok) return { answered: false, status: statusOf(daemon, runtimesResult) };
+    const projects = decodeProjects(projectsResult.value.body);
+    const runtimes = decodeRuntimes(runtimesResult.value.body);
+    if (!projects || !runtimes) {
+      return { answered: false, status: statusOf(daemon, failure('the history daemon returned an invalid catalogue')) };
+    }
+    daemon.catalogue = { projects, runtimes, at: now() };
+    return { answered: true, status: statusOf(daemon), projects, runtimes };
+  }
+
+  async function recent(request: HistoryRecentRequest): Promise<HistoryRecentResponse> {
+    const daemon = selectedDaemon();
+    if (!daemon) return { answered: false, status: statusOf() };
+    // Session lists carry no readiness; the status read is what says whether the list is whole.
+    const checked = await readStatus(daemon);
+    if (!checked.ok) return { answered: false, status: statusOf(daemon, checked) };
+    const limit = Math.max(1, Math.min(MAX_RECENT_LIMIT, Math.floor(request.limit)));
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (request.project) params.set('project', request.project);
+    const result = await call(daemon, '/api/sessions?' + params.toString());
+    if (!result.ok) return { answered: false, status: statusOf(daemon, result) };
+    const sessions = decodeListedSessions(result.value.body);
+    if (!sessions) {
+      return {
+        answered: false,
+        status: statusOf(daemon, failure('the history daemon returned an invalid session list')),
+      };
+    }
+    return { answered: true, status: statusOf(daemon), sessions };
+  }
+
+  return { status, facts, search, catalogue, recent };
 }

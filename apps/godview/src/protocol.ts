@@ -9,6 +9,14 @@ import type {
   UsageLedgerRecord,
 } from '@vibecook/puppeteer-views';
 import type {
+  LauncherAgent,
+  LauncherHistoryStatus,
+  LauncherRecentRequest,
+  LauncherSession,
+  LauncherWordHit,
+  LauncherWordsRequest,
+} from '@vibecook/puppeteer-views/launcher';
+import type {
   AgentInstallation,
   AgentProfile,
   AgentProviderDescriptor,
@@ -108,6 +116,8 @@ export interface CreateAgentSessionOptions {
   agent: AgentKind;
   cwd?: string;
   title?: string;
+  /** Registered profile id to run under; absent means the runtime's own default account. */
+  profile?: string;
   workspace?: {
     mode: 'direct' | 'exclusive' | 'worktree';
     path?: string;
@@ -186,6 +196,44 @@ export type {
   UsageRunRecord,
 } from '@vibecook/puppeteer-views';
 
+/* The empty pane launcher (QL-1): the port's questions as main answers them.
+   The shapes are the launcher's own (`@vibecook/puppeteer-views/launcher`);
+   a row may carry the profile id main matched, which only this host reads. */
+export type {
+  LauncherHistoryStatus,
+  LauncherRecentRequest,
+  LauncherWordHit,
+  LauncherWordsRequest,
+} from '@vibecook/puppeteer-views/launcher';
+
+/** A launcher row with the profile a launch runs under: the provider's persisted default. */
+export interface LauncherAgentRow extends LauncherAgent {
+  profileId?: string;
+}
+
+/** A past session with the profile whose data root the history daemon read it from. */
+export interface LauncherSessionRow extends LauncherSession {
+  profileId?: string;
+}
+
+export interface LauncherRecentAnswer {
+  status: LauncherHistoryStatus;
+  sessions: LauncherSessionRow[];
+}
+
+export interface LauncherWordsAnswer {
+  answered: boolean;
+  hits: LauncherWordHit[];
+}
+
+/** Resume a past conversation by its provider-native id (QL-D10), not by a run this Godview holds. */
+export interface ResumeNativeSessionRequest {
+  providerId: string;
+  nativeSessionId: string;
+  cwd?: string;
+  profileId?: string;
+}
+
 export interface PuppeteerBridge {
   createAgentSession(opts: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
   listAgentSessions(): Promise<AgentSessionSnapshot[]>;
@@ -232,6 +280,14 @@ export interface PuppeteerBridge {
   historyFacts(nativeSessionIds: string[]): Promise<HistorySessionFacts[]>;
   /** Words said or heard in live sessions, joined back to their runs. */
   historySearch(request: HistorySearchRequest): Promise<HistorySearchResponse>;
+  /** The launcher's agent catalog: launch providers in order, their install state, last launch and default profile. */
+  launcherAgents(): Promise<LauncherAgentRow[]>;
+  /** The launcher's past sessions: this folder's project (`here`) or every project (`all`), newest first. */
+  launcherRecent(request: LauncherRecentRequest): Promise<LauncherRecentAnswer>;
+  /** The launcher's words lane over the history daemon's search. */
+  launcherWords(request: LauncherWordsRequest): Promise<LauncherWordsAnswer>;
+  /** Resume a past conversation by provider-native id; the caller mounts the returned session. */
+  resumeNativeSession(request: ResumeNativeSessionRequest): Promise<CreateAgentSessionResult>;
   /** The persisted usage ledger for a conversation, or null when none was saved. */
   loadUsageHistory(key: UsageHistoryKey): Promise<UsageLedgerRecord | null>;
   /** Persist the live agents' usage ledgers; main merges them into the cache. */

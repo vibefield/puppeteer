@@ -23,6 +23,11 @@ import type {
   HistorySearchStatus,
   HistorySessionFacts,
   InstallationsRequest,
+  LauncherAgentRow,
+  LauncherRecentAnswer,
+  LauncherRecentRequest,
+  LauncherWordsAnswer,
+  LauncherWordsRequest,
   NewTerminalTabRequest,
   ProfileDefaults,
   ProfileFailure,
@@ -35,6 +40,7 @@ import type {
   PromptReceipt,
   ReleaseCheckResult,
   PaneRehydrationRequest,
+  ResumeNativeSessionRequest,
   SetProfileDefaultRequest,
   StartProfileLoginRequest,
   SubmitPromptOptions,
@@ -145,6 +151,13 @@ const puppeteer: PuppeteerBridge = {
     ipcRenderer.invoke('puppeteer:history-facts', nativeSessionIds),
   historySearch: (request: HistorySearchRequest): Promise<HistorySearchResponse> =>
     ipcRenderer.invoke('puppeteer:history-search', request),
+  launcherAgents: (): Promise<LauncherAgentRow[]> => ipcRenderer.invoke('launcher:agents'),
+  launcherRecent: (request: LauncherRecentRequest): Promise<LauncherRecentAnswer> =>
+    ipcRenderer.invoke('launcher:recent', request),
+  launcherWords: (request: LauncherWordsRequest): Promise<LauncherWordsAnswer> =>
+    ipcRenderer.invoke('launcher:words', request),
+  resumeNativeSession: (request: ResumeNativeSessionRequest): Promise<CreateAgentSessionResult> =>
+    ipcRenderer.invoke('puppeteer:resume-native-session', request),
   onWorkspaceFinal: (callback: (event: WorkspaceFinalEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, final: WorkspaceFinalEvent): void => callback(final);
     ipcRenderer.on('puppeteer:workspace-final', listener);
