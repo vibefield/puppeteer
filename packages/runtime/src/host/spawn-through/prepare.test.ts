@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgentLaunchProvider, AgentNativeInvocation } from '@vibecook/puppeteer-core';
-import type { ClassifyAgentInvocationResult } from '../../types.js';
+import type { ClassifyAgentInvocationResult, PreparationFailure } from '../../types.js';
 import { prepareSpawnThroughLaunch, type SpawnThroughHost, type SpawnThroughRefusal } from './prepare.js';
 import {
   MAX_REFUSAL_MESSAGE_LENGTH,
@@ -52,6 +52,13 @@ const UNSUPPORTED = {
   code: 'NATIVE_INVOCATION_UNSUPPORTED',
   reason: 'agent provider does not support native terminal invocation',
 } as const satisfies ClassifyAgentInvocationResult;
+
+/** The runtime's failure for a launch the agent's own adapter refused: its sentence, its code beside it. */
+const ADAPTER_REFUSAL = {
+  code: 'AGENT_LAUNCH_REFUSED',
+  message: 'your settings turn hooks off, and a managed session is observed through hooks',
+  refusal: { code: 'EXAMPLE_HOOKS_OFF' },
+} as const satisfies PreparationFailure['error'];
 
 interface Script {
   host?: Partial<SpawnThroughHost>;
@@ -423,6 +430,14 @@ describe('prepareSpawnThroughLaunch', () => {
         strict: 'refuse',
       },
       {
+        name: "a launch the agent's own adapter refused, for a reason the person can act on",
+        runtime: { prepareInvocation: async () => ({ error: ADAPTER_REFUSAL }) },
+        code: 'launch-refused',
+        reason: ADAPTER_REFUSAL.message,
+        reached: ['classify', 'resolve', 'prepare'],
+        strict: 'refuse',
+      },
+      {
         name: 'a failed preparation of any other kind',
         runtime: {
           prepareInvocation: async () => ({
@@ -536,6 +551,35 @@ describe('prepareSpawnThroughLaunch', () => {
       expect(words).toHaveBeenLastCalledWith(expect.objectContaining({ command: 'bare', providerId: 'bare' }));
       await prepareSpawnThroughLaunch(launch({ command: 'ai', imposter: false }), host);
       expect(words).toHaveBeenLastCalledWith(expect.objectContaining({ command: 'ai' }));
+    });
+
+    it("tells the host the adapter's own code for a refusal it made, to word it or to say the adapter's sentence", async () => {
+      const words = vi.fn((refused: SpawnThroughRefusal) =>
+        refused.providerCode === 'EXAMPLE_HOOKS_OFF' ? 'turn your hooks back on to run example here' : refused.reason,
+      );
+      const refusedByAdapter = { runtime: { prepareInvocation: async () => ({ error: ADAPTER_REFUSAL }) } };
+      const { host } = scripted({ ...refusedByAdapter, host: { strict: true, refusal: words } });
+      await expect(prepareSpawnThroughLaunch(launch(), host)).resolves.toEqual(
+        refusal('launch-refused', ADAPTER_REFUSAL.message, 'turn your hooks back on to run example here'),
+      );
+      expect(words).toHaveBeenCalledWith({
+        code: 'launch-refused',
+        reason: ADAPTER_REFUSAL.message,
+        providerCode: 'EXAMPLE_HOOKS_OFF',
+        providerId: 'example',
+        command: 'example',
+      });
+
+      // A code the host does not know: the adapter's sentence, as the host chose to say it.
+      const other = {
+        runtime: {
+          prepareInvocation: async () => ({ error: { ...ADAPTER_REFUSAL, refusal: { code: 'EXAMPLE_OTHER' } } }),
+        },
+      };
+      const { host: otherHost } = scripted({ ...other, host: { strict: true, refusal: words } });
+      await expect(prepareSpawnThroughLaunch(launch(), otherHost)).resolves.toEqual(
+        refusal('launch-refused', ADAPTER_REFUSAL.message, ADAPTER_REFUSAL.message),
+      );
     });
 
     it('bounds the words: printable characters, two lines, and a length a terminal can hold', async () => {

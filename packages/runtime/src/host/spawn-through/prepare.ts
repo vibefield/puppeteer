@@ -74,6 +74,11 @@ export interface SpawnThroughRefusal {
   reason: string;
   /** The first argument the managed launch could not carry, when the adapter named one. */
   argument?: string;
+  /**
+   * With `launch-refused`: the adapter's own code for its refusal, whose sentence
+   * is `reason`. A host may word a code it knows, and say the adapter's sentence for the rest.
+   */
+  providerCode?: string;
   providerId: string;
   /** The name the person typed (`ai` for the imposter's route). */
   command: string;
@@ -122,6 +127,8 @@ function preparationDecline(error: PreparationFailure['error']): SpawnThroughDec
       return 'unsupported-agent';
     case 'INVALID_NATIVE_INVOCATION':
       return error.argument === undefined ? 'invalid-invocation' : 'rejected-argument';
+    case 'AGENT_LAUNCH_REFUSED':
+      return 'launch-refused';
     default:
       return 'prepare-failed';
   }
@@ -158,12 +165,17 @@ export async function prepareSpawnThroughLaunch(
 ): Promise<SpawnThroughResponse> {
   // What the rule reads, as each step establishes it.
   const invocation = { session: false, interactive: request.interactive, placed: false };
-  const decline = (code: SpawnThroughDeclineCode, reason: string, argument?: string): SpawnThroughResponse => {
+  const decline = (
+    code: SpawnThroughDeclineCode,
+    reason: string,
+    { argument, providerCode }: { argument?: string | undefined; providerCode?: string | undefined } = {},
+  ): SpawnThroughResponse => {
     if (!refuses(host.strict, invocation)) return declineSpawnThrough({ code, reason });
     const refused: SpawnThroughRefusal = {
       code,
       reason,
       ...(argument === undefined ? {} : { argument }),
+      ...(providerCode === undefined ? {} : { providerCode }),
       providerId: request.providerId,
       // A shim from before the request carried its name.
       command: request.command ?? request.providerId,
@@ -207,7 +219,9 @@ export async function prepareSpawnThroughLaunch(
   const capability = provider?.nativeInvocation;
   if (!provider || !capability) return decline('unsupported-agent', 'agent does not support managed native invocation');
   if (classified.status === 'rejected') {
-    return decline('rejected-argument', naming(classified.reason, classified.argument), classified.argument);
+    return decline('rejected-argument', naming(classified.reason, classified.argument), {
+      argument: classified.argument,
+    });
   }
 
   // 5. The implementation.
@@ -239,8 +253,11 @@ export async function prepareSpawnThroughLaunch(
     // strict host gives launchers only to agents whose adapters classify. A
     // passthrough the real implementation reveals runs as typed, as at 2.
     if (prepared.error.code === 'NATIVE_INVOCATION_PASSTHROUGH') invocation.session = false;
-    const { argument } = prepared.error;
-    return decline(preparationDecline(prepared.error), naming(prepared.error.message, argument), argument);
+    const { argument, refusal } = prepared.error;
+    return decline(preparationDecline(prepared.error), naming(prepared.error.message, argument), {
+      argument,
+      providerCode: refusal?.code,
+    });
   }
 
   const adopted = await host.runtime.adoptPrepared(prepared.preparationId, {
