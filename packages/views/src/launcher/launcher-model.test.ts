@@ -411,6 +411,24 @@ describe('buildLauncherResults', () => {
     expect(rows[0]?.evidence).toBeUndefined();
   });
 
+  it('never lets a words hit outlive its question: another query or scope leaves it out', () => {
+    const sessions = [session('a', { title: 'port the rain view' }), session('b', { title: 'fold it' })];
+    // Found for "gauge": session a said it, though no fact of a's mentions it.
+    const hits = [{ sessionKey: 'a', kind: 'user', snippet: 'the [gauge]' }];
+    const hitsFor = { query: 'gauge', scope: 'here' } as const;
+    const keys = (query: string, scope: 'here' | 'all' = 'here') =>
+      buildLauncherResults({ ...base, sessions, hits, hitsFor, query, scope }).rows.map((row) => row.session.key);
+    expect(keys('gauge')).toEqual(['a']);
+    expect(keys('  gauge ')).toEqual(['a']);
+    // The query moved on (typed further, or a new word) before the words lane answered it: a stays out.
+    expect(keys('gaug')).toEqual([]);
+    expect(keys('fold')).toEqual(['b']);
+    // The same words asked in another scope are another question.
+    expect(keys('gauge', 'all')).toEqual([]);
+    // No question named: the hits are the current question's (a static render).
+    expect(buildLauncherResults({ ...base, sessions, hits, query: 'fold', scope: 'here' }).rows.length).toBe(2);
+  });
+
   it('keeps a row it cannot resume, saying why', () => {
     const sessions = [
       session('gone', {

@@ -442,9 +442,22 @@ export interface LauncherResults {
   rows: LauncherResultRow[];
 }
 
+/** The question a words answer was for: its trimmed query and its scope. */
+export interface LauncherWordsQuestion {
+  query: string;
+  scope: LauncherScope;
+}
+
 export interface BuildLauncherResultsInput {
   sessions: readonly LauncherSession[];
   hits: readonly LauncherWordHit[];
+  /**
+   * What `hits` answered. Hits for any other question than the current one
+   * (the trimmed query and the scope) are stale and left out, so a row a hit
+   * kept in never outlives the words that found it. Absent: `hits` answer
+   * the current question (a static render).
+   */
+  hitsFor?: LauncherWordsQuestion | undefined;
   query: string;
   scope: LauncherScope;
   folder: string;
@@ -532,7 +545,8 @@ function byRecency(left: LauncherResultRow, right: LauncherResultRow): number {
  */
 export function buildLauncherResults({
   sessions,
-  hits,
+  hits: anyHits,
+  hitsFor,
   query,
   scope,
   folder,
@@ -541,6 +555,8 @@ export function buildLauncherResults({
 }: BuildLauncherResultsInput): LauncherResults {
   const terms = tokenize(query);
   const searching = terms.length > 0;
+  const current = !hitsFor || (hitsFor.query === query.trim() && hitsFor.scope === scope);
+  const hits = current ? anyHits : [];
   const here: LauncherResultRow[] = [];
   const elsewhere: LauncherResultRow[] = [];
   for (const session of sessions) {

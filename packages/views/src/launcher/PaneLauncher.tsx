@@ -20,6 +20,7 @@ import {
   type LauncherKeyAction,
   type LauncherKeyState,
   type LauncherScope,
+  type LauncherWordsQuestion,
 } from './launcher-model.js';
 import type {
   LauncherAgent,
@@ -118,7 +119,9 @@ export function PaneLauncher({
   const [query, setQuery] = useState('');
   const [history, setHistory] = useState<LauncherHistoryStatus>();
   const [sessions, setSessions] = useState<readonly LauncherSession[]>();
-  const [hits, setHits] = useState<readonly LauncherWordHit[]>([]);
+  // Each hit set with the question it answered: the list uses it only while
+  // that is still the question.
+  const [words, setWords] = useState<{ question: LauncherWordsQuestion; hits: readonly LauncherWordHit[] }>();
   const [highlight, setHighlight] = useState(-1);
   const [hoverIndex, setHoverIndex] = useState<number>();
   const [busy, setBusy] = useState<LauncherBusy>();
@@ -198,11 +201,12 @@ export function PaneLauncher({
   }, [open, port, cwd, scope]);
 
   // The words lane: one debounced question per pause in typing. A port that
-  // had no answer leaves the last hits in place rather than blanking them.
+  // had no answer keeps the last hits, which still apply only to their own
+  // question (`buildLauncherResults` leaves stale ones out).
   useEffect(() => {
     const trimmed = query.trim();
     if (!open || !port.words || trimmed === '') {
-      setHits([]);
+      setWords(undefined);
       return;
     }
     wordsSequence.current += 1;
@@ -212,7 +216,7 @@ export function PaneLauncher({
       void words({ query: trimmed, ...(cwd ? { cwd } : {}), scope, limit: LAUNCHER_RECENT_LIMIT })
         .then((response) => {
           if (!alive.current || mine !== wordsSequence.current || !response.answered) return;
-          setHits(response.hits);
+          setWords({ question: { query: trimmed, scope }, hits: response.hits });
         })
         .catch(() => undefined);
     }, LAUNCHER_SEARCH_DEBOUNCE_MS);
@@ -227,8 +231,20 @@ export function PaneLauncher({
   }, [open, nowMs]);
 
   const results = useMemo(
-    () => (sessions ? buildLauncherResults({ sessions, hits, query, scope, folder, agents, nowMs: clock }) : undefined),
-    [sessions, hits, query, scope, folder, agents, clock],
+    () =>
+      sessions
+        ? buildLauncherResults({
+            sessions,
+            hits: words?.hits ?? [],
+            hitsFor: words?.question ?? { query: '', scope },
+            query,
+            scope,
+            folder,
+            agents,
+            nowMs: clock,
+          })
+        : undefined,
+    [sessions, words, query, scope, folder, agents, clock],
   );
   const rows = results?.rows ?? [];
   // New rows put the highlight on the first, so ↵ lands at once.
