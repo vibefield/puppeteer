@@ -817,8 +817,11 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       env: { PATH: '/usr/bin:/bin', PUPPETEER_SHIM_NAME: 'example', PUPPETEER_SHIM_HOME: home },
     });
     expect(old.status).toBe(127);
-    expect(old.stderr).toMatch(/^puppeteer: example: Node\.js v\S+ cannot exec in place/u);
-    expect(old.stderr).toContain('cannot exec in place; spawn-through needs Node.js 22.15 or later');
+    // The whole rule: Node added process.execve in 22.15.0 and 23.11.0.
+    expect(old.stderr).toBe(
+      `puppeteer: example: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or ` +
+        'later on the 22 line, 23.11 or later on the 23 line, or any from 24\n',
+    );
 
     // Said before any rendezvous is read: the launcher's label leads it.
     const labelled = spawnSync(process.execPath, ['--require', preload, script], {
@@ -832,5 +835,32 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     });
     expect(labelled.status).toBe(127);
     expect(labelled.stderr).toMatch(/^Field Host: example: Node\.js v\S+ cannot exec in place/u);
+  });
+
+  it('decides by process.execve itself, never by the version Node reports', async () => {
+    // A Node that says 22.14 but has the function runs; the row above says 26 without it, and cannot.
+    const saysOld = join(root, 'says-22.14.cjs');
+    await writeFile(
+      saysOld,
+      [
+        "Object.defineProperty(process, 'version', { value: 'v22.14.0' });",
+        "Object.defineProperty(process.versions, 'node', { value: '22.14.0' });",
+        '',
+      ].join('\n'),
+    );
+    const ran = spawnSync(process.execPath, ['--require', saysOld, spawnThroughLayout(home).script, 'typed'], {
+      encoding: 'utf8',
+      env: {
+        PATH: [real, '/usr/bin', '/bin'].join(delimiter),
+        PUPPETEER_SHIM_NAME: 'example',
+        PUPPETEER_SHIM_HOME: home,
+      },
+    });
+
+    // No rendezvous: the real executable, exec'd in place.
+    expect(ran.status).toBe(0);
+    expect(ran.stderr).toBe('');
+    expect(ran.stdout).toContain('REAL example\n');
+    expect(ran.stdout).toContain('ARG typed\n');
   });
 });

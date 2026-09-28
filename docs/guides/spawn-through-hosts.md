@@ -137,7 +137,9 @@ port, rotated its bearer, turned strict on, or installed another agent — with 
 ## 5. The launcher, and why
 
 A host cannot assume `node` on a pane's PATH, or a new enough one: the shim execs in place with `process.execve`, which
-needs Node.js 22.15. So a launcher is a POSIX `sh` file that execs the runtime the **host** names:
+Node.js added in 22.15.0 and 23.11.0 — so 22.15 or later on the 22 line, 23.11 or later on the 23 line, any from 24;
+23.0 to 23.10 do not have it. The shim looks for the function itself, never at the version, and exits 127 saying so
+when it is absent. So a launcher is a POSIX `sh` file that execs the runtime the **host** names:
 
 ```sh
 #!/bin/sh
@@ -464,7 +466,8 @@ await clearRendezvous(home, { token });
 
 The duties, one by one:
 
-- **Choose the runtime**: an absolute Node.js ≥ 22.15, or the host's Electron binary with `ELECTRON_RUN_AS_NODE=1`.
+- **Choose the runtime**: an absolute Node.js with `process.execve` (22.15 or later on the 22 line, 23.11 or later on
+  the 23 line, any from 24), or the host's Electron binary with `ELECTRON_RUN_AS_NODE=1`.
 - **Resolve the real executables** before writing the table, and decide the names; a name the table lacks is never
   intercepted by the gateway.
 - **Resolve terminals from your own evidence** (Godview matches the shell's pid to the request's `parentPid`, then its

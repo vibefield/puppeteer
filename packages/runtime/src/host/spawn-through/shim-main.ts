@@ -117,10 +117,12 @@ function main(): Promise<void> {
       SPAWN_THROUGH_EXIT_UNAVAILABLE,
     );
   }
+  // The function decides, never the version: Node added it in 22.15.0 and 23.11.0, so 23.0–23.10 lack it.
   const execve = process.execve;
   if (typeof execve !== 'function') {
     leave(
-      `${name}: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or later`,
+      `${name}: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or later on the 22 ` +
+        'line, 23.11 or later on the 23 line, or any from 24',
       SPAWN_THROUGH_EXIT_UNAVAILABLE,
     );
   }

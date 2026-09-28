@@ -11,11 +11,12 @@ const ENVIRONMENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 
 /**
  * The program a launcher execs on the bundled shim. A host cannot assume a
- * `node` on a pane's PATH, or a new enough one (`process.execve` needs Node
- * 22.15), so it names its own: an absolute path, leading arguments, and
- * variables such as Electron's `ELECTRON_RUN_AS_NODE=1`. The shim removes
- * every one of those variables before it execs anything, so the agent never
- * sees them — name only variables the runtime needs.
+ * `node` on a pane's PATH, or a new enough one (`process.execve` came in Node
+ * 22.15.0 and 23.11.0; 23.0–23.10 lack it), so it names its own: an absolute
+ * path, leading arguments, and variables such as Electron's
+ * `ELECTRON_RUN_AS_NODE=1`. The shim removes every one of those variables
+ * before it execs anything, so the agent never sees them — name only
+ * variables the runtime needs.
  */
 export interface SpawnThroughShimRuntime {
   command: string;
