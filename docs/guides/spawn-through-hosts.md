@@ -122,7 +122,9 @@ shell's environment at birth go stale at the first restart; files do not. The sh
 port, rotated its bearer, turned strict on, or installed another agent — with no change to any shell.
 
 - `writeRendezvous(home, {port, token, strict, retryMs?, launchProviders, imposterExecutable?, hostLabel?})` publishes
-  the provider table, then the rendezvous. It throws, before writing, on values no shim could use.
+  the provider table, then the rendezvous. It throws, before writing, on values no shim could use. Like
+  `materializeShims` it is idempotent: an identical call rewrites no file, and a rendezvous that says the same keeps
+  the time it was written (`writtenAt`).
 - `hostLabel` (1–64 printable characters) is the host's name. The shim prints it at the head of every line, where a
   host without one gets `puppeteer`, and says it in place of "the host" in its own sentences (§7). A label a shim
   cannot read is dropped, never a reason to lose the host.
