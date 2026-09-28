@@ -18,12 +18,14 @@ import type {
  * provider-native session id both sides already hold. Provider names never
  * appear here; the daemon's runtime kinds pass through as opaque data.
  *
- * Protocols 17 through 20 are supported. Protocol 18 answers one question for a
+ * Protocols 17 through 23 are supported. Protocol 18 answers one question for a
  * whole set of sessions, widens word fragments, and resolves native ids
  * directly. Protocol 17 has none of that, so the same questions are asked the
  * long way: a time-bounded search filtered here, and a listing of recent
  * sessions filtered here. Protocols 19 (activity) and 20 (authored images)
- * preserve the status, session identity, and search fields consumed here.
+ * preserve the status, session identity, and search fields consumed here, and
+ * 21 to 23 add usage and pricing facts (`/api/pricing`, spend and request
+ * counts) and additive runtime labels, none of them in a shape read here.
  * A non-ready daemon answer is reported as
  * unanswered, never as "no matches", so a sheet can hold what it last showed.
  *
@@ -33,7 +35,7 @@ import type {
  */
 
 export const HISTORY_PROTOCOL_MIN = 17;
-export const HISTORY_PROTOCOL_MAX = 20;
+export const HISTORY_PROTOCOL_MAX = 23;
 export const DEFAULT_HISTORY_ORIGIN = 'http://127.0.0.1:4640';
 export const HISTORY_ANNOUNCEMENT_SCHEMA = 'rosetta-daemon/1';
 

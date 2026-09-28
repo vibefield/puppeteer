@@ -46,7 +46,7 @@ view already uses.
 
 ## Protocol
 
-Daemon protocols 17 through 20 are supported. Protocol 18 answers one question for a whole set of sessions
+Daemon protocols 17 through 23 are supported (21–23 add usage and pricing facts only; widened 2026-09-28). Protocol 18 answers one question for a whole set of sessions
 (`sessions=`), widens word fragments (`prefix=true`), resolves native ids directly
 (`/api/sessions?native_session_id=`), keeps hits under a consistent snapshot while the index is catching up, and
 announces its origin (`serve --announce`). Protocol 17 has none of that, so the same questions are asked the long

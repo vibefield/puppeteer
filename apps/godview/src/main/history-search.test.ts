@@ -383,11 +383,31 @@ describe('createHistorySearchService', () => {
   });
 
   it('refuses a daemon generation it does not understand', async () => {
-    const future = daemon(21, () => ({ body: { canonical_ready: true, search: READY } }));
+    const future = daemon(24, () => ({ body: { canonical_ready: true, search: READY } }));
     const service = createHistorySearchService({ fetch: future.fetch, origin: () => ORIGIN });
     const status = await service.status();
     expect(status.reachable).toBe(false);
-    expect(status.detail).toMatch(/protocol 21/);
+    expect(status.detail).toMatch(/protocol 24; this Godview understands 17 to 23/);
+  });
+
+  it.each([21, 22, 23])('answers a protocol %i daemon, whose additions are usage facts only', async (version) => {
+    const current = daemon(version, () => ({ body: { canonical_ready: true, search: READY } }));
+    const service = createHistorySearchService({ fetch: current.fetch, origin: () => ORIGIN });
+    const status = await service.status();
+    expect(status).toMatchObject({ reachable: true, protocolVersion: version, readiness: 'ready' });
+  });
+
+  it('selects an announced protocol 23 daemon and passes over a 24', () => {
+    const announced = (protocolVersion: number, pid: number): HistoryAnnouncement => ({
+      origin: `http://127.0.0.1:${50_000 + protocolVersion}`,
+      pid,
+      protocolVersion,
+      db: '/tmp/p.sqlite',
+      startedAt: pid,
+    });
+    expect(resolveHistoryOrigin({ announced: [announced(24, 2), announced(23, 1)] }).origin).toBe(
+      'http://127.0.0.1:50023',
+    );
   });
 
   it('reads protocol 20 status, sessions and search from Rosetta’s pinned wire golden', async () => {
