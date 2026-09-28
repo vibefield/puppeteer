@@ -383,6 +383,8 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             commands: [{ name: 'claude', executable: resolved.claude ?? 'claude' }],
             environmentVariables: ['CLAUDE_CONFIG_DIR'],
             imposter: { state: 'isolated-root' },
+            // The adapter reads Claude's own grammar: its `rejected` is always a session it cannot carry.
+            classifies: true,
           },
         },
         normalizeInvocation: normalizeClaudeNativeInvocation,

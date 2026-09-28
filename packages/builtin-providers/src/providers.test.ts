@@ -646,6 +646,101 @@ describe('createBuiltinProviders launch options', () => {
     );
   });
 
+  it('declares that the Claude adapter classifies what it does not run as a session', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    expect(claude.launch!.provider.nativeInvocation!.classifies).toBe(true);
+  });
+
+  it('prepares a typed Claude launch as typed: the person’s name, their arguments and prompt, their permission mode only', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      title: 'host title',
+      host,
+      agentOptions: {
+        typed: true,
+        title: 'mine',
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        existingStatusLine: null,
+        existingSubagentStatusLine: null,
+      },
+    });
+    expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(expect.objectContaining({ title: true }));
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'mine',
+        permissionMode: null,
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        existingStatusLine: null,
+        existingSubagentStatusLine: null,
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, agentOptions: { typed: true, permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ permissionMode: 'plan' }),
+    );
+
+    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream.
+    await claude.prepareSession!({ cwd: '/work/repo', title: 'host title', host, agentOptions: { model: 'sonnet' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'host title',
+        permissionMode: undefined,
+        carriedArgs: undefined,
+        prompt: undefined,
+      }),
+    );
+  });
+
+  it('reads what a person typed from the invocation, never from the profile binding’s empty argv', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    const profile: AgentProfile = {
+      id: 'p1',
+      provider: 'claude',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/claude/p1',
+      createdAt: '2026-09-27T00:00:00.000Z',
+    };
+    vi.mocked(claude.profiles!.bindingEnvironment).mockReturnValue({ CLAUDE_CONFIG_DIR: '/roots/claude/p1' });
+    // The empty argv the binding normalizes is itself a typed launch.
+    adapters.normalizeClaudeNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { typed: true, configDir: '/roots/claude/p1' },
+    } as ReturnType<typeof adapters.normalizeClaudeNativeInvocation>);
+
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      host,
+      profile,
+      agentOptions: { typed: true, carriedArgs: ['--verbose'], prompt: ['fix it'] },
+    });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        configDir: '/roots/claude/p1',
+        permissionMode: null,
+        carriedArgs: ['--verbose'],
+        prompt: ['fix it'],
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile, agentOptions: { permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan' }),
+    );
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined }),
+    );
+  });
+
   it('exposes provider-level account usage independently of sessions', async () => {
     const providers = createBuiltinProviders({
       executables: { codex: '/opt/codex', antigravity: '/opt/agy', grok: '/opt/grok' },
