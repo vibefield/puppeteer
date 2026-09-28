@@ -37,6 +37,25 @@ Its adapter behavior is tested through the same provider composition.
 Installed grammar evidence: Grok 1.0.41, Kimi 2.0.2, OpenCode 1.18.32, Hermes 0.21.4,
 Antigravity 1.2.12, Copilot 1.0.88, Pi 0.87.1. See each adapter's launch fixtures for provenance.
 
+## Managed interactive clauses
+
+Every vendor supports a bare native session. Native aliases for these options
+are normalized by the adapter; repeated/conflicting selectors may be refused.
+This table describes invocation support, not the broader agent support tier.
+
+| Agent | Additional supported clauses |
+| --- | --- |
+| Grok | Model, permission mode, sandbox, latest continuation, exact resume |
+| Kimi | Exact session, model, agent or agent file, yolo/auto permissions, plan |
+| OpenCode | Exact session; `--pure` matches the managed recipe |
+| Hermes | Exact resume, yolo; `--tui` and bare `chat` match the managed recipe |
+| Antigravity | Exact conversation, model, mode, effort, agent, project, additional directories, sandbox, permission bypass |
+| Copilot | Exact resume, model, mode/plan, reasoning effort, agent, name on new sessions, allow-all |
+| Pi | Exact session, provider, model, thinking, name, session directory; text mode |
+
+An unsupported initial prompt or configuration clause receives a refusal. Native
+non-interactive modes keep their original arguments on passthrough.
+
 ## Validation record
 
 - All 25 workspace typechecks and the package topology check passed.
