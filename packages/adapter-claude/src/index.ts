@@ -11,6 +11,8 @@ export * from './normalization/index.js';
 export * from './detection.js';
 export * from './launch/settings.js';
 export * from './launch/prepare.js';
+export * from './launch/hook-switches.js';
+export * from './launch/invocation-grammar.js';
 export * from './launch/native-invocation.js';
 export * from './observation/status-channel.js';
 export * from './observation/semantic-provider.js';

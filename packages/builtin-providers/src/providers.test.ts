@@ -158,7 +158,10 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   restoreAntigravityContinuationState: adapters.restoreAntigravityContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
+vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
+  // The adapter's own list, so the allow-list pin below reads what the adapter declares.
+  CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibecook/puppeteer-adapter-claude')>())
+    .CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeExtensionService: adapters.createClaudeExtensionService,
@@ -643,6 +646,113 @@ describe('createBuiltinProviders launch options', () => {
 
     expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(
       expect.objectContaining({ executable: '/opt/company-claude' }),
+    );
+  });
+
+  it('declares that the Claude adapter classifies what it does not run as a session', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    expect(claude.launch!.provider.nativeInvocation!.classifies).toBe(true);
+  });
+
+  it('takes from a Claude shell every variable that changes what the session is, and nothing else', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    // The switches stand for --bare, --safe-mode and --restricted; the session inherits them at exec.
+    expect(claude.launch!.provider.nativeInvocation!.environmentVariables).toEqual([
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_SIMPLE',
+      'CLAUDE_CODE_SAFE_MODE',
+      'CLAUDE_CODE_RESTRICTED',
+    ]);
+  });
+
+  it('prepares a typed Claude launch as typed: the person’s name, their arguments and prompt, their permission mode only', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      title: 'host title',
+      host,
+      agentOptions: {
+        typed: true,
+        title: 'mine',
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        readsNoSettingsFiles: true,
+      },
+    });
+    expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(expect.objectContaining({ title: true }));
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'mine',
+        permissionMode: null,
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        readsNoSettingsFiles: true,
+        refuseHooksOff: true,
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, agentOptions: { typed: true, permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ permissionMode: 'plan' }),
+    );
+
+    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream,
+    // and its launch is not refused for the person's settings.
+    await claude.prepareSession!({ cwd: '/work/repo', title: 'host title', host, agentOptions: { model: 'sonnet' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'host title',
+        permissionMode: undefined,
+        carriedArgs: undefined,
+        prompt: undefined,
+        refuseHooksOff: false,
+      }),
+    );
+  });
+
+  it('reads what a person typed from the invocation, never from the profile binding’s empty argv', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    const profile: AgentProfile = {
+      id: 'p1',
+      provider: 'claude',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/claude/p1',
+      createdAt: '2026-09-27T00:00:00.000Z',
+    };
+    vi.mocked(claude.profiles!.bindingEnvironment).mockReturnValue({ CLAUDE_CONFIG_DIR: '/roots/claude/p1' });
+    // The empty argv the binding normalizes is itself a typed launch.
+    adapters.normalizeClaudeNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { typed: true, configDir: '/roots/claude/p1' },
+    } as ReturnType<typeof adapters.normalizeClaudeNativeInvocation>);
+
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      host,
+      profile,
+      agentOptions: { typed: true, carriedArgs: ['--verbose'], prompt: ['fix it'] },
+    });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        configDir: '/roots/claude/p1',
+        permissionMode: null,
+        carriedArgs: ['--verbose'],
+        prompt: ['fix it'],
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile, agentOptions: { permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan', refuseHooksOff: false }),
+    );
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined, refuseHooksOff: false }),
     );
   });
 

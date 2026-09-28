@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  ClaudeHooksOffError,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
   prepareClaudeSession,
@@ -12,6 +13,8 @@ import {
   type PreparedClaudeSession,
 } from './prepare.js';
 import { generateHookSettings } from './settings.js';
+import { readClaudeInvocation } from './invocation-grammar.js';
+import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
 
 function runStatusLine(command: string, input: string, env: Record<string, string>): Promise<string> {
@@ -49,6 +52,8 @@ const BASE = {
   endpoint: 'http://127.0.0.1:4100/hooks',
   tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
   token: 'super-secret-token-value',
+  // An empty home: no test reads the machine's own user settings layer.
+  home: mkdtempSync(join(tmpdir(), 'prepare-home-')),
 };
 
 const prepared: PreparedClaudeSession[] = [];
@@ -265,6 +270,182 @@ describe('prepareClaudeSession', () => {
     expect(p.args).toContain('--permission-mode');
     expect(p.args[p.args.indexOf('--permission-mode') + 1]).toBe('default');
     expect(p.args).not.toContain('--name');
+  });
+
+  describe('a typed launch', () => {
+    /** The recipe for a typed `claude <argv>`, as the provider hands the adapter's options on. */
+    async function typedLaunch(argv: string[]) {
+      const resolution = normalizeClaudeNativeInvocation({
+        providerId: 'claude',
+        cwd: BASE.cwd,
+        argv,
+        environment: {},
+        implementation: { kind: 'native' },
+      });
+      if (resolution.status !== 'accepted') throw new Error(`not accepted: ${JSON.stringify(resolution)}`);
+      const options = resolution.options!;
+      return prepare({
+        ...(resolution.resume === undefined ? {} : { resume: resolution.resume }),
+        resumeInvocation: options.resumeInvocation,
+        title: options.title,
+        model: options.model,
+        permissionMode: options.permissionMode ?? null,
+        carriedArgs: options.carriedArgs,
+        prompt: options.prompt,
+      });
+    }
+
+    /** Where the person's part of the recipe starts: after the managed launch's own flags. */
+    function personPart(args: string[]): string[] {
+      const settings = args.indexOf('--settings');
+      const mode = args[settings + 2] === '--permission-mode' ? 2 : 0;
+      return args.slice(settings + 2 + mode);
+    }
+
+    it('puts the managed flags first, the carried arguments next in the person’s order, the prompt last after `--`', async () => {
+      const p = await typedLaunch(['fix the bug', '--add-dir', '../lib', '../docs', '--verbose', '--model', 'opus']);
+      expect(p.args).toEqual([
+        '--session-id',
+        p.sessionId,
+        '--model',
+        'opus',
+        '--settings',
+        p.settingsPath,
+        '--add-dir',
+        '../lib',
+        '../docs',
+        '--verbose',
+        '--',
+        'fix the bug',
+      ]);
+    });
+
+    it('a trailing variadic of the person’s takes no managed flag, and the prompt stays the prompt', async () => {
+      const p = await typedLaunch(['fix it', '--add-dir', 'a', 'b']);
+      expect(p.args.slice(-5)).toEqual(['--add-dir', 'a', 'b', '--', 'fix it']);
+      // Every managed flag comes before the person's first argument.
+      for (const flag of ['--session-id', '--settings'])
+        expect(p.args.indexOf(flag)).toBeLessThan(p.args.indexOf('--add-dir'));
+      // Read back, the person's part means what was typed: two directories and a prompt.
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({
+        status: 'accepted',
+        carriedArgs: ['--add-dir', 'a', 'b'],
+        prompt: ['fix it'],
+      });
+    });
+
+    it('a managed flag’s value is never read as the prompt: a resume picker is followed by a flag, the prompt by `--`', async () => {
+      const p = await typedLaunch(['-r', '--', 'where were we']);
+      expect(p.args[0]).toBe('-r');
+      expect(p.args[1]!.startsWith('-')).toBe(true);
+      expect(p.args.slice(-2)).toEqual(['--', 'where were we']);
+      expect(readClaudeInvocation(p.args.slice(-2))).toMatchObject({ status: 'accepted', prompt: ['where were we'] });
+    });
+
+    it('a prompt that looks like a flag stays a prompt', async () => {
+      const p = await typedLaunch(['--', '--help']);
+      expect(p.args.slice(-2)).toEqual(['--', '--help']);
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({ status: 'accepted', prompt: ['--help'] });
+    });
+
+    it('says each thing once: no permission mode of its own, one --name, the person’s mode when given', async () => {
+      const bare = await typedLaunch([]);
+      expect(bare.args).toEqual(['--session-id', bare.sessionId, '--settings', bare.settingsPath]);
+      const skip = await typedLaunch(['--dangerously-skip-permissions']);
+      expect(skip.args).not.toContain('--permission-mode');
+      expect(skip.args.filter((argument) => argument === '--dangerously-skip-permissions')).toHaveLength(1);
+      const both = await typedLaunch(['--permission-mode', 'plan', '--dangerously-skip-permissions']);
+      expect(both.args.filter((argument) => argument === '--permission-mode')).toHaveLength(1);
+      expect(both.args[both.args.indexOf('--permission-mode') + 1]).toBe('plan');
+      expect(both.args).toContain('--dangerously-skip-permissions');
+      const named = await typedLaunch(['-n', 'mine']);
+      expect(named.args.filter((argument) => argument === '--name' || argument === '-n')).toEqual(['--name']);
+      expect(named.args[named.args.indexOf('--name') + 1]).toBe('mine');
+    });
+
+    it('a host’s own spawn keeps its default permission mode', async () => {
+      const p = await prepare({ carriedArgs: undefined, prompt: undefined });
+      expect(p.args.slice(-2)).toEqual(['--permission-mode', 'default']);
+    });
+  });
+
+  describe('the person’s hook switches', () => {
+    type Layers = { user?: object; project?: object; local?: object };
+    /** A home and a project holding the person's settings layers; the launch reads them from there. */
+    function person(layers: Layers): { home: string; cwd: string; settingsDir: string } {
+      const root = mkdtempSync(join(tmpdir(), 'prepare-switches-'));
+      const home = join(root, 'home');
+      const cwd = join(root, 'project');
+      mkdirSync(join(home, '.claude'), { recursive: true });
+      mkdirSync(join(cwd, '.claude'), { recursive: true });
+      if (layers.user) writeFileSync(join(home, '.claude', 'settings.json'), JSON.stringify(layers.user));
+      if (layers.project) writeFileSync(join(cwd, '.claude', 'settings.json'), JSON.stringify(layers.project));
+      if (layers.local) writeFileSync(join(cwd, '.claude', 'settings.local.json'), JSON.stringify(layers.local));
+      const settingsDir = join(root, 'launch');
+      mkdirSync(settingsDir);
+      return { home, cwd, settingsDir };
+    }
+    const settingsOf = (p: PreparedClaudeSession) => JSON.parse(readFileSync(p.settingsPath, 'utf8'));
+    const hooksOff = { disableAllHooks: true };
+
+    it('refuses a typed launch whose user, project or local settings switch every hook off, writing nothing', async () => {
+      for (const layer of ['user', 'project', 'local'] as const) {
+        const where = person({ [layer]: hooksOff });
+        const refusal = prepare({ ...where, refuseHooksOff: true });
+        await expect(refusal, layer).rejects.toBeInstanceOf(ClaudeHooksOffError);
+        await expect(refusal, layer).rejects.toMatchObject({
+          code: 'CLAUDE_HOOKS_OFF',
+          source: layer,
+          message: `your ${layer} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
+        });
+        expect(readdirSync(where.settingsDir), layer).toEqual([]);
+      }
+    });
+
+    it('launches when the switch is off, absent, overruled by a later layer, or in a layer the launch does not read', async () => {
+      for (const [label, layers, over] of [
+        ['off', { user: { disableAllHooks: false } }, {}],
+        ['absent', { user: { theme: 'dark' } }, {}],
+        ['a later layer', { user: hooksOff, local: { disableAllHooks: false } }, {}],
+        ['--setting-sources', { user: hooksOff }, { settingSources: ['project', 'local'] as const }],
+        ['--restricted', { user: hooksOff, project: hooksOff }, { readsNoSettingsFiles: true }],
+        ['the imposter', { user: hooksOff }, { env: { PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-home' } }],
+      ] as const) {
+        const where = person(layers);
+        await expect(prepare({ ...where, ...over, refuseHooksOff: true }), label).resolves.toBeDefined();
+      }
+    });
+
+    it('a host’s own spawn is not refused: it launches as it always has', async () => {
+      await expect(prepare({ ...person({ user: hooksOff }) })).resolves.toBeDefined();
+    });
+
+    it('restates a person’s allow-lists with the bridge’s entry added, keeping every entry of theirs', async () => {
+      const where = person({
+        user: { allowedHttpHookUrls: ['https://user.invalid/*'], httpHookAllowedEnvVars: ['USER_TOKEN'] },
+        local: { allowedHttpHookUrls: ['https://local.invalid/*'] },
+      });
+      const p = await prepare(where);
+      expect(settingsOf(p)).toMatchObject({
+        // The layer in force for each list: local's URLs, the user's variables.
+        allowedHttpHookUrls: ['https://local.invalid/*', 'http://127.0.0.1:4100/*'],
+        httpHookAllowedEnvVars: ['USER_TOKEN', 'PUPPETEER_HOOK_TOKEN'],
+      });
+      const empty = await prepare(person({ project: { httpHookAllowedEnvVars: [] } }));
+      expect(settingsOf(empty).httpHookAllowedEnvVars).toEqual(['PUPPETEER_HOOK_TOKEN']);
+      expect(settingsOf(empty)).not.toHaveProperty('allowedHttpHookUrls');
+    });
+
+    it('writes no allow-list of its own where the person has none: that would restrict their hooks', async () => {
+      const p = await prepare(person({ user: { theme: 'dark' } }));
+      expect(settingsOf(p)).not.toHaveProperty('allowedHttpHookUrls');
+      expect(settingsOf(p)).not.toHaveProperty('httpHookAllowedEnvVars');
+      const restricted = await prepare({
+        ...person({ user: { allowedHttpHookUrls: ['https://user.invalid/*'] } }),
+        readsNoSettingsFiles: true,
+      });
+      expect(settingsOf(restricted)).not.toHaveProperty('allowedHttpHookUrls');
+    });
   });
 
   /** A config root holding one conversation, the way Claude lays its projects out. */
