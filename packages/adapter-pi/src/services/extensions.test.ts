@@ -9,6 +9,7 @@ import {
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { createPiExtensionService } from './extensions.js';
@@ -64,13 +65,13 @@ async function read(home: string, root: string): Promise<ExtensionInventory> {
 }
 
 describe('Pi extensions', () => {
-  it('declares packages as plugins and skills, and no MCP servers or marketplaces', () => {
+  it("declares packages as plugins, in Pi's own word, and skills, and no MCP servers or marketplaces", () => {
     const { provider } = createPiExtensionService({ home: '/nowhere', now });
     expect(ExtensionProviderSchema.parse(provider)).toEqual({
       id: 'pi',
       label: 'Pi',
       support: {
-        plugins: { store: 'profile', changes: 'command', read: true },
+        plugins: { store: 'profile', changes: 'command', read: true, label: 'Packages' },
         skills: { store: 'mixed', changes: 'folder', read: true },
       },
     });
@@ -510,5 +511,178 @@ describe('Pi extension acts', () => {
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: step.path }] },
     });
+  });
+});
+
+describe('Pi package acts', () => {
+  const PI = '/opt/pi/bin/pi';
+
+  /** A managed agent directory holding an npm, a git and a local package and a loose extension, read. */
+  async function readPackages() {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'pi-7c1e');
+    const agent = join(root, 'agent');
+    await write(join(agent, 'settings.json'), {
+      packages: ['npm:@acme/pi-tools@1.2.0', 'git:github.com/northlight/pi-review@v2', './local-ext.ts'],
+    });
+    await write(join(agent, 'npm', 'node_modules', '@acme', 'pi-tools', 'package.json'), {
+      name: '@acme/pi-tools',
+      version: '1.2.0',
+    });
+    await write(join(agent, 'git', 'github.com', 'northlight', 'pi-review', 'package.json'), {
+      name: 'pi-review',
+      version: '2.0.1',
+    });
+    await write(join(agent, 'local-ext.ts'), 'export default () => {};\n');
+    await write(join(agent, 'extensions', 'notify.ts'), 'export default () => {};\n');
+    const pi = createPiExtensionService({ executable: PI, home, now });
+    const inventory = ExtensionInventorySchema.parse(await pi.inventory(managedProfile(root)));
+    const held = (id: string): PluginItem => {
+      const item = find(inventory, 'plugin', id);
+      if (item?.kind !== 'plugin') throw new Error(`no package ${id}`);
+      return item;
+    };
+    return { home, agent, pi, work: managedProfile(root), held };
+  }
+
+  it('removes and updates a package by the source Pi keys it with, the removal offline', async () => {
+    const { agent, pi, work, held } = await readPackages();
+    const local = join(agent, 'local-ext.ts');
+    for (const [id, source] of [
+      ['npm:@acme/pi-tools', 'npm:@acme/pi-tools'],
+      ['git:github.com/northlight/pi-review', 'git:github.com/northlight/pi-review'],
+      [`local:${local}`, local],
+    ] as const) {
+      expect(ExtensionActPlanSchema.parse(pi.plan!(work, held(id), 'remove')), id).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'remove',
+        available: true,
+        runs: { kind: 'command', argv: [PI, 'remove', source], env: { PI_CODING_AGENT_DIR: agent, PI_OFFLINE: '1' } },
+        display: `${PI} remove ${source}`,
+        reaches: [],
+      });
+      if (id.startsWith('local:')) continue;
+      expect(ExtensionActPlanSchema.parse(pi.plan!(work, held(id), 'update')), id).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'update',
+        available: true,
+        runs: { kind: 'command', argv: [PI, 'update', source], env: { PI_CODING_AGENT_DIR: agent } },
+        display: `${PI} update ${source}`,
+        reaches: [],
+      });
+    }
+    // a package from a folder is used where it is: nothing newer to fetch
+    expect(pi.plan!(work, held(`local:${local}`), 'update')).toEqual({
+      target: { kind: 'plugin', id: `local:${local}` },
+      act: 'update',
+      available: false,
+      reason: 'no-command',
+      message: 'A package from a folder on this Mac changes where it is',
+    });
+  });
+
+  it("points nothing elsewhere for the native default, whose directory is Pi's own", async () => {
+    const { home, pi, held } = await readPackages();
+    const native = nativeProfile(home);
+    expect(pi.plan!(native, held('npm:@acme/pi-tools'), 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: [PI, 'remove', 'npm:@acme/pi-tools'], env: { PI_OFFLINE: '1' } },
+    });
+    const update = ExtensionActPlanSchema.parse(pi.plan!(native, held('npm:@acme/pi-tools'), 'update'));
+    expect(update).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: [PI, 'update', 'npm:@acme/pi-tools'] },
+    });
+    expect(update).not.toHaveProperty('runs.env');
+  });
+
+  it("switches a package's parts only in pi config, and has no removal that takes more", async () => {
+    const { pi, work, held } = await readPackages();
+    for (const act of ['enable', 'disable'] as const) {
+      expect(ExtensionActPlanSchema.parse(pi.plan!(work, held('npm:@acme/pi-tools'), act))).toEqual({
+        target: { kind: 'plugin', id: 'npm:@acme/pi-tools' },
+        act,
+        available: false,
+        reason: 'in-app',
+        message: "Pi turns a package's parts on and off only in `pi config`",
+      });
+    }
+    expect(pi.plan!(work, held('git:github.com/northlight/pi-review'), 'purge')).toEqual({
+      target: { kind: 'plugin', id: 'git:github.com/northlight/pi-review' },
+      act: 'purge',
+      available: false,
+      reason: 'unsupported',
+      message: "Pi's remove is its one way to take a package out",
+    });
+  });
+
+  it('leaves a loose extension where it is: pi config filters it, and no command of Pi takes it', async () => {
+    const { agent, pi, work, held } = await readPackages();
+    const id = `extension:${join(agent, 'extensions', 'notify.ts')}`;
+    for (const act of ['enable', 'disable'] as const) {
+      expect(pi.plan!(work, held(id), act), act).toEqual({
+        target: { kind: 'plugin', id },
+        act,
+        available: false,
+        reason: 'in-app',
+        message: 'Pi turns an extension on and off only in `pi config`',
+      });
+    }
+    for (const act of ['remove', 'purge', 'update'] as const) {
+      expect(pi.plan!(work, held(id), act), act).toEqual({
+        target: { kind: 'plugin', id },
+        act,
+        available: false,
+        reason: 'no-command',
+        message: 'It is an extension Pi loads from where it is, and changes there',
+      });
+    }
+  });
+
+  it('refuses a source its commands could misread, and acts a package has none of', async () => {
+    const { pi, work, held } = await readPackages();
+    const pack = (id: string): PluginItem => ({ kind: 'plugin', id, name: 'pack', origin: 'own', enabled: true });
+    for (const id of [
+      'npm:',
+      'npm:-g',
+      'git:-oProxyCommand=touch/x',
+      'local:',
+      'local:relative/pack',
+      'local:/tmp/pack\nrm',
+      'npm:@acme/pi-tools\u0007',
+      '-rf',
+      'https://example.com/pack',
+    ]) {
+      for (const act of ['remove', 'update'] as const) {
+        expect(pi.plan!(work, pack(id), act), JSON.stringify([id, act])).toEqual({
+          target: { kind: 'plugin', id },
+          act,
+          available: false,
+          reason: 'no-command',
+          // a folder's package has no update whatever its path says
+          message:
+            act === 'update' && id.startsWith('local:')
+              ? 'A package from a folder on this Mac changes where it is'
+              : "Pi's commands do not take this package's source",
+        });
+      }
+    }
+    expect(pi.plan!(work, { ...pack('npm:org-pack'), origin: 'managed' }, 'remove')).toMatchObject({
+      available: false,
+      reason: 'not-own',
+      message: "Pi's app or your organization adds it, and changes it",
+    });
+    expect(pi.plan!(work, held('npm:@acme/pi-tools'), 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Pi installs a package from npm, git or a path',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(pi.plan!(work, held('npm:@acme/pi-tools'), act), act).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Pi has no sign-in for a package',
+      });
+    }
   });
 });

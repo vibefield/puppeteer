@@ -18,21 +18,23 @@
  *   version, installPath, … }] } }`; `plugins/known_marketplaces.json` maps a
  *   marketplace to `{ source, installLocation, lastUpdated }`; plugins the
  *   claude.ai account turns on are downloaded to `plugins/synced/`. A
- *   plugin's folder holds `.claude-plugin/plugin.json`, `.mcp.json` and
- *   `skills/<name>/SKILL.md`.
+ *   plugin's folder holds `.claude-plugin/plugin.json`, `.mcp.json`,
+ *   `skills/<name>/SKILL.md`, and the `commands/*.md`, `agents/*.md` and
+ *   `hooks/hooks.json` whose names a listing shows.
  * - Personal skills are `<root>/skills/<name>/SKILL.md`; `skills/synced/` holds
  *   the account's. A linked skill folder is read from its target.
  * A project's `.mcp.json` and `.claude/` live in its working tree, not the
  * profile, and are not read here.
  */
 
-import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
+import { lstat, readdir, readFile, readlink, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
@@ -42,6 +44,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -49,10 +52,12 @@ import {
   type ExtensionItem,
   type ExtensionKind,
   type ExtensionProvider,
+  type ExtensionReach,
   type ExtensionService,
   type McpServerItem,
   type McpTransport,
   type PluginItem,
+  type PluginParts,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import { resolveClaudeExecutable } from '../detection.js';
@@ -176,6 +181,90 @@ function pluginServers(manifest: Json | undefined, dotMcp: Json | undefined): Js
   return { ...(file ?? {}), ...(inline ?? {}) };
 }
 
+/** npm's `Name <email> (address)` person form, and any word shaped like an email: an author shows its name alone. */
+const PERSON_EXTRAS = /<[^>]*>|\([^)]*:\/\/[^)]*\)|[^\s<>()]+@[^\s<>()]+/gu;
+/** A hook event as Claude Code names one: `PreToolUse`, `SessionStart`. */
+const HOOK_EVENT = /^[A-Za-z][A-Za-z0-9_]*$/u;
+
+/** Who made a plugin, as its manifest says: a string, or an object's `name` — never its email. */
+function authorOf(manifest: Json | undefined): string | undefined {
+  const author = manifest?.author;
+  const name = typeof author === 'string' ? author : rec(author)?.name;
+  if (typeof name !== 'string') return undefined;
+  const shown = name.replace(PERSON_EXTRAS, ' ').replace(/\s+/gu, ' ').trim().slice(0, 256).trimEnd();
+  return shown.length > 0 ? shown : undefined;
+}
+
+/** A plugin's homepage, else its repository, as {@link describeMcpUrl} shows an address: only an http(s) one. */
+function homepageOf(manifest: Json | undefined): string | undefined {
+  const repository = manifest?.repository;
+  for (const candidate of [manifest?.homepage, typeof repository === 'string' ? repository : rec(repository)?.url]) {
+    const address = text(candidate);
+    if (address === undefined || !/^https?:\/\//iu.test(address)) continue;
+    const shown = describeMcpUrl(address);
+    if (/^https?:\/\//u.test(shown) && shown.length <= 8_192) return shown;
+  }
+  return undefined;
+}
+
+/**
+ * The names of what a plugin runs beside its servers and skills: its commands
+ * (`commands/*.md`), its agents (`agents/*.md`) and the events its hooks run on
+ * (`hooks/hooks.json`). Read only inside its folder, so a part that is a link
+ * leading out of it is never followed; a link among the files is not taken.
+ */
+async function pluginParts(folder: string): Promise<PluginParts | undefined> {
+  let base: string;
+  try {
+    base = await realpath(folder);
+  } catch {
+    return undefined;
+  }
+  const inside = async (path: string): Promise<string | undefined> => {
+    try {
+      const real = await realpath(path);
+      return real === base || real.startsWith(`${base}${sep}`) ? real : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const markdownNames = async (part: string): Promise<string[]> => {
+    const dir = await inside(join(folder, part));
+    if (dir === undefined) return [];
+    try {
+      return (await readdir(dir, { withFileTypes: true }))
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && !entry.name.startsWith('.'))
+        .map((entry) => entry.name.slice(0, -'.md'.length).trim());
+    } catch {
+      return [];
+    }
+  };
+  let events: string[] = [];
+  const hooksFile = await inside(join(folder, 'hooks', 'hooks.json'));
+  if (hooksFile !== undefined) {
+    const document = await readJson(hooksFile, MAX_MANIFEST_BYTES).catch(() => undefined);
+    // `{ hooks: { <event>: […] } }`, or the events at the top level; an event's hooks are a list, so a
+    // `description` beside them is not one
+    const hooks = document === undefined ? {} : 'hooks' in document ? (rec(document.hooks) ?? {}) : document;
+    events = Object.entries(hooks)
+      .filter(([name, value]) => HOOK_EVENT.test(name) && Array.isArray(value))
+      .map(([name]) => name);
+  }
+  const names = (found: string[], max: number): string[] =>
+    [...new Set(found.filter((name) => name.length > 0 && name.length <= 256))]
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, max);
+  const commands = names(await markdownNames('commands'), 256);
+  const agents = names(await markdownNames('agents'), 256);
+  const hooks = names(events, 64);
+  if (commands.length === 0 && agents.length === 0 && hooks.length === 0) return undefined;
+  return {
+    ...(commands.length > 0 ? { commands } : {}),
+    ...(agents.length > 0 ? { agents } : {}),
+    ...(hooks.length > 0 ? { hooks } : {}),
+  };
+}
+
 interface SkillFolder {
   folder: string;
   name: string;
@@ -275,6 +364,18 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
   // follows ("Symlinked skill folders in those three locations are read from
   // the target and loaded once", its skills docs); a person's own goes as a
   // link taken away, or a folder moved to where the host keeps it.
+  //
+  // A plugin the root installed turns on and off with `claude plugin
+  // enable|disable <id>`, updates to the newest its marketplace has with
+  // `claude plugin update <id>`, and goes with `claude plugin uninstall <id>`,
+  // which, once no scope holds it, deletes what it stored in
+  // `plugins/data/<id>/` unless given `--keep-data`: a remove keeps that data,
+  // a purge does not. The forms are the report's
+  // (draft/CLAUDE-PLUGINS-SKILLS-MCP.md: `claude plugin
+  // install|uninstall|enable|disable|update`, the data folder's `--keep-data`,
+  // the install scopes), not probed. Each runs at `--scope user`, since only
+  // the root's own user-scope install is the profile's; a project's or a local
+  // one belongs to a working tree.
   const profileEnv = (profile: AgentProfile): Record<string, string> =>
     profile.kind === 'managed' ? { [CLAUDE_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
 
@@ -352,12 +453,59 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
     return extensionCommandPlan({ target, act: 'add', argv, env: profileEnv(profile), reaches: [] });
   }
 
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      // `<folder>@synced`: the account's, downloaded from claude.ai with no install record of the root's
+      return extensionActUnavailable(
+        target,
+        act,
+        'not-own',
+        item.origin === 'managed'
+          ? 'It comes with your Claude account, from claude.ai, and changes there'
+          : extensionNotOwnWords('Claude Code', item),
+      );
+    }
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Claude Code installs a plugin from its marketplace');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Claude Code has no sign-in for a plugin');
+    }
+    if (!EXTENSION_PLUGIN_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Claude Code's commands do not take this plugin's name",
+      );
+    }
+    const scoped = (verb: string, ...flags: string[]) => [
+      executable,
+      'plugin',
+      verb,
+      item.id,
+      '--scope',
+      'user',
+      ...flags,
+    ];
+    const argv =
+      act === 'remove' ? scoped('uninstall', '--keep-data') : act === 'purge' ? scoped('uninstall') : scoped(act);
+    // Grok loads every plugin in the home's own ~/.claude/plugins/installed_plugins.json, in each of its
+    // profiles and whatever enabledPlugins says: an uninstall or an update in the native default reaches
+    // it, a switch does not. A managed root's plugins are its own.
+    const reaches: ExtensionReach[] =
+      profile.kind !== 'managed' && (act === 'remove' || act === 'purge' || act === 'update') ? ['shared-folder'] : [];
+    return extensionCommandPlan({ target, act, argv, env: profileEnv(profile), reaches });
+  }
+
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     options: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
+    if (item.kind === 'plugin') return planPlugin(profile, item, act);
     if (item.kind === 'skill') {
       if (act === 'add' || act === 'remove') return planSkill(profile, item, act, options.keepIn);
     } else if (act === 'add') {
@@ -521,7 +669,16 @@ export function createClaudeExtensionService(options: ClaudeExtensionOptions = {
           dotMcp = await readJson(join(folder, '.mcp.json'), MAX_MANIFEST_BYTES).catch(() => undefined);
         }
         const description = text(manifest?.description);
-        items.push(description ? { ...item, description: description.slice(0, 2_048) } : item);
+        const author = authorOf(manifest);
+        const homepage = homepageOf(manifest);
+        const brings = folder ? await pluginParts(folder) : undefined;
+        items.push({
+          ...item,
+          ...(description ? { description: description.slice(0, 2_048) } : {}),
+          ...(author ? { author } : {}),
+          ...(homepage ? { homepage } : {}),
+          ...(brings ? { brings } : {}),
+        });
         if (!folder) continue;
         for (const [name, definition] of Object.entries(pluginServers(manifest, dotMcp))) {
           const server = serverItem(name, definition, {

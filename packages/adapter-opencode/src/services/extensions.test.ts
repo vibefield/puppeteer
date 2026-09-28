@@ -9,6 +9,7 @@ import {
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
   type McpServerDefinition,
@@ -66,13 +67,14 @@ async function read(home: string, env: NodeJS.ProcessEnv = {}, profile = managed
 }
 
 describe('OpenCode extensions', () => {
-  it('declares the kinds OpenCode has, every one kept once for all profiles', () => {
+  it('declares the kinds OpenCode has, every one kept once for all profiles, and plugins no hosted session loads', () => {
     const { provider } = createOpenCodeExtensionService({ home: '/nowhere' });
     expect(ExtensionProviderSchema.parse(provider)).toEqual({
       id: 'opencode',
       label: 'OpenCode',
       support: {
-        plugins: { store: 'shared', changes: 'command', read: true },
+        // A hosted session runs `--pure`, which loads only OpenCode's built-in plugins, never one the read lists.
+        plugins: { store: 'shared', changes: 'command', read: true, hostedSkips: true },
         mcpServers: { store: 'shared', changes: 'in-app', read: true },
         skills: { store: 'shared', changes: 'folder', read: true },
       },
@@ -408,6 +410,16 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+const actPlugin = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'plugin',
+    id: 'opencode-wakatime',
+    name: 'opencode-wakatime',
+    origin: 'own',
+    shared: true,
+    enabled: true,
+    ...fields,
+  }) as never;
 /** A server as the runtime hands an add to the adapter: as the agent would hold it once added. */
 const added = (name: string, definition: McpServerDefinition): McpServerItem => ({
   kind: 'mcp-server',
@@ -449,6 +461,50 @@ describe('OpenCode extension acts', () => {
         'disable',
       ),
     ).toMatchObject({ available: false, reason: 'not-own' });
+  });
+
+  it('has no command that switches, removes or updates a plugin, and says why for each act', () => {
+    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const noSwitch = "OpenCode has no switch for a plugin: it loads every plugin in its config's plugin list";
+    const noRemoval =
+      'OpenCode has no command that removes a plugin: it is an entry in the plugin list of its one config, which every profile reads';
+    const noSignIn = 'OpenCode has no sign-in for a plugin: only a remote server has one';
+    const answers: Record<ExtensionActKind, [reason: string, message: string]> = {
+      enable: ['no-command', noSwitch],
+      disable: ['no-command', noSwitch],
+      remove: ['no-command', noRemoval],
+      purge: ['no-command', noRemoval],
+      update: [
+        'no-command',
+        "OpenCode installs a plugin's package as it starts; a pinned version changes only in its config",
+      ],
+      // The runtime answers these itself; asked anyway, OpenCode says why too.
+      add: ['unsupported', 'OpenCode adds a plugin only with `opencode plugin`, from a package a person names'],
+      'sign-in': ['unsupported', noSignIn],
+      'sign-out': ['unsupported', noSignIn],
+    };
+    for (const [act, [reason, message]] of Object.entries(answers)) {
+      const plan = opencode.plan!(actProfile('managed', '/p'), actPlugin(), act as ExtensionActKind);
+      expect(ExtensionActPlanSchema.parse(plan), act).toEqual({
+        target: { kind: 'plugin', id: 'opencode-wakatime' },
+        act,
+        available: false,
+        reason,
+        message,
+      });
+    }
+  });
+
+  it('says a plugin that is a file changes where the file is', () => {
+    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const file = actPlugin({ id: 'file:///Users/test/.config/opencode/plugins/notify.ts', name: 'notify' });
+    const answer = (act: ExtensionActKind) =>
+      (opencode.plan!(actProfile('managed', '/p'), file, act) as { message: string }).message;
+    expect(answer('disable')).toBe('OpenCode has no switch for a plugin: it loads every plugin file it finds');
+    expect(answer('remove')).toBe(
+      'OpenCode has no command that removes a plugin: this one is a file, and changes where it is',
+    );
+    expect(answer('update')).toBe('OpenCode loads this plugin from a file as it is, and it changes where it is');
   });
 
   it("signs a remote server in and out in the profile's own data home, though the definition is every profile's", () => {

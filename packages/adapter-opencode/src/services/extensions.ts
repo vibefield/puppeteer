@@ -57,6 +57,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -473,7 +474,10 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     label: 'OpenCode',
     support: {
       // `opencode plugin <module>` writes a spec into the one config every profile reads; no command removes one.
-      plugins: { store: 'shared', changes: 'command', read: true },
+      // A session this runtime hosts starts `--pure` (OPENCODE_LAUNCH_FLAGS.pure, in launch/backend.ts and
+      // driver.ts), which loads OpenCode's built-in plugins alone: one the read lists loads only when a person
+      // runs OpenCode themselves.
+      plugins: { store: 'shared', changes: 'command', read: true, hostedSkips: true },
       // `opencode mcp add` adds one, but nothing turns a server off or removes it except an edit to that config;
       // the instance's connect and disconnect last only as long as the process.
       mcpServers: { store: 'shared', changes: 'in-app', read: true },
@@ -523,12 +527,61 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
       home,
     });
 
+  // A plugin is a spec in the plugin list of the one config every profile
+  // reads, or a `.ts` or `.js` file in a config folder's `plugin(s)/`.
+  // `opencode plugin <module>` adds a spec; no command switches, removes or
+  // updates one, since OpenCode loads every plugin it finds and installs an npm
+  // spec's package as it starts: a version moves only when the config pins
+  // another. The runtime answers a plugin's add (an install) and its sign-ins
+  // itself; asked anyway, this answers them too.
+  function pluginPlan(item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const unavailable = (reason: 'no-command' | 'unsupported', message: string): ExtensionActPlan =>
+      extensionActUnavailable({ kind: 'plugin', id: item.id }, act, reason, message);
+    // A `file://` plugin is a file OpenCode loads where it is — a path in the list, or a file in a plugins
+    // folder — so it has no package to install again and changes where the file is.
+    const file = item.id.startsWith('file://');
+    switch (act) {
+      case 'enable':
+      case 'disable':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode has no switch for a plugin: it loads every plugin file it finds'
+            : "OpenCode has no switch for a plugin: it loads every plugin in its config's plugin list",
+        );
+      case 'remove':
+      case 'purge':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode has no command that removes a plugin: this one is a file, and changes where it is'
+            : 'OpenCode has no command that removes a plugin: it is an entry in the plugin list of its one config, which every profile reads',
+        );
+      case 'update':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode loads this plugin from a file as it is, and it changes where it is'
+            : "OpenCode installs a plugin's package as it starts; a pinned version changes only in its config",
+        );
+      case 'add':
+        return unavailable(
+          'unsupported',
+          'OpenCode adds a plugin only with `opencode plugin`, from a package a person names',
+        );
+      case 'sign-in':
+      case 'sign-out':
+        return unavailable('unsupported', 'OpenCode has no sign-in for a plugin: only a remote server has one');
+    }
+  }
+
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     options: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
+    if (item.kind === 'plugin') return pluginPlan(item, act);
     const target = { kind: item.kind, id: item.id };
     if (act === 'add') {
       if (item.kind === 'skill') return skillPlan(item, act, undefined);

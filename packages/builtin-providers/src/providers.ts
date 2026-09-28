@@ -309,7 +309,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     pi: {
       distribution: createPiDistributionService({ executable: resolved.pi }),
       profiles: createPiProfileService({ ...chosen(resolved.pi), ...homeOption }),
-      extensions: createPiExtensionService(homeOption),
+      extensions: createPiExtensionService({ ...chosen(resolved.pi), ...homeOption }),
     },
   };
   const claudeLaunchFor = async (

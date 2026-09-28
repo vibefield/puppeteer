@@ -13,6 +13,7 @@ import {
   type ExtensionItem,
   type McpServerDefinition,
   type McpServerItem,
+  type PluginItem,
   type SkillItem,
 } from '@vibecook/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
@@ -1141,5 +1142,140 @@ describe('Codex extension acts', () => {
     });
     expect(output.join('')).toBe(`${plan.display}\nCodex wrote it to its config.\n`);
     expect(server.closed()).toBe(true);
+  });
+});
+
+describe('Codex plugin acts', () => {
+  const review: PluginItem = {
+    kind: 'plugin',
+    id: 'review@personal',
+    name: 'review',
+    origin: 'own',
+    enabled: true,
+    version: 'local',
+    marketplace: 'personal',
+  };
+  const target = { kind: 'plugin', id: 'review@personal' } as const;
+
+  it("turns a plugin of the profile's own on and off through its config, and removes it with its own command", async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    for (const act of ['enable', 'disable'] as const) {
+      const enabled = act === 'enable';
+      expect(ExtensionActPlanSchema.parse(codex.plan!(managedProfile(root), review, act)), act).toEqual({
+        target,
+        act,
+        available: true,
+        runs: {
+          kind: 'protocol',
+          method: 'config/value/write',
+          // the key `codex plugin add` writes, `[plugins."review@personal"] enabled = true`
+          params: { keyPath: 'plugins.review@personal.enabled', mergeStrategy: 'replace', value: enabled },
+        },
+        display: `config/value/write plugins.review@personal.enabled = ${enabled}`,
+        reaches: [],
+      });
+    }
+    expect(ExtensionActPlanSchema.parse(codex.plan!(managedProfile(root), review, 'remove'))).toEqual({
+      target,
+      act: 'remove',
+      available: true,
+      runs: {
+        kind: 'command',
+        argv: ['/opt/node/bin/codex', 'plugin', 'remove', 'review@personal'],
+        env: { CODEX_HOME: root },
+      },
+      display: '/opt/node/bin/codex plugin remove review@personal',
+      reaches: [],
+    });
+    // the native default binds nothing: Codex finds its own home
+    expect(codex.plan!(nativeProfile(root), review, 'remove')).not.toHaveProperty('runs.env');
+    // one uninstall, and no update of one plugin
+    expect(codex.plan!(managedProfile(root), review, 'purge')).toEqual({
+      target,
+      act: 'purge',
+      available: false,
+      reason: 'unsupported',
+      message: 'Codex removes a plugin one way, with `codex plugin remove`',
+    });
+    expect(codex.plan!(managedProfile(root), review, 'update')).toEqual({
+      target,
+      act: 'update',
+      available: false,
+      reason: 'no-command',
+      message: 'Codex brings its plugins up to date when their marketplace is upgraded',
+    });
+  });
+
+  it("performs a plugin's switch on a private app-server, as a server's", async () => {
+    const { home, root } = await managedSetup();
+    const server = fakeAppServer({
+      initialize: () => ({ codexHome: root }),
+      'config/value/write': () => ({ status: 'ok', version: 'sha256:next', filePath: join(root, 'config.toml') }),
+    });
+    const codex = service(server, { home });
+    const plan = codex.plan!(managedProfile(root), review, 'disable');
+    if (!plan.available) throw new Error('expected a plan');
+    expect(await codex.perform!(managedProfile(root), plan, {})).toEqual({ ok: true });
+    expect(server.requests.map(({ method }) => method)).toEqual(['initialize', 'initialized', 'config/value/write']);
+    expect(server.requests[2]?.params).toEqual({
+      keyPath: 'plugins.review@personal.enabled',
+      mergeStrategy: 'replace',
+      value: false,
+    });
+    expect(server.closed()).toBe(true);
+  });
+
+  it("leaves a workspace's plugin to the workspace, and plans no key its config or commands cannot take", async () => {
+    const { root } = await managedSetup();
+    const codex = service(fakeAppServer({}));
+    const work = managedProfile(root);
+    // a workspace-managed plugin keeps the workspace's state whatever a local `enabled = false` says
+    const slack: PluginItem = { ...review, id: 'slack@openai-curated-remote', name: 'slack', origin: 'managed' };
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update'] as const) {
+      expect(codex.plan!(work, slack, act), act).toEqual({
+        target: { kind: 'plugin', id: 'slack@openai-curated-remote' },
+        act,
+        available: false,
+        reason: 'not-own',
+        message: "Codex's app or your organization adds it, and changes it",
+      });
+    }
+    // a dot would split `plugins.<id>.enabled` into another table; its own command takes the key whole
+    const dotted: PluginItem = { ...review, id: 'review.v2@personal', name: 'review.v2' };
+    for (const act of ['enable', 'disable'] as const) {
+      expect(codex.plan!(work, dotted, act), act).toEqual({
+        target: { kind: 'plugin', id: 'review.v2@personal' },
+        act,
+        available: false,
+        reason: 'no-command',
+        message: "Codex's config cannot name this plugin's key",
+      });
+    }
+    expect(codex.plan!(work, dotted, 'remove')).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['/opt/node/bin/codex', 'plugin', 'remove', 'review.v2@personal'] },
+    });
+    for (const id of ['--json', '../review@personal', 'review@per sonal']) {
+      expect(codex.plan!(work, { ...review, id }, 'remove'), id).toEqual({
+        target: { kind: 'plugin', id },
+        act: 'remove',
+        available: false,
+        reason: 'no-command',
+        message: "Codex's commands do not take this plugin's name",
+      });
+    }
+    expect(codex.plan!(work, review, 'add')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Codex installs a plugin from its marketplace',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(codex.plan!(work, review, act), act).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Codex has no sign-in for a plugin',
+      });
+    }
   });
 });

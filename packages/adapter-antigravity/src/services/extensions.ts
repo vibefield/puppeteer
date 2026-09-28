@@ -21,7 +21,9 @@
  *   comments and trailing commas.
  * - A plugin brings `skills/<name>/SKILL.md` and its own `mcp_config.json`
  *   (`mcp.json` is copied and ignored); a session names those servers
- *   `<plugin>_<server>`.
+ *   `<plugin>_<server>`. What else it brings is read by name only: the files
+ *   in its `commands/` and `agents/`, and the events of its `hooks.json`.
+ *   Its manifest may also say who made it and where it lives on the web.
  * - `.gemini/antigravity-cli/builtin/skills/` caches the skills that ship with
  *   the CLI.
  * - `skills.json` and `plugins.json` register more folders. The probe found
@@ -34,7 +36,7 @@
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
@@ -46,6 +48,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -305,6 +308,112 @@ function definitionOf(server: Json, transport: McpServerItem['transport']): McpS
   });
 }
 
+/** An event a hook runs on, as a hooks file keys it: `PreToolUse`, `Stop`. */
+const HOOK_EVENT = /^[A-Za-z][A-Za-z0-9_]{0,255}$/u;
+
+/** A part's name as a person may read it: one line, no control character, as long as Core allows. */
+const partName = (name: string): boolean =>
+  name.length > 0 && name.length <= 256 && name.trim() === name && !/[\u0000-\u001f\u007f]/u.test(name);
+
+/**
+ * Who made a plugin, as its manifest says: `author` as text, or an object's
+ * `name`. An address never shows — npm's `Name <email> (url)` keeps the name
+ * alone, and any other email-shaped word goes.
+ */
+function authorOf(value: unknown): string | undefined {
+  const raw = typeof value === 'string' ? value : rec(value)?.name;
+  if (typeof raw !== 'string') return undefined;
+  const author = raw
+    .replace(/<[^>]*>/gu, ' ')
+    .replace(/\([^)]*(?::\/\/|@)[^)]*\)/gu, ' ')
+    .replace(/\S+@\S+/gu, ' ')
+    .replace(/[\s\u0000-\u001f\u007f]+/gu, ' ')
+    .trim();
+  return author.length > 0 && author.length <= 256 ? author : undefined;
+}
+
+/**
+ * A plugin's homepage, else its repository (text or `{ url }`): the first that
+ * is an http(s) address, as {@link describeMcpUrl} renders one, so a key in its
+ * userinfo or query never shows.
+ */
+function homepageOf(manifest: Json): string | undefined {
+  const repository = manifest.repository;
+  for (const candidate of [manifest.homepage, typeof repository === 'string' ? repository : rec(repository)?.url]) {
+    const address = text(candidate);
+    if (address === undefined || !/^https?:\/\//iu.test(address)) continue;
+    const shown = describeMcpUrl(address);
+    if (/^https?:\/\//u.test(shown) && shown.length <= 8_192) return shown;
+  }
+  return undefined;
+}
+
+/**
+ * The names of the regular files in one of a plugin's folders, each without
+ * its extension: a command may be Markdown or a Gemini TOML one, and both of
+ * one name are one command.
+ */
+async function partNames(folder: string, limit: number): Promise<string[]> {
+  try {
+    const found = (await readdir(folder, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+      .map((entry) => entry.name.replace(/\.[^.]*$/u, ''))
+      .filter(partName);
+    return [...new Set(found)].sort().slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The events a plugin's `hooks.json` runs on. Antigravity keys a hook by its
+ * name with its events inside — `{ "<name>": { "PreToolUse": [...] } }`, as the
+ * 1.1.12 census wrote and `/hooks` listed back as that name's `actionEvents` —
+ * so a key holding a list is an event, and a key holding an object is a named
+ * hook whose own such keys are; a file that keys its events directly, or under
+ * `hooks`, reads the same. A `description` or `enabled` beside them is no event.
+ */
+function hookEvents(document: Json | undefined): string[] {
+  const table = document === undefined ? undefined : Object.hasOwn(document, 'hooks') ? rec(document.hooks) : document;
+  const events: string[] = [];
+  for (const [key, value] of Object.entries(table ?? {})) {
+    if (Array.isArray(value)) {
+      events.push(key);
+      continue;
+    }
+    for (const [event, handlers] of Object.entries(rec(value) ?? {})) {
+      if (Array.isArray(handlers)) events.push(event);
+    }
+  }
+  return [...new Set(events.filter((event) => HOOK_EVENT.test(event)))].sort().slice(0, 64);
+}
+
+/**
+ * What a plugin says of itself beside its name: who made it and its homepage,
+ * from its manifest, and what it brings, from its folder — names only, and
+ * nothing for a part it does not have.
+ */
+async function pluginDetails(
+  folder: string,
+  manifest: Json,
+): Promise<Pick<PluginItem, 'author' | 'homepage' | 'brings'>> {
+  const author = authorOf(manifest.author);
+  const homepage = homepageOf(manifest);
+  const commands = await partNames(join(folder, 'commands'), 256);
+  const agents = await partNames(join(folder, 'agents'), 256);
+  const hooks = hookEvents(await readDocument(join(folder, 'hooks.json'), MAX_MANIFEST_BYTES).catch(() => undefined));
+  const brings = {
+    ...(commands.length > 0 ? { commands } : {}),
+    ...(agents.length > 0 ? { agents } : {}),
+    ...(hooks.length > 0 ? { hooks } : {}),
+  };
+  return {
+    ...(author === undefined ? {} : { author }),
+    ...(homepage === undefined ? {} : { homepage }),
+    ...(Object.keys(brings).length > 0 ? { brings } : {}),
+  };
+}
+
 /** Antigravity extension capability: the customization root and the CLI's builtin skills, per home. */
 export function createAntigravityExtensionService(options: AntigravityExtensionOptions = {}): ExtensionService {
   const nativeHome = options.home ?? homedir();
@@ -339,13 +448,23 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
   // server's removal was not probed and is not offered. A server a host keeps
   // comes in with `agy mcp add`, stdio or Streamable HTTP, and never one that
   // reads a variable: `--env` stores a literal value. Skills switch only inside
-  // the app, and are placed as folders (`planSkill`).
+  // the app, and are placed as folders (`planSkill`). A plugin switches and goes
+  // with `agy plugin` (`planPlugin`).
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     options: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
+    if (item.kind === 'plugin') return planPlugin(profile, item, act);
+    if (act === 'update' || act === 'purge') {
+      return extensionActUnavailable(
+        { kind: item.kind, id: item.id },
+        act,
+        'unsupported',
+        act === 'update' ? 'Only a plugin is updated' : 'Only a plugin is removed with its data',
+      );
+    }
     if (item.kind === 'skill') return planSkill(profile, item, act, options);
     if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
@@ -462,6 +581,71 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
     return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
   }
 
+  /**
+   * A plugin in the bound home's `.gemini/config/plugins/` turns on and off
+   * with `agy plugin enable|disable <name>`, which write `config.json`
+   * `plugins.<name>.enabled`, and goes with `agy plugin uninstall <name>`,
+   * which takes the folder `plugins/<name>` whole with its import row and its
+   * switch (the 1.2.11 probe). The uninstall exits 0 for a name it never had,
+   * so only a name the read found is planned, and the runtime's second read is
+   * the receipt. It goes by the folder's name, so a plugin copied in under a
+   * folder of another name is not uninstalled by its own: the command would
+   * miss it, or take the plugin whose folder has that name. It has no variant
+   * that keeps data, so there is no purge beside it, and there is no plugin
+   * update — `agy update` updates the CLI itself.
+   */
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
+    }
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Antigravity installs a plugin from its source');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Antigravity has no sign-in for a plugin');
+    }
+    if (act === 'purge') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        'Antigravity keeps a plugin in one folder, which its uninstall takes whole',
+      );
+    }
+    if (act === 'update') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Antigravity has no command that updates a plugin: install it again from its source',
+      );
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Antigravity's commands do not take this plugin's name",
+      );
+    }
+    if (act === 'remove' && (item.location === undefined || basename(item.location) !== item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Antigravity uninstalls a plugin by its folder's name, and this plugin's folder is named otherwise",
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: act === 'remove' ? [executable, 'plugin', 'uninstall', item.id] : [executable, 'plugin', act, item.id],
+      env: profileEnv(profile),
+      reaches: [],
+    });
+  }
+
   return {
     provider,
     plan,
@@ -519,6 +703,7 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
           location: folder,
           ...(version ? { version } : {}),
           ...(description ? { description } : {}),
+          ...(await pluginDetails(folder, manifest)),
         });
 
         const serverFile = join(folder, 'mcp_config.json');

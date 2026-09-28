@@ -8,6 +8,7 @@ import {
   ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
+  type ExtensionActKind,
   type ExtensionInventory,
   type ExtensionItem,
   type McpServerDefinition,
@@ -532,6 +533,16 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+const actPlugin = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'plugin',
+    id: 'review',
+    name: 'review',
+    origin: 'own',
+    enabled: true,
+    version: '1.2.0',
+    ...fields,
+  }) as never;
 /** A server to add, as the runtime gives it: the server as Grok would hold it once added. */
 const added = (definition: McpServerDefinition, name = 'context7'): McpServerItem => ({
   kind: 'mcp-server',
@@ -692,6 +703,222 @@ describe('Grok extension acts', () => {
       message: 'Grok adds only a server, from its definition',
     });
     expect(grok.plan!(work, actSkill(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
+  });
+
+  it('turns a plugin Grok installed on and off, uninstalls it with its data kept or gone, and updates it, by name', () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    const commands: Array<[ExtensionActKind, string[]]> = [
+      ['enable', ['plugin', 'enable', 'review']],
+      ['disable', ['plugin', 'disable', 'review']],
+      ['remove', ['plugin', 'uninstall', 'review', '--confirm', '--keep-data']],
+      ['purge', ['plugin', 'uninstall', 'review', '--confirm']],
+      ['update', ['plugin', 'update', 'review']],
+    ];
+    for (const [act, command] of commands) {
+      const argv = ['/opt/grok/bin/grok', ...command];
+      expect(ExtensionActPlanSchema.parse(grok.plan!(work, actPlugin(), act)), act).toEqual({
+        target: { kind: 'plugin', id: 'review' },
+        act,
+        available: true,
+        runs: { kind: 'command', argv, env: { GROK_HOME: '/profiles/work/grok' } },
+        display: argv.join(' '),
+        reaches: [],
+      });
+    }
+    // An install without a manifest name goes by the name Grok gave its folder; the native default needs no root.
+    const native = grok.plan!(
+      actProfile('native-default', '/Users/test/.grok'),
+      actPlugin({ id: 'notes-1a2b3c4d', name: 'notes-1a2b3c4d' }),
+      'purge',
+    );
+    expect(native).toMatchObject({
+      available: true,
+      runs: { kind: 'command', argv: ['/opt/grok/bin/grok', 'plugin', 'uninstall', 'notes-1a2b3c4d', '--confirm'] },
+    });
+    expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
+  });
+
+  it("leaves Claude Code's plugins to it and a folder in plugins/ where it is, and never passes a flag as a name", () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    const figma = actPlugin({
+      id: 'figma@claude-plugins-official',
+      name: 'figma',
+      origin: 'borrowed',
+      lender: 'claude',
+      shared: true,
+    });
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update'] as const) {
+      expect(grok.plan!(work, figma, act), act).toEqual({
+        target: { kind: 'plugin', id: 'figma@claude-plugins-official' },
+        act,
+        available: false,
+        reason: 'not-own',
+        message: 'Grok loads it from Claude Code on This Mac, and it changes there',
+      });
+    }
+    expect(grok.plan!(work, actPlugin({ id: 'plugins:local-tool', name: 'local-tool' }), 'remove')).toEqual({
+      target: { kind: 'plugin', id: 'plugins:local-tool' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message: "It is a folder in Grok's plugins folder, and changes there",
+    });
+    for (const id of ['--confirm', '.hidden', '../escape', 'review@', 'my plugin']) {
+      expect(grok.plan!(work, actPlugin({ id, name: id }), 'update'), id).toMatchObject({
+        available: false,
+        reason: 'no-command',
+        message: "Grok's commands do not take this plugin's name",
+      });
+    }
+  });
+
+  it('answers an add or a sign-in on a plugin, and an update or a purge of anything else, with no command', () => {
+    const work = actProfile('managed', '/profiles/work/grok');
+    expect(grok.plan!(work, actPlugin(), 'add')).toEqual({
+      target: { kind: 'plugin', id: 'review' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Grok installs a plugin from its marketplace',
+    });
+    for (const act of ['sign-in', 'sign-out'] as const) {
+      expect(grok.plan!(work, actPlugin(), act), act).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: 'Grok has no sign-in for a plugin',
+      });
+    }
+    // Never `grok mcp update`: an update, and a removal that takes the data, are a plugin's alone.
+    expect(grok.plan!(work, actServer(), 'update')).toEqual({
+      target: { kind: 'mcp-server', id: 'linear' },
+      act: 'update',
+      available: false,
+      reason: 'unsupported',
+      message: 'Only a plugin is updated',
+    });
+    expect(grok.plan!(work, actSkill(), 'purge')).toMatchObject({
+      available: false,
+      reason: 'unsupported',
+      message: 'Only a plugin is removed with its data',
+    });
+  });
+});
+
+// ── plugins described ──
+
+describe('Grok plugins described', () => {
+  it('says who made an install, its homepage and what it brings, by name only, with no key or email', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'grok-5c1e');
+    const review = join(root, 'installed-plugins', 'review-3f9c2a1b');
+    await write(join(review, '.grok-plugin', 'plugin.json'), {
+      name: 'review',
+      author: { name: 'Northlight', email: 'dev@northlight.studio' },
+      homepage: 'https://ci-bot:hunter2@northlight.studio/review?token=abc123#readme-anchor',
+    });
+    await write(join(review, 'commands', 'triage.md'), '# Triage');
+    await write(join(review, 'commands', 'review.md'), '# Review');
+    await write(join(review, 'commands', 'notes.txt'), 'not a command');
+    await write(join(review, 'commands', '.draft.md'), '# hidden');
+    await write(join(review, 'commands', 'nested', 'deep.md'), '# one folder down');
+    // Only a regular file is a command: a link to one elsewhere is not.
+    await write(join(home, 'elsewhere', 'linked.md'), '# linked');
+    await symlink(join(home, 'elsewhere', 'linked.md'), join(review, 'commands', 'linked.md'));
+    await write(join(review, 'agents', 'reviewer.md'), '---\nname: reviewer\n---\n');
+    await write(join(review, 'hooks', 'hooks.json'), {
+      description: 'House checks',
+      hooks: {
+        Stop: [{ hooks: [{ type: 'command', command: 'notify --token ${SECRET_TOKEN}' }] }],
+        PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'check' }] }],
+        'not-an-event': [],
+        Notes: 'not a list of handlers',
+      },
+    });
+    // A person string and a repository address; then a manifest with nothing a person may see.
+    await write(join(root, 'installed-plugins', 'notes-1a2b3c4d', '.grok-plugin', 'plugin.json'), {
+      name: 'notes',
+      author: 'Jane Doe <jane@example.com> (https://jane.example.com)',
+      repository: { type: 'git', url: 'https://github.com/jane/notes' },
+    });
+    await write(join(root, 'installed-plugins', 'bare-9f8e7d6c', 'plugin.json'), {
+      name: 'bare',
+      author: 'ops@example.com',
+      homepage: 'mailto:ops@example.com',
+      repository: 'git@github.com:ops/bare.git',
+    });
+    // Claude Code's install is described from its own folder; a folder in `plugins/` is not described.
+    const figma = join(home, '.claude', 'plugins', 'cache', 'claude-plugins-official', 'figma', '2.2.120');
+    await write(join(figma, '.claude-plugin', 'plugin.json'), {
+      name: 'figma',
+      author: { name: 'Figma' },
+      homepage: 'https://www.figma.com/',
+    });
+    await write(join(figma, 'commands', 'implement-design.md'), '# Implement');
+    await write(join(figma, 'hooks', 'hooks.json'), { SessionStart: [{ hooks: [] }] });
+    await write(join(home, '.claude', 'plugins', 'installed_plugins.json'), {
+      version: 2,
+      plugins: { 'figma@claude-plugins-official': [{ scope: 'user', version: '2.2.120', installPath: figma }] },
+    });
+    await write(join(root, 'plugins', 'local-tool', 'commands', 'tool.md'), '# Tool');
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createGrokExtensionService({ home, now }).inventory(managedProfile(root)),
+    );
+    const document = JSON.stringify(inventory);
+    for (const hidden of [
+      'ci-bot',
+      'hunter2',
+      'abc123',
+      'readme-anchor',
+      'dev@northlight.studio',
+      'jane@example.com',
+      'jane.example.com',
+      'ops@example.com',
+      'SECRET_TOKEN',
+    ]) {
+      expect(document).not.toContain(hidden);
+    }
+    expect(find(inventory, 'plugin', 'review')).toMatchObject({
+      author: 'Northlight',
+      homepage: 'https://•••@northlight.studio/review?•••',
+      brings: { commands: ['review', 'triage'], agents: ['reviewer'], hooks: ['PreToolUse', 'Stop'] },
+    });
+    expect(find(inventory, 'plugin', 'notes')).toMatchObject({
+      author: 'Jane Doe',
+      homepage: 'https://github.com/jane/notes',
+    });
+    expect(find(inventory, 'plugin', 'notes')).not.toHaveProperty('brings');
+    const bare = find(inventory, 'plugin', 'bare');
+    expect(bare).toMatchObject({ origin: 'own' });
+    for (const field of ['author', 'homepage', 'brings']) expect(bare).not.toHaveProperty(field);
+    expect(find(inventory, 'plugin', 'figma@claude-plugins-official')).toMatchObject({
+      origin: 'borrowed',
+      author: 'Figma',
+      homepage: 'https://www.figma.com/',
+      brings: { commands: ['implement-design'], hooks: ['SessionStart'] },
+    });
+    expect(find(inventory, 'plugin', 'plugins:local-tool')).not.toHaveProperty('brings');
+  });
+
+  it('says at most 256 commands and 64 hook events, in name order', async () => {
+    const home = await tempHome();
+    const root = join(home, '.grok');
+    const crowded = join(root, 'installed-plugins', 'crowded-0a1b2c3d');
+    await write(join(crowded, '.grok-plugin', 'plugin.json'), { name: 'crowded' });
+    const numbered = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, index) => `${prefix}${String(index).padStart(3, '0')}`);
+    for (const name of numbered('c', 260)) await write(join(crowded, 'commands', `${name}.md`), '');
+    await write(join(crowded, 'hooks', 'hooks.json'), {
+      hooks: Object.fromEntries(numbered('Event', 70).map((event) => [event, []])),
+    });
+
+    const inventory = ExtensionInventorySchema.parse(
+      await createGrokExtensionService({ home, now }).inventory(nativeProfile(home)),
+    );
+    const brings = (find(inventory, 'plugin', 'crowded') as { brings?: { commands?: string[]; hooks?: string[] } })
+      .brings;
+    expect(brings?.commands).toEqual(numbered('c', 256));
+    expect(brings?.hooks).toEqual(numbered('Event', 64));
   });
 });
 

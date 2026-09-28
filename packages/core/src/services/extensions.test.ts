@@ -6,6 +6,7 @@ import {
   describeMcpUrl,
   describeFileSteps,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   EXTENSION_SKILL_FOLDER_NAME,
   ExtensionActPlanSchema,
   ExtensionActReceiptSchema,
@@ -19,6 +20,7 @@ import {
   ExtensionFailureSchema,
   ExtensionInventorySchema,
   ExtensionItemSchema,
+  ExtensionKindSupportSchema,
   ExtensionProviderSchema,
   isNormalizedAbsolutePath,
   mcpServerDefinition,
@@ -648,5 +650,79 @@ describe('skills placed (RFC 006 C2, a skill kept once)', () => {
         extensionSkillFolderPlan({ label: 'Claude Code', folder, item, act: 'remove', keepIn: kept }),
       ).toMatchObject({ available: false, reason: 'not-own' });
     }
+  });
+});
+
+describe('plugins acted on (RFC 006 C2, a plugin an agent holds)', () => {
+  const plugin = (fields: Record<string, unknown> = {}) =>
+    ExtensionItemSchema.parse({
+      kind: 'plugin',
+      id: 'review@northlight',
+      name: 'review',
+      origin: 'own',
+      enabled: true,
+      version: '1.2.0',
+      marketplace: 'northlight',
+      ...fields,
+    });
+
+  it('carries who made it, where it lives on the web and what it brings, as names only', () => {
+    const item = plugin({
+      author: 'Northlight',
+      homepage: 'https://github.com/northlight/review',
+      brings: { commands: ['review', 'triage'], agents: ['reviewer'], hooks: ['PreToolUse', 'Stop'] },
+    });
+    expect(item).toMatchObject({ author: 'Northlight', brings: { hooks: ['PreToolUse', 'Stop'] } });
+    // a part is a name, never a body or a value
+    expect(ExtensionItemSchema.safeParse({ ...item, brings: { commands: [''] } }).success).toBe(false);
+    expect(ExtensionItemSchema.safeParse({ ...item, brings: { scripts: ['x'] } }).success).toBe(false);
+  });
+
+  it('is a target an act can name, and updates and purges beside the switches and the removal', () => {
+    const target = { kind: 'plugin' as const, id: 'review@northlight' };
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update'] as const) {
+      expect(
+        ExtensionActPlanSchema.parse(
+          extensionCommandPlan({ target, act, argv: ['claude', 'plugin', act, 'review@northlight'] }),
+        ),
+      ).toMatchObject({ target, act, available: true });
+    }
+    expect(
+      ExtensionActReceiptSchema.parse({
+        provider: 'claude',
+        profileId: 'work-claude',
+        target,
+        act: 'update',
+        status: 'changed',
+        startedAt: '2026-09-27T09:00:00.000Z',
+        finishedAt: '2026-09-27T09:00:02.000Z',
+        message: 'updated 1.2.0 → 1.3.0',
+      }),
+    ).toMatchObject({ act: 'update', status: 'changed' });
+    expect(extensionNotOwnWords('Claude Code', plugin({ origin: 'managed' }))).toBe(
+      "Claude Code's app or your organization adds it, and changes it",
+    );
+  });
+
+  it("takes a plugin's key as one argument: a name and its marketplace, never a flag or a path", () => {
+    for (const key of ['review@northlight', 'context7', 'code-review@claude-plugins-official', 'a.b_c@d-e.f']) {
+      expect(EXTENSION_PLUGIN_NAME.test(key)).toBe(true);
+    }
+    for (const key of ['-x', '--scope', '.hidden', 'a/b', '../x', 'a@b@c', '@x', 'x@', 'x@-y', 'x@.y', 'a b']) {
+      expect(EXTENSION_PLUGIN_NAME.test(key)).toBe(false);
+    }
+  });
+
+  it("says a kind in the agent's own word, and that a hosted session skips it", () => {
+    expect(
+      ExtensionKindSupportSchema.parse({ store: 'profile', changes: 'command', read: true, label: 'Packages' }),
+    ).toMatchObject({ label: 'Packages' });
+    expect(
+      ExtensionKindSupportSchema.parse({ store: 'shared', changes: 'command', read: true, hostedSkips: true }),
+    ).toMatchObject({ hostedSkips: true });
+    expect(
+      ExtensionKindSupportSchema.safeParse({ store: 'shared', changes: 'command', read: true, hostedSkips: false })
+        .success,
+    ).toBe(false);
   });
 });

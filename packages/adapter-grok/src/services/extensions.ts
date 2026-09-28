@@ -25,9 +25,12 @@
  * `plugins/` is listed as a plugin, but neither its skills nor its servers
  * activated in the probe, so none are read. Plugins are on unless `[plugins]
  * disabled` names them, as every discovered plugin was in the probe.
- * Command markdown (`commands/*.md`), project files (`.grok/`, `.mcp.json`) and
- * `[plugins] paths` are not read; neither are the `GROK_CLAUDE_*_ENABLED`
- * overrides, which belong to a launch environment rather than the profile.
+ * An install of Grok's or Claude's also says who made it and its homepage, from
+ * its manifest, and what it brings, by name only: its `commands/*.md`, its
+ * `agents/*.md` and the events its `hooks/hooks.json` runs on. A command is
+ * never listed as a skill. Project files (`.grok/`, `.mcp.json`) and `[plugins]
+ * paths` are not read; neither are the `GROK_CLAUDE_*_ENABLED` overrides, which
+ * belong to a launch environment rather than the profile.
  *
  * Acts (RFC 006 C2): a server of the root's own config turns on and off with
  * `grok mcp enable|disable <name>` and goes with `grok mcp remove <name>
@@ -38,7 +41,10 @@
  * written as `${NAME}` for Grok to expand when it loads the server. A skill a
  * host keeps is placed in the root's `skills/` as a link to the host's folder,
  * and one of the root's own there goes: a link is taken away, a real folder
- * moves to where the host keeps it.
+ * moves to where the host keeps it. A plugin Grok installed turns on and off,
+ * is uninstalled with or without the data it keeps, and updates, with `grok
+ * plugin`; Claude Code's installs, and a folder in `plugins/`, change where
+ * they are.
  */
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
@@ -48,6 +54,7 @@ import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
@@ -55,6 +62,7 @@ import {
   mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
   type ExtensionActPlanOptions,
@@ -584,6 +592,99 @@ async function pluginAt(folder: string): Promise<{ manifest?: Json } | undefined
   return undefined;
 }
 
+/** An event a hook runs on, as a hooks file keys it: `PreToolUse`, `SessionStart`. */
+const HOOK_EVENT = /^[A-Za-z][A-Za-z0-9_]{0,255}$/u;
+
+/** A part's name as a person may read it: one line, no control character, as long as Core allows. */
+const partName = (name: string): boolean =>
+  name.length > 0 && name.length <= 256 && name.trim() === name && !/[\u0000-\u001f\u007f]/u.test(name);
+
+/**
+ * Who made a plugin, as its manifest says: `author` as text, or an object's
+ * `name`. An address never shows — npm's `Name <email> (url)` keeps the name
+ * alone, and any other email-shaped word goes.
+ */
+function authorOf(value: unknown): string | undefined {
+  const raw = typeof value === 'string' ? value : rec(value)?.name;
+  if (typeof raw !== 'string') return undefined;
+  const author = raw
+    .replace(/<[^>]*>/gu, ' ')
+    .replace(/\([^)]*(?::\/\/|@)[^)]*\)/gu, ' ')
+    .replace(/\S+@\S+/gu, ' ')
+    .replace(/[\s\u0000-\u001f\u007f]+/gu, ' ')
+    .trim();
+  return author.length > 0 && author.length <= 256 ? author : undefined;
+}
+
+/**
+ * A plugin's homepage, else its repository (text or `{ url }`): the first that
+ * is an http(s) address, as {@link describeMcpUrl} renders one, so a key in its
+ * userinfo or query never shows.
+ */
+function homepageOf(manifest: Json | undefined): string | undefined {
+  const repository = manifest?.repository;
+  for (const candidate of [manifest?.homepage, typeof repository === 'string' ? repository : rec(repository)?.url]) {
+    const address = text(candidate);
+    if (address === undefined || !/^https?:\/\//iu.test(address)) continue;
+    const shown = describeMcpUrl(address);
+    if (/^https?:\/\//u.test(shown) && shown.length <= 8_192) return shown;
+  }
+  return undefined;
+}
+
+/** The names of the regular `.md` files in one of a plugin's folders, as its commands or agents are named. */
+async function partNames(folder: string, limit: number): Promise<string[]> {
+  try {
+    const found = (await readdir(folder, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && !entry.name.startsWith('.'))
+      .map((entry) => entry.name.slice(0, -'.md'.length))
+      .filter(partName);
+    return [...new Set(found)].sort().slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The events a plugin's `hooks/hooks.json` runs on: the keys of its `hooks`
+ * object, or of the file itself without one, whose handlers are a list — so a
+ * `description` beside them is no event.
+ */
+async function hookEvents(file: string): Promise<string[]> {
+  const document = await readJson(file).catch(() => undefined);
+  const table = document === undefined ? undefined : Object.hasOwn(document, 'hooks') ? rec(document.hooks) : document;
+  const events = Object.entries(table ?? {})
+    .filter(([event, handlers]) => HOOK_EVENT.test(event) && Array.isArray(handlers))
+    .map(([event]) => event);
+  return [...new Set(events)].sort().slice(0, 64);
+}
+
+/**
+ * What a plugin says of itself beside its name: who made it and its homepage,
+ * from its manifest, and what it brings, from its folder — names only, and
+ * nothing for a part it does not have.
+ */
+async function pluginDetails(
+  folder: string,
+  manifest: Json | undefined,
+): Promise<Pick<PluginItem, 'author' | 'homepage' | 'brings'>> {
+  const author = authorOf(manifest?.author);
+  const homepage = homepageOf(manifest);
+  const commands = await partNames(join(folder, 'commands'), 256);
+  const agents = await partNames(join(folder, 'agents'), 256);
+  const hooks = await hookEvents(join(folder, 'hooks', 'hooks.json'));
+  const brings = {
+    ...(commands.length > 0 ? { commands } : {}),
+    ...(agents.length > 0 ? { agents } : {}),
+    ...(hooks.length > 0 ? { hooks } : {}),
+  };
+  return {
+    ...(author === undefined ? {} : { author }),
+    ...(homepage === undefined ? {} : { homepage }),
+    ...(Object.keys(brings).length > 0 ? { brings } : {}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // The service
 // ---------------------------------------------------------------------------
@@ -598,10 +699,19 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
 
   function plan(
     profile: AgentProfile,
-    item: McpServerItem | SkillItem,
+    item: ExtensionActItem,
     act: ExtensionActKind,
     { keepIn }: ExtensionActPlanOptions = {},
   ): ExtensionActPlan {
+    if (item.kind === 'plugin') return planPlugin(profile, item, act);
+    if (act === 'update' || act === 'purge') {
+      return extensionActUnavailable(
+        { kind: item.kind, id: item.id },
+        act,
+        'unsupported',
+        act === 'update' ? 'Only a plugin is updated' : 'Only a plugin is removed with its data',
+      );
+    }
     if (item.kind === 'skill') return planSkill(profile, item, act, keepIn);
     if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
@@ -632,7 +742,7 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
   }
 
   /** What another agent lends, a plugin brings or Grok ships changes where it comes from. */
-  function notOwn(item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  function notOwn(item: ExtensionActItem, act: ExtensionActKind): ExtensionActPlan {
     const lender = item.lender === undefined ? undefined : (LENDERS[item.lender] ?? item.lender);
     return extensionActUnavailable(
       { kind: item.kind, id: item.id },
@@ -640,6 +750,53 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
       'not-own',
       extensionNotOwnWords('Grok', item, lender),
     );
+  }
+
+  /**
+   * A plugin in Grok's own install registry (`installed-plugins/`) turns on
+   * and off with `grok plugin enable|disable <name>`, is uninstalled with
+   * `grok plugin uninstall <name> --confirm` — keeping the data it stored apart
+   * from its files with `--keep-data`, or deleting it too without — and updates
+   * with `grok plugin update <name>`. These are the report's forms, not probed
+   * as acts. `--confirm` answers the question the uninstall would otherwise
+   * ask, since an act runs with no stdin, and the name is always given, since
+   * `update` without one updates every plugin. Claude Code's installs, which
+   * Grok loads from `~/.claude/plugins`, are Claude Code's to change, and a
+   * folder in the root's `plugins/` is in no registry a command reads.
+   */
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') return notOwn(item, act);
+    if (item.id.startsWith('plugins:')) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "It is a folder in Grok's plugins folder, and changes there",
+      );
+    }
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Grok installs a plugin from its marketplace');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Grok has no sign-in for a plugin');
+    }
+    if (!EXTENSION_PLUGIN_NAME.test(item.id)) {
+      return extensionActUnavailable(target, act, 'no-command', "Grok's commands do not take this plugin's name");
+    }
+    const command =
+      act === 'remove'
+        ? ['uninstall', item.id, '--confirm', '--keep-data']
+        : act === 'purge'
+          ? ['uninstall', item.id, '--confirm']
+          : [act, item.id];
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, 'plugin', ...command],
+      env: profileEnv(profile),
+      reaches: [],
+    });
   }
 
   /**
@@ -735,7 +892,7 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
     id: 'grok',
     label: 'Grok',
     support: {
-      // `grok plugin install|uninstall|enable|disable` for its own; Claude's installs load in every profile.
+      // `grok plugin install|uninstall|enable|disable|update` for its own; Claude's installs load in every profile.
       plugins: { store: 'mixed', changes: 'command', read: true },
       // `[[marketplace.sources]]` per root, plus Claude's git sources; not read yet.
       marketplaces: { store: 'mixed', changes: 'command', read: false },
@@ -821,6 +978,7 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
             location: entry.path,
             ...(version && version.length <= 128 ? { version } : {}),
             ...(description ? { description: description.slice(0, 2_048) } : {}),
+            ...(await pluginDetails(entry.path, plugin.manifest)),
           },
           folder: entry.path,
           active: true,
@@ -885,6 +1043,7 @@ export function createGrokExtensionService(options: GrokExtensionOptions = {}): 
             ...(version && version.length <= 128 ? { version } : {}),
             ...(marketplace && marketplace.length <= 512 ? { marketplace } : {}),
             ...(description ? { description: description.slice(0, 2_048) } : {}),
+            ...(await pluginDetails(folder, plugin.manifest)),
           },
           folder,
           active: true,
