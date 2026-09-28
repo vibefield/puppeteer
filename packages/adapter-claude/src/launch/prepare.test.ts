@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { isAgentLaunchRefusedError } from '@vibecook/puppeteer-core';
 import {
   ClaudeHooksOffError,
   cleanupClaudeSession,
@@ -398,6 +399,8 @@ describe('prepareClaudeSession', () => {
           source: layer,
           message: `your ${layer} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
         });
+        // The adapter's own refusal: the runtime carries this sentence and code to the person.
+        await expect(refusal, layer).rejects.toSatisfy(isAgentLaunchRefusedError);
         expect(readdirSync(where.settingsDir), layer).toEqual([]);
       }
     });
@@ -477,6 +480,10 @@ describe('prepareClaudeSession', () => {
       code: 'CLAUDE_CONVERSATION_MISSING',
       sessionId: resumeId,
     });
+    // Not a refusal whose words reach a person: its message names the config root, text for logs.
+    await expect(prepare({ resume: resumeId, configDir: root })).rejects.toSatisfy(
+      (error: unknown) => !isAgentLaunchRefusedError(error),
+    );
     // The imposter keeps the same layout under its own state root.
     const imposterRoot = conversationRoot(resumeId);
     const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });

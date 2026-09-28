@@ -48,6 +48,7 @@ export const SPAWN_THROUGH_DECLINE_CODES = [
   'invalid-invocation', // the runtime would not put it to the adapter, or the implementation does not fit
   'rejected-argument', // the adapter's grammar: an argument the managed launch cannot carry
   'imposter-unavailable', // the imposter route it asked for is not available beside this host
+  'launch-refused', // the agent's own adapter refused the launch, for a reason the person can act on
   'prepare-failed',
   'terminal-conflict', // the terminal already runs a managed session (the runtime's RUNTIME_SESSION_CONFLICT)
   'adopt-failed',

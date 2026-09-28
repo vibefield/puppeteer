@@ -18,6 +18,7 @@ import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
+import { AgentLaunchRefusedError } from '@vibecook/puppeteer-core';
 import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
 import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
 import {
@@ -134,7 +135,11 @@ export function locateClaudeTranscript(sessionId: string, root: string): string 
   return undefined;
 }
 
-/** A resume of a conversation that is not on disk: refused before launch rather than crashed after it. */
+/**
+ * A resume of a conversation that is not on disk: refused before launch rather than crashed after it.
+ * Not an adapter's refusal whose words reach a person: its message names where the transcripts are
+ * kept (a profile's root among them), so it stays text for logs. A host's restore falls back on it.
+ */
 export class ClaudeConversationMissingError extends Error {
   readonly code = 'CLAUDE_CONVERSATION_MISSING';
   constructor(
@@ -149,15 +154,18 @@ export class ClaudeConversationMissingError extends Error {
 /**
  * A typed launch whose person's settings switch every hook off (`disableAllHooks: true`): the
  * managed hooks would never fire (probed 2.1.283, findings.md §7.5), so it is refused before launch
- * rather than run as a session the host cannot observe.
+ * rather than run as a session the host cannot observe. The adapter's own refusal
+ * ({@link AgentLaunchRefusedError}): the runtime carries its sentence and code to the person.
  */
-export class ClaudeHooksOffError extends Error {
-  readonly code = 'CLAUDE_HOOKS_OFF';
+export class ClaudeHooksOffError extends AgentLaunchRefusedError<'CLAUDE_HOOKS_OFF'> {
   constructor(
     readonly source: ClaudeSettingSource,
     readonly settingsPath: string,
   ) {
-    super(`your ${source} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`);
+    super(
+      'CLAUDE_HOOKS_OFF',
+      `your ${source} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
+    );
     this.name = 'ClaudeHooksOffError';
   }
 }

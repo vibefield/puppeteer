@@ -14,6 +14,7 @@ import {
   agentEventCategory,
   agentEventType,
   isAgentEventType,
+  isAgentLaunchRefusedError,
   safeParseAgentEvent,
   AdapterEventCandidateSchema,
   type AccountUsageFetchResult,
@@ -132,6 +133,7 @@ import {
 } from './extensions/inventory.js';
 import { createExtensionActRunner } from './extensions/act.js';
 import { launchValues } from './host/environment.js';
+import { boundSpawnThroughText } from './host/spawn-through/protocol.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
@@ -473,6 +475,28 @@ function preparationFailure(
     ...(run ? identityFields(run.identity) : {}),
     ...(terminalOutcome ? { terminalOutcome } : {}),
     error: { code, message },
+  };
+}
+
+/**
+ * What an error a provider threw while preparing or creating a session says in
+ * the failure a caller reads. Only the adapter's own refusal carries words: its
+ * sentence, held to one line by the rule for a person's terminal, and its code.
+ * Any other error's text (a path, a token, a stack) is the reporter's alone,
+ * and the failure says `generic`.
+ */
+function providerError(
+  thrown: unknown,
+  agent: string,
+  generic: string,
+):
+  | { code: 'AGENT_LAUNCH_REFUSED'; message: string; refusal: { code: string } }
+  | { code: 'AGENT_SESSION_CREATE_FAILED'; message: string } {
+  if (!isAgentLaunchRefusedError(thrown)) return { code: 'AGENT_SESSION_CREATE_FAILED', message: generic };
+  return {
+    code: 'AGENT_LAUNCH_REFUSED',
+    message: boundSpawnThroughText(thrown.message.replace(/\r\n|\r|\n/gu, ' ')) || `agent launch refused: ${agent}`,
+    refusal: { code: thrown.code },
   };
 }
 
@@ -2907,15 +2931,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           session = await provider.createSession(providerOptions);
         } catch (error) {
           report(error);
-          await markRunTerminal(
-            run,
-            { kind: 'failed', code: 'AGENT_SESSION_CREATE_FAILED' },
-            { deferFailureRetention: true },
-          );
-          await recordRunStartFailure(run, 'process-spawn', 'AGENT_SESSION_CREATE_FAILED');
+          const failure = providerError(error, request.agent, `agent session creation failed: ${request.agent}`);
+          await markRunTerminal(run, { kind: 'failed', code: failure.code }, { deferFailureRetention: true });
+          await recordRunStartFailure(run, 'process-spawn', failure.code);
           await finalizeWorkspace(run, lease, 'preparation-failure');
           retainTerminalFailure(run);
-          return sessionFailure(run, 'AGENT_SESSION_CREATE_FAILED', `agent session creation failed: ${request.agent}`);
+          return { ...sessionFailure(run, failure.code, failure.message), error: failure };
         }
 
         try {
@@ -3053,19 +3074,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           prepared = await provider.prepareSession(providerOptions);
         } catch (error) {
           report(error);
-          await markRunTerminal(
-            run,
-            { kind: 'failed', code: 'AGENT_SESSION_CREATE_FAILED' },
-            { deferFailureRetention: true },
-          );
-          await recordRunStartFailure(run, 'preparation', 'AGENT_SESSION_CREATE_FAILED');
+          const failure = providerError(error, request.agent, `agent session preparation failed: ${request.agent}`);
+          await markRunTerminal(run, { kind: 'failed', code: failure.code }, { deferFailureRetention: true });
+          await recordRunStartFailure(run, 'preparation', failure.code);
           await finalizeWorkspace(run, lease, 'preparation-failure');
           retainTerminalFailure(run);
-          return preparationFailure(
-            'AGENT_SESSION_CREATE_FAILED',
-            `agent session preparation failed: ${request.agent}`,
-            run,
-          );
+          return { ...preparationFailure(failure.code, failure.message, run), error: failure };
         }
 
         const preparationId = randomUUID();

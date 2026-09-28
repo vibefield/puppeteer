@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentAdapterBinding, AgentHost, AgentProfile } from '@vibecook/puppeteer-core';
 import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
@@ -259,6 +260,7 @@ vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
 }));
 
 import { createBuiltinProviders } from './providers.js';
+import { createBuiltinAgentRuntime } from './runtime.js';
 import type { BuiltinAgentRuntime, BuiltinCreateAgentSessionOptions } from './types.js';
 
 const host: AgentHost = {
@@ -754,6 +756,31 @@ describe('createBuiltinProviders launch options', () => {
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
       expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined, refuseHooksOff: false }),
     );
+  });
+
+  it('carries the Claude adapter’s refusal through the provider and the runtime to the failure a host reads', async () => {
+    const { ClaudeHooksOffError } = await vi.importActual<typeof import('@vibecook/puppeteer-adapter-claude')>(
+      '@vibecook/puppeteer-adapter-claude',
+    );
+    adapters.prepareClaudeTuiSession.mockRejectedValueOnce(
+      new ClaudeHooksOffError('user', '/home/someone/.claude/settings.json'),
+    );
+    const runtime = createBuiltinAgentRuntime({ host, defaultCwd: tmpdir() });
+    const refused = await runtime.prepareInvocation({
+      providerId: 'claude',
+      cwd: tmpdir(),
+      argv: [],
+      environment: {},
+      implementation: { kind: 'native' },
+    });
+    expect('error' in refused && refused.error).toEqual({
+      code: 'AGENT_LAUNCH_REFUSED',
+      message: 'your user settings turn hooks off (disableAllHooks), and a managed session is observed through hooks',
+      refusal: { code: 'CLAUDE_HOOKS_OFF' },
+    });
+    // The error's other fields are the reporter's: the settings file's path does not reach the failure.
+    expect(JSON.stringify(refused)).not.toContain('/home/someone');
+    await runtime.dispose();
   });
 
   it('exposes provider-level account usage independently of sessions', async () => {

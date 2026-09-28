@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  AgentLaunchRefusedError,
   agentEventCategory,
   agentEventType,
   createAdapterEventCandidate,
@@ -24,6 +25,7 @@ import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/mo
 import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
 import { createWorkspace } from '@vibecook/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
+import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider, LaunchEnvironmentRequest, ProfileRegistrySnapshot, ProfileStore } from './types.js';
@@ -1797,6 +1799,102 @@ describe('createAgentRuntime', () => {
       ]),
     );
     expect(JSON.stringify(records)).not.toContain('provider secret detail');
+    await runtime.dispose();
+  });
+
+  /** One provider whose creation and preparation both throw whatever `throws.next` holds when they are called. */
+  async function throwingProviderRuntime() {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-refusal-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-refusal-records-'));
+    const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
+    const errors: Error[] = [];
+    const throws: { next: unknown } = { next: undefined };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      recorder,
+      onError: (error) => errors.push(error),
+      providers: [
+        {
+          descriptor: { id: 'example', label: 'Example' },
+          async createSession() {
+            throw throws.next;
+          },
+          async prepareSession() {
+            throw throws.next;
+          },
+        },
+      ],
+    });
+    return { runtime, recorder, errors, throws };
+  }
+
+  it("carries a provider's own refusal to the failure, its words and its code, the run failed as any failed start", async () => {
+    const { runtime, recorder, errors, throws } = await throwingProviderRuntime();
+    const sentence = 'your user settings turn hooks off, and a managed session is observed through hooks';
+    throws.next = new AgentLaunchRefusedError('EXAMPLE_HOOKS_OFF', sentence);
+    const refused = { code: 'AGENT_LAUNCH_REFUSED', message: sentence, refusal: { code: 'EXAMPLE_HOOKS_OFF' } };
+
+    const created = await runtime.createSession({ agent: 'example' });
+    expect(created).toMatchObject({ terminalOutcome: { kind: 'failed', code: 'AGENT_LAUNCH_REFUSED' } });
+    expect('error' in created && created.error).toEqual(refused);
+    const prepared = await runtime.prepareSession({ agent: 'example' });
+    expect('error' in prepared && prepared.error).toEqual(refused);
+    for (const failure of [created, prepared]) {
+      expect(runtime.runtimeRunInfo(failure.runtimeRunId!)).toMatchObject({
+        status: 'terminal',
+        terminalOutcome: { kind: 'failed', code: 'AGENT_LAUNCH_REFUSED' },
+      });
+    }
+    // Still the reporter's, and recorded as a start that failed where it failed.
+    expect(errors).toEqual([throws.next, throws.next]);
+    expect((await recorder.read()).filter(isOwnActionV2)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'run.start-failed', stage: 'process-spawn', code: 'AGENT_LAUNCH_REFUSED' }),
+        expect.objectContaining({ type: 'run.start-failed', stage: 'preparation', code: 'AGENT_LAUNCH_REFUSED' }),
+      ]),
+    );
+    await runtime.dispose();
+  });
+
+  it("holds a refusal's words to one printable line within the bound, and says its own when none are left", async () => {
+    const { runtime, throws } = await throwingProviderRuntime();
+    throws.next = new AgentLaunchRefusedError(
+      'EXAMPLE_HOOKS_OFF',
+      `turn \u001b[31mhooks\u0007 on\r\nin ${'x'.repeat(900)}`,
+    );
+    const bounded = await runtime.prepareSession({ agent: 'example' });
+    const words = 'error' in bounded ? bounded.error.message : '';
+    expect(words.startsWith('turn [31mhooks on in xxx')).toBe(true);
+    expect(Array.from(words)).toHaveLength(MAX_REFUSAL_MESSAGE_LENGTH);
+    expect(words.endsWith('…')).toBe(true);
+    throws.next = new AgentLaunchRefusedError('EXAMPLE_HOOKS_OFF', '\u0000\u001b\n\t');
+    expect(await runtime.createSession({ agent: 'example' })).toMatchObject({
+      error: { code: 'AGENT_LAUNCH_REFUSED', message: 'agent launch refused: example' },
+    });
+    await runtime.dispose();
+  });
+
+  it('keeps the generic words for anything else a provider throws, whatever its text or its code', async () => {
+    const { runtime, errors, throws } = await throwingProviderRuntime();
+    for (const internal of [
+      new Error('secret path /Users/someone/.example/settings.json token=abc123'),
+      Object.assign(new Error('secret path /Users/someone/.example'), { code: 'EXAMPLE_HOOKS_OFF' }),
+    ]) {
+      throws.next = internal;
+      const notCreated = await runtime.createSession({ agent: 'example' });
+      const notPrepared = await runtime.prepareSession({ agent: 'example' });
+      expect('error' in notCreated && notCreated.error).toEqual({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        message: 'agent session creation failed: example',
+      });
+      expect('error' in notPrepared && notPrepared.error).toEqual({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        message: 'agent session preparation failed: example',
+      });
+      expect(JSON.stringify([notCreated, notPrepared])).not.toContain('secret');
+      expect(errors.at(-1)).toBe(internal);
+    }
     await runtime.dispose();
   });
 
