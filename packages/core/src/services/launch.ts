@@ -157,3 +157,48 @@ export type AgentNativeInvocationResolution<Options = unknown> =
 export interface AgentNativeInvocationNormalizer<Options = unknown> {
   normalize(invocation: AgentNativeInvocation): AgentNativeInvocationResolution<Options>;
 }
+
+// A registered symbol: every copy of this package that an adapter or a runtime loads reads the same one.
+const AGENT_LAUNCH_REFUSED = Symbol.for('@vibecook/puppeteer-core/agent-launch-refused');
+const AGENT_LAUNCH_REFUSAL_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
+
+/**
+ * The one error an adapter throws whose words are for a person. A provider's
+ * preparation or creation throws it when the launch must not proceed for a
+ * reason the person can act on: `code` is the adapter's own, stable and
+ * UPPER_SNAKE (at most 64 characters); `message` is one plain sentence with
+ * nothing in it that is not theirs to read. The runtime carries exactly this
+ * kind to the failure it answers, words and code. Anything else an adapter
+ * throws is an internal failure, whose text is for logs.
+ */
+export class AgentLaunchRefusedError<Code extends string = string> extends Error {
+  constructor(
+    readonly code: Code,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AgentLaunchRefusedError';
+  }
+
+  static {
+    // The brand sits on the prototype: every instance of every subclass carries it, and none of their data shows it.
+    Object.defineProperty(this.prototype, AGENT_LAUNCH_REFUSED, { value: true });
+  }
+}
+
+/**
+ * Whether `value` is an adapter's refusal ({@link AgentLaunchRefusedError}),
+ * read by its brand and never by `instanceof`: an adapter that loads its own
+ * copy of this package throws another copy's class. One whose code or message
+ * breaks the class's rule is not a refusal.
+ */
+export function isAgentLaunchRefusedError(value: unknown): value is AgentLaunchRefusedError {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as { [AGENT_LAUNCH_REFUSED]?: unknown; code?: unknown; message?: unknown };
+  return (
+    candidate[AGENT_LAUNCH_REFUSED] === true &&
+    typeof candidate.code === 'string' &&
+    AGENT_LAUNCH_REFUSAL_CODE.test(candidate.code) &&
+    typeof candidate.message === 'string'
+  );
+}
