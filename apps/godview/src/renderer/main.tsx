@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -21,7 +22,6 @@ import {
   GhostteaWorkspace,
   TERMINAL_THEMES,
   type GhostteaPaneRehydration,
-  type GhostteaPaneClose,
   type GhostteaWorkspaceContext,
   type GhostteaWorkspacePaneDecoration,
 } from '@vibecook/ghosttea-react/workspace';
@@ -220,7 +220,8 @@ function Godview() {
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
-  const unusedPanes = useRef(new UnusedPaneSessions());
+  const unusedPanes = useRef(new UnusedPaneSessions<SessionSummary>());
+  const [closingSessionIds, setClosingSessionIds] = useState<ReadonlySet<string>>(() => new Set());
   const zoom = useDeckZoom(deckRef, workspace?.activePaneId, undefined, active);
   const settings = useWorkspaceSettings(deckRef);
   const palette = useMonitorPalette();
@@ -393,6 +394,7 @@ function Godview() {
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
+    closingSessionIds,
     onSessionExited,
     palette,
     profileLabels: profiles.labels,
@@ -526,18 +528,26 @@ function Godview() {
     [workspace],
   );
   const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
-  const closePane = useCallback(
-    ({ session, remainingSessionIds }: GhostteaPaneClose): void => {
-      const used =
+  useLayoutEffect(() => {
+    if (!workspace) return;
+    // Includes Ghosttea's initial empty-workspace birth, outside the split override.
+    for (const { session } of workspace.panes) {
+      if (terminalRuntime.sessionCreatedHere(session.id)) unusedPanes.current.created(session.id);
+    }
+    const detached = unusedPanes.current.update(
+      workspace.panes.map((pane) => pane.session),
+      (session) =>
         terminalRuntime.sessionHasInput(session.id) ||
         session.exited ||
         session.activity.kind === 'foreground-job' ||
         agentsBySession.get(session.id)?.agent !== undefined ||
-        terminalRuntime.remoteSession(session.id) !== undefined;
-      if (unusedPanes.current.closed(session.id, remainingSessionIds, used)) terminalRuntime.terminate(session.id);
-    },
-    [agentsBySession],
-  );
+        terminalRuntime.remoteSession(session.id) !== undefined,
+    );
+    for (const session of detached) terminalRuntime.terminate(session.id);
+    if (detached.length > 0) {
+      setClosingSessionIds((current) => new Set([...current, ...detached.map((session) => session.id)]));
+    }
+  }, [workspace, agentsBySession]);
   const zoomedPaneId = zoomLayoutApplied(zoom.state.phase) ? zoom.state.paneId : null;
   const paneVisibility = useMemo(
     () =>
@@ -755,7 +765,6 @@ function Godview() {
             paneMeta={persistPaneRecovery}
             createSplitSession={createSplitSession}
             splitSizing="equal"
-            onPaneClose={closePane}
             onTogglePaneZoom={zoom.toggle}
             paneVisibility={paneVisibility}
             onRehydratePane={rehydratePane}

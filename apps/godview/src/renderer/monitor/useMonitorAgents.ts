@@ -30,6 +30,8 @@ export interface UseMonitorAgentsOptions {
   attachments: ReadonlyMap<string, PaneAttachment>;
   /** Live terminal id -> stable monitor identity across PTY handoffs. */
   terminalIdentities?: ReadonlyMap<string, string> | undefined;
+  /** Shells being terminated after losing their final pane. */
+  closingSessionIds?: ReadonlySet<string> | undefined;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
   onSessionExited(listener: (sessionId: string) => void): () => void;
   /** The live tokens; a row's colour is its project's tint, or the ramp with no project. */
@@ -55,6 +57,7 @@ export function useMonitorAgents({
   workspace,
   attachments,
   terminalIdentities,
+  closingSessionIds,
   onSessionExited,
   palette,
   profileLabels,
@@ -271,9 +274,10 @@ export function useMonitorAgents({
         explicit: terminals,
         workspaceSessions: workspace?.sessions ?? [],
         exitedSessionIds: exitedTerminalIds,
+        closingSessionIds,
         identities: terminalIdentities,
       }),
-    [exitedTerminalIds, terminalIdentities, terminals, workspace?.sessions],
+    [closingSessionIds, exitedTerminalIds, terminalIdentities, terminals, workspace?.sessions],
   );
 
   const agents = useMemo(() => {

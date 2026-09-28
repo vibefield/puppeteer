@@ -27,6 +27,7 @@ export interface MergeMonitorTerminalsInput {
   explicit: readonly MonitorTerminalRecord[];
   workspaceSessions: readonly SessionSummary[];
   exitedSessionIds?: ReadonlySet<string> | undefined;
+  closingSessionIds?: ReadonlySet<string> | undefined;
   identities?: ReadonlyMap<string, string> | undefined;
 }
 
@@ -34,7 +35,7 @@ export interface MergeMonitorTerminalsInput {
 export function mergeMonitorTerminals(input: MergeMonitorTerminalsInput): readonly MonitorTerminalRecord[] {
   const bySession = new Map(input.explicit.map((terminal) => [terminal.session.id, terminal] as const));
   for (const session of input.workspaceSessions) {
-    if (session.exited || input.exitedSessionIds?.has(session.id)) continue;
+    if (session.exited || input.exitedSessionIds?.has(session.id) || input.closingSessionIds?.has(session.id)) continue;
     const existing = bySession.get(session.id);
     const cwd = session.cwd ?? existing?.cwd ?? undefined;
     const identity = input.identities?.get(session.id);
@@ -46,7 +47,10 @@ export function mergeMonitorTerminals(input: MergeMonitorTerminalsInput): readon
     });
   }
   return [...bySession.values()].filter(
-    (terminal) => !terminal.session.exited && !input.exitedSessionIds?.has(terminal.session.id),
+    (terminal) =>
+      !terminal.session.exited &&
+      !input.exitedSessionIds?.has(terminal.session.id) &&
+      !input.closingSessionIds?.has(terminal.session.id),
   );
 }
 

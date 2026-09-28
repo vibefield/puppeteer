@@ -14,12 +14,23 @@ pane removal and host disposal release markers, timers and pinned dimensions.
 Empty shells and idle agents receive fullscreen whenever the host lends the verb.
 
 `UnusedPaneSessions` is a receipt for fresh shells created through the host's
-new-pane door. On close, retain a session with local input, agent ownership,
-foreground work, a remote origin, or another pane. An untouched fresh shell can
-be terminated when its final pane detaches; restored and externally attached
-sessions never acquire a fresh-shell receipt. VibeField publishes the accepted
-close intent separately from the native floor's asynchronous shutdown ladder,
-so a stale inventory cannot restore the closed bubble.
+new-pane door. Seed receipts from the split override and from Ghosttea's
+`sessionCreatedHere(id)` for its initial empty-workspace birth. Registration,
+listing, restoring and attaching do not create receipts; repeated receipts never
+reset evidence that a shell has been used.
+
+Feed committed pane sessions into `update(sessions, isUsed)` on every attachment
+change. It returns untouched shells that lost their last pane, including when a
+bubble or a new terminal replaces a pane's session without closing the pane.
+Input, agent ownership, foreground work and remote origin retain the shell;
+another local pane keeps it attached. Use is remembered even if the work later
+finishes. Do not feed an empty snapshot on host unmount or visibility changes.
+
+Both hosts hide closing terminals immediately. VibeField publishes pending close
+intent while its audited termination RPC runs, restores the bubble on refusal,
+and retains accepted intents independently of stale inventory and the native
+shutdown ladder. Duplicate requests share a promise; callbacks from a disposed
+pool cannot undo a newer pool's intent.
 
 During the source window, both apps resolve Ghosttea from `../ghosttea-0.11.2`.
 Run its SDK and native-addon builds and build `ghosttead` in release mode before

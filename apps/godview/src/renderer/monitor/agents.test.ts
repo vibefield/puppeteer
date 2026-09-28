@@ -230,6 +230,16 @@ describe('monitor agent assembly', () => {
     ]);
   });
 
+  it('hides a closing empty terminal before its exit or stale roster refresh arrives', () => {
+    expect(
+      mergeMonitorTerminals({
+        explicit: [{ session: session('closing'), spawnHint: { x: 10, y: 20 } }],
+        workspaceSessions: [session('closing'), session('live')],
+        closingSessionIds: new Set(['closing']),
+      }),
+    ).toMatchObject([{ session: { id: 'live' } }]);
+  });
+
   it('cycles and counts agent-backed sessions only', () => {
     const assembled = assembleMonitorAgents({
       agents: [
