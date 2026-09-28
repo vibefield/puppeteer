@@ -123,8 +123,9 @@ port, rotated its bearer, turned strict on, or installed another agent — with 
 
 - `writeRendezvous(home, {port, token, strict, retryMs?, launchProviders, imposterExecutable?, hostLabel?})` publishes
   the provider table, then the rendezvous. It throws, before writing, on values no shim could use.
-- `hostLabel` (1–64 printable characters) is the host's name, which the shim says in place of "the host" in its own
-  sentences (§7). A label a shim cannot read is dropped, never a reason to lose the host.
+- `hostLabel` (1–64 printable characters) is the host's name. The shim prints it at the head of every line, where a
+  host without one gets `puppeteer`, and says it in place of "the host" in its own sentences (§7). A label a shim
+  cannot read is dropped, never a reason to lose the host.
 - `readRendezvous(home)` and `readLaunchProviders(home)` never throw: a missing, unreadable or invalid file is
   `undefined`.
 - `clearRendezvous(home, {token})` at exit removes `gateway.json` only. The provider table stays, so a shim that runs
@@ -315,16 +316,23 @@ on the code, never on the reason's words:
 | `imposter-unavailable` | the imposter route it asked for is not available beside the host |
 | `prepare-failed`, `terminal-conflict`, `adopt-failed` | the preparation failed; the terminal already runs a managed session; the adoption failed |
 
-A person in the host's terminal reads the host's own words. `SpawnThroughHost.refusal(refused)` receives `{code,
-reason, argument?, providerId, command}` — `command` is the name the person typed — and returns one or two lines,
-which the shim prints after `puppeteer: <command>: `. The kit keeps printable characters only, two lines at most and
-400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds whatever it prints to the same bound. Absent,
-throwing, or left empty by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call
-for the codes it does not word itself).
+A person in the host's terminal reads the host's own words, under the host's own name.
+`SpawnThroughHost.refusal(refused)` receives `{code, reason, argument?, providerId, command}` — `command` is the name
+the person typed — and returns one or two lines, which the shim prints after `<label>: <command>: `, where `<label>`
+is the host's `hostLabel`, or `puppeteer` for a host that gave none. The kit keeps printable characters only, two
+lines at most and 400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds what it prints to the
+same bound, the label inside it: the longer the label, the less room for the words. Absent, throwing, or left empty
+by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call for the codes it does
+not word itself).
 
 The shim speaks for itself when the host cannot answer ("waiting for the host to start it as a managed session…",
-"the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and it says
-the label in place of "the host".
+"the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and every
+line carries it, in the sentence as well as at its head:
+
+```text
+<label>: <name>: waiting for <label> to start it as a managed session…
+<label>: <name>: not started: <label> did not answer within 8 s
+```
 
 ### Before a host turns strict on
 
@@ -418,7 +426,7 @@ const host: SpawnThroughHost = {
   strict,
   // The host's own shells ({pid, startedAt, terminalSessionId}), walked from the pid up.
   resolveTerminal: async ({ pid }) => findOwningProcess({ pid, owners: shells.all() }),
-  // One or two lines, printed after `puppeteer: <command>: `.
+  // One or two lines, printed after `<label>: <command>: `.
   refusal: ({ command, code, argument }) => wordsFor(command, code, argument),
   // The ingress the adapter binds, so a run can be re-attached after the host restarts.
   launchOptions: () => ({ ingress: { onBound: rememberIngress } }),
@@ -465,7 +473,8 @@ The duties, one by one:
 - **Keep `terminals.json` current**: write the list at your start and whenever one of your terminals is born or ends,
   each shell with its start from `processStartedAt`. It is how a strict shim knows your terminals while you are away.
 - **Word your refusals, and name yourself**: `refusal` for the sentence a person reads, and the same `hostLabel` in
-  `writeRendezvous` and `materializeShims` for the shim's own sentences.
+  `writeRendezvous` and `materializeShims` for the name at the head of every line the shim prints and in its own
+  sentences. Without one, a person reads `puppeteer`, a name they never chose.
 - **Watch the adopted pid and report its exit.** The agent is the shell's child, not yours: no exit event reaches you.
   `watchProcessExit` polls; `graceMs` gives your terminal's own exit event (completed, crashed, asked to stop) a turn
   to arrive first. Call `handleProcessExit` when it fires.
