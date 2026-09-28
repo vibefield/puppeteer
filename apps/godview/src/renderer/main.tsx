@@ -77,7 +77,7 @@ import {
   zoomLayoutApplied,
 } from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
-import { AppDeckLaunchers, useSessionBirths } from './deck/launcher-host.js';
+import { AppDeckLaunchers, usePaneSessionUsed } from './deck/launcher-host.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
@@ -475,7 +475,6 @@ function Godview() {
     },
     [agentsBySession, platform.defaultShell],
   );
-  const births = useSessionBirths(WORKSPACE_STORAGE_KEY, createSplitSession);
 
   // Main owns the durable descriptors, so the answer to "what was this pane?"
   // is a lookup there; the saved session id is the key both sides already share.
@@ -531,6 +530,7 @@ function Godview() {
     [workspace],
   );
   const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
+  const paneSessionUsed = usePaneSessionUsed(agentsBySession);
   useLayoutEffect(() => {
     if (!workspace) return;
     // Includes Ghosttea's initial empty-workspace birth, outside the split override.
@@ -539,18 +539,13 @@ function Godview() {
     }
     const detached = unusedPanes.current.update(
       workspace.panes.map((pane) => pane.session),
-      (session) =>
-        terminalRuntime.sessionHasInput(session.id) ||
-        session.exited ||
-        session.activity.kind === 'foreground-job' ||
-        agentsBySession.get(session.id)?.agent !== undefined ||
-        terminalRuntime.remoteSession(session.id) !== undefined,
+      paneSessionUsed,
     );
     for (const session of detached) terminalRuntime.terminate(session.id);
     if (detached.length > 0) {
       setClosingSessionIds((current) => new Set([...current, ...detached.map((session) => session.id)]));
     }
-  }, [workspace, agentsBySession]);
+  }, [workspace, paneSessionUsed]);
   const zoomedPaneId = zoomLayoutApplied(zoom.state.phase) ? zoom.state.paneId : null;
   const paneVisibility = useMemo(
     () =>
@@ -766,7 +761,7 @@ function Godview() {
             sidebar={WorkspaceReporter}
             decoratePane={decoratePane}
             paneMeta={persistPaneRecovery}
-            createSplitSession={births.createSplitSession}
+            createSplitSession={createSplitSession}
             splitSizing="equal"
             onTogglePaneZoom={zoom.toggle}
             paneVisibility={paneVisibility}
@@ -793,8 +788,7 @@ function Godview() {
         <AppDeckLaunchers
           deckRef={deckRef}
           workspace={workspace}
-          births={births}
-          agentsBySession={agentsBySession}
+          used={paneSessionUsed}
           fallbackCwds={frameFallbackCwds}
           paneColors={paneColors}
         />
