@@ -975,6 +975,11 @@ Update:
   - one `AgentProvider` entry with a strict `{ id, label }` descriptor;
   - optional adapter-owned `AccountUsageService` composition;
   - `createSession` and optional `prepareSession`;
+    - a launch that must not proceed for a reason the person can act on throws Core's
+      `AgentLaunchRefusedError(code, sentence)`, or a subclass: `code` the adapter's own, UPPER_SNAKE; `sentence` one
+      plain line with no path, token or other internal detail. The runtime answers `AGENT_LAUNCH_REFUSED` with the
+      sentence as `error.message` and the code as `error.refusal.code`. Anything else a provider throws is an internal
+      failure: reported to the runtime's reporter, and answered `AGENT_SESSION_CREATE_FAILED` in the runtime's own words.
   - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, any
     conformant Imposter topology, and `classifies` once the normalizer classifies every invocation (§7.6);
   - `launch.normalizeInvocation` delegated to the adapter's `launch/native-invocation.ts`;

@@ -248,6 +248,7 @@ field reads as interactive.
 | in no terminal of the host's | runs as typed | runs as typed |
 | accepted, interactive, in the host's terminal | managed | managed |
 | rejected, interactive, in the host's terminal | runs as typed | refused, naming the argument |
+| a launch the agent's own adapter refused, for a reason the person can act on (settings that turn every hook off, say), interactive, in the host's terminal | runs as typed | refused, in the adapter's words |
 | an agent the host cannot manage (unsupported, no imposter, a failed preparation or adoption), interactive, in the host's terminal | runs as typed | refused |
 
 "Runs as typed" is `fallback`: the real executable, the original argv, unmanaged. **The rule of refusal:** the kit
@@ -329,16 +330,22 @@ on the code, never on the reason's words:
 | `unsupported-agent`, `invalid-invocation` | the runtime offers no managed invocation for it, or would not put it to the adapter |
 | `rejected-argument` | the adapter's grammar: an argument the managed launch cannot carry |
 | `imposter-unavailable` | the imposter route it asked for is not available beside the host |
+| `launch-refused` | the agent's own adapter refused the launch, for a reason the person can act on: `reason` is its sentence |
 | `prepare-failed`, `terminal-conflict`, `adopt-failed` | the preparation failed; the terminal already runs a managed session; the adoption failed |
 
 A person in the host's terminal reads the host's own words, under the host's own name.
-`SpawnThroughHost.refusal(refused)` receives `{code, reason, argument?, providerId, command}` — `command` is the name
+`SpawnThroughHost.refusal(refused)` receives `{code, reason, argument?, providerCode?, providerId, command}` — `command` is the name
 the person typed — and returns one or two lines, which the shim prints after `<label>: <command>: `, where `<label>`
 is the host's `hostLabel`, or `puppeteer` for a host that gave none. The kit keeps printable characters only, two
 lines at most and 400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds what it prints to the
 same bound, the label inside it: the longer the label, the less room for the words. Absent, throwing, or left empty
 by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call for the codes it does
 not word itself).
+
+With `launch-refused`, `reason` is the adapter's own sentence, already one printable line within the bound, and
+`providerCode` is the adapter's code for it (Claude's `CLAUDE_HOOKS_OFF`). Word the codes you know and return
+`refused.reason` for the rest; with no words of the host's, the kit's sentence carries the adapter's: "not started,
+because it could not be run as a managed session: <the adapter's sentence>".
 
 The shim speaks for itself when the host cannot answer ("waiting for the host to start it as a managed session…",
 "the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and every
