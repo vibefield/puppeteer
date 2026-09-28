@@ -10,7 +10,7 @@ import {
 } from '@vibecook/puppeteer-views/launcher';
 import type { CreateAgentSessionResult, LauncherAgentRow } from '../../protocol.js';
 import type { MonitorAgent } from '../monitor/types.js';
-import { freshSessionIds, launcherCwds, paneSessionUsed } from './launcher-fresh.js';
+import { freshSessionIds, launcherCwds, paneSessionUsed, planLauncherReplace } from './launcher-fresh.js';
 
 /** "Has this pane's shell been used?" — the reaper's rule and the launcher's gate (`paneSessionUsed`). */
 export type PaneSessionUsed = (session: SessionSummary) => boolean;
@@ -85,9 +85,12 @@ export interface AppDeckLaunchersProps {
  * Godview's empty pane launchers (QL-1): the package's `DeckLaunchers`, fed
  * this window's fresh shells and a port over main's launcher channels. An
  * accepted launch or resume is mounted into the launcher's pane once the
- * launcher has left (QL-D8). The shell it replaced is then detached, born
- * here and unused — it had no input by construction — so the deck's
- * `UnusedPaneSessions` reaper terminates it like any other unused shell.
+ * launcher has left (QL-D8). The shell it replaced is then detached and born
+ * here; while it is unused by the reaper's own rule (keys and pastes are held
+ * during a launch) the deck's `UnusedPaneSessions` reaper terminates it like
+ * any other unused shell. One that was used anyway — a binding's or a menu's
+ * paste, a foreground job, an exit — the reaper keeps, so the launcher ends it
+ * itself, unless another pane still shows it (`planLauncherReplace`).
  *
  * Known limits of QL-1. On Linux, Ghosttea's default table binds alt+1…9 to
  * goto_tab and its workspace binding listener, registered first on window
@@ -113,17 +116,18 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
   const { agents, refresh } = useLauncherAgents(fresh.size > 0);
 
   // The port is built once: `recent()` refetches whenever its identity changes.
-  const latest = useRef({ workspace, agents, refresh });
-  latest.current = { workspace, agents, refresh };
+  const latest = useRef({ workspace, agents, refresh, used });
+  latest.current = { workspace, agents, refresh, used };
   const profileByKey = useRef(new Map<string, string>());
 
   const port = useMemo<LauncherPort>(() => {
-    /** Mount `session` where the fresh shell was, after the launcher's leave; the reaper ends the shell. */
+    /** Mount `session` where the fresh shell was, after the launcher's leave; the shell is ended (above). */
     const replace = (freshSessionId: string, session: SessionSummary): void => {
       window.setTimeout(() => {
         const current = latest.current.workspace;
         if (!current) return;
-        if (!current.panes.some((pane) => pane.session.id === freshSessionId)) {
+        const plan = planLauncherReplace(current.panes, freshSessionId, latest.current.used);
+        if (plan.place === 'add') {
           // The pane closed while the agent started: keep the agent on screen.
           current.addSession(session);
           return;
@@ -131,6 +135,7 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
         // Ghosttea mounts into the ACTIVE pane; activating the shell's pane first targets it.
         current.activateSession(freshSessionId);
         current.mountSession(session);
+        if (plan.terminate) runtime.terminate(freshSessionId);
       }, LAUNCHER_LEAVE_MS);
     };
     const settle = (freshSessionId: string, result: CreateAgentSessionResult): LauncherOutcome => {
@@ -179,7 +184,7 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
         }
       },
     };
-  }, []);
+  }, [runtime]);
 
   // Ghosttea's workspace selects by session; a fresh shell shows in one pane.
   const activatePane = useCallback((paneId: string): void => {

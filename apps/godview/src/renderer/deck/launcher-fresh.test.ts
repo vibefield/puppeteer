@@ -3,6 +3,7 @@ import {
   freshSessionIds,
   launcherCwds,
   paneSessionUsed,
+  planLauncherReplace,
   type PaneUseFacts,
   type PaneUseSession,
 } from './launcher-fresh.js';
@@ -62,5 +63,52 @@ describe('fresh sessions', () => {
       ['live', '/w/live'],
       ['fallback', '/w/fallback'],
     ]);
+  });
+});
+
+describe('replacing the fresh shell (QL-D8)', () => {
+  const pane = (id: string, sessionId: string, extra: Partial<PaneUseSession> = {}) => ({
+    id,
+    session: session(sessionId, extra),
+  });
+  const unused = () => false;
+  const used = () => true;
+
+  it.each<[string, ReturnType<typeof pane>[], (candidate: PaneUseSession) => boolean, object]>([
+    [
+      'an unused shell is the reaper’s to end',
+      [pane('p1', 'fresh'), pane('p2', 'other')],
+      unused,
+      { place: 'mount', terminate: false },
+    ],
+    [
+      'a used shell is the launcher’s to end',
+      [pane('p1', 'fresh'), pane('p2', 'other')],
+      used,
+      { place: 'mount', terminate: true },
+    ],
+    [
+      'a used shell another pane still shows is left alone',
+      [pane('p1', 'fresh'), pane('p2', 'fresh')],
+      used,
+      { place: 'mount', terminate: false },
+    ],
+    [
+      'a pane that closed during the launch gets the agent split in',
+      [pane('p2', 'other')],
+      used,
+      { place: 'add', terminate: false },
+    ],
+  ])('%s', (_name, panes, rule, expected) => {
+    expect(planLauncherReplace(panes, 'fresh', rule)).toEqual(expected);
+  });
+
+  it('asks the reaper’s rule about the fresh shell itself', () => {
+    const asked: string[] = [];
+    planLauncherReplace([pane('p1', 'fresh', { exited: true })], 'fresh', (candidate) => {
+      asked.push(candidate.id);
+      return candidate.exited;
+    });
+    expect(asked).toEqual(['fresh']);
   });
 });

@@ -610,6 +610,18 @@ describe('the mounter’s key routing', () => {
     expect(decided(event, state)).toEqual(expected);
   });
 
+  it('lets a key through, and the launcher go, once the host says the shell took input by another path', () => {
+    const used = { consume: false, release: false, effect: 'used', action: { kind: 'used' } };
+    // ⌥1 would launch, ⎋ would dismiss, ↓ would move: the shell has input, so each is the shell's.
+    expect(launcherKeyDecision(key('Digit1', '¡', { altKey: true }), CLOSED, true)).toEqual(used);
+    expect(launcherKeyDecision(key('Escape', 'Escape'), CLOSED, true)).toEqual(used);
+    expect(launcherKeyDecision(key('ArrowDown', 'ArrowDown'), OPEN, true)).toEqual(used);
+    // A launch in flight still holds every key: the shell is about to close.
+    expect(launcherKeyDecision(key('KeyE', 'e'), LAUNCHING, true)).toMatchObject({ consume: true, effect: 'none' });
+    // No input: the launcher's keys as ever.
+    expect(launcherKeyDecision(key('Digit1', '¡', { altKey: true }), CLOSED, false).effect).toBe('apply');
+  });
+
   it('takes a release once for each press it took, wherever the release lands', () => {
     const releases = new LauncherKeyReleases();
     expect(releases.released('Digit1')).toBe(false);

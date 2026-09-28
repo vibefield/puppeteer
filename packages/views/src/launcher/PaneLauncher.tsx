@@ -160,10 +160,17 @@ export function PaneLauncher({
     return () => observer.disconnect();
   }, [pane]);
 
-  // A paste into the terminal is input for the shell; one into the field is not.
+  // A paste into the terminal is input for the shell; one into the field is
+  // not. While a launch or a resume is in flight the shell is about to close:
+  // a paste is held there like a key, and does not count as input.
   useEffect(() => {
     const onPaste = (event: ClipboardEvent): void => {
       if (event.target instanceof Node && inputRef.current?.contains(event.target)) return;
+      if (latest.current.busy) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       callbacks.current.onUsed();
     };
     pane.addEventListener('paste', onPaste, true);

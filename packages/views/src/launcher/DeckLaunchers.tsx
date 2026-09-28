@@ -12,6 +12,13 @@ import {
 } from './launcher-model.js';
 import type { LauncherAgent, LauncherPort } from './launcher-port.js';
 
+/**
+ * How long after a key the launcher let by (a ⌘/⌃ chord) it asks the host
+ * again whether the shell took input: a binding's paste reads the clipboard
+ * first and reaches the shell a moment later, with no event of its own.
+ */
+export const LAUNCHER_INPUT_RECHECK_MS = 250;
+
 /** A pane Ghosttea has laid out and the session it shows (a `DeckFramePane` fits). */
 export interface DeckLauncherPane {
   id: string;
@@ -44,7 +51,13 @@ export interface DeckLaunchersProps {
   /** The host's agent catalog, in its own order; the launcher orders by last launch. */
   agents: readonly LauncherAgent[];
   port: LauncherPort;
-  /** A host that knows a session already had input says so (QL-D7 d); the launcher also sees it itself. */
+  /**
+   * A host that knows a session already had input says so (QL-D7 d); the
+   * launcher also sees it itself. Read at render, and asked again (the
+   * host need not re-render for it) on every key into the pane, a key's
+   * release, `LAUNCHER_INPUT_RECHECK_MS` after a chord the launcher let by,
+   * a pointer in the pane, and the window regaining focus.
+   */
   hasInput?: ((sessionId: string) => boolean) | undefined;
   /** The launcher saw input reach a fresh shell: a key it let through, or a paste. */
   onSessionUsed?: ((sessionId: string) => void) | undefined;
@@ -100,8 +113,8 @@ export function DeckLaunchers({
   const controllers = useRef(new Map<string, PaneLauncherController>());
   const ordered = useMemo(() => orderAgents(agents), [agents]);
 
-  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange, onActivatePane });
-  callbacks.current = { onSessionUsed, onOwnsKeysChange, onActivatePane };
+  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput });
+  callbacks.current = { onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput };
 
   const markUsed = useCallback((sessionId: string): void => {
     setUsed((current) => addTo(current, sessionId));
@@ -109,6 +122,12 @@ export function DeckLaunchers({
   }, []);
   const dismiss = useCallback((sessionId: string): void => {
     setDismissed((current) => addTo(current, sessionId));
+  }, []);
+  /** The host says this shell has input now: its launcher goes (the host needs no telling). */
+  const recheck = useCallback((sessionId: string): boolean => {
+    if (callbacks.current.hasInput?.(sessionId) !== true) return false;
+    setUsed((current) => addTo(current, sessionId));
+    return true;
   }, []);
 
   const shown = panes.filter(
@@ -135,13 +154,18 @@ export function DeckLaunchers({
   // the host's other inputs is none of the launcher's business.
   useEffect(() => {
     const releases = new LauncherKeyReleases();
+    const rechecks = new Set<number>();
     const onKeyDown = (event: KeyboardEvent): void => {
       if (!(event.target instanceof Node)) return;
       const route = launcherPaneForTarget(event.target, routes.current);
       if (!route) return;
       const controller = controllers.current.get(route.paneId);
       if (!controller) return;
-      const decision = launcherKeyDecision(event, controller.keyState());
+      const decision = launcherKeyDecision(
+        event,
+        controller.keyState(),
+        callbacks.current.hasInput?.(route.sessionId) === true,
+      );
       if (decision.consume) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -149,9 +173,17 @@ export function DeckLaunchers({
       }
       switch (decision.effect) {
         case 'none':
+          if (decision.action.kind === 'ignore' && (event.metaKey || event.ctrlKey)) {
+            const sessionId = route.sessionId;
+            const timer = window.setTimeout(() => {
+              rechecks.delete(timer);
+              recheck(sessionId);
+            }, LAUNCHER_INPUT_RECHECK_MS);
+            rechecks.add(timer);
+          }
           return;
         case 'used':
-          markUsed(route.sessionId);
+          if (!recheck(route.sessionId)) markUsed(route.sessionId);
           return;
         case 'dismiss':
           dismiss(route.sessionId);
@@ -161,17 +193,33 @@ export function DeckLaunchers({
       }
     };
     const onKeyUp = (event: KeyboardEvent): void => {
-      if (!releases.released(event.code)) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
+      if (releases.released(event.code)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      const route = event.target instanceof Node ? launcherPaneForTarget(event.target, routes.current) : undefined;
+      if (route) recheck(route.sessionId);
+    };
+    const onPointerDown = (event: PointerEvent): void => {
+      const route = event.target instanceof Node ? launcherPaneForTarget(event.target, routes.current) : undefined;
+      if (route) recheck(route.sessionId);
+    };
+    const onFocus = (): void => {
+      for (const route of routes.current) recheck(route.sessionId);
     };
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('keyup', onKeyUp, true);
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('focus', onFocus);
     return () => {
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp, true);
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('focus', onFocus);
+      for (const timer of rechecks) window.clearTimeout(timer);
     };
-  }, [markUsed, dismiss]);
+  }, [markUsed, dismiss, recheck]);
 
   return (
     <>

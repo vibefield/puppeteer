@@ -266,8 +266,22 @@ export interface LauncherKeyDecision {
   action: LauncherKeyAction;
 }
 
-/** One key for a launcher, decided whole: whether it is taken, its release too, and what follows. */
-export function launcherKeyDecision(event: LauncherKeyEvent, state: LauncherKeyState): LauncherKeyDecision {
+/**
+ * One key for a launcher, decided whole: whether it is taken, its release
+ * too, and what follows. `hasInput` is the host's answer as the key arrives:
+ * a shell that took input by a path the launcher never saw (a paste from a
+ * binding or a menu) loses its launcher on its next key, which goes where it
+ * was going — unless a launch is in flight, when the shell is about to close
+ * and the key is held as ever.
+ */
+export function launcherKeyDecision(
+  event: LauncherKeyEvent,
+  state: LauncherKeyState,
+  hasInput = false,
+): LauncherKeyDecision {
+  if (hasInput && !state.launching) {
+    return { consume: false, release: false, effect: 'used', action: { kind: 'used' } };
+  }
   const action = launcherKeyAction(event, state);
   const consume = consumesKey(action);
   const release = consume && !MODIFIER_KEYS.has(event.key);

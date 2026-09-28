@@ -59,3 +59,27 @@ export function launcherCwds(
   }
   return cwds;
 }
+
+/** Where an accepted launch or resume goes, and whether the launcher ends the shell it replaced itself. */
+export interface LauncherReplacePlan {
+  /** `mount`: into the fresh shell's pane. `add`: that pane closed during the launch — split the agent in. */
+  place: 'mount' | 'add';
+  /**
+   * Terminate the replaced shell explicitly (QL-D8's fallback): the deck's
+   * reaper ends only a shell it finds unused, so one that was used by the
+   * reaper's own rule when the agent mounts is the launcher's to end — and
+   * only when the pane it leaves was the last one showing it.
+   */
+  terminate: boolean;
+}
+
+export function planLauncherReplace<Session extends PaneUseSession>(
+  panes: readonly { session: Session }[],
+  freshSessionId: string,
+  used: (session: Session) => boolean,
+): LauncherReplacePlan {
+  const showing = panes.filter((pane) => pane.session.id === freshSessionId);
+  const [first] = showing;
+  if (!first) return { place: 'add', terminate: false };
+  return { place: 'mount', terminate: showing.length === 1 && used(first.session) };
+}
