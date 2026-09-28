@@ -77,6 +77,7 @@ import {
   zoomLayoutApplied,
 } from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
+import { AppDeckLaunchers, useSessionBirths } from './deck/launcher-host.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
@@ -86,6 +87,7 @@ import './styles/tokens.css';
 import './styles/godview.css';
 import '@vibecook/puppeteer-views/styles/views.css';
 import '@vibecook/puppeteer-views/styles/deck-frame.css';
+import '@vibecook/puppeteer-views/styles/pane-launcher.css';
 import './styles/agents-drawer.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
@@ -473,6 +475,7 @@ function Godview() {
     },
     [agentsBySession, platform.defaultShell],
   );
+  const births = useSessionBirths(WORKSPACE_STORAGE_KEY, createSplitSession);
 
   // Main owns the durable descriptors, so the answer to "what was this pane?"
   // is a lookup there; the saved session id is the key both sides already share.
@@ -763,7 +766,7 @@ function Godview() {
             sidebar={WorkspaceReporter}
             decoratePane={decoratePane}
             paneMeta={persistPaneRecovery}
-            createSplitSession={createSplitSession}
+            createSplitSession={births.createSplitSession}
             splitSizing="equal"
             onTogglePaneZoom={zoom.toggle}
             paneVisibility={paneVisibility}
@@ -786,6 +789,14 @@ function Godview() {
           verbs={frameVerbs}
           frame={AppPaneFrame}
           zoomedPaneId={zoomedPaneId}
+        />
+        <AppDeckLaunchers
+          deckRef={deckRef}
+          workspace={workspace}
+          births={births}
+          agentsBySession={agentsBySession}
+          fallbackCwds={frameFallbackCwds}
+          paneColors={paneColors}
         />
       </section>
     </div>
