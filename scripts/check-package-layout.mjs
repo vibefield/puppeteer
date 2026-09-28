@@ -120,8 +120,12 @@ const retiredRepositoryPaths = [
   'apps/godview/src/main/restore-launch.ts',
   'apps/godview/src/main/scenario-recorder.test.ts',
   'apps/godview/src/main/scenario-recorder.ts',
+  // Godview's own spawn-through gateway and shim: the kit (`packages/runtime/src/host/spawn-through`) replaced them.
+  'apps/godview/src/main/spawn-through.test.ts',
+  'apps/godview/src/main/spawn-through.ts',
   'apps/godview/src/renderer/legacy-agent-state.ts',
   'apps/godview/src/renderer/ScenarioRecordingControl.tsx',
+  'apps/godview/src/shim',
   'apps/emulator',
   'docs/monitor-v2-canary.md',
   'draft/DESIGN.md',
@@ -248,11 +252,7 @@ const forbiddenConsumerUsageTokens = [
   'spark',
 ];
 
-const providerNeutralLaunchPaths = [
-  'apps/godview/src/main/spawn-through.ts',
-  'apps/godview/src/shim/agent-shim.ts',
-  'apps/godview/src/restore-snapshot.ts',
-];
+const providerNeutralLaunchPaths = ['apps/godview/src/restore-snapshot.ts'];
 
 const providerNeutralLaunchHostPaths = ['apps/godview/src/main/main.ts'];
 

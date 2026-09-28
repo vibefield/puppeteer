@@ -974,10 +974,11 @@ executables, raw environment maps, app-server wiring, native resume argv, or pro
 ### 9.4 Wire product applications that expose built-in agents
 
 Runtime registration makes provider-neutral identity and launch capability available to consumers. Godview discovers
-provider ids and display labels through `providers()` and
-`launchProviders()`, creates shims from declared commands, forwards only declared environment names, and hands the
-intent to `prepareInvocation()`. Its spawn-through host owns authentication, PID-to-terminal matching, adoption,
-fallback, and `exec`; it must not parse vendor argv, choose adapter transports, or assemble provider options.
+provider ids and display labels through `providers()` and `launchProviders()`, and builds its terminal host on the
+spawn-through kit (`@vibecook/puppeteer-runtime/spawn-through`, [the host guide](spawn-through-hosts.md)): the kit
+creates shims from declared commands, forwards only declared environment names, authenticates, hands the intent to
+`prepareInvocation()`, and adopts, falls back or `exec`s; Godview supplies PID-to-terminal matching, its records and the
+exit report. Neither parses vendor argv, chooses adapter transports, or assembles provider options.
 
 Resume uses the `AgentContinuation` returned on every `AgentSessionInfo`: persist it opaquely and pass it to
 `runtime.resume()`. Product snapshots must not split it back into provider id, native session id, and launch
