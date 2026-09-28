@@ -319,13 +319,64 @@ describe('what a managed Codex session carries', () => {
     expect(normalize(['-c', 'k=1', '-c', 'k=2'])).toMatchObject({ status: 'accepted' });
   });
 
+  it('carries the sandbox and approval settings to the server that starts the thread alone, never to the TUI', () => {
+    for (const setting of [
+      'sandbox_mode="read-only"',
+      'approval_policy="never"',
+      'sandbox_workspace_write.network_access=true',
+      'sandbox_workspace_write.writable_roots=["/extra"]',
+      '"sandbox_mode" = "danger-full-access"',
+    ]) {
+      // The TUI refuses them on a remote resume (S30, S32) and adopts the thread's instead (S25, S26).
+      expect(normalize(['-c', setting]), setting).toEqual({
+        status: 'accepted',
+        options: { appServerArguments: [`--config=${setting}`], permissionDefaults: 'configuration' },
+      });
+    }
+    // Typed alongside -s or -a, the setting is still the configuration the thread takes the other half from.
+    expect(
+      normalize(['-s', 'workspace-write', '-c', 'approval_policy="never"', '-c', 'model_reasoning_effort=high']),
+    ).toEqual({
+      status: 'accepted',
+      options: {
+        sandbox: 'workspace-write',
+        appServerArguments: ['--config=approval_policy="never"', '--config=model_reasoning_effort=high'],
+        tuiArguments: ['--config=model_reasoning_effort=high'],
+        permissionDefaults: 'configuration',
+      },
+    });
+  });
+
+  it('says the sandbox and the approvals once: a -c for either conflicts with -s, -a and the bypass flag', () => {
+    expect(normalize(['-s', 'read-only', '-c', 'sandbox_mode="workspace-write"'])).toEqual({
+      status: 'rejected',
+      reason: 'sandbox_mode is given twice',
+      argument: '-c',
+    });
+    expect(normalize(['-c', '"sandbox_mode"="read-only"', '-s', 'read-only'])).toMatchObject({
+      reason: 'sandbox_mode is given twice',
+      argument: '-s',
+    });
+    expect(normalize(['-a', 'never', '-c', 'approval_policy="on-request"'])).toMatchObject({
+      reason: 'approval_policy is given twice',
+      argument: '-c',
+    });
+    expect(normalize(['--dangerously-bypass-approvals-and-sandbox', '-c', 'approval_policy="never"'])).toEqual({
+      status: 'rejected',
+      reason: '--dangerously-bypass-approvals-and-sandbox already sets the sandbox and the approvals',
+      argument: '-c',
+    });
+    expect(normalize(['-c', 'sandbox_mode="read-only"', '--dangerously-bypass-approvals-and-sandbox'])).toMatchObject({
+      argument: '--dangerously-bypass-approvals-and-sandbox',
+    });
+    // The workspace-write details are not the mode: typed with the bypass flag, codex ignores them, and so does the server.
+    expect(
+      normalize(['--dangerously-bypass-approvals-and-sandbox', '-c', 'sandbox_workspace_write.network_access=true']),
+    ).toMatchObject({ status: 'accepted' });
+  });
+
   it('refuses a -c for a setting no probe has shown reaching the thread, each with its own reason', () => {
-    const sandboxedOrApproved =
-      'it changes how commands are sandboxed or approved, which a managed session cannot pass on yet';
     for (const [setting, reason] of [
-      ['sandbox_mode="read-only"', sandboxedOrApproved],
-      ['approval_policy=never', sandboxedOrApproved],
-      ['sandbox_workspace_write.network_access=true', sandboxedOrApproved],
       ['approvals_reviewer="user"', 'it changes who reviews approvals, which a managed session cannot pass on yet'],
       ['default_permissions=":read-only"', 'it picks a permission profile, which a managed session cannot pass on yet'],
       [
@@ -341,7 +392,7 @@ describe('what a managed Codex session carries', () => {
         'it changes which folders codex trusts, which a managed session cannot pass on yet',
       ],
       ['profile=work', 'it selects a settings profile, which a managed session cannot pass on yet'],
-      ['"sandbox_mode" = "read-only"', sandboxedOrApproved],
+      ['"profile" = "work"', 'it selects a settings profile, which a managed session cannot pass on yet'],
     ]) {
       expect(normalize(['-c', setting!]), setting).toEqual({ status: 'rejected', reason, argument: '-c' });
     }

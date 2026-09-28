@@ -17,23 +17,26 @@ const CodexContinuationStateSchema = z.union([
     .refine((value) => value.home !== undefined || value.imposterRoot !== undefined),
 ]);
 
-const SANDBOXED_OR_APPROVED =
-  'it changes how commands are sandboxed or approved, which a managed session cannot pass on yet';
+/**
+ * Permission settings: carried to the private app-server's line alone, where a typed
+ * launch's thread takes its permissions from (S29/S34, S31/S35). The TUI refuses them on
+ * a remote resume (S30: "Permission overrides are not supported when resuming a remote
+ * task"; S32: writable_roots "not supported with --remote") and needs none: it adopts the
+ * thread's policy over its own configuration (S25, S26).
+ */
+const SERVER_ONLY = new Set(['approval_policy', 'sandbox_mode', 'sandbox_workspace_write']);
 
 /**
  * Settings a typed `-c` names that the managed recipe does not carry, each with the
  * clause a person reads. No probe has shown them reaching the thread as they do typed.
  */
 const NOT_CARRIED: Readonly<Record<string, string>> = {
-  approval_policy: SANDBOXED_OR_APPROVED,
   approvals_reviewer: 'it changes who reviews approvals, which a managed session cannot pass on yet',
   default_permissions: 'it picks a permission profile, which a managed session cannot pass on yet',
   permissions: 'it defines a permission profile, which a managed session cannot pass on yet',
   profile: 'it selects a settings profile, which a managed session cannot pass on yet',
   projects: 'it changes which folders codex trusts, which a managed session cannot pass on yet',
-  sandbox_mode: SANDBOXED_OR_APPROVED,
   sandbox_permissions: 'it grants the sandbox extra permissions, which a managed session cannot pass on yet',
-  sandbox_workspace_write: SANDBOXED_OR_APPROVED,
 };
 
 export interface CodexNativeInvocationOptions {
@@ -120,9 +123,13 @@ function carry(
         options.model = use.values[0];
         settings.push({ setting: 'model', use });
       }
-      if (landing === 'thread-sandbox') options.sandbox = use.values[0] as CodexNativeInvocationOptions['sandbox'];
+      if (landing === 'thread-sandbox') {
+        options.sandbox = use.values[0] as CodexNativeInvocationOptions['sandbox'];
+        settings.push({ setting: 'sandbox_mode', use });
+      }
       if (landing === 'thread-approval') {
         options.approvalPolicy = use.values[0] as CodexNativeInvocationOptions['approvalPolicy'];
+        settings.push({ setting: 'approval_policy', use });
       }
       if (landing === 'thread-bypass') bypass = use;
       continue;
@@ -145,6 +152,7 @@ function carry(
       }
       const value = use.values[0]!;
       let setting = `features.${value}`;
+      let family: string | undefined;
       if (name === '--config') {
         const equals = value.indexOf('=');
         if (equals < 0) {
@@ -153,7 +161,7 @@ function carry(
         }
         // A dotted TOML key, quotes and spaces dropped: `"sandbox_mode"` is sandbox_mode.
         setting = value.slice(0, equals).replace(/["'\s]/gu, '');
-        const family = setting.split('.')[0]!;
+        family = setting.split('.')[0]!;
         if (Object.hasOwn(NOT_CARRIED, family)) {
           refuse(use.index, NOT_CARRIED[family]!, use.token);
           continue;
@@ -161,7 +169,7 @@ function carry(
       }
       settings.push({ setting, use });
       appServerArguments.push(`${name}=${value}`);
-      tuiArguments.push(`${name}=${value}`);
+      if (family === undefined || !SERVER_ONLY.has(family)) tuiArguments.push(`${name}=${value}`);
       continue;
     }
     // landing === 'tui'
@@ -175,9 +183,10 @@ function carry(
   }
 
   if (bypass) {
-    const pair = session.options.find(
-      (use) => use.row.landing === 'thread-sandbox' || use.row.landing === 'thread-approval',
-    );
+    // Anything else that decides the sandbox or the approvals: -s, -a, or a -c for either.
+    const pair = settings.find(
+      ({ setting }) => overlaps(setting, 'sandbox_mode') || overlaps(setting, 'approval_policy'),
+    )?.use;
     if (pair) {
       const later = pair.index > bypass.index ? pair : bypass;
       refuse(

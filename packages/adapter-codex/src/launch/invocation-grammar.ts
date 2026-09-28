@@ -87,8 +87,8 @@ export const CODEX_OPTIONS: readonly CodexOptionRow[] = [
     repeatable: true,
     class: 'carried',
     landing: 'server',
-    why: 'a thread takes a setting from the server that starts it, so the private server gets it (codex parses it there as typed) and so does the TUI; given only to the TUI on a resume it does not reach the thread',
-    evidence: ['P2 S6', 'P3 S13', 'P4 S17', 'P4 S18', 'P5 S19'],
+    why: "a thread takes a setting from the server that starts it, so the private server gets it (codex parses it there as typed) and so does the TUI — but a sandbox or approval setting goes to the server alone: the TUI refuses one on a remote resume and adopts the thread's; given only to the TUI on a resume a setting does not reach the thread",
+    evidence: ['P2 S6', 'P3 S13', 'P4 S17', 'P4 S18', 'P5 S19', 'P8 S29/P9 S34', 'P8 S31/P9 S35', 'P8 S30', 'P8 S32'],
   },
   {
     names: ['--enable'],
@@ -181,8 +181,8 @@ export const CODEX_OPTIONS: readonly CodexOptionRow[] = [
     values: ['read-only', 'workspace-write', 'danger-full-access'],
     class: 'carried',
     landing: 'thread-sandbox',
-    why: 'a start parameter; the TUI refuses it on a remote resume',
-    evidence: ['P2 S3', 'P2 S4', 'P2 S7', 'P2 S10', 'P2 S11'],
+    why: 'a start parameter, the approval left to the configuration when only this is typed; the TUI refuses it on a remote resume',
+    evidence: ['P2 S3', 'P2 S4', 'P2 S7', 'P2 S10', 'P2 S11', 'P8 S31/P9 S35'],
   },
   {
     names: ['--approve-for-me'],
@@ -240,8 +240,8 @@ export const CODEX_OPTIONS: readonly CodexOptionRow[] = [
     values: ['on-request', 'never'],
     class: 'carried',
     landing: 'thread-approval',
-    why: 'a start parameter the TUI adopts; the TUI refuses it on a remote resume',
-    evidence: ['parse batch3', 'P2 S3', 'P2 S4', 'P2 S7'],
+    why: 'a start parameter the TUI adopts, the sandbox left to the configuration when only this is typed; the TUI refuses it on a remote resume',
+    evidence: ['parse batch3', 'P2 S3', 'P2 S4', 'P2 S7', 'P8 S29/P9 S34'],
   },
   {
     names: ['--search'],
