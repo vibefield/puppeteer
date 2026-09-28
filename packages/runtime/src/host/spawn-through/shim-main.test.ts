@@ -1,6 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { closeSync, openSync, readFileSync, realpathSync } from 'node:fs';
-import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
@@ -13,7 +13,7 @@ import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
 import { processStartedAt } from './process-watch.js';
 import { MAX_REFUSAL_MESSAGE_LENGTH, type SpawnThroughRequest, type SpawnThroughResponse } from './protocol.js';
-import { clearRendezvous, writeRendezvous } from './rendezvous.js';
+import { RENDEZVOUS_FILE, clearRendezvous, writeRendezvous } from './rendezvous.js';
 import { TERMINALS_FILE, writeTerminals, type SpawnThroughTerminal } from './terminals.js';
 
 const TOKEN = 'bearer-never-printed';
@@ -149,7 +149,13 @@ afterAll(async () => {
 async function gatewayAnswering(
   shimHome: string,
   answer: (request: SpawnThroughRequest) => SpawnThroughResponse,
-  rendezvous: { strict?: boolean; retryMs?: number; imposterExecutable?: string; token?: string } = {},
+  rendezvous: {
+    strict?: boolean;
+    retryMs?: number;
+    imposterExecutable?: string;
+    token?: string;
+    hostLabel?: string;
+  } = {},
 ): Promise<SpawnThroughRequest[]> {
   const requests: SpawnThroughRequest[] = [];
   const gateway = await startSpawnThroughGateway({
@@ -169,8 +175,25 @@ async function gatewayAnswering(
     launchProviders: providers,
     ...(rendezvous.retryMs === undefined ? {} : { retryMs: rendezvous.retryMs }),
     ...(rendezvous.imposterExecutable === undefined ? {} : { imposterExecutable: rendezvous.imposterExecutable }),
+    ...(rendezvous.hostLabel === undefined ? {} : { hostLabel: rendezvous.hostLabel }),
   });
   return requests;
+}
+
+/** A placed refusal: printed and exit 75 at once, wherever the shim runs. */
+const refusing = (): SpawnThroughResponse => ({
+  action: 'refuse',
+  code: 'rejected-argument',
+  reason: 'r',
+  message: 'refused as it stands',
+  placed: true,
+});
+
+/** Names a label no shim can say in the published rendezvous: `writeRendezvous` refuses one, so it is written here. */
+async function unsayableLabelIn(shimHome: string, hostLabel: string): Promise<void> {
+  const path = join(shimHome, RENDEZVOUS_FILE);
+  const rendezvous = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown>;
+  await writeFile(path, JSON.stringify({ ...rendezvous, hostLabel }));
 }
 
 async function deadPort(): Promise<number> {
@@ -418,6 +441,88 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     expect(ran.stderr).toBe('puppeteer: example: refused as it stands\n');
   });
 
+  /** A person reads the name of the host whose terminal they typed in, not the kit's. */
+  describe("the host's name leads every line it prints", () => {
+    it("the rendezvous's label, over the launcher's", async () => {
+      for (const shimHome of [home, labelledHome]) {
+        await gatewayAnswering(shimHome, refusing, { hostLabel: 'Field Host' });
+        const ran = await launch(shimHome, 'example');
+
+        expect(ran.code, shimHome).toBe(75);
+        expect(ran.stderr, shimHome).toBe('Field Host: example: refused as it stands\n');
+        for (const gateway of gateways.splice(0)) await gateway.close();
+      }
+    });
+
+    it("the launcher's label, when the rendezvous names none", async () => {
+      await gatewayAnswering(labelledHome, refusing);
+      const ran = await launch(labelledHome, 'example');
+
+      expect(ran.code).toBe(75);
+      expect(ran.stderr).toBe("Launcher's Host: example: refused as it stands\n");
+    });
+
+    it('puppeteer, as it always did, when the host has no label', async () => {
+      await gatewayAnswering(home, refusing);
+      const ran = await launch(home, 'example');
+
+      expect(ran.code).toBe(75);
+      expect(ran.stderr).toBe('puppeteer: example: refused as it stands\n');
+    });
+
+    it("never a label that fails validation: the launcher's, if it has one, else puppeteer", async () => {
+      const unsayable = [
+        `Field${String.fromCodePoint(0x1b)}[2J Host`,
+        // A right-to-left override: it would turn what follows it around.
+        `Field${String.fromCodePoint(0x202e)}Host`,
+        'x'.repeat(65),
+      ];
+      for (const hostLabel of unsayable) {
+        const said = JSON.stringify(hostLabel);
+        await gatewayAnswering(home, refusing);
+        await unsayableLabelIn(home, hostLabel);
+        const fromRendezvous = await launch(home, 'example');
+        expect(fromRendezvous.stderr, said).toBe('puppeteer: example: refused as it stands\n');
+
+        // A launcher written without a label sets none, so the variable reaches the shim as the environment has it.
+        const fromLauncher = await launch(home, 'example', [], { environment: { PUPPETEER_SHIM_LABEL: hostLabel } });
+        expect(fromLauncher.stderr, said).toBe('puppeteer: example: refused as it stands\n');
+        for (const gateway of gateways.splice(0)) await gateway.close();
+
+        await gatewayAnswering(labelledHome, refusing);
+        await unsayableLabelIn(labelledHome, hostLabel);
+        const overLauncher = await launch(labelledHome, 'example');
+        expect(overLauncher.stderr, said).toBe("Launcher's Host: example: refused as it stands\n");
+        for (const gateway of gateways.splice(0)) await gateway.close();
+      }
+    });
+
+    it('holds the line to the bound with the label inside it: the longest label leaves the words less room', async () => {
+      const hostLabel = 'Field Host'.padEnd(64, '.');
+      await gatewayAnswering(
+        home,
+        () => ({
+          action: 'refuse',
+          code: 'rejected-argument',
+          reason: 'rejected',
+          placed: true,
+          message: `refused here\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
+        }),
+        { hostLabel },
+      );
+      const ran = await launch(home, 'example');
+
+      expect(ran.code).toBe(75);
+      const lines = ran.stderr.trimEnd().split('\n');
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toBe(`${hostLabel}: example: refused here`);
+      expect(lines[1]!.startsWith('run it in another terminal and a third line xxx')).toBe(true);
+      expect(lines[1]!.endsWith('…')).toBe(true);
+      // Label and all: without a label, what follows `puppeteer: ` is held to the same bound.
+      expect(Array.from(ran.stderr.trimEnd()).length).toBeLessThanOrEqual(MAX_REFUSAL_MESSAGE_LENGTH);
+    });
+  });
+
   /**
    * The rule of refusal, held by the shim when the host cannot hold it: a
    * strict shim waits or refuses on its own authority only for an interactive
@@ -469,7 +574,7 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       expect(ran.elapsedMs).toBeGreaterThanOrEqual(2_000 + 1_200);
     });
 
-    it("names the host by its label in its own sentences: the rendezvous's, else the launcher's", async () => {
+    it("names the host by its label, at the head of its lines and in its own sentences: the rendezvous's, else the launcher's", async () => {
       const said = async (hostLabel: string | undefined): Promise<string[]> => {
         await writeRendezvous(labelledHome, {
           port: await deadPort(),
@@ -485,13 +590,13 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
         return ran.stderr.trimEnd().split('\n');
       };
       expect(await said('Field Host')).toEqual([
-        'puppeteer: example: waiting for Field Host to start it as a managed session…',
-        'puppeteer: example: not started: Field Host did not answer within 1 s',
+        'Field Host: example: waiting for Field Host to start it as a managed session…',
+        'Field Host: example: not started: Field Host did not answer within 1 s',
       ]);
       // The rendezvous names none: the label the launcher was written with.
       expect(await said(undefined)).toEqual([
-        "puppeteer: example: waiting for Launcher's Host to start it as a managed session…",
-        "puppeteer: example: not started: Launcher's Host did not answer within 1 s",
+        "Launcher's Host: example: waiting for Launcher's Host to start it as a managed session…",
+        "Launcher's Host: example: not started: Launcher's Host did not answer within 1 s",
       ]);
     });
 
@@ -712,6 +817,50 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       env: { PATH: '/usr/bin:/bin', PUPPETEER_SHIM_NAME: 'example', PUPPETEER_SHIM_HOME: home },
     });
     expect(old.status).toBe(127);
-    expect(old.stderr).toContain('cannot exec in place; spawn-through needs Node.js 22.15 or later');
+    // The whole rule: Node added process.execve in 22.15.0 and 23.11.0.
+    expect(old.stderr).toBe(
+      `puppeteer: example: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or ` +
+        'later on the 22 line, 23.11 or later on the 23 line, or any from 24\n',
+    );
+
+    // Said before any rendezvous is read: the launcher's label leads it.
+    const labelled = spawnSync(process.execPath, ['--require', preload, script], {
+      encoding: 'utf8',
+      env: {
+        PATH: '/usr/bin:/bin',
+        PUPPETEER_SHIM_NAME: 'example',
+        PUPPETEER_SHIM_HOME: home,
+        PUPPETEER_SHIM_LABEL: 'Field Host',
+      },
+    });
+    expect(labelled.status).toBe(127);
+    expect(labelled.stderr).toMatch(/^Field Host: example: Node\.js v\S+ cannot exec in place/u);
+  });
+
+  it('decides by process.execve itself, never by the version Node reports', async () => {
+    // A Node that says 22.14 but has the function runs; the row above says 26 without it, and cannot.
+    const saysOld = join(root, 'says-22.14.cjs');
+    await writeFile(
+      saysOld,
+      [
+        "Object.defineProperty(process, 'version', { value: 'v22.14.0' });",
+        "Object.defineProperty(process.versions, 'node', { value: '22.14.0' });",
+        '',
+      ].join('\n'),
+    );
+    const ran = spawnSync(process.execPath, ['--require', saysOld, spawnThroughLayout(home).script, 'typed'], {
+      encoding: 'utf8',
+      env: {
+        PATH: [real, '/usr/bin', '/bin'].join(delimiter),
+        PUPPETEER_SHIM_NAME: 'example',
+        PUPPETEER_SHIM_HOME: home,
+      },
+    });
+
+    // No rendezvous: the real executable, exec'd in place.
+    expect(ran.status).toBe(0);
+    expect(ran.stderr).toBe('');
+    expect(ran.stdout).toContain('REAL example\n');
+    expect(ran.stdout).toContain('ARG typed\n');
   });
 });

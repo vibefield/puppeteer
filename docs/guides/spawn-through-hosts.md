@@ -97,6 +97,17 @@ directory, setting its mode, and renaming it over the name: no reader sees a hal
 
 Call `materializeShims` at every start: the launchers name the runtime and the bundle of the host that wrote them.
 
+Where the home lives is the host's choice, and two facts bind it:
+
+- **A home under the system temp directory is emptied by the operating system's cleaner.** macOS deletes the files
+  there that were not accessed for about three days, nightly, and leaves the directories — seen on 105 homes that
+  hosts had left behind, every file gone and every directory kept. A host that lives longer keeps its home elsewhere,
+  or re-runs `materializeShims` and `writeRendezvous` on a timer with the values it started with: both are
+  idempotent, so a home nothing touched is rewritten by nothing, and what the cleaner took comes back.
+- **The home's path is permanent for a host whose shells outlive it.** It lives in every integrated shell's
+  environment (`PUPPETEER_SHIM_DIR`, and the `PATH` built from it), so a host that restarts under shells it left
+  running comes back to the same path: a new one reaches only the shells born after it.
+
 ## 4. The rendezvous, and why it is files
 
 A shell's environment names only its shim directory. Everything that changes with the host lives in files the shim
@@ -122,9 +133,12 @@ shell's environment at birth go stale at the first restart; files do not. The sh
 port, rotated its bearer, turned strict on, or installed another agent — with no change to any shell.
 
 - `writeRendezvous(home, {port, token, strict, retryMs?, launchProviders, imposterExecutable?, hostLabel?})` publishes
-  the provider table, then the rendezvous. It throws, before writing, on values no shim could use.
-- `hostLabel` (1–64 printable characters) is the host's name, which the shim says in place of "the host" in its own
-  sentences (§7). A label a shim cannot read is dropped, never a reason to lose the host.
+  the provider table, then the rendezvous. It throws, before writing, on values no shim could use. Like
+  `materializeShims` it is idempotent: an identical call rewrites no file, and a rendezvous that says the same keeps
+  the time it was written (`writtenAt`).
+- `hostLabel` (1–64 printable characters) is the host's name. The shim prints it at the head of every line, where a
+  host without one gets `puppeteer`, and says it in place of "the host" in its own sentences (§7). A label a shim
+  cannot read is dropped, never a reason to lose the host.
 - `readRendezvous(home)` and `readLaunchProviders(home)` never throw: a missing, unreadable or invalid file is
   `undefined`.
 - `clearRendezvous(home, {token})` at exit removes `gateway.json` only. The provider table stays, so a shim that runs
@@ -136,7 +150,9 @@ port, rotated its bearer, turned strict on, or installed another agent — with 
 ## 5. The launcher, and why
 
 A host cannot assume `node` on a pane's PATH, or a new enough one: the shim execs in place with `process.execve`, which
-needs Node.js 22.15. So a launcher is a POSIX `sh` file that execs the runtime the **host** names:
+Node.js added in 22.15.0 and 23.11.0 — so 22.15 or later on the 22 line, 23.11 or later on the 23 line, any from 24;
+23.0 to 23.10 do not have it. The shim looks for the function itself, never at the version, and exits 127 saying so
+when it is absent. So a launcher is a POSIX `sh` file that execs the runtime the **host** names:
 
 ```sh
 #!/bin/sh
@@ -152,8 +168,8 @@ The label line is written only for a `hostLabel`: the launcher's say, like `stri
 readable — the moment the shim speaks for a host that is gone.
 
 - `runtime.command` is an absolute path; `runtime.args` lead the shim; `runtime.env` holds what the runtime itself needs
-  (a packaged Electron app runs the shim with its own binary and `ELECTRON_RUN_AS_NODE=1`). Every word is single-quoted
-  for `sh`, so a home under `Application Support`, or with a quote in it, is safe.
+  — `ELECTRON_RUN_AS_NODE=1` for the host's own Electron binary, the last choice of runtime (§9). Every word is
+  single-quoted for `sh`, so a home under `Application Support`, or with a quote in it, is safe.
 - The shim removes every `runtime.env` name before it execs anything, so the agent never inherits them — name only
   variables the runtime needs. A recipe that sets one of those names itself keeps its value: the recipe is exact.
 - The variables are exported on their own lines: POSIX leaves unspecified whether assignments prefixed to `exec` are
@@ -315,16 +331,23 @@ on the code, never on the reason's words:
 | `imposter-unavailable` | the imposter route it asked for is not available beside the host |
 | `prepare-failed`, `terminal-conflict`, `adopt-failed` | the preparation failed; the terminal already runs a managed session; the adoption failed |
 
-A person in the host's terminal reads the host's own words. `SpawnThroughHost.refusal(refused)` receives `{code,
-reason, argument?, providerId, command}` — `command` is the name the person typed — and returns one or two lines,
-which the shim prints after `puppeteer: <command>: `. The kit keeps printable characters only, two lines at most and
-400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds whatever it prints to the same bound. Absent,
-throwing, or left empty by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call
-for the codes it does not word itself).
+A person in the host's terminal reads the host's own words, under the host's own name.
+`SpawnThroughHost.refusal(refused)` receives `{code, reason, argument?, providerId, command}` — `command` is the name
+the person typed — and returns one or two lines, which the shim prints after `<label>: <command>: `, where `<label>`
+is the host's `hostLabel`, or `puppeteer` for a host that gave none. The kit keeps printable characters only, two
+lines at most and 400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds what it prints to the
+same bound, the label inside it: the longer the label, the less room for the words. Absent, throwing, or left empty
+by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call for the codes it does
+not word itself).
 
 The shim speaks for itself when the host cannot answer ("waiting for the host to start it as a managed session…",
-"the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and it says
-the label in place of "the host".
+"the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and every
+line carries it, in the sentence as well as at its head:
+
+```text
+<label>: <name>: waiting for <label> to start it as a managed session…
+<label>: <name>: not started: <label> did not answer within 8 s
+```
 
 ### Before a host turns strict on
 
@@ -418,7 +441,7 @@ const host: SpawnThroughHost = {
   strict,
   // The host's own shells ({pid, startedAt, terminalSessionId}), walked from the pid up.
   resolveTerminal: async ({ pid }) => findOwningProcess({ pid, owners: shells.all() }),
-  // One or two lines, printed after `puppeteer: <command>: `.
+  // One or two lines, printed after `<label>: <command>: `.
   refusal: ({ command, code, argument }) => wordsFor(command, code, argument),
   // The ingress the adapter binds, so a run can be re-attached after the host restarts.
   launchOptions: () => ({ ingress: { onBound: rememberIngress } }),
@@ -456,7 +479,13 @@ await clearRendezvous(home, { token });
 
 The duties, one by one:
 
-- **Choose the runtime**: an absolute Node.js ≥ 22.15, or the host's Electron binary with `ELECTRON_RUN_AS_NODE=1`.
+- **Choose the runtime**: an absolute Node.js with `process.execve` (22.15 or later on the 22 line, 23.11 or later on
+  the 23 line, any from 24); the host's Electron binary with `ELECTRON_RUN_AS_NODE=1` only when no such Node exists.
+  The order is a measurement: under Electron 43.1.0 as Node, `process.execve` itself took a median of 4.3 s
+  (78 ms–11.3 s, n=8) against 65 ms under Node on the same host at load average 165–185, and a launcher's fallback
+  end to end a median of 13.1 s against 0.77 s (n=8) at load 229–282. The cause was not found, and no number was
+  taken on an idle host. A host pins the Node it found at startup: if that Node is uninstalled while the host runs,
+  the launchers fail until the host chooses again.
 - **Resolve the real executables** before writing the table, and decide the names; a name the table lacks is never
   intercepted by the gateway.
 - **Resolve terminals from your own evidence** (Godview matches the shell's pid to the request's `parentPid`, then its
@@ -465,7 +494,8 @@ The duties, one by one:
 - **Keep `terminals.json` current**: write the list at your start and whenever one of your terminals is born or ends,
   each shell with its start from `processStartedAt`. It is how a strict shim knows your terminals while you are away.
 - **Word your refusals, and name yourself**: `refusal` for the sentence a person reads, and the same `hostLabel` in
-  `writeRendezvous` and `materializeShims` for the shim's own sentences.
+  `writeRendezvous` and `materializeShims` for the name at the head of every line the shim prints and in its own
+  sentences. Without one, a person reads `puppeteer`, a name they never chose.
 - **Watch the adopted pid and report its exit.** The agent is the shell's child, not yours: no exit event reaches you.
   `watchProcessExit` polls; `graceMs` gives your terminal's own exit event (completed, crashed, asked to stop) a turn
   to arrive first. Call `handleProcessExit` when it fires.

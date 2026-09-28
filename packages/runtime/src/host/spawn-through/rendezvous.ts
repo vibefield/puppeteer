@@ -52,7 +52,11 @@ export interface WriteRendezvousOptions {
   hostLabel?: string | undefined;
 }
 
-/** Publish the rendezvous and the provider table. Throws on values no shim could use (a host's bug). */
+/**
+ * Publish the rendezvous and the provider table. Throws on values no shim
+ * could use (a host's bug). Idempotent: an identical call rewrites no file,
+ * so a host can publish the same values again on a timer.
+ */
 export async function writeRendezvous(home: string, options: WriteRendezvousOptions): Promise<void> {
   if (options.hostLabel !== undefined && !isSpawnThroughHostLabel(options.hostLabel)) {
     throw new Error(`not a host label a shim can say: ${JSON.stringify(options.hostLabel)}`);
@@ -71,6 +75,11 @@ export async function writeRendezvous(home: string, options: WriteRendezvousOpti
     ...(options.hostLabel === undefined ? {} : { hostLabel: options.hostLabel }),
   });
   const launchProviders = AgentLaunchProviderSchema.array().parse(options.launchProviders);
+  // A rendezvous that already says all of this keeps the time it was written: its bytes match, and nothing is written.
+  const existing = await readRendezvous(home);
+  if (existing && JSON.stringify({ ...existing, writtenAt: '' }) === JSON.stringify({ ...rendezvous, writtenAt: '' })) {
+    rendezvous.writtenAt = existing.writtenAt;
+  }
   await ensurePrivateDirectory(home);
   // The table first: a shim that reads the new rendezvous finds the table it was written with.
   await publishFile(join(home, LAUNCH_PROVIDERS_FILE), `${JSON.stringify(launchProviders, null, 2)}\n`, 0o600);

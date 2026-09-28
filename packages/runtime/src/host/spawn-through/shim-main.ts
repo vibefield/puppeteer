@@ -39,9 +39,20 @@ const RESPONSE_TIMEOUT_MS = 28_000;
 /** Loopback connects at once or not at all; this only bounds a machine too loaded to say. */
 const CONNECT_TIMEOUT_MS = 2_000;
 
+/** The label baked into the launcher (`PUPPETEER_SHIM_LABEL`), when it is one a shim can say. */
+const launcherLabel = isSpawnThroughHostLabel(process.env.PUPPETEER_SHIM_LABEL)
+  ? process.env.PUPPETEER_SHIM_LABEL
+  : undefined;
+/** The host's label as the shim knows it: the launcher's until `run` has read the rendezvous. */
+let hostLabel = (): string | undefined => launcherLabel;
+
 function say(text: string): void {
-  // Gateway text reaches the person's terminal: printable characters only, on at most two lines, bounded.
-  process.stderr.write(`puppeteer: ${boundSpawnThroughText(text)}\n`);
+  // Gateway text reaches the person's terminal: printable characters only, on at most two lines, bounded. A person
+  // reads the name of the host whose terminal it is, not the kit's: the label leads the line, inside the bound.
+  const label = hostLabel();
+  const line =
+    label === undefined ? `puppeteer: ${boundSpawnThroughText(text)}` : boundSpawnThroughText(`${label}: ${text}`);
+  process.stderr.write(`${line}\n`);
 }
 
 function leave(line: string, code: number): never {
@@ -106,10 +117,12 @@ function main(): Promise<void> {
       SPAWN_THROUGH_EXIT_UNAVAILABLE,
     );
   }
+  // The function decides, never the version: Node added it in 22.15.0 and 23.11.0, so 23.0–23.10 lack it.
   const execve = process.execve;
   if (typeof execve !== 'function') {
     leave(
-      `${name}: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or later`,
+      `${name}: Node.js ${process.version} cannot exec in place; spawn-through needs Node.js 22.15 or later on the 22 ` +
+        'line, 23.11 or later on the 23 line, or any from 24',
       SPAWN_THROUGH_EXIT_UNAVAILABLE,
     );
   }
@@ -183,11 +196,10 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
 
   const launchProviders: AgentLaunchProvider[] = (await readLaunchProviders(home)) ?? [];
   let rendezvous = await readRendezvous(home);
-  // The host's name in the shim's own sentences: its latest readable word, else the launcher's.
-  const launcherLabel = isSpawnThroughHostLabel(process.env.PUPPETEER_SHIM_LABEL)
-    ? process.env.PUPPETEER_SHIM_LABEL
-    : undefined;
-  const theHost = (): string => rendezvous?.hostLabel ?? launcherLabel ?? 'the host';
+  // The host's name, at the head of every line and in the shim's own sentences: its latest readable word, else the
+  // launcher's.
+  hostLabel = () => rendezvous?.hostLabel ?? launcherLabel;
+  const theHost = (): string => hostLabel() ?? 'the host';
 
   /**
    * `ai --<provider>` is the imposter's own invocation: the provider comes from
