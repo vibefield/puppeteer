@@ -186,3 +186,56 @@ Implications for the adapter (`driver.ts` allow-list and transcript attachment):
 - The boot session's hooks carry an id that never becomes a session. They must not bind the bridge; answering them 403 only makes Claude record a hook failure, so the bridge acknowledges and drops them.
 - The announcement of the chosen session is the `SessionStart` whose `source` is `resume`; a `startup` SessionStart in a resume launch is the boot shell. The transcript to observe is the one that SessionStart names.
 - `InstructionsLoaded` is not a boot-finished signal on the picker path, so `session:ready` is not available there; `session:started` alone marks the run alive.
+
+---
+
+## 7. Invocation grammar (2.1.283 probe, 2026-09-27)
+
+**Probed:** 2026-09-27, Claude Code **2.1.283**, darwin-arm64, native installer, SHA-256 `d8cb1e5c79684cc12a8bfc813e3a2073406921b6245744b3009be3ab5651d21e`. The adapter's table is `packages/adapter-claude/src/launch/invocation-grammar.ts`; its census test holds it to `claude --help` (captured as `probes/claude@2.1.283/help.txt` and the adapter fixture `claude-help-2.1.283.txt`, identical). Every probe below is recorded in `probes/claude@2.1.283/invocation-grammar.json`.
+
+**Three probe forms**, cheapest first:
+
+- **Parse probe** (59, session-free): `claude <flags under test> mcp --help`. Usage `claude mcp` means the flags parse and leave `mcp` the first operand; the root usage means a flag took `mcp` as its value (or an unknown option pushed it to commander's unknown list); exit 1 is commander's own error. The help is the same at any width and under an empty `CLAUDE_CONFIG_DIR`: the grammar does not depend on configuration.
+- **Static inspection** (13 facts) of the digest-pinned executable, each bound to its anchor by digest and offset and to an 8 KiB window by digest; no source text retained.
+- **Live** (16 sessions) in the repository's isolated rig (`adapter-claude/src/test-support/live-model.ts`): a throwaway `HOME` and `CLAUDE_CONFIG_DIR`, a loopback Messages API, a placeholder token, command hooks logging each event, a node-pty the harness owns. No account was used; nothing of the owner's was read or written.
+
+### 7.1 How the CLI reads argv
+
+Two stages, and the adapter's reader mirrors both in this order:
+
+1. **The entry, on the raw argv, before any parser.** An argv of exactly `--version|-v|-V` (optionally with `--verbose`) prints the version (`-V` works only here). As **argv[0] only**: `logs`, `attach`, `stop|kill`, `respawn`, `rm` (background sessions — *not* commander subcommands; the help splices them in for display), `remote-control|rc|remote|sync|bridge` (Remote Control), `self-hosted-runner`; `plugin test`; `daemon` as the first argument after any `--dangerously-skip-permissions`/`--allow-dangerously-skip-permissions`. **Anywhere**: `--bg`/`--background` (even after `--`); `--tmux` or `--tmux=classic` together with `-w`/`--worktree`/`--worktree=…` execs into tmux. A lone `--update`/`--upgrade` becomes `update`. `--bare` and `--safe-mode` **before the first `--`** turn hooks off whatever the parser later makes of the token (`claude --append-system-prompt --bare` is bare). `--handle-uri <x>` anywhere opens a deep link. `claude [options] import [codex|gemini|cursor|--dry-run|--yes[=…]]` is rewritten to `claude [options] -- "/import …"`: an interactive session that runs /import.
+2. **Commander 12** (`enablePositionalOptions()`): options anywhere until `--`; a `<value>` option takes the next token whatever it is (`--model --verbose` sets the model to `--verbose`); `[value]` takes it unless it looks like an option (length > 1, leading `-`: a lone `-` is a value); `<values...>` takes the next token unconditionally, then every token until one looks like an option; `--flag=value` takes one value (no variadic continuation), and a flag given `=value` is unknown; short clusters split as commander does (`-cd` is `-c -d`, `-dc` is debug filter `c`, `-hc` is unknown because the help option is kept apart, `-d2e` is one hidden name); unknown options are refused; **excess operands are dropped** — only the first operand is the prompt (live L12); the first operand selects a subcommand **even after `--`** (live L14); and **in print mode no subcommand is registered** (an exact `-p`/`--print` option token before `--`, value-aware): `claude -p mcp list` is a one-shot whose prompt is `mcp` (`claude -p --help` prints a usage without `[command]`).
+
+### 7.2 Classes, and where they depart from the brief's reading
+
+| Rows | Class | Evidence |
+| --- | --- | --- |
+| `-h/--help`, `-v/--version`; every management subcommand; hidden `sandbox`, `import-conversations`, `daemon`, the VS Code helpers `edit-*`/`design-login` | utility | help; static (registrations, entry dispatch) |
+| `--bg/--background`, `--cloud`, `--environment`, hidden `--remote`/`--pool` (aliases); `attach`, `ultrareview`; hidden `remote-control\|rc`, `remote`, `sync`, `bridge`, `self-hosted-runner`; `-w … --tmux` | elsewhere | help; static — Remote Control's own refusal names "the sessions Remote Control starts"; the tmux fast path execs into tmux |
+| `-p/--print` | one-shot | help |
+| `--output-format`, `--input-format`, `--include-partial-messages`, `--max-budget-usd`, `--no-session-persistence`, `--permission-prompts`, `--json-schema`, `--replay-user-messages`, `--forward-subagent-text`, `--include-hook-events`, **`--prompt-suggestions`**, hidden `--max-turns`/`--permission-prompt-tool` | rejected without `-p` | help "(only works with --print)"; static action checks; live L13 (`--prompt-suggestions` exits "requires --print") |
+| `--session-id`; `--settings` | rejected: owned | live L02 — a second `--settings` **replaces** the first (only its hooks ran); static — the eager load reads the last value |
+| `--bare`, `--safe-mode` | rejected: blinding | help; live L09/L10 — no hook fires (L10 still ran a model turn); static — raw scan before `--` |
+| `--fork-session`; **`--teleport`** | rejected: identity | help; static — teleport runs the teleported session in this terminal ("Teleporting session…") under that session's id |
+| `-w/--worktree`; `--tmux` alone | rejected: place | live L15 — every hook came from `<workspace>/.claude/worktrees/<name>`; static — `--tmux` without `--worktree` exits "requires --worktree" |
+| `claude import` in the rewrite's shape | rejected | static — the rewrite to a /import session |
+| `--model`, `--effort`, `--permission-mode` (accepts `default`, the former name of `manual`: parse probe), `--setting-sources`, `-c`, `-r`, `--from-pr`, `-n/--name` | accepted: mapped | help; existing findings §6 |
+| every other listed option, hidden `-d2e`, `--system-prompt-file`, `--append-system-prompt-file`, `--rc`; **`--dangerously-skip-permissions`** | accepted: carried verbatim | help; live L11/L16 (carried options take effect, hooks fire), L03/L04 |
+
+Departures from the brief's reading, each on the evidence above: `--teleport` elsewhere → rejected; `--prompt-suggestions` carried → rejected without `-p`; `import` utility → rejected in the rewrite's shape (utility otherwise); `--tmux` place → elsewhere with `-w` (rejected alone); `--dangerously-skip-permissions` mapped → carried.
+
+### 7.3 Facts the recipe rests on
+
+- **Permission mode (live L03–L07; static).** The session's mode is the first of `--dangerously-skip-permissions`, `--permission-mode`, the agent's frontmatter, the settings `defaultMode`. So the skip flag wins over any `--permission-mode` (L03), and the recipe's `--permission-mode default` — added since DESIGN §16.3's "recommended command", with no reason recorded there that applies to a typed launch — **overrides a person's `defaultMode`** (L05 typed: acceptEdits; L07 with `default`: default; L06 with none: acceptEdits). A typed launch's recipe now passes only the mode the person gave; a host's own spawn keeps `default`.
+- **Settings.** User-settings hooks and the managed `--settings` hooks both run (L06); two `--settings` do not compose (L02).
+- **`--restricted`** keeps `--settings` (the managed hooks fire, L08) and reads no user/project/local settings (their hooks and status line do not run, L08): the recipe delegates to no status line under it.
+- **Order.** Managed flags first, carried arguments next, the prompt last after `--`: a trailing variadic (`--add-dir a b`) cannot take the prompt (L16), and `-r`'s optional value cannot take it either.
+
+### 7.4 Not modeled, and open
+
+- **Configuration the pure reader cannot see.** A global config with `defaultToAgentsView` makes a bare `claude` (or one with only debug flags) open the agents view on a TTY, typed; managed, it is a session. `cloudSessionsByDefault` would turn a plain start into a cloud session unless `--session-id` is given — hard-coded false in 2.1.283, so dead today; a later release that turns it on flips typed and managed apart. `CLAUDE_CODE_SIMPLE`, `CLAUDE_CODE_SAFE_MODE` and `CLAUDE_CODE_RESTRICTED` in the shell's environment do what `--bare`, `--safe-mode` and `--restricted` do, and the provider's environment allow-list (`CLAUDE_CONFIG_DIR` only) keeps them from the normalizer.
+- **Refused by design, though the CLI would run it:** an unknown token is refused even when a later `-v`/`-h` would have printed version or help (its arity is unknown); `claude --cwd x agents` (a flag only the agents fast path reads) is refused as unknown.
+- **`--fork-session` could compose:** the CLI accepts `--session-id` together with `--continue`/`--resume` only when `--fork-session` is also given, so a fork could take the managed id — unprobed, and the recipe does not pass `--session-id` with a resume form today.
+- **Rejected and unprobed** (a live probe would need a cloud session or the account): `--teleport` (would show whether the teleported session keeps its own id under the managed `--session-id`), `--fork-session` (whether the fork honours a managed `--session-id`), `claude import` in the rewrite's shape (whether a managed launch could carry the /import prompt, and what it does when the feature is off).
+- **Passthrough on static evidence alone** (a live probe would act outside the throwaway directory): `--bg` and the background commands (start or open a background session), `-w … --tmux` (opens tmux or iTerm2 panes), `--cloud`/`--environment`/`--remote`/`--pool` and `ultrareview` (create cloud sessions), the Remote Control family (registers with claude.ai).
+- **Accepted without a live probe of their own:** `--from-pr` (a resume form, like `-r`), `--remote-control`/`--rc` (enabling Remote Control would register with claude.ai), `--agent`, `--agents`, `--plugin-dir`, `--plugin-url`, `--client-data-url`, `--file`, `--betas`, `--ide`, `--chrome`.
