@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { PaneLauncherChrome, type LauncherBusy } from './PaneLauncherChrome.js';
 import {
@@ -26,6 +34,12 @@ import type {
 export const LAUNCHER_LEAVE_MS = 120;
 
 /**
+ * The longest a click in a resting pane's field waits for the pane's own focus
+ * before the field opens anyway (a window that paints no frames never settles).
+ */
+export const LAUNCHER_ACTIVATION_SETTLE_MS = 250;
+
+/**
  * What `DeckLaunchers`' window key listener asks of the launcher in the
  * focused pane: its key state, and to act on a key the launcher took.
  */
@@ -46,6 +60,12 @@ export interface PaneLauncherProps {
   color?: string | undefined;
   /** The pane is the selected one. */
   active: boolean;
+  /**
+   * Select this pane: called first on a pointer in the launcher while the pane
+   * is resting (the pane's own activation never sees a portal's events).
+   * Without it, a click in a resting launcher leaves the selection alone.
+   */
+  onActivate?: (() => void) | undefined;
   /** The agents in launch order (`orderAgents`). */
   agents: readonly LauncherAgent[];
   port: LauncherPort;
@@ -84,6 +104,7 @@ export function PaneLauncher({
   cwd,
   color,
   active,
+  onActivate,
   agents,
   port,
   scope,
@@ -111,13 +132,16 @@ export function PaneLauncher({
   const folder = launcherFolder(cwd);
   // The mounter's callbacks may be new on every render; the effects that use
   // them should not re-subscribe for it.
-  const callbacks = useRef({ onUsed, onDone, register });
-  callbacks.current = { onUsed, onDone, register };
+  const callbacks = useRef({ onUsed, onDone, register, onActivate });
+  callbacks.current = { onUsed, onDone, register, onActivate };
+  /** A click in a resting pane's field that opens the field once the pane is selected; its undo. */
+  const pendingOpen = useRef<(() => void) | undefined>(undefined);
 
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      pendingOpen.current?.();
     };
   }, []);
 
@@ -265,6 +289,40 @@ export function PaneLauncher({
     if (refocus) focusTerminal(pane);
   };
 
+  // A pointer in a resting pane's launcher selects the pane first. Selecting it
+  // makes Ghosttea focus the pane's terminal a frame later, and that focus asks
+  // for itself again the frame after; a field that took the click's focus at
+  // once would lose it and close. So a click in the field does not focus it:
+  // the field opens two frames after the pane's own focus lands (or after
+  // `LAUNCHER_ACTIVATION_SETTLE_MS`, whichever is first).
+  const onRootPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const activate = callbacks.current.onActivate;
+    if (active || !activate) return;
+    activate();
+    if (!(event.target instanceof Element) || !event.target.closest('.vf-pane-launcher-field')) return;
+    event.preventDefault();
+    if (pendingOpen.current) return;
+    let settled = false;
+    const undo = (): void => {
+      settled = true;
+      window.removeEventListener('focusin', onFocusIn);
+      window.clearTimeout(timer);
+      if (pendingOpen.current === undo) pendingOpen.current = undefined;
+    };
+    const openField = (): void => {
+      if (settled) return;
+      undo();
+      if (alive.current) inputRef.current?.focus();
+    };
+    const onFocusIn = (focus: FocusEvent): void => {
+      if (!(focus.target instanceof Node) || !pane.contains(focus.target)) return;
+      window.requestAnimationFrame(() => window.requestAnimationFrame(openField));
+    };
+    window.addEventListener('focusin', onFocusIn);
+    const timer = window.setTimeout(openField, LAUNCHER_ACTIVATION_SETTLE_MS);
+    pendingOpen.current = undo;
+  };
+
   // The key listener lives in the mounter and reads this launcher through a
   // stable handle; the handle reads the latest render through a ref.
   const latest = useRef({ open, highlight, rows, agents, busy, launch, resume, close, scope, onScopeChange });
@@ -344,6 +402,11 @@ export function PaneLauncher({
       onResume={resume}
       onHighlight={setHighlight}
       onScope={onScopeChange}
+      onRootPointerDown={onRootPointerDown}
+      onRootMouseDown={(event) => {
+        // The click that selected the pane leaves the focus to the pane (above).
+        if (pendingOpen.current) event.preventDefault();
+      }}
     />,
     pane,
   );

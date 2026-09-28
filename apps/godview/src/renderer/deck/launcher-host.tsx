@@ -181,11 +181,19 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
     };
   }, []);
 
+  // Ghosttea's workspace selects by session; a fresh shell shows in one pane.
+  const activatePane = useCallback((paneId: string): void => {
+    const current = latest.current.workspace;
+    const pane = current?.panes.find((candidate) => candidate.id === paneId);
+    if (pane && current?.activePaneId !== paneId) current?.activateSession(pane.session.id);
+  }, []);
+
   return (
     <DeckLaunchers
       deckRef={deckRef}
       panes={panes ?? []}
       activePaneId={workspace?.activePaneId}
+      onActivatePane={activatePane}
       freshSessionIds={fresh}
       cwdBySession={cwdBySession}
       paneColors={paneColors}

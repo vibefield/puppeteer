@@ -229,6 +229,79 @@ export function consumesKey(action: LauncherKeyAction): boolean {
   return action.kind !== 'ignore' && action.kind !== 'used' && action.kind !== 'type';
 }
 
+/* ── the mounter's routing (DeckLaunchers) ─────────────────────────────── */
+
+/** A pane that shows a launcher, as the mounter's key listener sees it. */
+export interface LauncherKeyPane {
+  paneId: string;
+  sessionId: string;
+  element: { contains(node: Node | null): boolean };
+}
+
+/**
+ * The launcher a key belongs to: the one in the pane that holds the key's
+ * target, whether or not the workspace calls that pane active (a click can
+ * put the keyboard in a pane before, or without, its activation). A key aimed
+ * anywhere else is none of the launchers' business.
+ */
+export function launcherPaneForTarget<Pane extends LauncherKeyPane>(
+  target: Node | null,
+  panes: readonly Pane[],
+): Pane | undefined {
+  if (!target) return undefined;
+  return panes.find((pane) => pane.element.contains(target));
+}
+
+/** What the mounter does with one key after `launcherKeyAction` has named it. */
+export interface LauncherKeyDecision {
+  /** Take the key from everyone after the launcher (`preventDefault` + `stopImmediatePropagation`). */
+  consume: boolean;
+  /** Take the key's release too, so no one sees a keyup whose keydown they never saw. */
+  release: boolean;
+  /**
+   * `none`: nothing more. `used`: the shell has input, so the launcher goes.
+   * `dismiss`: put away with ⎋. `apply`: the launcher acts on `action`.
+   */
+  effect: 'none' | 'used' | 'dismiss' | 'apply';
+  action: LauncherKeyAction;
+}
+
+/** One key for a launcher, decided whole: whether it is taken, its release too, and what follows. */
+export function launcherKeyDecision(event: LauncherKeyEvent, state: LauncherKeyState): LauncherKeyDecision {
+  const action = launcherKeyAction(event, state);
+  const consume = consumesKey(action);
+  const release = consume && !MODIFIER_KEYS.has(event.key);
+  switch (action.kind) {
+    case 'ignore':
+    case 'type':
+    case 'hold':
+      return { consume, release, effect: 'none', action };
+    case 'used':
+      return { consume, release, effect: 'used', action };
+    case 'dismiss':
+      return { consume, release, effect: 'dismiss', action };
+    default:
+      return { consume, release, effect: 'apply', action };
+  }
+}
+
+/**
+ * The key codes whose press a launcher took, so their releases are taken too.
+ * A release is taken once, wherever it lands: the launcher may have left by then.
+ */
+export class LauncherKeyReleases {
+  readonly #pending = new Set<string>();
+
+  took(code: string): void {
+    if (code) this.#pending.add(code);
+  }
+
+  /** Whether this release is the launcher's; true at most once per press taken. */
+  released(code: string): boolean {
+    return this.#pending.delete(code);
+  }
+}
+
 /** The highlight after a move: clamped at both ends, like Find's cursor. */
 export function moveHighlight(current: number, delta: 1 | -1, count: number): number {
   if (count <= 0) return -1;

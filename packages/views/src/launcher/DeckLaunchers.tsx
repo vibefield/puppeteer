@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { GHOSTTEA_PANE_SELECTOR, usePaneElements } from '../deck/pane-elements.js';
 import { PaneLauncher, type PaneLauncherController } from './PaneLauncher.js';
-import { consumesKey, launcherKeyAction, orderAgents, showsLauncher, type LauncherScope } from './launcher-model.js';
+import {
+  LauncherKeyReleases,
+  launcherKeyDecision,
+  launcherPaneForTarget,
+  orderAgents,
+  showsLauncher,
+  type LauncherKeyPane,
+  type LauncherScope,
+} from './launcher-model.js';
 import type { LauncherAgent, LauncherPort } from './launcher-port.js';
 
 /** A pane Ghosttea has laid out and the session it shows (a `DeckFramePane` fits). */
@@ -13,8 +21,16 @@ export interface DeckLauncherPane {
 export interface DeckLaunchersProps {
   deckRef: RefObject<HTMLElement | null>;
   panes: readonly DeckLauncherPane[];
-  /** The selected pane: the one whose launcher owns the keys. */
+  /** The selected pane: its launcher draws the agents; a resting one keeps only its field. */
   activePaneId?: string | null | undefined;
+  /**
+   * Make this pane the selected one. A launcher is a portal, and React bubbles
+   * a portal's pointer events along the React tree, so the pane's own
+   * activation (Ghosttea's `onPointerDown` on the pane) never sees a click in
+   * the launcher: the launcher calls this first instead. Without it, a click in
+   * a resting pane's launcher does not select that pane.
+   */
+  onActivatePane?: ((paneId: string) => void) | undefined;
   /**
    * The shell sessions born in this view that may show a launcher (QL-D7 a–c:
    * the host's own new-pane/split door and the workspace's first pane, no agent
@@ -53,15 +69,18 @@ function addTo(set: ReadonlySet<string>, id: string): ReadonlySet<string> {
 /**
  * The empty pane launchers, mounted by a host BESIDE `DeckFrames` (QL-1). A
  * pane gets one while its session is fresh, has had no input and was not
- * dismissed; the launcher in the focused pane owns ⌥0–⌥9, ⌥↵ and ⎋ through
- * ONE window capture listener, which runs before Ghosttea's terminal textarea
- * sees the key. A key the launcher does not own goes on to the shell and
- * takes the launcher away with it (the first key is the shell's).
+ * dismissed. ONE window capture listener, which runs before Ghosttea's
+ * terminal textarea sees the key, gives each key to the launcher of the pane
+ * that holds the key's target (its terminal or the launcher's own field),
+ * active or not: that launcher owns ⌥0–⌥9, ⌥↵ and ⎋, and a key it does not
+ * own goes on to the shell and takes the launcher away with it (the first
+ * key is the shell's). A key the launcher took has its release taken too.
  */
 export function DeckLaunchers({
   deckRef,
   panes,
   activePaneId,
+  onActivatePane,
   freshSessionIds,
   cwdBySession,
   paneColors,
@@ -81,8 +100,8 @@ export function DeckLaunchers({
   const controllers = useRef(new Map<string, PaneLauncherController>());
   const ordered = useMemo(() => orderAgents(agents), [agents]);
 
-  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange });
-  callbacks.current = { onSessionUsed, onOwnsKeysChange };
+  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange, onActivatePane });
+  callbacks.current = { onSessionUsed, onOwnsKeysChange, onActivatePane };
 
   const markUsed = useCallback((sessionId: string): void => {
     setUsed((current) => addTo(current, sessionId));
@@ -96,10 +115,14 @@ export function DeckLaunchers({
     (pane) =>
       elements.byId.has(pane.id) && showsLauncher(pane.session.id, { freshSessionIds, used, dismissed, hasInput }),
   );
-  const activePane = shown.find((pane) => pane.id === activePaneId);
-  const activeElement = activePane ? elements.byId.get(activePane.id) : undefined;
-  const activeSessionId = activePane?.session.id;
-  const owns = activePane !== undefined;
+  const owns = shown.some((pane) => pane.id === activePaneId);
+  // The key listener reads the panes showing a launcher through a ref, so it is
+  // added once rather than on every render.
+  const routes = useRef<readonly LauncherKeyPane[]>([]);
+  routes.current = shown.flatMap((pane) => {
+    const element = elements.byId.get(pane.id);
+    return element ? [{ paneId: pane.id, sessionId: pane.session.id, element }] : [];
+  });
 
   useEffect(() => {
     if (!owns) return;
@@ -107,39 +130,48 @@ export function DeckLaunchers({
     return () => callbacks.current.onOwnsKeysChange?.(false);
   }, [owns]);
 
-  // One listener, only while the focused pane shows a launcher, and only for
-  // keys routed into that pane (its terminal or the launcher's own field): a
-  // key typed into the host's other inputs is none of the launcher's business.
+  // One listener for the deck's launchers, and only for keys routed into a pane
+  // that shows one (its terminal or the launcher's own field): a key typed into
+  // the host's other inputs is none of the launcher's business.
   useEffect(() => {
-    if (!activePane || !activeElement || activeSessionId === undefined) return;
-    const paneId = activePane.id;
+    const releases = new LauncherKeyReleases();
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (!(event.target instanceof Node) || !activeElement.contains(event.target)) return;
-      const controller = controllers.current.get(paneId);
+      if (!(event.target instanceof Node)) return;
+      const route = launcherPaneForTarget(event.target, routes.current);
+      if (!route) return;
+      const controller = controllers.current.get(route.paneId);
       if (!controller) return;
-      const action = launcherKeyAction(event, controller.keyState());
-      if (consumesKey(action)) {
+      const decision = launcherKeyDecision(event, controller.keyState());
+      if (decision.consume) {
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (decision.release) releases.took(event.code);
       }
-      switch (action.kind) {
-        case 'ignore':
-        case 'type':
-        case 'hold':
+      switch (decision.effect) {
+        case 'none':
           return;
         case 'used':
-          markUsed(activeSessionId);
+          markUsed(route.sessionId);
           return;
         case 'dismiss':
-          dismiss(activeSessionId);
+          dismiss(route.sessionId);
           return;
-        default:
-          controller.apply(action);
+        case 'apply':
+          controller.apply(decision.action);
       }
     };
+    const onKeyUp = (event: KeyboardEvent): void => {
+      if (!releases.released(event.code)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
     window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [activePane, activeElement, activeSessionId, markUsed, dismiss]);
+    window.addEventListener('keyup', onKeyUp, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
+    };
+  }, [markUsed, dismiss]);
 
   return (
     <>
@@ -158,6 +190,7 @@ export function DeckLaunchers({
             {...(cwd ? { cwd } : {})}
             {...(color ? { color } : {})}
             active={pane.id === activePaneId}
+            {...(onActivatePane ? { onActivate: () => callbacks.current.onActivatePane?.(pane.id) } : {})}
             agents={ordered}
             port={port}
             scope={scope}

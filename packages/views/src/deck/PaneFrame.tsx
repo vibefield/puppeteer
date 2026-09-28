@@ -32,7 +32,11 @@ export const STOPPING_TIMEOUT_MS = 8_000;
 /** The attribute the portal sets on a pane at or under `NARROW_PANE_WIDTH`; the stylesheet and a host's rows select on it. */
 export const PANE_NARROW_ATTRIBUTE = 'data-vf-narrow';
 
-/** A pointer on a verb must not take the keyboard from the terminal; the pane still activates. */
+/**
+ * A pointer on a verb must not take the keyboard from the terminal. Nor does it
+ * select the pane: the frame is a portal, and React bubbles a portal's events
+ * along the React tree, past Ghosttea's pane and its `onPointerDown`.
+ */
 export function keepTerminalFocus(event: ReactPointerEvent<HTMLButtonElement>): void {
   event.preventDefault();
 }

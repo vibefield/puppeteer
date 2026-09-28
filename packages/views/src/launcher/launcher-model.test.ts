@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LAUNCHER_LATEST_LIMIT,
   LAUNCHER_MAX_AGENTS,
+  LauncherKeyReleases,
   ageWords,
   agentKeyLabel,
   agentKeyShortcut,
@@ -15,6 +16,8 @@ import {
   historyUnavailableSentence,
   launcherFolder,
   launcherKeyAction,
+  launcherKeyDecision,
+  launcherPaneForTarget,
   markTerms,
   moveHighlight,
   noMatchSentence,
@@ -22,7 +25,9 @@ import {
   orderAgents,
   showsLauncher,
   toggleScope,
+  type LauncherKeyDecision,
   type LauncherKeyEvent,
+  type LauncherKeyPane,
   type LauncherKeyState,
 } from './launcher-model.js';
 import type { LauncherAgent, LauncherSession } from './launcher-port.js';
@@ -463,5 +468,138 @@ describe('showsLauncher', () => {
     expect(
       showsLauncher('s2', { freshSessionIds: fresh, used: none, dismissed: none, hasInput: (id) => id === 's1' }),
     ).toBe(true);
+  });
+});
+
+describe('the mounter’s key routing', () => {
+  // Stand-in nodes: a pane "contains" the nodes listed for it.
+  const node = (name: string): Node => ({ name }) as unknown as Node;
+  const terminalA = node('terminal A');
+  const fieldB = node('field B');
+  const terminalB = node('terminal B');
+  const hostInput = node('the host’s own input');
+  function pane(paneId: string, sessionId: string, holds: readonly Node[]): LauncherKeyPane {
+    return { paneId, sessionId, element: { contains: (target) => target !== null && holds.includes(target) } };
+  }
+  const panes = [pane('A', 's-a', [terminalA]), pane('B', 's-b', [fieldB, terminalB])];
+
+  it.each<[string, Node | null, string | undefined]>([
+    ['a key in the active pane’s terminal', terminalA, 'A'],
+    // The review's case: a click put the keyboard in B's field while A was still the active pane.
+    ['a key in a resting pane’s field', fieldB, 'B'],
+    ['a key in a resting pane’s terminal', terminalB, 'B'],
+    ['a key in the host’s own input', hostInput, undefined],
+    ['a key with no target', null, undefined],
+  ])('%s → %s', (_name, target, expected) => {
+    expect(launcherPaneForTarget(target, panes)?.paneId).toBe(expected);
+  });
+
+  it('routes nothing when no pane shows a launcher', () => {
+    expect(launcherPaneForTarget(terminalA, [])).toBeUndefined();
+  });
+
+  const decided = (
+    event: LauncherKeyEvent,
+    state: LauncherKeyState,
+  ): Omit<LauncherKeyDecision, 'action'> & {
+    action: string;
+  } => {
+    const decision = launcherKeyDecision(event, state);
+    return { ...decision, action: decision.action.kind };
+  };
+  const LAUNCHING: LauncherKeyState = { ...CLOSED, launching: true };
+
+  it.each<[string, LauncherKeyEvent, LauncherKeyState, ReturnType<typeof decided>]>([
+    [
+      '⌥1 closed launches, taking press and release',
+      key('Digit1', '¡', { altKey: true }),
+      CLOSED,
+      { consume: true, release: true, effect: 'apply', action: 'launch' },
+    ],
+    [
+      '⌥↵ closed opens, taking press and release',
+      key('Enter', 'Enter', { altKey: true }),
+      CLOSED,
+      { consume: true, release: true, effect: 'apply', action: 'open' },
+    ],
+    [
+      '⎋ closed dismisses',
+      key('Escape', 'Escape'),
+      CLOSED,
+      { consume: true, release: true, effect: 'dismiss', action: 'dismiss' },
+    ],
+    [
+      'a letter closed is the shell’s and marks it used',
+      key('KeyE', 'e'),
+      CLOSED,
+      { consume: false, release: false, effect: 'used', action: 'used' },
+    ],
+    [
+      '⌘V closed passes untouched',
+      key('KeyV', 'v', { metaKey: true }),
+      CLOSED,
+      { consume: false, release: false, effect: 'none', action: 'ignore' },
+    ],
+    [
+      'bare ⌥ closed passes untouched',
+      key('AltLeft', 'Alt', { altKey: true }),
+      CLOSED,
+      { consume: false, release: false, effect: 'none', action: 'ignore' },
+    ],
+    [
+      '↓ open moves',
+      key('ArrowDown', 'ArrowDown'),
+      OPEN,
+      { consume: true, release: true, effect: 'apply', action: 'move' },
+    ],
+    [
+      '⇥ open flips the scope',
+      key('Tab', 'Tab'),
+      OPEN,
+      { consume: true, release: true, effect: 'apply', action: 'toggle-scope' },
+    ],
+    [
+      '⎋ open closes',
+      key('Escape', 'Escape'),
+      OPEN,
+      { consume: true, release: true, effect: 'apply', action: 'close' },
+    ],
+    [
+      'a letter open is the field’s typing',
+      key('KeyE', 'e'),
+      OPEN,
+      { consume: false, release: false, effect: 'none', action: 'type' },
+    ],
+    [
+      '⌥1 open still launches',
+      key('Digit1', '¡', { altKey: true }),
+      OPEN,
+      { consume: true, release: true, effect: 'apply', action: 'launch' },
+    ],
+    [
+      'a letter while launching is held, release too',
+      key('KeyE', 'e'),
+      LAUNCHING,
+      { consume: true, release: true, effect: 'none', action: 'hold' },
+    ],
+    [
+      'a digit past the rows is held, release too',
+      key('Digit9', 'ª', { altKey: true }),
+      CLOSED,
+      { consume: true, release: true, effect: 'none', action: 'hold' },
+    ],
+  ])('%s', (_name, event, state, expected) => {
+    expect(decided(event, state)).toEqual(expected);
+  });
+
+  it('takes a release once for each press it took, wherever the release lands', () => {
+    const releases = new LauncherKeyReleases();
+    expect(releases.released('Digit1')).toBe(false);
+    releases.took('Digit1');
+    expect(releases.released('KeyE')).toBe(false);
+    expect(releases.released('Digit1')).toBe(true);
+    expect(releases.released('Digit1')).toBe(false);
+    releases.took('');
+    expect(releases.released('')).toBe(false);
   });
 });

@@ -1,4 +1,11 @@
-import type { CSSProperties, FocusEvent as ReactFocusEvent, ReactNode, RefObject } from 'react';
+import type {
+  CSSProperties,
+  FocusEvent as ReactFocusEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+  RefObject,
+} from 'react';
 import type { SnippetSegment } from '../find/find-model.js';
 import { AgentIcon } from '../icons/AgentIcon.js';
 import {
@@ -63,6 +70,10 @@ export interface PaneLauncherChromeProps {
   onResume?: ((index: number) => void) | undefined;
   onHighlight?: ((index: number) => void) | undefined;
   onScope?: ((scope: LauncherScope) => void) | undefined;
+  /** A pointer anywhere in the launcher, in the capture phase: before any part of it acts. */
+  onRootPointerDown?: ((event: ReactPointerEvent<HTMLDivElement>) => void) | undefined;
+  /** The same press's mouse event, in the capture phase. */
+  onRootMouseDown?: ((event: ReactMouseEvent<HTMLDivElement>) => void) | undefined;
 }
 
 /** The resume glyph at the head of the field: an arrow coming back round. */
@@ -172,6 +183,8 @@ export function PaneLauncherChrome({
   onResume,
   onHighlight,
   onScope,
+  onRootPointerDown,
+  onRootMouseDown,
 }: PaneLauncherChromeProps) {
   const style = { ...(color ? { '--pane-color': color } : {}) } as CSSProperties;
   const leaving = busy?.leaving === true;
@@ -336,7 +349,13 @@ export function PaneLauncherChrome({
 
   const showFoot = open && !historyUnavailable(history) && rows.length > 0;
   return (
-    <div className="vf-pane-launcher-host" style={style} data-vf-pane-launcher={sessionId}>
+    <div
+      className="vf-pane-launcher-host"
+      style={style}
+      data-vf-pane-launcher={sessionId}
+      onPointerDownCapture={onRootPointerDown}
+      onMouseDownCapture={onRootMouseDown}
+    >
       {previewAgent ? <span className="vf-pane-launcher-preview">{agentPreview(previewAgent)}</span> : null}
       <div className={className} role="group" aria-label="Resume a session or launch an agent in this pane">
         <div className={`vf-pane-launcher-field${open ? ' is-focus' : ''}`}>
