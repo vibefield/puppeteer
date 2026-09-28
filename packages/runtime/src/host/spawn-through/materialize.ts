@@ -2,6 +2,7 @@ import { readFile, readdir, rm } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { ensurePrivateDirectory, publishFile } from './files.js';
 import { spawnThroughLayout } from './layout.js';
+import { isSpawnThroughHostLabel } from './protocol.js';
 import { ZSH_INTEGRATION } from './shell-integration.js';
 
 /** Core's rule for an intercepted command name. A name is written into a shell script, so it is enforced here too. */
@@ -35,6 +36,12 @@ export interface MaterializeShimsOptions {
    * than fall through. A readable rendezvous's own `strict` always wins.
    */
   strict?: boolean | undefined;
+  /**
+   * The host's name for the shim's own sentences, baked in for when no
+   * rendezvous is readable — the one moment the shim speaks for a host that
+   * is gone. The rendezvous's own label wins. 1–64 printable characters.
+   */
+  hostLabel?: string | undefined;
 }
 
 export interface MaterializedShims {
@@ -60,8 +67,9 @@ export function launcherScript(options: {
   home: string;
   runtime: SpawnThroughShimRuntime;
   strict?: boolean | undefined;
+  hostLabel?: string | undefined;
 }): string {
-  const { name, home, runtime } = options;
+  const { name, home, runtime, hostLabel } = options;
   const environment = Object.entries(runtime.env ?? {});
   const command = [runtime.command, ...(runtime.args ?? []), spawnThroughLayout(home).script];
   return [
@@ -71,6 +79,7 @@ export function launcherScript(options: {
     `export PUPPETEER_SHIM_STRICT=${options.strict === true ? "'1'" : "'0'"} PUPPETEER_SHIM_STRIP=${shellQuote(
       environment.map(([variable]) => variable).join(' '),
     )}`,
+    ...(hostLabel === undefined ? [] : [`export PUPPETEER_SHIM_LABEL=${shellQuote(hostLabel)}`]),
     ...(environment.length === 0
       ? []
       : [`export ${environment.map(([variable, value]) => `${variable}=${shellQuote(value)}`).join(' ')}`]),
@@ -88,6 +97,9 @@ function validate(options: MaterializeShimsOptions): string[] {
   }
   if (!isAbsolute(options.runtime.command)) {
     throw new Error(`spawn-through runtime must be an absolute path: ${options.runtime.command}`);
+  }
+  if (options.hostLabel !== undefined && !isSpawnThroughHostLabel(options.hostLabel)) {
+    throw new Error(`not a host label a shim can say: ${JSON.stringify(options.hostLabel)}`);
   }
   for (const variable of Object.keys(options.runtime.env ?? {})) {
     // PATH is the shim's to compute for the agent, and PUPPETEER_SHIM_* the launcher's own.
@@ -119,7 +131,13 @@ export async function materializeShims(options: MaterializeShimsOptions): Promis
   for (const name of names) {
     await publishFile(
       join(layout.shimDirectory, name),
-      launcherScript({ name, home: options.home, runtime: options.runtime, strict: options.strict }),
+      launcherScript({
+        name,
+        home: options.home,
+        runtime: options.runtime,
+        strict: options.strict,
+        hostLabel: options.hostLabel,
+      }),
       0o700,
     );
   }

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { AgentLaunchProviderSchema, type AgentLaunchProvider } from '@vibecook/puppeteer-core';
 import { ensurePrivateDirectory, publishFile } from './files.js';
+import { isSpawnThroughHostLabel } from './protocol.js';
 
 /**
  * The rendezvous: how a shim finds its host, as FILES in the shim home rather
@@ -32,6 +33,11 @@ const SpawnThroughRendezvousSchema = z.object({
   pid: z.number().int().positive(),
   /** The imposter's `ai` the host chose. Absent: the first `ai` on PATH outside the shim directory. */
   imposterExecutable: z.string().min(1).max(8_192).optional(),
+  /**
+   * The host's name, said by the shim in place of "the host". A label this
+   * shim cannot say is dropped, never a reason to lose the host.
+   */
+  hostLabel: z.string().refine(isSpawnThroughHostLabel).optional().catch(undefined),
 });
 export type SpawnThroughRendezvous = z.infer<typeof SpawnThroughRendezvousSchema>;
 
@@ -42,10 +48,15 @@ export interface WriteRendezvousOptions {
   retryMs?: number | undefined;
   launchProviders: readonly AgentLaunchProvider[];
   imposterExecutable?: string | undefined;
+  /** The host's name for the shim's own sentences: 1–64 printable characters. Bake the same into the launchers. */
+  hostLabel?: string | undefined;
 }
 
 /** Publish the rendezvous and the provider table. Throws on values no shim could use (a host's bug). */
 export async function writeRendezvous(home: string, options: WriteRendezvousOptions): Promise<void> {
+  if (options.hostLabel !== undefined && !isSpawnThroughHostLabel(options.hostLabel)) {
+    throw new Error(`not a host label a shim can say: ${JSON.stringify(options.hostLabel)}`);
+  }
   const rendezvous = SpawnThroughRendezvousSchema.parse({
     format: 1,
     transport: 'tcp',
@@ -57,6 +68,7 @@ export async function writeRendezvous(home: string, options: WriteRendezvousOpti
     writtenAt: new Date().toISOString(),
     pid: process.pid,
     ...(options.imposterExecutable === undefined ? {} : { imposterExecutable: options.imposterExecutable }),
+    ...(options.hostLabel === undefined ? {} : { hostLabel: options.hostLabel }),
   });
   const launchProviders = AgentLaunchProviderSchema.array().parse(options.launchProviders);
   await ensurePrivateDirectory(home);

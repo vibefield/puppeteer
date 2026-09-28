@@ -78,6 +78,16 @@ export function boundSpawnThroughText(text: string): string {
     : `${characters.slice(0, MAX_REFUSAL_MESSAGE_LENGTH - 1).join('')}…`;
 }
 
+const HOST_LABEL = /^[^\p{C}\p{Zl}\p{Zp}]{1,64}$/u;
+
+/**
+ * A host's name for the shim's own sentences ("waiting for <label> to start
+ * it…"), which it says in place of "the host": 1–64 printable characters.
+ */
+export function isSpawnThroughHostLabel(value: unknown): value is string {
+  return typeof value === 'string' && HOST_LABEL.test(value);
+}
+
 /** The kit's own sentence for a refusal: what a person reads when the host has no words of its own. */
 export function spawnThroughRefusalMessage({ reason }: { reason: string }): string {
   return `not started, because it could not be run as a managed session: ${reason}`;

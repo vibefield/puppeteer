@@ -61,6 +61,8 @@ let real: string;
 let work: string;
 let home: string;
 let strictHome: string;
+/** Strict launchers that carry a host's label. */
+let labelledHome: string;
 let ptyRunner: string;
 const gateways: SpawnThroughGateway[] = [];
 /** This test process, as a shell of the host's: every launcher the test starts runs under it. */
@@ -75,6 +77,7 @@ beforeAll(async () => {
   work = join(root, 'work dir');
   home = join(root, 'home');
   strictHome = join(root, 'strict-home');
+  labelledHome = join(root, 'labelled-home');
   for (const directory of [real, work, join(real, 'chosen')]) await mkdir(directory, { recursive: true });
   ptyRunner = join(root, 'pty-runner.py');
   await writeFile(ptyRunner, PTY_RUNNER);
@@ -113,6 +116,7 @@ beforeAll(async () => {
   const names = ['example', 'orphan', 'missing', 'ai'];
   await materializeShims({ home, names, script, runtime });
   await materializeShims({ home: strictHome, names, script, runtime, strict: true });
+  await materializeShims({ home: labelledHome, names, script, runtime, strict: true, hostLabel: "Launcher's Host" });
 
   thisShell = { pid: process.pid, startedAt: (await processStartedAt(process.pid))! };
   elsewhere = spawn('sleep', ['600'], { stdio: 'ignore' });
@@ -122,9 +126,10 @@ beforeAll(async () => {
 
 afterEach(async () => {
   for (const gateway of gateways.splice(0)) await gateway.close();
-  await clearRendezvous(home);
-  await clearRendezvous(strictHome);
-  for (const shimHome of [home, strictHome]) await rm(join(shimHome, TERMINALS_FILE), { force: true });
+  for (const shimHome of [home, strictHome, labelledHome]) {
+    await clearRendezvous(shimHome);
+    await rm(join(shimHome, TERMINALS_FILE), { force: true });
+  }
 });
 afterAll(async () => {
   elsewhere?.kill();
@@ -436,6 +441,32 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
       const lines = ran.stderr.trimEnd().split('\n');
       expect(lines.filter((line) => line.includes('waiting for the host'))).toHaveLength(1);
       expect(lines.at(-1)).toBe('puppeteer: example: not started: the host did not answer within 1 s');
+    });
+
+    it("names the host by its label in its own sentences: the rendezvous's, else the launcher's", async () => {
+      const said = async (hostLabel: string | undefined): Promise<string[]> => {
+        await writeRendezvous(labelledHome, {
+          port: await deadPort(),
+          token: TOKEN,
+          strict: true,
+          retryMs: 1_200,
+          launchProviders: providers,
+          ...(hostLabel === undefined ? {} : { hostLabel }),
+        });
+        await writeTerminals(labelledHome, [thisShell]);
+        const ran = await launch(labelledHome, 'example', [], { tty: 'both' });
+        expect(ran.code).toBe(75);
+        return ran.stderr.trimEnd().split('\n');
+      };
+      expect(await said('Field Host')).toEqual([
+        'puppeteer: example: waiting for Field Host to start it as a managed session…',
+        'puppeteer: example: not started: Field Host did not answer within 1 s',
+      ]);
+      // The rendezvous names none: the label the launcher was written with.
+      expect(await said(undefined)).toEqual([
+        "puppeteer: example: waiting for Launcher's Host to start it as a managed session…",
+        "puppeteer: example: not started: Launcher's Host did not answer within 1 s",
+      ]);
     });
 
     it("under none of the host's shells: runs as typed, at once", async () => {
