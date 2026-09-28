@@ -5,6 +5,7 @@ import {
   constants,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -121,6 +122,7 @@ import {
   materializeShims,
   prepareSpawnThroughLaunch,
   shellIntegrationEnvironment,
+  spawnThroughLayout,
   startSpawnThroughGateway,
   watchProcessExit,
   writeRendezvous,
@@ -2530,7 +2532,75 @@ async function runSmoke(): Promise<void> {
   });
   const exited = await backend!.automation.waitForExit(session.id, 20_000);
   if (exited.exitCode !== 0) throw new Error(`smoke session exited ${exited.exitCode ?? exited.exitSignal}`);
+  await runShellIntegrationSmoke();
   console.log('SMOKE OK');
+}
+
+/**
+ * A pane's shell is the person's, not the shim home's: the kit's zsh
+ * integration gives ZDOTDIR back before any startup file of theirs runs, so
+ * `HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history` (macOS's /etc/zshrc line) lands in
+ * their home, and the launchers come first on PATH at the prompt. Witnessed in
+ * a throwaway HOME, through the daemon environment every pane is born with;
+ * the shell writes what it ended up with and exits, so nothing is typed.
+ */
+async function runShellIntegrationSmoke(): Promise<void> {
+  const shell = defaultShell();
+  const home = spawnThroughDirectory;
+  const skipped = !home
+    ? 'spawn-through is off'
+    : spawnThroughEnvironment?.ZDOTDIR === undefined
+      ? `${shell} is not integrated`
+      : process.env.ZDOTDIR
+        ? 'ZDOTDIR is set here, so the shell would read that directory rather than a throwaway HOME'
+        : undefined;
+  if (!home || skipped) {
+    console.log(`SHELL INTEGRATION SKIPPED (${skipped})`);
+    return;
+  }
+  const person = mkdtempSync(join(app.getPath('temp'), 'godview-shell-smoke-'));
+  try {
+    writeFileSync(
+      join(person, '.zshrc'),
+      [
+        'HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history',
+        // Registered after the integration's own hook, so it runs after it at the first prompt.
+        '_godview_smoke() {',
+        '  print -r -- "ZDOTDIR=${ZDOTDIR-<unset>}" "HISTFILE=$HISTFILE" "PATH1=${path[1]}" > "$HOME/facts"',
+        '  exit',
+        '}',
+        'precmd_functions+=(_godview_smoke)',
+        '',
+      ].join('\n'),
+    );
+    const session = await backend!.automation.createSession({
+      executable: shell,
+      args: [],
+      cwd: person,
+      environment: { mode: 'inherit', overrides: { HOME: person } },
+      cols: 80,
+      rows: 24,
+      persistence: 'terminate-with-app',
+      programKind: 'interactive-shell',
+    });
+    // The hook exits once it has written; a shell that never read the throwaway .zshrc waits at a prompt instead.
+    await backend!.automation.waitForExit(session.id, 30_000).catch(() => undefined);
+    const factsPath = join(person, 'facts');
+    if (!existsSync(factsPath)) {
+      await backend!.automation.terminateAndWait(session.id, 'application', 5_000).catch(() => undefined);
+      throw new Error(`the born ${shell} never ran the throwaway HOME's .zshrc to its first prompt`);
+    }
+    const facts = readFileSync(factsPath, 'utf8').trim();
+    const expected = [
+      'ZDOTDIR=<unset>',
+      `HISTFILE=${join(person, '.zsh_history')}`,
+      `PATH1=${spawnThroughLayout(home).shimDirectory}`,
+    ].join(' ');
+    if (facts !== expected) throw new Error(`the born ${shell} is not the person's: ${facts} (expected ${expected})`);
+    console.log(`SHELL INTEGRATION OK ${facts}`);
+  } finally {
+    rmSync(person, { recursive: true, force: true });
+  }
 }
 
 async function runAppearanceSmoke(): Promise<void> {
