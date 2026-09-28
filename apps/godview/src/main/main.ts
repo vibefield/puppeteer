@@ -131,6 +131,12 @@ import {
   type SpawnThroughResponse,
 } from '@vibecook/puppeteer-runtime/spawn-through';
 import { containingTerminalSession } from './containing-terminal.js';
+import {
+  describeShimHomeRefresh,
+  startShimHomeRefresh,
+  type ShimHomeRefresh,
+  type ShimHomeRefreshOutcome,
+} from './shim-home-refresh.js';
 import { sweepStaleShimHomes, type ShimHomeSweep } from './shim-home-sweep.js';
 import { chooseShimRuntime, describeShimRuntime } from './shim-runtime.js';
 import { orderNativeTabs } from './native-tab-order.js';
@@ -166,6 +172,8 @@ declare const __dirname: string;
 const DEFAULT_COLS = 100;
 const DEFAULT_ROWS = 30;
 const ADOPTED_PROCESS_EXIT_GRACE_MS = 5_000;
+/** Godview's name at the head of every line the spawn-through shim prints, and in its sentences: one label for both. */
+const SPAWN_THROUGH_HOST_LABEL = 'Godview';
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 7_000;
 const SMOKE = process.argv.includes('--smoke');
 const APPEARANCE_SMOKE = process.argv.includes('--appearance-smoke');
@@ -282,6 +290,8 @@ let spawnThroughGateway: SpawnThroughGateway | undefined;
 let spawnThroughDirectory: string | undefined;
 /** The kit's shell integration, for every shell the daemon births: it names the shim home, never the gateway. */
 let spawnThroughEnvironment: Record<string, string> | undefined;
+/** Publishes the shim home again on a timer: the temp directory's cleaner empties a home Godview outlives. */
+let spawnThroughHomeRefresh: ShimHomeRefresh | undefined;
 let remoteSessionsEnabled = true;
 const wiredAutomationClients = new WeakSet<GhostteaAutomationClient>();
 const managedTerminalIds = new Set<string>();
@@ -1652,18 +1662,40 @@ async function startSpawnThrough(): Promise<void> {
     electron: { command: process.execPath, version: process.versions.node },
   });
   console.log(`[main] ${describeShimRuntime(shimRuntime)}`);
-  await materializeShims({ home, names, script: join(__dirname, 'agent-shim.cjs'), runtime: shimRuntime.runtime });
+  const materialize = {
+    home,
+    names,
+    script: join(__dirname, 'agent-shim.cjs'),
+    runtime: shimRuntime.runtime,
+    hostLabel: SPAWN_THROUGH_HOST_LABEL,
+  };
+  await materializeShims(materialize);
   const token = randomBytes(32).toString('hex');
   spawnThroughGateway = await startSpawnThroughGateway({ token, handle: handleSpawnThroughRequest });
-  // Not strict: no host turns it on before PU-9a (docs/guides/spawn-through-hosts.md §7).
-  await writeRendezvous(home, {
+  // Not strict: Godview does not do what a strict host must first (docs/guides/spawn-through-hosts.md §7) — it keeps
+  // no terminals.json, words no refusals, and gives a launcher to every agent, classifying or not.
+  const rendezvous = {
     port: spawnThroughGateway.port,
     token,
     strict: false,
     launchProviders,
     imposterExecutable,
-  });
+    hostLabel: SPAWN_THROUGH_HOST_LABEL,
+  };
+  await writeRendezvous(home, rendezvous);
   spawnThroughEnvironment = shellIntegrationEnvironment({ home, shell: defaultShell(), environment: process.env });
+  // The home is under the system temp directory, whose cleaner empties it under a Godview that runs for days. The
+  // values it started with, published again, bring back what the cleaner took and rewrite nothing else.
+  spawnThroughHomeRefresh = startShimHomeRefresh({ materialize, rendezvous }, reportShimHomeRefresh);
+}
+
+function reportShimHomeRefresh(outcome: ShimHomeRefreshOutcome): void {
+  if ('error' in outcome) {
+    process.stderr.write(`[main] spawn-through home refresh failed: ${String(outcome.error)}\n`);
+    return;
+  }
+  const line = describeShimHomeRefresh(outcome.restored);
+  if (line) console.log(`[main] ${line}`);
 }
 
 function usableCwd(value: unknown): string | undefined {
@@ -3022,6 +3054,9 @@ function shutdown(): Promise<void> {
     await monitorConnection.close();
     backend?.stop();
     backend = undefined;
+    // Before the home goes: a refresh in flight would publish it again.
+    await spawnThroughHomeRefresh?.stop();
+    spawnThroughHomeRefresh = undefined;
     await spawnThroughGateway?.close().catch(() => undefined);
     spawnThroughGateway = undefined;
     if (spawnThroughDirectory) rmSync(spawnThroughDirectory, { recursive: true, force: true });
