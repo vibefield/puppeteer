@@ -224,6 +224,8 @@ export interface LauncherRecentAnswer {
 export interface LauncherWordsAnswer {
   answered: boolean;
   hits: LauncherWordHit[];
+  /** Why main would not answer at all (a sender that is not a Godview window). */
+  refused?: string;
 }
 
 /** Resume a past conversation by its provider-native id (QL-D10), not by a run this Godview holds. */

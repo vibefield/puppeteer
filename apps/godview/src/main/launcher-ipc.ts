@@ -20,7 +20,6 @@ import type {
   ResumeNativeSessionRequest,
 } from '../protocol.js';
 import {
-  isHistoryIdentifier,
   normalizeHistoryQuery,
   type HistoryListedSession,
   type HistoryProject,
@@ -46,6 +45,18 @@ const MAX_CWD_CHARS = 4_096;
 const RECORDS_TTL_MS = 5_000;
 const PROVIDER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const PROFILE_ID = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/u;
+/**
+ * A native session id a resume may carry. It becomes an argv token of the
+ * agent's own resume command (`resume <id>`), so it never starts with `-` and
+ * holds nothing but letters, digits and `._:-`.
+ */
+const RESUME_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+/** How long a session main listed stays resumable by the renderer that asked. */
+const SERVED_TTL_MS = 30 * 60_000;
+/** The most listed sessions main remembers as resumable; the oldest go first. */
+const SERVED_LIMIT = 2_000;
+/** What a sender that is not a Godview window is told. */
+export const NOT_A_GODVIEW = 'only a Godview window may ask the launcher';
 const UNTITLED = 'untitled session';
 
 /* ── the file system, as far as a launcher asks it ─────────────────────── */
@@ -251,11 +262,13 @@ export function launcherSessions(input: LauncherSessionsInput): LauncherSessionR
       ? row.projectId === input.project.id
       : input.cwd !== undefined && row.cwd !== undefined && isWithin(row.cwd, input.cwd);
     const lastAt = row.lastActivityAt ?? (row.updatedAt > 0 ? row.updatedAt : undefined);
-    const unresumable = !provider?.resume
-      ? "can't resume"
-      : row.cwd !== undefined && !fs.isDirectory(row.cwd)
-        ? 'folder is gone'
-        : undefined;
+    // An id a resume could not carry as an argv token is not offered at all.
+    const unresumable =
+      !provider?.resume || !RESUME_ID.test(row.nativeSessionId)
+        ? "can't resume"
+        : row.cwd !== undefined && !fs.isDirectory(row.cwd)
+          ? 'folder is gone'
+          : undefined;
     return {
       key: row.id,
       ...(provider ? { providerId: provider.id } : {}),
@@ -313,7 +326,7 @@ export function parseResumeNativeSessionRequest(value: unknown): ResumeNativeSes
   if (!isRecord(value)) return undefined;
   const { providerId, nativeSessionId, profileId } = value;
   if (typeof providerId !== 'string' || !PROVIDER_ID.test(providerId)) return undefined;
-  if (!isHistoryIdentifier(nativeSessionId)) return undefined;
+  if (typeof nativeSessionId !== 'string' || !RESUME_ID.test(nativeSessionId)) return undefined;
   if (profileId !== undefined && (typeof profileId !== 'string' || !PROFILE_ID.test(profileId))) return undefined;
   if (value.cwd !== undefined && !launcherCwd(value.cwd)) return undefined;
   const cwd = launcherCwd(value.cwd);
@@ -336,14 +349,38 @@ export interface LauncherService {
   agents(): Promise<LauncherAgentRow[]>;
   recent(request: LauncherRecentRequest): Promise<LauncherRecentAnswer>;
   words(request: LauncherWordsRequest): Promise<LauncherWordsAnswer>;
-  /** The resume request as the runtime takes it, or the refusal a person reads. */
-  resumeOptions(request: ResumeNativeSessionRequest): ResumeAgentOptions | { refused: string };
+  /**
+   * The resume request as the runtime takes it, or the refusal a person reads.
+   * Only a session this service listed in a recent `recent()` answer resumes,
+   * in an existing folder, under a profile of its own agent.
+   */
+  resumeOptions(request: ResumeNativeSessionRequest): Promise<ResumeAgentOptions | { refused: string }>;
+}
+
+function servedKey(providerId: string, nativeSessionId: string): string {
+  return `${providerId}\u0000${nativeSessionId}`;
 }
 
 export function createLauncherService(options: LauncherServiceOptions): LauncherService {
   const fs = options.fs ?? NODE_LAUNCHER_FS;
   const now = options.now ?? Date.now;
   let records: { at: number; value: Promise<Map<string, number>> } | undefined;
+  /** The sessions `recent()` listed as resumable, by provider and native id, with when. */
+  const served = new Map<string, number>();
+
+  function serve(sessions: readonly LauncherSessionRow[]): void {
+    const at = now();
+    for (const session of sessions) {
+      if (!session.resumable || !session.providerId || !session.nativeSessionId) continue;
+      const key = servedKey(session.providerId, session.nativeSessionId);
+      served.delete(key);
+      served.set(key, at);
+    }
+    for (const key of served.keys()) {
+      if (served.size <= SERVED_LIMIT) break;
+      served.delete(key);
+    }
+  }
 
   function lastLaunched(): Promise<Map<string, number>> {
     if (!records || now() - records.at >= RECORDS_TTL_MS) {
@@ -399,10 +436,9 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
       cwd,
       fs,
     });
-    return {
-      status: launcherHistoryStatus(listing.status, true),
-      sessions: (unprojected ? sessions.filter((session) => session.here) : sessions).slice(0, limit),
-    };
+    const answer = (unprojected ? sessions.filter((session) => session.here) : sessions).slice(0, limit);
+    serve(answer);
+    return { status: launcherHistoryStatus(listing.status, true), sessions: answer };
   }
 
   async function words(request: LauncherWordsRequest): Promise<LauncherWordsAnswer> {
@@ -419,11 +455,20 @@ export function createLauncherService(options: LauncherServiceOptions): Launcher
     return { answered: response.answered, hits: response.answered ? launcherWordHits(response.hits) : [] };
   }
 
-  function resumeOptions(request: ResumeNativeSessionRequest): ResumeAgentOptions | { refused: string } {
+  async function resumeOptions(request: ResumeNativeSessionRequest): Promise<ResumeAgentOptions | { refused: string }> {
     const provider = options.runtime.launchProviders().find((candidate) => candidate.id === request.providerId);
     if (!provider) return { refused: `${request.providerId} is not an agent this Godview launches` };
     if (!provider.resume) return { refused: `${provider.label} cannot resume a session` };
+    const listedAt = served.get(servedKey(provider.id, request.nativeSessionId));
+    if (listedAt === undefined || now() - listedAt >= SERVED_TTL_MS) {
+      return { refused: 'it is not a session this launcher listed; open the field again' };
+    }
     if (request.cwd && !fs.isDirectory(request.cwd)) return { refused: 'its folder is gone' };
+    if (request.profileId) {
+      const profiles = await options.runtime.profiles().catch((): AgentProfile[] => []);
+      const known = profiles.some((profile) => profile.id === request.profileId && profile.provider === provider.id);
+      if (!known) return { refused: `its profile is not one of ${provider.label}’s` };
+    }
     return {
       continuation: { providerId: provider.id, nativeSessionId: request.nativeSessionId, implementation: 'native' },
       ...(request.cwd ? { cwd: request.cwd } : {}),
@@ -459,24 +504,28 @@ export function registerLauncherIpc(ipc: Pick<IpcMain, 'handle'>, options: Launc
     sessions: [],
   });
   ipc.handle('launcher:agents', (event): Promise<LauncherAgentRow[]> => {
-    if (!options.ownerOf(event)) return Promise.resolve([]);
+    // An agent list has no room for a sentence: a stranger's call is rejected with one.
+    if (!options.ownerOf(event)) return Promise.reject(new Error(NOT_A_GODVIEW));
     return service.agents();
   });
   ipc.handle('launcher:recent', (event, input: unknown): Promise<LauncherRecentAnswer> => {
+    if (!options.ownerOf(event)) return Promise.resolve(unavailable(NOT_A_GODVIEW));
     const request = parseLauncherRecentRequest(input);
-    if (!options.ownerOf(event) || !request) return Promise.resolve(unavailable('the request was not understood'));
+    if (!request) return Promise.resolve(unavailable('the request was not understood'));
     return service.recent(request);
   });
   ipc.handle('launcher:words', (event, input: unknown): Promise<LauncherWordsAnswer> => {
+    if (!options.ownerOf(event)) return Promise.resolve({ answered: false, hits: [], refused: NOT_A_GODVIEW });
     const request = parseLauncherWordsRequest(input);
-    if (!options.ownerOf(event) || !request) return Promise.resolve({ answered: false, hits: [] });
+    if (!request) return Promise.resolve({ answered: false, hits: [] });
     return service.words(request);
   });
   ipc.handle('puppeteer:resume-native-session', async (event, input: unknown): Promise<CreateAgentSessionResult> => {
     const owner = options.ownerOf(event);
+    if (!owner) return refusal(NOT_A_GODVIEW, 'AGENT_NOT_FOUND');
     const request = parseResumeNativeSessionRequest(input);
-    if (!owner || !request) return refusal('the resume request was not understood', 'AGENT_NOT_FOUND');
-    const resume = service.resumeOptions(request);
+    if (!request) return refusal('the resume request was not understood', 'AGENT_NOT_FOUND');
+    const resume = await service.resumeOptions(request);
     if ('refused' in resume) return refusal(resume.refused, 'AGENT_NOT_FOUND');
     try {
       return await options.resume(resume, owner);

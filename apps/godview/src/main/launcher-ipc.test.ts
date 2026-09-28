@@ -4,6 +4,7 @@ import type { OwnActionRecord } from '@vibecook/puppeteer-record';
 import type { HistorySearchStatus } from '../protocol.js';
 import type { HistoryListedSession, HistoryProject, HistorySearchService } from './history-search.js';
 import {
+  NOT_A_GODVIEW,
   createLauncherService,
   gitRootsOf,
   isWithin,
@@ -13,6 +14,7 @@ import {
   launcherSessions,
   parseLauncherRecentRequest,
   parseResumeNativeSessionRequest,
+  registerLauncherIpc,
   resolveLauncherProject,
   type LauncherFs,
   type LauncherServiceOptions,
@@ -139,11 +141,12 @@ describe('launcher sessions', () => {
   const fs = fakeFs(['/w/app', '/w/app/src', '/w/elsewhere']);
 
   it('joins each row to the provider whose history kinds hold its runtime kind, and to the profile of its data root', () => {
-    const [alpha, beta, odd] = launcherSessions({
+    const [alpha, beta, odd, flag] = launcherSessions({
       rows: [
         listed('a', { projectId: 'p1', cwd: '/w/app', title: 'Named' }),
         listed('b', { runtimeId: 'rt-beta', cwd: '/w/app' }),
         listed('c', { runtimeId: 'rt-odd' }),
+        listed('d', { nativeSessionId: '-flag', cwd: '/w/app' }),
       ],
       runtimes,
       providers: PROVIDERS,
@@ -163,6 +166,8 @@ describe('launcher sessions', () => {
     expect(beta?.profileId).toBeUndefined();
     expect(odd?.providerId).toBeUndefined();
     expect(odd).toMatchObject({ resumable: false, unresumable: "can't resume" });
+    // An id that could not ride the resume command's argv is never offered.
+    expect(flag).toMatchObject({ providerId: 'alpha', resumable: false, unresumable: "can't resume" });
   });
 
   it('titles, dates and places each row', () => {
@@ -284,7 +289,11 @@ describe('launcher agents', () => {
 describe('createLauncherService', () => {
   const projects: HistoryProject[] = [{ id: 'p1', name: 'app', rootPaths: ['/w/app'] }];
 
-  function service(rows: HistoryListedSession[], reachable = true) {
+  function service(
+    rows: HistoryListedSession[],
+    reachable = true,
+    extra: { profiles?: AgentProfile[]; clock?: { now: number } } = {},
+  ) {
     const asked: { project?: string; limit: number }[] = [];
     const history: Pick<HistorySearchService, 'catalogue' | 'recent' | 'search'> = {
       catalogue: async () =>
@@ -316,12 +325,13 @@ describe('createLauncherService', () => {
         launchProviders: () => PROVIDERS,
         distributionProviders: () => [],
         inspectInstallations: async () => [],
-        profiles: async () => [],
+        profiles: async () => extra.profiles ?? [],
       },
       profileDefaults: () => ({}),
       readRecords: async () => [],
       history,
       fs: fakeFs(['/w/app', '/w/app/.git', '/w/app/src', '/w/loose', '/w/loose/a']),
+      ...(extra.clock ? { now: () => extra.clock!.now } : {}),
     };
     return { launcher: createLauncherService(options), asked };
   }
@@ -369,24 +379,75 @@ describe('createLauncherService', () => {
     expect(await launcher.words({ query: '', scope: 'all' })).toEqual({ answered: true, hits: [] });
   });
 
-  it('resumes by native id through the runtime continuation, refusing what cannot resume', () => {
-    const { launcher } = service([]);
+  it('resumes by native id through the runtime continuation, refusing what cannot resume', async () => {
+    const { launcher } = service([listed('n1', { nativeSessionId: 'n1', cwd: '/w/app', projectId: 'p1' })], true, {
+      profiles: [profile('alpha:work', 'alpha', 'work', '/r')],
+    });
+    await launcher.recent({ cwd: '/w/app', scope: 'here' });
     expect(
-      launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1', cwd: '/w/app', profileId: 'alpha:work' }),
+      await launcher.resumeOptions({
+        providerId: 'alpha',
+        nativeSessionId: 'n1',
+        cwd: '/w/app',
+        profileId: 'alpha:work',
+      }),
     ).toEqual({
       continuation: { providerId: 'alpha', nativeSessionId: 'n1', implementation: 'native' },
       cwd: '/w/app',
       profile: 'alpha:work',
     });
-    expect(launcher.resumeOptions({ providerId: 'beta', nativeSessionId: 'n1' })).toEqual({
+    expect(await launcher.resumeOptions({ providerId: 'beta', nativeSessionId: 'n1' })).toEqual({
       refused: 'Beta cannot resume a session',
     });
-    expect(launcher.resumeOptions({ providerId: 'zeta', nativeSessionId: 'n1' })).toEqual({
+    expect(await launcher.resumeOptions({ providerId: 'zeta', nativeSessionId: 'n1' })).toEqual({
       refused: 'zeta is not an agent this Godview launches',
     });
-    expect(launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1', cwd: '/w/gone' })).toEqual({
+    expect(await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1', cwd: '/w/gone' })).toEqual({
       refused: 'its folder is gone',
     });
+  });
+
+  it('resumes only a session its own listing offered, and only for a while', async () => {
+    const clock = { now: 1_000_000 };
+    const { launcher } = service(
+      [
+        listed('n1', { nativeSessionId: 'n1', projectId: 'p1' }),
+        listed('gone', { nativeSessionId: 'gone', projectId: 'p1', cwd: '/w/gone' }),
+      ],
+      true,
+      { clock },
+    );
+    const unlisted = 'it is not a session this launcher listed; open the field again';
+    // Never listed: a renderer cannot name any conversation it likes.
+    expect(await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1' })).toEqual({ refused: unlisted });
+    await launcher.recent({ cwd: '/w/app', scope: 'here' });
+    expect(await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1' })).toMatchObject({
+      continuation: { nativeSessionId: 'n1' },
+    });
+    // Listed, but not resumable (its folder is gone): never served.
+    expect(await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'gone' })).toEqual({
+      refused: unlisted,
+    });
+    // Listed for alpha, asked for under another resumable provider.
+    expect(await launcher.resumeOptions({ providerId: 'gamma', nativeSessionId: 'n1' })).toEqual({ refused: unlisted });
+    // Listed too long ago.
+    clock.now += 30 * 60_000;
+    expect(await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1' })).toEqual({ refused: unlisted });
+  });
+
+  it('refuses a profile the runtime does not know, or one of another agent', async () => {
+    const { launcher } = service([listed('n1', { nativeSessionId: 'n1', projectId: 'p1' })], true, {
+      profiles: [profile('alpha:work', 'alpha', 'work', '/r'), profile('gamma:work', 'gamma', 'work', '/r')],
+    });
+    await launcher.recent({ cwd: '/w/app', scope: 'here' });
+    for (const profileId of ['alpha:nobody', 'gamma:work']) {
+      expect(
+        await launcher.resumeOptions({ providerId: 'alpha', nativeSessionId: 'n1', profileId }),
+        profileId,
+      ).toEqual({
+        refused: 'its profile is not one of Alpha’s',
+      });
+    }
   });
 });
 
@@ -401,13 +462,29 @@ describe('request decoding', () => {
     expect(parseLauncherRecentRequest({ scope: 'everywhere' })).toBeUndefined();
   });
 
-  it('refuses a resume naming paths, lists or bad ids', () => {
+  it('refuses a resume naming paths, lists, flags or bad ids', () => {
     expect(parseResumeNativeSessionRequest({ providerId: 'alpha', nativeSessionId: 'n-1', cwd: '/w' })).toEqual({
       providerId: 'alpha',
       nativeSessionId: 'n-1',
       cwd: '/w',
     });
+    for (const good of ['019a2b3c-4d5e-7f00-8a9b-0c1d2e3f4a5b', 'ses_7Hq2', 'thread.v2:42']) {
+      expect(parseResumeNativeSessionRequest({ providerId: 'alpha', nativeSessionId: good })?.nativeSessionId).toBe(
+        good,
+      );
+    }
     for (const bad of [
+      // The id is an argv token of the agent's resume command: never a flag.
+      { providerId: 'alpha', nativeSessionId: '--dangerously-bypass-approvals-and-sandbox' },
+      { providerId: 'alpha', nativeSessionId: '-c' },
+      { providerId: 'alpha', nativeSessionId: 'a$(id)' },
+      { providerId: 'alpha', nativeSessionId: 'a;b' },
+      { providerId: 'alpha', nativeSessionId: 'a=b' },
+      { providerId: 'alpha', nativeSessionId: 'ä' },
+      { providerId: 'alpha', nativeSessionId: 'x'.repeat(257) },
+      { providerId: 'alpha', nativeSessionId: 42 },
+      { providerId: '-alpha', nativeSessionId: 'n' },
+      { providerId: 'alpha', nativeSessionId: 'n', profileId: '-p' },
       { providerId: 'alpha', nativeSessionId: 'a/b' },
       { providerId: 'alpha', nativeSessionId: 'a,b' },
       { providerId: '../x', nativeSessionId: 'n' },
@@ -417,5 +494,71 @@ describe('request decoding', () => {
     ]) {
       expect(parseResumeNativeSessionRequest(bad), JSON.stringify(bad)).toBeUndefined();
     }
+  });
+});
+
+describe('the launcher’s channels', () => {
+  function channels(owner: boolean) {
+    const handlers = new Map<string, (event: unknown, input?: unknown) => Promise<unknown>>();
+    const resumed: unknown[] = [];
+    registerLauncherIpc(
+      {
+        handle: (channel: string, handler: (event: unknown, input?: unknown) => Promise<unknown>) =>
+          handlers.set(channel, handler),
+      } as never,
+      {
+        ownerOf: () => (owner ? ({} as never) : undefined),
+        runtime: {
+          launchProviders: () => PROVIDERS,
+          distributionProviders: () => [],
+          inspectInstallations: async () => [],
+          profiles: async () => [],
+        },
+        profileDefaults: () => ({}),
+        readRecords: async () => [],
+        history: {
+          catalogue: async () => ({ answered: true, status: READY, projects: [], runtimes: [] }),
+          recent: async () => ({ answered: true, status: READY, sessions: [] }),
+          search: async () => ({ answered: true, status: READY, clipped: false, hits: [] }),
+        },
+        resume: async (options) => {
+          resumed.push(options);
+          return { runtimeRunId: 'r', runtimeEpoch: 1, externalRefs: [] } as never;
+        },
+      },
+    );
+    const ask = (channel: string, input?: unknown) => handlers.get(channel)!({ sender: {} }, input);
+    return { ask, resumed };
+  }
+
+  it('tells a sender that is not a Godview window so, on every channel', async () => {
+    const { ask, resumed } = channels(false);
+    await expect(ask('launcher:agents')).rejects.toThrow(NOT_A_GODVIEW);
+    expect(await ask('launcher:recent', { scope: 'all' })).toEqual({
+      status: { readiness: 'failed', detail: NOT_A_GODVIEW },
+      sessions: [],
+    });
+    expect(await ask('launcher:words', { scope: 'all', query: 'x' })).toEqual({
+      answered: false,
+      hits: [],
+      refused: NOT_A_GODVIEW,
+    });
+    expect(await ask('puppeteer:resume-native-session', { providerId: 'alpha', nativeSessionId: 'n' })).toMatchObject({
+      error: { code: 'AGENT_NOT_FOUND', message: NOT_A_GODVIEW },
+    });
+    expect(resumed).toEqual([]);
+  });
+
+  it('never hands the runtime a resume its listing did not offer', async () => {
+    const { ask, resumed } = channels(true);
+    const answer = await ask('puppeteer:resume-native-session', {
+      providerId: 'alpha',
+      nativeSessionId: '--dangerously-bypass-approvals-and-sandbox',
+    });
+    expect(answer).toMatchObject({ error: { message: 'the resume request was not understood' } });
+    expect(await ask('puppeteer:resume-native-session', { providerId: 'alpha', nativeSessionId: 'n1' })).toMatchObject({
+      error: { message: 'it is not a session this launcher listed; open the field again' },
+    });
+    expect(resumed).toEqual([]);
   });
 });
