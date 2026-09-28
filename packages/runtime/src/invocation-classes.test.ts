@@ -1,6 +1,11 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentHost, AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import {
+  AgentLaunchRefusedError,
+  type AgentHost,
+  type AgentNativeInvocation,
+  type AgentNativeInvocationResolution,
+} from '@vibecook/puppeteer-core';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';
 
@@ -20,13 +25,16 @@ const invocation = (overrides: Partial<AgentNativeInvocation> = {}): AgentNative
 /**
  * One provider whose grammar is `normalize` and whose preparation throws if it
  * is ever reached: a door that must not prepare fails loudly if it does, and a
- * run it made would show on the monitor.
+ * run it made would show on the monitor. `prepare` replaces what it throws.
  */
-function runtimeWith(normalize: (invocation: AgentNativeInvocation) => AgentNativeInvocationResolution) {
-  const normalizeInvocation = vi.fn(normalize);
-  const prepareSession = vi.fn(async () => {
+function runtimeWith(
+  normalize: (invocation: AgentNativeInvocation) => AgentNativeInvocationResolution,
+  prepare: () => Promise<never> = async () => {
     throw new Error('this door must never prepare');
-  });
+  },
+) {
+  const normalizeInvocation = vi.fn(normalize);
+  const prepareSession = vi.fn(prepare);
   const onError = vi.fn();
   const runtime = createAgentRuntime({
     host,
@@ -168,5 +176,40 @@ describe('what an invocation is — classifyInvocation, and prepareInvocation be
     expect(failed).toMatchObject({ error: { code: 'AGENT_SESSION_CREATE_FAILED' } });
     expect(prepareSession).toHaveBeenCalledTimes(1);
     expect(monitored.length).toBeGreaterThan(0);
+  });
+
+  it("forwards an adapter's refusal at preparation as it is, and no other error's text", async () => {
+    const refusal = new AgentLaunchRefusedError(
+      'EXAMPLE_HOOKS_OFF',
+      'your settings turn hooks off, and a managed session is observed through hooks',
+    );
+    const refusing = runtimeWith(
+      () => ({ status: 'accepted' }),
+      async () => {
+        throw refusal;
+      },
+    );
+    const refused = await refusing.runtime.prepareInvocation(invocation());
+    expect('error' in refused && refused.error).toEqual({
+      code: 'AGENT_LAUNCH_REFUSED',
+      message: 'your settings turn hooks off, and a managed session is observed through hooks',
+      refusal: { code: 'EXAMPLE_HOOKS_OFF' },
+    });
+    expect(refusing.onError).toHaveBeenCalledWith(refusal);
+
+    const failing = runtimeWith(
+      () => ({ status: 'accepted' }),
+      async () => {
+        throw new Error('secret path /Users/someone/.example/settings.json');
+      },
+    );
+    const failed = await failing.runtime.prepareInvocation(invocation());
+    expect('error' in failed && failed.error).toEqual({
+      code: 'AGENT_SESSION_CREATE_FAILED',
+      message: 'agent session preparation failed: example',
+    });
+    expect(JSON.stringify(failed)).not.toContain('secret');
+    await refusing.runtime.dispose();
+    await failing.runtime.dispose();
   });
 });

@@ -286,6 +286,8 @@ export type AgentSessionErrorCode =
   | 'AGENT_NOT_FOUND'
   | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
+  /** The agent's own adapter refused the launch, for a reason the person can act on: the message is its sentence. */
+  | 'AGENT_LAUNCH_REFUSED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
   | 'CREATION_REQUEST_NOT_FINGERPRINTABLE'
@@ -303,7 +305,12 @@ export interface AgentSessionFailure {
   runtimeEpoch: number;
   externalRefs: ExternalRef[];
   terminalOutcome?: CreationRequestTerminalOutcome;
-  error: { code: AgentSessionErrorCode; message: string };
+  error: {
+    code: AgentSessionErrorCode;
+    message: string;
+    /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
+    refusal?: { code: string };
+  };
 }
 
 export type CreateAgentSessionResult = AgentSessionInfo | AgentSessionFailure;
@@ -316,6 +323,8 @@ export type PreparationErrorCode =
   | 'AGENT_NOT_FOUND'
   | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
+  /** The agent's own adapter refused the launch, for a reason the person can act on: the message is its sentence. */
+  | 'AGENT_LAUNCH_REFUSED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
   | 'CREATION_REQUEST_NOT_FINGERPRINTABLE'
@@ -347,6 +356,8 @@ export interface PreparationFailure {
     passthrough?: AgentNativeInvocationPassthroughKind;
     /** With an adapter's rejection: the first argument its managed launch could not carry. */
     argument?: string;
+    /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
+    refusal?: { code: string };
   };
 }
 
