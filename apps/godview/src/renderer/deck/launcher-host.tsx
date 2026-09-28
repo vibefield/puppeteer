@@ -116,6 +116,14 @@ export interface AppDeckLaunchersProps {
  * accepted launch or resume is mounted into the launcher's pane once the
  * launcher has left, and the fresh shell it replaced is terminated — it had
  * no input by construction (QL-D8).
+ *
+ * Known limits of QL-1. On Linux, Ghosttea's default table binds alt+1…9 to
+ * goto_tab and its workspace binding listener, registered first on window
+ * capture, consumes with `stopPropagation` only, so ⌥digit can both switch
+ * the tab and launch; macOS binds no ⌥digit or ⌥↵ and is unaffected. A tab
+ * main opens from a seeded document (a profile tab, `newTerminalTab`) is a
+ * restored window by the gate's rule, so its first pane shows no launcher —
+ * intended for QL-1.
  */
 export function AppDeckLaunchers({
   deckRef,
