@@ -131,6 +131,7 @@ import {
   type SpawnThroughResponse,
 } from '@vibecook/puppeteer-runtime/spawn-through';
 import { containingTerminalSession } from './containing-terminal.js';
+import { chooseShimRuntime, describeShimRuntime } from './shim-runtime.js';
 import { orderNativeTabs } from './native-tab-order.js';
 import { resolveProcessCwd } from './process-cwd.js';
 import { GodviewTabRegistry } from './tab-registry.js';
@@ -1628,14 +1629,14 @@ async function initializeSpawnThrough(): Promise<void> {
   const home = join(app.getPath('temp'), `godview-agent-shims-${process.pid}`);
   rmSync(home, { recursive: true, force: true });
   spawnThroughDirectory = home;
-  // The launchers run the shim on this app's own binary as Node: Godview has no
-  // other Node to name, and a pane's PATH may hold none, or one too old to exec.
-  await materializeShims({
-    home,
-    names,
-    script: join(__dirname, 'agent-shim.cjs'),
-    runtime: { command: process.execPath, env: { ELECTRON_RUN_AS_NODE: '1' } },
+  const shimRuntime = await chooseShimRuntime({
+    path: originalPath,
+    // A Godview started from an integrated pane inherits that pane's shim directory, first on PATH.
+    shimDirectories: [spawnThroughLayout(home).shimDirectory, process.env.PUPPETEER_SHIM_DIR],
+    electron: { command: process.execPath, version: process.versions.node },
   });
+  console.log(`[main] ${describeShimRuntime(shimRuntime)}`);
+  await materializeShims({ home, names, script: join(__dirname, 'agent-shim.cjs'), runtime: shimRuntime.runtime });
   const token = randomBytes(32).toString('hex');
   spawnThroughGateway = await startSpawnThroughGateway({ token, handle: handleSpawnThroughRequest });
   // Not strict: no host turns it on before PU-9a (docs/guides/spawn-through-hosts.md §7).
