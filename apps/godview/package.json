@@ -15,6 +15,7 @@
     "appearance-smoke": "pnpm bundle && node appearance-smoke.mjs",
     "links-smoke": "pnpm bundle && node links-smoke.mjs",
     "launcher-smoke": "pnpm bundle && node launcher-smoke.mjs",
+    "launcher-drive-smoke": "pnpm bundle && node launcher-smoke.mjs --drive",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "restore-smoke": "pnpm bundle && node restore-smoke.mjs",

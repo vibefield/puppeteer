@@ -26,6 +26,7 @@
     "godview:appearance-smoke": "pnpm --filter godview appearance-smoke",
     "godview:restore-smoke": "pnpm --filter godview restore-smoke",
     "godview:launcher-smoke": "pnpm --filter godview launcher-smoke",
+    "godview:launcher-drive-smoke": "pnpm --filter godview launcher-drive-smoke",
     "godview:test": "pnpm --filter godview test",
     "godview:typecheck": "pnpm --filter godview typecheck",
     "agent-devkit": "pnpm --filter imposter-control start",
