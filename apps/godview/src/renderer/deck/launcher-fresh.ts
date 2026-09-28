@@ -45,6 +45,23 @@ export function freshSessionIds<Session extends PaneUseSession>(
   return fresh;
 }
 
+/**
+ * A folder as a path. A shell reports its folder by OSC 7 as a `file://host/…`
+ * URL, which Ghosttea keeps as the session's cwd; main takes absolute paths
+ * only, so a URL passed on would ask "here" of no folder at all.
+ */
+export function launcherFolderPath(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  if (!/^file:\/\//iu.test(trimmed)) return trimmed;
+  try {
+    const path = decodeURIComponent(new URL(trimmed).pathname);
+    return path.startsWith('/') ? path : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Where each fresh shell's launch starts: the folder it reported, else the frame's fallback. */
 export function launcherCwds(
   fresh: ReadonlySet<string>,
@@ -54,7 +71,7 @@ export function launcherCwds(
   const cwds = new Map<string, string>();
   for (const { session } of panes) {
     if (!fresh.has(session.id) || cwds.has(session.id)) continue;
-    const folder = session.cwd || fallbacks.get(session.id);
+    const folder = launcherFolderPath(session.cwd) ?? launcherFolderPath(fallbacks.get(session.id));
     if (folder) cwds.set(session.id, folder);
   }
   return cwds;

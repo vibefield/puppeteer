@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   freshSessionIds,
   launcherCwds,
+  launcherFolderPath,
   paneSessionUsed,
   planLauncherReplace,
   type PaneUseFacts,
@@ -63,6 +64,31 @@ describe('fresh sessions', () => {
       ['live', '/w/live'],
       ['fallback', '/w/fallback'],
     ]);
+  });
+});
+
+describe('a shell’s reported folder as a path', () => {
+  it.each<[string | null | undefined, string | undefined]>([
+    // OSC 7, as Ghosttea keeps it: the host is the machine's, the path is URL-encoded.
+    ['file://Jamess-MacBook-Pro-9.local/Users/j/My%20Code', '/Users/j/My Code'],
+    ['FILE:///tmp/x', '/tmp/x'],
+    ['/Users/j/app', '/Users/j/app'],
+    ['  /Users/j/app ', '/Users/j/app'],
+    ['file://host/%E0%A4%A', undefined],
+    ['', undefined],
+    [null, undefined],
+    [undefined, undefined],
+  ])('%s → %s', (value, expected) => {
+    expect(launcherFolderPath(value)).toBe(expected);
+  });
+
+  it('gives a launch the path, never the URL', () => {
+    const cwds = launcherCwds(
+      new Set(['osc7']),
+      [{ session: session('osc7', { cwd: 'file://mac.local/Users/j/app' }) }],
+      new Map(),
+    );
+    expect([...cwds]).toEqual([['osc7', '/Users/j/app']]);
   });
 });
 
