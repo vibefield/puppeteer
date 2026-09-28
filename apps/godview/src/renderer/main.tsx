@@ -78,6 +78,7 @@ import {
 } from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
 import { AppDeckLaunchers, usePaneSessionUsed } from './deck/launcher-host.js';
+import { launcherSessionUsed } from './deck/launcher-fresh.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
@@ -531,6 +532,8 @@ function Godview() {
   );
   const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
   const paneSessionUsed = usePaneSessionUsed(agentsBySession);
+  const launcherGate = usePaneSessionUsed(agentsBySession, launcherSessionUsed);
+  const reaperHolds = useCallback((sessionId: string): boolean => unusedPanes.current.holds(sessionId), []);
   useLayoutEffect(() => {
     if (!workspace) return;
     // Includes Ghosttea's initial empty-workspace birth, outside the split override.
@@ -789,6 +792,8 @@ function Godview() {
           deckRef={deckRef}
           workspace={workspace}
           used={paneSessionUsed}
+          gate={launcherGate}
+          reaperHolds={reaperHolds}
           fallbackCwds={frameFallbackCwds}
           paneColors={paneColors}
         />

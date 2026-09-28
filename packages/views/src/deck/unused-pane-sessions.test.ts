@@ -7,6 +7,20 @@ describe('fresh pane session ownership', () => {
     expect(sessions.closed('new', [], false)).toBe(true);
     expect(sessions.closed('new', [], false)).toBe(false);
   });
+  it('says whether it still holds a receipt: born here, never seen used, not yet reaped', () => {
+    const sessions = new UnusedPaneSessions();
+    expect(sessions.holds('restored')).toBe(false);
+    sessions.created('fresh');
+    sessions.created('busy');
+    expect(sessions.holds('fresh')).toBe(true);
+    // Use seen once consumes the receipt, even after the work finishes.
+    sessions.update([{ id: 'fresh' }, { id: 'busy' }], (session) => session.id === 'busy');
+    sessions.update([{ id: 'fresh' }, { id: 'busy' }], () => false);
+    expect(sessions.holds('busy')).toBe(false);
+    expect(sessions.holds('fresh')).toBe(true);
+    sessions.update([{ id: 'busy' }], () => false);
+    expect(sessions.holds('fresh')).toBe(false);
+  });
   it('retains restored sessions, used sessions, and a remaining mirror', () => {
     const sessions = new UnusedPaneSessions();
     expect(sessions.closed('restored', [], false)).toBe(false);

@@ -10,22 +10,32 @@ import {
 } from '@vibecook/puppeteer-views/launcher';
 import type { CreateAgentSessionResult, LauncherAgentRow } from '../../protocol.js';
 import type { MonitorAgent } from '../monitor/types.js';
-import { freshSessionIds, launcherCwds, paneSessionUsed, planLauncherReplace } from './launcher-fresh.js';
+import {
+  freshSessionIds,
+  launcherCwds,
+  paneSessionUsed,
+  planLauncherReplace,
+  type PaneUseFacts,
+  type PaneUseSession,
+} from './launcher-fresh.js';
 
-/** "Has this pane's shell been used?" — the reaper's rule and the launcher's gate (`paneSessionUsed`). */
+/** "Has this pane's shell been used?" — the reaper's rule (`paneSessionUsed`) or the launcher's gate (`launcherSessionUsed`). */
 export type PaneSessionUsed = (session: SessionSummary) => boolean;
 
-/** The deck's one "used" rule over this window's runtime and its agents. */
-export function usePaneSessionUsed(agentsBySession: ReadonlyMap<string, MonitorAgent>): PaneSessionUsed {
+/** A "used" rule over this window's runtime and its agents; the reaper's by default. */
+export function usePaneSessionUsed(
+  agentsBySession: ReadonlyMap<string, MonitorAgent>,
+  rule: (session: PaneUseSession, facts: PaneUseFacts) => boolean = paneSessionUsed,
+): PaneSessionUsed {
   const runtime = useGhostteaRuntime();
   return useCallback<PaneSessionUsed>(
     (session) =>
-      paneSessionUsed(session, {
+      rule(session, {
         hasInput: (id) => runtime.sessionHasInput(id),
         hasAgent: (id) => agentsBySession.get(id)?.agent !== undefined,
         isRemote: (id) => runtime.remoteSession(id) !== undefined,
       }),
-    [agentsBySession, runtime],
+    [agentsBySession, rule, runtime],
   );
 }
 
@@ -88,8 +98,12 @@ function keepHostFocus(focused: Element | null): void {
 export interface AppDeckLaunchersProps {
   deckRef: RefObject<HTMLElement | null>;
   workspace: GhostteaWorkspaceContext | undefined;
-  /** The same rule the deck's unused-shell reaper applies. */
+  /** The rule the deck's unused-shell reaper applies (`paneSessionUsed`). */
   used: PaneSessionUsed;
+  /** The launcher's gate (`launcherSessionUsed`): the reaper's rule less a foreground job. */
+  gate: PaneSessionUsed;
+  /** Whether the reaper still holds the shell's birth receipt (`UnusedPaneSessions.holds`). */
+  reaperHolds?: ((sessionId: string) => boolean) | undefined;
   /** The frame's fallback folders per session. */
   fallbackCwds: ReadonlyMap<string, string>;
   paneColors: ReadonlyMap<string, string>;
@@ -103,8 +117,11 @@ export interface AppDeckLaunchersProps {
  * here; while it is unused by the reaper's own rule (keys and pastes are held
  * during a launch) the deck's `UnusedPaneSessions` reaper terminates it like
  * any other unused shell. One that was used anyway — a binding's or a menu's
- * paste, a foreground job, an exit — the reaper keeps, so the launcher ends it
- * itself, unless another pane still shows it (`planLauncherReplace`).
+ * paste, a foreground job, an exit — or whose receipt the reaper gave up
+ * earlier (it saw the shell's startup run a foreground job) the reaper keeps,
+ * so the launcher ends it itself, unless another pane still shows it
+ * (`planLauncherReplace`). The launcher's own gate ignores foreground jobs
+ * (`launcherSessionUsed`), so a shell's startup does not flicker it away.
  *
  * Known limits of QL-1. On Linux, Ghosttea's default table binds alt+1…9 to
  * goto_tab and its workspace binding listener, registered first on window
@@ -114,15 +131,23 @@ export interface AppDeckLaunchersProps {
  * shell main created, which carries no birth receipt of this window's
  * runtime, so its first pane shows no launcher — intended for QL-1.
  */
-export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneColors }: AppDeckLaunchersProps) {
+export function AppDeckLaunchers({
+  deckRef,
+  workspace,
+  used,
+  gate,
+  reaperHolds,
+  fallbackCwds,
+  paneColors,
+}: AppDeckLaunchersProps) {
   const runtime = useGhostteaRuntime();
   const panes = useMemo(() => workspace?.panes ?? [], [workspace?.panes]);
 
   // Ghosttea's birth receipt covers the first pane and every split; restored,
   // claimed and main-seeded shells have none.
   const fresh = useMemo(
-    () => freshSessionIds(panes, (id) => runtime.sessionCreatedHere(id), used),
-    [panes, runtime, used],
+    () => freshSessionIds(panes, (id) => runtime.sessionCreatedHere(id), gate),
+    [panes, runtime, gate],
   );
   const cwdBySession = useMemo(() => launcherCwds(fresh, panes, fallbackCwds), [fallbackCwds, fresh, panes]);
   const hasInput = useCallback((sessionId: string): boolean => runtime.sessionHasInput(sessionId), [runtime]);
@@ -130,8 +155,8 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
   const { agents, refresh } = useLauncherAgents(fresh.size > 0);
 
   // The port is built once: `recent()` refetches whenever its identity changes.
-  const latest = useRef({ workspace, agents, refresh, used });
-  latest.current = { workspace, agents, refresh, used };
+  const latest = useRef({ workspace, agents, refresh, used, reaperHolds });
+  latest.current = { workspace, agents, refresh, used, reaperHolds };
   const profileByKey = useRef(new Map<string, string>());
 
   const port = useMemo<LauncherPort>(() => {
@@ -145,7 +170,13 @@ export function AppDeckLaunchers({ deckRef, workspace, used, fallbackCwds, paneC
       window.setTimeout(() => {
         const current = latest.current.workspace;
         if (!current) return;
-        const plan = planLauncherReplace(current.panes, freshSessionId, latest.current.used, current.activePaneId);
+        const plan = planLauncherReplace(
+          current.panes,
+          freshSessionId,
+          latest.current.used,
+          current.activePaneId,
+          latest.current.reaperHolds,
+        );
         const focused = document.activeElement;
         if (plan.place === 'add') {
           // The pane closed while the agent started: keep the agent on screen.

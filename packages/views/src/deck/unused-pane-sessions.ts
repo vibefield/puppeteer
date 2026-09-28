@@ -27,6 +27,10 @@ export class UnusedPaneSessions<Session extends { id: string } = { id: string }>
     this.#attached = next;
     return detached;
   }
+  /** Whether the birth receipt is still held: detached while unused, this shell will be reaped. */
+  holds(sessionId: string): boolean {
+    return this.#born.has(sessionId);
+  }
   closed(sessionId: string, remainingSessionIds: readonly string[], used: boolean): boolean {
     if (!this.#born.has(sessionId)) return false;
     if (used) {
