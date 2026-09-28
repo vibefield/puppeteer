@@ -496,8 +496,6 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           carriedArgs: typed?.carriedArgs,
           prompt: typed?.prompt,
           readsNoSettingsFiles: typed?.readsNoSettingsFiles,
-          // A typed launch the person's settings would blind is refused, not run unobserved.
-          refuseHooksOff: typed?.typed === true,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           automate: host.automateTerminal,

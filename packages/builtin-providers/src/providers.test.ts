@@ -691,7 +691,6 @@ describe('createBuiltinProviders launch options', () => {
         carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
         prompt: ['fix the bug'],
         readsNoSettingsFiles: true,
-        refuseHooksOff: true,
       }),
     );
 
@@ -700,8 +699,7 @@ describe('createBuiltinProviders launch options', () => {
       expect.objectContaining({ permissionMode: 'plan' }),
     );
 
-    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream,
-    // and its launch is not refused for the person's settings.
+    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream.
     await claude.prepareSession!({ cwd: '/work/repo', title: 'host title', host, agentOptions: { model: 'sonnet' } });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -709,9 +707,12 @@ describe('createBuiltinProviders launch options', () => {
         permissionMode: undefined,
         carriedArgs: undefined,
         prompt: undefined,
-        refuseHooksOff: false,
       }),
     );
+    // Typed or a host's own, the provider leaves hooks off to the adapter, which refuses every launch it would blind.
+    for (const [options] of adapters.prepareClaudeTuiSession.mock.calls) {
+      expect(options).not.toHaveProperty('refuseHooksOff');
+    }
   });
 
   it('reads what a person typed from the invocation, never from the profile binding’s empty argv', async () => {
@@ -750,12 +751,15 @@ describe('createBuiltinProviders launch options', () => {
 
     await claude.prepareSession!({ cwd: '/work/repo', host, profile, agentOptions: { permissionMode: 'plan' } });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan', refuseHooksOff: false }),
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan' }),
     );
     await claude.prepareSession!({ cwd: '/work/repo', host, profile });
     expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined, refuseHooksOff: false }),
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined }),
     );
+    for (const [options] of adapters.prepareClaudeTuiSession.mock.calls) {
+      expect(options).not.toHaveProperty('refuseHooksOff');
+    }
   });
 
   it('carries the Claude adapter’s refusal through the provider and the runtime to the failure a host reads', async () => {

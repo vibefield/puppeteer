@@ -6,8 +6,8 @@
  *
  * - `disableAllHooks: true` — no settings hook fires, the managed ones included (live F05, F08).
  *   A `disableAllHooks: false` in the launch's own settings turns them back on, but turns the
- *   person's own hooks and status line back on with them (F06), so a typed launch is refused
- *   instead of changed.
+ *   person's own hooks and status line back on with them (F06), so a launch, typed or a host's
+ *   own, is refused instead of changed.
  * - `allowedHttpHookUrls` — an HTTP hook to a URL no entry matches is blocked (F09).
  * - `httpHookAllowedEnvVars` — a header variable not listed is not interpolated, so the bearer
  *   never arrives (F10).

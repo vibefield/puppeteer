@@ -414,13 +414,26 @@ describe('prepareClaudeSession', () => {
         ['--restricted', { user: hooksOff, project: hooksOff }, { readsNoSettingsFiles: true }],
         ['the imposter', { user: hooksOff }, { env: { PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-home' } }],
       ] as const) {
-        const where = person(layers);
-        await expect(prepare({ ...where, ...over, refuseHooksOff: true }), label).resolves.toBeDefined();
+        // Typed, and as a host's own spawn: with hooks on, both launch as they always have.
+        for (const refusing of [{ refuseHooksOff: true }, {}]) {
+          const where = person(layers);
+          await expect(prepare({ ...where, ...over, ...refusing }), label).resolves.toBeDefined();
+        }
       }
     });
 
-    it('a host’s own spawn is not refused: it launches as it always has', async () => {
-      await expect(prepare({ ...person({ user: hooksOff }) })).resolves.toBeDefined();
+    it('refuses a host’s own spawn too, writing nothing: its host could not observe it', async () => {
+      for (const layer of ['user', 'project', 'local'] as const) {
+        const where = person({ [layer]: hooksOff });
+        await expect(prepare(where), layer).rejects.toMatchObject({
+          name: 'ClaudeHooksOffError',
+          code: 'CLAUDE_HOOKS_OFF',
+          source: layer,
+        });
+        expect(readdirSync(where.settingsDir), layer).toEqual([]);
+      }
+      // A caller that opts out launches it anyway, as every host's own spawn did before.
+      await expect(prepare({ ...person({ user: hooksOff }), refuseHooksOff: false })).resolves.toBeDefined();
     });
 
     it('restates a person’s allow-lists with the bridge’s entry added, keeping every entry of theirs', async () => {

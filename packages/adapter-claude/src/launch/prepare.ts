@@ -67,8 +67,9 @@ export interface PrepareClaudeSessionOptions {
    */
   readsNoSettingsFiles?: boolean | undefined;
   /**
-   * A typed launch: refuse, before anything is written, when the person's settings switch every
-   * hook off ({@link ClaudeHooksOffError}). A host's own spawn launches as before.
+   * Refuse, before anything is written, a launch whose person's settings switch every hook off
+   * ({@link ClaudeHooksOffError}), typed or a host's own spawn. Default true; `false` launches it
+   * anyway, as a session its host cannot observe.
    */
   refuseHooksOff?: boolean | undefined;
   /** Override auto-resolution of the user/project status line; null means no delegate. */
@@ -152,9 +153,9 @@ export class ClaudeConversationMissingError extends Error {
 }
 
 /**
- * A typed launch whose person's settings switch every hook off (`disableAllHooks: true`): the
- * managed hooks would never fire (probed 2.1.283, findings.md §7.5), so it is refused before launch
- * rather than run as a session the host cannot observe. The adapter's own refusal
+ * A launch whose person's settings switch every hook off (`disableAllHooks: true`): the managed
+ * hooks would never fire (probed 2.1.283, findings.md §7.5), so it is refused before launch, typed
+ * or a host's own spawn, rather than run as a session the host cannot observe. The adapter's own refusal
  * ({@link AgentLaunchRefusedError}): the runtime carries its sentence and code to the person.
  */
 export class ClaudeHooksOffError extends AgentLaunchRefusedError<'CLAUDE_HOOKS_OFF'> {
@@ -259,14 +260,14 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // an Electron/main-process cwd cannot select a different delegate.
   const claudeConfigDir = rawClaudeConfigDir ? resolve(options.cwd, rawClaudeConfigDir) : undefined;
   // The person's own settings layers, as the launch will read them. Their hook switches decide what
-  // the managed settings must restate, and whether a typed launch may start at all, before anything
-  // is written. The imposter reads none of them.
+  // the managed settings must restate, and whether the launch may start at all, before anything is
+  // written. The imposter reads none of them.
   const personLayers = { settingSources: options.settingSources, configDir: claudeConfigDir, home: options.home };
   const hookSwitches: ClaudeHookSwitches =
     options.readsNoSettingsFiles || options.env?.PUPPETEER_IMPOSTER_HOME !== undefined
       ? {}
       : await readClaudeHookSwitches(options.cwd, personLayers);
-  if (options.refuseHooksOff && hookSwitches.hooksOff) {
+  if (options.refuseHooksOff !== false && hookSwitches.hooksOff) {
     throw new ClaudeHooksOffError(hookSwitches.hooksOff.source, hookSwitches.hooksOff.path);
   }
   // Own the temp dir only when we create it; a caller-supplied settingsDir is
