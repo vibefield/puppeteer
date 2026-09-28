@@ -267,8 +267,8 @@ export function PaneLauncher({
 
   // The key listener lives in the mounter and reads this launcher through a
   // stable handle; the handle reads the latest render through a ref.
-  const latest = useRef({ open, highlight, rows, agents, launch, resume, close, scope, onScopeChange });
-  latest.current = { open, highlight, rows, agents, launch, resume, close, scope, onScopeChange };
+  const latest = useRef({ open, highlight, rows, agents, busy, launch, resume, close, scope, onScopeChange });
+  latest.current = { open, highlight, rows, agents, busy, launch, resume, close, scope, onScopeChange };
   const controller = useMemo<PaneLauncherController>(
     () => ({
       keyState: () => {
@@ -278,6 +278,7 @@ export function PaneLauncher({
           agentCount: now.agents.length,
           highlight: now.highlight,
           highlightResumable: now.rows[now.highlight]?.session.resumable ?? false,
+          launching: now.busy !== undefined,
         };
       },
       apply: (action) => {

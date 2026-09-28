@@ -152,6 +152,37 @@ describe('launcherKeyAction · closed', () => {
   });
 });
 
+describe('launcherKeyAction · launching', () => {
+  // A launch or a resume is in flight: the shell it replaces is about to close.
+  const table: Array<[string, LauncherKeyEvent, ReturnType<typeof launcherKeyAction>]> = [
+    ['a letter is held', key('KeyC', 'c'), { kind: 'hold' }],
+    ['↵ is held', key('Enter', 'Enter'), { kind: 'hold' }],
+    ['⎋ is held', key('Escape', 'Escape'), { kind: 'hold' }],
+    ['another ⌥ digit is held', key('Digit2', '™', { altKey: true }), { kind: 'hold' }],
+    ['⌥↵ is held', key('Enter', 'Enter', { altKey: true }), { kind: 'hold' }],
+    ['⇥ is held', key('Tab', 'Tab'), { kind: 'hold' }],
+    ['an IME key is held', key('KeyA', 'a', { isComposing: true }), { kind: 'hold' }],
+    ['⌘V passes', key('KeyV', 'v', { metaKey: true }), { kind: 'ignore' }],
+    ['⌃C passes', key('KeyC', 'c', { ctrlKey: true }), { kind: 'ignore' }],
+    ['a bare ⇧ passes', key('ShiftLeft', 'Shift', { shiftKey: true }), { kind: 'ignore' }],
+  ];
+  it.each(table)('closed: %s', (_name, event, expected) => {
+    expect(launcherKeyAction(event, { ...CLOSED, launching: true })).toEqual(expected);
+  });
+  it.each(table)('open: %s', (_name, event, expected) => {
+    expect(launcherKeyAction(event, { ...OPEN, launching: true })).toEqual(expected);
+  });
+
+  it('behaves as before once the launch is refused and the launcher is at rest again', () => {
+    expect(launcherKeyAction(key('KeyC', 'c'), { ...CLOSED, launching: false })).toEqual({ kind: 'used' });
+    expect(launcherKeyAction(key('Escape', 'Escape'), { ...CLOSED, launching: false })).toEqual({ kind: 'dismiss' });
+    expect(launcherKeyAction(key('Digit2', '™', { altKey: true }), { ...CLOSED, launching: false })).toEqual({
+      kind: 'launch',
+      index: 1,
+    });
+  });
+});
+
 describe('launcherKeyAction · open', () => {
   const table: Array<[string, LauncherKeyEvent, ReturnType<typeof launcherKeyAction>]> = [
     ['↓ moves down', key('ArrowDown', 'ArrowDown'), { kind: 'move', delta: 1 }],

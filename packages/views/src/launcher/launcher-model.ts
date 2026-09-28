@@ -130,6 +130,8 @@ export interface LauncherKeyState {
   highlight: number;
   /** Whether the highlighted result can be resumed. */
   highlightResumable: boolean;
+  /** A launch or a resume is in flight: the shell it replaces is about to close. */
+  launching?: boolean | undefined;
 }
 
 export type LauncherKeyAction =
@@ -186,10 +188,16 @@ function digitAction(event: LauncherKeyEvent, state: LauncherKeyState): Launcher
  * Open, the field owns ↑↓ ↵ ⇥ ⎋ and the ⌥ digits (§25's "⌥1–⌥0 still launch
  * new agents" is said with the field open), and the rest is its typing. Digits
  * are read from `event.code`: macOS types ¡™£ for ⌥1 ⌥2 ⌥3. An IME composition
- * is never interrupted.
+ * is never interrupted. While a launch or a resume is in flight every other
+ * key is held, so nothing reaches the shell that is about to close; ⌘/⌃ chords
+ * and bare modifiers still pass, and a refusal returns the launcher to rest.
  */
 export function launcherKeyAction(event: LauncherKeyEvent, state: LauncherKeyState): LauncherKeyAction {
   const composing = event.isComposing === true || event.key === 'Process';
+  if (state.launching) {
+    if (MODIFIER_KEYS.has(event.key) || event.metaKey || event.ctrlKey) return { kind: 'ignore' };
+    return { kind: 'hold' };
+  }
   if (!state.open) {
     if (composing) return { kind: 'used' };
     if (MODIFIER_KEYS.has(event.key)) return { kind: 'ignore' };
