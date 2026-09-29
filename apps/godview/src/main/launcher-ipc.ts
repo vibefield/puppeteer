@@ -69,7 +69,10 @@ export interface LauncherFs {
   isDirectory(path: string): Promise<boolean>;
   isFile(path: string): Promise<boolean>;
   read(path: string): Promise<string>;
-  /** The physical path, every symlink resolved; rejects for a path that does not exist. */
+  /**
+   * The physical path, every symlink resolved and in the file system's own
+   * letter case; rejects for a path that does not exist.
+   */
   realpath(path: string): Promise<string>;
 }
 
@@ -85,6 +88,10 @@ export const NODE_LAUNCHER_FS: LauncherFs = {
       () => false,
     ),
   read: (path) => readFile(path, 'utf8'),
+  // `fs/promises` realpath is the native one (libuv's realpath(3)), which, like
+  // `realpathSync.native`, returns APFS's stored case: `/users/j/projects` comes
+  // back `/Users/j/Projects`, as getcwd — and so rosetta — records it. The JS
+  // `realpathSync` keeps the input's case.
   realpath: (path) => realpath(path),
 };
 
@@ -141,9 +148,12 @@ export async function gitRootsOf(cwd: string, fs: LauncherFs = NODE_LAUNCHER_FS)
 
 /**
  * The pane folder's project (QL-D9): the one whose roots hold the folder's git
- * root (a worktree's or the repository's it was cut from), else the project
- * with the longest root the folder lies under. None when neither matches.
- * The folder is compared as given and as its physical path.
+ * root (a worktree's or the repository's it was cut from), else one rooted
+ * at the folder EXACTLY (as given or as its physical path). Never the
+ * longest root the folder lies under: rosetta makes every non-repository
+ * cwd a project rooted there, home usually among them, so a prefix match
+ * would give any loose folder under ~ home's sessions. None otherwise, and
+ * the caller filters sessions by the folder instead.
  */
 export async function resolveLauncherProject(
   cwd: string,
@@ -154,16 +164,8 @@ export async function resolveLauncherProject(
     const owner = projects.find((project) => project.rootPaths.some((path) => trimSlash(path) === root));
     if (owner) return owner;
   }
-  const forms = [...new Set([trimSlash(cwd), await physicalPath(cwd, fs)])];
-  let best: { project: HistoryProject; length: number } | undefined;
-  for (const project of projects) {
-    for (const path of project.rootPaths) {
-      if (!forms.some((form) => isWithin(form, path))) continue;
-      const length = trimSlash(path).length;
-      if (!best || length > best.length) best = { project, length };
-    }
-  }
-  return best?.project;
+  const forms = new Set([trimSlash(cwd), await physicalPath(cwd, fs)]);
+  return projects.find((project) => project.rootPaths.some((path) => forms.has(trimSlash(path))));
 }
 
 /* ── agents ────────────────────────────────────────────────────────────── */

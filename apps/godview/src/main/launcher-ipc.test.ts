@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -134,12 +134,18 @@ describe('project resolution (QL-D9)', () => {
     expect((await resolveLauncherProject('/w/app/docs/guide', projects, repo))?.id).toBe('p-app');
   });
 
-  it('falls back to the longest root path the folder lies under, and to none', async () => {
+  it('outside a repository takes only a project rooted exactly at the folder — never the longest root above it', async () => {
     const none = fakeFs([]);
-    expect((await resolveLauncherProject('/w/app/docs/guide', projects, none))?.id).toBe('p-docs');
-    expect((await resolveLauncherProject('/w/other', projects, none))?.id).toBe('p-w');
+    expect((await resolveLauncherProject('/w/app/docs', projects, none))?.id).toBe('p-docs');
+    expect((await resolveLauncherProject('/w/app/docs/', projects, none))?.id).toBe('p-docs');
+    // Rosetta roots a project at every non-repository cwd, home usually among
+    // them: a folder under one is not that project's.
+    expect(await resolveLauncherProject('/w/app/docs/guide', projects, none)).toBeUndefined();
+    expect(await resolveLauncherProject('/w/other', projects, none)).toBeUndefined();
+    const home: HistoryProject = { id: 'p-home', name: 'j', rootPaths: ['/Users/j'] };
+    expect(await resolveLauncherProject('/Users/j/scratch', [home], none)).toBeUndefined();
+    expect((await resolveLauncherProject('/Users/j', [home], none))?.id).toBe('p-home');
     expect(await resolveLauncherProject('/elsewhere', projects, none)).toBeUndefined();
-    expect(await resolveLauncherProject('/w/application', [projects[0]!], none)).toBeUndefined();
   });
 
   it('meets the daemon’s physical roots from a symlinked folder (the fake’s links)', async () => {
@@ -149,10 +155,11 @@ describe('project resolution (QL-D9)', () => {
     expect(await gitRootsOf('/home/app/src', linked)).toEqual(['/real/app']);
     const real: HistoryProject = { id: 'p-real', name: 'app', rootPaths: ['/real/app'] };
     expect((await resolveLauncherProject('/home/app/src', [real], linked))?.id).toBe('p-real');
-    // Outside a repository, the longest root is matched on the physical path too.
+    // Outside a repository, the exact root is matched on the physical path too.
     const loose = fakeFs(['/real/notes', '/real/notes/a'], {}, { '/home/notes': '/real/notes' });
     const notes: HistoryProject = { id: 'p-notes', name: 'notes', rootPaths: ['/real/notes'] };
-    expect((await resolveLauncherProject('/home/notes/a', [notes], loose))?.id).toBe('p-notes');
+    expect((await resolveLauncherProject('/home/notes', [notes], loose))?.id).toBe('p-notes');
+    expect(await resolveLauncherProject('/home/notes/a', [notes], loose)).toBeUndefined();
   });
 
   it('matches folders by whole path segments', () => {
@@ -421,6 +428,44 @@ describe('createLauncherService', () => {
     expect(reads).toBe(2);
   });
 
+  it('lists a loose folder under home by its own cwd, not as home’s project', async () => {
+    const asked: { project?: string; limit: number }[] = [];
+    const launcher = createLauncherService({
+      runtime: {
+        launchProviders: () => PROVIDERS,
+        distributionProviders: () => [],
+        inspectInstallations: async () => [],
+        profiles: async () => [],
+      },
+      profileDefaults: () => ({}),
+      readRecords: async () => [],
+      history: {
+        catalogue: async () => ({
+          answered: true,
+          status: READY,
+          projects: [{ id: 'p-home', name: 'j', rootPaths: ['/w'] }],
+          runtimes: [{ id: 'rt-alpha', kind: 'alpha-code' }],
+        }),
+        recent: async (request) => {
+          asked.push(request);
+          return {
+            answered: true,
+            status: READY,
+            sessions: [
+              listed('mine', { cwd: '/w/loose', projectId: 'p-home' }),
+              listed('home', { cwd: '/w', projectId: 'p-home' }),
+            ],
+          };
+        },
+        search: async () => ({ answered: true, status: READY, clipped: false, hits: [] }),
+      },
+      fs: fakeFs(['/w', '/w/loose']),
+    });
+    const here = await launcher.recent({ cwd: '/w/loose', scope: 'here', limit: 20 });
+    expect(asked.at(-1)).toEqual({ limit: 500 });
+    expect(here.sessions.map((session) => session.key)).toEqual(['mine']);
+  });
+
   it('matches a folder outside every project by cwd over the newest sessions', async () => {
     const { launcher, asked } = service([
       listed('in', { cwd: '/w/loose/a' }),
@@ -643,7 +688,16 @@ describe('a symlinked pane folder on the real file system', () => {
   mkdirSync(join(root, 'repo', 'src'));
   symlinkSync(join(root, 'repo'), join(root, 'link'));
   // The daemon records physical roots; the OS temp dir is itself behind a link on macOS.
-  const physicalRepo = realpathSync(join(root, 'repo'));
+  const physicalRepo = realpathSync.native(join(root, 'repo'));
+
+  // APFS is case-insensitive: a folder typed in another case is the same folder,
+  // and the native realpath answers in the case getcwd (and rosetta) records.
+  const shouted = join(root, 'REPO');
+  it.skipIf(!existsSync(shouted))('answers in the file system’s own letter case', async () => {
+    expect(await physicalPath(join(shouted, 'src'))).toBe(join(physicalRepo, 'src'));
+    const project: HistoryProject = { id: 'p-repo', name: 'repo', rootPaths: [physicalRepo] };
+    expect((await resolveLauncherProject(join(shouted, 'src'), [project]))?.id).toBe('p-repo');
+  });
 
   it('resolves to the project the daemon filed under the physical root', async () => {
     expect(await gitRootsOf(join(root, 'link', 'src'))).toEqual([physicalRepo]);
