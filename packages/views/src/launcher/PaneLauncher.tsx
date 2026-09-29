@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { LAUNCHER_SOURCE_ATTRIBUTE, PaneLauncherChrome, type LauncherBusy } from './PaneLauncherChrome.js';
-import type { LaunchRect, LaunchVerb } from './launch-model.js';
+import { launchSource, type LaunchRect, type LaunchVerb } from './launch-model.js';
 import {
   LAUNCHER_RECENT_LIMIT,
   LAUNCHER_SEARCH_DEBOUNCE_MS,
@@ -340,7 +340,7 @@ export function PaneLauncher({
       index,
       providerId: agent.providerId,
       label: agent.label,
-      from: takeMark(`agent:${index}`),
+      from: takeMark(launchSource('launch', index)),
     });
   };
 
@@ -355,7 +355,7 @@ export function PaneLauncher({
       ...(row.session.providerId ? { providerId: row.session.providerId } : {}),
       label: agent?.label ?? row.session.title,
       session: row.session,
-      from: takeMark(`session:${index}`),
+      from: takeMark(launchSource('resume', index)),
     });
   };
 

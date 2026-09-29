@@ -2,7 +2,8 @@
  * The launch's model (QL-2, Minimal Pane Frame pass 4 §27, look C · Cells):
  * everything the launch decides without a DOM. A launch is held per PANE
  * from the click to the agent's first frame; three facts move it (the click,
- * the port's answer, the first frame) and nothing else does. `PaneLaunch.tsx`
+ * the port's answer, the first frame) and nothing else does — save the born
+ * session leaving its pane before it drew, which ends it. `PaneLaunch.tsx`
  * draws it and `DeckLaunchers.tsx` feeds it the facts.
  */
 
@@ -32,6 +33,10 @@ export const LAUNCH_SLOT_MS = 240;
 /** A refusal: the grid drains into the mark, then the ground lifts and the mark hops back to its row. */
 export const LAUNCH_DRAIN_MS = 240;
 export const LAUNCH_RETURN_MS = 360;
+/** An agent that left before it drew: after the drain, the mark goes out where it is. */
+export const LAUNCH_GONE_MS = 160;
+/** The mark follows the pane's middle when the pane is resized under it. */
+export const LAUNCH_RECENTRE_MS = 240;
 
 /** The mark at the middle, and the patch of grid woken around it while the agent starts. */
 export const LAUNCH_MARK_SIZE = 26;
@@ -44,9 +49,10 @@ export const LAUNCH_CENTRE_Y = 0.46;
  * way to the middle, no indicator yet. `starting` and `opening`: the indicator,
  * before and after the port's answer. `home`: the first frame (or C9's release)
  * came and the mark is going to the badge. `refused`: the port said no and the
- * mark is going back to its row.
+ * mark is going back to its row. `left`: the agent's session left the pane
+ * before it drew (it exited at once), so the launch lets the pane go.
  */
-export type LaunchPhase = 'depart' | 'starting' | 'opening' | 'home' | 'refused';
+export type LaunchPhase = 'depart' | 'starting' | 'opening' | 'home' | 'refused' | 'left';
 
 /** What a launch was asked to do: a new agent, or a past session. */
 export type LaunchVerb = 'launch' | 'resume';
@@ -73,15 +79,17 @@ export type LaunchEvent =
   /** `LAUNCH_LATE_FRAME_MS` after `running`, with no first frame (C9). */
   | { type: 'late' }
   /** The port answered no. */
-  | { type: 'refused'; reason: string };
+  | { type: 'refused'; reason: string }
+  /** The born session left the pane before its first frame: the pane shows another session now. */
+  | { type: 'left' };
 
 export function initialLaunch(): LaunchState {
   return { phase: 'depart', running: false, fast: false };
 }
 
-/** Whether the launch has settled on a way out (home or back): no fact moves it any more. */
+/** Whether the launch has settled on a way out (home, back, or gone): no fact moves it any more. */
 export function launchSettled(state: LaunchState): boolean {
-  return state.phase === 'home' || state.phase === 'refused';
+  return state.phase === 'home' || state.phase === 'refused' || state.phase === 'left';
 }
 
 /** Whether the indicator (the grid, the ripples, the caption) is up. */
@@ -115,6 +123,11 @@ export function reduceLaunch(state: LaunchState, event: LaunchEvent): LaunchStat
       return { ...state, phase: 'home', fast: state.phase === 'depart' };
     case 'refused':
       return { ...state, phase: 'refused', reason: event.reason };
+    case 'left':
+      // Only a session the port named can leave; before the answer the pane's
+      // session is the host's business (it may mount the agent first).
+      if (!state.running || state.sessionId === undefined) return state;
+      return { ...state, phase: 'left' };
     default:
       return state;
   }
@@ -136,11 +149,26 @@ export function launchCaption(verb: LaunchVerb, phase: LaunchPhase, elapsedMs: n
   return elapsedMs >= LAUNCH_FIGURE_MS ? `${word} · ${formatLaunchSeconds(elapsedMs)}` : word;
 }
 
-/** What a screen reader hears when the launch begins, and once it has an answer. */
+/**
+ * What a screen reader hears: nothing while the launch departs (a live region
+ * that is filled as it mounts is not reliably read, and a launch drawn inside
+ * `LAUNCH_INDICATOR_MS` only needs its arrival said), then the wait once the
+ * indicator is up, then how it ended.
+ */
 export function launchAnnouncement(verb: LaunchVerb, label: string, phase: LaunchPhase): string {
+  if (phase === 'depart') return '';
   if (phase === 'refused') return `${label} did not ${verb === 'resume' ? 'resume' : 'launch'}`;
+  if (phase === 'left') return `${label} exited before it opened`;
   if (phase === 'home') return `${label} is open`;
   return `${verb === 'resume' ? 'Resuming' : 'Starting'} ${label}`;
+}
+
+/**
+ * The row a launch took its mark from, as the launcher names it
+ * (`data-vf-launch-source`): an agent's row for a launch, a result's for a resume.
+ */
+export function launchSource(verb: LaunchVerb, index: number): string {
+  return `${verb === 'resume' ? 'session' : 'agent'}:${index}`;
 }
 
 export interface LaunchPoint {

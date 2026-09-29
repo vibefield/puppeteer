@@ -8,6 +8,7 @@ import type {
 } from 'react';
 import type { SnippetSegment } from '../find/find-model.js';
 import { AgentIcon } from '../icons/AgentIcon.js';
+import { launchSource } from './launch-model.js';
 import {
   agentKeyLabel,
   agentKeyShortcut,
@@ -249,7 +250,7 @@ export function PaneLauncherChrome({
                 key={agent.providerId}
                 type="button"
                 className={agentClass}
-                {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: `agent:${index}` }}
+                {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: launchSource('launch', index) }}
                 title={off ? `${agent.label} · ${off}` : agent.label}
                 aria-keyshortcuts={agentKeyShortcut(index)}
                 {...(off ? { 'aria-disabled': true } : {})}
@@ -324,7 +325,7 @@ export function PaneLauncherChrome({
                     <div
                       key={row.session.key}
                       id={launcherOptionId(sessionId, rowIndex)}
-                      {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: `session:${rowIndex}` }}
+                      {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: launchSource('resume', rowIndex) }}
                       role="option"
                       aria-selected={selected}
                       {...(row.session.resumable ? {} : { 'aria-disabled': true })}

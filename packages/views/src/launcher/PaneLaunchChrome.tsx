@@ -21,8 +21,14 @@ export interface PaneLaunchChromeProps {
   caption: string;
   /** The pane colour the host dealt this pane. */
   color?: string | undefined;
-  /** The middle of the pane, in its own pixels (`launchCentre`). */
+  /** The middle of the pane, in its own pixels (`launchCentre`): the grid's, the ripple's and the caption's. */
   centre: LaunchPoint;
+  /**
+   * Where the mark is drawn at mount, `centre` by default. The live portal pins
+   * it to the mount's centre and moves the mark itself from then on, so a resize
+   * never has React rewrite the transform of a mark in flight.
+   */
+  markAt?: LaunchPoint | undefined;
   /** How far the grid reaches: the patch while the agent starts, past the corners once it runs. */
   reach: number;
   /** The terminal's ground covers the pane (the launch's own; the reveal opens it). */
@@ -57,6 +63,7 @@ export function PaneLaunchChrome({
   caption,
   color,
   centre,
+  markAt = centre,
   reach,
   lit,
   waiting,
@@ -98,7 +105,7 @@ export function PaneLaunchChrome({
         className="vf-pane-launch-mark"
         ref={markRef}
         aria-hidden="true"
-        style={{ transform: `translate(${centre.x - half}px, ${centre.y - half}px)` }}
+        style={{ transform: `translate(${markAt.x - half}px, ${markAt.y - half}px)` }}
       >
         <span className="vf-pane-launch-glyph">{providerId ? <AgentIcon providerId={providerId} /> : '·'}</span>
       </i>

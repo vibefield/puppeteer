@@ -9,6 +9,7 @@ import {
   launchDuration,
   launchReach,
   launchSettled,
+  launchSource,
   launchWaiting,
   reduceLaunch,
   watchDrawnSessions,
@@ -64,10 +65,26 @@ describe('the launch reducer (pass 4 §27)', () => {
   });
 
   it('turns back on a refusal from any wait, and keeps the reason (C7)', () => {
-    for (const before of [[], [{ type: 'indicator' } as const], [{ type: 'indicator' } as const]]) {
+    for (const before of [[], [{ type: 'indicator' } as const]]) {
       const refused = run(...before, { type: 'refused', reason: 'its profile is signed out' });
       expect(refused).toMatchObject({ phase: 'refused', reason: 'its profile is signed out' });
     }
+  });
+
+  it('lets the pane go when the born session leaves it before drawing, and only then', () => {
+    const left = run({ type: 'indicator' }, { type: 'running', sessionId: 'agent-1' }, { type: 'left' });
+    expect(left).toMatchObject({ phase: 'left', running: true, sessionId: 'agent-1' });
+    expect(launchSettled(left)).toBe(true);
+    expect(launchWaiting(left.phase)).toBe(false);
+    // A first frame or C9 after it changes nothing.
+    expect(reduceLaunch(left, { type: 'drawn' })).toBe(left);
+    expect(reduceLaunch(left, { type: 'late' })).toBe(left);
+    // Before the port names the session, the pane's session is the host's business.
+    expect(run({ type: 'indicator' }, { type: 'left' }).phase).toBe('starting');
+    expect(run({ type: 'running' }, { type: 'left' }).phase).toBe('depart');
+    // A launch already home stays home.
+    const home = run({ type: 'running', sessionId: 'a' }, { type: 'drawn' });
+    expect(reduceLaunch(home, { type: 'left' })).toBe(home);
   });
 
   it('ignores every fact once settled, and a repeated fact is the first one', () => {
@@ -96,11 +113,20 @@ describe('what the launch says', () => {
     expect(launchCaption('resume', 'opening', 100)).toBe('opening');
   });
 
-  it('announces the start, the arrival and a refusal in words', () => {
-    expect(launchAnnouncement('launch', 'Codex', 'depart')).toBe('Starting Codex');
+  it('announces the wait once the indicator is up, then how it ended, in words', () => {
+    // Nothing while it departs: a region filled as it mounts is not reliably read.
+    expect(launchAnnouncement('launch', 'Codex', 'depart')).toBe('');
+    expect(launchAnnouncement('launch', 'Codex', 'starting')).toBe('Starting Codex');
     expect(launchAnnouncement('resume', 'Claude Code', 'starting')).toBe('Resuming Claude Code');
     expect(launchAnnouncement('launch', 'Codex', 'home')).toBe('Codex is open');
     expect(launchAnnouncement('launch', 'Codex', 'refused')).toBe('Codex did not launch');
+    expect(launchAnnouncement('resume', 'Codex', 'refused')).toBe('Codex did not resume');
+    expect(launchAnnouncement('launch', 'Codex', 'left')).toBe('Codex exited before it opened');
+  });
+
+  it('names the row a launch took its mark from, as the launcher marks it', () => {
+    expect(launchSource('launch', 2)).toBe('agent:2');
+    expect(launchSource('resume', 0)).toBe('session:0');
   });
 });
 

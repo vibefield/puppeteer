@@ -46,6 +46,14 @@ describe('the launch as markup (C · Cells)', () => {
     expect(render()).toContain('<svg');
   });
 
+  it('draws the mark where the mounter pinned it, and the grid at the middle it gives', () => {
+    // The live launch pins the mark to its mount's middle and moves it itself,
+    // so a resized pane moves the grid (CSS) without React moving the mark.
+    const html = render({ centre: { x: 300, y: 120 }, markAt: CENTRE });
+    expect(html).toContain('--launch-cx:300px;--launch-cy:120px');
+    expect(html).toContain(`transform:translate(${CENTRE.x - 13}px, ${CENTRE.y - 13}px)`);
+  });
+
   it('reaches past the corners once the agent runs', () => {
     const reach = launchReach(WIDTH, HEIGHT);
     const html = render({ phase: 'opening', reach, caption: launchCaption('launch', 'opening', 3_100) });
@@ -56,16 +64,19 @@ describe('the launch as markup (C · Cells)', () => {
   });
 
   it('says what it is doing to a screen reader, and not the seconds', () => {
+    expect(render({ phase: 'depart', waiting: false })).toContain('role="status" aria-live="polite"></span>');
     expect(render()).toContain('role="status" aria-live="polite">Starting Codex</span>');
     expect(render({ verb: 'resume', label: 'Claude Code' })).toContain('>Resuming Claude Code</span>');
     expect(render({ phase: 'home', waiting: false })).toContain('>Codex is open</span>');
     expect(render({ phase: 'refused', waiting: false, lit: false })).toContain('>Codex did not launch</span>');
+    expect(render({ phase: 'left', waiting: false })).toContain('>Codex exited before it opened</span>');
     expect(render()).toMatch(/class="vf-pane-launch-caption" aria-hidden="true"/);
   });
 
   it('draws no indicator once the launch is on its way out', () => {
     expect(render({ phase: 'home', waiting: false })).toContain('class="vf-pane-launch is-home is-lit"');
     expect(render({ phase: 'refused', waiting: false, lit: false })).toContain('class="vf-pane-launch is-refused"');
+    expect(render({ phase: 'left', waiting: false })).toContain('class="vf-pane-launch is-left is-lit"');
   });
 
   it('keeps a mark for a session whose agent has none, and says when motion is reduced', () => {

@@ -76,8 +76,8 @@
   pointer-events: auto;
   animation: vf-pane-launcher-in 160ms cubic-bezier(0.25, 1, 0.3, 1) both;
   transition:
-    opacity 160ms cubic-bezier(0.25, 1, 0.3, 1),
-    transform 160ms cubic-bezier(0.25, 1, 0.3, 1);
+    opacity 120ms cubic-bezier(0.25, 1, 0.3, 1),
+    transform 120ms cubic-bezier(0.25, 1, 0.3, 1);
 }
 
 @keyframes vf-pane-launcher-in {
@@ -88,8 +88,9 @@
 }
 
 /* A launch took a row's mark (QL-2, C1): the launcher shrinks away toward it in
-   the click's frame — `transform-origin` is that mark, set by the launcher — and
-   comes back the same way if the launch is refused. */
+   the click's frame — `transform-origin` is that mark, set by the launcher — in
+   160ms, and comes back the same way, in the launcher's own 120ms, if the launch
+   is refused. */
 .vf-pane-launcher.is-leaving {
   opacity: 0;
   transform: translateX(-50%) scale(0.94);
@@ -246,11 +247,7 @@
   border-bottom: 1px solid transparent;
   color: color-mix(in srgb, var(--ink) 38%, transparent);
   background: none;
-  font:
-    700 9px/1 ui-monospace,
-    'SFMono-Regular',
-    Menlo,
-    monospace;
+  font: 700 9px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
