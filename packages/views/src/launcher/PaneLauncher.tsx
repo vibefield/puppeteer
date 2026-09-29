@@ -1,14 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { PaneLauncherChrome, type LauncherBusy } from './PaneLauncherChrome.js';
+import { LAUNCHER_SOURCE_ATTRIBUTE, PaneLauncherChrome, type LauncherBusy } from './PaneLauncherChrome.js';
+import type { LaunchRect, LaunchVerb } from './launch-model.js';
 import {
   LAUNCHER_RECENT_LIMIT,
   LAUNCHER_SEARCH_DEBOUNCE_MS,
@@ -26,14 +19,39 @@ import {
 import type {
   LauncherAgent,
   LauncherHistoryStatus,
-  LauncherOutcome,
   LauncherPort,
   LauncherSession,
   LauncherWordHit,
 } from './launcher-port.js';
 
-/** How long the launcher takes to leave once a launch or a resume is accepted (§22 "motion"). */
+/**
+ * How long the launcher took to leave once a launch was accepted (QL-1). Since
+ * QL-2 it leaves at the click, before the request goes out; a host that waits
+ * this long before mounting what came back waits for nothing it needs to.
+ */
 export const LAUNCHER_LEAVE_MS = 120;
+
+/** What the launcher hands its mounter in the click's frame: the verb, the row, and where its mark was. */
+export interface PaneLauncherLaunchRequest {
+  verb: LaunchVerb;
+  /** The agent's row (a launch) or the result's row (a resume). */
+  index: number;
+  providerId?: string | undefined;
+  /** The agent, as the row names it: the launch's caption. */
+  label: string;
+  /** The past session a resume continues. */
+  session?: LauncherSession | undefined;
+  /** The row's mark at the click, in the pane's own pixels: where the launch's mark starts. */
+  from: LaunchRect;
+}
+
+/** The mounter's launch in this launcher's pane, as the launcher draws it. */
+export interface PaneLauncherLaunch {
+  verb: LaunchVerb;
+  index: number;
+  /** A refusal is bringing the mark back: the launcher is back, the row still empty. */
+  returning: boolean;
+}
 
 /**
  * How many frames a click in a resting pane's field waits for the pane's own
@@ -79,8 +97,16 @@ export interface PaneLauncherProps {
   onScopeChange(scope: LauncherScope): void;
   /** A paste reached the pane's terminal: the shell has input now. */
   onUsed(): void;
-  /** A launch or a resume was accepted and the launcher has left. */
-  onDone(): void;
+  /**
+   * Launch an agent or resume a session in this pane (QL-2): called in the
+   * click's frame, before any request; the mounter owns the port call and its
+   * answer, because a launcher can unmount before its port answers.
+   */
+  onLaunch(request: PaneLauncherLaunchRequest): void;
+  /** The mounter's launch in this pane, while there is one. */
+  launch?: PaneLauncherLaunch | undefined;
+  /** Why the last launch or resume from here was refused, in the host's words. */
+  failure?: string | undefined;
   /** The mounter's handle on this launcher's keys; `null` on unmount. */
   register(controller: PaneLauncherController | null): void;
   /** A fixed clock for ages; the time the field opened by default. */
@@ -116,7 +142,9 @@ export function PaneLauncher({
   scope,
   onScopeChange,
   onUsed,
-  onDone,
+  onLaunch,
+  launch: launching,
+  failure: refusal,
   register,
   nowMs,
 }: PaneLauncherProps) {
@@ -129,8 +157,13 @@ export function PaneLauncher({
   const [words, setWords] = useState<{ question: LauncherWordsQuestion; hits: readonly LauncherWordHit[] }>();
   const [highlight, setHighlight] = useState(-1);
   const [hoverIndex, setHoverIndex] = useState<number>();
-  const [busy, setBusy] = useState<LauncherBusy>();
   const [failure, setFailure] = useState<string>();
+  const [departOrigin, setDepartOrigin] = useState<string>();
+  const rootRef = useRef<HTMLDivElement>(null);
+  // The launch is the mounter's; the launcher only draws its row leaving and coming back.
+  const busy: LauncherBusy | undefined = launching
+    ? { kind: launching.verb, index: launching.index, leaving: !launching.returning, returning: launching.returning }
+    : undefined;
   const [short, setShort] = useState(false);
   const [clock, setClock] = useState(() => nowMs ?? Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -140,8 +173,8 @@ export function PaneLauncher({
   const folder = launcherFolder(cwd);
   // The mounter's callbacks may be new on every render; the effects that use
   // them should not re-subscribe for it.
-  const callbacks = useRef({ onUsed, onDone, register, onActivate });
-  callbacks.current = { onUsed, onDone, register, onActivate };
+  const callbacks = useRef({ onUsed, onLaunch, register, onActivate });
+  callbacks.current = { onUsed, onLaunch, register, onActivate };
   /** A click in a resting pane's field that opens the field once the pane is selected; its undo. */
   const pendingOpen = useRef<(() => void) | undefined>(undefined);
 
@@ -265,21 +298,34 @@ export function PaneLauncher({
     setHighlight(rowsKey === '' ? -1 : 0);
   }, [rowsKey]);
 
-  const settle = useCallback(
-    (outcome: LauncherOutcome, next: LauncherBusy, refused: (reason: string) => string): void => {
-      if (!alive.current) return;
-      if (outcome.accepted) {
-        setBusy({ ...next, leaving: true });
-        window.setTimeout(() => {
-          if (alive.current) callbacks.current.onDone();
-        }, LAUNCHER_LEAVE_MS);
-      } else {
-        setBusy(undefined);
-        setFailure(refused(outcome.reason));
-      }
-    },
-    [],
-  );
+  /**
+   * The row's mark, in the pane's own pixels, and the point the launcher block
+   * shrinks toward (C1). A row the narrow tiers hide has no box: the launch's
+   * mark then rises from the launcher's middle, small.
+   */
+  const takeMark = (source: string): LaunchRect => {
+    const root = rootRef.current;
+    const paneBox = pane.getBoundingClientRect();
+    const mark = root?.querySelector<HTMLElement>(`[${LAUNCHER_SOURCE_ATTRIBUTE}="${source}"] .vf-pane-launcher-mark`);
+    const box = mark?.getBoundingClientRect();
+    const block = root?.querySelector<HTMLElement>('.vf-pane-launcher');
+    let from: LaunchRect;
+    if (box && box.width > 0 && box.height > 0) {
+      from = { x: box.left - paneBox.left, y: box.top - paneBox.top, width: box.width, height: box.height };
+    } else {
+      const centre = block?.getBoundingClientRect();
+      const x = centre ? centre.left + centre.width / 2 - paneBox.left : paneBox.width / 2;
+      const y = centre ? centre.top + Math.min(centre.height, 64) / 2 - paneBox.top : paneBox.height / 2;
+      from = { x: x - 8, y: y - 8, width: 16, height: 16 };
+    }
+    if (block) {
+      // The block is centred with translateX(-50%): its own box starts half a width left of `offsetLeft`.
+      const ox = from.x + from.width / 2 - (block.offsetLeft - block.offsetWidth / 2);
+      const oy = from.y + from.height / 2 - block.offsetTop;
+      setDepartOrigin(`${ox.toFixed(1)}px ${oy.toFixed(1)}px`);
+    }
+    return from;
+  };
 
   const launch = (index: number): void => {
     const agent = agents[index];
@@ -288,27 +334,29 @@ export function PaneLauncher({
       setFailure(cantLaunchLine(agent));
       return;
     }
-    const next: LauncherBusy = { kind: 'launch', index };
-    const refused = (reason: string): string => `${agent.label} didn’t launch: ${reason}`;
     setFailure(undefined);
-    setBusy(next);
-    void port
-      .launch({ paneId, sessionId, providerId: agent.providerId, ...(cwd ? { cwd } : {}) })
-      .then((outcome) => settle(outcome, next, refused))
-      .catch((error: unknown) => settle({ accepted: false, reason: reasonOf(error) }, next, refused));
+    callbacks.current.onLaunch({
+      verb: 'launch',
+      index,
+      providerId: agent.providerId,
+      label: agent.label,
+      from: takeMark(`agent:${index}`),
+    });
   };
 
   const resume = (index: number): void => {
     const row = rows[index];
     if (!row || !row.session.resumable || busy) return;
-    const next: LauncherBusy = { kind: 'resume', index };
-    const refused = (reason: string): string => `“${row.session.title}” didn’t resume: ${reason}`;
+    const agent = agents.find((candidate) => candidate.providerId === row.session.providerId);
     setFailure(undefined);
-    setBusy(next);
-    void port
-      .resume({ paneId, sessionId, session: row.session, ...(cwd ? { cwd } : {}) })
-      .then((outcome) => settle(outcome, next, refused))
-      .catch((error: unknown) => settle({ accepted: false, reason: reasonOf(error) }, next, refused));
+    callbacks.current.onLaunch({
+      verb: 'resume',
+      index,
+      ...(row.session.providerId ? { providerId: row.session.providerId } : {}),
+      label: agent?.label ?? row.session.title,
+      session: row.session,
+      from: takeMark(`session:${index}`),
+    });
   };
 
   const close = (refocus: boolean): void => {
@@ -422,8 +470,10 @@ export function PaneLauncher({
       {...(history ? { history } : {})}
       {...(hoverIndex !== undefined ? { hoverIndex } : {})}
       {...(busy ? { busy } : {})}
-      {...(failure ? { failure } : {})}
+      {...(failure || refusal ? { failure: failure ?? refusal } : {})}
       inputRef={inputRef}
+      rootRef={rootRef}
+      {...(departOrigin ? { departOrigin } : {})}
       onQueryChange={setQuery}
       onOpen={() => setOpen(true)}
       onFieldBlur={() => {

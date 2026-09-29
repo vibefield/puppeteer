@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { GHOSTTEA_PANE_SELECTOR, usePaneElements } from '../deck/pane-elements.js';
-import { PaneLauncher, type PaneLauncherController } from './PaneLauncher.js';
+import { PaneLaunch, type PaneLaunchOutcome } from './PaneLaunch.js';
+import { PaneLauncher, type PaneLauncherController, type PaneLauncherLaunchRequest } from './PaneLauncher.js';
+import {
+  LAUNCH_INDICATOR_MS,
+  LAUNCH_LATE_FRAME_MS,
+  initialLaunch,
+  reduceLaunch,
+  type LaunchEvent,
+  type LaunchRect,
+  type LaunchState,
+  type LaunchVerb,
+  type WatchFirstFrame,
+} from './launch-model.js';
 import {
   LauncherKeyReleases,
   launcherKeyDecision,
@@ -10,7 +22,7 @@ import {
   type LauncherKeyPane,
   type LauncherScope,
 } from './launcher-model.js';
-import type { LauncherAgent, LauncherPort } from './launcher-port.js';
+import type { LauncherAgent, LauncherOutcome, LauncherPort } from './launcher-port.js';
 
 /**
  * How long after a key the launcher let by (a ⌘/⌃ chord) it asks the host
@@ -70,6 +82,46 @@ export interface DeckLaunchersProps {
   paneSelector?: string | undefined;
   /** A fixed clock for the session ages (a catalog's); the time the field opened by default. */
   nowMs?: number | undefined;
+  /**
+   * Watch a born session for its first drawn frame (QL-2, C3): call `onDrawn`
+   * once it has drawn (at once if it already has), and return the way to stop
+   * watching. Without it a launch lands as soon as the port answers.
+   */
+  watchFirstFrame?: WatchFirstFrame | undefined;
+  /** Reduced motion for the launches, when the host knows better than the media query. */
+  reducedMotion?: boolean | undefined;
+}
+
+/** One launch, held per PANE from the click to the first frame (C2): it outlives the launcher it came from. */
+interface PaneLaunchRecord {
+  id: string;
+  paneId: string;
+  /** The fresh shell the launcher sat on, which the launch replaces. */
+  freshSessionId: string;
+  verb: LaunchVerb;
+  index: number;
+  providerId?: string | undefined;
+  label: string;
+  from: LaunchRect;
+  startedAt: number;
+  state: LaunchState;
+}
+
+/** What a launch holds besides its facts: its timers and its watch on the first frame. */
+interface LaunchJob {
+  timers: number[];
+  unwatch?: (() => void) | undefined;
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : 'no answer';
+}
+
+/** The failure line under the rows, in the words QL-1 used. */
+function refusalLine(request: PaneLauncherLaunchRequest, reason: string): string {
+  return request.verb === 'resume'
+    ? `“${request.session?.title ?? request.label}” didn’t resume: ${reason}`
+    : `${request.label} didn’t launch: ${reason}`;
 }
 
 function addTo(set: ReadonlySet<string>, id: string): ReadonlySet<string> {
@@ -104,6 +156,8 @@ export function DeckLaunchers({
   onOwnsKeysChange,
   paneSelector = GHOSTTEA_PANE_SELECTOR,
   nowMs,
+  watchFirstFrame,
+  reducedMotion,
 }: DeckLaunchersProps) {
   const elements = usePaneElements(deckRef, paneSelector, panes);
   const [used, setUsed] = useState<ReadonlySet<string>>(() => new Set());
@@ -113,8 +167,36 @@ export function DeckLaunchers({
   const controllers = useRef(new Map<string, PaneLauncherController>());
   const ordered = useMemo(() => orderAgents(agents), [agents]);
 
-  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput });
-  callbacks.current = { onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput };
+  const callbacks = useRef({ onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput, port, watchFirstFrame });
+  callbacks.current = { onSessionUsed, onOwnsKeysChange, onActivatePane, hasInput, port, watchFirstFrame };
+
+  // ── the launches (QL-2): one per pane, from the click to the first frame ──
+  const [launches, setLaunches] = useState<ReadonlyMap<string, PaneLaunchRecord>>(() => new Map());
+  const [refusals, setRefusals] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const launchesRef = useRef(launches);
+  launchesRef.current = launches;
+  const inFlight = useRef(new Set<string>());
+  const jobs = useRef(new Map<string, LaunchJob>());
+  const launchSequence = useRef(0);
+
+  const release = useCallback((id: string): void => {
+    const job = jobs.current.get(id);
+    if (!job) return;
+    for (const timer of job.timers) window.clearTimeout(timer);
+    job.unwatch?.();
+    jobs.current.delete(id);
+  }, []);
+
+  /** One fact for one launch; a fact for a launch already let go is dropped. */
+  const advance = useCallback((paneId: string, id: string, event: LaunchEvent): void => {
+    setLaunches((current) => {
+      const record = current.get(paneId);
+      if (!record || record.id !== id) return current;
+      const state = reduceLaunch(record.state, event);
+      if (state === record.state) return current;
+      return new Map(current).set(paneId, { ...record, state });
+    });
+  }, []);
 
   const markUsed = useCallback((sessionId: string): void => {
     setUsed((current) => addTo(current, sessionId));
@@ -123,6 +205,106 @@ export function DeckLaunchers({
   const dismiss = useCallback((sessionId: string): void => {
     setDismissed((current) => addTo(current, sessionId));
   }, []);
+
+  /** The port's answer to one launch: running and watching for its first frame, or refused. */
+  const answer = useCallback(
+    (
+      paneId: string,
+      id: string,
+      freshSessionId: string,
+      request: PaneLauncherLaunchRequest,
+      outcome: LauncherOutcome,
+    ) => {
+      const job = jobs.current.get(id);
+      if (!job) return;
+      if (!outcome.accepted) {
+        setRefusals((current) => new Map(current).set(freshSessionId, refusalLine(request, outcome.reason)));
+        advance(paneId, id, { type: 'refused', reason: outcome.reason });
+        return;
+      }
+      advance(paneId, id, { type: 'running', sessionId: outcome.sessionId });
+      const watch = callbacks.current.watchFirstFrame;
+      if (!watch || outcome.sessionId === undefined) {
+        // No way to know when it draws: it lands at the answer.
+        advance(paneId, id, { type: 'drawn' });
+        return;
+      }
+      job.timers.push(window.setTimeout(() => advance(paneId, id, { type: 'late' }), LAUNCH_LATE_FRAME_MS));
+      job.unwatch = watch(outcome.sessionId, () => advance(paneId, id, { type: 'drawn' })) ?? undefined;
+    },
+    [advance],
+  );
+
+  /** C1: the launch begins in the click's frame; the request goes out after. */
+  const startLaunch = useCallback(
+    (pane: { id: string; sessionId: string; cwd?: string | undefined }, request: PaneLauncherLaunchRequest): void => {
+      if (inFlight.current.has(pane.id)) return;
+      inFlight.current.add(pane.id);
+      launchSequence.current += 1;
+      const id = `launch-${launchSequence.current}`;
+      const record: PaneLaunchRecord = {
+        id,
+        paneId: pane.id,
+        freshSessionId: pane.sessionId,
+        verb: request.verb,
+        index: request.index,
+        ...(request.providerId ? { providerId: request.providerId } : {}),
+        label: request.label,
+        from: request.from,
+        startedAt: performance.now(),
+        state: initialLaunch(),
+      };
+      setLaunches((current) => new Map(current).set(pane.id, record));
+      setRefusals((current) => {
+        if (!current.has(pane.sessionId)) return current;
+        const next = new Map(current);
+        next.delete(pane.sessionId);
+        return next;
+      });
+      const job: LaunchJob = { timers: [] };
+      jobs.current.set(id, job);
+      job.timers.push(window.setTimeout(() => advance(pane.id, id, { type: 'indicator' }), LAUNCH_INDICATOR_MS));
+      const currentPort = callbacks.current.port;
+      const cwd = pane.cwd ? { cwd: pane.cwd } : {};
+      let asked: Promise<LauncherOutcome>;
+      try {
+        asked =
+          request.verb === 'resume' && request.session
+            ? currentPort.resume({ paneId: pane.id, sessionId: pane.sessionId, session: request.session, ...cwd })
+            : currentPort.launch({
+                paneId: pane.id,
+                sessionId: pane.sessionId,
+                providerId: request.providerId ?? '',
+                ...cwd,
+              });
+      } catch (error) {
+        asked = Promise.resolve({ accepted: false, reason: reasonOf(error) });
+      }
+      void asked.then(
+        (outcome) => answer(pane.id, id, pane.sessionId, request, outcome),
+        (error: unknown) => answer(pane.id, id, pane.sessionId, request, { accepted: false, reason: reasonOf(error) }),
+      );
+    },
+    [advance, answer],
+  );
+
+  /** The mark is home (the launcher's shell is done with) or back in its row (the launcher is yours again). */
+  const settleLaunch = useCallback(
+    (paneId: string, id: string, outcome: PaneLaunchOutcome): void => {
+      const record = launchesRef.current.get(paneId);
+      release(id);
+      if (!record || record.id !== id) return;
+      inFlight.current.delete(paneId);
+      setLaunches((current) => {
+        if (current.get(paneId)?.id !== id) return current;
+        const next = new Map(current);
+        next.delete(paneId);
+        return next;
+      });
+      if (outcome === 'landed') dismiss(record.freshSessionId);
+    },
+    [dismiss, release],
+  );
   /** The host says this shell has input now: its launcher goes (the host needs no telling). */
   const recheck = useCallback((sessionId: string): boolean => {
     if (callbacks.current.hasInput?.(sessionId) !== true) return false;
@@ -221,8 +403,61 @@ export function DeckLaunchers({
     };
   }, [markUsed, dismiss, recheck]);
 
+  // A pane that went away takes its launch with it.
+  const paneKey = panes.map((pane) => pane.id).join('\n');
+  useEffect(() => {
+    const present = new Set(paneKey === '' ? [] : paneKey.split('\n'));
+    for (const [paneId, record] of launchesRef.current) {
+      if (present.has(paneId)) continue;
+      release(record.id);
+      inFlight.current.delete(paneId);
+      setLaunches((current) => {
+        if (!current.has(paneId)) return current;
+        const next = new Map(current);
+        next.delete(paneId);
+        return next;
+      });
+    }
+  }, [paneKey, release]);
+
+  // Unmounted, every launch lets go of its timers and its watch.
+  useEffect(
+    () => () => {
+      for (const id of [...jobs.current.keys()]) release(id);
+    },
+    [release],
+  );
+
+  /** The launch in `paneId`, as its launcher draws it, while that launcher's shell is the one it replaces. */
+  const launchOf = (paneId: string, sessionId: string) => {
+    const record = launches.get(paneId);
+    if (!record || record.freshSessionId !== sessionId) return undefined;
+    return { verb: record.verb, index: record.index, returning: record.state.phase === 'refused' };
+  };
+
   return (
     <>
+      {[...launches.values()].map((record) => {
+        const element = elements.byId.get(record.paneId);
+        if (!element) return null;
+        const color = paneColors.get(record.paneId);
+        return (
+          <PaneLaunch
+            key={`${record.paneId}\n${record.id}`}
+            pane={element}
+            launchId={record.id}
+            verb={record.verb}
+            {...(record.providerId ? { providerId: record.providerId } : {})}
+            label={record.label}
+            {...(color ? { color } : {})}
+            from={record.from}
+            startedAt={record.startedAt}
+            state={record.state}
+            onSettled={(outcome) => settleLaunch(record.paneId, record.id, outcome)}
+            {...(reducedMotion !== undefined ? { reducedMotion } : {})}
+          />
+        );
+      })}
       {shown.map((pane) => {
         const element = elements.byId.get(pane.id);
         if (!element) return null;
@@ -244,7 +479,9 @@ export function DeckLaunchers({
             scope={scope}
             onScopeChange={setScope}
             onUsed={() => markUsed(sessionId)}
-            onDone={() => dismiss(sessionId)}
+            onLaunch={(request) => startLaunch({ id: pane.id, sessionId, cwd }, request)}
+            {...(launchOf(pane.id, sessionId) ? { launch: launchOf(pane.id, sessionId) } : {})}
+            {...(refusals.get(sessionId) ? { failure: refusals.get(sessionId) } : {})}
             register={(controller) => {
               if (controller) controllers.current.set(pane.id, controller);
               else if (controllers.current.get(pane.id)) controllers.current.delete(pane.id);

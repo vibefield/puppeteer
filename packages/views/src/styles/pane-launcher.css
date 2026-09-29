@@ -76,8 +76,8 @@
   pointer-events: auto;
   animation: vf-pane-launcher-in 160ms cubic-bezier(0.25, 1, 0.3, 1) both;
   transition:
-    opacity 120ms cubic-bezier(0.25, 1, 0.3, 1),
-    transform 120ms cubic-bezier(0.25, 1, 0.3, 1);
+    opacity 160ms cubic-bezier(0.25, 1, 0.3, 1),
+    transform 160ms cubic-bezier(0.25, 1, 0.3, 1);
 }
 
 @keyframes vf-pane-launcher-in {
@@ -87,11 +87,23 @@
   }
 }
 
+/* A launch took a row's mark (QL-2, C1): the launcher shrinks away toward it in
+   the click's frame — `transform-origin` is that mark, set by the launcher — and
+   comes back the same way if the launch is refused. */
 .vf-pane-launcher.is-leaving {
   opacity: 0;
-  transform: translate(-50%, -3px);
+  transform: translateX(-50%) scale(0.94);
   animation: none;
   pointer-events: none;
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+/* The row a launch took its mark from stays empty while the mark is out. */
+.vf-pane-launcher-agent.is-flying .vf-pane-launcher-mark,
+.vf-pane-launcher-row.is-flying .vf-pane-launcher-mark {
+  visibility: hidden;
 }
 
 /* A resting empty pane keeps only its field, at 60%; selecting it brings the
@@ -234,7 +246,11 @@
   border-bottom: 1px solid transparent;
   color: color-mix(in srgb, var(--ink) 38%, transparent);
   background: none;
-  font: 700 9px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font:
+    700 9px/1 ui-monospace,
+    'SFMono-Regular',
+    Menlo,
+    monospace;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -642,5 +658,277 @@
   .vf-pane-launcher,
   .vf-pane-launcher-agent {
     transition: none;
+  }
+}
+
+/* ── the launch (QL-2 · Minimal Pane Frame pass 4 §27–§30, look C · Cells) ──
+
+   Held per pane from the click to the agent's first frame (`PaneLaunch`). The
+   terminal's ground covers the pane; under it, the pane's own cell grid as
+   dots, one per terminal cell, masked to the grid's reach — a patch around the
+   mark while the agent starts, past the corners once it runs; a band of the
+   pane colour ripples out through the cells while it waits. On the first
+   frame the ground opens from the mark outward. Every colour is mixed from
+   the terminal's ink and the pane colour, as the launcher's.
+
+   The layer sets no z-index, containment, opacity or transform of its own, so
+   its parts sit in the pane's stacking context: the ground under the launcher
+   (5), the caption over it (6), and the mark over the frame's badge (8) while
+   it flies.
+
+   Host-supplied tokens, beside the launcher's: `--vf-terminal-cell-width`,
+   `--vf-terminal-cell-height` and `--vf-terminal-cell-origin`, the terminal's
+   grid pitch and its origin inside the pane's content box. Ghosttea's fixed
+   metrics (7.83px × 19px from 2px) are the fallbacks. */
+
+@property --vf-launch-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --vf-launch-rr {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --vf-launch-hole {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.vf-pane-launch {
+  --ink: var(--vf-godview-terminal-ink, currentColor);
+  --pane-color: var(--ghostty-pane-color, color-mix(in srgb, var(--ink) 70%, transparent));
+  --ground: var(--vf-pane-launcher-ground, var(--vf-godview-terminal-bg, transparent));
+  --cell-w: var(--vf-terminal-cell-width, 7.83px);
+  --cell-h: var(--vf-terminal-cell-height, 19px);
+  --cell-origin: var(--vf-terminal-cell-origin, 2px);
+  --grid-top: calc(var(--vf-terminal-safe-top, 24px) + var(--cell-origin));
+  --grid-right: calc(var(--vf-terminal-safe-right, 0px) + var(--cell-origin));
+  --grid-bottom: calc(var(--vf-terminal-safe-bottom, 30px) + var(--cell-origin));
+  --grid-left: calc(var(--vf-terminal-safe-left, 0px) + var(--cell-origin));
+  position: absolute;
+  inset: 0;
+  color: var(--ink);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-synthesis: none;
+  pointer-events: none;
+}
+
+/* The terminal's own ground over the pane. Its mask is a hole at the mark:
+   closed (the hole ends before it starts) until the first frame, then opened
+   past the corners in the reveal. */
+.vf-pane-launch-ground {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: var(--ground);
+  opacity: 0;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-hole) - 30px),
+    #000 var(--vf-launch-hole)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-hole) - 30px),
+    #000 var(--vf-launch-hole)
+  );
+  transition:
+    opacity 200ms ease,
+    --vf-launch-hole 480ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+.vf-pane-launch.is-lit .vf-pane-launch-ground {
+  opacity: 1;
+}
+
+/* One dot per terminal cell, at the cell's centre, clipped to the grid's own
+   area so no dot enters the frame's bands. */
+.vf-pane-launch-grid,
+.vf-pane-launch-ripple {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--dot) 0 1.05px, transparent 1.55px);
+  background-position: var(--grid-left) var(--grid-top);
+  background-size: var(--cell-w) var(--cell-h);
+  clip-path: inset(var(--grid-top) var(--grid-right) var(--grid-bottom) var(--grid-left));
+}
+
+.vf-pane-launch-grid {
+  --dot: color-mix(in srgb, var(--ink) 20%, transparent);
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    #000 0,
+    #000 calc(var(--vf-launch-r) * 0.45),
+    transparent var(--vf-launch-r)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    #000 0,
+    #000 calc(var(--vf-launch-r) * 0.45),
+    transparent var(--vf-launch-r)
+  );
+  transition: --vf-launch-r 560ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+/* The ripple: a band of dots in the pane colour, out from the mark to the
+   grid's reach, about once a second, on the island curve. */
+.vf-pane-launch-ripple {
+  --dot: color-mix(in srgb, var(--pane-color) 85%, transparent);
+  background-image: radial-gradient(circle, var(--dot) 0 1.35px, transparent 1.85px);
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-rr) - 34px),
+    #000 calc(var(--vf-launch-rr) - 12px),
+    transparent var(--vf-launch-rr)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-rr) - 34px),
+    #000 calc(var(--vf-launch-rr) - 12px),
+    transparent var(--vf-launch-rr)
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-ripple {
+  opacity: 1;
+  animation: vf-pane-launch-ripple 1.1s cubic-bezier(0.25, 1, 0.3, 1) infinite;
+}
+
+@keyframes vf-pane-launch-ripple {
+  from {
+    --vf-launch-rr: 26px;
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 0.55;
+  }
+
+  to {
+    --vf-launch-rr: var(--launch-ripple-max, 120px);
+    opacity: 0;
+  }
+}
+
+/* The caption under the mark: the agent, then the wait and its seconds. */
+.vf-pane-launch-caption {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--launch-cy) + 30px);
+  right: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  opacity: 0;
+  text-align: center;
+  transition: opacity 160ms ease;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-caption {
+  opacity: 1;
+}
+
+.vf-pane-launch-caption b,
+.vf-pane-launch-caption span {
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 0 2px var(--ground),
+    0 0 5px var(--ground),
+    0 0 9px var(--ground);
+  white-space: nowrap;
+}
+
+.vf-pane-launch-caption b {
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vf-pane-launch-caption span {
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  font-size: 9.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The mark: one element from the clicked row to the badge. It is moved by
+   `transform` alone (the launch sets it); it breathes while it waits. */
+.vf-pane-launch-mark {
+  position: absolute;
+  z-index: 8;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--pane-color);
+  font-size: 26px;
+  font-style: normal;
+  line-height: 1;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.vf-pane-launch-glyph {
+  display: grid;
+  place-items: center;
+}
+
+.vf-pane-launch-glyph svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-glyph {
+  animation: vf-pane-launch-breathe 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes vf-pane-launch-breathe {
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.vf-pane-launch-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Reduced motion (M6): what changes fades, in 100ms; nothing loops. */
+.vf-pane-launch.is-reduced .vf-pane-launch-ground,
+.vf-pane-launch.is-reduced .vf-pane-launch-grid,
+.vf-pane-launch.is-reduced .vf-pane-launch-caption {
+  transition-property: opacity;
+  transition-duration: 100ms;
+}
+
+.vf-pane-launch.is-reduced .vf-pane-launch-ripple {
+  display: none;
+}
+
+.vf-pane-launch.is-reduced .vf-pane-launch-glyph {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-pane-launch-ripple,
+  .vf-pane-launch-glyph {
+    animation: none !important;
   }
 }

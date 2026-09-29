@@ -77,7 +77,12 @@ export interface LauncherWordHit {
   snippet: string;
 }
 
-export type LauncherOutcome = { accepted: true } | { accepted: false; reason: string };
+/**
+ * The host's answer to a launch or a resume. An accepted one may name the born
+ * session: the launch (QL-2) then waits for that terminal's first frame through
+ * the mounter's `watchFirstFrame`; without it the launch lands at the answer.
+ */
+export type LauncherOutcome = { accepted: true; sessionId?: string | undefined } | { accepted: false; reason: string };
 
 export interface LauncherPort {
   /** The pane folder's latest sessions (`here`), or every folder's (`all`). */

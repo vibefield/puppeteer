@@ -297,7 +297,31 @@
 
 .vf-pane-mark {
   display: inline-flex;
+  justify-content: center;
+  width: 1em;
   font-size: 10px;
+  transition:
+    width 240ms cubic-bezier(0.25, 1, 0.3, 1),
+    margin-right 240ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+/* A launch in flight (QL-2, C6) holds the badge's own mark back while the
+   launch's mark is out: `held` hides it with its slot closed, `landing` opens
+   the slot for the arriving mark (still hidden), and the attribute's removal
+   shows it, so the two marks are one element to the eye. The measuring class
+   lets the launch read the open slot without animating it. */
+.vf-deck-framed .ghostty-pane[data-vf-launching] .vf-pane-mark {
+  visibility: hidden;
+}
+
+.vf-deck-framed .ghostty-pane[data-vf-launching='held'] .vf-pane-mark {
+  width: 0;
+  margin-right: -6px;
+  overflow: hidden;
+}
+
+.vf-deck-framed .ghostty-pane.vf-pane-launch-measuring .vf-pane-mark {
+  transition: none;
 }
 
 .vf-pane-name {
@@ -403,6 +427,7 @@
   .vf-pane-frame::before,
   .vf-pane-verbs,
   .vf-pane-badge,
+  .vf-pane-mark,
   .vf-pane-meter::before {
     transition: none;
   }

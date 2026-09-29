@@ -23,10 +23,15 @@ import {
 } from './launcher-model.js';
 import type { LauncherAgent, LauncherHistoryStatus } from './launcher-port.js';
 
-/** What the launcher is doing with a key or a click it acted on. */
+/**
+ * What the launcher is doing with a key or a click it acted on. `leaving`: the
+ * launch has taken the row's mark and the launcher has shrunk away toward it
+ * (QL-2); `returning`: a refused launch is bringing the mark back to its row,
+ * which the launcher, back already, keeps empty until it lands.
+ */
 export type LauncherBusy =
-  | { kind: 'launch'; index: number; leaving?: boolean | undefined }
-  | { kind: 'resume'; index: number; leaving?: boolean | undefined };
+  | { kind: 'launch'; index: number; leaving?: boolean | undefined; returning?: boolean | undefined }
+  | { kind: 'resume'; index: number; leaving?: boolean | undefined; returning?: boolean | undefined };
 
 export interface PaneLauncherChromeProps {
   /** The fresh shell's session; names the launcher in `data-vf-pane-launcher`. */
@@ -74,7 +79,17 @@ export interface PaneLauncherChromeProps {
   onRootPointerDown?: ((event: ReactPointerEvent<HTMLDivElement>) => void) | undefined;
   /** The same press's mouse event, in the capture phase. */
   onRootMouseDown?: ((event: ReactMouseEvent<HTMLDivElement>) => void) | undefined;
+  /** The host layer, so the launcher can find the mark a launch takes from its row. */
+  rootRef?: RefObject<HTMLDivElement | null> | undefined;
+  /**
+   * Where the launcher shrinks toward as it leaves: the clicked mark, as a
+   * `transform-origin` in the launcher block's own box (QL-2, C1).
+   */
+  departOrigin?: string | undefined;
 }
+
+/** The attribute naming a row a launch can take its mark from: `agent:<index>` or `session:<index>`. */
+export const LAUNCHER_SOURCE_ATTRIBUTE = 'data-vf-launch-source';
 
 /** The resume glyph at the head of the field: an arrow coming back round. */
 function ResumeGlyph() {
@@ -185,9 +200,13 @@ export function PaneLauncherChrome({
   onScope,
   onRootPointerDown,
   onRootMouseDown,
+  rootRef,
+  departOrigin,
 }: PaneLauncherChromeProps) {
   const style = { ...(color ? { '--pane-color': color } : {}) } as CSSProperties;
   const leaving = busy?.leaving === true;
+  // The pressed row's mark is out with the launch while it leaves and while it comes back.
+  const flying = busy !== undefined && (busy.leaving === true || busy.returning === true);
   const className = [
     'vf-pane-launcher',
     open ? 'is-open' : '',
@@ -220,6 +239,7 @@ export function PaneLauncherChrome({
               'vf-pane-launcher-agent',
               hoverIndex === index && !off ? 'is-hover' : '',
               pressed ? 'is-press' : '',
+              pressed && flying ? 'is-flying' : '',
               off ? 'is-off' : '',
             ]
               .filter(Boolean)
@@ -229,6 +249,7 @@ export function PaneLauncherChrome({
                 key={agent.providerId}
                 type="button"
                 className={agentClass}
+                {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: `agent:${index}` }}
                 title={off ? `${agent.label} · ${off}` : agent.label}
                 aria-keyshortcuts={agentKeyShortcut(index)}
                 {...(off ? { 'aria-disabled': true } : {})}
@@ -295,6 +316,7 @@ export function PaneLauncherChrome({
                     selected ? 'is-cur' : '',
                     row.session.resumable ? '' : 'is-gone',
                     resuming ? 'is-press' : '',
+                    resuming && flying ? 'is-flying' : '',
                   ]
                     .filter(Boolean)
                     .join(' ');
@@ -302,6 +324,7 @@ export function PaneLauncherChrome({
                     <div
                       key={row.session.key}
                       id={launcherOptionId(sessionId, rowIndex)}
+                      {...{ [LAUNCHER_SOURCE_ATTRIBUTE]: `session:${rowIndex}` }}
                       role="option"
                       aria-selected={selected}
                       {...(row.session.resumable ? {} : { 'aria-disabled': true })}
@@ -350,6 +373,7 @@ export function PaneLauncherChrome({
   const showFoot = open && !historyUnavailable(history) && rows.length > 0;
   return (
     <div
+      ref={rootRef}
       className="vf-pane-launcher-host"
       style={style}
       data-vf-pane-launcher={sessionId}
@@ -357,7 +381,12 @@ export function PaneLauncherChrome({
       onMouseDownCapture={onRootMouseDown}
     >
       {previewAgent ? <span className="vf-pane-launcher-preview">{agentPreview(previewAgent)}</span> : null}
-      <div className={className} role="group" aria-label="Resume a session or launch an agent in this pane">
+      <div
+        className={className}
+        role="group"
+        aria-label="Resume a session or launch an agent in this pane"
+        {...(flying && departOrigin ? { style: { transformOrigin: departOrigin } } : {})}
+      >
         <div className={`vf-pane-launcher-field${open ? ' is-focus' : ''}`}>
           <ResumeGlyph />
           <span className="vf-pane-launcher-q">

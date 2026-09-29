@@ -168,6 +168,26 @@ describe('PaneLauncherChrome · at rest', () => {
     );
   });
 
+  it('shrinks toward the mark a launch took, and keeps that row empty until the mark is back (QL-2)', () => {
+    const leaving = render({ busy: { kind: 'launch', index: 1, leaving: true }, departOrigin: '41.5px 68.0px' });
+    expect(leaving).toContain('class="vf-pane-launcher is-leaving is-busy" role="group"');
+    expect(leaving).toContain('style="transform-origin:41.5px 68.0px"');
+    expect(leaving).toContain('class="vf-pane-launcher-agent is-press is-flying"');
+    const returning = render({ busy: { kind: 'launch', index: 1, returning: true }, departOrigin: '41.5px 68.0px' });
+    expect(returning).toContain('class="vf-pane-launcher is-busy"');
+    expect(returning).toContain('class="vf-pane-launcher-agent is-press is-flying"');
+    expect(returning).toContain('style="transform-origin:41.5px 68.0px"');
+    // At rest the origin is nobody's business.
+    expect(render({ departOrigin: '41.5px 68.0px' })).not.toContain('transform-origin');
+  });
+
+  it('names every row a launch can take its mark from', () => {
+    expect(render()).toContain('data-vf-launch-source="agent:0"');
+    expect(render()).toContain('data-vf-launch-source="agent:9"');
+    const open = render({ open: true, results: results('', 'here'), history: READY, highlight: 0 });
+    expect(open).toContain('data-vf-launch-source="session:0"');
+  });
+
   it('says why a launch was refused, under the rows', () => {
     const markup = render({ failure: 'Codex didn’t launch: no sign-in for this profile' });
     expect(markup).toContain(
