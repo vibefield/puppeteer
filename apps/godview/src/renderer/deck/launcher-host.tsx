@@ -5,6 +5,7 @@ import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspac
 import {
   DeckLaunchers,
   LAUNCHER_LEAVE_MS,
+  watchDrawnSessions,
   type LauncherOutcome,
   type LauncherPort,
 } from '@vibecook/puppeteer-views/launcher';
@@ -204,7 +205,8 @@ export function AppDeckLaunchers({
       if ('reason' in outcome) return { accepted: false, reason: outcome.reason };
       replace(freshSessionId, outcome.session);
       latest.current.refresh();
-      return { accepted: true };
+      // Named, so the launch waits for this terminal's first frame (QL-2).
+      return { accepted: true, sessionId: outcome.session.id };
     };
     return {
       recent: async (request) => {
@@ -247,6 +249,9 @@ export function AppDeckLaunchers({
     };
   }, [runtime]);
 
+  // The launch lands on the agent's first frame (QL-2): Ghosttea says when a session has drawn.
+  const watchFirstFrame = useMemo(() => watchDrawnSessions(runtime), [runtime]);
+
   // Ghosttea's workspace selects by session; a fresh shell shows in one pane.
   const activatePane = useCallback((paneId: string): void => {
     const current = latest.current.workspace;
@@ -266,6 +271,7 @@ export function AppDeckLaunchers({
       agents={agents}
       port={port}
       hasInput={hasInput}
+      {...(watchFirstFrame ? { watchFirstFrame } : {})}
     />
   );
 }
