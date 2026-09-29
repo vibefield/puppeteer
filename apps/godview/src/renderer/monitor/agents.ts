@@ -62,6 +62,8 @@ export interface AssembleMonitorAgentsInput {
   attachments?: ReadonlyMap<string, PaneAttachment> | undefined;
   /** Live terminal id -> stable monitor identity. */
   identities?: ReadonlyMap<string, string> | undefined;
+  visualIds?: ReadonlyMap<string, string> | undefined;
+  previousVisualIds?: ReadonlyMap<string, string> | undefined;
   activeSessionId?: string | undefined;
   nowMs?: number | undefined;
   /** The theme's tint for project colours and the ramp for sessions with no project (record §02). */
@@ -199,6 +201,10 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
       ...agent,
       // A terminal record may carry its own stable id, so the fallback is the row's, not the session's.
       id: input.identities?.get(agent.session.id) ?? agent.id,
+      visualId:
+        input.visualIds?.get(agent.session.id) ??
+        input.previousVisualIds?.get(input.identities?.get(agent.session.id) ?? agent.id) ??
+        agent.session.id,
       active: input.activeSessionId === agent.session.id,
       ...(attachment ? { attachment } : {}),
     };
@@ -209,7 +215,13 @@ export function assembleMonitorAgents(input: AssembleMonitorAgentsInput): readon
   // identity so placement survives; the agent's row speaks for both until it
   // goes, and the shell's row takes over then.
   const spoken = new Set(agentRows.map((agent) => agent.id));
-  return [...agentRows, ...terminals.map(decorate).filter((terminal) => !spoken.has(terminal.id))];
+  const visuals = new Set<string>();
+  return [...agentRows, ...terminals.map(decorate).filter((terminal) => !spoken.has(terminal.id))].filter((agent) => {
+    const id = agent.visualId ?? agent.id;
+    if (visuals.has(id)) return false;
+    visuals.add(id);
+    return true;
+  });
 }
 
 /** Agent-backed only: the status shortcuts navigate agents, not bare terminals. */

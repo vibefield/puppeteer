@@ -39,7 +39,19 @@ export class CompletedAgentPanes<Session extends CompletedPaneSession> {
       // must not create multiple shells. A failure stays visible, without a retry loop.
       void (async () => {
         const shell = await ports.createShell(session);
-        if (attempt.cancelled || !ports.replaceSession(id, shell)) {
+        let placed = false;
+        try {
+          placed = !attempt.cancelled && ports.replaceSession(id, shell);
+        } catch (cause) {
+          // A stale host API or throwing mounter must not orphan the successful birth.
+          try {
+            await ports.releaseSession(shell.id);
+          } catch (releaseCause) {
+            throw new AggregateError([cause, releaseCause], 'Pane replacement and shell cleanup failed');
+          }
+          throw cause;
+        }
+        if (!placed) {
           await ports.releaseSession(shell.id);
           return;
         }

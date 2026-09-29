@@ -78,4 +78,8 @@ describe('the swarm as markup', () => {
     expect(html.match(/<button /g)).toHaveLength(2);
     expect(html.match(/data-agent-bubble-receded="true"/g)).toHaveLength(1);
   });
+  it('keeps the shell spatial identity when the managed row has a different action id', () => {
+    const agent = agentFixture({ id: 'run', project: 'vibe-field', status: 'working', accent: 1 }, NOW);
+    expect(markup([{ ...agent, visualId: 'old-shell' }])).toContain('data-agent-bubble-id="old-shell"');
+  });
 });

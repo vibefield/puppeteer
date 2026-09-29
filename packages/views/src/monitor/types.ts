@@ -110,6 +110,8 @@ export interface MonitorAgent {
    * needs a terminal fact guards for it, and never fills one in.
    */
   session?: MonitorSession | undefined;
+  /** Stable spatial identity across a shell-to-agent handoff. Never a runtime/action id. */
+  visualId?: string | undefined;
   /** When this row was born, from whichever half of it knows. */
   createdAtMs: number;
   remote?: MonitorRemoteFacet | undefined;

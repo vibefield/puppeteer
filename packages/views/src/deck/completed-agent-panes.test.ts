@@ -107,4 +107,16 @@ describe('completed agent panes', () => {
     expect(f.ports.createShell).toHaveBeenCalledTimes(1);
     expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('agent');
   });
+  it('releases the successful birth if the host replacement throws', async () => {
+    const f = fixture();
+    const failure = new Error('stale host');
+    f.ports.replaceSession.mockImplementation(() => {
+      throw failure;
+    });
+    f.controller.update([ended], f.ports);
+    f.resolve(shell);
+    await flush();
+    expect(f.ports.releaseSession).toHaveBeenCalledExactlyOnceWith('shell');
+    expect(f.ports.onError).toHaveBeenCalledExactlyOnceWith(failure);
+  });
 });

@@ -3,12 +3,8 @@
  * the deck's unused-shell reaper (`UnusedPaneSessions`) is fed: a shell
  * Ghosttea's runtime created in this window (its birth receipt covers the
  * first pane and every split or new pane; restored, claimed and main-seeded
- * sessions have none) that has not been used. The reaper's "used" is input,
- * an exit, a foreground job, an agent, or a remote session; the launcher's
- * is the same less the foreground job (QL-D7 revised), because a fresh
- * shell runs its own startup — rc files, prompt hooks — as foreground jobs
- * before anyone typed, and a launcher gated on that leaves and comes back
- * (losing an open field) while the shell starts.
+ * sessions have none) that has not been used. Input, exit, agent or remote
+ * ownership consumes the receipt. Shell startup is only temporary activity.
  */
 
 export interface PaneUseSession {
@@ -29,9 +25,9 @@ export function launcherSessionUsed(session: PaneUseSession, facts: PaneUseFacts
   return facts.hasInput(session.id) || session.exited || facts.hasAgent(session.id) || facts.isRemote(session.id);
 }
 
-/** The deck's rule for "this shell has been used", which the reaper applies: the launcher's, and a foreground job. */
+/** Lifetime use, shared with the launcher. Startup jobs only defer detached cleanup. */
 export function paneSessionUsed(session: PaneUseSession, facts: PaneUseFacts): boolean {
-  return launcherSessionUsed(session, facts) || session.activity.kind === 'foreground-job';
+  return launcherSessionUsed(session, facts);
 }
 
 /** The on-screen shells born here and still unused. */
@@ -83,14 +79,7 @@ export function launcherCwds(
 export interface LauncherReplacePlan {
   /** `mount`: into the fresh shell's pane. `add`: that pane closed during the launch — split the agent in. */
   place: 'mount' | 'add';
-  /**
-   * Terminate the replaced shell explicitly (QL-D8's fallback): the deck's
-   * reaper ends only a shell it still holds a receipt for and finds unused,
-   * so one used by the reaper's own rule when the agent mounts — or whose
-   * receipt the reaper already gave up (it once saw the shell's startup run
-   * a foreground job) — is the launcher's to end, and only when the pane it
-   * leaves was the last one showing it.
-   */
+  /** The last attachment of an unused shell is an explicit launcher handoff. */
   terminate: boolean;
   /**
    * The session of the pane that was selected when the agent arrived, when
@@ -106,13 +95,11 @@ export function planLauncherReplace<Session extends PaneUseSession>(
   freshSessionId: string,
   used: (session: Session) => boolean,
   activePaneId?: string | undefined,
-  reaperHolds?: ((sessionId: string) => boolean) | undefined,
 ): LauncherReplacePlan {
   const showing = panes.filter((pane) => pane.session.id === freshSessionId);
   const active = panes.find((pane) => pane.id === activePaneId);
   const restore = active && active.session.id !== freshSessionId ? { restoreSessionId: active.session.id } : {};
   const [first] = showing;
   if (!first) return { place: 'add', terminate: false, ...restore };
-  const reaped = !used(first.session) && reaperHolds?.(freshSessionId) !== false;
-  return { place: 'mount', terminate: showing.length === 1 && !reaped, ...restore };
+  return { place: 'mount', terminate: showing.length === 1 && !used(first.session), ...restore };
 }

@@ -52,7 +52,7 @@ describe('attachment changes', () => {
     expect(sessions.update([], () => false)).toEqual([{ id: 'empty' }]);
   });
 
-  it('checks input at detach and remembers earlier foreground or agent work', () => {
+  it('checks input at detach and remembers earlier input or agent work', () => {
     const sessions = new UnusedPaneSessions<{ id: string; used: boolean }>();
     sessions.created('typed');
     sessions.created('worked');
@@ -80,5 +80,38 @@ describe('attachment changes', () => {
     sessions.update([{ id: 'restored' }, { id: 'moving' }], () => false);
     expect(sessions.update([{ id: 'moving' }, { id: 'restored' }], () => false)).toEqual([]);
     expect(sessions.update([{ id: 'moving' }], () => false)).toEqual([]);
+  });
+});
+
+describe('startup is transient, input is lifetime evidence', () => {
+  const used = (session: { input: boolean }) => session.input;
+  const busy = (session: { busy: boolean }) => session.busy;
+  const starting = { id: 'shell', input: false, busy: true };
+  const idle = { ...starting, busy: false };
+  it('retains the receipt through startup and reaps on final detach', () => {
+    const receipts = new UnusedPaneSessions<typeof starting>();
+    receipts.created('shell');
+    receipts.update([starting], used, busy);
+    receipts.update([idle], used, busy);
+    expect(receipts.update([], used, busy)).toEqual([idle]);
+  });
+  it('reaps once when a detached startup job returns to idle', () => {
+    const receipts = new UnusedPaneSessions<typeof starting>();
+    receipts.created('shell');
+    receipts.update([starting], used, busy);
+    expect(receipts.update([], used, busy)).toEqual([]);
+    expect(receipts.holds('shell')).toBe(true);
+    expect(receipts.observe(idle, false, false)).toEqual([idle]);
+    expect(receipts.observe(idle, false, false)).toEqual([]);
+  });
+  it.each(['input', 'reattach', 'handoff'])('cancels pending cleanup on %s', (cause) => {
+    const receipts = new UnusedPaneSessions<typeof starting>();
+    receipts.created('shell');
+    receipts.update([starting], used, busy);
+    receipts.update([], used, busy);
+    if (cause === 'input') receipts.observe(starting, true, true);
+    if (cause === 'reattach') receipts.update([starting], used, busy);
+    if (cause === 'handoff') receipts.release('shell');
+    expect(receipts.observe(idle, false, false)).toEqual([]);
   });
 });

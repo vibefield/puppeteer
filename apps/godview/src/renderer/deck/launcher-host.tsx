@@ -108,13 +108,13 @@ export interface AppDeckLaunchersProps {
   workspace: GhostteaWorkspaceContext | undefined;
   /** The rule the deck's unused-shell reaper applies (`paneSessionUsed`). */
   used: PaneSessionUsed;
-  /** The launcher's gate (`launcherSessionUsed`): the reaper's rule less a foreground job. */
+  /** The launcher's gate (`launcherSessionUsed`), ignoring transient startup jobs. */
   gate: PaneSessionUsed;
-  /** Whether the reaper still holds the shell's birth receipt (`UnusedPaneSessions.holds`). */
-  reaperHolds?: ((sessionId: string) => boolean) | undefined;
   /** The frame's fallback folders per session. */
   fallbackCwds: ReadonlyMap<string, string>;
   paneColors: ReadonlyMap<string, string>;
+  onReplaced(previousSessionId: string, nextSessionId: string): void;
+  prepareReplacement(previousSessionId: string, nextSessionId: string): () => void;
 }
 
 /**
@@ -122,14 +122,10 @@ export interface AppDeckLaunchersProps {
  * this window's fresh shells and a port over main's launcher channels. An
  * accepted launch or resume is mounted into the launcher's pane once the
  * launcher has left (QL-D8). The shell it replaced is then detached and born
- * here; while it is unused by the reaper's own rule (keys and pastes are held
- * during a launch) the deck's `UnusedPaneSessions` reaper terminates it like
- * any other unused shell. One that was used anyway — a binding's or a menu's
- * paste, a foreground job, an exit — or whose receipt the reaper gave up
- * earlier (it saw the shell's startup run a foreground job) the reaper keeps,
- * so the launcher ends it itself, unless another pane still shows it
- * (`planLauncherReplace`). The launcher's own gate ignores foreground jobs
- * (`launcherSessionUsed`), so a shell's startup does not flicker it away.
+ * here. An explicit successful replacement releases its last attachment and
+ * transfers the bubble identity. Input delivered during launch or another
+ * pane still showing the shell prevents that handoff. Startup jobs neither
+ * consume the receipt nor flicker the launcher away.
  *
  * Known limits of QL-1. On Linux, Ghosttea's default table binds alt+1…9 to
  * goto_tab and its workspace binding listener, registered first on window
@@ -144,9 +140,10 @@ export function AppDeckLaunchers({
   workspace,
   used,
   gate,
-  reaperHolds,
   fallbackCwds,
   paneColors,
+  onReplaced,
+  prepareReplacement,
 }: AppDeckLaunchersProps) {
   const runtime = useGhostteaRuntime();
   const panes = useMemo(() => workspace?.panes ?? [], [workspace?.panes]);
@@ -165,8 +162,8 @@ export function AppDeckLaunchers({
   const { agents, refresh } = useLauncherAgents(fresh.size > 0);
 
   // The port is built once: `recent()` refetches whenever its identity changes.
-  const latest = useRef({ workspace, agents, refresh, used, reaperHolds });
-  latest.current = { workspace, agents, refresh, used, reaperHolds };
+  const latest = useRef({ workspace, agents, refresh, used, onReplaced, prepareReplacement });
+  latest.current = { workspace, agents, refresh, used, onReplaced, prepareReplacement };
   const profileByKey = useRef(new Map<string, string>());
 
   const port = useMemo<LauncherPort>(() => {
@@ -177,25 +174,25 @@ export function AppDeckLaunchers({
      * in: a tab switch during a launch cannot aim the mount at another tab.
      */
     const replace = (freshSessionId: string, session: SessionSummary): void => {
+      const rollback = latest.current.prepareReplacement(freshSessionId, session.id);
       window.setTimeout(() => {
         const current = latest.current.workspace;
-        if (!current) return;
-        const plan = planLauncherReplace(
-          current.panes,
-          freshSessionId,
-          latest.current.used,
-          current.activePaneId,
-          latest.current.reaperHolds,
-        );
+        if (!current) {
+          rollback();
+          return;
+        }
+        const plan = planLauncherReplace(current.panes, freshSessionId, latest.current.used, current.activePaneId);
         const focused = document.activeElement;
         if (plan.place === 'add') {
           // The pane closed while the agent started: keep the agent on screen.
+          rollback();
           current.addSession(session);
         } else {
           // Ghosttea mounts into the ACTIVE pane; activating the shell's pane first targets it.
           current.activateSession(freshSessionId);
           current.mountSession(session);
-          if (plan.terminate) runtime.terminate(freshSessionId);
+          if (plan.terminate) latest.current.onReplaced(freshSessionId, session.id);
+          else rollback();
         }
         // Placing the agent selected its pane; the person had moved on during the launch.
         if (plan.restoreSessionId) current.activateSession(plan.restoreSessionId);

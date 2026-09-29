@@ -20,7 +20,6 @@ describe('a used shell', () => {
   it.each<[string, PaneUseSession, Partial<PaneUseFacts>]>([
     ['input reached it', session('s'), { hasInput: () => true }],
     ['it exited', session('s', { exited: true }), {}],
-    ['it runs a foreground job', session('s', { activity: { kind: 'foreground-job' } }), {}],
     ['an agent owns it', session('s'), { hasAgent: () => true }],
     ['it is remote', session('s'), { isRemote: () => true }],
   ])('is used when %s', (_why, candidate, facts) => {
@@ -33,7 +32,7 @@ describe('a used shell', () => {
 
   it('keeps its launcher through a foreground job alone: the shell’s own startup is not use', () => {
     const starting = session('s', { activity: { kind: 'foreground-job' } });
-    expect(paneSessionUsed(starting, NOTHING)).toBe(true);
+    expect(paneSessionUsed(starting, NOTHING)).toBe(false);
     expect(launcherSessionUsed(starting, NOTHING)).toBe(false);
     expect(launcherSessionUsed(starting, { ...NOTHING, hasInput: () => true })).toBe(true);
     for (const facts of [{ hasAgent: () => true }, { isRemote: () => true }]) {
@@ -114,16 +113,16 @@ describe('replacing the fresh shell (QL-D8)', () => {
 
   it.each<[string, ReturnType<typeof pane>[], (candidate: PaneUseSession) => boolean, object]>([
     [
-      'an unused shell is the reaper’s to end',
+      'an unused shell is handed off explicitly',
       [pane('p1', 'fresh'), pane('p2', 'other')],
       unused,
-      { place: 'mount', terminate: false },
+      { place: 'mount', terminate: true },
     ],
     [
-      'a used shell is the launcher’s to end',
+      'a shell used during launch is retained',
       [pane('p1', 'fresh'), pane('p2', 'other')],
       used,
-      { place: 'mount', terminate: true },
+      { place: 'mount', terminate: false },
     ],
     [
       'a used shell another pane still shows is left alone',
@@ -141,27 +140,16 @@ describe('replacing the fresh shell (QL-D8)', () => {
     expect(planLauncherReplace(panes, 'fresh', rule)).toEqual(expected);
   });
 
-  it('ends a shell whose receipt the reaper already gave up, even when it is idle again', () => {
-    const panes = [pane('p1', 'fresh')];
-    expect(planLauncherReplace(panes, 'fresh', unused, 'p1', () => false)).toEqual({ place: 'mount', terminate: true });
-    expect(planLauncherReplace(panes, 'fresh', unused, 'p1', () => true)).toEqual({ place: 'mount', terminate: false });
-    expect(planLauncherReplace(panes, 'fresh', used, 'p1', () => true)).toEqual({ place: 'mount', terminate: true });
-    // Another pane still shows it: never.
-    expect(planLauncherReplace([...panes, pane('p2', 'fresh')], 'fresh', unused, 'p1', () => false).terminate).toBe(
-      false,
-    );
-  });
-
   it('selects again the pane the person moved to during the launch', () => {
     const panes = [pane('p1', 'fresh'), pane('p2', 'other')];
     expect(planLauncherReplace(panes, 'fresh', unused, 'p2')).toEqual({
       place: 'mount',
-      terminate: false,
+      terminate: true,
       restoreSessionId: 'other',
     });
     // Still on the launcher's pane, or none known: nothing to restore.
-    expect(planLauncherReplace(panes, 'fresh', unused, 'p1')).toEqual({ place: 'mount', terminate: false });
-    expect(planLauncherReplace(panes, 'fresh', unused, undefined)).toEqual({ place: 'mount', terminate: false });
+    expect(planLauncherReplace(panes, 'fresh', unused, 'p1')).toEqual({ place: 'mount', terminate: true });
+    expect(planLauncherReplace(panes, 'fresh', unused, undefined)).toEqual({ place: 'mount', terminate: true });
     // The pane closed and the agent is split in: the selection stays where the person put it.
     expect(planLauncherReplace([pane('p2', 'other')], 'fresh', unused, 'p2')).toEqual({
       place: 'add',

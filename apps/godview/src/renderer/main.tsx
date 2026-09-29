@@ -218,12 +218,21 @@ function Godview() {
   const [agentsDrawerOpen, setAgentsDrawerOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [workspace, setWorkspace] = useState<GhostteaWorkspaceContext>();
+  const [terminalVisualIds, setTerminalVisualIds] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const transferBubble = useCallback((previous: string, next: string): void => {
+    setTerminalVisualIds((current) => new Map(current).set(next, current.get(previous) ?? previous));
+  }, []);
   const [terminalIdentities, setTerminalIdentities] = useState<ReadonlyMap<string, string>>(() => new Map());
   const paneLedgerRef = useRef(EMPTY_PANE_COLOUR_LEDGER);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
   const unusedPanes = useRef(new UnusedPaneSessions<SessionSummary>());
+  const releaseUnusedShell = useCallback((id: string): void => {
+    // Main owns PTY disposal from the tab attachment ledger. A renderer
+    // terminate races that owner and used to report "unknown session" twice.
+    setClosingSessionIds((current) => (current.has(id) ? current : new Set([...current, id])));
+  }, []);
   const [closingSessionIds, setClosingSessionIds] = useState<ReadonlySet<string>>(() => new Set());
   const zoom = useDeckZoom(deckRef, workspace?.activePaneId, undefined, active);
   const settings = useWorkspaceSettings(deckRef);
@@ -378,6 +387,7 @@ function Godview() {
         });
         // Main owns this birth. Record its fresh-shell receipt before the pane
         // publishes, so both the launcher and final-attachment reaper see it.
+        transferBubble(handoff.previousSessionId, handoff.session.id);
         recordBornShell(terminalRuntime, handoff.session.id);
         unusedPanes.current.created(handoff.session.id);
         // Replace all current mirrors without focus changes, unzooming or a
@@ -393,6 +403,7 @@ function Godview() {
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
+    terminalVisualIds,
     closingSessionIds,
     onSessionExited,
     palette,
@@ -529,7 +540,6 @@ function Godview() {
   const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
   const paneSessionUsed = usePaneSessionUsed(agentsBySession);
   const launcherGate = usePaneSessionUsed(agentsBySession, launcherSessionUsed);
-  const reaperHolds = useCallback((sessionId: string): boolean => unusedPanes.current.holds(sessionId), []);
   useLayoutEffect(() => {
     if (!workspace) return;
     // Includes Ghosttea's initial empty-workspace birth, outside the split override.
@@ -539,12 +549,40 @@ function Godview() {
     const detached = unusedPanes.current.update(
       workspace.panes.map((pane) => pane.session),
       paneSessionUsed,
+      (session) => session.activity.kind === 'foreground-job',
     );
-    for (const session of detached) terminalRuntime.terminate(session.id);
-    if (detached.length > 0) {
-      setClosingSessionIds((current) => new Set([...current, ...detached.map((session) => session.id)]));
-    }
+    for (const session of detached) releaseUnusedShell(session.id);
   }, [workspace, paneSessionUsed]);
+  useEffect(() => {
+    const observe = (event: Event): void => {
+      const session = (event as CustomEvent<SessionSummary>).detail;
+      const ready = unusedPanes.current.observe(
+        session,
+        paneSessionUsed(session),
+        session.activity.kind === 'foreground-job',
+      );
+      for (const shell of ready) releaseUnusedShell(shell.id);
+    };
+    terminalRuntime.addEventListener('session-metadata', observe);
+    return () => terminalRuntime.removeEventListener('session-metadata', observe);
+  }, [paneSessionUsed]);
+  const prepareLauncherReplacement = useCallback(
+    (previous: string, next: string): (() => void) => {
+      const showing = workspace?.panes.filter((pane) => pane.session.id === previous) ?? [];
+      if (showing.length !== 1 || paneSessionUsed(showing[0]!.session)) return () => undefined;
+      transferBubble(previous, next);
+      return () => setTerminalVisualIds((current) => new Map(current).set(next, next));
+    },
+    [workspace, paneSessionUsed, transferBubble],
+  );
+  const onLauncherReplaced = useCallback(
+    (previous: string, next: string): void => {
+      unusedPanes.current.release(previous);
+      transferBubble(previous, next);
+      releaseUnusedShell(previous);
+    },
+    [transferBubble],
+  );
   const zoomedPaneId = zoomLayoutApplied(zoom.state.phase) ? zoom.state.paneId : null;
   const paneVisibility = useMemo(
     () =>
@@ -789,7 +827,8 @@ function Godview() {
           workspace={workspace}
           used={paneSessionUsed}
           gate={launcherGate}
-          reaperHolds={reaperHolds}
+          onReplaced={onLauncherReplaced}
+          prepareReplacement={prepareLauncherReplacement}
           fallbackCwds={frameFallbackCwds}
           paneColors={paneColors}
         />

@@ -155,7 +155,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   useEffect(() => {
     agentsRef.current = agents;
     recedeRef.current = {
-      ids: new Set(agents.filter((agent) => agent.receded === true).map((agent) => agent.id)),
+      ids: new Set(agents.filter((agent) => agent.receded === true).map((agent) => agent.visualId ?? agent.id)),
       every: everyReceded(agents),
     };
   }, [agents]);
@@ -235,9 +235,9 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
     const byId = new Map<string, SwarmBubbleModel>();
     const shares = workingShares(agentsRef.current);
     for (const agent of agentsRef.current) {
-      const runningSince = runningSinceRef.current.get(agent.id);
+      const runningSince = runningSinceRef.current.get(agent.visualId ?? agent.id);
       byId.set(
-        agent.id,
+        agent.visualId ?? agent.id,
         bubbleModel({
           agent,
           parameters: parametersRef.current,
@@ -256,8 +256,11 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   /** The agents as the physics needs them: an id, the size to grow toward, where a creation gesture happened. */
   const agentSpecs = (): readonly SwarmAgentSpec[] =>
     agentsRef.current.map((agent) => {
-      const model = modelsRef.current.byId.get(agent.id);
-      const spec: SwarmAgentSpec = { id: agent.id, radius: model?.radius ?? parametersRef.current.radiusIdle };
+      const model = modelsRef.current.byId.get(agent.visualId ?? agent.id);
+      const spec: SwarmAgentSpec = {
+        id: agent.visualId ?? agent.id,
+        radius: model?.radius ?? parametersRef.current.radiusIdle,
+      };
       if (agent.spawnHint) spec.spawnHint = agent.spawnHint;
       return spec;
     });
@@ -473,7 +476,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
 
   useEffect(() => {
     const nowMs = Date.now();
-    const ids = new Set(agents.map((agent) => agent.id));
+    const ids = new Set(agents.map((agent) => agent.visualId ?? agent.id));
     for (const id of [...runningSinceRef.current.keys()]) if (!ids.has(id)) runningSinceRef.current.delete(id);
     const shares = workingShares(agents);
     for (const agent of agents) {
@@ -488,9 +491,10 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       // an `unknown` observation; only the shell's idle prompt, or an agent
       // claiming the terminal, stops it.
       if (model.state === 'terminal-running') {
-        if (!runningSinceRef.current.has(agent.id)) runningSinceRef.current.set(agent.id, nowMs);
+        if (!runningSinceRef.current.has(agent.visualId ?? agent.id))
+          runningSinceRef.current.set(agent.visualId ?? agent.id, nowMs);
       } else if (agent.agent || agent.session?.activity?.kind !== 'unknown') {
-        runningSinceRef.current.delete(agent.id);
+        runningSinceRef.current.delete(agent.visualId ?? agent.id);
       }
     }
     modelsRef.current.at = 0;
@@ -514,7 +518,8 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
     return undefined;
   };
 
-  const agentById = (id: string): MonitorAgent | undefined => agentsRef.current.find((agent) => agent.id === id);
+  const agentById = (id: string): MonitorAgent | undefined =>
+    agentsRef.current.find((agent) => (agent.visualId ?? agent.id) === id);
 
   const endDrag = (): void => {
     const drag = dragRef.current;
@@ -625,7 +630,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   };
 
   const modelFor = (agent: MonitorAgent): SwarmBubbleModel =>
-    modelsRef.current.byId.get(agent.id) ??
+    modelsRef.current.byId.get(agent.visualId ?? agent.id) ??
     bubbleModel({
       agent,
       parameters: swarm,
@@ -674,20 +679,21 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
         {agents.map((agent) => {
           const model = modelFor(agent);
           return (
-            <li key={agent.id}>
+            <li key={agent.visualId ?? agent.id}>
               <button
                 type="button"
                 aria-label={model.ariaLabel}
                 aria-current={agent.active ? 'true' : undefined}
+                data-agent-bubble-id={agent.visualId ?? agent.id}
                 data-agent-bubble-status={agent.status}
                 data-agent-bubble-visual={model.state}
                 data-agent-bubble-source={agent.remote ? 'remote' : agent.agent ? 'agent' : 'terminal'}
                 data-agent-bubble-receded={agent.receded === true ? 'true' : undefined}
                 onFocus={() => {
-                  focusedIdRef.current = agent.id;
+                  focusedIdRef.current = agent.visualId ?? agent.id;
                 }}
                 onBlur={() => {
-                  if (focusedIdRef.current === agent.id) focusedIdRef.current = undefined;
+                  if (focusedIdRef.current === (agent.visualId ?? agent.id)) focusedIdRef.current = undefined;
                 }}
                 onClick={() => actions.select(agent)}
               >

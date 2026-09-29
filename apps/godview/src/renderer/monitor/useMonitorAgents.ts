@@ -30,6 +30,7 @@ export interface UseMonitorAgentsOptions {
   attachments: ReadonlyMap<string, PaneAttachment>;
   /** Live terminal id -> stable monitor identity across PTY handoffs. */
   terminalIdentities?: ReadonlyMap<string, string> | undefined;
+  terminalVisualIds?: ReadonlyMap<string, string> | undefined;
   /** Shells being terminated after losing their final pane. */
   closingSessionIds?: ReadonlySet<string> | undefined;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
@@ -57,6 +58,7 @@ export function useMonitorAgents({
   workspace,
   attachments,
   terminalIdentities,
+  terminalVisualIds,
   closingSessionIds,
   onSessionExited,
   palette,
@@ -69,6 +71,7 @@ export function useMonitorAgents({
   const monitorSnapshot = useAgentMonitorStore(monitorStore);
   const [nowMs, setNowMs] = useState(Date.now());
   const unreadRef = useRef<UnreadLedger>(EMPTY_UNREAD_LEDGER);
+  const visualIdsRef = useRef<ReadonlyMap<string, string>>(new Map());
   const usageRef = useRef<UsageLedger>(EMPTY_USAGE_LEDGER);
   /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
   const [usageStep, setUsageStep] = useState(0);
@@ -304,6 +307,8 @@ export function useMonitorAgents({
       sessions,
       attachments,
       identities: terminalIdentities,
+      visualIds: terminalVisualIds,
+      previousVisualIds: visualIdsRef.current,
       nowMs,
       colours: { tint: palette.tint, neutral: palette.neutral },
       usage: usage.histories,
@@ -311,6 +316,7 @@ export function useMonitorAgents({
     });
     // Unread is a fold over successive projections; the ledger is the only
     // state here that is not derivable from one snapshot.
+    visualIdsRef.current = new Map(assembled.map((agent) => [agent.id, agent.visualId ?? agent.id]));
     const ledger = reconcileUnread(
       unreadRef.current,
       assembled.map((agent) => {
@@ -348,6 +354,7 @@ export function useMonitorAgents({
     records,
     sessions,
     terminalIdentities,
+    terminalVisualIds,
     usageSeed,
     usageStep,
     visibleTerminals,

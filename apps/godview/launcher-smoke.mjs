@@ -20,7 +20,7 @@
 // The agent is the first installed of GODVIEW_LAUNCHER_DRIVE_AGENTS (default: codex,
 // opencode, pi, grok, kimi); nothing is ever sent to it, and it is killed with
 // the window.
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,8 +133,8 @@ async function typeText(page, text) {
     const letter = /[a-z]/i.test(char);
     await press(page, {
       key: char,
-      code: letter ? `Key${upper}` : /[0-9]/.test(char) ? `Digit${char}` : 'Space',
-      keyCode: letter ? upper.charCodeAt(0) : char.charCodeAt(0),
+      code: letter ? `Key${upper}` : /[0-9]/.test(char) ? `Digit${char}` : char === '/' ? 'Slash' : 'Space',
+      keyCode: letter ? upper.charCodeAt(0) : char === '/' ? 191 : char.charCodeAt(0),
       text: char,
     });
   }
@@ -147,8 +147,9 @@ async function typeText(page, text) {
  */
 const PAGE_HELPERS = `(() => {
   if (window.__launcherDrive) return true;
-  const root = document.getElementById('root');
   const find = (match) => {
+    const root = document.getElementById('root');
+    if (!root) return undefined;
     const containerKey = Object.keys(root).find((key) => key.startsWith('__reactContainer$'));
     if (!containerKey) return undefined;
     const stack = [root[containerKey].stateNode.current];
@@ -462,6 +463,13 @@ try {
     if (launched.refused) throw new Error(`the launch was refused: ${launched.refused}`);
     if (launched.pid) agent = { pid: launched.pid, provider: launched.provider };
     if (!launched.launcherGone) throw new Error('the launcher stayed after the launch');
+    const bubble = await until('the agent to inherit the shell bubble', () =>
+      page.evaluate(`(() => {
+      const matches = [...document.querySelectorAll('[data-agent-bubble-id]')].filter((node) => node.dataset.agentBubbleId === ${JSON.stringify(second.shell)});
+      return matches.length === 1 && matches[0].dataset.agentBubbleSource === 'agent'
+        ? { id: matches[0].dataset.agentBubbleId, count: matches.length, source: matches[0].dataset.agentBubbleSource } : undefined;
+    })()`),
+    );
     const reaped = await until('the replaced shell to be terminated', () =>
       page.evaluate(`(async () => {
         const sessions = await window.__launcherDrive.runtime().listSessions();
@@ -471,7 +479,7 @@ try {
       })()`),
     );
     console.log(
-      `DRIVE (e) OK ${JSON.stringify({ agent: choice.label, key: choice.keys, shellHadInput: inputBefore, ...launched, replacedShell: reaped })}`,
+      `DRIVE (e) OK ${JSON.stringify({ agent: choice.label, key: choice.keys, shellHadInput: inputBefore, ...launched, bubble, replacedShell: reaped })}`,
     );
 
     if (checkAgentExit) {
@@ -482,6 +490,11 @@ try {
         })()`),
       );
       await page.evaluate(`window.__launcherDrive.focusTerminal(${JSON.stringify(second.paneId)})`);
+      await until('agent terminal keyboard focus', () =>
+        page.evaluate(
+          `document.activeElement === window.__launcherDrive.paneElement(${JSON.stringify(second.paneId)})?.querySelector('.terminal-input')`,
+        ),
+      );
       // A real native command, through the same key path as the user. No prompt or model request.
       await typeText(page, '/exit');
       const exitAt = Date.now();
@@ -598,6 +611,13 @@ try {
     delay(15_000).then(() => ({ unreadable: 'the page did not answer in 15 s' })),
   ]);
   console.error(`LAUNCHER SMOKE STATE ${JSON.stringify(state ?? { unreadable: 'no page connection' })}`);
+  const screenshotPath = process.env.GODVIEW_LAUNCHER_SMOKE_SCREENSHOT;
+  if (page && screenshotPath) {
+    const shot = await Promise.race([page.send('Page.captureScreenshot', { format: 'png' }), delay(5000)]).catch(
+      () => undefined,
+    );
+    if (shot?.data) writeFileSync(screenshotPath, Buffer.from(shot.data, 'base64'));
+  }
 } finally {
   page?.close();
   child.kill('SIGTERM');

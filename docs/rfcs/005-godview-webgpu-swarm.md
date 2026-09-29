@@ -13,6 +13,23 @@ around the stage, a visually hidden button per agent for keyboard and assistive 
 
 The swarm is the first Godview view to render on the GPU. The list and rain views are unchanged by this RFC.
 
+## Terminal handoff identity (2026-09-28)
+
+`MonitorAgent.visualId` is an optional spatial identity. Swarm uses it for its physics body,
+render models, hit testing and accessible button key; actions, usage and unread still use
+`MonitorAgent.id`. Hosts default the spatial identity to the terminal session and carry it
+across explicit launcher and clean-exit replacements. A managed row claims that body while
+the replaced shell leaves the pane and roster; an attached mirror keeps its own body.
+The previous spatial identity of an existing managed row survives subsequent PTY resumes.
+
+The shared `UnusedPaneSessions` receipt is consumed by lifetime input/agent/remote/exit facts,
+not a transient shell startup foreground job. A detached busy shell stays pending until
+native idle metadata; reattachment or actual use cancels that cleanup. Launcher handoff
+reserves the old body before mount, rolls back on refusal, and disposes the old shell only
+on its last unused attachment. In Godview, main's tab attachment ledger owns PTY termination;
+the renderer hides the closing shell immediately without issuing a competing termination.
+VibeField uses its audited terminal door instead.
+
 ## Why
 
 The swarm's design language is light and distance: soft outer glows, a graph that fills a body, a ring that follows
