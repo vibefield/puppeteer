@@ -74,6 +74,66 @@ async function until(what, probe, deadlineMs = DEADLINE_MS) {
   }
 }
 
+/**
+ * The launch in `paneId` (QL-2), from the key to the landing: C1 in the first
+ * read after the key, then every phase with its time since the key, until the
+ * launch lets the pane go. With `GODVIEW_LAUNCH_SHOTS` set to a folder, the
+ * pane is captured at the first waiting phase and after the landing.
+ */
+async function witnessLaunch(page, paneId, pressedAt) {
+  const shots = process.env.GODVIEW_LAUNCH_SHOTS;
+  const read = () =>
+    page.evaluate(`(() => {
+      const pane = document.querySelector('[data-pane-id=' + ${JSON.stringify(JSON.stringify(paneId))} + ']');
+      const launch = pane?.querySelector('[data-vf-pane-launch]');
+      const box = pane?.getBoundingClientRect();
+      const mark = pane?.querySelector('.vf-pane-frame .vf-pane-mark');
+      return {
+        launch: launch ? launch.className : null,
+        caption: launch?.querySelector('.vf-pane-launch-caption span')?.textContent ?? null,
+        launcherLeaving: pane?.querySelector('.vf-pane-launcher')?.classList.contains('is-leaving') ?? null,
+        held: pane?.getAttribute('data-vf-launching') ?? null,
+        badgeMark: mark ? getComputedStyle(mark).visibility : null,
+        box: box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null,
+      };
+    })()`);
+  const capture = async (name, box) => {
+    if (!shots || !box) return;
+    const shot = await page
+      .send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 }, captureBeyondViewport: true })
+      .catch(() => undefined);
+    if (shot?.data) writeFileSync(join(shots, `${name}.png`), Buffer.from(shot.data, 'base64'));
+  };
+  const first = await read();
+  if (!first.launch)
+    throw new Error(`C1: no launch in the pane on the first read after the key: ${JSON.stringify(first)}`);
+  if (first.launcherLeaving !== true)
+    throw new Error(`C1: the launcher did not leave with the key: ${JSON.stringify(first)}`);
+  if (first.held !== 'held') throw new Error(`C6: the badge's mark was not held: ${JSON.stringify(first)}`);
+  const phases = [{ ms: Date.now() - pressedAt, launch: first.launch }];
+  let captions = [];
+  let shotWaiting = false;
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const now = await read();
+    const ms = Date.now() - pressedAt;
+    if (!now.launch) {
+      if (now.held !== null) throw new Error(`C6: the pane kept data-vf-launching after the launch: ${now.held}`);
+      await delay(150);
+      await capture('launch-landed', now.box);
+      return { first: phases[0], phases, captions, landedMs: ms, badgeMark: now.badgeMark };
+    }
+    if (phases.at(-1).launch !== now.launch) phases.push({ ms, launch: now.launch });
+    if (now.caption && captions.at(-1) !== now.caption && captions.length < 40) captions.push(now.caption);
+    if (!shotWaiting && now.launch.includes('is-waiting') && ms > 900) {
+      shotWaiting = true;
+      await capture('launch-waiting', now.box);
+    }
+    if (Date.now() > deadline) throw new Error(`the launch never let the pane go: ${JSON.stringify({ phases, now })}`);
+    await delay(40);
+  }
+}
+
 /** One DevTools page connection: `evaluate` (awaiting promises) and raw `send`. */
 async function connect(url) {
   const socket = new WebSocket(url);
@@ -439,7 +499,12 @@ try {
     const inputBefore = await page.evaluate(
       `window.__launcherDrive.runtime().sessionHasInput(${JSON.stringify(second.shell)})`,
     );
+    const pressedAt = Date.now();
     await press(page, { key: digit, code: `Digit${digit}`, keyCode: 48 + Number(digit), modifiers: ALT });
+    // QL-2: the launch is in the pane before the port has answered (C1), and is
+    // held there, phase by phase, until the agent's first frame lands it.
+    const launch = await witnessLaunch(page, second.paneId, pressedAt);
+    console.log(`DRIVE (e) LAUNCH ${JSON.stringify(launch)}`);
     const launched = await until(
       'the agent to be mounted in the pane',
       () =>
