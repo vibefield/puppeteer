@@ -22,6 +22,12 @@ across explicit launcher and clean-exit replacements. A managed row claims that 
 the replaced shell leaves the pane and roster; an attached mirror keeps its own body.
 The previous spatial identity of an existing managed row survives subsequent PTY resumes.
 
+**Correction 2026-09-29:** the first handoff implementation left `SwarmBubbleModel.id`
+as the runtime row ID. Pointer hit tests and arrival sorting read that model ID, so
+inherited bubbles painted correctly but could not be dragged, hovered or clicked.
+The render model now carries `visualId ?? id`, matching the physics body. Pointer
+selection still resolves and passes the current full agent row to the host.
+
 The shared `UnusedPaneSessions` receipt is consumed by lifetime input/agent/remote/exit facts,
 not a transient shell startup foreground job. A detached busy shell stays pending until
 native idle metadata; reattachment or actual use cancels that cleanup. Launcher handoff

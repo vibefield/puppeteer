@@ -66,6 +66,7 @@ export interface SwarmFigure {
 export type SwarmBlockerKind = 'permission' | 'question' | 'failure';
 
 export interface SwarmBubbleModel {
+  /** Spatial body identity: render order and pointer gestures address physics with this. */
   id: string;
   state: SwarmBodyState;
   /** The three-way reading that picks the body's colours and size. */
@@ -249,7 +250,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
   const base = {
-    id: agent.id,
+    id: agent.visualId ?? agent.id,
     accent: agent.color,
     stale: agent.stale === true,
     active: agent.active,

@@ -88,6 +88,18 @@ describe('formatBurn', () => {
 });
 
 describe('bubbleModel', () => {
+  it('addresses the physical body while retaining the row identity for actions and usage', () => {
+    const row = agent({ id: 'run', visualId: 'shell', status: 'working' }, {});
+    const model = bubbleModel({ agent: row, parameters, nowMs: NOW, unread: false });
+    expect(model.id).toBe('shell');
+    expect(row.id).toBe('run');
+    expect(workingShares([row]).has('run')).toBe(true);
+    expect(workingShares([row]).has('shell')).toBe(false);
+    expect(bubbleModel({ agent: agent({ id: 'ordinary' }), parameters, nowMs: NOW, unread: false }).id).toBe(
+      'ordinary',
+    );
+  });
+
   it('draws an unclaimed idle terminal as a hollow with the folder and "empty"', () => {
     const model = bubbleModel({ agent: agent({ status: 'idle' }), parameters, nowMs: NOW, unread: false });
     expect(model.state).toBe('terminal-empty');
