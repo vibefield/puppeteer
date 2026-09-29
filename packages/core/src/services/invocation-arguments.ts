@@ -23,6 +23,14 @@ export interface NativeInvocationCommand {
   readonly reason?: string;
 }
 
+/** An option after arity resolution; values cannot be mistaken for other flags. Order is preserved. */
+export interface NativeInvocationOptionValue {
+  readonly option: NativeInvocationOption;
+  readonly name: string;
+  readonly values: readonly string[];
+  readonly booleanValue?: boolean;
+}
+
 export interface NativeInvocationGrammar {
   readonly options: readonly NativeInvocationOption[];
   readonly commands?: readonly NativeInvocationCommand[];
@@ -32,11 +40,19 @@ export interface NativeInvocationGrammar {
   readonly shortClusters?: boolean;
   /** Yargs and Go-style boolean options accept --flag=true/false. */
   readonly booleanEquals?: boolean;
+  /** Some parsers also consume a following literal true/false for a boolean flag. */
+  readonly booleanValues?: boolean;
+  /** Parsed utility flags can be cancelled by later values; early-exit parsers leave this false. */
+  readonly deferUtilityOptions?: boolean;
   /** Hand-written parsers may recognize commands only at argv[0]. */
   readonly commandFirst?: boolean;
   readonly equals?: boolean;
   /** A management command group that prints help when given no subcommand. */
   readonly defaultPassthrough?: AgentNativeInvocationPassthroughKind;
+  /** Adapter-owned dependencies between options, evaluated only after all option arities are known. */
+  readonly classifyOptions?: (
+    options: readonly NativeInvocationOptionValue[],
+  ) => Extract<NativeArgumentsReading, { status: 'passthrough' }> | undefined;
 }
 
 export type NativeArgumentsReading =
@@ -55,6 +71,7 @@ export function readNativeInvocationArguments(
 ): NativeArgumentsReading {
   let grammar = initialGrammar;
   const mapped: string[] = [];
+  const options: NativeInvocationOptionValue[] = [];
   let refused: Extract<NativeArgumentsReading, { status: 'rejected' }> | undefined;
   const modes = new Map<NativeInvocationOption, Extract<NativeArgumentsReading, { status: 'passthrough' }>>();
   let sawOperand = false;
@@ -117,19 +134,24 @@ export function readNativeInvocationArguments(
       }
       if (!row) return rejection(argument, 'the adapter does not know this option or its arity');
 
+      let booleanValue = row.arity === 'none' ? true : undefined;
       if (row.arity === 'none' && inline !== undefined) {
         if (name.length === 2 && !remaining.includes('=') && grammar.shortClusters !== false) {
           remaining = `-${inline}`;
           inline = undefined;
         } else if (grammar.booleanEquals && (inline === 'true' || inline === 'false')) {
           remaining = '';
-          if (inline === 'false') {
-            refused ??= rejection(argument, 'the managed launch cannot preserve an explicit false flag');
-            continue;
-          }
-          inline = undefined;
+          booleanValue = inline === 'true';
         } else return rejection(argument, 'this native flag does not take a value');
       } else remaining = '';
+
+      if (row.arity === 'none' && grammar.booleanValues && inline === undefined && !remaining) {
+        const next = argv[index + 1];
+        if (next === 'true' || next === 'false') {
+          booleanValue = next === 'true';
+          index += 1;
+        }
+      }
 
       const values: string[] = [];
       if (row.arity !== 'none') {
@@ -152,6 +174,13 @@ export function readNativeInvocationArguments(
         }
       }
 
+      options.push({ option: row, name, values, ...(booleanValue === undefined ? {} : { booleanValue }) });
+      if (booleanValue === false) {
+        modes.delete(row);
+        refused ??= rejection(argument, 'the managed launch cannot preserve an explicit false flag');
+        continue;
+      }
+
       const mode = row.modes
         ? Object.hasOwn(row.modes, values[0] ?? '')
           ? row.modes[values[0] ?? '']
@@ -161,7 +190,7 @@ export function readNativeInvocationArguments(
         return rejection(argument, 'the adapter does not recognize this native mode');
       if (mode && mode !== 'session') {
         const result = pass(mode, row.reason ?? 'the native option selects a non-interactive or external operation');
-        if (mode === 'utility') return result;
+        if (mode === 'utility' && !grammar.deferUtilityOptions) return result;
         modes.set(row, result);
       } else if (mode === 'session') modes.delete(row);
 
@@ -172,7 +201,7 @@ export function readNativeInvocationArguments(
       }
     }
   }
-  const mode = modes.values().next().value;
+  const mode = initialGrammar.classifyOptions?.(options) ?? modes.values().next().value;
   return (
     mode ??
     refused ??

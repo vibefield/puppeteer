@@ -87,6 +87,12 @@ describe('antigravity strict invocation grammar', () => {
   });
   it('does not invent a version alias', () =>
     expect(invoke(['-v'])).toMatchObject({ status: 'rejected', argument: '-v' }));
+  it('does not extend exact entry shortcuts to inline boolean syntax', () => {
+    for (const argument of ['--version=true', '--version=false', '--help=true', '--help=false', '-h=true']) {
+      expect(invoke([argument])).toMatchObject({ status: 'rejected', argument });
+      expect(invoke([argument, '--version'])).toMatchObject({ status: 'passthrough', kind: 'utility' });
+    }
+  });
   it('accepts a bare native session', () => expect(invoke([]).status).toBe('accepted'));
   it('matches native entry help/version dispatch before argument parsing', () => {
     for (const argv of [

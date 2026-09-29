@@ -56,6 +56,29 @@ This table describes invocation support, not the broader agent support tier.
 An unsupported initial prompt or configuration clause receives a refusal. Native
 non-interactive modes keep their original arguments on passthrough.
 
+### Classification review corrections (2026-09-28)
+
+Three false passthroughs in the initial rollout could launch an unmanaged TUI:
+cancelled OpenCode help/version flags, Hermes chat exit/quiet flags without a
+guaranteed one-shot route, and Antigravity's invented `--version=true` shortcut.
+The reader now supports deferred utility flags and adapter-owned decisions over
+arity-resolved options. OpenCode uses final boolean values; Antigravity recognizes
+only its native exact entry tokens. Hermes requires nonempty root `-z`, stream-json,
+or explicit `chat --cli` with input and an exit/quiet flag; ambient TUI preferences
+cannot establish a one-shot. Query files are safe in the forced classic route
+because native validation exits on empty or unreadable files.
+
+Regression coverage runs through the actual builtin runtime and strict gateway:
+these cases are refused in owned interactive panes, while outside-host and piped
+invocations retain fallback. Valid help and proven one-shot routes still bypass
+custody. Native parser evidence and dated corrections live beside each grammar.
+
+The correction passed all affected Core, adapter, runtime and builtin-provider
+suites, including the native dispatch fixture and strict gateway regressions.
+All workspace typechecks, package topology and support-ledger checks passed.
+The full root test command still stops at the pre-existing stale Codex
+groundtruth map; this review correction does not change that mapping.
+
 ## Validation record
 
 - All 25 workspace typechecks and the package topology check passed.

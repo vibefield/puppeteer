@@ -1,8 +1,35 @@
-import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibecook/puppeteer-core';
+import {
+  readNativeInvocationArguments,
+  type NativeInvocationGrammar,
+  type NativeInvocationOptionValue,
+} from '@vibecook/puppeteer-core';
+
+function classifyOptions(options: readonly NativeInvocationOptionValue[]) {
+  const finalOptions = [...options].reverse();
+  const value = (name: string) => finalOptions.find((entry) => entry.option.names.includes(name))?.values[0];
+  const flag = (name: string) =>
+    options.some((entry) => entry.option.names.includes(name) && entry.booleanValue === true);
+  const rootPrompt = finalOptions.find(
+    (entry) => entry.option.names.includes('--oneshot') && entry.option.arity === 'one',
+  )?.values[0];
+  // main.py dispatches a nonempty root prompt before chat/TUI preferences. In chat, only --cli
+  // rules out the configured TUI; quiet/oneshot alone still enter the REPL without input.
+  // _read_query_file exits on empty/unreadable files before the classic CLI can enter its REPL.
+  const chatInput = value('--query') || value('--query-file') || value('--image');
+  if (rootPrompt || (flag('--cli') && chatInput && (flag('--oneshot') || flag('--quiet')))) {
+    return {
+      status: 'passthrough' as const,
+      kind: 'one-shot' as const,
+      reason: 'the native invocation has input and unconditionally selects the one-shot path',
+    };
+  }
+  return undefined;
+}
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
 export const INVOCATION_GRAMMAR_VERSION = '0.21.4';
 export const INVOCATION_GRAMMAR = {
+  classifyOptions,
   options: [
     {
       names: ['--help', '-h'],
@@ -17,7 +44,7 @@ export const INVOCATION_GRAMMAR = {
     {
       names: ['--oneshot', '-z'],
       arity: 'one',
-      passthrough: 'one-shot',
+      reason: 'a nonempty root prompt is required for one-shot mode',
     },
     {
       names: ['--resume', '-r'],
@@ -139,12 +166,12 @@ export const INVOCATION_GRAMMAR = {
           {
             names: ['--oneshot'],
             arity: 'none',
-            passthrough: 'one-shot',
+            reason: 'chat one-shot mode requires --cli and a query, query file or image; use -z for a root prompt',
           },
           {
             names: ['--quiet', '-Q'],
             arity: 'none',
-            passthrough: 'one-shot',
+            reason: 'quiet chat still runs interactively without --cli and a query, query file or image',
           },
           {
             names: ['--format'],

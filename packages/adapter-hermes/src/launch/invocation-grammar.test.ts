@@ -28,7 +28,12 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
   'one-shot': [
     ['-z', 'hello'],
     ['--oneshot=hello'],
-    ['chat', '-q', 'hello', '--oneshot'],
+    ['chat', '--cli', '-q', 'hello', '--oneshot'],
+    ['--cli', 'chat', '-q', 'hello', '-Q'],
+    ['chat', '--cli', '--image', 'example.png', '--oneshot'],
+    ['chat', '--cli', '--query-file', 'query.txt', '--oneshot'],
+    ['chat', '--tui', '--cli', '-q', 'hello', '--oneshot'],
+    ['--oneshot', 'hello', 'chat', '--tui'],
     ['chat', '--format', 'stream-json', '-q', 'hello'],
   ],
   elsewhere: [['gateway', 'start'], ['acp'], ['desktop']],
@@ -38,6 +43,19 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
     ['--continue'],
     ['--resume', 'latest'],
     ['chat', '-q', 'hello'],
+    ['chat', '--quiet'],
+    ['chat', '--oneshot'],
+    ['chat', '--cli', '--oneshot'],
+    ['chat', '--cli', '-q', '', '--oneshot'],
+    ['chat', '--cli', '-q', 'hello', '-q', '', '-Q'],
+    ['chat', '--query-file', 'query.txt', '--oneshot'],
+    ['chat', '--cli', '--query-file', '', '--oneshot'],
+    ['chat', '-q', 'hello', '--oneshot'],
+    ['chat', '--tui', '-q', 'hello', '--oneshot'],
+    ['chat', '--cli', '-q', 'hello', '--model', '--oneshot'],
+    ['chat', '--cli', '--', '-q', 'hello', '--oneshot'],
+    ['--oneshot', ''],
+    ['--oneshot', 'hello', '-z', ''],
     ['--cli'],
   ],
   mapped: [
@@ -57,6 +75,20 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
 };
 
 describe('hermes strict invocation grammar', () => {
+  it('agrees with native dispatch probes when the configured interface is the TUI', () => {
+    const probes = JSON.parse(
+      readFileSync(new URL('./__fixtures__/dispatch-probes.json', import.meta.url), 'utf8'),
+    ) as {
+      version: string;
+      cases: { argv: string[]; native_dispatch: string }[];
+    };
+    expect(probes.version).toBe(INVOCATION_GRAMMAR_VERSION);
+    for (const { argv, native_dispatch: dispatch } of probes.cases) {
+      expect(invoke(argv), `${argv.join(' ')} → ${dispatch}`).toMatchObject(
+        dispatch.startsWith('interactive') ? { status: 'rejected' } : { status: 'passthrough', kind: 'one-shot' },
+      );
+    }
+  });
   it('accounts for every public root option in the captured native help, in both directions', () => {
     const help = readFileSync(
       new URL(`./__fixtures__/hermes-help-${INVOCATION_GRAMMAR_VERSION}.txt`, import.meta.url),

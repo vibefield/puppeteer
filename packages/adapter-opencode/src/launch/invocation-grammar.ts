@@ -4,6 +4,8 @@ import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vi
 export const INVOCATION_GRAMMAR_VERSION = '1.18.32';
 export const INVOCATION_GRAMMAR = {
   booleanEquals: true,
+  booleanValues: true,
+  deferUtilityOptions: true,
   options: [
     {
       names: ['--help', '-h'],

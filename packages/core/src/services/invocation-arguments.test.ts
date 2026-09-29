@@ -78,4 +78,58 @@ describe('adapter-supplied invocation argument mechanics', () => {
       kind: 'one-shot',
     });
   });
+
+  it('defers parsed utility flags until their final boolean value is known', () => {
+    const parsedUtilities = {
+      ...grammar,
+      deferUtilityOptions: true,
+      booleanEquals: true,
+      booleanValues: true,
+    };
+    for (const argv of [
+      ['--help', '--help=false'],
+      ['-h', '--help', 'false'],
+      ['--help', '-h=false'],
+      ['--help', 'false'],
+      ['--help', '--no-help'],
+    ]) {
+      expect(read(argv, parsedUtilities), argv.join(' ')).toMatchObject({ status: 'rejected' });
+    }
+    for (const argv of [
+      ['--help=false', '-h'],
+      ['-h', 'false', '--help', 'true'],
+      ['--help', '--', '--help=false'],
+    ]) {
+      expect(read(argv, parsedUtilities), argv.join(' ')).toMatchObject({ status: 'passthrough', kind: 'utility' });
+    }
+    expect(read(['--help', '--help=false'], grammar)).toMatchObject({ status: 'passthrough', kind: 'utility' });
+  });
+
+  it('lets adapters classify dependent options only after a complete arity-safe read', () => {
+    const dependent: NativeInvocationGrammar = {
+      options: [
+        { names: ['--query', '-q'], arity: 'one' },
+        { names: ['--once'], arity: 'none' },
+        { names: ['--model'], arity: 'one' },
+      ],
+      classifyOptions(options) {
+        const query = [...options].reverse().find((value) => value.option.names.includes('--query'))?.values[0];
+        if (query && options.some((value) => value.option.names.includes('--once')))
+          return { status: 'passthrough', kind: 'one-shot', reason: 'a query and an exit flag' };
+        return undefined;
+      },
+    };
+    expect(read(['-q', 'hello', '--once'], dependent)).toMatchObject({ status: 'passthrough', kind: 'one-shot' });
+    for (const argv of [
+      ['--once'],
+      ['-q', '', '--once'],
+      ['-q', 'hello', '-q', '', '--once'],
+      ['--model', '--once', '-q', 'hello'],
+      ['-q', 'hello', '--once', '--unknown'],
+      ['-q', 'hello', '--once', '--model'],
+      ['--', '-q', 'hello', '--once'],
+    ]) {
+      expect(read(argv, dependent), argv.join(' ')).toMatchObject({ status: 'rejected' });
+    }
+  });
 });

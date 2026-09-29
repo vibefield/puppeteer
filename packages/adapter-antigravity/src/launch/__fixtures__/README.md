@@ -14,6 +14,13 @@ after `--`. `--model=--help` is not that raw utility token. `-v` is not a versio
 alias. `--print`/`--prompt` consumes one value, including an option-looking value;
 `--prompt-interactive` remains interactive and is refused.
 
+Correction (2026-09-28): these exact help/version entry shortcuts are not
+boolean parser options. A bounded native `--version=true` probe with an empty
+temporary home entered terminal UI setup instead of printing the version and
+exiting; `--help=true` exited with a help-pattern error. The shortcuts live only
+in the exact-token entry check, so inline spellings cannot earn passthrough.
+Other actual boolean options retain their native equals syntax.
+
 References:
 - https://antigravity.google/docs/cli/headless/
 - https://antigravity.google/docs/cli/reference/

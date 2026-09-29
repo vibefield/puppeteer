@@ -14,7 +14,7 @@ const nonSessions = [
   ['grok', ['-p', 'hello']],
   ['kimi', ['--prompt', 'hello']],
   ['opencode', ['run', 'hello']],
-  ['hermes', ['chat', '-q', 'hello', '--oneshot']],
+  ['hermes', ['chat', '--cli', '-q', 'hello', '--oneshot']],
   ['antigravity', ['--print', 'hello']],
   ['copilot', ['--prompt', 'hello']],
   ['pi', ['--mode', 'json']],
@@ -25,6 +25,19 @@ const nonSessions = [
   ['antigravity', ['remote-control', 'status']],
   ['copilot', ['--connect']],
   ['pi', ['--mode', 'rpc']],
+] as const;
+
+const interactiveModeRegressions = [
+  ['opencode', ['--help', '--help=false']],
+  ['opencode', ['--version', '--version=false']],
+  ['opencode', ['--help', 'false']],
+  ['opencode', ['--help', '--no-help']],
+  ['hermes', ['chat', '--quiet']],
+  ['hermes', ['chat', '--oneshot']],
+  ['hermes', ['--oneshot', '']],
+  ['hermes', ['chat', '--tui', '-q', 'hello', '--oneshot']],
+  ['hermes', ['chat', '--query-file', 'query.txt', '--oneshot']],
+  ['antigravity', ['--version=true']],
 ] as const;
 
 function setup(providerId: string, argv: string[] = []) {
@@ -81,6 +94,28 @@ describe('the strict host consumes the real builtin adapter grammars', () => {
     expect(await prepareSpawnThroughLaunch(request, host)).toMatchObject({ action: 'fallback', code: 'passthrough' });
     expect(host.resolveTerminal).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it.each(interactiveModeRegressions)('%s mode regression %j obeys strict custody', async (id, argv) => {
+    const { host, request, prepare } = setup(id, [...argv]);
+    expect(await prepareSpawnThroughLaunch(request, host)).toMatchObject({
+      action: 'refuse',
+      code: 'rejected-argument',
+      placed: true,
+    });
+    expect(host.resolveTerminal).toHaveBeenCalledOnce();
+    expect(prepare).not.toHaveBeenCalled();
+    host.resolveTerminal.mockResolvedValue(undefined);
+    expect(await prepareSpawnThroughLaunch(request, host)).toMatchObject({
+      action: 'fallback',
+      code: 'outside-host-terminals',
+    });
+    host.resolveTerminal.mockClear();
+    expect(await prepareSpawnThroughLaunch({ ...request, interactive: false }, host)).toMatchObject({
+      action: 'fallback',
+      code: 'not-interactive',
+    });
+    expect(host.resolveTerminal).not.toHaveBeenCalled();
   });
 
   it.each(vendors)('%s refuses unknown interactive intent only inside the host terminal', async (id) => {

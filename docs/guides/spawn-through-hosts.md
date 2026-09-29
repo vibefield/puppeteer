@@ -227,6 +227,13 @@ An adapter's normalizer reads the argv a person typed and answers one of three t
 | `passthrough`, kind `elsewhere` | it starts or opens an agent that does not live in this process | a background, cloud or attach command |
 | `rejected`, with the `argument` | an interactive session here that the managed launch cannot carry | an option the adapter cannot pass on, or has never seen |
 
+A passthrough describes the final native route, not merely the presence of a
+help or print-looking flag. Parsed utility flags can be cancelled later; an exit
+flag may need input or an explicit interface selector. The pure Core reader can
+defer utility options and give an adapter the arity-resolved options for those
+dependent decisions. Unknown arity still stops classification. Exact native entry
+shortcuts remain adapter-owned and do not acquire invented parser aliases.
+
 `runtime.classifyInvocation(invocation)` asks the adapter and nothing more: it makes the checks `prepareInvocation`
 makes before it prepares anything (the schema, the provider and its capability, the environment allow-list, the
 adapter's grammar) and starts no run, prepares nothing, writes no file and starts no process. It never returns the

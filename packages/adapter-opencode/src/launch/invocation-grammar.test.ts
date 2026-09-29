@@ -77,6 +77,29 @@ describe('opencode strict invocation grammar', () => {
     });
   });
   it('accepts a bare native session', () => expect(invoke([]).status).toBe('accepted'));
+  it('uses the final native help/version value before deciding passthrough', () => {
+    for (const argv of [
+      ['--help', '--help=false'],
+      ['--version', '--version=false'],
+      ['-h', '--help', 'false'],
+      ['-v', '--version', 'false'],
+      ['--help', '-h=false'],
+      ['--version', '-v=false'],
+      ['--help', 'false'],
+      ['--help', '--no-help'],
+      ['--version', '--no-version'],
+    ]) {
+      expect(invoke(argv), argv.join(' ')).toMatchObject({ status: 'rejected' });
+    }
+    for (const argv of [
+      ['--help=false', '--help'],
+      ['--version', 'false', '-v'],
+      ['--help', '--', '--help=false'],
+      ['--help', '--prompt=--help=false'],
+    ]) {
+      expect(invoke(argv), argv.join(' ')).toMatchObject({ status: 'passthrough', kind: 'utility' });
+    }
+  });
   it('does not mistake unknown arity or post-delimiter arguments for a mode', () => {
     for (const argv of [
       ['--unknown-future-option', '--help'],

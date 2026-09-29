@@ -107,18 +107,6 @@ export const INVOCATION_GRAMMAR = {
       arity: 'one',
       reason: 'the managed launch cannot preserve this option',
     },
-    {
-      names: ['--help', '-h'],
-      arity: 'none',
-      passthrough: 'utility',
-      hidden: 'native --help and --version entry probes; omitted by agy root help',
-    },
-    {
-      names: ['--version'],
-      arity: 'none',
-      passthrough: 'utility',
-      hidden: 'native --help and --version entry probes; omitted by agy root help',
-    },
   ],
   commands: [
     {
@@ -173,6 +161,7 @@ export const INVOCATION_GRAMMAR = {
 } as const satisfies NativeInvocationGrammar;
 
 // The native entry checks whole help/version tokens before parsing, even as a value or after `--`.
+// These are entry shortcuts, not parser boolean options: --version=true can start the TUI.
 // See __fixtures__/parse-probes.json. In particular -v is NOT a version alias.
 export const readInvocation = (argv: readonly string[]) => {
   if (argv.some((argument) => argument === '--help' || argument === '-h' || argument === '--version')) {
