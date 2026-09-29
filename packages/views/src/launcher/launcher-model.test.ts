@@ -8,6 +8,7 @@ import {
   agentKeyShortcut,
   agentPreview,
   buildLauncherResults,
+  cantLaunchLine,
   consumesKey,
   digitCodeIndex,
   formatCount,
@@ -79,6 +80,15 @@ describe('orderAgents', () => {
   it('previews with the host words, else the label', () => {
     expect(agentPreview(agent('a', 'Alpha'))).toBe('Alpha');
     expect(agentPreview(agent('a', 'Alpha', { preview: 'Alpha · work' }))).toBe('Alpha · work');
+  });
+});
+
+describe('cantLaunchLine', () => {
+  it('names the agent and why it cannot launch, in the launcher’s words', () => {
+    expect(cantLaunchLine(agent('p-a', 'Codex', { unavailable: 'not installed' }))).toBe(
+      'Codex can’t launch: not installed',
+    );
+    expect(cantLaunchLine(agent('p-a', 'Codex'))).toBe('Codex can’t launch');
   });
 });
 

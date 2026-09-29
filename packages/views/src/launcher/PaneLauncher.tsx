@@ -14,6 +14,7 @@ import {
   LAUNCHER_SEARCH_DEBOUNCE_MS,
   LAUNCHER_SHORT_HEIGHT,
   buildLauncherResults,
+  cantLaunchLine,
   launcherFolder,
   moveHighlight,
   toggleScope,
@@ -284,7 +285,7 @@ export function PaneLauncher({
     const agent = agents[index];
     if (!agent || busy) return;
     if (agent.unavailable) {
-      setFailure(`${agent.label} can’t launch: ${agent.unavailable}`);
+      setFailure(cantLaunchLine(agent));
       return;
     }
     const next: LauncherBusy = { kind: 'launch', index };

@@ -80,6 +80,11 @@ export function digitCodeIndex(code: string): number | undefined {
   return digit === 0 ? 9 : digit - 1;
 }
 
+/** The failure line for an agent that cannot launch here: `<label> can’t launch: <reason>`. */
+export function cantLaunchLine(agent: LauncherAgent): string {
+  return agent.unavailable ? `${agent.label} can’t launch: ${agent.unavailable}` : `${agent.label} can’t launch`;
+}
+
 /** What the preview line says for an agent: the host's words, else its label. */
 export function agentPreview(agent: LauncherAgent): string {
   return agent.preview ?? agent.label;
