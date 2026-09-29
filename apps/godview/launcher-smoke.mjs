@@ -15,7 +15,9 @@
 // key in another pane dismisses the launcher and reaches the shell; (g) a shell
 // that reported its folder as an OSC 7 `file://` URL still lists that folder's
 // sessions (skipped, and said so, when no OSC 7 arrives). The agent
-// is the first installed of GODVIEW_LAUNCHER_DRIVE_AGENTS (default: codex,
+// With --agent-exit it also sends /exit once ready and verifies the same pane
+// returns to an input-ready shell with the empty launcher (no resume chrome).
+// The agent is the first installed of GODVIEW_LAUNCHER_DRIVE_AGENTS (default: codex,
 // opencode, pi, grok, kimi); nothing is ever sent to it, and it is killed with
 // the window.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -27,7 +29,8 @@ import { spawn, spawnSync } from 'node:child_process';
 
 const appDirectory = dirname(fileURLToPath(import.meta.url));
 const electron = createRequire(import.meta.url)('electron');
-const drive = process.argv.includes('--drive');
+const checkAgentExit = process.argv.includes('--agent-exit');
+const drive = process.argv.includes('--drive') || checkAgentExit;
 const profile = mkdtempSync(join(tmpdir(), 'godview-launcher-smoke-'));
 const environment = { ...process.env, GHOSTTEA_TRUFFLE_ENABLED: 'false' };
 for (const key of [
@@ -145,8 +148,9 @@ async function typeText(page, text) {
 const PAGE_HELPERS = `(() => {
   if (window.__launcherDrive) return true;
   const root = document.getElementById('root');
-  const containerKey = Object.keys(root).find((key) => key.startsWith('__reactContainer$'));
   const find = (match) => {
+    const containerKey = Object.keys(root).find((key) => key.startsWith('__reactContainer$'));
+    if (!containerKey) return undefined;
     const stack = [root[containerKey].stateNode.current];
     while (stack.length) {
       const fiber = stack.pop();
@@ -199,6 +203,16 @@ try {
     return targets.find((candidate) => candidate.type === 'page' && candidate.url.endsWith('/index.html'));
   });
   page = await connect(target.webSocketDebuggerUrl);
+  if (checkAgentExit) {
+    await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+    await page.evaluate(PAGE_HELPERS);
+    await until('the workspace before the exit witness', () =>
+      page.evaluate('Boolean(window.__launcherDrive.workspace())'),
+    );
+    // Main may seed the initial shell, intentionally without a renderer birth
+    // receipt. Exercise an explicit fresh split instead of depending on that boot choice.
+    await page.evaluate('window.__launcherDrive.workspace().splitActive()');
+  }
   const witness = await until('a launcher in the fresh first pane', () =>
     page.evaluate(`(() => {
       const launcher = document.querySelector('.vf-pane-launcher');
@@ -459,6 +473,34 @@ try {
     console.log(
       `DRIVE (e) OK ${JSON.stringify({ agent: choice.label, key: choice.keys, shellHadInput: inputBefore, ...launched, replacedShell: reaped })}`,
     );
+
+    if (checkAgentExit) {
+      await until('the launched agent to be ready for /exit', () =>
+        page.evaluate(`(async () => {
+          const agents = await window.puppeteer.listAgentMonitors();
+          return agents.some((agent) => agent.terminalSessionId === ${JSON.stringify(launched.session)} && agent.state.alive && agent.state.status === 'idle');
+        })()`),
+      );
+      await page.evaluate(`window.__launcherDrive.focusTerminal(${JSON.stringify(second.paneId)})`);
+      // A real native command, through the same key path as the user. No prompt or model request.
+      await typeText(page, '/exit');
+      const exitAt = Date.now();
+      await press(page, { key: 'Enter', code: 'Enter', keyCode: 13, text: '\r' });
+      const returned = await until('clean agent exit to return its pane to a fresh launcher and usable shell', () =>
+        page.evaluate(`(async () => {
+          const workspace = window.__launcherDrive.workspace();
+          const pane = workspace.panes.find((candidate) => candidate.id === ${JSON.stringify(second.paneId)});
+          if (!pane || pane.session.id === ${JSON.stringify(launched.session)}) return undefined;
+          const element = window.__launcherDrive.paneElement(pane.id);
+          const input = element?.querySelector('.terminal-input');
+          if (!input || input.readOnly || !window.__launcherDrive.launcherIn(pane.id)) return undefined;
+          if (element.querySelector('.vf-pane-verb.is-resume')) throw new Error('ended-agent chrome survived');
+          if (workspace.activePaneId !== pane.id) throw new Error('exit changed the active pane');
+          return { paneId: pane.id, session: pane.session.id, cwd: pane.session.cwd, active: workspace.activePaneId, focused: document.activeElement === input, panes: workspace.panes.length };
+        })()`),
+      );
+      console.log(`AGENT EXIT OK ${JSON.stringify({ ...returned, exitToFreshShellMs: Date.now() - exitAt })}`);
+    }
 
     // (f) A plain key in a third fresh pane is the shell's: the launcher leaves and the key arrives.
     const third = await split();

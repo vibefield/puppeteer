@@ -77,7 +77,7 @@ import {
   zoomLayoutApplied,
 } from '@vibecook/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
-import { AppDeckLaunchers, usePaneSessionUsed } from './deck/launcher-host.js';
+import { AppDeckLaunchers, recordBornShell, usePaneSessionUsed } from './deck/launcher-host.js';
 import { launcherSessionUsed } from './deck/launcher-fresh.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
@@ -376,19 +376,15 @@ function Godview() {
           next.set(handoff.session.id, handoff.monitorIdentity);
           return next;
         });
-        // `affected` is empty without a workspace, so the early return above already covered that case.
-        if (workspace && affected.length === 1 && affected[0]?.id === workspace.activePaneId) {
-          // Ghosttea commits this replacement synchronously through its public
-          // workspace context, retaining focus and the pane's split geometry.
-          workspace.mountSession(handoff.session);
+        // Main owns this birth. Record its fresh-shell receipt before the pane
+        // publishes, so both the launcher and final-attachment reaper see it.
+        recordBornShell(terminalRuntime, handoff.session.id);
+        unusedPanes.current.created(handoff.session.id);
+        // Replace all current mirrors without focus changes, unzooming or a
+        // renderer reload (which previously interrupted every background exit).
+        if (workspace?.replaceSession(handoff.previousSessionId, handoff.session)) {
           window.desktop.acknowledgeTerminalSessionHandoff(handoff.handoffId);
-          return;
         }
-        // The current Ghosttea API replaces only the active pane. Its startup
-        // rehydrator can replace every mirrored/background reference in tree
-        // order, using the complete document main queued before this message.
-        window.desktop.acknowledgeTerminalSessionHandoff(handoff.handoffId);
-        window.location.reload();
       }),
     [workspace],
   );

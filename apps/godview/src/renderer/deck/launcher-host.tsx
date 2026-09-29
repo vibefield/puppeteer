@@ -19,6 +19,14 @@ import {
   type PaneUseSession,
 } from './launcher-fresh.js';
 
+// Main owns agent-exit handoffs; these are new shells, not restored sessions.
+const bornShells = new WeakMap<object, Set<string>>();
+export function recordBornShell(runtime: object, sessionId: string): void {
+  let ids = bornShells.get(runtime);
+  if (!ids) bornShells.set(runtime, (ids = new Set()));
+  ids.add(sessionId);
+}
+
 /** "Has this pane's shell been used?" — the reaper's rule (`paneSessionUsed`) or the launcher's gate (`launcherSessionUsed`). */
 export type PaneSessionUsed = (session: SessionSummary) => boolean;
 
@@ -144,9 +152,11 @@ export function AppDeckLaunchers({
   const panes = useMemo(() => workspace?.panes ?? [], [workspace?.panes]);
 
   // Ghosttea's birth receipt covers the first pane and every split; restored,
-  // claimed and main-seeded shells have none.
+  // claimed and main-seeded shells have none. An explicit agent-exit handoff
+  // supplies its own fresh-shell receipt.
   const fresh = useMemo(
-    () => freshSessionIds(panes, (id) => runtime.sessionCreatedHere(id), gate),
+    () =>
+      freshSessionIds(panes, (id) => runtime.sessionCreatedHere(id) || bornShells.get(runtime)?.has(id) === true, gate),
     [panes, runtime, gate],
   );
   const cwdBySession = useMemo(() => launcherCwds(fresh, panes, fallbackCwds), [fallbackCwds, fresh, panes]);
