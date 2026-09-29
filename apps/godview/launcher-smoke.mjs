@@ -75,8 +75,11 @@ async function until(what, probe, deadlineMs = DEADLINE_MS) {
 }
 
 /**
- * The launch in `paneId` (QL-2), from the key to the landing: C1 in the first
- * read after the key, then every phase with its time since the key, until the
+ * The launch in `paneId` (QL-2), from the key to the landing: the launch up,
+ * the launcher leaving and the badge's mark held by the first read after the
+ * key — one CDP round-trip later, so this bounds C1 rather than proving the
+ * click's own frame (VibeField's smoke clicks inside the page and reads before
+ * the next frame) — then every phase with its time since the key, until the
  * launch lets the pane go. With `GODVIEW_LAUNCH_SHOTS` set to a folder, the
  * pane is captured at the first waiting phase and after the landing.
  */
@@ -106,9 +109,9 @@ async function witnessLaunch(page, paneId, pressedAt) {
   };
   const first = await read();
   if (!first.launch)
-    throw new Error(`C1: no launch in the pane on the first read after the key: ${JSON.stringify(first)}`);
+    throw new Error(`C1: no launch in the pane by the first read after the key: ${JSON.stringify(first)}`);
   if (first.launcherLeaving !== true)
-    throw new Error(`C1: the launcher did not leave with the key: ${JSON.stringify(first)}`);
+    throw new Error(`C1: the launcher had not left by the first read after the key: ${JSON.stringify(first)}`);
   if (first.held !== 'held') throw new Error(`C6: the badge's mark was not held: ${JSON.stringify(first)}`);
   const phases = [{ ms: Date.now() - pressedAt, launch: first.launch }];
   let captions = [];
