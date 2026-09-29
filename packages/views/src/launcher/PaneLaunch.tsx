@@ -145,6 +145,8 @@ export function PaneLaunch({
   const [lit, setLit] = useState(false);
   const [reach, setReach] = useState(0);
   const timers = useRef<number[]>([]);
+  /** The caption as last shown: it keeps its words while it fades out, never flipping back to `starting`. */
+  const shownCaption = useRef(launchCaption(verb, 'starting', 0));
   const settled = useRef(onSettled);
   settled.current = onSettled;
 
@@ -258,6 +260,7 @@ export function PaneLaunch({
     if (!waiting) return;
     const tick = (): void => {
       const text = launchCaption(verb, state.phase, performance.now() - startedAt);
+      shownCaption.current = text;
       const caption = captionRef.current;
       if (caption && caption.textContent !== text) caption.textContent = text;
     };
@@ -266,6 +269,7 @@ export function PaneLaunch({
     return () => window.clearInterval(timer);
   }, [waiting, verb, state.phase, startedAt]);
 
+  if (waiting) shownCaption.current = launchCaption(verb, state.phase, performance.now() - startedAt);
   return createPortal(
     <PaneLaunchChrome
       launchId={launchId}
@@ -273,7 +277,7 @@ export function PaneLaunch({
       {...(providerId ? { providerId } : {})}
       label={label}
       phase={state.phase}
-      caption={launchCaption(verb, state.phase, performance.now() - startedAt)}
+      caption={shownCaption.current}
       {...(color ? { color } : {})}
       centre={geometry.centre}
       reach={reach}
