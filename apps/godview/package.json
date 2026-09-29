@@ -20,12 +20,12 @@
     "swarm-lab": "node swarm-lab.mjs"
   },
   "dependencies": {
-    "@parcel/watcher": "^2.5.0",
-    "@vibecook/ghosttea-electron": "0.9.3",
-    "@vibecook/ghosttea-native-tabs": "0.9.3",
-    "@vibecook/ghosttea-protocol": "0.9.3",
-    "@vibecook/ghosttea-react": "0.9.3",
-    "@vibecook/ghosttead": "0.9.3",
+    "@parcel/watcher": "^2.6.0",
+    "@vibecook/ghosttea-electron": "0.12.0",
+    "@vibecook/ghosttea-native-tabs": "0.12.0",
+    "@vibecook/ghosttea-protocol": "0.12.0",
+    "@vibecook/ghosttea-react": "0.12.0",
+    "@vibecook/ghosttead": "0.12.0",
     "@vibecook/puppeteer-builtin-providers": "workspace:*",
     "@vibecook/puppeteer-core": "workspace:*",
     "@vibecook/puppeteer-monitor": "workspace:*",
@@ -34,19 +34,19 @@
     "@vibecook/puppeteer-runtime": "workspace:*",
     "@vibecook/puppeteer-views": "workspace:*",
     "@vibecook/puppeteer-workspaces": "workspace:*",
-    "matter-js": "0.19.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "matter-js": "0.20.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@types/matter-js": "^0.20.2",
     "@types/node": "^22.9.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vibecook/truffle": "0.7.12",
-    "@webgpu/types": "0.1.72",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vibecook/truffle": "0.7.14",
+    "@webgpu/types": "0.1.74",
     "electron": "^43.1.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.6.0"
   }
 }
