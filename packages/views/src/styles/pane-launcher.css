@@ -273,8 +273,8 @@
   text-transform: uppercase;
 }
 
-/* A shell born under an Agent Profile (SB): "New · Under", then the profile's
-   glyph and name stepped up toward the ink, as the spawn bloom names it. */
+/* A shell born under an Agent Profile (SB): "New ·", then the profile's glyph
+   and "Under Work" stepped up toward the ink, as the prototype lays it out. */
 .vf-pane-launcher-cap-under {
   display: inline-flex;
   align-items: center;

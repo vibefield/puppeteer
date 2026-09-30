@@ -42,7 +42,7 @@ export interface PaneLauncherChromeProps {
   agents: readonly LauncherAgent[];
   /**
    * The Agent Profile this pane's shell was born under (SB): the caption reads
-   * `New · Under <glyph> Work` and the hint names it. Its agents arrive as
+   * `New · <glyph> Under Work` and the hint names it. Its agents arrive as
    * `agents` already (`paneAgents`); an agent it has no sign-in for is simply
    * one the host marks `unavailable`.
    */
@@ -240,14 +240,14 @@ export function PaneLauncherChrome({
         <div className="vf-pane-launcher-cap" aria-hidden="true">
           {under ? (
             <span className="vf-pane-launcher-cap-under">
-              New · Under{' '}
+              New ·{' '}
               <ProfileGlyph
                 glyph={under.glyph}
                 {...(under.kind ? { kind: under.kind } : {})}
                 filled={under.isDefault === true}
                 size={11}
               />
-              <b>{under.label}</b>
+              <b>Under {under.label}</b>
             </span>
           ) : (
             <span>New</span>

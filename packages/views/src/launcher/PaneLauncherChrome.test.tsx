@@ -354,13 +354,13 @@ describe('PaneLauncherChrome · the field open', () => {
 describe('PaneLauncherChrome · a pane born under a profile (SB)', () => {
   const WORK = { label: 'Work', glyph: 'briefcase', kind: 'managed' as const, isDefault: true };
 
-  it('captions the agents New · Under, the profile’s glyph and its name, and keeps last used first', () => {
+  it('captions the agents New · then the profile’s glyph and Under its name, and keeps last used first', () => {
     const markup = render({ under: WORK });
-    expect(markup).toContain('<span class="vf-pane-launcher-cap-under">New · Under <svg');
+    expect(markup).toContain('<span class="vf-pane-launcher-cap-under">New · <svg');
     expect(markup).toContain('data-profile-glyph="briefcase"');
     // The desktop's default is drawn filled, as everywhere a profile is named.
     expect(markup).toMatch(/<svg[^>]*width="11"[^>]*fill="currentColor"[^>]*data-profile-glyph="briefcase"/);
-    expect(markup).toContain('<b>Work</b></span><span>last used first</span>');
+    expect(markup).toContain('<b>Under Work</b></span><span>last used first</span>');
     expect(markup).toContain('aria-label="Launch an agent in this pane, under Work"');
     expect(markup).toContain('or just type · this shell is under Work');
     expect(markup).not.toContain('<span>New</span>');
@@ -369,7 +369,7 @@ describe('PaneLauncherChrome · a pane born under a profile (SB)', () => {
   it('outlines a profile that is not the default, and draws the machine’s own as the laptop', () => {
     const personal = render({ under: { label: 'Personal', glyph: 'house', kind: 'managed' } });
     expect(personal).toMatch(/<svg[^>]*fill="none"[^>]*data-profile-glyph="house"/);
-    expect(personal).toContain('<b>Personal</b>');
+    expect(personal).toContain('<b>Under Personal</b>');
     const native = render({ under: { label: 'This Mac', glyph: 'rocket', kind: 'native' } });
     expect(native).toContain('data-profile-glyph="laptop"');
   });
