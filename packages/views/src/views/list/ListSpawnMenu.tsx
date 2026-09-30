@@ -22,8 +22,10 @@ import {
 // The list view's door to the spawn bloom's tree (SB-D11): not a bloom — the
 // list is the view without a field — but the same two steps as a menu under
 // `＋ TERMINAL`. Desktops first when there are two or more, then the chosen
-// desktop's Agent Profiles, the default first (the prototype's list stage,
-// draft/spawn-bloom/page.js "the list view's two-step menu"). A click or ↵
+// desktop's Agent Profiles in the feed's order — the bloom's and the tabs'
+// order, so 1–9 and ↑↓ count the same rows (SB review M7) — the default marked
+// and focused first (the prototype's list stage, draft/spawn-bloom/page.js
+// "the list view's two-step menu"). A click or ↵
 // commits (the rows are buttons): on a desktop its default, on a profile
 // exactly it. ↑↓ move, → steps into a desktop's profiles, ← steps back, ⎋
 // closes, Tab closes and moves on.
@@ -38,11 +40,15 @@ export interface ListSpawnMenuProps {
 
 type Column = 'devices' | 'profiles';
 
-/** A desktop's profiles as the menu lists them: its default first, then the rest in the feed's order. */
+/** A desktop's profiles as the menu lists them: in the feed's order, as the bloom and the tabs list them. */
 export function menuProfiles(device: MonitorSpawnDevice): readonly MonitorSpawnProfile[] {
-  const profiles = device.profiles ?? [];
+  return device.profiles ?? [];
+}
+
+/** Where the keyboard lands in a desktop's profiles: its default. */
+export function menuDefaultIndex(device: MonitorSpawnDevice): number {
   const first = defaultProfile(device);
-  return first ? [first, ...profiles.filter((profile) => profile !== first)] : profiles;
+  return first ? menuProfiles(device).indexOf(first) : 0;
 }
 
 function signedLine(profile: MonitorSpawnProfile): string {
@@ -71,7 +77,7 @@ export function ListSpawnMenu({ menu, onChoose, onClose }: ListSpawnMenuProps): 
   useLayoutEffect(() => {
     focusRow(
       menu.kind === 'devices' ? 'devices' : 'profiles',
-      menu.kind === 'devices' ? devices.indexOf(menu.self) : 0,
+      menu.kind === 'devices' ? devices.indexOf(menu.self) : menuDefaultIndex(menu.self),
     );
     // once, on opening
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,7 +134,7 @@ export function ListSpawnMenu({ menu, onChoose, onClose }: ListSpawnMenuProps): 
         if (column !== 'devices' || !blooms(shown)) return;
         handled();
         setColumn('profiles');
-        focusRow('profiles', 0);
+        focusRow('profiles', menuDefaultIndex(shown));
         return;
       }
       case 'ArrowLeft': {

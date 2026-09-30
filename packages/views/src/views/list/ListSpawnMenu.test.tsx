@@ -7,7 +7,7 @@ import { menuOf, type BloomOpenMenu } from '../swarm/bloom/menu.js';
 import { BLOOM_SCENARIOS } from '../swarm/bloom/scenarios.js';
 import { AgentList } from './AgentList.js';
 import { LIST_PARAMETER_GROUPS } from './list-parameters.js';
-import { ListSpawnMenu, menuProfiles } from './ListSpawnMenu.js';
+import { ListSpawnMenu, menuDefaultIndex, menuProfiles } from './ListSpawnMenu.js';
 
 // The list's two-step menu (SB-D11) as markup: what a screen reader and a
 // host's tests reach. Opening it, the keys and the clicks are VibeField's
@@ -23,7 +23,7 @@ const html = (tree: MonitorSpawnMenu) =>
 const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
 
 describe('the list’s two-step menu', () => {
-  it('two or more desktops: the desktops, then the one you sit at’s profiles, the default first', () => {
+  it('two or more desktops: the desktops, then the one you sit at’s profiles, the default marked', () => {
     const markup = html(BLOOM_SCENARIOS.three);
     expect(markup).toContain('role="menu" aria-label="New terminal" data-list-spawn-step="devices"');
     expect(count(markup, /data-bloom-bud-kind="device"/g)).toBe(3);
@@ -38,10 +38,10 @@ describe('the list’s two-step menu', () => {
     );
     expect(markup).toContain('<small>ASLEEP · 2 H</small>');
     expect(count(markup, /vf-monitor-list-spawn-chev/g)).toBe(2);
-    // studio's profiles: Work (the default, filled, waiting on you) first
+    // studio's profiles in the feed's order (the bloom's and the tabs'); Work the default, filled, waiting on you
     expect(markup).toContain('role="group" aria-label="Profile on studio"');
     const ids = [...markup.matchAll(/data-bloom-bud-kind="profile" data-bloom-bud-id="([^"]+)"/g)].map((m) => m[1]);
-    expect(ids).toEqual(['work', 'native', 'demo']);
+    expect(ids).toEqual(['native', 'work', 'demo']);
     expect(markup).toMatch(
       /data-bloom-bud-id="work"[^>]*><svg[^>]*fill="currentColor"[^>]*data-profile-glyph="briefcase"/,
     );
@@ -75,12 +75,16 @@ describe('the list’s two-step menu', () => {
     expect(markup).not.toContain('DEFAULT · DEFAULT');
   });
 
-  it('lists a desktop’s default first, and a peer’s native set reads DEFAULT', () => {
+  it('lists a desktop’s profiles in the feed’s order, and the keys land on its default', () => {
     const mini = BLOOM_SCENARIOS.two.devices[1] as MonitorSpawnDevice;
     expect(menuProfiles(mini).map((p) => p.id)).toEqual(['native', 'personal']);
+    expect(menuDefaultIndex(mini)).toBe(0);
     const studio = BLOOM_SCENARIOS.two.devices[0] as MonitorSpawnDevice;
-    expect(menuProfiles(studio).map((p) => p.id)).toEqual(['work', 'native', 'demo']);
-    expect(menuProfiles({ id: 'r', label: 'r', state: 'reading' })).toEqual([]);
+    expect(menuProfiles(studio).map((p) => p.id)).toEqual(['native', 'work', 'demo']);
+    expect(menuDefaultIndex(studio)).toBe(1);
+    const reading: MonitorSpawnDevice = { id: 'r', label: 'r', state: 'reading' };
+    expect(menuProfiles(reading)).toEqual([]);
+    expect(menuDefaultIndex(reading)).toBe(0);
   });
 
   it('a desktop still reading its profiles says so, and ↵ on it takes its default', () => {
