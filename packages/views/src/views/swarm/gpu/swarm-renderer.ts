@@ -10,20 +10,22 @@ import {
   type TextStyle,
 } from '../text-layout.js';
 import type { Rgba } from './color.js';
+import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
 import commonShader from './shaders/common.wgsl.js';
 import fieldShader from './shaders/field.wgsl.js';
 import glowShader from './shaders/glow.wgsl.js';
+import hubShader from './shaders/hub.wgsl.js';
 import shadowShader from './shaders/shadow.wgsl.js';
 import textShader from './shaders/text.wgsl.js';
 
-// The swarm's renderer: one WebGPU canvas, one render pass, five pipelines in
-// painter's order — field, shadows, bodies, light, type — and one upload of
-// bodies and glyph quads per frame. It draws what it is given:
-// positions and sizes belong to the physics in AgentSwarm, meaning belongs to
-// bubble-model.ts, colour to the palette. Nothing here reads the DOM.
+// The swarm's renderer: one WebGPU canvas, one render pass, six pipelines in
+// painter's order — field, shadows, bodies, light, type, and the hold ring
+// last — and one upload of bodies and glyph quads per frame. It draws what it
+// is given: positions and sizes belong to the physics in AgentSwarm, meaning
+// belongs to bubble-model.ts, colour to the palette. Nothing here reads the DOM.
 
 export interface RenderBody {
   model: SwarmBubbleModel;
@@ -134,7 +136,6 @@ const F_SHADOW = 2048;
 const F_CORE = 4096;
 const F_WAVES = 8192;
 
-const FRAME_FLOATS = 48;
 const BODY_FLOATS = 40;
 const GLYPH_FLOATS = 16;
 const INITIAL_BODIES = 32;
@@ -255,13 +256,6 @@ function withAlpha(colour: Rgba, alpha: number): Rgba {
   return [colour[0], colour[1], colour[2], alpha];
 }
 
-function writeRgba(target: Float32Array, offset: number, colour: Rgba, alphaScale = 1): void {
-  target[offset] = colour[0];
-  target[offset + 1] = colour[1];
-  target[offset + 2] = colour[2];
-  target[offset + 3] = colour[3] * alphaScale;
-}
-
 export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<SwarmRendererResult> {
   if (typeof navigator === 'undefined' || !navigator.gpu)
     return { ok: false, reason: 'WebGPU is not available in this window' };
@@ -284,12 +278,13 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
   });
 
-  const [fieldModule, shadowModule, bodyModule, glowModule, textModule] = await Promise.all([
+  const [fieldModule, shadowModule, bodyModule, glowModule, textModule, hubModule] = await Promise.all([
     compile(device, 'swarm field', fieldShader),
     compile(device, 'swarm shadow', shadowShader),
     compile(device, 'swarm body', bodyShader),
     compile(device, 'swarm glow', glowShader),
     compile(device, 'swarm text', textShader),
+    compile(device, 'swarm hub', hubShader),
   ]);
 
   const sceneLayout = device.createBindGroupLayout({
@@ -327,12 +322,13 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       fragment: { module, entryPoint: 'fs', targets: [{ format, blend: PREMULTIPLIED_OVER }] },
       primitive: { topology: 'triangle-list' },
     });
-  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline] = await Promise.all([
+  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline, hubPipeline] = await Promise.all([
     pipeline('swarm field', fieldModule, scenePipelineLayout),
     pipeline('swarm shadow', shadowModule, scenePipelineLayout),
     pipeline('swarm body', bodyModule, scenePipelineLayout),
     pipeline('swarm glow', glowModule, scenePipelineLayout),
     pipeline('swarm text', textModule, textPipelineLayout),
+    pipeline('swarm hub', hubModule, scenePipelineLayout),
   ]);
 
   const frameBuffer = device.createBuffer({
@@ -810,33 +806,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       for (const mark of frame.marks ?? []) pushTile(mark.tile, mark.size, mark.x, mark.y, mark.colour, mark.alpha);
       atlas.flush();
 
-      frameData[0] = width;
-      frameData[1] = height;
-      frameData[2] = dpr;
-      frameData[3] = time;
-      frameData[4] = frame.fillOpacity;
-      frameData[5] = frame.motion ? 1 : 0;
-      frameData[6] = frame.gridPitch;
-      frameData[7] = 0;
-      writeRgba(frameData, 8, theme.grid);
-      writeRgba(frameData, 12, theme.shadow, frame.fillOpacity);
-      writeRgba(frameData, 16, theme.shadowPeak, frame.fillOpacity);
-      frameData[20] = frame.hold?.x ?? 0;
-      frameData[21] = frame.hold?.y ?? 0;
-      frameData[22] = frame.hold?.progress ?? 0;
-      frameData[23] = frame.hold ? 1 : 0;
-      writeRgba(frameData, 24, theme.orange);
-      writeRgba(frameData, 28, withAlpha(theme.ink, SWARM_WEIGHT.supporting));
-      writeRgba(frameData, 32, theme.surface, 0.74);
-      writeRgba(frameData, 36, theme.ink);
-      frameData[40] = frame.stateGlow.inner;
-      frameData[41] = frame.stateGlow.full;
-      frameData[42] = frame.stateGlow.strength;
-      frameData[43] = 0;
-      frameData[44] = frame.stateGlow.count;
-      frameData[45] = frame.stateGlow.speed;
-      frameData[46] = frame.stateGlow.depth;
-      frameData[47] = 0;
+      packFrame(frameData, frame, { width, height, dpr, time });
 
       device.queue.writeBuffer(frameBuffer, 0, frameData);
       if (bodies.length > 0) {
@@ -870,6 +840,12 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
         pass.setPipeline(textPipeline);
         pass.setBindGroup(1, textBindGroup!);
         pass.draw(6, glyphCount);
+      }
+      // The hold ring last, over everything the field drew: while the spawn
+      // bloom is open it is the hub the whole gesture turns on.
+      if (frameData[FRAME_LAYOUT.pointer + 3]! > 0) {
+        pass.setPipeline(hubPipeline);
+        pass.draw(6);
       }
       pass.end();
       device.queue.submit([encoder.finish()]);

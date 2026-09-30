@@ -9,13 +9,14 @@
 struct Frame {
   // width, height (CSS px), device pixel ratio, time (s; frozen when motion is off)
   viewport: vec4f,
-  // body fill opacity, motion (0/1), grid pitch (px), unused
+  // body fill opacity, motion (0/1), grid pitch (px), the veil (0..1: the grid
+  // is drawn at 1 − veil while the spawn bloom is open)
   params: vec4f,
   grid: vec4f,
   // the theme's shadow colour; `a` is the resting alpha, `shadowPeak.a` the peak's
   shadow: vec4f,
   shadowPeak: vec4f,
-  // hold-to-create: x, y, progress 0..1, active (0/1)
+  // hold-to-create, and the spawn bloom's hub: x, y, progress 0..1, opacity (0: none)
   pointer: vec4f,
   orange: vec4f,
   holdRim: vec4f,
