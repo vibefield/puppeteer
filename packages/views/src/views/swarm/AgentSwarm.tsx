@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { monitorChromeElements } from '../../monitor/chrome.js';
 import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
+import type { BloomBody } from './bloom/model.js';
+import { SpawnBloom } from './bloom/SpawnBloom.js';
+import { useSpawnBloom } from './bloom/use-spawn-bloom.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
 import { resolveCssColor, type Rgba } from './gpu/color.js';
 import { createSwarmRenderer, type RenderBody, type SwarmRenderer, type SwarmTheme } from './gpu/swarm-renderer.js';
@@ -78,6 +88,22 @@ const GRID_PITCH = 24;
 /** The burn rate moves on its own: models are refreshed on this cadence even when nothing else changed. */
 const MODEL_REFRESH_MS = 1000;
 const STATUS_RANK: Record<SwarmBubbleModel['appearance'], number> = { idle: 0, working: 1, blocked: 2 };
+/** The signifier (SB §2.11): a pointer still this long over empty ground is told what a hold does… */
+const SIGNIFIER_STILL_MS = 1200;
+/** …the first this-many times per page load. */
+const SIGNIFIER_TIMES = 3;
+/** A still pointer may wander this far. */
+const SIGNIFIER_SLOP = 3;
+let signifiersShown = 0;
+
+/** Whether the element has the keyboard's focus ring (a click's focus does not). */
+function focusVisible(element: Element): boolean {
+  try {
+    return element.matches(':focus-visible');
+  } catch {
+    return false;
+  }
+}
 
 function prefersReducedMotion(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -116,7 +142,7 @@ interface Models {
   agents: readonly MonitorAgent[];
 }
 
-export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonitorProps) {
+export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: AgentMonitorProps) {
   const swarm = useMemo<SwarmParameters>(() => normalizeSwarmParameters(parameters), [parameters]);
   const createDriver = useSwarmPhysicsDriverFactory();
   const containerRef = useRef<HTMLElement>(null);
@@ -151,6 +177,37 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   const [failure, setFailure] = useState<string | undefined>(undefined);
   /** What is painting: `starting` until the device answers, then `webgpu` or `unavailable`. */
   const [rendererState, setRendererState] = useState<'starting' | 'webgpu' | 'unavailable'>('starting');
+  /** The chrome over the field as rectangles, read by the render effect's own measure. */
+  const readChromeRef = useRef<() => readonly SwarmObstacleRect[]>(() => []);
+  const newTerminalRef = useRef<HTMLButtonElement>(null);
+  /** The keys door is focused from the keyboard: its echo shows where the bloom will open. */
+  const [newTerminalFocus, setNewTerminalFocus] = useState(false);
+  /** The signifier under a still pointer, and the stillness it waits on. */
+  const [signifier, setSignifier] = useState<{ x: number; y: number } | undefined>(undefined);
+  const stillRef = useRef<{ timer: number; x: number; y: number } | undefined>(undefined);
+
+  // The spawn bloom (SB): with a spawn menu, a completed hold opens it instead of
+  // creating at once; without one, the hold creates at once as it always has.
+  const bloom = useSpawnBloom(spawnMenu, {
+    container: containerRef,
+    readChrome: () => readChromeRef.current(),
+    bodies: () =>
+      orderRef.current.map((body): BloomBody => ({
+        x: body.x,
+        y: body.y,
+        r: body.radius,
+        scale: body.scale,
+        agent: agentById(body.model.id),
+      })),
+    idleRadius: () => parametersRef.current.radiusIdle,
+    motion: () =>
+      !prefersReducedMotion() &&
+      containerRef.current?.closest('.vf-godview')?.getAttribute('data-godview-animations') !== 'off',
+    createAt: (position, target) => (target ? actions.createAt(position, target) : actions.createAt(position)),
+  });
+  const bloomRef = useRef(bloom);
+  bloomRef.current = bloom;
+  const blooming = bloom.state !== null && bloom.state.closed === null;
 
   useEffect(() => {
     agentsRef.current = agents;
@@ -186,9 +243,27 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   useEffect(
     () => () => {
       if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+      if (stillRef.current) window.clearTimeout(stillRef.current.timer);
     },
     [],
   );
+
+  /** The signifier: a pointer still over empty ground (`at`) learns what a hold does, the first
+   * few times per page load; any other place, or none, puts it away. Only with a spawn menu. */
+  const watchStill = (at: { x: number; y: number } | undefined): void => {
+    const still = stillRef.current;
+    if (still && at && Math.hypot(at.x - still.x, at.y - still.y) <= SIGNIFIER_SLOP) return;
+    if (still) window.clearTimeout(still.timer);
+    stillRef.current = undefined;
+    setSignifier(undefined);
+    if (!at || !spawnMenu || signifiersShown >= SIGNIFIER_TIMES) return;
+    const timer = window.setTimeout(() => {
+      if (signifiersShown >= SIGNIFIER_TIMES || holdRef.current || dragRef.current || bloomRef.current.isOpen()) return;
+      signifiersShown += 1;
+      setSignifier(at);
+    }, SIGNIFIER_STILL_MS);
+    stillRef.current = { timer, x: at.x, y: at.y };
+  };
 
   // The renderer: created once the canvas exists, rebuilt if the device is lost.
   useEffect(() => {
@@ -287,6 +362,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
         };
       });
     };
+    readChromeRef.current = readObstacles;
 
     const applyTable = (event: Extract<SwarmPhysicsEvent, { type: 'idTable' }>): void => {
       tableRef.current = { generation: event.generation, ids: event.ids };
@@ -432,6 +508,8 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       if (!renderer || !theme) return;
 
       const hold = holdRef.current;
+      // The spawn bloom's hub: the hold ring kept at full size while the bloom is open.
+      const hub = hold ? undefined : bloomRef.current.hub(time);
       renderer.render({
         time: (time - started) / 1000,
         motion,
@@ -452,13 +530,18 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
         },
         theme,
         bodies,
-        ...(hold ? { hold: { x: hold.x, y: hold.y, progress: (time - hold.startedAt) / LONG_PRESS_DURATION_MS } } : {}),
+        ...(hold
+          ? { hold: { x: hold.x, y: hold.y, progress: (time - hold.startedAt) / LONG_PRESS_DURATION_MS } }
+          : hub
+            ? { hold: hub }
+            : {}),
       });
     };
     frame = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(frame);
+      readChromeRef.current = () => [];
       resizeObserver?.disconnect();
       statesRef.current.clear();
       visualsRef.current.clear();
@@ -502,7 +585,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
     driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });
   }, [agents, swarm]);
 
-  const localPoint = (event: ReactPointerEvent<HTMLElement>): { x: number; y: number } | undefined => {
+  const localPoint = (event: { clientX: number; clientY: number }): { x: number; y: number } | undefined => {
     const bounds = containerRef.current?.getBoundingClientRect();
     if (!bounds) return undefined;
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
@@ -540,6 +623,9 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>): void => {
+    watchStill(undefined);
+    // A bloom held open takes the press: a primary click commits, any other button puts it away.
+    if (bloom.pointerDown(event, localPoint(event))) return;
     if (event.button !== 0) return;
     const point = localPoint(event);
     if (!point) return;
@@ -576,7 +662,8 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       if (holdRef.current !== hold) return;
       holdTimerRef.current = undefined;
       holdRef.current = undefined;
-      void actions.createAt({ x: hold.x, y: hold.y });
+      // With a spawn menu the hold blooms and keeps the pointer; without one it creates here, now.
+      bloomRef.current.held({ x: hold.x, y: hold.y }, hold.pointerId);
     }, LONG_PRESS_DURATION_MS);
   };
 
@@ -589,17 +676,26 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       driverRef.current?.post({ type: 'dragMove', id: drag.id, point });
       return;
     }
+    if (bloom.pointerMove(event, point)) return;
     const hold = holdRef.current;
     if (hold && hold.pointerId === event.pointerId) {
       if (Math.hypot(event.clientX - hold.clientX, event.clientY - hold.clientY) > LONG_PRESS_MOVE_TOLERANCE)
         cancelHold();
       return;
     }
-    updateHover(hitTest(point.x, point.y)?.model.id, point.x, point.y);
+    const hit = hitTest(point.x, point.y);
+    updateHover(hit?.model.id, point.x, point.y);
+    watchStill(hit ? undefined : point);
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLElement>): void => {
     const point = localPoint(event);
+    // A hold's bloom commits where it is let go.
+    if (bloom.pointerUp(event, point)) {
+      if (event.currentTarget.hasPointerCapture(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      return;
+    }
     const drag = dragRef.current;
     if (drag && drag.pointerId === event.pointerId) {
       if (point) driverRef.current?.post({ type: 'dragMove', id: drag.id, point });
@@ -619,14 +715,26 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   };
 
   const onPointerCancel = (event: ReactPointerEvent<HTMLElement>): void => {
+    bloom.pointerCancel(event);
     if (dragRef.current?.pointerId === event.pointerId) endDrag();
     if (holdRef.current?.pointerId === event.pointerId) cancelHold();
     setCursor('default');
   };
 
   const onPointerLeave = (): void => {
+    watchStill(undefined);
     if (dragRef.current) return;
     updateHover(undefined, 0, 0);
+  };
+
+  /** A secondary click on empty ground holds a bloom open (SB-D12); on an open one, puts it away. */
+  const onContextMenu = (event: ReactMouseEvent<HTMLElement>): void => {
+    if (!spawnMenu) return;
+    watchStill(undefined);
+    const point = localPoint(event);
+    const blocked = !point || !!dragRef.current || !!hitTest(point.x, point.y);
+    if (!blocked && !bloom.isOpen()) cancelHold();
+    bloom.contextMenu(event, point, blocked);
   };
 
   const modelFor = (agent: MonitorAgent): SwarmBubbleModel =>
@@ -642,7 +750,7 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
   return (
     <section
       ref={containerRef}
-      className="vf-monitor-swarm"
+      className={blooming ? 'vf-monitor-swarm is-blooming' : 'vf-monitor-swarm'}
       style={{ cursor }}
       aria-label="Running agent status field"
       data-swarm-renderer={rendererState}
@@ -650,7 +758,9 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onLostPointerCapture={(event) => bloom.pointerCancel(event)}
       onPointerLeave={onPointerLeave}
+      onContextMenu={spawnMenu ? onContextMenu : undefined}
     >
       <canvas ref={canvasRef} className="vf-monitor-swarm-canvas" aria-hidden="true" />
       {failure ? (
@@ -662,7 +772,28 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
         <div className="vf-monitor-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
+          {spawnMenu ? <small>Hold empty ground for a terminal.</small> : null}
         </div>
+      ) : null}
+      {spawnMenu ? (
+        <SpawnBloom
+          state={bloom.state}
+          reduced={bloom.reduced}
+          menuRef={bloom.menuRef}
+          onKeyDown={bloom.onKeyDown}
+          onBlur={bloom.onBlur}
+        />
+      ) : null}
+      {signifier && !blooming ? (
+        <span className="vf-monitor-swarm-signifier" style={{ left: signifier.x, top: signifier.y }} aria-hidden="true">
+          Hold for a terminal
+        </span>
+      ) : null}
+      {newTerminalFocus && !blooming ? (
+        // The keys door has the keyboard: say so where its bloom will open.
+        <span className="vf-monitor-swarm-new-echo" aria-hidden="true">
+          ＋ New terminal…
+        </span>
       ) : null}
       {hovered ? (
         <span
@@ -676,6 +807,23 @@ export function AgentSwarm({ agents, parameters, actions, palette }: AgentMonito
       ) : null}
       {/* Every body, reachable without a pointer. Focus draws a ring on the canvas. */}
       <ul className="vf-monitor-swarm-list" aria-label="Agents">
+        {spawnMenu ? (
+          // The keys door (SB §2.11): a bloom at the field's middle with the keyboard in it.
+          <li>
+            <button
+              ref={newTerminalRef}
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={blooming && bloom.state?.mode === 'keys'}
+              data-swarm-new-terminal=""
+              onFocus={(event) => setNewTerminalFocus(focusVisible(event.currentTarget))}
+              onBlur={() => setNewTerminalFocus(false)}
+              onClick={() => bloom.openKeys(newTerminalRef.current)}
+            >
+              ＋ New terminal…
+            </button>
+          </li>
+        ) : null}
         {agents.map((agent) => {
           const model = modelFor(agent);
           return (

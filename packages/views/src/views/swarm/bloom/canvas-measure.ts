@@ -5,8 +5,12 @@ import type { BloomTextMeasure } from './constants.js';
  * font and text — a bloom seats every label on every retarget. Undefined where
  * there is no canvas (a worker, a test without a DOM): the caller falls back. */
 export function canvasBloomMeasure(): BloomTextMeasure | undefined {
-  if (typeof document === 'undefined') return undefined;
-  const context = document.createElement('canvas').getContext('2d');
+  let context: CanvasRenderingContext2D | null = null;
+  try {
+    context = document.createElement('canvas').getContext('2d');
+  } catch {
+    // no document, or none that draws
+  }
   if (!context) return undefined;
   const cache = new Map<string, number>();
   let font = '';

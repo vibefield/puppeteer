@@ -2,8 +2,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { monitorParameterDefaults } from '../../monitor/parameters.js';
 import { readMonitorPalette } from '../../monitor/palette.js';
-import type { MonitorAgent } from '../../monitor/types.js';
+import type { MonitorAgent, MonitorSpawnMenu } from '../../monitor/types.js';
 import { AgentSwarm } from './AgentSwarm.js';
+import { BLOOM_SCENARIOS } from './bloom/scenarios.js';
 import { agentFixture, terminalFixture } from './lab/fixtures.js';
 import { SWARM_PARAMETER_GROUPS } from './swarm-parameters.js';
 
@@ -36,13 +37,14 @@ function remoteRow(): MonitorAgent {
   };
 }
 
-function markup(agents: MonitorAgent[]): string {
+function markup(agents: MonitorAgent[], spawnMenu?: MonitorSpawnMenu): string {
   return renderToStaticMarkup(
     <AgentSwarm
       agents={agents}
       parameters={monitorParameterDefaults(SWARM_PARAMETER_GROUPS)}
       actions={NO_ACTIONS}
       palette={readMonitorPalette()}
+      {...(spawnMenu ? { spawnMenu } : {})}
     />,
   );
 }
@@ -81,5 +83,41 @@ describe('the swarm as markup', () => {
   it('keeps the shell spatial identity when the managed row has a different action id', () => {
     const agent = agentFixture({ id: 'run', project: 'vibe-field', status: 'working', accent: 1 }, NOW);
     expect(markup([{ ...agent, visualId: 'old-shell' }])).toContain('data-agent-bubble-id="old-shell"');
+  });
+});
+
+describe('the swarm with a spawn menu (SB)', () => {
+  const rows = [terminalFixture('t1', 'vibe-field', false, NOW)];
+
+  it('without one, the markup is today’s: no keys door, no bloom layer, no signifier', () => {
+    const html = markup(rows);
+    expect(html).not.toContain('data-swarm-new-terminal');
+    expect(html).not.toContain('vf-bloom');
+    expect(markup([])).not.toContain('Hold empty ground');
+    expect(html.match(/<button /g)).toHaveLength(1);
+  });
+
+  it('with one, the hidden list opens with the keys door, and the bloom’s live region waits', () => {
+    const html = markup(rows, BLOOM_SCENARIOS.two);
+    expect(html).toMatch(
+      /<ul class="vf-monitor-swarm-list" aria-label="Agents"><li><button type="button" aria-haspopup="menu" aria-expanded="false" data-swarm-new-terminal="">＋ New terminal…<\/button>/,
+    );
+    expect(html.match(/<button /g)).toHaveLength(2);
+    expect(html).toContain('data-bloom-state="idle"');
+    expect(html).toContain('<div class="vf-bloom-say-root" aria-live="polite"></div>');
+    // nothing is open until a hold completes
+    expect(html).not.toContain('role="menu"');
+    expect(html).toContain('class="vf-monitor-swarm"');
+  });
+
+  it('the empty notice says what a hold does', () => {
+    const html = markup([], BLOOM_SCENARIOS['one-three']);
+    expect(html).toContain(
+      '<small>Launch an agent from a terminal pane.</small><small>Hold empty ground for a terminal.</small>',
+    );
+  });
+
+  it('a menu with nothing to choose still gets the keys door (it creates at once)', () => {
+    expect(markup(rows, BLOOM_SCENARIOS['one-one'])).toContain('data-swarm-new-terminal');
   });
 });

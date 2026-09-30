@@ -23,7 +23,8 @@ function open(id: BloomScenarioId, mode: 'hold' | 'sticky' | 'keys' = 'hold'): B
 function budOf(s: BloomState, device: string, profile?: string) {
   const bud = [...s.l1, ...s.l2].find(
     (b) =>
-      b.item.device.id === device && (profile === undefined ? b.kind === 'device' : b.item.profile?.id === profile),
+      b.item.device.id === device &&
+      (profile === undefined ? b.kind === 'device' : b.kind === 'profile' && b.item.profile?.id === profile),
   );
   if (!bud) throw new Error(`no bud ${device}/${profile ?? ''}`);
   return bud;
