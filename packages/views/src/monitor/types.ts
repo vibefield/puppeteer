@@ -162,7 +162,7 @@ export interface MonitorSpawnProfile {
   readonly isDefault?: boolean | undefined;
   /** An agent under it waits on the person (the tabs' orange dot). */
   readonly blocked?: boolean | undefined;
-  /** The agents signed in under it, as the host labels them ("Claude", "Codex"), in its order. */
+  /** The agents signed in under it, as the host labels them, in its order. */
   readonly signedIn?: readonly string[] | undefined;
 }
 
