@@ -933,7 +933,7 @@ export function bloomStages(nowMs: number): LabFieldStage[] {
     {
       id: 'bloom-hub',
       title: 'The hub, frozen',
-      note: 'The whole field under an open bloom: the veil, a lit body, the ring’s and the words’ clearings, and the hold ring kept at full size above everything — the hub.',
+      note: 'The whole field under an open bloom: the veil, a lit body, the ring’s and the words’ clearings, and the hold ring kept at full size above everything, drawn heavier (a 1.5 px rim, a 2.5 px dot) — the hub.',
       veil: 0.8,
       lit: ['c4'],
       clearings: [ring, words],

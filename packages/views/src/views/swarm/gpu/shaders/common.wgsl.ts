@@ -35,6 +35,9 @@ struct Frame {
   holdRim: vec4f,
   holdFill: vec4f,
   holdInk: vec4f,
+  // the ring's rim width and dot radius (px): 1 and 2 while a hold is in flight,
+  // 1.5 and 2.5 once it is the spawn bloom's hub; z/w unused
+  holdShape: vec4f,
   // the state glow's shape: where it begins, where it is full, its strength, unused
   glowBand: vec4f,
   // and its motion: crests across the radius, crests a second, trough depth, unused

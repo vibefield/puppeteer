@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { SWARM_WEIGHT } from '../weight.js';
-import { CLEARING_FLOATS, FRAME_FLOATS, FRAME_LAYOUT, MAX_CLEARINGS, packFrame } from './frame-layout.js';
+import {
+  CLEARING_FLOATS,
+  FRAME_FLOATS,
+  FRAME_LAYOUT,
+  HOLD_RING,
+  HUB_RING,
+  MAX_CLEARINGS,
+  packFrame,
+} from './frame-layout.js';
 import common from './shaders/common.wgsl.js';
 import type { SwarmClearing, SwarmFrame, SwarmTheme } from './swarm-renderer.js';
 
@@ -116,6 +124,9 @@ describe('the frame uniform', () => {
     expect(data[FRAME_LAYOUT.pointer + 2]).toBeCloseTo(0.4);
     expect(data[FRAME_LAYOUT.pointer + 3]).toBe(1);
     expect(pack(frameOf({ hold: { x: 0, y: 0, progress: 1.7 } }))[FRAME_LAYOUT.pointer + 2]).toBe(1);
+    // In flight, the ring keeps today's weights: a 1 px rim and a 2 px dot.
+    expect([...data.slice(FRAME_LAYOUT.holdShape, FRAME_LAYOUT.holdShape + 4)]).toEqual([1, 2, 0, 0]);
+    expect(HOLD_RING).toEqual({ rim: 1, dot: 2 });
   });
 
   it('holds the frozen hub at the ring’s final look, faded by its opacity', () => {
@@ -125,6 +136,9 @@ describe('the frame uniform', () => {
     const closing = pack(frameOf({ hold: { x: 50, y: 60, progress: 1, frozen: true, opacity: 0.35 } }));
     expect(closing[FRAME_LAYOUT.pointer + 2]).toBe(1);
     expect(closing[FRAME_LAYOUT.pointer + 3]).toBeCloseTo(0.35);
+    // The hub is drawn heavier, as the prototype's v2 does: a 1.5 px rim and a 2.5 px dot.
+    expect([...open.slice(FRAME_LAYOUT.holdShape, FRAME_LAYOUT.holdShape + 4)]).toEqual([1.5, 2.5, 0, 0]);
+    expect(HUB_RING).toEqual({ rim: 1.5, dot: 2.5 });
   });
 
   it('packs no clearing by default, and zeroes every slot', () => {

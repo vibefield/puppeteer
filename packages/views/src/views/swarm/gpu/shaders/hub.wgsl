@@ -2,8 +2,9 @@
 // type and the clearings, so the press point is never lost under anything the
 // field draws (record §2.8). 16px at the end of the hold, reached out-cubic from
 // 55%; the theme's surface at 74%, a rim that climbs from the supporting ink to
-// the full ink, a 2px dot. The frozen hub is the ring's final look (progress 1),
-// and `pointer.w` scales all of it as the bloom closes. One quad.
+// the full ink, and a dot. The frozen hub is the ring's final look (progress 1),
+// drawn heavier (`holdShape`: a 1 px rim and 2 px dot in flight, 1.5 and 2.5 as
+// the hub), and `pointer.w` scales all of it as the bloom closes. One quad.
 
 const HUB_RADIUS: f32 = 16.0;
 // Room past the ring for its rim's box filter.
@@ -32,9 +33,11 @@ fn fs(in: HubVertex) -> @location(0) vec4f {
   let q = in.local;
   let d = length(q) - radius;
   let rim = mix(frame.holdRim, frame.holdInk, eased);
+  // The rim is drawn inside the ring's edge, so a heavier one does not grow it.
+  let half = frame.holdShape.x * 0.5;
   var out = vec4f(0.0);
   out = over(out, premul(frame.holdFill) * cov(d) * opacity);
-  out = over(out, premul(rim) * cov(abs(d + 0.5) - 0.5) * opacity);
-  out = over(out, premul(frame.holdInk) * cov(length(q) - 2.0) * opacity);
+  out = over(out, premul(rim) * cov(abs(d + half) - half) * opacity);
+  out = over(out, premul(frame.holdInk) * cov(length(q) - frame.holdShape.y) * opacity);
   return out;
 }

@@ -21,15 +21,22 @@ export const FRAME_LAYOUT = {
   holdRim: 28,
   holdFill: 32,
   holdInk: 36,
+  /** the ring's rim width and dot radius (px), unused ×2 */
+  holdShape: 40,
   /** the state glow's shape: inner, full, strength, unused */
-  glowBand: 40,
+  glowBand: 44,
   /** and its motion: count, speed, depth, unused */
-  glowWave: 44,
+  glowWave: 48,
   /** how many clearings are set, unused ×3 */
-  clearing: 48,
+  clearing: 52,
   /** `MAX_CLEARINGS` × `Clearing`: shape (centre x, y, radius | half w, half h), edge (feather, kind, opacity, 0) */
-  clearings: 52,
+  clearings: 56,
 } as const;
+
+/** The hold ring while a press is in flight: a 1 px rim and a 2 px dot. */
+export const HOLD_RING = { rim: 1, dot: 2 } as const;
+/** The spawn bloom's hub, the ring frozen at full size: heavier, as the prototype's v2 draws it (1.5 px, 2.5 px). */
+export const HUB_RING = { rim: 1.5, dot: 2.5 } as const;
 
 /** The most clearings a frame draws; the rest are ignored. `erase.wgsl` loops to the same bound. */
 export const MAX_CLEARINGS = 4;
@@ -81,6 +88,11 @@ export function packFrame(target: Float32Array, frame: SwarmFrame, view: FrameVi
   writeRgba(target, L.holdRim, [theme.ink[0], theme.ink[1], theme.ink[2], SWARM_WEIGHT.supporting]);
   writeRgba(target, L.holdFill, theme.surface, 0.74);
   writeRgba(target, L.holdInk, theme.ink);
+  const ring = hold?.frozen ? HUB_RING : HOLD_RING;
+  target[L.holdShape] = ring.rim;
+  target[L.holdShape + 1] = ring.dot;
+  target[L.holdShape + 2] = 0;
+  target[L.holdShape + 3] = 0;
   target[L.glowBand] = frame.stateGlow.inner;
   target[L.glowBand + 1] = frame.stateGlow.full;
   target[L.glowBand + 2] = frame.stateGlow.strength;
