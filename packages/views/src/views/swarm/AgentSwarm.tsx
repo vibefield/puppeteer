@@ -9,12 +9,28 @@ import {
 import { monitorChromeElements } from '../../monitor/chrome.js';
 import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
+import { birthAgent, birthOf, birthOverdue, birthRow, profileLineFor, type BloomBirth } from './bloom/birth.js';
+import { BLOOM } from './bloom/constants.js';
+import {
+  arrivalFrom,
+  bloomFieldMemory,
+  departure,
+  stepBloomField,
+  stepLit,
+  veiledOpacity,
+} from './bloom/field-frame.js';
 import type { BloomBody } from './bloom/model.js';
 import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom } from './bloom/use-spawn-bloom.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
 import { resolveCssColor, type Rgba } from './gpu/color.js';
-import { createSwarmRenderer, type RenderBody, type SwarmRenderer, type SwarmTheme } from './gpu/swarm-renderer.js';
+import {
+  createSwarmRenderer,
+  MAX_CLEARINGS,
+  type RenderBody,
+  type SwarmRenderer,
+  type SwarmTheme,
+} from './gpu/swarm-renderer.js';
 import { useSwarmPhysicsDriverFactory } from './physics/context.js';
 import { readSwarmFrame, type BubbleState } from './physics/frame.js';
 import type { SwarmPhysicsDriver } from './physics/inline-driver.js';
@@ -60,6 +76,16 @@ interface BodyVisual {
   arrival: number;
   /** The weight it is drawn at while the host shows another group: 1 when shown (`monitor/recede.ts`). */
   recede: number;
+  /** Born from a bloom's bud: its arrival starts from the bud's size over its own (the spawn bloom, SB). */
+  from?: number;
+  /** Drawn above the bloom's clearings until then: the body being born (record §2.8 (4)). */
+  aboveUntil?: number;
+}
+
+/** A birth on its way (SB §2.6), and the seed its body keeps when its row takes over. */
+interface Birthing {
+  birth: BloomBirth;
+  readonly seed: number;
 }
 
 interface Drag {
@@ -185,6 +211,13 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   /** The signifier under a still pointer, and the stillness it waits on. */
   const [signifier, setSignifier] = useState<{ x: number; y: number } | undefined>(undefined);
   const stillRef = useRef<{ timer: number; x: number; y: number } | undefined>(undefined);
+  /** The field under a bloom — the veil, what it lights, its clearings — eased across frames. */
+  const fieldMemoryRef = useRef(bloomFieldMemory());
+  /** Births on their way: drawn where the person let go until the host's row takes over. */
+  const birthsRef = useRef<Birthing[]>([]);
+  const birthSeqRef = useRef(0);
+  const spawnMenuRef = useRef(spawnMenu);
+  spawnMenuRef.current = spawnMenu;
 
   // The spawn bloom (SB): with a spawn menu, a completed hold opens it instead of
   // creating at once; without one, the hold creates at once as it always has.
@@ -204,6 +237,30 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       !prefersReducedMotion() &&
       containerRef.current?.closest('.vf-godview')?.getAttribute('data-godview-animations') !== 'off',
     createAt: (position, target) => (target ? actions.createAt(position, target) : actions.createAt(position)),
+    born: (choice, answer) => {
+      birthSeqRef.current += 1;
+      const record: Birthing = {
+        birth: birthOf({
+          id: `spawn-bloom-birth-${birthSeqRef.current}`,
+          choice,
+          menu: spawnMenuRef.current,
+          idleRadius: parametersRef.current.radiusIdle,
+          now: performance.now(),
+          nowMs: Date.now(),
+          rows: agentsRef.current,
+        }),
+        seed: Math.random() * Math.PI * 2,
+      };
+      birthsRef.current = [...birthsRef.current, record];
+      // The host's answer starts the wait for its row; a refusal gives the birth up at once.
+      const settle = (patch: { answeredAt?: number; failedAt?: number }): void => {
+        if (birthsRef.current.includes(record)) record.birth = { ...record.birth, ...patch };
+      };
+      Promise.resolve(answer).then(
+        () => settle({ answeredAt: performance.now() }),
+        () => settle({ failedAt: performance.now() }),
+      );
+    },
   });
   const bloomRef = useRef(bloom);
   bloomRef.current = bloom;
@@ -303,6 +360,15 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     };
   }, []);
 
+  /** A terminal born under a profile of the desktop you sit at names it, when there is more than one (SB §2.10). */
+  const terminalProfile = (agent: MonitorAgent) =>
+    agent.agent || agent.remote ? undefined : profileLineFor(spawnMenuRef.current, agent.profileSet);
+
+  // A new tree can change which terminals name their profile.
+  useEffect(() => {
+    modelsRef.current.at = 0;
+  }, [spawnMenu]);
+
   /** The models every body draws from, rebuilt when the rows change or the clock says so. */
   const refreshModels = (now: number): void => {
     const models = modelsRef.current;
@@ -311,6 +377,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     const shares = workingShares(agentsRef.current);
     for (const agent of agentsRef.current) {
       const runningSince = runningSinceRef.current.get(agent.visualId ?? agent.id);
+      const profile = terminalProfile(agent);
       byId.set(
         agent.visualId ?? agent.id,
         bubbleModel({
@@ -320,6 +387,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
           unread: agent.unread === true,
           workingShare: shares.get(agent.id) ?? 0,
           ...(runningSince === undefined ? {} : { runningSinceMs: runningSince }),
+          ...(profile ? { profile } : {}),
         }),
       );
     }
@@ -450,6 +518,25 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       const motion = !prefersReducedMotion() && root?.getAttribute('data-godview-animations') !== 'off';
       const focused = focusedIdRef.current;
       const recede = recedeRef.current;
+      // The field under a bloom (SB §2.8): the veil, what the bloom lights above it, the clearings.
+      const bloomField = bloomRef.current.field();
+      const field = stepBloomField(fieldMemoryRef.current, {
+        state: bloomField.state,
+        closedAt: bloomField.closedAt,
+        now: time,
+        dtMs: delta,
+        reduced: !motion,
+      });
+      const rows =
+        field.veil > 0 || fieldMemoryRef.current.lit.size > 0
+          ? new Map(agentsRef.current.map((agent) => [agent.visualId ?? agent.id, agent] as const))
+          : undefined;
+      // A birth whose row has arrived: the row takes over where the birth stood.
+      const takeovers = new Map<string, Birthing>();
+      for (const record of birthsRef.current) {
+        const row = birthRow(record.birth, agentsRef.current);
+        if (row) takeovers.set(row.visualId ?? row.id, record);
+      }
       const bodies: RenderBody[] = [];
       for (const [id, state] of statesRef.current) {
         const model = models.byId.get(id);
@@ -460,15 +547,19 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         let visual = visualsRef.current.get(id);
         if (!visual) {
           arrivalCounterRef.current += 1;
+          // The host's row for a birth continues the birth's own arrival: no second one.
+          const born = takeovers.get(id);
           visual = {
             visualRadius: model.radius,
             visualVelocity: 0,
-            spawnedAt: time,
-            seed: Math.random() * Math.PI * 2,
+            spawnedAt: born ? born.birth.bornAt : time,
+            seed: born ? born.seed : Math.random() * Math.PI * 2,
             arrival: arrivalCounterRef.current,
             recede: recedeTo,
+            ...(born ? { from: born.birth.from, aboveUntil: born.birth.bornAt + SPAWN_DURATION_MS + 400 } : {}),
           };
           visualsRef.current.set(id, visual);
+          if (born) birthsRef.current = birthsRef.current.filter((record) => record !== born);
         }
         visual.recede = motion ? approachRecede(visual.recede, recedeTo, delta) : recedeTo;
         // The visual radius follows the model's on a critically damped spring;
@@ -483,18 +574,32 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
           visual.visualRadius = model.radius;
           visual.visualVelocity = 0;
         }
-        const landing = motion ? arrival(time - visual.spawnedAt) : { scale: 1, opacity: 1 };
+        const landing = motion
+          ? visual.from
+            ? arrivalFrom(time - visual.spawnedAt, visual.from, SPAWN_DURATION_MS)
+            : arrival(time - visual.spawnedAt)
+          : { scale: 1, opacity: 1 };
+        // Being born, it is drawn above the clearings and under no veil; the rest of the
+        // field recedes under the veil but for what the bloom points at.
+        const above = visual.aboveUntil !== undefined && time < visual.aboveUntil;
+        let opacity = landing.opacity * visual.recede;
+        if (rows && !above) {
+          const row = rows.get(id);
+          const lit = stepLit(fieldMemoryRef.current, id, row ? field.lit(row) : false, delta, !motion);
+          opacity = veiledOpacity(opacity, field.veil, lit);
+        }
         bodies.push({
           model,
           x: state.previousX + (state.x - state.previousX) * alpha,
           y: state.previousY + (state.y - state.previousY) * alpha,
           radius: visual.visualRadius,
           scale: landing.scale,
-          opacity: landing.opacity * visual.recede,
+          opacity,
           focus: focused === id,
           seed: visual.seed,
           accent: accentOf(model.accent),
           ...(model.linked ? { link: accentOf(model.linked) } : {}),
+          ...(above ? { aboveClearings: true } : {}),
         });
       }
       bodies.sort((left, right) => {
@@ -505,6 +610,45 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         );
       });
       orderRef.current = bodies;
+      // Births on their way: hollow where the person let go, above the clearings, their model
+      // rebuilt every frame so OPENING lands the moment the quiet runs out; given up, they shrink away.
+      const births: RenderBody[] = [];
+      birthsRef.current = birthsRef.current.filter((record) => {
+        if (birthOverdue(record.birth, time)) record.birth = { ...record.birth, failedAt: time };
+        const birth = record.birth;
+        if (birth.failedAt !== null && time - birth.failedAt >= BLOOM.retract) return false;
+        const model = bubbleModel({
+          agent: birthAgent(birth),
+          parameters: currentParameters,
+          nowMs: Date.now(),
+          unread: false,
+          workingShare: 0,
+          opening: { sinceMs: birth.sinceMs, on: birth.on },
+          ...(birth.profile ? { profile: birth.profile } : {}),
+        });
+        const land = motion
+          ? arrivalFrom(time - birth.bornAt, birth.from, SPAWN_DURATION_MS)
+          : { scale: 1, opacity: 1 };
+        const gone =
+          birth.failedAt === null
+            ? { scale: 1, opacity: 1 }
+            : motion
+              ? departure(time - birth.failedAt)
+              : { scale: 0, opacity: 0 };
+        births.push({
+          model,
+          x: birth.at.x,
+          y: birth.at.y,
+          radius: model.radius,
+          scale: land.scale * gone.scale,
+          opacity: land.opacity * gone.opacity,
+          focus: false,
+          seed: record.seed,
+          accent: accentOf(model.accent),
+          aboveClearings: true,
+        });
+        return true;
+      });
       if (!renderer || !theme) return;
 
       const hold = holdRef.current;
@@ -529,7 +673,15 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
           depth: currentParameters.stateWaveDepth,
         },
         theme,
-        bodies,
+        bodies: births.length > 0 ? [...bodies, ...births] : bodies,
+        ...(field.veil > 0 ? { veil: field.veil } : {}),
+        ...(field.clearings.length > 0
+          ? {
+              clearings: field.clearings
+                .slice(0, MAX_CLEARINGS)
+                .map((cleared) => ({ ...cleared.clearing, opacity: cleared.opacity })),
+            }
+          : {}),
         ...(hold
           ? { hold: { x: hold.x, y: hold.y, progress: (time - hold.startedAt) / LONG_PRESS_DURATION_MS } }
           : hub
@@ -737,15 +889,19 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     bloom.contextMenu(event, point, blocked);
   };
 
-  const modelFor = (agent: MonitorAgent): SwarmBubbleModel =>
-    modelsRef.current.byId.get(agent.visualId ?? agent.id) ??
-    bubbleModel({
+  const modelFor = (agent: MonitorAgent): SwarmBubbleModel => {
+    const known = modelsRef.current.byId.get(agent.visualId ?? agent.id);
+    if (known) return known;
+    const profile = terminalProfile(agent);
+    return bubbleModel({
       agent,
       parameters: swarm,
       nowMs: Date.now(),
       unread: agent.unread === true,
       workingShare: workingShares(agentsRef.current).get(agent.id) ?? 0,
+      ...(profile ? { profile } : {}),
     });
+  };
 
   return (
     <section
