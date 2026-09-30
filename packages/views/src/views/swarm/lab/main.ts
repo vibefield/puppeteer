@@ -23,6 +23,7 @@ import {
   clusterStages,
   lightStages,
   pendingStages,
+  profileStages,
   stateStages,
   type LabFieldStage,
   type LabStage,
@@ -357,6 +358,12 @@ async function main(): Promise<void> {
     'The body being born',
     'Where the person let go of the spawn bloom, a pending body stands until the host’s terminal row arrives.',
     pendingStages(nowMs),
+    'grid',
+  );
+  addPart(
+    'Born under a profile',
+    'A terminal born under an Agent Profile names it on its body, where the desktop has more than one.',
+    profileStages(nowMs),
     'grid',
   );
   addFieldPart(

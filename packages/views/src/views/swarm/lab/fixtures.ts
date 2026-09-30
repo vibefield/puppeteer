@@ -990,3 +990,56 @@ export function pendingStages(nowMs: number): LabStage[] {
     },
   ];
 }
+
+/** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
+export function profileStages(nowMs: number): LabStage[] {
+  const peer: MonitorAgent = {
+    ...terminalFixture('pr5', '~', false, nowMs),
+    remote: {
+      deviceId: 'mini',
+      deviceName: 'mini',
+      remoteSessionId: 'pr5',
+      attachable: true,
+      hostWritable: true,
+      cwdLabel: '~',
+    },
+  };
+  return [
+    {
+      id: 'profile-default',
+      title: 'Under the default profile',
+      note: 'One line in the terminal’s label style: the profile’s glyph leading its name, drawn filled because it is the desktop’s default.',
+      agent: terminalFixture('pr1', '~', false, nowMs),
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
+    },
+    {
+      id: 'profile-managed',
+      title: 'Under another profile',
+      note: 'A managed profile that is not the default: the glyph outlined.',
+      agent: terminalFixture('pr2', '~', false, nowMs),
+      profile: { label: 'Personal', glyph: 'house', kind: 'managed' },
+    },
+    {
+      id: 'profile-native',
+      title: 'Under the machine’s own',
+      note: 'The native set is always the laptop, whatever glyph it carries.',
+      agent: terminalFixture('pr3', '~', false, nowMs),
+      profile: { label: 'This Mac', glyph: 'rocket', kind: 'native' },
+    },
+    {
+      id: 'profile-running',
+      title: 'Running, under a profile',
+      note: 'The profile line follows the running line and its clock.',
+      agent: terminalFixture('pr4', 'study', true, nowMs),
+      runningSinceMs: nowMs - 83_000,
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
+    },
+    {
+      id: 'profile-peer',
+      title: 'A peer’s terminal, under a profile',
+      note: 'Before the host line, which a peer’s body always keeps.',
+      agent: peer,
+      profile: { label: 'Default', kind: 'native', isDefault: true },
+    },
+  ];
+}
