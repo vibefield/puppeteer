@@ -6,7 +6,7 @@
 // straight-alpha sRGB in the buffers and premultiplied on output, composited
 // over the window's glass with (one, one-minus-src-alpha).
 
-// One of the spawn bloom's clearings (clearing.wgsl).
+// One of the spawn bloom's clearings (erase.wgsl).
 struct Clearing {
   // a circle's centre and radius (w: 0), or a rect's centre and half extents (CSS px)
   shape: vec4f,

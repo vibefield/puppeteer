@@ -15,7 +15,7 @@ import { GlyphAtlas } from './glyph-atlas.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
-import clearingShader from './shaders/clearing.wgsl.js';
+import eraseShader from './shaders/erase.wgsl.js';
 import commonShader from './shaders/common.wgsl.js';
 import fieldShader from './shaders/field.wgsl.js';
 import glowShader from './shaders/glow.wgsl.js';
@@ -318,7 +318,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     compile(device, 'swarm body', bodyShader),
     compile(device, 'swarm glow', glowShader),
     compile(device, 'swarm text', textShader),
-    compile(device, 'swarm clearing', clearingShader),
+    compile(device, 'swarm erase', eraseShader),
     compile(device, 'swarm hub', hubShader),
   ]);
 

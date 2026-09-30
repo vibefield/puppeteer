@@ -1,5 +1,5 @@
 // The shader as a string module, so the package needs no bundler loader
-// (esbuild in Godview, Vite in VibeField, tsc in both). `clearing.wgsl` beside it
+// (esbuild in Godview, Vite in VibeField, tsc in both). `erase.wgsl` beside it
 // is the authoring copy; `shaders.test.ts` keeps the two identical.
 export default `// The spawn bloom's clearings (record §2.8): solid ground where the bloom and
 // its words stand, cut out of everything drawn before them — the grid, the

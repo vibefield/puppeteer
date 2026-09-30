@@ -31,7 +31,7 @@ export const FRAME_LAYOUT = {
   clearings: 52,
 } as const;
 
-/** The most clearings a frame draws; the rest are ignored. `clearing.wgsl` loops to the same bound. */
+/** The most clearings a frame draws; the rest are ignored. `erase.wgsl` loops to the same bound. */
 export const MAX_CLEARINGS = 4;
 export const CLEARING_FLOATS = 8;
 export const FRAME_FLOATS = FRAME_LAYOUT.clearings + MAX_CLEARINGS * CLEARING_FLOATS;
