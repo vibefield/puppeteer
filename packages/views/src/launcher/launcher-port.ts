@@ -32,6 +32,8 @@ export interface LauncherUnder {
   label: string;
   glyph?: string | undefined;
   kind?: 'native' | 'managed' | undefined;
+  /** The desktop's default profile: its glyph is drawn filled, as everywhere a profile is named. */
+  isDefault?: boolean | undefined;
   /** This pane's agents, when they differ from the shared catalog's. */
   agents?: readonly LauncherAgent[] | undefined;
 }

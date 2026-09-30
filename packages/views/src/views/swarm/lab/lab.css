@@ -273,3 +273,29 @@ body {
   border: 1px solid color-mix(in srgb, var(--panel-border) 70%, transparent);
   border-radius: 10px;
 }
+
+/* The field under the spawn bloom: whole fields, one per row, each its own
+   canvas over the monitor's ground (which hides the page canvas's grid, so what
+   a clearing erases to is the ground itself, as in the app). */
+.lab-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.lab-field-cell {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+  background: var(--monitor-bg);
+}
+
+.lab-field-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}

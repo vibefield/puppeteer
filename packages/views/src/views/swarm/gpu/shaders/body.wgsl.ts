@@ -88,6 +88,14 @@ fn fs(in: BodyVertex) -> @location(0) vec4f {
       let sweep = smoothstep(0.6, 1.0, u);
       let cometRing = cov(abs(d + 2.0) - 0.5);
       out = over(out, premul(vec4f(body.rim.rgb, body.rim.a)) * sweep * cometRing);
+    } else if (has(flags, F_PENDING)) {
+      // A birth on its way: the empty terminal's dashes at 1.2 × the rim's
+      // weight instead of .52, a whole number of them round the rim (counted
+      // on the landed radius, so the arrival scales them without a pop) so they
+      // can turn with no seam at twelve, turned by motion.x, clockwise.
+      let count = max(8.0, round(TAU * (body.posRadius.z - 0.75) / 7.5));
+      let dashOn = step(fract((clockwise(p) - body.motion.x / TAU) * count), 0.6);
+      out = over(out, premul(vec4f(body.rim.rgb, body.rim.a * 1.2)) * ringCoverage * dashOn);
     } else {
       let arc = clockwise(p) * TAU * r;
       let dashOn = step(fract(arc / 7.5), 0.6);
