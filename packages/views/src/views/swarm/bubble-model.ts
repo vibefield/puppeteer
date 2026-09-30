@@ -1,4 +1,5 @@
 import type { MonitorBlocker } from '@vibecook/puppeteer-core';
+import { profileMarkName } from '../../icons/ProfileGlyph.js';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { formatUsd } from '../../monitor/cost-format.js';
@@ -18,6 +19,13 @@ import { SWARM_WEIGHT } from './weight.js';
 // blocked one, and a hollow for a terminal no agent has claimed.
 
 export type SwarmBodyState = 'terminal-empty' | 'terminal-running' | 'idle' | 'working' | 'blocked';
+
+/**
+ * How long a birth on its way reads `empty` and holds still before it says it
+ * is opening and its dashes turn: a wait drawn inside 320 ms shows no indicator
+ * at all (DESIGN §8, QL-2), so a fast birth never flashes one.
+ */
+export const OPENING_QUIET_MS = 320;
 
 /** The colour of the light inside a body, which is the STATE's and never the
  * project's (2026-09-16): the theme's own ink while working, orange while
@@ -87,6 +95,10 @@ export interface SwarmBubbleModel {
   light?: SwarmLightTone;
   /** Transparent body with a rim: the unclaimed terminal. */
   hollow: boolean;
+  /** A birth on its way (the spawn bloom's pending body): hollow and dashed like
+   * an empty terminal, its rim heavier; `turning` once it has waited past
+   * `OPENING_QUIET_MS`, when its dashes turn on the renderer's own clock. */
+  pending?: { turning: boolean };
   /** The comet sweeping a hollow's rim: a foreground job. */
   running: boolean;
   unread: boolean;
@@ -113,11 +125,23 @@ export interface BubbleModelInput {
   workingShare?: number;
   /** The Agent Profile a terminal's shell was born under, when naming it tells
    * the person something (the desktop has more than one): one line in the
-   * terminal's label style, the profile's glyph and name (SB §2.10). */
-  profile?: { label: string; glyph?: string | undefined; kind?: 'native' | 'managed' | undefined } | undefined;
+   * terminal's label style, the profile's glyph and name (SB §2.10), after the
+   * empty or running line and before a peer's host line. The glyph is the
+   * laptop for the native set, and drawn filled for the desktop's default. */
+  profile?:
+    | {
+        label: string;
+        glyph?: string | undefined;
+        kind?: 'native' | 'managed' | undefined;
+        isDefault?: boolean | undefined;
+      }
+    | undefined;
   /** A birth on its way (the spawn bloom's pending body, SB §2.6): drawn hollow
-   * where the person let go until the host's row arrives; after 320 ms its
-   * dashes turn and it reads OPENING (`on` names a peer: OPENING ON MINI). */
+   * where the person let go until the host's row arrives. For its first
+   * `OPENING_QUIET_MS` it reads EMPTY and holds still; then its dashes turn and
+   * it reads OPENING (`on` names a peer: OPENING ON MINI). `nowMs − sinceMs`
+   * decides, so a host rebuilds this one model as the quiet runs out. A
+   * terminal's row only: an agent's row ignores it. */
   opening?: { sinceMs: number; on?: string | undefined } | undefined;
 }
 
@@ -159,6 +183,28 @@ function projectFolder(style: TextStyle, options: { solid?: boolean; tone?: Copy
     gap: 4,
     tone: options.tone ?? 'accent',
     ...(options.solid ? { opacity: SWARM_WEIGHT.title } : {}),
+  };
+}
+
+/** The atlas's name for a profile's mark: `profile:<mark>`, `:filled` for the desktop's default. */
+export function profileIcon(profile: NonNullable<BubbleModelInput['profile']>): string {
+  return `profile:${profileMarkName(profile.glyph, profile.kind)}${profile.isDefault ? ':filled' : ''}`;
+}
+
+/**
+ * The profile a terminal was born under, in the terminal's own label style: its
+ * glyph leads, as the folder leads the name, drawn at one and a half times the
+ * line's size with a 3 px gap (the prototype's `lead = size × 1.5 + 3`).
+ */
+function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLine {
+  return {
+    key: 'profile',
+    text: profile.label,
+    style: LABEL_STACKED,
+    opacity: SWARM_WEIGHT.supporting,
+    tone: 'ink',
+    gapBefore: 3,
+    lead: { kind: 'icon', icon: profileIcon(profile), size: LABEL_STACKED.size * 1.5, gap: 3 },
   };
 }
 
@@ -267,8 +313,14 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
 
   if (!facet) {
     const remote = agent.remote;
-    const running = agent.status === 'working';
+    // A birth on its way is a terminal with no job yet, whatever its row says.
+    const opening = input.opening;
+    const running = !opening && agent.status === 'working';
     const elapsed = running ? formatElapsed(input.runningSinceMs, nowMs) : undefined;
+    // It reads `empty` and holds still at first; past the quiet it says it is
+    // opening, and where (a peer's name), and its dashes turn.
+    const turning = opening !== undefined && nowMs - opening.sinceMs >= OPENING_QUIET_MS;
+    const sub = opening && turning ? (opening.on ? `opening on ${opening.on}` : 'opening') : 'empty';
     const copy: CopyLine[] = [
       // One line, the folder then the name, as every other body reads. A terminal
       // belongs to no project, so its folder wears the ink rather than a colour.
@@ -291,7 +343,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           }
         : {
             key: 'sub',
-            text: 'empty',
+            text: sub,
             style: LABEL_STACKED,
             opacity: SWARM_WEIGHT.supporting,
             tone: 'ink',
@@ -309,6 +361,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
             },
           ]
         : []),
+      ...(input.profile ? [profileLine(input.profile)] : []),
       // A peer's session wears its host on the body — the name and the
       // host's write policy, in both directions — so it cannot be read as
       // one of this machine's terminals (`remote-write.ts`).
@@ -335,9 +388,14 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       hollow: true,
       running,
       unread: false,
-      ariaLabel: remote
-        ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
-        : `${agent.project}, unassigned terminal, ${agent.status}`,
+      ...(opening ? { pending: { turning } } : {}),
+      ariaLabel:
+        (opening
+          ? `${agent.project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
+          : remote
+            ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
+            : `${agent.project}, unassigned terminal, ${agent.status}`) +
+        (input.profile ? `, under ${input.profile.label}` : ''),
       title: remote ? `${remote.deviceName} · ${remoteWriteTitle(remote)} · ${agent.detail}` : agent.detail,
     };
   }

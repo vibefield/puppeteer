@@ -8,6 +8,7 @@ import type {
 } from 'react';
 import type { SnippetSegment } from '../find/find-model.js';
 import { AgentIcon } from '../icons/AgentIcon.js';
+import { ProfileGlyph } from '../icons/ProfileGlyph.js';
 import { launchSource } from './launch-model.js';
 import {
   agentKeyLabel,
@@ -22,7 +23,7 @@ import {
   type LauncherScope,
   type LauncherSentence,
 } from './launcher-model.js';
-import type { LauncherAgent, LauncherHistoryStatus } from './launcher-port.js';
+import type { LauncherAgent, LauncherHistoryStatus, LauncherUnder } from './launcher-port.js';
 
 /**
  * What the launcher is doing with a key or a click it acted on. `leaving`: the
@@ -39,6 +40,13 @@ export interface PaneLauncherChromeProps {
   sessionId: string;
   /** The agents in launch order (`orderAgents`), ten at most. */
   agents: readonly LauncherAgent[];
+  /**
+   * The Agent Profile this pane's shell was born under (SB): the caption reads
+   * `New · <glyph> Under Work` and the hint names it. Its agents arrive as
+   * `agents` already (`paneAgents`); an agent it has no sign-in for is simply
+   * one the host marks `unavailable`.
+   */
+  under?: LauncherUnder | undefined;
   /** The pane's folder, as the launcher names it (`launcherFolder`). */
   folder: string;
   /** The pane colour the host dealt this pane. */
@@ -177,6 +185,7 @@ const FOOT = (
 export function PaneLauncherChrome({
   sessionId,
   agents,
+  under,
   folder,
   color,
   active,
@@ -229,10 +238,27 @@ export function PaneLauncherChrome({
     body = active ? (
       <>
         <div className="vf-pane-launcher-cap" aria-hidden="true">
-          <span>New</span>
+          {under ? (
+            <span className="vf-pane-launcher-cap-under">
+              New ·{' '}
+              <ProfileGlyph
+                glyph={under.glyph}
+                {...(under.kind ? { kind: under.kind } : {})}
+                filled={under.isDefault === true}
+                size={11}
+              />
+              <b>Under {under.label}</b>
+            </span>
+          ) : (
+            <span>New</span>
+          )}
           <span>last used first</span>
         </div>
-        <div className="vf-pane-launcher-agents" role="group" aria-label="Launch an agent in this pane">
+        <div
+          className="vf-pane-launcher-agents"
+          role="group"
+          aria-label={under ? `Launch an agent in this pane, under ${under.label}` : 'Launch an agent in this pane'}
+        >
           {agents.map((agent, index) => {
             const off = agent.unavailable;
             const pressed = busy?.kind === 'launch' && busy.index === index;
@@ -267,7 +293,9 @@ export function PaneLauncherChrome({
             );
           })}
         </div>
-        <p className="vf-pane-launcher-hint">or just type · this is a shell</p>
+        <p className="vf-pane-launcher-hint">
+          {under ? `or just type · this shell is under ${under.label}` : 'or just type · this is a shell'}
+        </p>
       </>
     ) : (
       <></>

@@ -20,6 +20,7 @@ import {
   launcherKeyDecision,
   launcherPaneForTarget,
   orderAgents,
+  paneAgents,
   showsLauncher,
   type LauncherKeyPane,
   type LauncherScope,
@@ -194,6 +195,7 @@ export function DeckLaunchers({
   nowMs,
   watchFirstFrame,
   reducedMotion,
+  paneUnder,
 }: DeckLaunchersProps) {
   const elements = usePaneElements(deckRef, paneSelector, panes);
   const [used, setUsed] = useState<ReadonlySet<string>>(() => new Set());
@@ -533,6 +535,8 @@ export function DeckLaunchers({
         const color = paneColors.get(pane.id);
         const refusal = refusals.get(pane.id);
         const failure = refusal?.sessionId === sessionId ? refusal.line : undefined;
+        // A shell born under an Agent Profile (SB): its caption and its own agents.
+        const under = paneUnder?.({ paneId: pane.id, sessionId });
         return (
           <PaneLauncher
             key={`${pane.id}\n${sessionId}`}
@@ -543,7 +547,8 @@ export function DeckLaunchers({
             {...(color ? { color } : {})}
             active={pane.id === activePaneId}
             {...(onActivatePane ? { onActivate: () => callbacks.current.onActivatePane?.(pane.id) } : {})}
-            agents={ordered}
+            agents={paneAgents(ordered, under)}
+            {...(under ? { under } : {})}
             port={port}
             scope={scope}
             onScopeChange={setScope}

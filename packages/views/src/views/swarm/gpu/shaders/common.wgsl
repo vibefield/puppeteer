@@ -6,25 +6,42 @@
 // straight-alpha sRGB in the buffers and premultiplied on output, composited
 // over the window's glass with (one, one-minus-src-alpha).
 
+// One of the spawn bloom's clearings (erase.wgsl).
+struct Clearing {
+  // a circle's centre and radius (w: 0), or a rect's centre and half extents (CSS px)
+  shape: vec4f,
+  // feather (px), kind (0 circle, 1 rect), opacity (0..1), unused
+  edge: vec4f,
+};
+
+const MAX_CLEARINGS: u32 = 4u;
+
 struct Frame {
   // width, height (CSS px), device pixel ratio, time (s; frozen when motion is off)
   viewport: vec4f,
-  // body fill opacity, motion (0/1), grid pitch (px), unused
+  // body fill opacity, motion (0/1), grid pitch (px), the veil (0..1: the grid
+  // is drawn at 1 − veil while the spawn bloom is open)
   params: vec4f,
   grid: vec4f,
   // the theme's shadow colour; `a` is the resting alpha, `shadowPeak.a` the peak's
   shadow: vec4f,
   shadowPeak: vec4f,
-  // hold-to-create: x, y, progress 0..1, active (0/1)
+  // hold-to-create, and the spawn bloom's hub: x, y, progress 0..1, opacity (0: none)
   pointer: vec4f,
   orange: vec4f,
   holdRim: vec4f,
   holdFill: vec4f,
   holdInk: vec4f,
+  // the ring's rim width and dot radius (px): 1 and 2 while a hold is in flight,
+  // 1.5 and 2.5 once it is the spawn bloom's hub; z/w unused
+  holdShape: vec4f,
   // the state glow's shape: where it begins, where it is full, its strength, unused
   glowBand: vec4f,
   // and its motion: crests across the radius, crests a second, trough depth, unused
   glowWave: vec4f,
+  // the spawn bloom's clearings: how many of `clearings` are set; y/z/w unused
+  clearing: vec4f,
+  clearings: array<Clearing, 4>,
 };
 
 struct Body {
@@ -42,7 +59,7 @@ struct Body {
   ring: vec4f,
   // the outer light: reach (px), strength, breath (0..1), phase seed
   glow: vec4f,
-  // spawn time (s), phase seed, stale mix (0/1), opacity
+  // a pending body's dash turn (radians, clockwise), phase seed, stale mix (0/1), opacity
   motion: vec4f,
   link: vec4f,
 };
@@ -59,6 +76,7 @@ const F_RING: u32 = 1024u;
 const F_SHADOW: u32 = 2048u;
 const F_CORE: u32 = 4096u;
 const F_WAVES: u32 = 8192u;
+const F_PENDING: u32 = 16384u;
 
 const TAU: f32 = 6.28318530718;
 

@@ -24,6 +24,7 @@ import {
   noMatchSentence,
   noSessionsSentence,
   orderAgents,
+  paneAgents,
   showsLauncher,
   toggleScope,
   type LauncherKeyDecision,
@@ -80,6 +81,20 @@ describe('orderAgents', () => {
   it('previews with the host words, else the label', () => {
     expect(agentPreview(agent('a', 'Alpha'))).toBe('Alpha');
     expect(agentPreview(agent('a', 'Alpha', { preview: 'Alpha · work' }))).toBe('Alpha · work');
+  });
+});
+
+describe('paneAgents', () => {
+  it('gives a pane born under a profile its own agents, in launch order, and every other pane the shared list', () => {
+    const shared = orderAgents(AGENTS);
+    expect(paneAgents(shared, undefined)).toBe(shared);
+    expect(paneAgents(shared, { label: 'Work' })).toBe(shared);
+    const own = [
+      agent('p-a', 'Alpha', { unavailable: 'no sign-in' }),
+      agent('p-b', 'Bravo', { lastLaunchedAt: NOW - MINUTE }),
+    ];
+    expect(paneAgents(shared, { label: 'Work', agents: own }).map((a) => a.providerId)).toEqual(['p-b', 'p-a']);
+    expect(paneAgents(shared, { label: 'Work', agents: own })[1]?.unavailable).toBe('no sign-in');
   });
 });
 

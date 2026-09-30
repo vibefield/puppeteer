@@ -7,7 +7,13 @@ import {
   type SnippetSegment,
 } from '../find/find-model.js';
 import { folderName } from '../monitor/folder-name.js';
-import type { LauncherAgent, LauncherHistoryStatus, LauncherSession, LauncherWordHit } from './launcher-port.js';
+import type {
+  LauncherAgent,
+  LauncherHistoryStatus,
+  LauncherSession,
+  LauncherUnder,
+  LauncherWordHit,
+} from './launcher-port.js';
 
 /**
  * The empty pane launcher's model (QL-1, Minimal Pane Frame pass 3 §17–§25):
@@ -55,6 +61,18 @@ export function orderAgents(agents: readonly LauncherAgent[]): LauncherAgent[] {
     })
     .slice(0, LAUNCHER_MAX_AGENTS)
     .map(({ agent }) => agent);
+}
+
+/**
+ * A pane's agents: the ones its profile says (SB) — in launch order, with any
+ * the profile has no sign-in for marked `unavailable` by the host — else the
+ * shared catalog, already ordered.
+ */
+export function paneAgents(
+  shared: readonly LauncherAgent[],
+  under: LauncherUnder | undefined,
+): readonly LauncherAgent[] {
+  return under?.agents ? orderAgents(under.agents) : shared;
 }
 
 /** The digit a row answers to: index 0 → 1 … index 8 → 9, index 9 → 0. */
