@@ -6,11 +6,14 @@
 // clock; this decides what it is and when it is done.
 
 import type { MonitorAgent, MonitorSpawnMenu } from '../../../monitor/types.js';
+import { clampSpawnPosition } from '../physics/spawn-clamp.js';
 import { selfDevice } from './menu.js';
 import type { BloomChoice } from './model.js';
 
 /** Once the host has answered, a birth waits this long for its row, then shrinks away. */
 export const BIRTH_WAIT_MS = 4000;
+/** A host that never answers at all: the birth is given up this long after it was born. */
+export const BIRTH_GIVE_UP_MS = 30_000;
 /** A row's spawn hint is the point asked for within this (the host copies the numbers it was given). */
 const HINT_SLOP = 0.5;
 
@@ -25,8 +28,11 @@ export interface BirthProfile {
 export interface BloomBirth {
   /** The pending body's own id: never a row's. */
   readonly id: string;
-  /** Where it is born: the point handed to `createAt`, which the host's row carries as its spawn hint. */
+  /** Where it is born: the point handed to `createAt`, which the host's row carries as its spawn hint (the match). */
   readonly at: { readonly x: number; readonly y: number };
+  /** Where it is DRAWN: `at` moved inside the field exactly as the physics will move the row that takes it
+   * over (`clampSpawnPosition`), so a birth let go near an edge never jumps when its row arrives. */
+  readonly drawAt: { readonly x: number; readonly y: number };
   /** The arrival's clock (the render loop's). */
   readonly bornAt: number;
   /** The models' clock (`Date.now()`) at the commit: its `opening.sinceMs`. */
@@ -64,6 +70,8 @@ export function birthOf(input: {
   readonly choice: BloomChoice;
   readonly menu: MonitorSpawnMenu | undefined;
   readonly idleRadius: number;
+  /** The field's size, as the physics bounds it: where the row that takes the birth over may stand. */
+  readonly field: { readonly width: number; readonly height: number };
   readonly now: number;
   readonly nowMs: number;
   readonly rows: readonly MonitorAgent[];
@@ -73,6 +81,10 @@ export function birthOf(input: {
   return {
     id: input.id,
     at: { x: choice.at.x, y: choice.at.y },
+    drawAt:
+      input.field.width > 0 && input.field.height > 0
+        ? clampSpawnPosition(input.field.width, input.field.height, input.idleRadius, choice.at)
+        : { x: choice.at.x, y: choice.at.y },
     bornAt: input.now,
     sinceMs: input.nowMs,
     from: choice.from ? choice.from.d / Math.max(1, input.idleRadius * 2) : 0,
@@ -96,9 +108,11 @@ export function birthRow(birth: BloomBirth, rows: readonly MonitorAgent[]): Moni
   );
 }
 
-/** Whether a birth is to be given up now: refused, or answered and still rowless after the wait. */
+/** Whether a birth is to be given up now: answered and still rowless after the wait, or never answered at all
+ * long after it was born (a host whose create never settles). A refusal gives it up where it is caught. */
 export function birthOverdue(birth: BloomBirth, now: number): boolean {
-  return birth.failedAt === null && birth.answeredAt !== null && now - birth.answeredAt >= BIRTH_WAIT_MS;
+  if (birth.failedAt !== null) return false;
+  return birth.answeredAt !== null ? now - birth.answeredAt >= BIRTH_WAIT_MS : now - birth.bornAt >= BIRTH_GIVE_UP_MS;
 }
 
 /** The pending body's row, for its model: a terminal with no job and no folder yet. */

@@ -245,6 +245,10 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
           choice,
           menu: spawnMenuRef.current,
           idleRadius: parametersRef.current.radiusIdle,
+          field: {
+            width: containerRef.current?.clientWidth ?? 0,
+            height: containerRef.current?.clientHeight ?? 0,
+          },
           now: performance.now(),
           nowMs: Date.now(),
           rows: agentsRef.current,
@@ -637,8 +641,8 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
               : { scale: 0, opacity: 0 };
         births.push({
           model,
-          x: birth.at.x,
-          y: birth.at.y,
+          x: birth.drawAt.x,
+          y: birth.drawAt.y,
           radius: model.radius,
           scale: land.scale * gone.scale,
           opacity: land.opacity * gone.opacity,

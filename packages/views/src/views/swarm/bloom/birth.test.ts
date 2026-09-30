@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { MonitorAgent } from '../../../monitor/types.js';
-import { BIRTH_WAIT_MS, birthAgent, birthOf, birthOverdue, birthRow, profileLineFor } from './birth.js';
+import { FRAME_HEADER_FLOATS, frameFloatsFor, SwarmPhysics } from '../physics/world.js';
+import {
+  BIRTH_GIVE_UP_MS,
+  BIRTH_WAIT_MS,
+  birthAgent,
+  birthOf,
+  birthOverdue,
+  birthRow,
+  profileLineFor,
+} from './birth.js';
 import { BLOOM } from './constants.js';
 import type { BloomChoice } from './model.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';
@@ -36,6 +45,7 @@ describe('a birth', () => {
     choice: choice(),
     menu: BLOOM_SCENARIOS.two,
     idleRadius: 50,
+    field: { width: 1000, height: 600 },
     now: 1000,
     nowMs: 5_000,
     rows: [row('old', { x: 420.5, y: 210.25 })],
@@ -44,6 +54,7 @@ describe('a birth', () => {
   it('starts from the chosen bud’s hot size, where the person let go, under the profile it was born under', () => {
     expect(birth.from).toBeCloseTo((48 * BLOOM.hot) / 100, 6);
     expect(birth.at).toEqual({ x: 420.5, y: 210.25 });
+    expect(birth.drawAt).toEqual(birth.at);
     expect(birth.on).toBeUndefined();
     expect(birth.profile).toEqual({ label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true });
     expect(birthAgent(birth)).toMatchObject({ id: 'b1', status: 'idle', createdAtMs: 5_000 });
@@ -55,6 +66,7 @@ describe('a birth', () => {
       choice: choice({ deviceId: mini.id, device: mini, profileSet: 'personal', profile: mini.profiles![1]! }),
       menu: BLOOM_SCENARIOS.two,
       idleRadius: 50,
+      field: { width: 1000, height: 600 },
       now: 0,
       nowMs: 0,
       rows: [],
@@ -69,12 +81,53 @@ describe('a birth', () => {
     expect(birthRow(birth, [row('new', { x: 420.5, y: 210.5 })])?.id).toBe('new');
   });
 
+  it('let go at an edge, is drawn where the physics will stand its row, and is still matched on the point asked for', () => {
+    const edge = { x: 20, y: 590 };
+    const field = { width: 1000, height: 600 };
+    const input = {
+      id: 'b3',
+      choice: choice({ at: edge }),
+      menu: BLOOM_SCENARIOS.two,
+      idleRadius: 50,
+      field,
+      now: 0,
+      nowMs: 0,
+      rows: [],
+    };
+    const near = birthOf(input);
+    // the row that takes it over, as the physics stands it (an idle terminal's radius)
+    const physics = new SwarmPhysics({
+      parameters: { gravityPull: 0, restitution: 0, frictionAir: 0.2, physicsHz: 30 },
+      bounds: field,
+      agents: [{ id: 'row', radius: 50, spawnHint: edge }],
+      random: () => 0.5,
+    });
+    const frame = new Float32Array(frameFloatsFor(1));
+    physics.writeFrame(frame);
+    physics.dispose();
+    expect(near.drawAt).not.toEqual(edge);
+    expect(near.drawAt.x).toBeCloseTo(frame[FRAME_HEADER_FLOATS]!, 4);
+    expect(near.drawAt.y).toBeCloseTo(frame[FRAME_HEADER_FLOATS + 1]!, 4);
+    expect(near.at).toEqual(edge);
+    expect(birthRow(near, [row('new', edge)])?.id).toBe('new');
+    // a field not measured yet draws it where it was asked for
+    expect(birthOf({ ...input, field: { width: 0, height: 0 } }).drawAt).toEqual(edge);
+  });
+
   it('waits for its row once the host has answered, then is given up', () => {
-    expect(birthOverdue(birth, 1_000_000)).toBe(false);
     const answered = { ...birth, answeredAt: 2000 };
     expect(birthOverdue(answered, 2000 + BIRTH_WAIT_MS - 1)).toBe(false);
     expect(birthOverdue(answered, 2000 + BIRTH_WAIT_MS)).toBe(true);
     expect(birthOverdue({ ...answered, failedAt: 2100 }, 1_000_000)).toBe(false);
+  });
+
+  it('a host that never answers: waits for it, and is given up long after it was born', () => {
+    expect(birthOverdue(birth, birth.bornAt + BIRTH_GIVE_UP_MS - 1)).toBe(false);
+    expect(birthOverdue(birth, birth.bornAt + BIRTH_GIVE_UP_MS)).toBe(true);
+    // a late answer still gets its full wait
+    const late = { ...birth, answeredAt: birth.bornAt + BIRTH_GIVE_UP_MS - 1000 };
+    expect(birthOverdue(late, birth.bornAt + BIRTH_GIVE_UP_MS)).toBe(false);
+    expect(birthOverdue(late, late.answeredAt + BIRTH_WAIT_MS)).toBe(true);
   });
 });
 
