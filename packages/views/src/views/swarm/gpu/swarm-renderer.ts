@@ -15,8 +15,8 @@ import { GlyphAtlas } from './glyph-atlas.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
-import eraseShader from './shaders/erase.wgsl.js';
 import commonShader from './shaders/common.wgsl.js';
+import eraseShader from './shaders/erase.wgsl.js';
 import fieldShader from './shaders/field.wgsl.js';
 import glowShader from './shaders/glow.wgsl.js';
 import hubShader from './shaders/hub.wgsl.js';
@@ -312,7 +312,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
   });
 
-  const [fieldModule, shadowModule, bodyModule, glowModule, textModule, clearingModule, hubModule] = await Promise.all([
+  const [fieldModule, shadowModule, bodyModule, glowModule, textModule, eraseModule, hubModule] = await Promise.all([
     compile(device, 'swarm field', fieldShader),
     compile(device, 'swarm shadow', shadowShader),
     compile(device, 'swarm body', bodyShader),
@@ -362,14 +362,14 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       fragment: { module, entryPoint: 'fs', targets: [{ format, blend }] },
       primitive: { topology: 'triangle-list' },
     });
-  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline, clearingPipeline, hubPipeline] =
+  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline, erasePipeline, hubPipeline] =
     await Promise.all([
       pipeline('swarm field', fieldModule, scenePipelineLayout),
       pipeline('swarm shadow', shadowModule, scenePipelineLayout),
       pipeline('swarm body', bodyModule, scenePipelineLayout),
       pipeline('swarm glow', glowModule, scenePipelineLayout),
       pipeline('swarm text', textModule, textPipelineLayout),
-      pipeline('swarm clearing', clearingModule, scenePipelineLayout, ERASE),
+      pipeline('swarm erase', eraseModule, scenePipelineLayout, ERASE),
       pipeline('swarm hub', hubModule, scenePipelineLayout),
     ]);
 
@@ -915,7 +915,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       drawType(0, glyphsBelow);
       // The clearings erase what the field drew under the bloom and its words.
       if (frameData[FRAME_LAYOUT.clearing]! > 0) {
-        pass.setPipeline(clearingPipeline);
+        pass.setPipeline(erasePipeline);
         pass.draw(3);
       }
       drawBodies(bodiesBelow, packed - bodiesBelow);
