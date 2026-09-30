@@ -212,3 +212,152 @@
   font-size: 10px;
   letter-spacing: 0.08em;
 }
+
+/* The list's door to the spawn bloom's tree (SB-D11): the same two steps as a menu under
+   `＋ TERMINAL` — desktops, then the chosen desktop's Agent Profiles, the default first. The
+   prototype's list stage (draft/spawn-bloom/styles.css `.lm-*`). */
+.vf-monitor-list-new[aria-expanded='true'] {
+  border-color: var(--control-hover-border, #777777);
+  color: var(--text-main, #111111);
+  background: var(--control-hover-bg, #f2f2f2);
+}
+
+.vf-monitor-list-spawn {
+  position: absolute;
+  z-index: 5;
+  top: 34px;
+  right: 13px;
+  display: flex;
+  max-width: calc(100% - 26px);
+  overflow: hidden;
+  border: 1px solid var(--panel-border, #e0e0e0);
+  border-radius: 7px;
+  background: var(--panel-bg, #ffffff);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 14%);
+}
+
+.vf-monitor-list-spawn-col {
+  min-width: 158px;
+  padding: 4px;
+}
+
+.vf-monitor-list-spawn-col + .vf-monitor-list-spawn-col {
+  border-left: 1px solid var(--panel-border, #e0e0e0);
+}
+
+.vf-monitor-list-spawn-h {
+  padding: 6px 8px 4px;
+  color: var(--text-faint, #b8b8b8);
+  font-size: 7.5px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vf-monitor-list-spawn-row {
+  width: 100%;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted, #888888);
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.vf-monitor-list-spawn-row:hover,
+.vf-monitor-list-spawn-row:focus-visible,
+.vf-monitor-list-spawn-row.is-on {
+  color: var(--text-main, #111111);
+  background: var(--control-hover-bg, #f2f2f2);
+  outline: none;
+}
+
+.vf-monitor-list-spawn-row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--text-main, #111111);
+}
+
+.vf-monitor-list-spawn-row[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vf-monitor-list-spawn-row svg {
+  flex: none;
+}
+
+.vf-monitor-list-spawn-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-spawn-row small {
+  margin-left: auto;
+  padding-left: 6px;
+  color: var(--text-faint, #b8b8b8);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.vf-monitor-list-spawn-init {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-main, #111111);
+  background: var(--idle-bg, #e5e5e5);
+  font:
+    800 9px/1 -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.vf-monitor-list-spawn-chev {
+  margin-left: 4px;
+  color: var(--text-faint, #b8b8b8);
+}
+
+/* an agent under this profile waits on the person: the profile tabs' orange dot */
+.vf-monitor-list-spawn-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--vf-orange, #ff9f0a);
+}
+
+.vf-monitor-list-spawn-note,
+.vf-monitor-list-spawn-foot {
+  padding: 6px 8px 4px;
+  color: var(--text-faint, #b8b8b8);
+  font-size: 7.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vf-monitor-list-spawn-foot {
+  margin-top: 4px;
+  border-top: 1px solid var(--panel-border, #e0e0e0);
+}

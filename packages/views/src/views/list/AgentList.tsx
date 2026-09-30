@@ -1,10 +1,13 @@
-import { useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AgentIcon } from '../../icons/AgentIcon.js';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { everyReceded } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
+import { menuOf } from '../swarm/bloom/menu.js';
+import { spawnTarget } from '../swarm/bloom/use-spawn-bloom.js';
 import { normalizeListParameters } from './list-parameters.js';
+import { ListSpawnMenu } from './ListSpawnMenu.js';
 
 /**
  * The deliberately boring view, and the reason it exists: a non-spatial reading
@@ -23,8 +26,25 @@ function compareAgents(left: MonitorAgent, right: MonitorAgent): number {
   return byStatus !== 0 ? byStatus : left.createdAtMs - right.createdAtMs;
 }
 
-export function AgentList({ agents, parameters, actions, palette }: AgentMonitorProps) {
+export function AgentList({ agents, parameters, actions, palette, spawnMenu }: AgentMonitorProps) {
   const { rowHeight, projectWidth } = normalizeListParameters(parameters);
+  // With a tree that offers a choice, `＋ TERMINAL` opens its two steps (SB-D11);
+  // with one that does not, it creates under the one choice; with none, as always.
+  const menu = useMemo(() => (spawnMenu ? menuOf(spawnMenu) : null), [spawnMenu]);
+  const offers = menu && menu.kind !== 'instant' ? menu : null;
+  const [spawnOpen, setSpawnOpen] = useState(false);
+  const newRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!offers) setSpawnOpen(false);
+  }, [offers]);
+  const onNew = (): void => {
+    if (offers) {
+      setSpawnOpen((open) => !open);
+      return;
+    }
+    const target = menu ? spawnTarget({ deviceId: menu.hub.device?.id, profileSet: menu.hub.profile?.id }) : undefined;
+    void (target ? actions.createAt(undefined, target) : actions.createAt());
+  };
   const ordered = useMemo(() => [...agents].sort(compareAgents), [agents]);
   const shown = ordered.filter((agent) => agent.receded !== true).length;
   const style = {
@@ -45,10 +65,32 @@ export function AgentList({ agents, parameters, actions, palette }: AgentMonitor
         <span className="vf-monitor-list-count">
           {shown === ordered.length ? `${ordered.length} SESSIONS` : `${shown} OF ${ordered.length} SESSIONS`}
         </span>
-        <button type="button" className="vf-monitor-list-new" onClick={() => void actions.createAt()}>
+        <button
+          ref={newRef}
+          type="button"
+          className="vf-monitor-list-new"
+          {...(offers
+            ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': spawnOpen, 'data-list-spawn-button': '' }
+            : {})}
+          onClick={onNew}
+        >
           ＋ TERMINAL
         </button>
       </div>
+      {offers && spawnOpen ? (
+        <ListSpawnMenu
+          menu={offers}
+          onChoose={(target) => {
+            setSpawnOpen(false);
+            newRef.current?.focus({ preventScroll: true });
+            void actions.createAt(undefined, target);
+          }}
+          onClose={(why) => {
+            setSpawnOpen(false);
+            if (why === 'escape') newRef.current?.focus({ preventScroll: true });
+          }}
+        />
+      ) : null}
       {ordered.length === 0 ? (
         <div className="vf-monitor-empty">
           <span>NO ACTIVE AGENTS</span>

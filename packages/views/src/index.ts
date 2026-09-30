@@ -58,6 +58,8 @@ export * from './views/swarm/physics/index.js';
 export * from './views/swarm/physics/context.js';
 export * from './views/list/index.js';
 export * from './views/list/list-parameters.js';
+// The list's two-step menu under ＋ TERMINAL (SB-D11), for a host's catalog.
+export * from './views/list/ListSpawnMenu.js';
 export * from './views/rain/index.js';
 export * from './views/rain/rain-parameters.js';
 export * from './views/rain/rain-streams.js';
