@@ -6,7 +6,8 @@ import {
 } from '@vibecook/puppeteer-core';
 import { AGENT_MARK_PROVIDERS } from '../../../icons/AgentIcon.js';
 import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../../monitor/types.js';
-import type { SwarmBubbleModel } from '../bubble-model.js';
+import type { BubbleModelInput, SwarmBubbleModel } from '../bubble-model.js';
+import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../../monitor/usage-ledger.js';
 
 // Fixture agents for the design lab: every drawn state and every setting worth
@@ -29,6 +30,30 @@ export interface LabStage {
   glow?: { reach: number; strength: number; breath: number };
   /** A last word on the model, for readings the model does not produce on its own. */
   patch?: (model: SwarmBubbleModel) => SwarmBubbleModel;
+  /** The Agent Profile a terminal was born under (its profile line). */
+  profile?: BubbleModelInput['profile'];
+  /** A birth on its way, `agoMs` since the person let go: the pending body. */
+  opening?: { agoMs: number; on?: string };
+}
+
+/**
+ * A stage that is a whole FIELD, drawn by its own renderer: what a frame carries
+ * rather than a body — the spawn bloom's veil, its clearings and its hub. Its
+ * bodies are the settled field's (`clusterStages`), plus any `extra`. Places
+ * are CSS px from the cell's centre.
+ */
+export interface LabFieldStage {
+  id: string;
+  title: string;
+  note: string;
+  /** The field's quiet: every body under it at (1 − veil) but the `lit` ones, and the grid. */
+  veil?: number;
+  /** Ids of the field's bodies pointed at, drawn above the veil at full weight. */
+  lit?: readonly string[];
+  clearings?: readonly SwarmClearing[];
+  hold?: { x: number; y: number; progress?: number; frozen?: boolean; opacity?: number };
+  /** Bodies of the stage's own, at a place; `above`: drawn over the clearings (the body being born). */
+  extra?: readonly { stage: LabStage; x: number; y: number; above?: boolean }[];
 }
 
 /** A project's colour, dealt from its sequence: the lab sets these on its root per theme (`main.ts`). */
@@ -874,6 +899,61 @@ export function clusterStages(nowMs: number): LabStage[] {
         nowMs,
       ),
       workingShare: 0.5,
+    },
+  ];
+}
+
+/** Part: the field under the spawn bloom — the veil, the clearings and the hub, each a
+ * frame over the settled field (`clusterStages`), drawn by its own renderer. The
+ * geometry is the bloom's own: ring one's clearing is 92 + 24 + a label + 16 px
+ * of pad, feathered 44; the words' is their box padded 18 × 14, feathered 64. */
+export function bloomStages(nowMs: number): LabFieldStage[] {
+  const ring: SwarmClearing = { kind: 'circle', x: -300, y: 0, radius: 150, feather: 44 };
+  const words: SwarmClearing = { kind: 'rect', x: 150, y: -74, width: 330, height: 120, feather: 64 };
+  return [
+    {
+      id: 'bloom-veil',
+      title: 'The veil',
+      note: 'The bloom is open: the field goes quiet under its own ground at 80% — the grid and every body — except what the person points at, which stays above it.',
+      veil: 0.8,
+      lit: ['c4'],
+    },
+    {
+      id: 'bloom-ring',
+      title: 'A ring’s clearing',
+      note: 'Solid ground to the ring’s edge, then the gradient’s stops: .62 at 45% of the 44 px feather, nothing at its end. It erases the grid, the bodies and their type alike.',
+      clearings: [{ ...ring, x: -160 }],
+    },
+    {
+      id: 'bloom-words',
+      title: 'The words’ clearing',
+      note: 'Solid under the words’ box, falling smoothly to nothing over 64 px, so no box edge shows and nothing is cut in half.',
+      clearings: [{ ...words, x: 20 }],
+    },
+    {
+      id: 'bloom-hub',
+      title: 'The hub, frozen',
+      note: 'The whole field under an open bloom: the veil, a lit body, the ring’s and the words’ clearings, and the hold ring kept at full size above everything — the hub.',
+      veil: 0.8,
+      lit: ['c4'],
+      clearings: [ring, words],
+      hold: { x: -300, y: 0, frozen: true },
+    },
+    {
+      id: 'bloom-born',
+      title: 'Born above the clearing',
+      note: 'Let go: the hub fades, and the body being born stands where the bud was, drawn over the clearing that is still lifting.',
+      veil: 0.4,
+      clearings: [{ ...ring, opacity: 0.6 }],
+      hold: { x: -300, y: 0, frozen: true, opacity: 0.5 },
+      extra: [
+        {
+          stage: { id: 'born', title: '', note: '', agent: terminalFixture('born-t', '~', false, nowMs) },
+          x: -300 + 65,
+          y: -65,
+          above: true,
+        },
+      ],
     },
   ];
 }

@@ -17,7 +17,15 @@ import {
   type SwarmParameters,
 } from '../swarm-parameters.js';
 import { resolveSwarmTheme } from '../swarm-theme.js';
-import { burnStages, clusterStages, lightStages, stateStages, type LabStage } from './fixtures.js';
+import {
+  bloomStages,
+  burnStages,
+  clusterStages,
+  lightStages,
+  stateStages,
+  type LabFieldStage,
+  type LabStage,
+} from './fixtures.js';
 
 // The swarm design lab: one page, the production renderer, fixture agents in
 // every state and setting, and the view's own tunables as live controls. It
@@ -42,6 +50,15 @@ interface Cluster {
   cell: HTMLElement;
   stages: LabStage[];
   positions: { x: number; y: number }[];
+}
+
+/** A whole field in one cell, with its own canvas and renderer: its frame carries the veil, clearings, hub. */
+interface FieldCell {
+  stage: LabFieldStage;
+  cell: HTMLElement;
+  canvas: HTMLCanvasElement;
+  renderer?: SwarmRenderer;
+  extras: PlacedStage[];
 }
 
 const PHYSICAL_GAP = 4;
@@ -260,16 +277,60 @@ async function main(): Promise<void> {
   }
 
   function modelOf(stage: LabStage): SwarmBubbleModel {
+    const built = Date.now();
     const model = bubbleModel({
       agent: stage.agent,
       parameters,
-      nowMs: Date.now(),
+      nowMs: built,
       unread: stage.unread === true,
       ...(stage.runningSinceMs === undefined ? {} : { runningSinceMs: stage.runningSinceMs }),
       ...(stage.workingShare === undefined ? {} : { workingShare: stage.workingShare }),
+      ...(stage.profile ? { profile: stage.profile } : {}),
+      // Pinned to its age at every rebuild, so a stage "before 320 ms" stays before.
+      ...(stage.opening
+        ? { opening: { sinceMs: built - stage.opening.agoMs, ...(stage.opening.on ? { on: stage.opening.on } : {}) } }
+        : {}),
     });
     return stage.patch ? stage.patch(model) : model;
   }
+
+  // The field under the spawn bloom: whole fields, each its own canvas and renderer.
+  const fieldCells: FieldCell[] = [];
+  const fieldBodies: PlacedStage[] = clusterStages(nowMs).map((stage) => ({
+    stage,
+    cell: root,
+    model: modelOf(stage),
+    accent: [0, 0, 0, 1],
+  }));
+  const addFieldPart = (title: string, lede: string, stages: LabFieldStage[]): void => {
+    const section = element('section', 'lab-part');
+    section.append(element('h2', undefined, title), element('p', 'lab-lede', lede));
+    const grid = element('div', 'lab-fields');
+    stages.forEach((stage, index) => {
+      const figure = element('figure', 'lab-stage');
+      figure.dataset.stage = stage.id;
+      const cell = element('div', 'lab-cell lab-field-cell');
+      const canvas = element('canvas', 'lab-field-canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      cell.append(canvas);
+      const caption = element('figcaption');
+      caption.append(
+        element('b', undefined, `${String(index + 1).padStart(2, '0')} · ${stage.title}`),
+        element('span', undefined, stage.note),
+      );
+      figure.append(cell, caption);
+      grid.append(figure);
+      const extras = (stage.extra ?? []).map((extra) => ({
+        stage: extra.stage,
+        cell,
+        model: modelOf(extra.stage),
+        accent: [0, 0, 0, 1] as Rgba,
+      }));
+      fieldCells.push({ stage, cell, canvas, extras });
+    });
+    section.append(grid);
+    root.querySelector('.lab-parts')!.append(section);
+  };
 
   addMarks();
   addPart('States', 'Every drawn state, one body each, at the sizes the sliders hold.', stateStages(nowMs), 'grid');
@@ -291,13 +352,30 @@ async function main(): Promise<void> {
     clusterStages(nowMs),
     'cluster',
   );
+  addFieldPart(
+    'The field under the spawn bloom',
+    'What a frame carries while the bloom is open, each field drawn by its own renderer: the veil, the clearings the bloom and its words stand on, the hub above everything, and the body being born.',
+    bloomStages(nowMs),
+  );
 
   const rebuild = (): void => {
-    for (const entry of placed) {
+    for (const entry of [...placed, ...fieldBodies, ...fieldCells.flatMap((field) => field.extras)]) {
       entry.model = modelOf(entry.stage);
       entry.accent = accentOf(entry.model.accent);
       if (entry.model.linked) entry.link = accentOf(entry.model.linked);
       else delete entry.link;
+    }
+    // Every field cell is the same size, so one settled field serves them all.
+    const fieldRect = fieldCells[0]?.cell.getBoundingClientRect();
+    if (fieldRect) {
+      const positions = settle(
+        fieldBodies.map((entry) => entry.model.radius),
+        fieldRect.width,
+        fieldRect.height,
+      );
+      fieldBodies.forEach((entry, index) => {
+        entry.offset = positions[index]!;
+      });
     }
     for (const cluster of clusters) {
       const rect = cluster.cell.getBoundingClientRect();
@@ -344,6 +422,11 @@ async function main(): Promise<void> {
   }
   notice.hidden = true;
   const renderer: SwarmRenderer = result.renderer;
+  for (const field of fieldCells) {
+    const made = await createSwarmRenderer(field.canvas);
+    if (made.ok) field.renderer = made.renderer;
+    else console.warn('[swarm lab] a field stage has no renderer:', made.reason);
+  }
 
   let width = 1;
   let height = 1;
@@ -352,6 +435,10 @@ async function main(): Promise<void> {
     width = rect.width;
     height = rect.height;
     renderer.resize(width, height, window.devicePixelRatio || 1);
+    for (const field of fieldCells) {
+      const cell = field.cell.getBoundingClientRect();
+      field.renderer?.resize(cell.width, cell.height, window.devicePixelRatio || 1);
+    }
     rebuild();
   };
   new ResizeObserver(resize).observe(root);
@@ -404,7 +491,7 @@ async function main(): Promise<void> {
         ...(entry.stage.glow ? { glow: entry.stage.glow } : {}),
       });
     }
-    renderer.render({
+    const shared = {
       time: (time - started) / 1000,
       motion,
       fillOpacity: parameters.bubbleFillOpacity,
@@ -419,10 +506,48 @@ async function main(): Promise<void> {
         depth: parameters.stateWaveDepth,
       },
       theme,
-      bodies,
-      marks,
-      ...(hold ? { hold } : {}),
-    });
+    };
+    renderer.render({ ...shared, bodies, marks, ...(hold ? { hold } : {}) });
+
+    // Each field stage is one frame: the host's part (AgentSwarm, once the bloom
+    // feeds it) done by hand — a body's opacity already carries the veil unless
+    // it is lit, and places are the cell's own, from its centre.
+    for (const field of fieldCells) {
+      if (!field.renderer) continue;
+      const rect = field.cell.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const { veil = 0, lit = [], clearings, hold: hub, extra = [] } = field.stage;
+      const place = (entry: PlacedStage, x: number, y: number, opacity: number, above: boolean): RenderBody => ({
+        model: entry.model,
+        x,
+        y,
+        radius: entry.model.radius,
+        scale: 1,
+        opacity,
+        focus: false,
+        seed: phaseOf(entry.stage.id),
+        accent: entry.accent,
+        ...(entry.link ? { link: entry.link } : {}),
+        ...(above ? { aboveClearings: true } : {}),
+      });
+      const fieldBodyList = fieldBodies.map((entry) =>
+        place(entry, entry.offset?.x ?? cx, entry.offset?.y ?? cy, lit.includes(entry.stage.id) ? 1 : 1 - veil, false),
+      );
+      field.extras.forEach((entry, index) => {
+        const at = extra[index]!;
+        fieldBodyList.push(place(entry, cx + at.x, cy + at.y, 1, at.above === true));
+      });
+      field.renderer.render({
+        ...shared,
+        bodies: fieldBodyList,
+        ...(veil > 0 ? { veil } : {}),
+        ...(clearings
+          ? { clearings: clearings.map((clearing) => ({ ...clearing, x: cx + clearing.x, y: cy + clearing.y })) }
+          : {}),
+        ...(hub ? { hold: { ...hub, x: cx + hub.x, y: cy + hub.y, progress: hub.progress ?? 1 } } : {}),
+      });
+    }
   };
   requestAnimationFrame(frame);
 }
