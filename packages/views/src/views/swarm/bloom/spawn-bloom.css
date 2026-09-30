@@ -1,0 +1,400 @@
+/* The spawn bloom (SB, thinking-spawn-bloom §2): the DOM over the swarm's field while a hold, a
+   secondary click or the keys door holds a bloom open — the buds, their seated labels, the tether
+   and THE WORDS. Ported from the design page's prototype (draft/spawn-bloom/styles.css, `.sb-*`).
+   The layer never takes the pointer: AgentSwarm keeps its capture and routes it. Motion is CSS
+   transitions only (DESIGN §6 M3), set off by the classes SpawnBloom.tsx moves between. The views
+   ship without a host's tokens, so every token carries its reference value as a fallback. The
+   type is the stacks `BLOOM_FONT` measures in, so a seat computed for a label fits the label drawn. */
+
+.vf-bloom {
+  --vf-bloom-ground: var(--monitor-bg, #f7f7f7);
+  --vf-bloom-ink: var(--text-main, #111111);
+  --vf-bloom-muted: var(--text-muted, #888888);
+  --vf-bloom-bud-bg: #ffffff;
+  --vf-bloom-shadow-bud: 0 6px 16px rgb(0 0 0 / 12%);
+  --vf-bloom-shadow-hot: 0 12px 26px rgb(0 0 0 / 22%);
+  --vf-bloom-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --vf-bloom-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.vf-godview.theme-dark .vf-bloom {
+  --vf-bloom-bud-bg: #242424;
+  --vf-bloom-shadow-bud: 0 6px 16px rgb(0 0 0 / 50%);
+  --vf-bloom-shadow-hot: 0 12px 28px rgb(0 0 0 / 60%), 0 0 0 1px rgb(255 255 255 / 6%);
+}
+
+.vf-bloom-menu {
+  position: absolute;
+  inset: 0;
+  outline: none;
+}
+
+.vf-bloom-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.vf-bloom-tether {
+  fill: none;
+  stroke: var(--vf-bloom-ink);
+  stroke-opacity: 0.5;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* ── the buds: out from the hub centre-first, home along their spokes (M4) ── */
+
+.vf-bloom-bud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--vf-bloom-d);
+  height: var(--vf-bloom-d);
+  transform: translate(var(--vf-bloom-hx), var(--vf-bloom-hy)) scale(0.2);
+  opacity: 0;
+  transition:
+    transform var(--vf-bloom-pop, 280ms) var(--vf-ease-pop, cubic-bezier(0.34, 1.45, 0.64, 1))
+      var(--vf-bloom-delay, 0ms),
+    opacity 140ms ease var(--vf-bloom-delay, 0ms);
+  will-change: transform, opacity;
+}
+
+.vf-bloom-bud.is-out {
+  transform: translate(var(--vf-bloom-tx), var(--vf-bloom-ty)) scale(1);
+  opacity: 1;
+}
+
+.vf-bloom-bud.is-back {
+  transition:
+    transform var(--vf-bloom-retract, 180ms) cubic-bezier(0.4, 0, 1, 1) var(--vf-bloom-delay, 0ms),
+    opacity var(--vf-bloom-retract, 180ms) ease var(--vf-bloom-delay, 0ms);
+}
+
+/* dimmed only while shown: a sibling leaves with the rest when the bloom closes */
+.vf-bloom-bud.is-out.is-dim {
+  opacity: 0.62;
+}
+
+.vf-bloom-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--vf-bloom-bud-bg);
+  color: color-mix(in srgb, var(--vf-bloom-ink) 84%, transparent);
+  box-shadow:
+    0 0 0 1.25px color-mix(in srgb, var(--vf-bloom-ink) 22%, transparent),
+    var(--vf-bloom-shadow-bud);
+  transform: scale(calc(1 + var(--vf-bloom-lean, 0) * 0.06));
+  transition:
+    transform var(--vf-bloom-lift, 180ms) var(--vf-ease-lift, cubic-bezier(0.2, 0.9, 0.3, 1.2)),
+    background-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.vf-bloom-face b {
+  font: 800 16px/1 var(--vf-bloom-sans);
+  letter-spacing: -0.035em;
+}
+
+.vf-bloom-face svg {
+  display: block;
+}
+
+.vf-bloom-bud[data-bloom-ring='2'] .vf-bloom-face b {
+  font-size: 14px;
+}
+
+.vf-bloom-bud.is-hot .vf-bloom-face,
+.vf-bloom-bud.is-path.is-hot .vf-bloom-face {
+  transform: scale(1.16);
+  background: var(--vf-bloom-ink);
+  color: var(--vf-bloom-ground);
+  box-shadow:
+    0 0 0 1px var(--vf-bloom-ink),
+    var(--vf-bloom-shadow-hot);
+}
+
+.vf-bloom-bud.is-path:not(.is-hot) .vf-bloom-face {
+  transform: scale(1.08);
+  color: var(--vf-bloom-ink);
+  box-shadow:
+    0 0 0 2px var(--vf-bloom-ink),
+    var(--vf-bloom-shadow-bud);
+}
+
+.vf-bloom-bud.is-dim .vf-bloom-face {
+  transform: scale(0.9);
+}
+
+/* a desktop that cannot take a terminal now: faint, dashed, never filled */
+.vf-bloom-bud.is-off .vf-bloom-face {
+  background: var(--vf-bloom-ground);
+  color: var(--vf-bloom-muted);
+  box-shadow: none;
+  outline: 1.5px dashed color-mix(in srgb, var(--vf-bloom-ink) 42%, transparent);
+  outline-offset: -1.5px;
+}
+
+.vf-bloom-bud.is-off.is-hot .vf-bloom-face {
+  transform: scale(1.06);
+  background: var(--vf-bloom-ground);
+  color: var(--vf-bloom-ink);
+  box-shadow: none;
+  outline-color: var(--vf-bloom-ink);
+}
+
+.vf-bloom-bud.is-focus .vf-bloom-face::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--vf-bloom-ink);
+}
+
+/* let go on: it stays where it is and grows into the body taking its place (M1, M2) */
+.vf-bloom-bud.is-chosen {
+  transition: none;
+}
+
+.vf-bloom-bud.is-chosen .vf-bloom-face {
+  transform: scale(var(--vf-bloom-grow, 2.4));
+  opacity: 0;
+  transition:
+    transform 320ms var(--vf-ease-pop, cubic-bezier(0.34, 1.45, 0.64, 1)),
+    opacity 220ms ease 70ms;
+}
+
+/* the profile tabs' orange dot: an agent under this profile waits on the person */
+.vf-bloom-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--vf-orange, #ff9f0a);
+  box-shadow: 0 0 0 1.5px var(--idle-bg, #e5e5e5);
+}
+
+/* ── the labels: seated clear of everything (the core's seatLabel), 140ms behind their bud ── */
+
+.vf-bloom-label {
+  position: absolute;
+  font: 700 9.5px/12px var(--vf-bloom-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--vf-bloom-ink) 78%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  text-shadow:
+    0 0 3px var(--vf-bloom-ground),
+    0 0 8px var(--vf-bloom-ground);
+  transition:
+    opacity 140ms ease var(--vf-bloom-delay, 0ms),
+    color 120ms ease,
+    filter 100ms ease;
+}
+
+.vf-bloom-label[data-align='center'] {
+  text-align: center;
+}
+
+.vf-bloom-label[data-align='right'] {
+  text-align: right;
+}
+
+.vf-bloom-label span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vf-bloom-label small {
+  display: block;
+  font-size: 7.5px;
+  font-weight: 800;
+  line-height: 11px;
+  letter-spacing: 0.1em;
+  color: var(--vf-bloom-muted);
+}
+
+.vf-bloom-label.is-out {
+  opacity: 1;
+}
+
+.vf-bloom-label.is-hot {
+  color: var(--vf-bloom-ink);
+}
+
+.vf-bloom-label.is-out.is-dim {
+  opacity: 0.58;
+}
+
+/* the name alone where the state line has no room; gone where nothing does */
+.vf-bloom-label.is-short small {
+  display: none;
+}
+
+.vf-bloom-label.is-gone,
+.vf-bloom-label.is-gone.is-out {
+  opacity: 0;
+}
+
+/* a label that must move steps out where it was and in where it goes, never across a bud */
+.vf-bloom-label.is-stepping {
+  filter: opacity(0);
+}
+
+/* ── THE WORDS: what letting go does, huge, in the field's empty space. The noun at full ink, the
+   verb stepped back; one mono line of where and under whom. A new slate steps in over the old. ── */
+
+.vf-bloom-say-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vf-bloom-say {
+  position: absolute;
+  white-space: nowrap;
+  transition:
+    opacity 150ms ease,
+    transform 200ms var(--vf-ease-island, cubic-bezier(0.25, 1, 0.3, 1));
+}
+
+.vf-bloom-say[data-align='left'] {
+  text-align: left;
+}
+
+.vf-bloom-say[data-align='center'] {
+  text-align: center;
+}
+
+.vf-bloom-say[data-align='right'] {
+  text-align: right;
+}
+
+.vf-bloom-say.is-in {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.vf-bloom-say.is-out {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition-duration: 120ms, 160ms;
+}
+
+.vf-bloom-say-line {
+  font: 800 var(--vf-bloom-say, 64px) / 0.98 var(--vf-bloom-sans);
+  letter-spacing: -0.04em;
+  color: var(--vf-bloom-ink);
+  text-shadow: 0 0 18px var(--vf-bloom-ground);
+  white-space: nowrap;
+}
+
+.vf-bloom-say-line .v {
+  color: color-mix(in srgb, var(--vf-bloom-ink) 40%, var(--vf-bloom-ground));
+}
+
+.vf-bloom-say[data-tone='none'] .vf-bloom-say-line .n {
+  color: color-mix(in srgb, var(--vf-bloom-ink) 72%, var(--vf-bloom-ground));
+}
+
+/* big type breaks at the verb and the noun rather than shrinking */
+.vf-bloom-say.is-two .vf-bloom-say-line span {
+  display: block;
+}
+
+.vf-bloom-say-detail {
+  margin-top: 10px;
+  font: 700 11px/14px var(--vf-bloom-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: normal;
+  color: var(--vf-bloom-muted);
+  text-shadow: 0 0 8px var(--vf-bloom-ground);
+}
+
+.vf-bloom-say[data-tone='off'] .vf-bloom-say-detail {
+  color: var(--vf-bloom-ink);
+}
+
+/* ── reduced motion (M6): no travel, no overshoot — 90ms fades where they stand ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-bloom-bud,
+  .vf-bloom-bud.is-back,
+  .vf-bloom-bud.is-out {
+    transform: translate(var(--vf-bloom-tx), var(--vf-bloom-ty));
+    transition: opacity 90ms ease-out;
+  }
+
+  .vf-bloom-face,
+  .vf-bloom-bud.is-hot .vf-bloom-face {
+    transition:
+      background-color 90ms ease-out,
+      color 90ms ease-out;
+  }
+
+  .vf-bloom-bud.is-chosen .vf-bloom-face {
+    transform: none;
+    transition: opacity 90ms ease-out;
+  }
+
+  .vf-bloom-say,
+  .vf-bloom-say.is-in,
+  .vf-bloom-say.is-out {
+    transform: none;
+    transition: opacity 90ms ease-out;
+  }
+}
+
+.vf-godview[data-godview-animations='off'] .vf-bloom-bud,
+.vf-godview[data-godview-animations='off'] .vf-bloom-bud.is-back,
+.vf-godview[data-godview-animations='off'] .vf-bloom-bud.is-out,
+.vf-bloom.is-reduced .vf-bloom-bud,
+.vf-bloom.is-reduced .vf-bloom-bud.is-back,
+.vf-bloom.is-reduced .vf-bloom-bud.is-out {
+  transform: translate(var(--vf-bloom-tx), var(--vf-bloom-ty));
+  transition: opacity 90ms ease-out;
+}
+
+.vf-godview[data-godview-animations='off'] .vf-bloom-face,
+.vf-godview[data-godview-animations='off'] .vf-bloom-bud.is-hot .vf-bloom-face,
+.vf-bloom.is-reduced .vf-bloom-face,
+.vf-bloom.is-reduced .vf-bloom-bud.is-hot .vf-bloom-face {
+  transition:
+    background-color 90ms ease-out,
+    color 90ms ease-out;
+}
+
+.vf-godview[data-godview-animations='off'] .vf-bloom-bud.is-chosen .vf-bloom-face,
+.vf-bloom.is-reduced .vf-bloom-bud.is-chosen .vf-bloom-face {
+  transform: none;
+  transition: opacity 90ms ease-out;
+}
+
+.vf-godview[data-godview-animations='off'] .vf-bloom-say,
+.vf-godview[data-godview-animations='off'] .vf-bloom-say.is-in,
+.vf-godview[data-godview-animations='off'] .vf-bloom-say.is-out,
+.vf-bloom.is-reduced .vf-bloom-say,
+.vf-bloom.is-reduced .vf-bloom-say.is-in,
+.vf-bloom.is-reduced .vf-bloom-say.is-out {
+  transform: none;
+  transition: opacity 90ms ease-out;
+}
