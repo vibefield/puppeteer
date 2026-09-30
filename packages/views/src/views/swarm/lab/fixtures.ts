@@ -948,12 +948,45 @@ export function bloomStages(nowMs: number): LabFieldStage[] {
       hold: { x: -300, y: 0, frozen: true, opacity: 0.5 },
       extra: [
         {
-          stage: { id: 'born', title: '', note: '', agent: terminalFixture('born-t', '~', false, nowMs) },
+          stage: {
+            id: 'born',
+            title: '',
+            note: '',
+            agent: terminalFixture('born-t', '~', false, nowMs),
+            opening: { agoMs: 900 },
+          },
           x: -300 + 65,
           y: -65,
           above: true,
         },
       ],
+    },
+  ];
+}
+
+/** Part: the body being born — the spawn bloom's pending body, where the person let go, until the host's row arrives. */
+export function pendingStages(nowMs: number): LabStage[] {
+  return [
+    {
+      id: 'pending-quiet',
+      title: 'A birth, before 320 ms',
+      note: 'Hollow and dashed like an empty terminal, its rim heavier (1.2 × the rim’s weight against .52). It reads EMPTY and holds still: a wait drawn inside 320 ms shows no indicator at all.',
+      agent: terminalFixture('p1', '~', false, nowMs),
+      opening: { agoMs: 100 },
+    },
+    {
+      id: 'pending-opening',
+      title: 'A birth, after 320 ms',
+      note: 'Past the quiet it reads OPENING and its dashes turn — a radian every 0.9 s, clockwise — until the host’s row takes its place. Still with the motion off.',
+      agent: terminalFixture('p2', '~', false, nowMs),
+      opening: { agoMs: 900 },
+    },
+    {
+      id: 'pending-peer',
+      title: 'A birth on a peer',
+      note: 'Opening on another desktop: the peer’s name after OPENING.',
+      agent: terminalFixture('p3', '~', false, nowMs),
+      opening: { agoMs: 900, on: 'mini' },
     },
   ];
 }

@@ -22,6 +22,7 @@ import {
   burnStages,
   clusterStages,
   lightStages,
+  pendingStages,
   stateStages,
   type LabFieldStage,
   type LabStage,
@@ -351,6 +352,12 @@ async function main(): Promise<void> {
     'Eight bodies settled under centre gravity, as the swarm actually rests.',
     clusterStages(nowMs),
     'cluster',
+  );
+  addPart(
+    'The body being born',
+    'Where the person let go of the spawn bloom, a pending body stands until the host’s terminal row arrives.',
+    pendingStages(nowMs),
+    'grid',
   );
   addFieldPart(
     'The field under the spawn bloom',
