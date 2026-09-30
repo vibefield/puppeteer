@@ -41,7 +41,8 @@ function signedWords(profile: MonitorSpawnProfile | null): string {
  * or a peer's native profile) · *Open as Personal* (a profile) · *Air is
  * asleep* (a faint desktop) · *Cancel* (open ground); `phase: 'commit'` says
  * *Opening …*. SB-D10: a peer's native set reads DEFAULT
- * (`UNDER DEFAULT · CLAUDE · CODEX SIGNED IN`). One product case the
+ * (`UNDER DEFAULT · CLAUDE · CODEX SIGNED IN`), and reaching a peer whose
+ * default it is reads `UNDER DEFAULT` alone, not `· ITS DEFAULT` after it. One product case the
  * prototype never met: a desktop still reading its profiles has no default
  * to name, so its detail is `UNDER ITS DEFAULT` alone, not doubled. */
 export function wordsFor(
@@ -67,7 +68,8 @@ export function wordsFor(
     };
   }
   const where = multi ? 'ON ' + deviceWord(device) + (device.self ? ' (' + hereWord(device) + ')' : '') : '';
-  const under = 'UNDER ' + profileWord(profile, device);
+  const word = profileWord(profile, device);
+  const under = 'UNDER ' + word;
   if (t.kind === 'hub') {
     return {
       parts: [
@@ -84,9 +86,10 @@ export function wordsFor(
         [going ? 'Opening on ' : 'Open on ', 'v'],
         [device.label, 'n'],
       ],
+      // a default already called DEFAULT (a peer's native set, SB-D10) is not said twice
       detail:
         t.kind === 'device'
-          ? profile
+          ? profile && word !== 'DEFAULT'
             ? under + ' · ITS DEFAULT'
             : under
           : under + ' · ' + (signedWords(profile) || 'THE AGENTS’ OWN SIGN-INS'),

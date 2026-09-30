@@ -32,10 +32,20 @@ describe('wordsFor — the prototype’s specimen, every reading', () => {
     });
   });
 
-  it('reaching a desktop (its native default reads DEFAULT, SB-D10)', () => {
+  it('reaching a desktop (its native default reads DEFAULT, SB-D10, and is not said twice)', () => {
     const words = wordsFor(three, { kind: 'device', item: mini }, 'hold');
     expect(text(words)).toBe('Open on mini');
-    expect(words.detail).toBe('UNDER DEFAULT · ITS DEFAULT');
+    expect(words.detail).toBe('UNDER DEFAULT');
+  });
+
+  it('reaching a desktop whose default is a managed set names it as its default', () => {
+    const device: MonitorSpawnDevice = {
+      ...mini.device,
+      profiles: (mini.device.profiles ?? []).map((p) => ({ ...p, isDefault: p.id === 'personal' })),
+    };
+    const menu = menuOf({ devices: [BLOOM_SCENARIOS.two.devices[0] as MonitorSpawnDevice, device] }) as BloomOpenMenu;
+    const words = wordsFor(menu, { kind: 'device', item: menu.items[1] as BloomDeviceItem }, 'hold');
+    expect(words.detail).toBe('UNDER PERSONAL · ITS DEFAULT');
   });
 
   it('on a profile', () => {
