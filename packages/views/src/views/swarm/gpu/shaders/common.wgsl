@@ -56,7 +56,7 @@ struct Body {
   ring: vec4f,
   // the outer light: reach (px), strength, breath (0..1), phase seed
   glow: vec4f,
-  // spawn time (s), phase seed, stale mix (0/1), opacity
+  // a pending body's dash turn (radians, clockwise), phase seed, stale mix (0/1), opacity
   motion: vec4f,
   link: vec4f,
 };
@@ -73,6 +73,7 @@ const F_RING: u32 = 1024u;
 const F_SHADOW: u32 = 2048u;
 const F_CORE: u32 = 4096u;
 const F_WAVES: u32 = 8192u;
+const F_PENDING: u32 = 16384u;
 
 const TAU: f32 = 6.28318530718;
 

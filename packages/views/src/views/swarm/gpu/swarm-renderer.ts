@@ -155,6 +155,10 @@ const F_RING = 1024;
 const F_SHADOW = 2048;
 const F_CORE = 4096;
 const F_WAVES = 8192;
+const F_PENDING = 16384;
+
+/** A pending body's dashes turn a radian every this many seconds (the prototype's `spin`). */
+const DASH_TURN_SECONDS = 0.9;
 
 const BODY_FLOATS = 40;
 const GLYPH_FLOATS = 16;
@@ -433,6 +437,21 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
   let heldTime = 0;
   let glyphCount = 0;
   let destroyed = false;
+  // When each pending body began to turn, on the held clock, by body id: its
+  // dashes start from where they stood, and stand still with the motion.
+  const turnStarts = new Map<string, number>();
+  const turnedThisFrame = new Set<string>();
+  /** How far a pending body's dashes have turned, radians clockwise; 0 until the model says it turns. */
+  const dashTurn = (model: SwarmBubbleModel): number => {
+    if (!model.pending?.turning) return 0;
+    let start = turnStarts.get(model.id);
+    if (start === undefined) {
+      start = heldTime;
+      turnStarts.set(model.id, start);
+    }
+    turnedThisFrame.add(model.id);
+    return (heldTime - start) / DASH_TURN_SECONDS;
+  };
 
   const toneColour = (tone: CopyTone, body: RenderBody, ink: Rgba, theme: SwarmTheme): Rgba => {
     switch (tone) {
@@ -772,6 +791,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     if (body.focus) flags |= F_FOCUS;
     if (model.ring) flags |= F_RING;
     if (model.ring?.hot) flags |= F_RING_HOT;
+    if (model.pending) flags |= F_PENDING;
 
     bodyData[offset] = body.x;
     bodyData[offset + 1] = body.y;
@@ -795,7 +815,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     bodyData[offset + 29] = glow.strength * body.opacity;
     bodyData[offset + 30] = glow.breath;
     bodyData[offset + 31] = body.seed;
-    bodyData[offset + 32] = 0;
+    bodyData[offset + 32] = dashTurn(model);
     bodyData[offset + 33] = body.seed;
     bodyData[offset + 34] = model.stale ? 1 : 0;
     bodyData[offset + 35] = body.opacity;
@@ -848,6 +868,9 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       const glyphsBelow = glyphCount;
       for (const body of bodies) if (body.aboveClearings) pack(body);
       atlas.flush();
+      // A body that stopped turning (or left) starts afresh if it turns again.
+      for (const id of turnStarts.keys()) if (!turnedThisFrame.has(id)) turnStarts.delete(id);
+      turnedThisFrame.clear();
 
       packFrame(frameData, frame, { width, height, dpr, time });
 

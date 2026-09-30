@@ -19,6 +19,13 @@ import { SWARM_WEIGHT } from './weight.js';
 
 export type SwarmBodyState = 'terminal-empty' | 'terminal-running' | 'idle' | 'working' | 'blocked';
 
+/**
+ * How long a birth on its way reads `empty` and holds still before it says it
+ * is opening and its dashes turn: a wait drawn inside 320 ms shows no indicator
+ * at all (DESIGN §8, QL-2), so a fast birth never flashes one.
+ */
+export const OPENING_QUIET_MS = 320;
+
 /** The colour of the light inside a body, which is the STATE's and never the
  * project's (2026-09-16): the theme's own ink while working, orange while
  * blocked, blue for a reply that arrived unseen. One light, three colours — a
@@ -87,6 +94,10 @@ export interface SwarmBubbleModel {
   light?: SwarmLightTone;
   /** Transparent body with a rim: the unclaimed terminal. */
   hollow: boolean;
+  /** A birth on its way (the spawn bloom's pending body): hollow and dashed like
+   * an empty terminal, its rim heavier; `turning` once it has waited past
+   * `OPENING_QUIET_MS`, when its dashes turn on the renderer's own clock. */
+  pending?: { turning: boolean };
   /** The comet sweeping a hollow's rim: a foreground job. */
   running: boolean;
   unread: boolean;
@@ -116,8 +127,11 @@ export interface BubbleModelInput {
    * terminal's label style, the profile's glyph and name (SB §2.10). */
   profile?: { label: string; glyph?: string | undefined; kind?: 'native' | 'managed' | undefined } | undefined;
   /** A birth on its way (the spawn bloom's pending body, SB §2.6): drawn hollow
-   * where the person let go until the host's row arrives; after 320 ms its
-   * dashes turn and it reads OPENING (`on` names a peer: OPENING ON MINI). */
+   * where the person let go until the host's row arrives. For its first
+   * `OPENING_QUIET_MS` it reads EMPTY and holds still; then its dashes turn and
+   * it reads OPENING (`on` names a peer: OPENING ON MINI). `nowMs − sinceMs`
+   * decides, so a host rebuilds this one model as the quiet runs out. A
+   * terminal's row only: an agent's row ignores it. */
   opening?: { sinceMs: number; on?: string | undefined } | undefined;
 }
 
@@ -267,8 +281,14 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
 
   if (!facet) {
     const remote = agent.remote;
-    const running = agent.status === 'working';
+    // A birth on its way is a terminal with no job yet, whatever its row says.
+    const opening = input.opening;
+    const running = !opening && agent.status === 'working';
     const elapsed = running ? formatElapsed(input.runningSinceMs, nowMs) : undefined;
+    // It reads `empty` and holds still at first; past the quiet it says it is
+    // opening, and where (a peer's name), and its dashes turn.
+    const turning = opening !== undefined && nowMs - opening.sinceMs >= OPENING_QUIET_MS;
+    const sub = opening && turning ? (opening.on ? `opening on ${opening.on}` : 'opening') : 'empty';
     const copy: CopyLine[] = [
       // One line, the folder then the name, as every other body reads. A terminal
       // belongs to no project, so its folder wears the ink rather than a colour.
@@ -291,7 +311,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           }
         : {
             key: 'sub',
-            text: 'empty',
+            text: sub,
             style: LABEL_STACKED,
             opacity: SWARM_WEIGHT.supporting,
             tone: 'ink',
@@ -335,9 +355,12 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       hollow: true,
       running,
       unread: false,
-      ariaLabel: remote
-        ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
-        : `${agent.project}, unassigned terminal, ${agent.status}`,
+      ...(opening ? { pending: { turning } } : {}),
+      ariaLabel: opening
+        ? `${agent.project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
+        : remote
+          ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
+          : `${agent.project}, unassigned terminal, ${agent.status}`,
       title: remote ? `${remote.deviceName} · ${remoteWriteTitle(remote)} · ${agent.detail}` : agent.detail,
     };
   }

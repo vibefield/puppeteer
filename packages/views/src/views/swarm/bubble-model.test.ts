@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../monitor/types.js';
 import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../monitor/usage-ledger.js';
-import { bubbleModel, formatTokens, workingShares } from './bubble-model.js';
+import { OPENING_QUIET_MS, bubbleModel, formatTokens, workingShares } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { SWARM_WEIGHT } from './weight.js';
 
@@ -411,5 +411,68 @@ describe("a peer's session (the remote facet)", () => {
     // …and a host property is never upgraded into a promise to the viewer.
     expect(permitting?.text).not.toContain('you');
     expect(model(true).title).toContain('decided when you attach');
+  });
+});
+
+describe('a birth on its way (the spawn bloom’s pending body)', () => {
+  const opening = (agoMs: number, on?: string, row: Partial<MonitorAgent> = {}) =>
+    bubbleModel({
+      agent: agent({ project: '~', status: 'idle', ...row }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+      opening: { sinceMs: NOW - agoMs, ...(on ? { on } : {}) },
+    });
+
+  it('reads empty and holds still for its first 320 ms: a fast birth shows no wait', () => {
+    const model = opening(100);
+    expect(model.pending).toEqual({ turning: false });
+    expect(model.state).toBe('terminal-empty');
+    expect(model.hollow).toBe(true);
+    expect(model.running).toBe(false);
+    expect(model.copy.map((line) => [line.key, line.text])).toEqual([
+      ['name', '~'],
+      ['sub', 'empty'],
+    ]);
+    expect(opening(OPENING_QUIET_MS - 1).pending).toEqual({ turning: false });
+  });
+
+  it('says it is opening, and turns, once the quiet has run out', () => {
+    expect(OPENING_QUIET_MS).toBe(320);
+    expect(opening(OPENING_QUIET_MS).pending).toEqual({ turning: true });
+    const model = opening(900);
+    expect(model.pending).toEqual({ turning: true });
+    const sub = model.copy.find((line) => line.key === 'sub');
+    expect(sub?.text).toBe('opening');
+    // In the terminal's label style: 7 px 800 uppercase at the supporting weight.
+    expect(sub?.style).toMatchObject({ size: 7, weight: 800, transform: 'uppercase' });
+    expect(sub?.opacity).toBe(SWARM_WEIGHT.supporting);
+  });
+
+  it('names the peer it opens on', () => {
+    expect(opening(900, 'mini').copy.find((line) => line.key === 'sub')?.text).toBe('opening on mini');
+    expect(opening(100, 'mini').copy.find((line) => line.key === 'sub')?.text).toBe('empty');
+    expect(opening(900, 'mini').ariaLabel).toBe('~, new terminal, opening on mini');
+    expect(opening(100).ariaLabel).toBe('~, new terminal, opening');
+  });
+
+  it('has no job yet, whatever its row says', () => {
+    const model = opening(900, undefined, { status: 'working', session: session('a', 'foreground-job') });
+    expect(model.running).toBe(false);
+    expect(model.state).toBe('terminal-empty');
+    expect(model.copy.map((line) => line.key)).toEqual(['name', 'sub']);
+  });
+
+  it('is no birth without `opening`, and an agent’s row ignores it', () => {
+    expect(bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: false }).pending).toBeUndefined();
+    const withAgent = bubbleModel({
+      agent: agent({}, {}),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+      opening: { sinceMs: NOW - 900 },
+    });
+    expect(withAgent.pending).toBeUndefined();
+    expect(withAgent.hollow).toBe(false);
   });
 });
