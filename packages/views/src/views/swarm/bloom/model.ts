@@ -740,7 +740,8 @@ export function openBloom(
       },
     };
   }
-  const s = openLevel1(env, P, mode, menu);
+  // the hub is the state's own point: a caller's reused point object cannot move it
+  const s = openLevel1(env, { x: P.x, y: P.y }, mode, menu);
   if (mode === 'keys') {
     s.focus = 0;
     aim(env, s, s.l1[0]);
