@@ -8,7 +8,7 @@ import {
   type FocusEventHandler,
   type KeyboardEventHandler,
   type ReactElement,
-  type Ref,
+  type RefObject,
 } from 'react';
 import { ProfileGlyph } from '../../../icons/ProfileGlyph.js';
 import { BLOOM } from './constants.js';
@@ -100,7 +100,9 @@ export interface SpawnBloomProps {
   /** Scales the bloom's own durations (the core's `motionScale`); 1 by default. */
   readonly motionScale?: number | undefined;
   /** The `role="menu"` element: the keys door and a bloom held open move focus to it. */
-  readonly menuRef?: Ref<HTMLDivElement> | undefined;
+  // Structural on purpose: `Ref`'s callback form is nominal per copy of @types/react, and a host
+  // compiling these sources against two copies (VibeField) cannot hand one to the other's JSX `ref`.
+  readonly menuRef?: RefObject<HTMLDivElement | null> | undefined;
   /** Keys while the menu holds the focus (the host routes them through `keyBloom`). */
   readonly onKeyDown?: KeyboardEventHandler<HTMLDivElement> | undefined;
   readonly onBlur?: FocusEventHandler<HTMLDivElement> | undefined;
