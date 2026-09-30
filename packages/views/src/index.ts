@@ -43,6 +43,8 @@ export * from './views/swarm/bubble-model.js';
 export * from './views/swarm/swarm-parameters.js';
 export * from './views/swarm/swarm-theme.js';
 export * from './views/swarm/text-layout.js';
+// The spawn bloom's pure logic (SB): geometry, menu, targeting, words, machine.
+export * from './views/swarm/bloom/index.js';
 export * from './views/swarm/gpu/color.js';
 export * from './views/swarm/gpu/swarm-renderer.js';
 // The lab's fixture rows: every drawn state, for a host's own catalog.
