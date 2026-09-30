@@ -239,7 +239,10 @@ export function ListSpawnMenu({ menu, onChoose, onClose }: ListSpawnMenuProps): 
               />
               <span className="vf-monitor-list-spawn-name">{word}</span>
               {profile.blocked ? <i className="vf-monitor-list-spawn-dot" aria-hidden="true" /> : null}
-              <small>{profile.isDefault ? (signed ? `DEFAULT · ${signed}` : 'DEFAULT') : signed}</small>
+              {/* a peer's native set is already called DEFAULT (SB-D10): not said twice */}
+              <small>
+                {profile.isDefault && word !== 'DEFAULT' ? (signed ? `DEFAULT · ${signed}` : 'DEFAULT') : signed}
+              </small>
             </button>
           );
         })}

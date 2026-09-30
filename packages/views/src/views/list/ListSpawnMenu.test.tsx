@@ -59,6 +59,22 @@ describe('the list’s two-step menu', () => {
     expect(markup).not.toContain('takes its default');
   });
 
+  it('a peer’s native default is called DEFAULT once, not DEFAULT · DEFAULT', () => {
+    const menu = open(BLOOM_SCENARIOS.two);
+    // the menu opens on the desktop you sit at; seat it on the peer to show the peer's profiles
+    const markup = renderToStaticMarkup(
+      <ListSpawnMenu
+        menu={{ ...menu, self: BLOOM_SCENARIOS.two.devices[1] as MonitorSpawnDevice }}
+        onChoose={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(markup).toContain(
+      '<span class="vf-monitor-list-spawn-name">DEFAULT</span><small>CLAUDE · CODEX · GROK · OPENCODE</small>',
+    );
+    expect(markup).not.toContain('DEFAULT · DEFAULT');
+  });
+
   it('lists a desktop’s default first, and a peer’s native set reads DEFAULT', () => {
     const mini = BLOOM_SCENARIOS.two.devices[1] as MonitorSpawnDevice;
     expect(menuProfiles(mini).map((p) => p.id)).toEqual(['native', 'personal']);
