@@ -111,6 +111,14 @@ export interface BubbleModelInput {
   runningSinceMs?: number;
   /** This session's place among working sessions by estimated USD, 0 (least) to 1 (most). */
   workingShare?: number;
+  /** The Agent Profile a terminal's shell was born under, when naming it tells
+   * the person something (the desktop has more than one): one line in the
+   * terminal's label style, the profile's glyph and name (SB §2.10). */
+  profile?: { label: string; glyph?: string | undefined; kind?: 'native' | 'managed' | undefined } | undefined;
+  /** A birth on its way (the spawn bloom's pending body, SB §2.6): drawn hollow
+   * where the person let go until the host's row arrives; after 320 ms its
+   * dashes turn and it reads OPENING (`on` names a peer: OPENING ON MINI). */
+  opening?: { sinceMs: number; on?: string | undefined } | undefined;
 }
 
 const TERMINAL_NAME: TextStyle = { size: 11, weight: 800, letterSpacing: -0.035 };

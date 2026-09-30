@@ -21,6 +21,21 @@ export interface LauncherAgent {
   preview?: string | undefined;
 }
 
+/**
+ * The Agent Profile a pane's shell was born under (the spawn bloom, SB): the
+ * launcher's caption reads `New · Under Work`, and its agents are this pane's —
+ * an agent the profile has no sign-in for arrives `unavailable` ("no sign-in")
+ * in the host's words. The launcher only draws it; a host's port launches under
+ * the pane's profile by itself, from the session id it is handed.
+ */
+export interface LauncherUnder {
+  label: string;
+  glyph?: string | undefined;
+  kind?: 'native' | 'managed' | undefined;
+  /** This pane's agents, when they differ from the shared catalog's. */
+  agents?: readonly LauncherAgent[] | undefined;
+}
+
 export type LauncherReadiness = 'ready' | 'building' | 'catching-up' | 'stale' | 'failed' | 'unreachable';
 
 export interface LauncherHistoryStatus {

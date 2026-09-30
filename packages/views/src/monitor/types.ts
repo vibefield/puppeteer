@@ -141,14 +141,70 @@ export interface MonitorAgent {
    * the row keeps its place — in the physics, in the list — and is drawn
    * faint (`monitor/recede.ts`). Presentation, never a status. */
   receded?: boolean | undefined;
+  /** The Agent Profile this row runs under, when the host knows it: a profile
+   * SET id (`'native'` for the machine's own). A managed agent's set, or the set
+   * a terminal's shell was born under (VibeField binds a pane's shell to it).
+   * Absent: unknown, or a shell bound to none. The spawn bloom lights the rows
+   * under the profile it points at (SB-D8); a terminal's body names it. */
+  profileSet?: string | undefined;
   agent?: MonitorAgentFacet | undefined;
+}
+
+/** An Agent Profile the spawn bloom offers under a desktop — a profile SET, in
+ * the profile tabs' own terms (`bar/ProfileTabs.tsx` `ProfileTab`), plus who is
+ * signed in under it, for the words' detail line. */
+export interface MonitorSpawnProfile {
+  readonly id: string;
+  readonly label: string;
+  readonly glyph?: string | undefined;
+  readonly kind?: 'native' | 'managed' | undefined;
+  /** The desktop's default: letting go on the hub, or on the desktop itself, opens this one. */
+  readonly isDefault?: boolean | undefined;
+  /** An agent under it waits on the person (the tabs' orange dot). */
+  readonly blocked?: boolean | undefined;
+  /** The agents signed in under it, as the host labels them ("Claude", "Codex"), in its order. */
+  readonly signedIn?: readonly string[] | undefined;
+}
+
+/** Whether a desktop can take a terminal from here right now. Only `ready`
+ * takes one; the rest keep their place, faint, and say why (SB-D9). `reading`:
+ * ready, but its profiles are not known yet — letting go on it opens its default. */
+export type MonitorSpawnDeviceState = 'ready' | 'asleep' | 'silent' | 'incompatible' | 'reading';
+
+/** A desktop the spawn bloom offers: the one you sit at, and peers that can take a terminal from here. */
+export interface MonitorSpawnDevice {
+  readonly id: string;
+  /** Its name. A bud draws its initial (DESIGN §13 has no desktop mark). */
+  readonly label: string;
+  /** The desktop you are sitting at. */
+  readonly self?: boolean | undefined;
+  readonly state: MonitorSpawnDeviceState;
+  /** The state line under its bud: "2 RUNNING" for a ready peer, "ASLEEP · 2 H" for a faint one. The one you sit at reads HERE. */
+  readonly word?: string | undefined;
+  /** How the words say a faint desktop cannot take one, after its name: "is asleep". */
+  readonly phrase?: string | undefined;
+  /** Its Agent Profiles; absent while they are being read. */
+  readonly profiles?: readonly MonitorSpawnProfile[] | undefined;
+}
+
+/** What a new terminal can be born under. One desktop with one profile is no choice: the hold creates at once. */
+export interface MonitorSpawnMenu {
+  readonly devices: readonly MonitorSpawnDevice[];
+}
+
+/** The desktop and Agent Profile a create asks for. An absent field means the
+ * desktop you sit at and its default profile — today's hold. */
+export interface MonitorSpawnTarget {
+  readonly deviceId?: string | undefined;
+  readonly profileSet?: string | undefined;
 }
 
 export interface MonitorActions {
   /** Mount this session in the active pane. */
   select(agent: MonitorAgent): void;
-  /** Open a terminal; spatial views pass where the gesture happened. */
-  createAt(position?: { x: number; y: number }): void | Promise<void>;
+  /** Open a terminal; spatial views pass where the gesture happened, and the
+   * spawn bloom (or the list's menu) the desktop and profile the person chose. */
+  createAt(position?: { x: number; y: number }, target?: MonitorSpawnTarget): void | Promise<void>;
 }
 
 export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters> & {
@@ -157,6 +213,9 @@ export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, Moni
    * property — and a view that resolved its own would be a second reader of
    * the design system with its own idea of when to re-read it. */
   readonly palette: MonitorPalette;
+  /** The desktops and Agent Profiles a new terminal can be born under (the
+   * spawn bloom, SB). Absent: a hold creates at once, exactly as before it. */
+  readonly spawnMenu?: MonitorSpawnMenu | undefined;
 };
 
 /**

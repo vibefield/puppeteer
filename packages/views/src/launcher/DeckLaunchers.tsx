@@ -24,7 +24,7 @@ import {
   type LauncherKeyPane,
   type LauncherScope,
 } from './launcher-model.js';
-import type { LauncherAgent, LauncherOutcome, LauncherPort } from './launcher-port.js';
+import type { LauncherAgent, LauncherOutcome, LauncherPort, LauncherUnder } from './launcher-port.js';
 
 /**
  * How long after a key the launcher let by (a ⌘/⌃ chord) it asks the host
@@ -92,6 +92,12 @@ export interface DeckLaunchersProps {
   watchFirstFrame?: WatchFirstFrame | undefined;
   /** Reduced motion for the launches, when the host knows better than the media query. */
   reducedMotion?: boolean | undefined;
+  /**
+   * The Agent Profile a fresh pane's shell was born under, asked per pane
+   * (SB): its caption and its own agents (`LauncherUnder`). Undefined for a
+   * pane bound to none — it shows the shared `agents` and the plain caption.
+   */
+  paneUnder?: ((pane: { paneId: string; sessionId: string }) => LauncherUnder | undefined) | undefined;
 }
 
 /** One launch, held per PANE from the click to the first frame (C2): it outlives the launcher it came from. */

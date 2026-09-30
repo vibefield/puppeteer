@@ -88,10 +88,27 @@ export interface SwarmFrame {
   stateGlow: { inner: number; full: number; strength: number; count: number; speed: number; depth: number };
   theme: SwarmTheme;
   bodies: readonly RenderBody[];
-  /** Hold-to-create in flight: where, and how far along (0..1). */
-  hold?: { x: number; y: number; progress: number };
+  /** Hold-to-create in flight: where, and how far along (0..1). `frozen`: the
+   * spawn bloom's hub — the ring kept at full size, above everything the field
+   * draws (clearings included), at `opacity` (1 by default) as it shrinks away. */
+  hold?: { x: number; y: number; progress: number; frozen?: boolean; opacity?: number };
+  /** The field's quiet while the spawn bloom is open: the grid is drawn at
+   * (1 − veil). Bodies carry their own share in `RenderBody.opacity`. 0 or absent: none. */
+  veil?: number;
+  /** Solid ground cut out of everything drawn beneath (grid and bodies): where
+   * the bloom and its words stand, so nothing on the field shows through them.
+   * At most `MAX_CLEARINGS`; the rest are ignored. */
+  clearings?: readonly SwarmClearing[];
   marks?: readonly RenderMark[];
 }
+
+/** One clearing: solid out to its edge (a circle's radius, a rect's box), then
+ * fading back to nothing over `feather` px. CSS px, y down, like the bodies. */
+export type SwarmClearing =
+  | { kind: 'circle'; x: number; y: number; radius: number; feather: number }
+  | { kind: 'rect'; x: number; y: number; width: number; height: number; feather: number };
+
+export const MAX_CLEARINGS = 4;
 
 export interface SwarmRenderer {
   resize(width: number, height: number, dpr: number): void;
