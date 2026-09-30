@@ -476,3 +476,92 @@ describe('a birth on its way (the spawn bloom’s pending body)', () => {
     expect(withAgent.hollow).toBe(false);
   });
 });
+
+describe('the profile line (a terminal born under an Agent Profile)', () => {
+  const terminal = (profile: Parameters<typeof bubbleModel>[0]['profile'], row: Partial<MonitorAgent> = {}) =>
+    bubbleModel({
+      agent: agent({ project: '~', status: 'idle', ...row }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+      profile,
+    });
+  const lineOf = (model: ReturnType<typeof bubbleModel>) => model.copy.find((line) => line.key === 'profile');
+
+  it('names the default profile under its glyph, drawn filled, in the terminal’s label style', () => {
+    const model = terminal({ label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true });
+    expect(model.copy.map((line) => line.key)).toEqual(['name', 'sub', 'profile']);
+    const line = lineOf(model)!;
+    expect(line.text).toBe('Work');
+    // LABEL_STACKED: 7 px 800 uppercase, 0.1 tracking, at the supporting weight.
+    expect(line.style).toEqual({ size: 7, weight: 800, transform: 'uppercase', letterSpacing: 0.1 });
+    expect(line.opacity).toBe(SWARM_WEIGHT.supporting);
+    expect(line.tone).toBe('ink');
+    // The glyph leads like the folder: 1.5 × the size, then a 3 px gap.
+    expect(line.lead).toEqual({ kind: 'icon', icon: 'profile:briefcase:filled', size: 10.5, gap: 3 });
+    expect(model.ariaLabel).toBe('~, unassigned terminal, idle, under Work');
+  });
+
+  it('outlines a managed profile that is not the default', () => {
+    expect(lineOf(terminal({ label: 'Personal', glyph: 'house', kind: 'managed' }))?.lead?.icon).toBe('profile:house');
+  });
+
+  it('draws the laptop for the native set, whatever glyph it carries', () => {
+    const line = lineOf(terminal({ label: 'This Mac', glyph: 'rocket', kind: 'native', isDefault: true }));
+    expect(line?.text).toBe('This Mac');
+    expect(line?.lead?.icon).toBe('profile:laptop:filled');
+    expect(lineOf(terminal({ label: 'Default', kind: 'native' }))?.lead?.icon).toBe('profile:laptop');
+  });
+
+  it('falls back to the star for a token this build does not draw', () => {
+    expect(lineOf(terminal({ label: 'Odd', glyph: 'telescope' }))?.lead?.icon).toBe('profile:star');
+  });
+
+  it('draws no profile line without a profile', () => {
+    const model = terminal(undefined);
+    expect(lineOf(model)).toBeUndefined();
+    expect(model.ariaLabel).toBe('~, unassigned terminal, idle');
+  });
+
+  it('sits after the running line and its clock, and before a peer’s host line', () => {
+    const running = bubbleModel({
+      agent: agent({ status: 'working', session: session('a', 'foreground-job') }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+      runningSinceMs: NOW - 83_000,
+      profile: { label: 'Work', glyph: 'briefcase' },
+    });
+    expect(running.copy.map((line) => line.key)).toEqual(['name', 'command', 'elapsed', 'profile']);
+    const peer = terminal(
+      { label: 'Personal', glyph: 'house' },
+      {
+        remote: {
+          deviceId: 'mini',
+          deviceName: 'studio-mini',
+          remoteSessionId: 's1',
+          attachable: true,
+          hostWritable: true,
+          cwdLabel: '~',
+        },
+      },
+    );
+    expect(peer.copy.map((line) => line.key)).toEqual(['name', 'sub', 'profile', 'host']);
+  });
+
+  it('names the profile a birth on its way is opening under', () => {
+    const model = bubbleModel({
+      agent: agent({ project: '~', status: 'idle' }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+      opening: { sinceMs: NOW - 900 },
+      profile: { label: 'Work', glyph: 'briefcase', isDefault: true },
+    });
+    expect(model.copy.map((line) => [line.key, line.text])).toEqual([
+      ['name', '~'],
+      ['sub', 'opening'],
+      ['profile', 'Work'],
+    ]);
+  });
+});

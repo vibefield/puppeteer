@@ -1,4 +1,5 @@
 import type { MonitorBlocker } from '@vibecook/puppeteer-core';
+import { profileMarkName } from '../../icons/ProfileGlyph.js';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { formatUsd } from '../../monitor/cost-format.js';
@@ -124,8 +125,17 @@ export interface BubbleModelInput {
   workingShare?: number;
   /** The Agent Profile a terminal's shell was born under, when naming it tells
    * the person something (the desktop has more than one): one line in the
-   * terminal's label style, the profile's glyph and name (SB §2.10). */
-  profile?: { label: string; glyph?: string | undefined; kind?: 'native' | 'managed' | undefined } | undefined;
+   * terminal's label style, the profile's glyph and name (SB §2.10), after the
+   * empty or running line and before a peer's host line. The glyph is the
+   * laptop for the native set, and drawn filled for the desktop's default. */
+  profile?:
+    | {
+        label: string;
+        glyph?: string | undefined;
+        kind?: 'native' | 'managed' | undefined;
+        isDefault?: boolean | undefined;
+      }
+    | undefined;
   /** A birth on its way (the spawn bloom's pending body, SB §2.6): drawn hollow
    * where the person let go until the host's row arrives. For its first
    * `OPENING_QUIET_MS` it reads EMPTY and holds still; then its dashes turn and
@@ -173,6 +183,28 @@ function projectFolder(style: TextStyle, options: { solid?: boolean; tone?: Copy
     gap: 4,
     tone: options.tone ?? 'accent',
     ...(options.solid ? { opacity: SWARM_WEIGHT.title } : {}),
+  };
+}
+
+/** The atlas's name for a profile's mark: `profile:<mark>`, `:filled` for the desktop's default. */
+export function profileIcon(profile: NonNullable<BubbleModelInput['profile']>): string {
+  return `profile:${profileMarkName(profile.glyph, profile.kind)}${profile.isDefault ? ':filled' : ''}`;
+}
+
+/**
+ * The profile a terminal was born under, in the terminal's own label style: its
+ * glyph leads, as the folder leads the name, drawn at one and a half times the
+ * line's size with a 3 px gap (the prototype's `lead = size × 1.5 + 3`).
+ */
+function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLine {
+  return {
+    key: 'profile',
+    text: profile.label,
+    style: LABEL_STACKED,
+    opacity: SWARM_WEIGHT.supporting,
+    tone: 'ink',
+    gapBefore: 3,
+    lead: { kind: 'icon', icon: profileIcon(profile), size: LABEL_STACKED.size * 1.5, gap: 3 },
   };
 }
 
@@ -329,6 +361,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
             },
           ]
         : []),
+      ...(input.profile ? [profileLine(input.profile)] : []),
       // A peer's session wears its host on the body — the name and the
       // host's write policy, in both directions — so it cannot be read as
       // one of this machine's terminals (`remote-write.ts`).
@@ -356,11 +389,13 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       running,
       unread: false,
       ...(opening ? { pending: { turning } } : {}),
-      ariaLabel: opening
-        ? `${agent.project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
-        : remote
-          ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
-          : `${agent.project}, unassigned terminal, ${agent.status}`,
+      ariaLabel:
+        (opening
+          ? `${agent.project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
+          : remote
+            ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
+            : `${agent.project}, unassigned terminal, ${agent.status}`) +
+        (input.profile ? `, under ${input.profile.label}` : ''),
       title: remote ? `${remote.deviceName} · ${remoteWriteTitle(remote)} · ${agent.detail}` : agent.detail,
     };
   }

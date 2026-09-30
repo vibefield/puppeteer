@@ -69,72 +69,85 @@ export function suggestProfileGlyph(label: string): ProfileGlyphName {
   return PROFILE_GLYPHS[hash % PROFILE_GLYPHS.length]!;
 }
 
-function GlyphShape({ name }: { name: ProfileGlyphName | 'laptop' }): ReactElement {
-  switch (name) {
-    case 'laptop':
-      return (
-        <>
-          <rect x="4" y="4.5" width="12" height="8.5" rx="1.6" />
-          <path d="M2.5 15.5h15" />
-        </>
-      );
-    case 'briefcase':
-      return (
-        <>
-          <rect x="3" y="7" width="14" height="9" rx="2" />
-          <path d="M7.5 7V5.5A1.5 1.5 0 0 1 9 4h2a1.5 1.5 0 0 1 1.5 1.5V7M3 11h14" />
-        </>
-      );
-    case 'house':
-      return (
-        <>
-          <path d="M3.5 9.5 10 4l6.5 5.5V16h-13z" />
-          <path d="M8.5 16v-4h3v4" />
-        </>
-      );
-    case 'flask':
-      return (
-        <path d="M7.5 3.5h5M8.5 3.5v5.2l-4 6.8A1.2 1.2 0 0 0 5.5 17.3h9a1.2 1.2 0 0 0 1-1.8l-4-6.8V3.5M6.5 12.5h7" />
-      );
-    case 'leaf':
-      return (
-        <>
-          <path d="M4 16c0-7 4-11 12-12-1 8-5 12-12 12Z" />
-          <path d="m4 16 7-7" />
-        </>
-      );
-    case 'bolt':
-      return <path d="M11 3 4.5 11.5H9.5L9 17l6.5-8.5h-5z" />;
-    case 'star':
-      return <path d="m10 3.2 2 4.3 4.7.5-3.5 3.2 1 4.6L10 13.5l-4.2 2.3 1-4.6L3.3 8l4.7-.5z" />;
-    case 'moon':
-      return <path d="M15.5 12.2A6.2 6.2 0 0 1 7.8 4.5a6.2 6.2 0 1 0 7.7 7.7Z" />;
-    case 'cup':
-      return (
-        <>
-          <path d="M4.5 7h9.5v4.5a4 4 0 0 1-4 4H8.5a4 4 0 0 1-4-4z" />
-          <path d="M14 8.5h1a2 2 0 0 1 0 4h-1" />
-        </>
-      );
-    case 'rocket':
-      return (
-        <>
-          <path d="M10 3c3 2 4 6 3 9.5H7C6 8.5 7 5 10 3Z" />
-          <path d="M7 12.5 4.5 15h3M13 12.5l2.5 2.5h-3M10 12.5V17" />
-        </>
-      );
-    case 'book':
-      return (
-        <path d="M4 4.5h5a2 2 0 0 1 2 2v9.5a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-5a2 2 0 0 0-2 2v9.5a1.5 1.5 0 0 1 1.5-1.5H16z" />
-      );
-    case 'gamepad':
-      return (
-        <>
-          <path d="M6 6.5h8a4 4 0 0 1 4 4v1.5a3 3 0 0 1-5.4 1.8L12 13H8l-.6.8A3 3 0 0 1 2 12v-1.5a4 4 0 0 1 4-4Z" />
-          <path d="M6.5 9v3M5 10.5h3M13.5 10.5h.01" />
-        </>
-      );
-  }
+/** A mark's own name: one of the eleven tokens, or the native set's laptop. */
+export type ProfileMarkName = ProfileGlyphName | 'laptop';
+
+/** One shape of a mark on the 20-unit grid: a path, or a rounded box drawn as a `rect`. */
+export type ProfileGlyphShape =
+  | { readonly d: string }
+  | {
+      readonly rect: {
+        readonly x: number;
+        readonly y: number;
+        readonly width: number;
+        readonly height: number;
+        readonly rx: number;
+      };
+    };
+
+/**
+ * Every mark's shapes on the 20-unit grid: what `ProfileGlyph` draws, and what
+ * a renderer that rasterises its own copy draws from (the swarm's GPU atlas,
+ * `gpu/swarm-renderer.ts`), so there is one set of paths and never a second.
+ */
+export const PROFILE_GLYPH_SHAPES: Readonly<Record<ProfileMarkName, readonly ProfileGlyphShape[]>> = {
+  laptop: [{ rect: { x: 4, y: 4.5, width: 12, height: 8.5, rx: 1.6 } }, { d: 'M2.5 15.5h15' }],
+  briefcase: [
+    { rect: { x: 3, y: 7, width: 14, height: 9, rx: 2 } },
+    { d: 'M7.5 7V5.5A1.5 1.5 0 0 1 9 4h2a1.5 1.5 0 0 1 1.5 1.5V7M3 11h14' },
+  ],
+  house: [{ d: 'M3.5 9.5 10 4l6.5 5.5V16h-13z' }, { d: 'M8.5 16v-4h3v4' }],
+  flask: [{ d: 'M7.5 3.5h5M8.5 3.5v5.2l-4 6.8A1.2 1.2 0 0 0 5.5 17.3h9a1.2 1.2 0 0 0 1-1.8l-4-6.8V3.5M6.5 12.5h7' }],
+  leaf: [{ d: 'M4 16c0-7 4-11 12-12-1 8-5 12-12 12Z' }, { d: 'm4 16 7-7' }],
+  bolt: [{ d: 'M11 3 4.5 11.5H9.5L9 17l6.5-8.5h-5z' }],
+  star: [{ d: 'm10 3.2 2 4.3 4.7.5-3.5 3.2 1 4.6L10 13.5l-4.2 2.3 1-4.6L3.3 8l4.7-.5z' }],
+  moon: [{ d: 'M15.5 12.2A6.2 6.2 0 0 1 7.8 4.5a6.2 6.2 0 1 0 7.7 7.7Z' }],
+  cup: [{ d: 'M4.5 7h9.5v4.5a4 4 0 0 1-4 4H8.5a4 4 0 0 1-4-4z' }, { d: 'M14 8.5h1a2 2 0 0 1 0 4h-1' }],
+  rocket: [{ d: 'M10 3c3 2 4 6 3 9.5H7C6 8.5 7 5 10 3Z' }, { d: 'M7 12.5 4.5 15h3M13 12.5l2.5 2.5h-3M10 12.5V17' }],
+  book: [
+    { d: 'M4 4.5h5a2 2 0 0 1 2 2v9.5a1.5 1.5 0 0 0-1.5-1.5H4zM16 4.5h-5a2 2 0 0 0-2 2v9.5a1.5 1.5 0 0 1 1.5-1.5H16z' },
+  ],
+  gamepad: [
+    { d: 'M6 6.5h8a4 4 0 0 1 4 4v1.5a3 3 0 0 1-5.4 1.8L12 13H8l-.6.8A3 3 0 0 1 2 12v-1.5a4 4 0 0 1 4-4Z' },
+    { d: 'M6.5 9v3M5 10.5h3M13.5 10.5h.01' },
+  ],
+};
+
+/** The mark a set draws: the laptop for the native set, else its token's (the star for one this build does not draw). */
+export function profileMarkName(glyph: string | undefined, kind: 'native' | 'managed' | undefined): ProfileMarkName {
+  return kind === 'native' ? 'laptop' : profileGlyphName(glyph);
+}
+
+/** A mark's shapes as SVG elements, for a renderer that builds its own `<svg>` round them. */
+export function profileGlyphMarkup(name: ProfileMarkName): string {
+  return PROFILE_GLYPH_SHAPES[name]
+    .map((shape) =>
+      'd' in shape
+        ? `<path d="${shape.d}"/>`
+        : `<rect x="${shape.rect.x}" y="${shape.rect.y}" width="${shape.rect.width}" height="${shape.rect.height}" rx="${shape.rect.rx}"/>`,
+    )
+    .join('');
+}
+
+function GlyphShape({ name }: { name: ProfileMarkName }): ReactElement {
+  return (
+    <>
+      {PROFILE_GLYPH_SHAPES[name].map((shape, index) =>
+        'd' in shape ? (
+          <path key={index} d={shape.d} />
+        ) : (
+          <rect
+            key={index}
+            x={shape.rect.x}
+            y={shape.rect.y}
+            width={shape.rect.width}
+            height={shape.rect.height}
+            rx={shape.rect.rx}
+          />
+        ),
+      )}
+    </>
+  );
 }
 
 export interface ProfileGlyphProps {
@@ -158,7 +171,7 @@ export function ProfileGlyph({
   title,
   className,
 }: ProfileGlyphProps): ReactElement {
-  const name = kind === 'native' ? 'laptop' : profileGlyphName(glyph);
+  const name = profileMarkName(glyph, kind);
   return (
     <svg
       viewBox="0 0 20 20"

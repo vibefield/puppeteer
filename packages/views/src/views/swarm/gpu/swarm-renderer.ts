@@ -12,6 +12,7 @@ import {
 import type { Rgba } from './color.js';
 import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
+import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
 import clearingShader from './shaders/clearing.wgsl.js';
@@ -196,6 +197,7 @@ const ICON_SVG: Record<string, string> = {
 const FILLED_ICONS = new Set(['folder-solid']);
 
 function iconSvg(name: string): string | undefined {
+  if (name.startsWith(PROFILE_ICON_PREFIX)) return profileIconSvg(name.slice(PROFILE_ICON_PREFIX.length));
   const inner = ICON_SVG[name];
   if (!inner) return undefined;
   const paint = FILLED_ICONS.has(name)
