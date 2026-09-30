@@ -839,7 +839,7 @@ export function keyBloom(env: BloomEnv, state: BloomState, key: string): BloomKe
 
 /** A bud as drawn now. */
 export interface BloomBudView extends BloomBud {
-  /** Targeted: × BLOOM.hot, on --vf-ease-lift; its label too; aria-checked. */
+  /** Targeted: × BLOOM.hot, on --vf-ease-lift; its label too. A menuitem takes no aria-checked: the target is said by the words' live region (and aria-activedescendant for keys). */
   readonly hot: boolean;
   /** 0..1: how far the nearest bud leans in before it is targeted (scale 1 + lean × BLOOM.near). */
   readonly lean: number;
