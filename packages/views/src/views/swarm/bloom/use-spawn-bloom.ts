@@ -48,6 +48,9 @@ export interface SpawnBloomHost {
   /** Motion is on: no reduced-motion preference and the host's animations switch on. */
   readonly motion: () => boolean;
   readonly createAt: MonitorActions['createAt'];
+  /** A bloom's commit asked the host for a terminal (not an instant create): the swarm draws the
+   * birth until its row arrives. `answer` is what `createAt` returned. */
+  readonly born?: ((choice: BloomChoice, answer: void | Promise<void>) => void) | undefined;
 }
 
 /** The frame's hub: the hold ring frozen at full size while the bloom is open, fading once it closes. */
@@ -81,6 +84,8 @@ export interface SpawnBloomControl {
   cancel(): void;
   /** The hub for the frame at `time` (the render loop's clock). */
   hub(time: number): SpawnBloomHub | undefined;
+  /** The bloom now, and when it closed (the render loop's clock), for the field under it. */
+  field(): { readonly state: BloomState | null; readonly closedAt: number };
   onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void;
   onBlur(event: ReactFocusEvent<HTMLDivElement>): void;
 }
@@ -203,15 +208,17 @@ export function createSpawnBloomEngine(
     if (next.mode !== 'hold') giveBackFocus();
   };
 
-  const create = (choice: BloomChoice): void => {
+  const create = (choice: BloomChoice): void | Promise<void> => {
     const at = { x: choice.at.x, y: choice.at.y };
     const target = spawnTarget(choice);
-    void (target ? host.current.createAt(at, target) : host.current.createAt(at));
+    return target ? host.current.createAt(at, target) : host.current.createAt(at);
   };
 
   const finish = (commit: BloomCommit): void => {
     set(commit.state);
-    if (commit.choice) create(commit.choice);
+    if (!commit.choice) return;
+    const answer = create(commit.choice);
+    host.current.born?.(commit.choice, answer);
   };
 
   const cancel = (): void => {
@@ -234,7 +241,7 @@ export function createSpawnBloomEngine(
     m.reduced = !host.current.motion();
     const opened = openBloom(env(), P, mode, menu);
     if (isInstant(opened)) {
-      create(opened.instant);
+      void create(opened.instant);
       return false;
     }
     m.keepFocus = false;
@@ -351,6 +358,7 @@ export function createSpawnBloomEngine(
       m.keepFocus = true;
       set(cancelBloom(env(), s));
     },
+    field: () => ({ state: m.state, closedAt: m.closedAt }),
     current: () => m.state,
     drop() {
       m.returnFocus = null;

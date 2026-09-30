@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MonitorSpawnMenu, MonitorSpawnTarget } from '../../../monitor/types.js';
 import { BLOOM } from './constants.js';
 import type { BloomPoint } from './geometry.js';
-import type { BloomState } from './model.js';
+import type { BloomChoice, BloomState } from './model.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';
 import { bloomExitMs, createSpawnBloomEngine, spawnTarget, type SpawnBloomHost } from './use-spawn-bloom.js';
 
@@ -23,11 +23,13 @@ interface Harness {
   engine: ReturnType<typeof createSpawnBloomEngine>;
   created: Array<[BloomPoint | undefined, MonitorSpawnTarget | undefined, number]>;
   renders: Array<BloomState | null>;
+  births: Array<{ choice: BloomChoice; answer: void | Promise<void> }>;
 }
 
 function harness(menu: MonitorSpawnMenu | undefined): Harness {
   const created: Harness['created'] = [];
   const renders: Harness['renders'] = [];
+  const births: Harness['births'] = [];
   const host: SpawnBloomHost = {
     container: { current: { clientWidth: 1000, clientHeight: 600 } as HTMLElement },
     readChrome: () => [],
@@ -36,12 +38,14 @@ function harness(menu: MonitorSpawnMenu | undefined): Harness {
     motion: () => true,
     createAt: (...args: [BloomPoint?, MonitorSpawnTarget?]) => {
       created.push([args[0], args[1], args.length]);
+      return Promise.resolve();
     },
+    born: (choice, answer) => births.push({ choice, answer }),
   };
   const engine = createSpawnBloomEngine({ current: host }, { current: menu }, { current: null }, (state) =>
     renders.push(state),
   );
-  return { engine, created, renders };
+  return { engine, created, renders, births };
 }
 
 const pointer = (pointerId = 1, button = 0) =>
@@ -99,6 +103,8 @@ describe('a completed hold', () => {
     h.engine.held(P, 1);
     expect(h.created).toEqual([[P, { deviceId: 'studio', profileSet: 'native' }, 2]]);
     expect(h.engine.current()).toBeNull();
+    // today's hold draws no birth of its own
+    expect(h.births).toEqual([]);
   });
 
   it('with a choice blooms, follows only its own pointer, and commits where it is let go', () => {
@@ -116,7 +122,12 @@ describe('a completed hold', () => {
     expect(h.engine.current()?.target).toMatchObject({ kind: 'profile' });
     expect(h.engine.pointerUp(pointer(7), demo)).toBe(true);
     expect(h.created).toEqual([[demo, { deviceId: 'studio', profileSet: 'demo' }, 2]]);
+    // the birth is reported with the host's answer, so the swarm can draw it until its row comes
+    expect(h.births).toHaveLength(1);
+    expect(h.births[0]?.choice).toMatchObject({ at: demo, profileSet: 'demo', via: 'profile' });
+    expect(h.births[0]?.answer).toBeInstanceOf(Promise);
     const closed = h.engine.current();
+    expect(h.engine.field()).toEqual({ state: closed, closedAt: performance.now() });
     expect(closed?.closed?.reason).toBe('commit');
     expect(h.engine.isOpen()).toBe(false);
     // the hub fades over the retract, then the bloom is dropped once its exit has run
