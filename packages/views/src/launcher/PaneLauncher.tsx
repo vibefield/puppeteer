@@ -21,6 +21,7 @@ import type {
   LauncherHistoryStatus,
   LauncherPort,
   LauncherSession,
+  LauncherUnder,
   LauncherWordHit,
 } from './launcher-port.js';
 
@@ -89,8 +90,10 @@ export interface PaneLauncherProps {
    * Without it, a click in a resting launcher leaves the selection alone.
    */
   onActivate?: (() => void) | undefined;
-  /** The agents in launch order (`orderAgents`). */
+  /** The agents in launch order (`orderAgents`): the pane's own when its profile says (`paneAgents`). */
   agents: readonly LauncherAgent[];
+  /** The Agent Profile the pane's shell was born under: the caption and the hint name it (SB). */
+  under?: LauncherUnder | undefined;
   port: LauncherPort;
   /** The scope the field opens on; remembered across launchers by the mounter. */
   scope: LauncherScope;
@@ -138,6 +141,7 @@ export function PaneLauncher({
   active,
   onActivate,
   agents,
+  under,
   port,
   scope,
   onScopeChange,
@@ -458,6 +462,7 @@ export function PaneLauncher({
     <PaneLauncherChrome
       sessionId={sessionId}
       agents={agents}
+      {...(under ? { under } : {})}
       folder={folder}
       {...(color ? { color } : {})}
       active={active}

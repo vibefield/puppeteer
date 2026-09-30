@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PaneLauncherChrome, launcherOptionId, type PaneLauncherChromeProps } from './PaneLauncherChrome.js';
-import { buildLauncherResults, orderAgents, type LauncherScope } from './launcher-model.js';
+import { buildLauncherResults, cantLaunchLine, orderAgents, type LauncherScope } from './launcher-model.js';
 import type { LauncherAgent, LauncherHistoryStatus, LauncherSession, LauncherWordHit } from './launcher-port.js';
 
 // The launcher's MARKUP, statically, for every state of pass 3 §19: what a
@@ -348,5 +348,53 @@ describe('PaneLauncherChrome · the field open', () => {
 
   it('keeps option ids unique per pane and well formed', () => {
     expect(launcherOptionId('term 1/a', 2)).toBe('vf-pane-launcher-term_1_a-option-2');
+  });
+});
+
+describe('PaneLauncherChrome · a pane born under a profile (SB)', () => {
+  const WORK = { label: 'Work', glyph: 'briefcase', kind: 'managed' as const, isDefault: true };
+
+  it('captions the agents New · Under, the profile’s glyph and its name, and keeps last used first', () => {
+    const markup = render({ under: WORK });
+    expect(markup).toContain('<span class="vf-pane-launcher-cap-under">New · Under <svg');
+    expect(markup).toContain('data-profile-glyph="briefcase"');
+    // The desktop's default is drawn filled, as everywhere a profile is named.
+    expect(markup).toMatch(/<svg[^>]*width="11"[^>]*fill="currentColor"[^>]*data-profile-glyph="briefcase"/);
+    expect(markup).toContain('<b>Work</b></span><span>last used first</span>');
+    expect(markup).toContain('aria-label="Launch an agent in this pane, under Work"');
+    expect(markup).toContain('or just type · this shell is under Work');
+    expect(markup).not.toContain('<span>New</span>');
+  });
+
+  it('outlines a profile that is not the default, and draws the machine’s own as the laptop', () => {
+    const personal = render({ under: { label: 'Personal', glyph: 'house', kind: 'managed' } });
+    expect(personal).toMatch(/<svg[^>]*fill="none"[^>]*data-profile-glyph="house"/);
+    expect(personal).toContain('<b>Personal</b>');
+    const native = render({ under: { label: 'This Mac', glyph: 'rocket', kind: 'native' } });
+    expect(native).toContain('data-profile-glyph="laptop"');
+  });
+
+  it('shows the pane’s own agents, an agent without a sign-in off with its reason and its failure line', () => {
+    const agents: LauncherAgent[] = orderAgents([
+      { providerId: 'claude', label: 'Claude Code', lastLaunchedAt: NOW - HOUR },
+      { providerId: 'codex', label: 'Codex', unavailable: 'no sign-in' },
+    ]);
+    const markup = render({ under: { ...WORK, agents }, agents });
+    expect(count(markup, 'class="vf-pane-launcher-agent"')).toBe(1);
+    expect(count(markup, 'class="vf-pane-launcher-agent is-off"')).toBe(1);
+    expect(markup).toContain('<small>no sign-in</small>');
+    expect(markup).toContain('title="Codex · no sign-in"');
+    expect(count(markup, 'aria-disabled="true"')).toBe(1);
+    expect(markup).toContain('<kbd>⌥1</kbd>');
+    expect(markup).not.toContain('<kbd>⌥2</kbd>');
+    const refused = render({ under: { ...WORK, agents }, agents, failure: cantLaunchLine(agents[1]!) });
+    expect(refused).toContain('<p class="vf-pane-launcher-failure" role="alert">Codex can’t launch: no sign-in</p>');
+  });
+
+  it('says nothing of a profile in a pane born under none', () => {
+    const markup = render();
+    expect(markup).toContain('<span>New</span><span>last used first</span>');
+    expect(markup).not.toContain('data-profile-glyph');
+    expect(markup).toContain('aria-label="Launch an agent in this pane"');
   });
 });

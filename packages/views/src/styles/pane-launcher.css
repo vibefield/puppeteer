@@ -273,6 +273,30 @@
   text-transform: uppercase;
 }
 
+/* A shell born under an Agent Profile (SB): "New · Under", then the profile's
+   glyph and name stepped up toward the ink, as the spawn bloom names it. */
+.vf-pane-launcher-cap-under {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.vf-pane-launcher-cap-under svg {
+  display: block;
+  flex: none;
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+}
+
+.vf-pane-launcher-cap-under b {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vf-pane-launcher-agents {
   display: grid;
   flex: none;
