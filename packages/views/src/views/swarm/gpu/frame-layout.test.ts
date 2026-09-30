@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { SWARM_WEIGHT } from '../weight.js';
-import { FRAME_FLOATS, FRAME_LAYOUT, packFrame } from './frame-layout.js';
+import { CLEARING_FLOATS, FRAME_FLOATS, FRAME_LAYOUT, MAX_CLEARINGS, packFrame } from './frame-layout.js';
 import common from './shaders/common.wgsl.js';
-import type { SwarmFrame, SwarmTheme } from './swarm-renderer.js';
+import type { SwarmClearing, SwarmFrame, SwarmTheme } from './swarm-renderer.js';
 
 // The frame uniform's layout, without a GPU: the offsets the renderer packs at
 // are the `Frame` struct's own, and each field of a frame lands where the
@@ -43,29 +43,46 @@ function pack(frame: SwarmFrame): Float32Array {
   return target;
 }
 
-/** The `Frame` struct's members as common.wgsl declares them, in order. */
-function frameStruct(): { name: string; type: string }[] {
-  const body = /struct Frame \{([\s\S]*?)\n\};/.exec(common)?.[1] ?? '';
+/** A struct's members as common.wgsl declares them, in order. */
+function wgslStruct(name: string): { name: string; type: string }[] {
+  const body = new RegExp(`struct ${name} \\{([\\s\\S]*?)\\n\\};`).exec(common)?.[1] ?? '';
   return body
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith('//'))
     .map((line) => {
-      const match = /^(\w+): ([^,]+),$/.exec(line);
-      if (!match) throw new Error(`unreadable Frame member: ${line}`);
+      const match = /^(\w+): (.+),$/.exec(line);
+      if (!match) throw new Error(`unreadable ${name} member: ${line}`);
       return { name: match[1]!, type: match[2]! };
     });
 }
 
+/** Floats a member takes: a vec4, or an array of structs made of vec4s. */
+function floatsOf(type: string): number {
+  if (type === 'vec4f') return 4;
+  const array = /^array<(\w+), (\d+)>$/.exec(type);
+  if (!array) throw new Error(`unsized member type: ${type}`);
+  return Number(array[2]) * wgslStruct(array[1]!).reduce((sum, member) => sum + floatsOf(member.type), 0);
+}
+
+function clearingOf(data: Float32Array, index: number): number[] {
+  const offset = FRAME_LAYOUT.clearings + index * CLEARING_FLOATS;
+  return [...data.slice(offset, offset + CLEARING_FLOATS)];
+}
+
 describe('the frame uniform', () => {
-  it('packs at the Frame struct’s own offsets, one vec4 per member', () => {
-    const members = frameStruct();
-    expect(members.every((member) => member.type === 'vec4f')).toBe(true);
+  it('packs at the Frame struct’s own offsets', () => {
+    const members = wgslStruct('Frame');
     expect(members.map((member) => member.name)).toEqual(Object.keys(FRAME_LAYOUT));
-    members.forEach((member, index) => {
-      expect(FRAME_LAYOUT[member.name as keyof typeof FRAME_LAYOUT]).toBe(index * 4);
-    });
-    expect(FRAME_FLOATS).toBe(members.length * 4);
+    let offset = 0;
+    for (const member of members) {
+      expect(FRAME_LAYOUT[member.name as keyof typeof FRAME_LAYOUT], member.name).toBe(offset);
+      offset += floatsOf(member.type);
+    }
+    expect(FRAME_FLOATS).toBe(offset);
+    expect(floatsOf('array<Clearing, 1>')).toBe(CLEARING_FLOATS);
+    expect(common).toContain(`clearings: array<Clearing, ${MAX_CLEARINGS}>,`);
+    expect(common).toContain(`const MAX_CLEARINGS: u32 = ${MAX_CLEARINGS}u;`);
   });
 
   it('writes every float', () => {
@@ -108,6 +125,46 @@ describe('the frame uniform', () => {
     const closing = pack(frameOf({ hold: { x: 50, y: 60, progress: 1, frozen: true, opacity: 0.35 } }));
     expect(closing[FRAME_LAYOUT.pointer + 2]).toBe(1);
     expect(closing[FRAME_LAYOUT.pointer + 3]).toBeCloseTo(0.35);
+  });
+
+  it('packs no clearing by default, and zeroes every slot', () => {
+    const data = pack(frameOf());
+    expect(data[FRAME_LAYOUT.clearing]).toBe(0);
+    for (let index = 0; index < MAX_CLEARINGS; index += 1) {
+      expect(clearingOf(data, index)).toEqual(new Array(CLEARING_FLOATS).fill(0));
+    }
+  });
+
+  it('packs a circle by its centre and radius, and a rect by its centre and half extents', () => {
+    const data = pack(
+      frameOf({
+        clearings: [
+          { kind: 'circle', x: 200, y: 150, radius: 108, feather: 44 },
+          { kind: 'rect', x: 40, y: 30, width: 300, height: 90, feather: 64, opacity: 0.5 },
+        ],
+      }),
+    );
+    expect(data[FRAME_LAYOUT.clearing]).toBe(2);
+    expect(clearingOf(data, 0)).toEqual([200, 150, 108, 0, 44, 0, 1, 0]);
+    expect(clearingOf(data, 1)).toEqual([190, 75, 150, 45, 64, 1, 0.5, 0]);
+    expect(clearingOf(data, 2)).toEqual(new Array(CLEARING_FLOATS).fill(0));
+  });
+
+  it('keeps the first MAX_CLEARINGS clearings and clamps what cannot be drawn', () => {
+    const many: SwarmClearing[] = Array.from({ length: MAX_CLEARINGS + 2 }, (_, index) => ({
+      kind: 'circle',
+      x: index,
+      y: 0,
+      radius: 10,
+      feather: 5,
+    }));
+    const data = pack(frameOf({ clearings: many }));
+    expect(data[FRAME_LAYOUT.clearing]).toBe(MAX_CLEARINGS);
+    expect(clearingOf(data, MAX_CLEARINGS - 1)[0]).toBe(MAX_CLEARINGS - 1);
+    const odd = pack(
+      frameOf({ clearings: [{ kind: 'rect', x: 0, y: 0, width: -4, height: 8, feather: -1, opacity: 3 }] }),
+    );
+    expect(clearingOf(odd, 0)).toEqual([0, 4, 0, 4, 0, 1, 1, 0]);
   });
 
   it('paints the ring in the theme: surface at 74%, rim at the supporting weight, the ink', () => {

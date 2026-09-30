@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import body from './body.wgsl.js';
+import clearing from './clearing.wgsl.js';
 import common from './common.wgsl.js';
 import field from './field.wgsl.js';
 import glow from './glow.wgsl.js';
@@ -14,7 +15,7 @@ import text from './text.wgsl.js';
 // `.wgsl.ts` twins are what ships, so no bundler needs a text loader. This is
 // the drift guard: a shader edited in one place and not the other fails here.
 const here = dirname(fileURLToPath(import.meta.url));
-const twins: Record<string, string> = { body, common, field, glow, hub, shadow, text };
+const twins: Record<string, string> = { body, clearing, common, field, glow, hub, shadow, text };
 
 describe('the shader string modules', () => {
   for (const [name, source] of Object.entries(twins)) {

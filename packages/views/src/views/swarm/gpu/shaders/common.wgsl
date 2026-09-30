@@ -6,6 +6,16 @@
 // straight-alpha sRGB in the buffers and premultiplied on output, composited
 // over the window's glass with (one, one-minus-src-alpha).
 
+// One of the spawn bloom's clearings (clearing.wgsl).
+struct Clearing {
+  // a circle's centre and radius (w: 0), or a rect's centre and half extents (CSS px)
+  shape: vec4f,
+  // feather (px), kind (0 circle, 1 rect), opacity (0..1), unused
+  edge: vec4f,
+};
+
+const MAX_CLEARINGS: u32 = 4u;
+
 struct Frame {
   // width, height (CSS px), device pixel ratio, time (s; frozen when motion is off)
   viewport: vec4f,
@@ -26,6 +36,9 @@ struct Frame {
   glowBand: vec4f,
   // and its motion: crests across the radius, crests a second, trough depth, unused
   glowWave: vec4f,
+  // the spawn bloom's clearings: how many of `clearings` are set; y/z/w unused
+  clearing: vec4f,
+  clearings: array<Clearing, 4>,
 };
 
 struct Body {

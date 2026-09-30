@@ -1,6 +1,6 @@
 import { SWARM_WEIGHT } from '../weight.js';
 import type { Rgba } from './color.js';
-import type { SwarmFrame } from './swarm-renderer.js';
+import type { SwarmClearing, SwarmFrame } from './swarm-renderer.js';
 
 // The frame uniform, float for float: what `common.wgsl`'s `Frame` struct
 // reads. Pure, so the layout is testable without a GPU; the renderer packs
@@ -25,9 +25,16 @@ export const FRAME_LAYOUT = {
   glowBand: 40,
   /** and its motion: count, speed, depth, unused */
   glowWave: 44,
+  /** how many clearings are set, unused ×3 */
+  clearing: 48,
+  /** `MAX_CLEARINGS` × `Clearing`: shape (centre x, y, radius | half w, half h), edge (feather, kind, opacity, 0) */
+  clearings: 52,
 } as const;
 
-export const FRAME_FLOATS = 48;
+/** The most clearings a frame draws; the rest are ignored. `clearing.wgsl` loops to the same bound. */
+export const MAX_CLEARINGS = 4;
+export const CLEARING_FLOATS = 8;
+export const FRAME_FLOATS = FRAME_LAYOUT.clearings + MAX_CLEARINGS * CLEARING_FLOATS;
 
 /** Where a frame is drawn: the canvas in CSS px, its pixel ratio, and the renderer's held clock (s). */
 export interface FrameView {
@@ -82,4 +89,38 @@ export function packFrame(target: Float32Array, frame: SwarmFrame, view: FrameVi
   target[L.glowWave + 1] = frame.stateGlow.speed;
   target[L.glowWave + 2] = frame.stateGlow.depth;
   target[L.glowWave + 3] = 0;
+  const clearings = frame.clearings ?? [];
+  const count = Math.min(clearings.length, MAX_CLEARINGS);
+  target[L.clearing] = count;
+  target[L.clearing + 1] = 0;
+  target[L.clearing + 2] = 0;
+  target[L.clearing + 3] = 0;
+  for (let index = 0; index < MAX_CLEARINGS; index += 1) {
+    packClearing(target, L.clearings + index * CLEARING_FLOATS, index < count ? clearings[index] : undefined);
+  }
+}
+
+/** One clearing as the shader reads it: a rect by its centre and half extents. */
+function packClearing(target: Float32Array, offset: number, clearing: SwarmClearing | undefined): void {
+  if (!clearing) {
+    target.fill(0, offset, offset + CLEARING_FLOATS);
+    return;
+  }
+  if (clearing.kind === 'circle') {
+    target[offset] = clearing.x;
+    target[offset + 1] = clearing.y;
+    target[offset + 2] = Math.max(0, clearing.radius);
+    target[offset + 3] = 0;
+  } else {
+    const halfWidth = Math.max(0, clearing.width) / 2;
+    const halfHeight = Math.max(0, clearing.height) / 2;
+    target[offset] = clearing.x + halfWidth;
+    target[offset + 1] = clearing.y + halfHeight;
+    target[offset + 2] = halfWidth;
+    target[offset + 3] = halfHeight;
+  }
+  target[offset + 4] = Math.max(0, clearing.feather);
+  target[offset + 5] = clearing.kind === 'rect' ? 1 : 0;
+  target[offset + 6] = clamp01(clearing.opacity ?? 1);
+  target[offset + 7] = 0;
 }
