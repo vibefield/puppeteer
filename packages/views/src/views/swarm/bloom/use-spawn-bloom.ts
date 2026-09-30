@@ -49,8 +49,8 @@ export interface SpawnBloomHost {
   readonly motion: () => boolean;
   readonly createAt: MonitorActions['createAt'];
   /** A bloom's commit asked the host for a terminal (not an instant create): the swarm draws the
-   * birth until its row arrives. `answer` is what `createAt` returned. */
-  readonly born?: ((choice: BloomChoice, answer: void | Promise<void>) => void) | undefined;
+   * birth until its row arrives. `answer` settles as `createAt` did (a throw is a rejection). */
+  readonly born?: ((choice: BloomChoice, answer: Promise<void>) => void) | undefined;
 }
 
 /** The frame's hub: the hold ring frozen at full size while the bloom is open, fading once it closes. */
@@ -94,6 +94,21 @@ export interface SpawnBloomControl {
 export function spawnTarget(choice: Pick<BloomChoice, 'deviceId' | 'profileSet'>): MonitorSpawnTarget | undefined {
   if (choice.deviceId === undefined && choice.profileSet === undefined) return undefined;
   return { deviceId: choice.deviceId, profileSet: choice.profileSet };
+}
+
+/** Ask the host for a terminal and never leave its failure unhandled: a host that cannot open one
+ * says why itself (VibeField announces, then rejects), so a rejection — or a throw, which becomes
+ * one — is caught here. The answer is returned for whoever still wants to know how it ended. */
+export function createQuietly(run: () => void | Promise<void>): Promise<void> {
+  let answer: void | Promise<void>;
+  try {
+    answer = run();
+  } catch (error) {
+    answer = Promise.reject(error);
+  }
+  const settled = Promise.resolve(answer);
+  settled.catch(() => undefined);
+  return settled;
 }
 
 /** How long a closed bloom stays for its exit: the buds home, the words' hold and their step out. */
@@ -208,10 +223,10 @@ export function createSpawnBloomEngine(
     if (next.mode !== 'hold') giveBackFocus();
   };
 
-  const create = (choice: BloomChoice): void | Promise<void> => {
+  const create = (choice: BloomChoice): Promise<void> => {
     const at = { x: choice.at.x, y: choice.at.y };
     const target = spawnTarget(choice);
-    return target ? host.current.createAt(at, target) : host.current.createAt(at);
+    return createQuietly(() => (target ? host.current.createAt(at, target) : host.current.createAt(at)));
   };
 
   const finish = (commit: BloomCommit): void => {
@@ -255,7 +270,7 @@ export function createSpawnBloomEngine(
     held(point, pointerId) {
       const menu = menuOfHost.current;
       if (!menu) {
-        void host.current.createAt({ x: point.x, y: point.y });
+        void createQuietly(() => host.current.createAt({ x: point.x, y: point.y }));
         return;
       }
       m.pointer = pointerId;

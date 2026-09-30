@@ -5,7 +5,7 @@ import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.j
 import { everyReceded } from '../../monitor/recede.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { menuOf } from '../swarm/bloom/menu.js';
-import { spawnTarget } from '../swarm/bloom/use-spawn-bloom.js';
+import { createQuietly, spawnTarget } from '../swarm/bloom/use-spawn-bloom.js';
 import { normalizeListParameters } from './list-parameters.js';
 import { ListSpawnMenu } from './ListSpawnMenu.js';
 
@@ -43,7 +43,8 @@ export function AgentList({ agents, parameters, actions, palette, spawnMenu }: A
       return;
     }
     const target = menu ? spawnTarget({ deviceId: menu.hub.device?.id, profileSet: menu.hub.profile?.id }) : undefined;
-    void (target ? actions.createAt(undefined, target) : actions.createAt());
+    // the host says why a create failed; its rejection is caught, never left unhandled
+    void createQuietly(() => (target ? actions.createAt(undefined, target) : actions.createAt()));
   };
   const ordered = useMemo(() => [...agents].sort(compareAgents), [agents]);
   const shown = ordered.filter((agent) => agent.receded !== true).length;
@@ -83,7 +84,7 @@ export function AgentList({ agents, parameters, actions, palette, spawnMenu }: A
           onChoose={(target) => {
             setSpawnOpen(false);
             newRef.current?.focus({ preventScroll: true });
-            void actions.createAt(undefined, target);
+            void createQuietly(() => actions.createAt(undefined, target));
           }}
           onClose={(why) => {
             setSpawnOpen(false);

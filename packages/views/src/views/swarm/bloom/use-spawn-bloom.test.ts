@@ -10,7 +10,13 @@ import { BLOOM } from './constants.js';
 import type { BloomPoint } from './geometry.js';
 import type { BloomChoice, BloomState } from './model.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';
-import { bloomExitMs, createSpawnBloomEngine, spawnTarget, type SpawnBloomHost } from './use-spawn-bloom.js';
+import {
+  bloomExitMs,
+  createQuietly,
+  createSpawnBloomEngine,
+  spawnTarget,
+  type SpawnBloomHost,
+} from './use-spawn-bloom.js';
 
 // AgentSwarm's routing into the bloom, driven without a document: the events
 // are the least each method reads, and the clock is vitest's. What this cannot
@@ -23,10 +29,12 @@ interface Harness {
   engine: ReturnType<typeof createSpawnBloomEngine>;
   created: Array<[BloomPoint | undefined, MonitorSpawnTarget | undefined, number]>;
   renders: Array<BloomState | null>;
-  births: Array<{ choice: BloomChoice; answer: void | Promise<void> }>;
+  births: Array<{ choice: BloomChoice; answer: Promise<void> }>;
 }
 
-function harness(menu: MonitorSpawnMenu | undefined): Harness {
+type CreateAt = (...args: [BloomPoint?, MonitorSpawnTarget?]) => void | Promise<void>;
+
+function harness(menu: MonitorSpawnMenu | undefined, answer?: CreateAt): Harness {
   const created: Harness['created'] = [];
   const renders: Harness['renders'] = [];
   const births: Harness['births'] = [];
@@ -38,7 +46,7 @@ function harness(menu: MonitorSpawnMenu | undefined): Harness {
     motion: () => true,
     createAt: (...args: [BloomPoint?, MonitorSpawnTarget?]) => {
       created.push([args[0], args[1], args.length]);
-      return Promise.resolve();
+      return answer ? answer(...args) : Promise.resolve();
     },
     born: (choice, answer) => births.push({ choice, answer }),
   };
@@ -317,5 +325,59 @@ describe('the host’s side', () => {
     h.engine.drop();
     expect(h.engine.current()).toBeNull();
     expect(h.engine.hub(performance.now())).toBeUndefined();
+  });
+});
+
+describe('a host that cannot open a terminal', () => {
+  /** Rejections nobody handled, collected until the next macrotask (Node reports them after the microtasks). */
+  async function unhandledDuring(run: () => void | Promise<void>): Promise<unknown[]> {
+    const seen: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      seen.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      await run();
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+    return seen;
+  }
+  const refuse: CreateAt = () => Promise.reject(new Error('refused'));
+  const explode: CreateAt = () => {
+    throw new Error('thrown');
+  };
+
+  it('leaves no rejection unhandled: a hold without a menu, an instant create, a commit', async () => {
+    for (const answer of [refuse, explode]) {
+      const seen = await unhandledDuring(() => {
+        harness(undefined, answer).engine.held(P, 1);
+        harness(BLOOM_SCENARIOS['one-one'], answer).engine.held(P, 1);
+        const h = harness(BLOOM_SCENARIOS['one-three'], answer);
+        h.engine.held(P, 1);
+        const demo = budAt(h.engine.current(), 'studio', 'demo');
+        h.engine.pointerMove(pointer(1), demo);
+        h.engine.pointerUp(pointer(1), demo);
+        expect(h.created).toHaveLength(1);
+      });
+      expect(seen).toEqual([]);
+    }
+  });
+
+  it('hands a commit’s refusal to the birth, which gives up at once', async () => {
+    const h = harness(BLOOM_SCENARIOS['one-three'], refuse);
+    h.engine.held(P, 1);
+    const work = budAt(h.engine.current(), 'studio', 'work');
+    h.engine.pointerMove(pointer(1), work);
+    h.engine.pointerUp(pointer(1), work);
+    expect(h.births).toHaveLength(1);
+    await expect(h.births[0]?.answer).rejects.toThrow('refused');
+  });
+
+  it('turns a throw into a rejection, and a plain return into a resolution', async () => {
+    await expect(createQuietly(explode)).rejects.toThrow('thrown');
+    await expect(createQuietly(() => undefined)).resolves.toBeUndefined();
   });
 });
