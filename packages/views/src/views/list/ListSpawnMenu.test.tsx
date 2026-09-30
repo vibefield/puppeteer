@@ -46,8 +46,8 @@ describe('the list’s two-step menu', () => {
       /data-bloom-bud-id="work"[^>]*><svg[^>]*fill="currentColor"[^>]*data-profile-glyph="briefcase"/,
     );
     expect(count(markup, /class="vf-monitor-list-spawn-dot"/g)).toBe(1);
-    expect(markup).toContain('<small>DEFAULT · CLAUDE · CODEX</small>');
-    expect(markup).toContain('aria-label="WORK, default, waiting on you, claude, codex signed in"');
+    expect(markup).toContain('<small>DEFAULT · ALPHA · BETA</small>');
+    expect(markup).toContain('aria-label="WORK, default, waiting on you, alpha, beta signed in"');
     expect(markup).toContain('↵ on a desktop takes its default');
   });
 
@@ -70,7 +70,7 @@ describe('the list’s two-step menu', () => {
       />,
     );
     expect(markup).toContain(
-      '<span class="vf-monitor-list-spawn-name">DEFAULT</span><small>CLAUDE · CODEX · GROK · OPENCODE</small>',
+      '<span class="vf-monitor-list-spawn-name">DEFAULT</span><small>ALPHA · BETA · GAMMA · DELTA</small>',
     );
     expect(markup).not.toContain('DEFAULT · DEFAULT');
   });

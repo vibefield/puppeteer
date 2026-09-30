@@ -54,7 +54,7 @@ describe('wordsFor — the prototype’s specimen, every reading', () => {
       ['Open as ', 'v'],
       ['Personal', 'n'],
     ]);
-    expect(words.detail).toBe('ON MINI · CLAUDE · CODEX SIGNED IN');
+    expect(words.detail).toBe('ON MINI · ALPHA · BETA SIGNED IN');
   });
 
   it('on a desktop asleep', () => {
@@ -89,7 +89,7 @@ describe('wordsFor — SB-D10 and the product’s own cases', () => {
   it('a peer’s native profile opens ON the peer, UNDER DEFAULT', () => {
     const words = wordsFor(three, { kind: 'profile', item: profileOn(mini.device, 'native') }, 'hold');
     expect(text(words)).toBe('Open on mini');
-    expect(words.detail).toBe('UNDER DEFAULT · CLAUDE · CODEX · GROK · OPENCODE SIGNED IN');
+    expect(words.detail).toBe('UNDER DEFAULT · ALPHA · BETA · GAMMA · DELTA SIGNED IN');
   });
 
   it('this desktop’s native profile keeps its own name', () => {
@@ -97,7 +97,7 @@ describe('wordsFor — SB-D10 and the product’s own cases', () => {
     const native = one.items[0] as BloomProfileItem;
     const words = wordsFor(one, { kind: 'profile', item: native }, 'hold');
     expect(text(words)).toBe('Open as This Mac');
-    expect(words.detail).toBe('CLAUDE · CODEX · GROK · OPENCODE SIGNED IN');
+    expect(words.detail).toBe('ALPHA · BETA · GAMMA · DELTA SIGNED IN');
     // one desktop: the words do not say where
     expect(wordsFor(one, { kind: 'hub' }, 'hold').detail).toBe('UNDER WORK · THE DEFAULT');
   });

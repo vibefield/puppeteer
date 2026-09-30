@@ -7,7 +7,7 @@ const NATIVE: MonitorSpawnProfile = {
   id: 'native',
   label: 'This Mac',
   kind: 'native',
-  signedIn: ['Claude', 'Codex', 'Grok', 'OpenCode'],
+  signedIn: ['Alpha', 'Beta', 'Gamma', 'Delta'],
 };
 const WORK: MonitorSpawnProfile = {
   id: 'work',
@@ -16,15 +16,15 @@ const WORK: MonitorSpawnProfile = {
   glyph: 'briefcase',
   isDefault: true,
   blocked: true,
-  signedIn: ['Claude', 'Codex'],
+  signedIn: ['Alpha', 'Beta'],
 };
-const DEMO: MonitorSpawnProfile = { id: 'demo', label: 'Demo', kind: 'managed', glyph: 'flask', signedIn: ['Claude'] };
+const DEMO: MonitorSpawnProfile = { id: 'demo', label: 'Demo', kind: 'managed', glyph: 'flask', signedIn: ['Alpha'] };
 const PERSONAL: MonitorSpawnProfile = {
   id: 'personal',
   label: 'Personal',
   kind: 'managed',
   glyph: 'house',
-  signedIn: ['Claude', 'Codex'],
+  signedIn: ['Alpha', 'Beta'],
 };
 
 const studio = (profiles: readonly MonitorSpawnProfile[]): MonitorSpawnDevice => ({

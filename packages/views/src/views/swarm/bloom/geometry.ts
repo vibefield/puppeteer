@@ -157,14 +157,14 @@ export function segGap(box: BloomXYWH, a: BloomPoint, b: BloomPoint): number {
   const p = [-dx, dx, -dy, dy];
   const q = [a.x - box.x, box.x + box.w - a.x, a.y - box.y, box.y + box.h - a.y];
   let hit = true;
-  for (let i = 0; i < 4 && hit; i += 1) {
-    const pi = p[i] as number;
-    const qi = q[i] as number;
-    if (pi === 0) {
-      if (qi < 0) hit = false;
+  for (let k = 0; k < 4 && hit; k += 1) {
+    const pk = p[k] as number;
+    const qk = q[k] as number;
+    if (pk === 0) {
+      if (qk < 0) hit = false;
     } else {
-      const r = qi / pi;
-      if (pi < 0) {
+      const r = qk / pk;
+      if (pk < 0) {
         if (r > t1) hit = false;
         else if (r > t0) t0 = r;
       } else if (r < t0) hit = false;

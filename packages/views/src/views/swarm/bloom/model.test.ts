@@ -263,7 +263,7 @@ describe('keyBloom', () => {
     expect(opened.state.open?.item.device.id).toBe('mini');
     expect(opened.state.target).toMatchObject({ kind: 'profile', item: { profile: { id: 'native' } } });
     expect(text(opened.state)).toBe('Open on mini');
-    expect(opened.state.words?.detail).toBe('UNDER DEFAULT · CLAUDE · CODEX · GROK · OPENCODE SIGNED IN');
+    expect(opened.state.words?.detail).toBe('UNDER DEFAULT · ALPHA · BETA · GAMMA · DELTA SIGNED IN');
     const done = keyBloom(env(), keyBloom(env(), opened.state, 'ArrowRight').state, ' ');
     expect(done.commit?.choice).toMatchObject({ deviceId: 'mini', profileSet: 'personal', via: 'profile' });
   });
