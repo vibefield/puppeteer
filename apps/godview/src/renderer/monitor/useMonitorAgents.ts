@@ -14,7 +14,16 @@ import {
   type MonitorTerminalRecord,
 } from './agents.js';
 import type { MonitorActions, MonitorAgent } from './types.js';
-import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadLedger } from '@vibecook/puppeteer-views';
+import {
+  EMPTY_STATUS_LEDGER,
+  EMPTY_UNREAD_LEDGER,
+  observeStatuses,
+  reconcileUnread,
+  statusHistoryBook,
+  type MonitorHistoryBook,
+  type StatusLedger,
+  type UnreadLedger,
+} from '@vibecook/puppeteer-views';
 import {
   EMPTY_USAGE_LEDGER,
   reconcileUsage,
@@ -44,6 +53,8 @@ export interface UseMonitorAgentsOptions {
 export interface MonitorAgentsResult {
   agents: readonly MonitorAgent[];
   actions: MonitorActions;
+  /** What each lane did while this window watched, for views that draw the past. */
+  history: MonitorHistoryBook;
   notifications: readonly MonitorNotification[];
   dismissNotification(runtimeRunId: string, notificationId: string): void;
 }
@@ -73,6 +84,8 @@ export function useMonitorAgents({
   const unreadRef = useRef<UnreadLedger>(EMPTY_UNREAD_LEDGER);
   const visualIdsRef = useRef<ReadonlyMap<string, string>>(new Map());
   const usageRef = useRef<UsageLedger>(EMPTY_USAGE_LEDGER);
+  // What each lane did while this window watched (the timeline's record). Godview keeps no durable one.
+  const statusRef = useRef<StatusLedger>(EMPTY_STATUS_LEDGER);
   /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
   const [usageStep, setUsageStep] = useState(0);
   const [usageSeed, setUsageSeed] = useState(0);
@@ -332,7 +345,7 @@ export function useMonitorAgents({
       Date.now(),
     );
     unreadRef.current = ledger;
-    return assembled.map((agent) => {
+    const projected = assembled.map((agent) => {
       const unread = ledger.unreadIds.has(agent.id);
       // The account is an identity ground, resolved from the registry rather
       // than from anything the session said about itself.
@@ -345,6 +358,8 @@ export function useMonitorAgents({
         ...(account && agent.agent ? { agent: { ...agent.agent, account } } : {}),
       };
     });
+    statusRef.current = observeStatuses(statusRef.current, projected, Date.now());
+    return projected;
   }, [
     attachments,
     nowMs,
@@ -398,9 +413,12 @@ export function useMonitorAgents({
     [monitorStore],
   );
 
+  const history = useMemo<MonitorHistoryBook>(() => statusHistoryBook(statusRef.current), [agents]);
+
   return {
     agents,
     actions,
+    history,
     notifications: monitorSnapshot.notifications,
     dismissNotification,
   };

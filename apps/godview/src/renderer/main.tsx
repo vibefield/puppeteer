@@ -399,7 +399,7 @@ function Godview() {
     [workspace],
   );
 
-  const { agents, actions, notifications, dismissNotification } = useMonitorAgents({
+  const { agents, actions, history, notifications, dismissNotification } = useMonitorAgents({
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
@@ -763,7 +763,7 @@ function Godview() {
       />
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-        <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} />
+        <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} history={history} />
         <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
           <UsageColumn port={usagePort} />
         </div>
