@@ -116,15 +116,36 @@ export interface ScaleTween {
   readonly live: boolean;
 }
 
-export function zoomTween(scale: TimelineScale, spanMs: number, at: number): ScaleTween {
+/** Where a running tween lands, as a scale: a glide's end, or a following zoom's, is now. */
+export function tweenTarget(tween: ScaleTween, nowMs: number): TimelineScale {
+  return { spanMs: tween.toSpanMs, endMs: tween.toEndMs === 'now' ? nowMs : tween.toEndMs, live: tween.live };
+}
+
+/**
+ * The scale a new move starts from: a running tween's TARGET, not the frame
+ * on screen, so a second preset, a held −, or a preset pressed mid-glide
+ * builds on where the first was going (and a head on its way to now stays
+ * following).
+ */
+export function settledScale(scale: TimelineScale, tween: ScaleTween | null, nowMs: number): TimelineScale {
+  return tween ? tweenTarget(tween, nowMs) : scale;
+}
+
+/** A tween from the scale on screen to `target` (240 ms, island). */
+export function tweenBetween(
+  from: TimelineScale,
+  target: TimelineScale,
+  at: number,
+  durationMs = ZOOM_TWEEN_MS,
+): ScaleTween {
   return {
     startedAt: at,
-    durationMs: ZOOM_TWEEN_MS,
-    fromSpanMs: scale.spanMs,
-    toSpanMs: clampSpan(spanMs),
-    fromEndMs: scale.endMs,
-    toEndMs: scale.live ? 'now' : scale.endMs,
-    live: scale.live,
+    durationMs,
+    fromSpanMs: from.spanMs,
+    toSpanMs: target.spanMs,
+    fromEndMs: from.endMs,
+    toEndMs: target.live ? 'now' : target.endMs,
+    live: target.live,
   };
 }
 

@@ -12,8 +12,10 @@ import {
   tickStep,
   ticksBetween,
   tweenAt,
+  settledScale,
+  tweenBetween,
+  tweenTarget,
   zoomAt,
-  zoomTween,
 } from './timeline-scale.js';
 
 const MIN = 60_000;
@@ -69,7 +71,7 @@ describe('tweens', () => {
   });
 
   it('a zoom preset runs 240 ms and lands following now', () => {
-    const tween = zoomTween(initialScale(NOW), 4 * 60 * MIN, 0);
+    const tween = tweenBetween(initialScale(NOW), zoomAt(initialScale(NOW), 4 * 60 * MIN, 0, 600, NOW), 0);
     const mid = tweenAt(tween, 120, NOW, false);
     expect(mid.done).toBe(false);
     expect(mid.scale.spanMs).toBeGreaterThan(60 * MIN);
@@ -83,6 +85,35 @@ describe('tweens', () => {
     expect(tweenAt(tween, 300, NOW, false).scale.live).toBe(false);
     expect(tweenAt(tween, 600, NOW + 600, false).scale).toEqual({ spanMs: 60 * MIN, endMs: NOW + 600, live: true });
     expect(tweenAt(tween, 1, NOW, true)).toEqual({ scale: { spanMs: 60 * MIN, endMs: NOW, live: true }, done: true });
+  });
+});
+
+describe('a move during a tween', () => {
+  it('starts from the tween’s target: a preset pressed mid-glide lands following now', () => {
+    const held = { spanMs: 60 * MIN, endMs: NOW - 50 * MIN, live: false };
+    const glide = glideTween(held, 0);
+    // Mid-glide, the frame on screen is held — but the move builds on where the glide is going.
+    expect(tweenAt(glide, 300, NOW, false).scale.live).toBe(false);
+    const base = settledScale(tweenAt(glide, 300, NOW, false).scale, glide, NOW);
+    expect(base).toEqual({ spanMs: 60 * MIN, endMs: NOW, live: true });
+    const zoom = tweenBetween(tweenAt(glide, 300, NOW, false).scale, zoomAt(base, 4 * 60 * MIN, 0, 600, NOW), 300);
+    expect(tweenAt(zoom, 540, NOW + 240, false).scale).toEqual({ spanMs: 240 * MIN, endMs: NOW + 240, live: true });
+  });
+
+  it('two quick presets compound on the target: 1H → 4H → 15M lands on 15M, still following', () => {
+    const first = tweenBetween(initialScale(NOW), zoomAt(initialScale(NOW), 240 * MIN, 0, 600, NOW), 0);
+    const base = settledScale(tweenAt(first, 100, NOW, false).scale, first, NOW);
+    expect(base.spanMs).toBe(240 * MIN);
+    expect(tweenTarget(tweenBetween(base, zoomAt(base, 15 * MIN, 0, 600, NOW), 100), NOW)).toEqual({
+      spanMs: 15 * MIN,
+      endMs: NOW,
+      live: true,
+    });
+  });
+
+  it('with no tween, the scale itself', () => {
+    const scale = initialScale(NOW);
+    expect(settledScale(scale, null, NOW)).toBe(scale);
   });
 });
 

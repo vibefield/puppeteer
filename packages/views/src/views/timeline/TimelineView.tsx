@@ -42,10 +42,10 @@ import {
   tickStep,
   ticksBetween,
   tweenAt,
+  settledScale,
+  tweenBetween,
   zoomAt,
-  zoomTween,
   ZOOM_PRESETS,
-  ZOOM_TWEEN_MS,
   type ScaleTween,
   type TimelineScale,
 } from './timeline-scale.js';
@@ -315,16 +315,19 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     return tweenAt(tween, performance.now(), Date.now(), !motionAllowed(rootRef.current)).scale;
   }, []);
 
+  /** Zoom to `spanMs` about the head (a preset, − =), building on any tween's target. */
   const zoomTo = useCallback(
     (spanMs: number): void => {
       const now = Date.now();
-      const from = current();
+      const base = settledScale(scaleRef.current, tweenRef.current, now);
+      const target = zoomAt(base, spanMs, 0, columnsRef.current.x1, now);
       if (!motionAllowed(rootRef.current)) {
-        place(zoomAt(from, spanMs, 0, columnsRef.current.x1, now));
+        place(target);
         return;
       }
+      const from = current();
       scaleRef.current = from;
-      tweenRef.current = zoomTween(from, spanMs, performance.now());
+      tweenRef.current = tweenBetween(from, target, performance.now());
       dirtyRef.current = true;
     },
     [current, place],
@@ -334,14 +337,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const zoomAround = useCallback(
     (factor: number, anchorFromHeadPx: number): void => {
       const now = Date.now();
-      const tween = tweenRef.current;
-      const base: TimelineScale = tween
-        ? {
-            spanMs: tween.toSpanMs,
-            endMs: tween.toEndMs === 'now' ? now : tween.toEndMs,
-            live: tween.live,
-          }
-        : scaleRef.current;
+      const base = settledScale(scaleRef.current, tweenRef.current, now);
       const target = zoomAt(base, clampSpan(base.spanMs * factor), anchorFromHeadPx, columnsRef.current.x1, now);
       if (!motionAllowed(rootRef.current)) {
         place(target);
@@ -349,15 +345,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       }
       const from = current();
       scaleRef.current = from;
-      tweenRef.current = {
-        startedAt: performance.now(),
-        durationMs: ZOOM_TWEEN_MS,
-        fromSpanMs: from.spanMs,
-        toSpanMs: target.spanMs,
-        fromEndMs: from.endMs,
-        toEndMs: target.live ? 'now' : target.endMs,
-        live: target.live,
-      };
+      tweenRef.current = tweenBetween(from, target, performance.now());
       dirtyRef.current = true;
     },
     [current, place],
@@ -683,7 +671,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       pan((event.key === 'ArrowLeft' ? -1 : 1) * current().spanMs * 0.125);
     } else if (event.key === '-' || event.key === '=' || event.key === '+') {
       event.preventDefault();
-      zoomTo(current().spanMs * (event.key === '-' ? 2 : 0.5));
+      const base = settledScale(scaleRef.current, tweenRef.current, Date.now());
+      zoomTo(base.spanMs * (event.key === '-' ? 2 : 0.5));
     }
   };
 
