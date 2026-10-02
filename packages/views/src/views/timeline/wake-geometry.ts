@@ -1,5 +1,5 @@
 import type { MonitorHistorySpan, MonitorHistoryStatus } from '../../monitor/status-history.js';
-import type { TimelineLane, TimelineLaneKind } from './timeline-lanes.js';
+import { spanIndexAt, type TimelineLane, type TimelineLaneKind } from './timeline-lanes.js';
 
 // A lane's wake: one closed, variable-width outline that swells into work and
 // narrows through a short S-curve into a wait (DESIGN §8, "Godview's timeline
@@ -44,7 +44,15 @@ export function wakeSegments(
   const end = Math.min(lane.endedAtMs ?? nowMs, t1);
   const lo = t0 - 30 / pxPerMs;
   const out: WakeSegment[] = [];
-  for (const span of lane.spans) {
+  // Only the spans that reach the window: a lane may carry a day of them.
+  const spans = lane.spans;
+  for (
+    let index = Math.max(0, spanIndexAt(spans, Math.max(lo, lane.recordedFromMs)));
+    index < spans.length;
+    index += 1
+  ) {
+    const span = spans[index]!;
+    if (span.fromMs >= end) break;
     const a = Math.max(span.fromMs, lane.recordedFromMs, lo);
     const b = Math.min(span.toMs ?? end, end);
     if (b <= a) continue;

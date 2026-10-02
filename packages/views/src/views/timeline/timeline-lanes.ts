@@ -46,6 +46,8 @@ export interface TimelineLaneInput {
   readonly nowMs: number;
   /** When the view first saw each row: a bare terminal with no book is recorded from then. */
   readonly firstSeen?: ReadonlyMap<string, number> | undefined;
+  /** Remembers lanes by their book record across calls (`createLaneCache`). */
+  readonly cache?: LaneCache | undefined;
 }
 
 /** What a lane was doing at one moment. */
@@ -100,15 +102,41 @@ export function laneFromRow(agent: MonitorAgent, nowMs: number, firstSeenMs?: nu
   };
 }
 
+/** The last span that has begun by `t` (spans are ordered and contiguous), or -1 before the first. */
+export function spanIndexAt(spans: readonly MonitorHistorySpan[], t: number): number {
+  let low = 0;
+  let high = spans.length - 1;
+  let found = -1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    if (spans[middle]!.fromMs <= t) {
+      found = middle;
+      low = middle + 1;
+    } else high = middle - 1;
+  }
+  return found;
+}
+
+/**
+ * A book's spans clipped to the horizon. When nothing reaches back past it the
+ * book's own array is returned, uncopied: a host keeps up to 2000 spans a lane.
+ */
+export function clipToHorizon(spans: readonly MonitorHistorySpan[], horizon: number): readonly MonitorHistorySpan[] {
+  const first = spans[0];
+  if (!first || first.fromMs >= horizon) return spans;
+  let index = Math.max(0, spanIndexAt(spans, horizon));
+  const at = spans[index]!;
+  if (at.toMs !== undefined && at.toMs <= horizon) index += 1;
+  const rest = spans.slice(index);
+  const head = rest[0];
+  if (head && head.fromMs < horizon) rest[0] = { ...head, fromMs: horizon };
+  return rest;
+}
+
 /** A lane from the book, clipped to the horizon. */
 export function laneFromHistory(agent: MonitorAgent, history: MonitorLaneHistory, nowMs: number): TimelineLane {
   const horizon = nowMs - STATUS_HISTORY_HORIZON_MS;
   const recordedFromMs = Math.max(history.recordedFromMs, horizon);
-  const spans: MonitorHistorySpan[] = [];
-  for (const span of history.spans) {
-    if (span.toMs !== undefined && span.toMs <= horizon) continue;
-    spans.push(span.fromMs < horizon ? { ...span, fromMs: horizon } : span);
-  }
   return {
     id: agent.id,
     agent,
@@ -116,14 +144,55 @@ export function laneFromHistory(agent: MonitorAgent, history: MonitorLaneHistory
     receded: agent.receded === true,
     bornMs: Math.min(agent.createdAtMs, recordedFromMs),
     recordedFromMs,
-    spans,
+    spans: clipToHorizon(history.spans, horizon),
     ...(history.endedAtMs === undefined ? {} : { endedAtMs: history.endedAtMs }),
+  };
+}
+
+const MINUTE = 60_000;
+
+/**
+ * Lanes built from the book, remembered by the book's own lane record: a host
+ * projects its rows several times a second, and a lane whose record did not
+ * change keeps its object (and its spans) rather than being rebuilt. The
+ * horizon clip is refreshed once a minute, which is finer than a 24 h edge
+ * can be seen.
+ */
+export interface LaneCache {
+  lane(agent: MonitorAgent, history: MonitorLaneHistory, nowMs: number): TimelineLane;
+}
+
+export function createLaneCache(): LaneCache {
+  const entries = new WeakMap<MonitorLaneHistory, { agent: MonitorAgent; minute: number; lane: TimelineLane }>();
+  return {
+    lane(agent, history, nowMs) {
+      const minute = Math.floor(nowMs / MINUTE);
+      const entry = entries.get(history);
+      if (entry && entry.minute === minute) {
+        if (entry.agent === agent) return entry.lane;
+        // The same record under a new row object: the row's own facts, the record's spans.
+        const lane: TimelineLane = {
+          ...entry.lane,
+          agent,
+          kind: laneKind(agent),
+          receded: agent.receded === true,
+          bornMs: Math.min(agent.createdAtMs, entry.lane.recordedFromMs),
+        };
+        entries.set(history, { agent, minute, lane });
+        return lane;
+      }
+      const lane = laneFromHistory(agent, history, minute * MINUTE);
+      entries.set(history, { agent, minute, lane });
+      return lane;
+    },
   };
 }
 
 /** Every lane the view could draw: the rows, then the book's ended agents still inside the horizon. */
 export function timelineLanes(input: TimelineLaneInput): TimelineLaneSet {
-  const { agents, history, nowMs, firstSeen } = input;
+  const { agents, history, nowMs, firstSeen, cache } = input;
+  const fromBook = (agent: MonitorAgent, record: MonitorLaneHistory): TimelineLane =>
+    cache ? cache.lane(agent, record, nowMs) : laneFromHistory(agent, record, nowMs);
   const horizon = nowMs - STATUS_HISTORY_HORIZON_MS;
   const lanes: TimelineLane[] = [];
   const live = new Set<string>();
@@ -131,9 +200,7 @@ export function timelineLanes(input: TimelineLaneInput): TimelineLaneSet {
     live.add(agent.id);
     const record = history?.lanes.get(agent.id);
     lanes.push(
-      record && record.spans.length > 0
-        ? laneFromHistory(agent, record, nowMs)
-        : laneFromRow(agent, nowMs, firstSeen?.get(agent.id)),
+      record && record.spans.length > 0 ? fromBook(agent, record) : laneFromRow(agent, nowMs, firstSeen?.get(agent.id)),
     );
   }
   for (const agent of history?.ended ?? []) {
@@ -142,7 +209,7 @@ export function timelineLanes(input: TimelineLaneInput): TimelineLaneSet {
     if (!record || record.spans.length === 0) continue;
     const ended = record.endedAtMs ?? record.spans[record.spans.length - 1]?.toMs;
     if (ended === undefined || ended <= horizon) continue;
-    const lane = laneFromHistory(agent, record, nowMs);
+    const lane = fromBook(agent, record);
     lanes.push(lane.endedAtMs === undefined ? { ...lane, endedAtMs: ended } : lane);
   }
   return {
@@ -162,11 +229,8 @@ export function stateAt(lane: TimelineLane, t: number): TimelineMoment {
   if (t < lane.bornMs) return { kind: 'unborn' };
   if (lane.endedAtMs !== undefined && t >= lane.endedAtMs) return { kind: 'ended' };
   if (t < lane.recordedFromMs) return { kind: 'unrecorded' };
-  for (let index = lane.spans.length - 1; index >= 0; index -= 1) {
-    const span = lane.spans[index]!;
-    if (t >= span.fromMs) return { kind: 'span', span };
-  }
-  return { kind: 'unrecorded' };
+  const span = lane.spans[spanIndexAt(lane.spans, t)];
+  return span ? { kind: 'span', span } : { kind: 'unrecorded' };
 }
 
 /** Remember when each row was first seen, and forget the ones that left. Returns the same map when nothing changed. */
@@ -213,4 +277,39 @@ export function stepLight(lanes: readonly TimelineLane[], from: number, directio
     if (index < 0 || index >= lanes.length) return from;
     if (!lanes[index]!.receded) return index;
   }
+}
+
+/**
+ * What the canvases draw of the lanes, as one string: a projection that
+ * changed nothing they draw (a fresh row object, a new detail line) keeps the
+ * key, so neither canvas repaints for it.
+ */
+export function laneContentKey(lanes: readonly TimelineLane[]): string {
+  return lanes
+    .map((lane) => {
+      const first = lane.spans[0];
+      const last = lane.spans[lane.spans.length - 1];
+      return [
+        lane.id,
+        lane.kind,
+        lane.receded ? 1 : 0,
+        lane.agent.color,
+        lane.bornMs,
+        lane.recordedFromMs,
+        lane.endedAtMs ?? '',
+        lane.spans.length,
+        first?.fromMs ?? '',
+        last ? `${last.status}:${last.fromMs}:${last.toMs ?? ''}:${last.blocker?.kind ?? ''}` : '',
+      ].join(',');
+    })
+    .join('|');
+}
+
+/** The ended lanes that have scrolled out past `viewStartMs`, as a sorted id list. */
+export function scrolledOutIds(set: TimelineLaneSet, viewStartMs: number): string {
+  const out: string[] = [];
+  for (const lane of set.agents) if (lane.endedAtMs !== undefined && lane.endedAtMs <= viewStartMs) out.push(lane.id);
+  for (const lane of set.terminals)
+    if (lane.endedAtMs !== undefined && lane.endedAtMs <= viewStartMs) out.push(lane.id);
+  return out.sort().join('\n');
 }

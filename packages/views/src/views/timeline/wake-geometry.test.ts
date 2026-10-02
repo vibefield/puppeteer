@@ -78,6 +78,23 @@ describe('wakeSegments', () => {
   });
 });
 
+describe('wakeSegments over a long record', () => {
+  it('reads only the spans that reach the window', () => {
+    const spans = Array.from({ length: 2000 }, (_, index) => ({
+      status: (index % 2 ? 'idle' : 'working') as 'idle' | 'working',
+      fromMs: NOW - (2000 - index) * MIN,
+      ...(index < 1999 ? { toMs: NOW - (1999 - index) * MIN } : {}),
+    }));
+    const long = lane({ spans, bornMs: NOW - 2000 * MIN, recordedFromMs: NOW - 2000 * MIN });
+    const k = 600 / (10 * MIN);
+    const segments = wakeSegments(long, NOW - 10 * MIN, NOW, k, 30, NOW);
+    // Ten minutes in view, plus the one reaching in from the 30 px lead.
+    expect(segments).toHaveLength(11);
+    expect(segments[0]!.x0).toBeCloseTo(-30);
+    expect(segments[segments.length - 1]!.open).toBe(true);
+  });
+});
+
 describe('wakeOutline', () => {
   const k = 600 / (60 * MIN);
   const segments = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);

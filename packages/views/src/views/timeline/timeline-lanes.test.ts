@@ -3,6 +3,11 @@ import type { MonitorHistoryBook, MonitorLaneHistory } from '../../monitor/statu
 import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
 import type { MonitorAgent } from '../../monitor/types.js';
 import {
+  clipToHorizon,
+  createLaneCache,
+  laneContentKey,
+  scrolledOutIds,
+  spanIndexAt,
   ENDED_ALPHA,
   QUIET_ALPHA,
   laneAlpha,
@@ -230,5 +235,101 @@ describe('receded lanes', () => {
     expect(stepLight(lanes, -1, -1)).toBe(3);
     // A receded lane the pointer lit is left by the next key, not re-lit.
     expect(stepLight(lanes, 1, 1)).toBe(3);
+  });
+});
+
+describe('the span window search', () => {
+  const spans = Array.from({ length: 2000 }, (_, index) => ({
+    status: (index % 2 ? 'idle' : 'working') as 'idle' | 'working',
+    fromMs: index * MIN,
+    toMs: (index + 1) * MIN,
+  }));
+
+  it('finds the span that has begun by t, -1 before the first', () => {
+    expect(spanIndexAt(spans, -1)).toBe(-1);
+    expect(spanIndexAt(spans, 0)).toBe(0);
+    expect(spanIndexAt(spans, 1234 * MIN + 5)).toBe(1234);
+    expect(spanIndexAt(spans, 1e12)).toBe(1999);
+    expect(spanIndexAt([], 5)).toBe(-1);
+  });
+
+  it('clips to the horizon without copying a record that does not reach it', () => {
+    expect(clipToHorizon(spans, -5)).toBe(spans);
+    const clipped = clipToHorizon(spans, 1500.5 * MIN);
+    expect(clipped).toHaveLength(500);
+    expect(clipped[0]).toMatchObject({ fromMs: 1500.5 * MIN, toMs: 1501 * MIN });
+    // A span that ends exactly at the horizon is dropped.
+    expect(clipToHorizon(spans, 1500 * MIN)[0]?.fromMs).toBe(1500 * MIN);
+  });
+});
+
+describe('the lane cache', () => {
+  const record: MonitorLaneHistory = {
+    recordedFromMs: NOW - 30 * MIN,
+    spans: [
+      { status: 'working', fromMs: NOW - 30 * MIN, toMs: NOW - 10 * MIN },
+      { status: 'idle', fromMs: NOW - 10 * MIN },
+    ],
+  };
+
+  it('keeps a lane’s object while its record and row are the same, and its spans while only the row is new', () => {
+    const cache = createLaneCache();
+    const agent = agentRow('a', 40 * MIN);
+    const first = cache.lane(agent, record, NOW);
+    expect(cache.lane(agent, record, NOW + 1000)).toBe(first);
+    expect(first.spans).toBe(record.spans);
+    const again = cache.lane({ ...agent, receded: true }, record, NOW + 2000);
+    expect(again).not.toBe(first);
+    expect(again.spans).toBe(first.spans);
+    expect(again.receded).toBe(true);
+    // A new record is a new lane.
+    expect(cache.lane(agent, { ...record }, NOW).spans).toBe(record.spans);
+  });
+
+  it('is what timelineLanes uses when handed one', () => {
+    const cache = createLaneCache();
+    const agents = [agentRow('a', 40 * MIN)];
+    const history = book({ a: record });
+    const one = timelineLanes({ agents, history, nowMs: NOW, cache });
+    const two = timelineLanes({ agents, history, nowMs: NOW + 500, cache });
+    expect(two.agents[0]).toBe(one.agents[0]);
+  });
+});
+
+describe('laneContentKey', () => {
+  it('holds for a fresh row object that draws the same, and moves when a span does', () => {
+    const history = book({
+      a: { recordedFromMs: NOW - 30 * MIN, spans: [{ status: 'working', fromMs: NOW - 30 * MIN }] },
+    });
+    const key = (agents: MonitorAgent[], h = history): string =>
+      laneContentKey(timelineLanes({ agents, history: h, nowMs: NOW }).agents);
+    const base = key([agentRow('a', 40 * MIN)]);
+    expect(key([agentRow('a', 40 * MIN, { detail: 'something new' })])).toBe(base);
+    const moved = book({
+      a: {
+        recordedFromMs: NOW - 30 * MIN,
+        spans: [
+          { status: 'working', fromMs: NOW - 30 * MIN, toMs: NOW - MIN },
+          { status: 'blocked', fromMs: NOW - MIN },
+        ],
+      },
+    });
+    expect(key([agentRow('a', 40 * MIN)], moved)).not.toBe(base);
+    expect(key([agentRow('a', 40 * MIN, { receded: true })])).not.toBe(base);
+  });
+});
+
+describe('scrolledOutIds', () => {
+  it('names the ended lanes past the window’s left edge', () => {
+    const set = {
+      agents: [
+        { ...laneFromRow(agentRow('a', 40 * MIN), NOW), endedAtMs: NOW - 20 * MIN },
+        { ...laneFromRow(agentRow('b', 40 * MIN), NOW), endedAtMs: NOW - 5 * MIN },
+        laneFromRow(agentRow('c', 40 * MIN), NOW),
+      ],
+      terminals: [],
+    };
+    expect(scrolledOutIds(set, NOW - 10 * MIN)).toBe('a');
+    expect(scrolledOutIds(set, NOW)).toBe('a\nb');
   });
 });

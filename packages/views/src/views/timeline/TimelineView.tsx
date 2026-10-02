@@ -13,8 +13,10 @@ import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
 import {
-  lanesInView,
+  createLaneCache,
+  laneContentKey,
   noteFirstSeen,
+  scrolledOutIds,
   stateAt,
   stepLight,
   timelineLanes,
@@ -117,9 +119,10 @@ function layoutLanes(set: TimelineLaneSet, bodyHeight: number, laneMax: number):
   return { placed, divider, height: y + 4 };
 }
 
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+
 function motionAllowed(root: Element | null): boolean {
-  const reduced =
-    typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_MOTION).matches;
   return !reduced && root?.closest('.vf-godview')?.getAttribute('data-godview-animations') !== 'off';
 }
 
@@ -207,8 +210,9 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     setFirstSeen((previous) => noteFirstSeen(previous, agents, Date.now()));
   }, [agents]);
 
+  const laneCache = useRef(createLaneCache());
   const laneSet = useMemo(
-    () => timelineLanes({ agents, history, nowMs: Date.now(), firstSeen }),
+    () => timelineLanes({ agents, history, nowMs: Date.now(), firstSeen, cache: laneCache.current }),
     [agents, history, firstSeen],
   );
   const visible = useMemo(() => {
@@ -222,6 +226,11 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const layout = useMemo(
     () => layoutLanes(visible, bodyHeight, settings.laneMax),
     [visible, bodyHeight, settings.laneMax],
+  );
+  // What the canvases draw of the layout: a projection that changes none of it repaints nothing.
+  const layoutKey = useMemo(
+    () => `${laneContentKey(layout.placed.map((placed) => placed.lane))}#${bodyHeight}#${settings.laneMax}`,
+    [layout, bodyHeight, settings.laneMax],
   );
 
   // What the loop reads: the latest of everything, through refs, so a new row
@@ -246,6 +255,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const tickKeyRef = useRef('');
   const headKeysRef = useRef<string[]>([]);
   const mapRangeRef = useRef<[number, number]>([0, 1]);
+  /** Motion is allowed: read from the media query and the host's attribute when they change, not per frame. */
+  const motionRef = useRef(true);
+  const readoutKeyRef = useRef('');
+  const barRef = useRef(bar);
 
   laneSetRef.current = laneSet;
   layoutRef.current = layout;
@@ -259,7 +272,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     revRef.current += 1;
     headKeysRef.current = [];
     dirtyRef.current = true;
-  }, [layout, columns.width, settings]);
+  }, [layoutKey, columns.width, settings]);
 
   // The palette, resolved once per theme into the numbers the canvases want;
   // the state lights also reach the DOM bodies as custom properties, so the
@@ -312,7 +325,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const current = useCallback((): TimelineScale => {
     const tween = tweenRef.current;
     if (!tween) return scaleRef.current;
-    return tweenAt(tween, performance.now(), Date.now(), !motionAllowed(rootRef.current)).scale;
+    return tweenAt(tween, performance.now(), Date.now(), !motionRef.current).scale;
   }, []);
 
   /** Zoom to `spanMs` about the head (a preset, − =), building on any tween's target. */
@@ -321,7 +334,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const now = Date.now();
       const base = settledScale(scaleRef.current, tweenRef.current, now);
       const target = zoomAt(base, spanMs, 0, columnsRef.current.x1, now);
-      if (!motionAllowed(rootRef.current)) {
+      if (!motionRef.current) {
         place(target);
         return;
       }
@@ -339,7 +352,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const now = Date.now();
       const base = settledScale(scaleRef.current, tweenRef.current, now);
       const target = zoomAt(base, clampSpan(base.spanMs * factor), anchorFromHeadPx, columnsRef.current.x1, now);
-      if (!motionAllowed(rootRef.current)) {
+      if (!motionRef.current) {
         place(target);
         return;
       }
@@ -397,6 +410,26 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     }
   }, []);
 
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const read = (): void => {
+      const motion = motionAllowed(root);
+      motionRef.current = motion;
+      root.dataset.motion = motion ? 'on' : 'off';
+    };
+    read();
+    const query = typeof window.matchMedia === 'function' ? window.matchMedia(REDUCED_MOTION) : undefined;
+    query?.addEventListener('change', read);
+    const host = root.closest('.vf-godview');
+    const observer = host && typeof MutationObserver !== 'undefined' ? new MutationObserver(read) : undefined;
+    if (host) observer?.observe(host, { attributes: true, attributeFilter: ['data-godview-animations'] });
+    return () => {
+      query?.removeEventListener('change', read);
+      observer?.disconnect();
+    };
+  }, []);
+
   // ───────────────────────────── the loop
   useEffect(() => {
     let frame = 0;
@@ -408,8 +441,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const cols = columnsRef.current;
       if (!root || !inks || cols.width <= 0) return;
       const now = Date.now();
-      const motion = motionAllowed(root);
-      root.dataset.motion = motion ? 'on' : 'off';
+      const motion = motionRef.current;
       let scale = scaleRef.current;
       const tween = tweenRef.current;
       if (tween) {
@@ -428,12 +460,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
 
       // An ended lane stays until it has scrolled out (TL-D6).
       const all = laneSetRef.current;
-      const kept = lanesInView(all, t0);
-      const out = [...all.agents, ...all.terminals]
-        .filter((lane) => !kept.agents.includes(lane) && !kept.terminals.includes(lane))
-        .map((lane) => lane.id)
-        .sort()
-        .join('\n');
+      const out = scrolledOutIds(all, t0);
       if (out !== scrolledOutRef.current) {
         scrolledOutRef.current = out;
         setScrolledOut(out);
@@ -545,26 +572,32 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
 
       // The bodies relight to the head's moment; following now they are now (TL-D13).
       const at = following ? now : t1;
-      lay.placed.forEach((placed, index) => {
-        const el = headEls.current[index];
-        if (!el) return;
-        const readout = readoutAt(placed.lane, stateAt(placed.lane, at), at, following, now);
-        const key = `${readout.tone}|${readout.big}|${readout.small}|${readout.owed}`;
-        if (headKeysRef.current[index] === key) return;
-        headKeysRef.current[index] = key;
-        el.dataset.tone = readout.tone;
-        el.dataset.owed = readout.owed ? 'true' : 'false';
-        const big = el.querySelector('b');
-        const small = el.querySelector('small');
-        if (big) big.textContent = readout.big;
-        if (small) small.textContent = readout.small;
-      });
+      // Once a second following now; looking back, when the head moves; and when the lanes change.
+      const readoutKey = `${following ? second : Math.round(t1 / 1000)}|${revRef.current}`;
+      const readoutsDue = readoutKey !== readoutKeyRef.current;
+      readoutKeyRef.current = readoutKey;
+      if (readoutsDue)
+        lay.placed.forEach((placed, index) => {
+          const el = headEls.current[index];
+          if (!el) return;
+          const readout = readoutAt(placed.lane, stateAt(placed.lane, at), at, following, now);
+          const key = `${readout.tone}|${readout.big}|${readout.small}|${readout.owed}`;
+          if (headKeysRef.current[index] === key) return;
+          headKeysRef.current[index] = key;
+          el.dataset.tone = readout.tone;
+          el.dataset.owed = readout.owed ? 'true' : 'false';
+          const big = el.querySelector('b');
+          const small = el.querySelector('small');
+          if (big) big.textContent = readout.big;
+          if (small) small.textContent = readout.small;
+        });
 
       dirtyRef.current = false;
       const preset = Math.round(scale.spanMs / 1000) * 1000;
-      setBar((previous) =>
-        previous.spanMs === preset && previous.live === following ? previous : { spanMs: preset, live: following },
-      );
+      if (barRef.current.spanMs !== preset || barRef.current.live !== following) {
+        barRef.current = { spanMs: preset, live: following };
+        setBar(barRef.current);
+      }
     };
 
     const loop = (time: number): void => {
