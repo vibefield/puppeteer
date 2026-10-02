@@ -19,6 +19,7 @@ export * from './monitor/chrome.js';
 export * from './monitor/palette.js';
 export * from './monitor/unread.js';
 export * from './monitor/status-history.js';
+export * from './monitor/status-ledger.js';
 export * from './monitor/recede.js';
 export * from './monitor/usage-ledger.js';
 export * from './monitor/cost-format.js';
