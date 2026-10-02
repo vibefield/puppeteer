@@ -62,9 +62,6 @@ export interface PulseMap {
   /** px per agent, above and below; the waits are never drawn at a larger scale than the work. */
   readonly kUp: number;
   readonly kDn: number;
-  /** The crest of work and the deepest dip of waits inside the window, for a caption to point at. */
-  readonly crest: { readonly x: number; readonly y: number };
-  readonly dip: { readonly x: number; readonly y: number };
 }
 
 /** Fraction of each bucket [start + i·dt, start + (i+1)·dt) that [a, b) covers, added into `into`. */
@@ -107,13 +104,7 @@ export function pulseScales(maxUp: number, maxDown: number, up: number, down: nu
   return { kUp, kDn: Math.min(down / Math.max(0.5, maxDown), kUp) };
 }
 
-export function pulseMap(
-  rows: readonly PulseRow[],
-  startMs: number,
-  nowMs: number,
-  window: { readonly fromMs: number; readonly toMs: number },
-  geometry: PulseGeometry,
-): PulseMap {
+export function pulseMap(rows: readonly PulseRow[], startMs: number, nowMs: number, geometry: PulseGeometry): PulseMap {
   const { width, up, down } = geometry;
   const count = Math.max(40, Math.round(width / 2));
   const dt = Math.max(1, nowMs - startMs) / count;
@@ -185,29 +176,6 @@ export function pulseMap(
   const blockedBand = { color: 'blocked', ...hang(none, blockedS) };
   const unseenBand = { color: 'unseen', ...hang(blockedS, unseenS) };
 
-  // The crest and the deepest dip inside the window (the whole day when the window has none).
-  const clampIndex = (value: number): number => Math.min(count - 1, Math.max(0, value));
-  const lo = clampIndex(Math.floor((window.fromMs - startMs) / dt));
-  const hi = clampIndex(Math.ceil((window.toMs - startMs) / dt));
-  const best = (score: (index: number) => number, a: number, b: number): [number, number] => {
-    let at = a;
-    let value = -1;
-    for (let index = a; index <= b; index += 1) {
-      const candidate = score(index);
-      if (candidate > value) {
-        value = candidate;
-        at = index;
-      }
-    }
-    return [at, value];
-  };
-  const across = (fraction: number): number => Math.round(lo + (hi - lo) * fraction);
-  const [peak] = best(upAt, across(0.38), across(0.7));
-  const away = (index: number): number => (Math.abs(index - peak) < (hi - lo) * 0.2 ? -1 : downAt(index));
-  let [dip, depth] = best(away, across(0.08), across(0.82));
-  if (depth < 0.2) [dip, depth] = best(downAt, lo, hi);
-  if (depth < 0.2) [dip] = best(downAt, 0, count - 1);
-
   return {
     xs,
     work: workBands,
@@ -216,7 +184,5 @@ export function pulseMap(
     base,
     kUp,
     kDn,
-    crest: { x: xs[peak]!, y: base - upAt(peak) * kUp * 0.5 },
-    dip: { x: xs[dip]!, y: base + downAt(dip) * kDn * 0.5 },
   };
 }

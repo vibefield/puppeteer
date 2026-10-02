@@ -245,7 +245,9 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const litRef = useRef<string | null>(null);
   const focusRef = useRef<string | null>(null);
   const revRef = useRef(0);
+  /** The wakes want a repaint (the light moved, the scale was put); the map has its own, since its lens is DOM. */
   const dirtyRef = useRef(true);
+  const mapDirtyRef = useRef(true);
   const scrolledOutRef = useRef(scrolledOut);
   const wakeKeyRef = useRef('');
   const mapKeyRef = useRef('');
@@ -269,6 +271,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     revRef.current += 1;
     headKeysRef.current = [];
     dirtyRef.current = true;
+    mapDirtyRef.current = true;
   }, [layoutKey, columns.width, settings]);
 
   // The palette, resolved once per theme into the numbers the canvases want;
@@ -290,6 +293,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     revRef.current += 1;
     headKeysRef.current = [];
     dirtyRef.current = true;
+    mapDirtyRef.current = true;
   }, [palette]);
 
   useLayoutEffect(() => {
@@ -483,6 +487,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       }
 
       const lay = layoutRef.current;
+      // A move between displays changes the ratio: both canvases repaint at the new one.
+      const ratio = Math.min(2, window.devicePixelRatio || 1);
       const rows = Math.max(lay.height, bodyHeightRef.current);
       const second = Math.floor(now / 1000);
       const tick = second !== lastSecond;
@@ -491,10 +497,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       // The wakes: repainted when the head has moved a third of a pixel, or anything else changed.
       const wake = wakeRef.current;
       const lit = litRef.current === null ? -1 : lay.placed.findIndex((placed) => placed.lane.id === litRef.current);
-      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rows}`;
+      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rows}@${ratio}`;
       if (wake && (wakeKey !== wakeKeyRef.current || dirtyRef.current)) {
         wakeKeyRef.current = wakeKey;
-        const ratio = sizeCanvas(wake, cols.x1, rows);
+        sizeCanvas(wake, cols.x1, rows);
         const ctx = wake.getContext('2d');
         if (ctx) {
           paintWakes(
@@ -551,14 +557,15 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         const width = Math.max(1, cols.x1 - MAP_LEFT);
         const start = dayStart(all, scale.spanMs, now);
         mapRangeRef.current = [start, now];
-        const mapKey = `${revRef.current}|${width}|${Math.round(start / 1000)}`;
-        if (tick || mapKey !== mapKeyRef.current || dirtyRef.current) {
+        const mapKey = `${revRef.current}|${width}|${Math.round(start / 1000)}@${ratio}`;
+        if (tick || mapKey !== mapKeyRef.current || mapDirtyRef.current) {
           mapKeyRef.current = mapKey;
-          const ratio = sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height);
+          mapDirtyRef.current = false;
+          sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height);
           const ctx = mapCanvas.getContext('2d');
           const pulseRows = pulseRowsFor(all.agents, now);
           if (ctx) {
-            const map = pulseMap(pulseRows, start, now, { fromMs: t0, toMs: t1 }, { ...PULSE_GEOMETRY, width });
+            const map = pulseMap(pulseRows, start, now, { ...PULSE_GEOMETRY, width });
             paintPulse(
               ctx,
               mapCanvas,
@@ -579,12 +586,14 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         set(knobRef.current, 'left', `${right.toFixed(1)}px`);
         knobRef.current?.classList.toggle('is-back', !following);
         const say = following ? `Now, ${formatClock(now)}` : `${formatClock(t1)}, ${formatWords(now - t1)} ago`;
-        if (box.getAttribute('aria-valuetext') !== say) {
-          box.setAttribute('aria-valuetext', say);
-          box.setAttribute('aria-valuemin', String(Math.round(start)));
-          box.setAttribute('aria-valuemax', String(Math.round(now)));
-          box.setAttribute('aria-valuenow', String(Math.round(t1)));
-        }
+        // Each attribute on its own: a render may have reset any of them to its own moment.
+        const aria: [string, string][] = [
+          ['aria-valuetext', say],
+          ['aria-valuemin', String(Math.round(start))],
+          ['aria-valuemax', String(Math.round(now / 1000) * 1000)],
+          ['aria-valuenow', String(Math.round(following ? now / 1000 : t1 / 1000) * 1000)],
+        ];
+        for (const [name, value] of aria) if (box.getAttribute(name) !== value) box.setAttribute(name, value);
       }
 
       // The bodies relight to the head's moment; following now they are now (TL-D13).
@@ -799,6 +808,17 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     }
   };
 
+  // The slider's values from the first render (the loop keeps them current between renders).
+  const renderNow = Date.now();
+  const renderScale = followNow(scaleRef.current, renderNow);
+  const slider = {
+    min: dayStart(laneSet, renderScale.spanMs, renderNow),
+    max: renderNow,
+    now: renderScale.endMs,
+    text: renderScale.live
+      ? `Now, ${formatClock(renderNow)}`
+      : `${formatClock(renderScale.endMs)}, ${formatWords(renderNow - renderScale.endMs)} ago`,
+  };
   const presetIndex = ZOOM_PRESETS.findIndex((preset) => Math.abs(preset.spanMs - bar.spanMs) < 1000);
   const nextPreset = ZOOM_PRESETS[(presetIndex + 1) % ZOOM_PRESETS.length]!;
   const rootStyle = {
@@ -816,6 +836,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
           className="vf-monitor-timeline-map-box"
           role="slider"
           tabIndex={0}
+          aria-valuemin={Math.round(slider.min)}
+          aria-valuemax={Math.round(slider.max / 1000) * 1000}
+          aria-valuenow={Math.round(slider.now / 1000) * 1000}
+          aria-valuetext={slider.text}
           aria-label="The head’s moment in the day"
           title="The whole day. Press to put the head there; drag to play it back."
           onPointerDown={onMapDown}

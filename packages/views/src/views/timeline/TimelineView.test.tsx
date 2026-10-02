@@ -60,6 +60,12 @@ describe('the timeline view', () => {
     const world = timelineWorld(NOW);
     const html = markup(world.agents, world.history);
     expect(html).toContain('role="slider"');
+    const slider = /<div[^>]*role="slider"[^>]*>/.exec(html)?.[0] ?? '';
+    const value = (name: string): number => Number(new RegExp(`${name}="(-?\\d+)"`).exec(slider)?.[1]);
+    expect(value('aria-valuemin')).toBeLessThan(value('aria-valuemax'));
+    expect(value('aria-valuenow')).toBeLessThanOrEqual(value('aria-valuemax'));
+    expect(value('aria-valuenow')).toBeGreaterThan(value('aria-valuemin'));
+    expect(slider).toMatch(/aria-valuetext="Now, \d\d:\d\d"/);
     expect(html).toContain('aria-label="The head’s moment in the day"');
     const buttons = [...html.matchAll(/<li><button[^>]*>([^<]+)<\/button><\/li>/g)].map((match) => match[1]!);
     expect(buttons).toHaveLength(11);

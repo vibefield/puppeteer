@@ -56,7 +56,7 @@ describe('pulseMap', () => {
     { color: 'green', recordedFromMs: 0, endMs: NOW, spans: [{ status: 'working', fromMs: 40 * MIN, toMs: 50 * MIN }] },
     { color: 'violet', recordedFromMs: 0, endMs: NOW, spans: [{ status: 'unseen', fromMs: 20 * MIN }] },
   ];
-  const map = pulseMap(rows, START, NOW, { fromMs: 40 * MIN, toMs: NOW }, { ...PULSE_GEOMETRY, width: 200 });
+  const map = pulseMap(rows, START, NOW, { ...PULSE_GEOMETRY, width: 200 });
 
   it('stacks one band per project colour, the one that worked most on the line', () => {
     expect(map.work.map((band) => band.color)).toEqual(['violet', 'green']);
@@ -81,12 +81,6 @@ describe('pulseMap', () => {
       expect(top).toBeGreaterThanOrEqual(map.base - PULSE_GEOMETRY.up - 1e-3);
       expect(map.unseen.bottom[index]!).toBeLessThanOrEqual(map.base + PULSE_GEOMETRY.down + 1e-3);
     }
-  });
-
-  it('points its crest at work and its dip at a wait inside the window', () => {
-    expect(map.crest.y).toBeLessThan(map.base);
-    expect(map.dip.y).toBeGreaterThan(map.base);
-    expect(map.dip.x).toBeGreaterThan(200 * 0.4 - 1);
   });
 });
 
