@@ -2,7 +2,7 @@
   "name": "@vibecook/puppeteer-views",
   "version": "0.1.8",
   "type": "module",
-  "description": "Godview's monitor views for Puppeteer agents: the swarm on WebGPU, the list, the rain, the instrument bar, the usage column and the find sheet, host-agnostic behind injected ports.",
+  "description": "Godview's monitor views for Puppeteer agents: the swarm on WebGPU, the list, the rain, the timeline, the instrument bar, the usage column and the find sheet, host-agnostic behind injected ports.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {

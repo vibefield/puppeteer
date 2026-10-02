@@ -19,7 +19,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "restore-smoke": "pnpm bundle && node restore-smoke.mjs",
-    "swarm-lab": "node swarm-lab.mjs"
+    "swarm-lab": "node swarm-lab.mjs",
+    "timeline-lab": "node timeline-lab.mjs"
   },
   "dependencies": {
     "@parcel/watcher": "^2.5.0",

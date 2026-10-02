@@ -65,5 +65,15 @@ export * from './views/list/ListSpawnMenu.js';
 export * from './views/rain/index.js';
 export * from './views/rain/rain-parameters.js';
 export * from './views/rain/rain-streams.js';
+export * from './views/timeline/index.js';
+export * from './views/timeline/timeline-parameters.js';
+export * from './views/timeline/timeline-lanes.js';
+export * from './views/timeline/timeline-scale.js';
+export * from './views/timeline/timeline-words.js';
+export * from './views/timeline/wake-geometry.js';
+export * from './views/timeline/pulse-map.js';
+export { TimelineView } from './views/timeline/TimelineView.js';
+// The timeline's example afternoon, for a host's catalog to mount the shipping view with.
+export * from './views/timeline/lab/timeline-fixtures.js';
 // The deck's pane frame (record §07) behind a verbs port — PU-14.
 export * from './deck/index.js';

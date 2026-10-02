@@ -23,6 +23,13 @@ const MARKS: Record<string, ReactNode> = {
   list: <path d="M5 7h14M5 12h14M5 17h14" />,
   // Three broken columns.
   rain: <path d="M7 4v5M7 12.5v2.5M12 3v2.5M12 8.5v8M17 5v3.5M17 12v6" />,
+  // Three spans of different lengths, stopping short of the now line.
+  timeline: (
+    <>
+      <path d="M4.5 7.5h8M8 12h8.5M4.5 16.5h5" />
+      <path d="M19.5 4.5v15" />
+    </>
+  ),
   // Two sliders.
   tune: (
     <>
