@@ -119,6 +119,15 @@ function layoutLanes(set: TimelineLaneSet, bodyHeight: number, laneMax: number):
   return { placed, divider, height: y + 4 };
 }
 
+/** Whether the element has the keyboard's focus ring (a click's focus does not). */
+function focusVisible(element: Element): boolean {
+  try {
+    return element.matches(':focus-visible');
+  } catch {
+    return false;
+  }
+}
+
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
 function motionAllowed(root: Element | null): boolean {
@@ -245,8 +254,9 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const actionsRef = useRef(actions);
   const inksRef = useRef<TimelineInks | null>(null);
   const fontRef = useRef('ui-monospace, monospace');
-  const litRef = useRef(-1);
-  const focusRef = useRef(-1);
+  /** The lit lane and the keyboard's lane, by id: indices go stale when a lane is added or scrolls out. */
+  const litRef = useRef<string | null>(null);
+  const focusRef = useRef<string | null>(null);
   const revRef = useRef(0);
   const dirtyRef = useRef(true);
   const scrolledOutRef = useRef(scrolledOut);
@@ -381,34 +391,43 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     [current, earliest, place],
   );
 
-  const choose = useCallback((index: number): void => {
-    const placed = layoutRef.current.placed[index];
+  const placedOf = (id: string | null): PlacedLane | undefined =>
+    id === null ? undefined : layoutRef.current.placed.find((placed) => placed.lane.id === id);
+
+  const choose = useCallback((id: string | null): void => {
+    const placed = placedOf(id);
     // An ended agent has nothing left to open.
     if (!placed || placed.lane.endedAtMs !== undefined) return;
     actionsRef.current.select(placed.lane.agent);
   }, []);
 
-  const light = useCallback((index: number): void => {
-    if (litRef.current === index) return;
-    litRef.current = index;
+  const light = useCallback((id: string | null): void => {
+    if (litRef.current === id) return;
+    litRef.current = id;
     dirtyRef.current = true;
   }, []);
 
-  const paintFocusRing = useCallback((): void => {
+  /** The keyboard's ring on its lane (CSS shows it only for keyboard focus); `reveal` scrolls it into view. */
+  const paintFocusRing = useCallback((reveal = false): void => {
     const ring = focusRingRef.current;
-    const placed = layoutRef.current.placed[focusRef.current];
+    const placed = placedOf(focusRef.current);
     if (!ring) return;
     ring.hidden = !placed;
     if (!placed) return;
     ring.style.top = `${placed.y}px`;
     ring.style.height = `${placed.h}px`;
     const body = bodyRef.current;
-    if (body) {
+    if (body && reveal) {
       if (placed.y < body.scrollTop) body.scrollTop = placed.y;
       else if (placed.y + placed.h > body.scrollTop + body.clientHeight)
         body.scrollTop = placed.y + placed.h - body.clientHeight;
     }
   }, []);
+
+  // The ring follows its lane's id through a new layout; a lane that left takes the ring with it.
+  useLayoutEffect(() => {
+    paintFocusRing();
+  }, [layout, paintFocusRing]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -474,7 +493,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
 
       // The wakes: repainted when the head has moved a third of a pixel, or anything else changed.
       const wake = wakeRef.current;
-      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${litRef.current}|${cols.x1}x${rows}`;
+      const lit = litRef.current === null ? -1 : lay.placed.findIndex((placed) => placed.lane.id === litRef.current);
+      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rows}`;
       if (wake && (wakeKey !== wakeKeyRef.current || dirtyRef.current)) {
         wakeKeyRef.current = wakeKey;
         const ratio = sizeCanvas(wake, cols.x1, rows);
@@ -490,7 +510,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
               t0,
               t1,
               nowMs: now,
-              lit: litRef.current,
+              lit,
               namesRight: cols.names - 24,
               glow: settingsRef.current.glow,
               font: fontRef.current,
@@ -626,7 +646,12 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     const rect = rowsRef.current?.getBoundingClientRect();
     return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 };
   };
-  const laneAt = (y: number): number => layoutRef.current.placed.findIndex((p) => y >= p.y && y < p.y + p.h);
+  const laneAt = (y: number): string | null =>
+    layoutRef.current.placed.find((p) => y >= p.y && y < p.y + p.h)?.lane.id ?? null;
+  const dropDrag = (): void => {
+    pointer.current = null;
+    rootRef.current?.removeAttribute('data-panning');
+  };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return;
@@ -634,7 +659,12 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     pointer.current = { x: event.clientX, id: event.pointerId, moved: false, inTrack: x <= columnsRef.current.x1 };
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const drag = pointer.current;
+    let drag = pointer.current;
+    // A press released outside the view never reached pointerup here: no button down, no drag.
+    if (drag && (event.buttons & 1) === 0) {
+      dropDrag();
+      drag = null;
+    }
     if (drag?.inTrack) {
       const dx = event.clientX - drag.x;
       if (!drag.moved && Math.abs(dx) > 4) {
@@ -653,13 +683,13 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   };
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const drag = pointer.current;
-    pointer.current = null;
-    rootRef.current?.removeAttribute('data-panning');
+    dropDrag();
     if (!drag || drag.moved || event.type !== 'pointerup') return;
-    const index = laneAt(local(event).y);
-    if (index >= 0) {
-      focusRef.current = index;
-      choose(index);
+    const id = laneAt(local(event).y);
+    if (id !== null) {
+      focusRef.current = id;
+      paintFocusRing();
+      choose(id);
     }
   };
 
@@ -693,10 +723,11 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       if (!count) return;
       event.preventDefault();
       const lanes = layoutRef.current.placed.map((placed) => placed.lane);
-      focusRef.current = stepLight(lanes, focusRef.current, event.key === 'ArrowDown' ? 1 : -1);
-      paintFocusRing();
+      const from = lanes.findIndex((lane) => lane.id === focusRef.current);
+      focusRef.current = lanes[stepLight(lanes, from, event.key === 'ArrowDown' ? 1 : -1)]?.id ?? focusRef.current;
+      paintFocusRing(true);
       light(focusRef.current);
-    } else if (event.key === 'Enter' && focusRef.current >= 0) {
+    } else if (event.key === 'Enter' && focusRef.current !== null) {
       event.preventDefault();
       choose(focusRef.current);
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -861,19 +892,19 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
-        onPointerLeave={() =>
-          light(focusRef.current >= 0 && bodyRef.current === document.activeElement ? focusRef.current : -1)
-        }
+        onPointerLeave={() => {
+          dropDrag();
+          light(bodyRef.current === document.activeElement ? focusRef.current : null);
+        }}
+        onLostPointerCapture={dropDrag}
         onKeyDown={onBodyKey}
-        onFocus={() => {
-          if (focusRef.current < 0) {
-            focusRef.current = stepLight(
-              layoutRef.current.placed.map((placed) => placed.lane),
-              -1,
-              1,
-            );
+        onFocus={(event) => {
+          // A click's focus takes the lane it lands on (pointerup); the keyboard's enters at the first.
+          if (focusRef.current === null && focusVisible(event.currentTarget)) {
+            const lanes = layoutRef.current.placed.map((placed) => placed.lane);
+            focusRef.current = lanes[stepLight(lanes, -1, 1)]?.id ?? null;
           }
-          paintFocusRing();
+          paintFocusRing(true);
         }}
       >
         <div ref={rowsRef} className="vf-monitor-timeline-rows" style={{ height: layout.height }}>
