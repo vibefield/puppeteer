@@ -47,6 +47,16 @@ export interface MonitorPalette {
     hoverTailRgb: string;
     status: Readonly<Record<AgentVisualStatus, { head: string; tailRgb: string; speed?: number }>>;
   };
+  /** What the timeline's canvases need beyond the swarm's colours, resolved
+   * from the same theme-scoped instrument palette (§2.7): the stage's own ground
+   * (its labels are haloed in it), the secondary ink, and the hairline. */
+  timeline: TimelinePalette;
+}
+
+export interface TimelinePalette {
+  ground: string;
+  muted: string;
+  border: string;
 }
 
 export interface SwarmPalette {
@@ -150,6 +160,11 @@ export function readMonitorPalette(root?: Element | null): MonitorPalette {
     stage,
     text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, tertiary: TEXT_TERTIARY },
     swarm: readSwarmPalette(root),
+    timeline: {
+      ground: readScopedToken('--monitor-bg', '#000000', root),
+      muted: readScopedToken('--text-muted', '#000000', root),
+      border: readScopedToken('--panel-border', '#000000', root),
+    },
     rain: {
       stage: readToken('--vf-card-deep', '#000000'),
       activeHead: readToken('--vf-godview-rain-working-head', '#ffffff'),
