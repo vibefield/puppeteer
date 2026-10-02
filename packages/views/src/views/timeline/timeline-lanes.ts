@@ -313,3 +313,20 @@ export function scrolledOutIds(set: TimelineLaneSet, viewStartMs: number): strin
     if (lane.endedAtMs !== undefined && lane.endedAtMs <= viewStartMs) out.push(lane.id);
   return out.sort().join('\n');
 }
+
+/**
+ * The map of the day's left end: the first agent's birth, at most a horizon
+ * back, and never inside the window. It is also the head's limit: the head
+ * stands no earlier than `dayStart + span` (`earliestHead`), so the window in
+ * view, and the map's lens on it, never leave the map — and the arrows, a drag
+ * and Home all stop at the same place.
+ */
+export function dayStart(set: TimelineLaneSet, spanMs: number, nowMs: number): number {
+  let start = nowMs - spanMs;
+  for (const lane of set.agents) start = Math.min(start, lane.bornMs);
+  return Math.max(nowMs - STATUS_HISTORY_HORIZON_MS, start);
+}
+
+export function earliestHead(set: TimelineLaneSet, spanMs: number, nowMs: number): number {
+  return Math.min(nowMs, dayStart(set, spanMs, nowMs) + spanMs);
+}

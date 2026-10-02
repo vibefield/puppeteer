@@ -5,6 +5,8 @@ import type { MonitorAgent } from '../../monitor/types.js';
 import {
   clipToHorizon,
   createLaneCache,
+  dayStart,
+  earliestHead,
   laneContentKey,
   scrolledOutIds,
   spanIndexAt,
@@ -331,5 +333,34 @@ describe('scrolledOutIds', () => {
     };
     expect(scrolledOutIds(set, NOW - 10 * MIN)).toBe('a');
     expect(scrolledOutIds(set, NOW)).toBe('a\nb');
+  });
+});
+
+describe('the day’s start and the head’s limit', () => {
+  const set = timelineLanes({
+    agents: [
+      agentRow('a', 3 * 60 * MIN),
+      agentRow('b', 30 * MIN),
+      row({ id: 'shell', createdAtMs: NOW - 9 * 60 * MIN }),
+    ],
+    nowMs: NOW,
+  });
+
+  it('starts the map at the first agent’s birth (terminals do not stretch it), never inside the window', () => {
+    expect(dayStart(set, 60 * MIN, NOW)).toBe(NOW - 3 * 60 * MIN);
+    expect(dayStart(set, 5 * 60 * MIN, NOW)).toBe(NOW - 5 * 60 * MIN);
+  });
+
+  it('holds the head a window past it, so the lens never leaves the map', () => {
+    for (const span of [15 * MIN, 60 * MIN, 4 * 60 * MIN, 12 * 60 * MIN]) {
+      const head = earliestHead(set, span, NOW);
+      expect(head - span).toBeGreaterThanOrEqual(dayStart(set, span, NOW));
+      expect(head).toBeLessThanOrEqual(NOW);
+    }
+  });
+
+  it('never reaches past the horizon', () => {
+    const old = timelineLanes({ agents: [agentRow('a', 30 * 60 * 60_000)], nowMs: NOW });
+    expect(dayStart(old, 60 * MIN, NOW)).toBe(NOW - STATUS_HISTORY_HORIZON_MS);
   });
 });

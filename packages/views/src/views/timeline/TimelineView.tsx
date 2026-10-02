@@ -14,6 +14,8 @@ import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
 import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
 import {
   createLaneCache,
+  dayStart,
+  earliestHead,
   laneContentKey,
   noteFirstSeen,
   scrolledOutIds,
@@ -35,7 +37,6 @@ import {
 import { normalizeTimelineParameters } from './timeline-parameters.js';
 import {
   clampSpan,
-  earliestEnd,
   followNow,
   glideTween,
   headAt,
@@ -137,20 +138,6 @@ function motionAllowed(root: Element | null): boolean {
 
 function dayLabel(t: number): string {
   return new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }).toUpperCase();
-}
-
-/** The map's left end: the day's first recorded moment, at most a horizon back, never inside the window. */
-function mapStart(set: TimelineLaneSet, scale: TimelineScale, nowMs: number): number {
-  let start = nowMs - scale.spanMs;
-  for (const lane of set.agents) start = Math.min(start, Math.max(lane.bornMs, lane.recordedFromMs));
-  return Math.max(nowMs - STATUS_HISTORY_HORIZON_MS, start);
-}
-
-function firstBirth(set: TimelineLaneSet, nowMs: number): number {
-  let first = nowMs;
-  for (const lane of set.agents) first = Math.min(first, lane.bornMs);
-  for (const lane of set.terminals) first = Math.min(first, lane.bornMs);
-  return first;
 }
 
 const set = (element: HTMLElement | null, key: string, value: string): void => {
@@ -321,8 +308,15 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   }, []);
 
   const earliest = useCallback((scale: TimelineScale, nowMs: number): number => {
-    return earliestEnd(firstBirth(laneSetRef.current, nowMs), scale.spanMs, nowMs);
+    return earliestHead(laneSetRef.current, scale.spanMs, nowMs);
   }, []);
+
+  /** A held head no earlier than the map allows at its span: a zoom out near the day's start stays on the map. */
+  const clampHead = useCallback(
+    (scale: TimelineScale, nowMs: number): TimelineScale =>
+      scale.live ? scale : headAt(scale, scale.endMs, nowMs, earliest(scale, nowMs)),
+    [earliest],
+  );
 
   /** Put a new scale in place now: a drag, a key, the map. Any tween stops. */
   const place = useCallback((next: TimelineScale): void => {
@@ -343,7 +337,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     (spanMs: number): void => {
       const now = Date.now();
       const base = settledScale(scaleRef.current, tweenRef.current, now);
-      const target = zoomAt(base, spanMs, 0, columnsRef.current.x1, now);
+      const target = clampHead(zoomAt(base, spanMs, 0, columnsRef.current.x1, now), now);
       if (!motionRef.current) {
         place(target);
         return;
@@ -353,7 +347,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       tweenRef.current = tweenBetween(from, target, performance.now());
       dirtyRef.current = true;
     },
-    [current, place],
+    [clampHead, current, place],
   );
 
   /** Pinch or ⌘-scroll: zoom about the pointer, easing toward a target that each event moves on. */
@@ -361,7 +355,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     (factor: number, anchorFromHeadPx: number): void => {
       const now = Date.now();
       const base = settledScale(scaleRef.current, tweenRef.current, now);
-      const target = zoomAt(base, clampSpan(base.spanMs * factor), anchorFromHeadPx, columnsRef.current.x1, now);
+      const target = clampHead(
+        zoomAt(base, clampSpan(base.spanMs * factor), anchorFromHeadPx, columnsRef.current.x1, now),
+        now,
+      );
       if (!motionRef.current) {
         place(target);
         return;
@@ -371,7 +368,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       tweenRef.current = tweenBetween(from, target, performance.now());
       dirtyRef.current = true;
     },
-    [current, place],
+    [clampHead, current, place],
   );
 
   const toNow = useCallback((): void => {
@@ -552,7 +549,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const mapCanvas = mapRef.current;
       if (box && mapCanvas) {
         const width = Math.max(1, cols.x1 - MAP_LEFT);
-        const start = mapStart(all, scale, now);
+        const start = dayStart(all, scale.spanMs, now);
         mapRangeRef.current = [start, now];
         const mapKey = `${revRef.current}|${width}|${Math.round(start / 1000)}`;
         if (tick || mapKey !== mapKeyRef.current || dirtyRef.current) {
@@ -795,7 +792,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       pan(event.key === 'ArrowLeft' ? -step : step);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      place(headAt(scale, mapRangeRef.current[0] + scale.spanMs, now, earliest(scale, now)));
+      place(headAt(scale, earliest(scale, now), now, earliest(scale, now)));
     } else if (event.key === 'End') {
       event.preventDefault();
       toNow();

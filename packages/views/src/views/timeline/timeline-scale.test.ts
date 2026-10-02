@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   SPAN_MAX_MS,
   SPAN_MIN_MS,
-  earliestEnd,
   followNow,
   glideTween,
   headAt,
@@ -43,7 +42,6 @@ describe('the scale', () => {
       live: true,
     });
     expect(headAt(initialScale(NOW), NOW - 300, NOW, earliest).live).toBe(true);
-    expect(earliestEnd(NOW - 60 * MIN, 60 * MIN, NOW)).toBe(NOW - 120 * MIN + 15 * MIN);
   });
 
   it('zooms at the pointer: the moment under it stays put', () => {

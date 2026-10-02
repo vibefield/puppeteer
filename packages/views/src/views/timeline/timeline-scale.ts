@@ -52,11 +52,6 @@ export function followNow(scale: TimelineScale, nowMs: number): TimelineScale {
   return scale.live && scale.endMs !== nowMs ? { ...scale, endMs: nowMs } : scale;
 }
 
-/** The earliest the head may stand: a quarter window past an hour before the first birth. */
-export function earliestEnd(firstMs: number, spanMs: number, nowMs: number): number {
-  return Math.max(firstMs - HOUR, nowMs - STATUS_HISTORY_HORIZON_MS) + spanMs * 0.25;
-}
-
 /** Put the head at `endMs`, clamped; within 400 ms of now it follows now again. */
 export function headAt(scale: TimelineScale, endMs: number, nowMs: number, earliestMs: number): TimelineScale {
   const end = Math.min(nowMs, Math.max(Math.min(earliestMs, nowMs), endMs));
