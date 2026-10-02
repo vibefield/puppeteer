@@ -214,8 +214,13 @@ export function seedStatusHistory(
     const d = known[i];
     const o = observed[j];
     if (o && (!d || o.atMs <= d.atMs)) {
-      if (d && d.atMs === o.atMs) i++;
-      merged.push(o);
+      if (d && d.atMs === o.atMs) {
+        // the same moment: the observed status, and the record's words where the window had none
+        i++;
+        merged.push(d.status === o.status ? changeOf(o.status, o.atMs, o.blocker ?? d.blocker, o.did ?? d.did) : o);
+      } else {
+        merged.push(o);
+      }
       j++;
     } else if (d) {
       merged.push(d);

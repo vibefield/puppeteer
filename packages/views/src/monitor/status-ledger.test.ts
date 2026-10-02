@@ -188,6 +188,17 @@ describe('seedStatusHistory', () => {
     expect(statusHistoryBook(seeded).lanes.get('a')!.spans[0]!.did).toBe('Run pnpm verify');
   });
 
+  it("keeps the record's words for a moment both saw, when the window saw none", () => {
+    const observed = fold([[5, [row('a', { status: 'working', since: 0 })]]]);
+    const seeded = seedStatusHistory(
+      observed,
+      'a',
+      { recordedFromMs: at(0), changes: [{ status: 'working', atMs: at(0), did: 'Edit tl-view.js' }] },
+      at(5),
+    );
+    expect(statusHistoryBook(seeded).lanes.get('a')!.spans[0]!.did).toBe('Edit tl-view.js');
+  });
+
   it('leaves the stretch before a later unknown running, never a guessed state', () => {
     const seeded = seedStatusHistory(
       EMPTY_STATUS_LEDGER,
