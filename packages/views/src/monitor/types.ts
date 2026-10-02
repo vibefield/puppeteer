@@ -123,7 +123,10 @@ export interface MonitorAgent {
   /** The project's colour (record §02): the host deals the project a sequence
    * the first time an agent runs in it, and the theme's tint turns that into a
    * hue. A bare terminal belongs to no project and wears the ramp. It groups
-   * and labels; it never signals state. */
+   * and labels; it never signals state — with one exception, carried by shape
+   * (DESIGN §2.6, TL-D2/D14): the timeline's working span wears it, because
+   * there the wake's width says the state (work wide, a wait a thread, rest a
+   * hair), so a project hue near orange is never read as blocked. */
   color: string;
   /** Evidence recency is presentation metadata, never a fourth status. */
   stale?: boolean | undefined;
