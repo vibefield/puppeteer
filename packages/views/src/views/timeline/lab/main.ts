@@ -1,4 +1,4 @@
-import { createElement, useMemo, useRef, useState, type ReactElement } from 'react';
+import { createElement, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useMonitorPalette } from '../../../monitor/palette.js';
 import type { MonitorActions, MonitorAgent } from '../../../monitor/types.js';
@@ -11,7 +11,7 @@ import { timelineWorld } from './timeline-fixtures.js';
 // what the view draws before a host keeps a ledger (TL-D9). What is drawn here
 // is what Godview draws; a design change is reviewed here as pixels.
 //
-// `?theme=dark` opens dark; `?only=wide` (or narrow, bare) shows one stage; `?recede=<ids>` recedes rows.
+// `?theme=dark` opens dark; `?only=wide` (or narrow, bare) shows one stage; `?recede=<ids>` recedes rows; `?chrome=<px>` insets the view past a usage column.
 
 interface Stage {
   id: string;
@@ -50,6 +50,7 @@ const STAGES: readonly Stage[] = [
 ];
 
 function StageView({ stage, nowMs }: { stage: Stage; nowMs: number }): ReactElement {
+  const chrome = `${Number(new URLSearchParams(location.search).get('chrome') ?? 0) || 0}px`;
   const rootRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(rootRef);
   const world = useMemo(() => {
@@ -69,7 +70,12 @@ function StageView({ stage, nowMs }: { stage: Stage; nowMs: number }): ReactElem
     { className: 'timeline-lab-stage', 'data-stage': stage.id },
     createElement(
       'div',
-      { ref: rootRef, className: 'timeline-lab-frame', style: { width: stage.width, height: stage.height } },
+      {
+        ref: rootRef,
+        className: 'timeline-lab-frame',
+        // `?chrome=46`: the usage column's width, as Godview sets it when the column has tiles.
+        style: { width: stage.width, height: stage.height, '--vf-monitor-chrome-right': chrome } as CSSProperties,
+      },
       createElement(TimelineView, {
         agents: world.agents,
         ...(stage.book ? { history: world.history } : {}),
