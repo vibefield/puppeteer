@@ -11,7 +11,7 @@ import { timelineWorld } from './timeline-fixtures.js';
 // what the view draws before a host keeps a ledger (TL-D9). What is drawn here
 // is what Godview draws; a design change is reviewed here as pixels.
 //
-// `?theme=dark` opens dark; `?only=wide` (or narrow, bare) shows one stage.
+// `?theme=dark` opens dark; `?only=wide` (or narrow, bare) shows one stage; `?recede=<ids>` recedes rows.
 
 interface Stage {
   id: string;
@@ -52,7 +52,13 @@ const STAGES: readonly Stage[] = [
 function StageView({ stage, nowMs }: { stage: Stage; nowMs: number }): ReactElement {
   const rootRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(rootRef);
-  const world = useMemo(() => timelineWorld(nowMs, palette.tint), [nowMs, palette.tint]);
+  const world = useMemo(() => {
+    // `?recede=notes,dotfiles`: those rows as a host's profile tabs hand rows outside the chosen profile.
+    const recede = new Set((new URLSearchParams(location.search).get('recede') ?? '').split(',').filter(Boolean));
+    const base = timelineWorld(nowMs, palette.tint);
+    const mark = (agent: MonitorAgent): MonitorAgent => (recede.has(agent.id) ? { ...agent, receded: true } : agent);
+    return { agents: base.agents.map(mark), history: { ...base.history, ended: base.history.ended.map(mark) } };
+  }, [nowMs, palette.tint]);
   const [selected, setSelected] = useState<string>();
   const actions = useMemo<MonitorActions>(
     () => ({ select: (agent: MonitorAgent) => setSelected(agent.project), createAt: () => undefined }),

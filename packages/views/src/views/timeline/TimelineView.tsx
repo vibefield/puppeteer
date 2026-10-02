@@ -11,11 +11,12 @@ import {
 } from 'react';
 import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
 import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
-import { pulseMap, PULSE_GEOMETRY, type PulseRow } from './pulse-map.js';
+import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
 import {
   lanesInView,
   noteFirstSeen,
   stateAt,
+  stepLight,
   timelineLanes,
   type TimelineLane,
   type TimelineLaneSet,
@@ -523,12 +524,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
           mapKeyRef.current = mapKey;
           const ratio = sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height);
           const ctx = mapCanvas.getContext('2d');
-          const pulseRows: PulseRow[] = all.agents.map((lane) => ({
-            color: lane.agent.color,
-            recordedFromMs: lane.recordedFromMs,
-            endMs: lane.endedAtMs ?? now,
-            spans: lane.spans,
-          }));
+          const pulseRows = pulseRowsFor(all.agents, now);
           if (ctx) {
             const map = pulseMap(pulseRows, start, now, { fromMs: t0, toMs: t1 }, { ...PULSE_GEOMETRY, width });
             paintPulse(
@@ -675,9 +671,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       if (!count) return;
       event.preventDefault();
-      const down = event.key === 'ArrowDown';
-      const from = focusRef.current < 0 ? (down ? -1 : count) : focusRef.current;
-      focusRef.current = Math.min(count - 1, Math.max(0, from + (down ? 1 : -1)));
+      const lanes = layoutRef.current.placed.map((placed) => placed.lane);
+      focusRef.current = stepLight(lanes, focusRef.current, event.key === 'ArrowDown' ? 1 : -1);
       paintFocusRing();
       light(focusRef.current);
     } else if (event.key === 'Enter' && focusRef.current >= 0) {
@@ -849,7 +844,13 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         }
         onKeyDown={onBodyKey}
         onFocus={() => {
-          if (focusRef.current < 0 && layoutRef.current.placed.length) focusRef.current = 0;
+          if (focusRef.current < 0) {
+            focusRef.current = stepLight(
+              layoutRef.current.placed.map((placed) => placed.lane),
+              -1,
+              1,
+            );
+          }
           paintFocusRing();
         }}
       >
@@ -872,7 +873,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
               return (
                 <div
                   key={lane.id}
-                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.endedAtMs !== undefined ? ' is-ended' : ''}${agent.active ? ' is-active' : ''}`}
+                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.endedAtMs !== undefined ? ' is-ended' : ''}${lane.receded ? ' is-receded' : ''}${agent.active ? ' is-active' : ''}`}
                   style={{ top: y, height: h, '--pc': agent.color } as CSSProperties}
                 >
                   {pane ? (
@@ -898,7 +899,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
                 ref={(element) => {
                   headEls.current[index] = element;
                 }}
-                className={`vf-monitor-timeline-head${lane.kind === 'terminal' ? ' is-terminal' : ''}${h < 30 ? ' is-one' : ''}`}
+                className={`vf-monitor-timeline-head${lane.kind === 'terminal' ? ' is-terminal' : ''}${h < 30 ? ' is-one' : ''}${lane.receded ? ' is-receded' : ''}`}
                 style={{ top: y, height: h, '--h': `${h}px`, '--pc': lane.agent.color } as CSSProperties}
               >
                 <i className="vf-monitor-timeline-body-mark" />

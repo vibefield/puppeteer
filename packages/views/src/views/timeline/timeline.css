@@ -453,6 +453,16 @@
   opacity: 0.45;
 }
 
+/* The host shows another group: the lane keeps its slot, its name, body and readout quiet (30%). */
+.vf-monitor-timeline-name.is-receded,
+.vf-monitor-timeline-head.is-receded {
+  opacity: 0.3;
+}
+
+.vf-monitor-timeline-name.is-ended.is-receded {
+  opacity: 0.135;
+}
+
 .vf-monitor-timeline-name.is-active b {
   text-decoration: underline;
   text-decoration-thickness: 1px;

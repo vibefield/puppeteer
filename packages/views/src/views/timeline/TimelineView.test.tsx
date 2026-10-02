@@ -76,6 +76,16 @@ describe('the timeline view', () => {
     expect(names(html)).toHaveLength(11);
   });
 
+  it('draws a receded row quiet in its slot, still a button to open', () => {
+    const world = timelineWorld(NOW);
+    const agents = world.agents.map((agent) => (agent.id === 'notes' ? { ...agent, receded: true } : agent));
+    const html = markup(agents, world.history);
+    expect(names(html)[6]).toBe('notes');
+    expect(html).toMatch(/class="vf-monitor-timeline-name is-receded"[^>]*>(?:<[^>]+>)*?<svg/);
+    expect(html.match(/vf-monitor-timeline-head[^"]* is-receded/g)).toHaveLength(1);
+    expect(html).toMatch(/<li><button type="button">on tower, notes, haiku, idle for 47 minutes<\/button><\/li>/);
+  });
+
   it('says so when there is nothing to draw', () => {
     expect(markup([])).toContain('NO ACTIVE AGENTS');
   });

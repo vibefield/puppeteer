@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { MonitorHistoryBook, MonitorLaneHistory } from '../../monitor/status-history.js';
 import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
 import type { MonitorAgent } from '../../monitor/types.js';
-import { lanesInView, laneFromRow, noteFirstSeen, stateAt, timelineLanes } from './timeline-lanes.js';
+import {
+  ENDED_ALPHA,
+  QUIET_ALPHA,
+  laneAlpha,
+  lanesInView,
+  laneFromRow,
+  noteFirstSeen,
+  stateAt,
+  stepLight,
+  timelineLanes,
+} from './timeline-lanes.js';
 
 const NOW = Date.UTC(2026, 9, 2, 15, 0, 0);
 const MIN = 60_000;
@@ -173,5 +183,52 @@ describe('noteFirstSeen', () => {
     ]);
     expect(noteFirstSeen(first, [row({ id: 'a' }), row({ id: 'b' })], 200)).toBe(first);
     expect([...noteFirstSeen(first, [row({ id: 'b' })], 300)]).toEqual([['b', 100]]);
+  });
+});
+
+describe('receded lanes', () => {
+  const gone = agentRow('gone', 40 * MIN, { receded: true });
+  const set = timelineLanes({
+    agents: [agentRow('a', 50 * MIN), agentRow('quiet', 45 * MIN, { receded: true }), agentRow('b', 30 * MIN)],
+    history: book(
+      {
+        gone: {
+          recordedFromMs: NOW - 40 * MIN,
+          spans: [{ status: 'working', fromMs: NOW - 40 * MIN, toMs: NOW - 20 * MIN }],
+          endedAtMs: NOW - 20 * MIN,
+        },
+      },
+      [gone],
+    ),
+    nowMs: NOW,
+  });
+  const lanes = set.agents;
+
+  it('keep their birth slot, live or ended', () => {
+    expect(lanes.map((lane) => [lane.id, lane.receded])).toEqual([
+      ['a', false],
+      ['quiet', true],
+      ['gone', true],
+      ['b', false],
+    ]);
+  });
+
+  it('are drawn quiet, and fainter again when ended; a lane the pointer lights is whole', () => {
+    expect(laneAlpha(lanes[0]!, 0, -1)).toBe(1);
+    expect(laneAlpha(lanes[1]!, 1, -1)).toBe(QUIET_ALPHA);
+    expect(laneAlpha(lanes[2]!, 2, -1)).toBeCloseTo(QUIET_ALPHA * ENDED_ALPHA);
+    expect(laneAlpha(lanes[1]!, 1, 1)).toBe(1);
+    expect(laneAlpha(lanes[1]!, 1, 0)).toBe(QUIET_ALPHA);
+    expect(laneAlpha(lanes[0]!, 0, 3)).toBe(QUIET_ALPHA);
+  });
+
+  it('are stepped over by ↑ and ↓', () => {
+    expect(stepLight(lanes, -1, 1)).toBe(0);
+    expect(stepLight(lanes, 0, 1)).toBe(3);
+    expect(stepLight(lanes, 3, 1)).toBe(3);
+    expect(stepLight(lanes, 3, -1)).toBe(0);
+    expect(stepLight(lanes, -1, -1)).toBe(3);
+    // A receded lane the pointer lit is left by the next key, not re-lit.
+    expect(stepLight(lanes, 1, 1)).toBe(3);
   });
 });

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { PULSE_GEOMETRY, addCoverage, pulseMap, pulseScales, smooth, type PulseRow } from './pulse-map.js';
+import type { TimelineLane } from './timeline-lanes.js';
+import {
+  PULSE_GEOMETRY,
+  addCoverage,
+  pulseMap,
+  pulseRowsFor,
+  pulseScales,
+  smooth,
+  type PulseRow,
+} from './pulse-map.js';
 
 const MIN = 60_000;
 const START = 0;
@@ -78,5 +87,23 @@ describe('pulseMap', () => {
     expect(map.crest.y).toBeLessThan(map.base);
     expect(map.dip.y).toBeGreaterThan(map.base);
     expect(map.dip.x).toBeGreaterThan(200 * 0.4 - 1);
+  });
+});
+
+describe('pulseRowsFor', () => {
+  const lane = (id: string, receded: boolean, kind: TimelineLane['kind'] = 'agent'): TimelineLane => ({
+    id,
+    agent: { id, createdAtMs: 0, status: 'working', project: id, detail: '', color: id, active: false },
+    kind,
+    receded,
+    bornMs: 0,
+    recordedFromMs: 0,
+    spans: [{ status: 'working', fromMs: 0 }],
+  });
+
+  it('counts what the stage counts: no receded lane, no bare terminal', () => {
+    const rows = pulseRowsFor([lane('a', false), lane('b', true), lane('t', false, 'terminal')], NOW);
+    expect(rows.map((row) => row.color)).toEqual(['a']);
+    expect(rows[0]!.endMs).toBe(NOW);
   });
 });

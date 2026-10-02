@@ -29,6 +29,8 @@ export interface TimelineLane {
   /** Ordered and contiguous; only the last may be open, and none ends before the horizon. */
   readonly spans: readonly MonitorHistorySpan[];
   readonly endedAtMs?: number | undefined;
+  /** The host is showing another group (its profile tabs): the lane keeps its slot, drawn quiet. */
+  readonly receded: boolean;
 }
 
 export interface TimelineLaneSet {
@@ -91,6 +93,7 @@ export function laneFromRow(agent: MonitorAgent, nowMs: number, firstSeenMs?: nu
     id: agent.id,
     agent,
     kind: laneKind(agent),
+    receded: agent.receded === true,
     bornMs: Math.min(bornMs, recordedFromMs),
     recordedFromMs,
     spans: [span],
@@ -110,6 +113,7 @@ export function laneFromHistory(agent: MonitorAgent, history: MonitorLaneHistory
     id: agent.id,
     agent,
     kind: laneKind(agent),
+    receded: agent.receded === true,
     bornMs: Math.min(agent.createdAtMs, recordedFromMs),
     recordedFromMs,
     spans,
@@ -179,4 +183,34 @@ export function noteFirstSeen(
     next.set(agent.id, seen ?? nowMs);
   }
   return changed ? next : previous;
+}
+
+/** The quiet a lane takes when another is lit, or when the host shows another group (DESIGN §8: 30%). */
+export const QUIET_ALPHA = 0.3;
+/** An ended lane, until it scrolls out (TL-D6). */
+export const ENDED_ALPHA = 0.45;
+
+/**
+ * How strongly a lane is drawn. With a lane lit, the lit one is whole and the
+ * rest quiet; with none, a receded lane is quiet. An ended lane is fainter
+ * again either way.
+ */
+export function laneAlpha(lane: TimelineLane, index: number, lit: number): number {
+  const ended = lane.endedAtMs === undefined ? 1 : ENDED_ALPHA;
+  if (lit >= 0) return (lit === index ? 1 : QUIET_ALPHA) * ended;
+  return (lane.receded ? QUIET_ALPHA : 1) * ended;
+}
+
+/**
+ * The lane ↑ or ↓ moves the light to: the next one in `direction` that is not
+ * receded (the host is showing another group; only the pointer lights those).
+ * From -1 it enters at the first (↓) or the last (↑). Stays put at either end.
+ */
+export function stepLight(lanes: readonly TimelineLane[], from: number, direction: 1 | -1): number {
+  let index = from < 0 ? (direction > 0 ? -1 : lanes.length) : from;
+  for (;;) {
+    index += direction;
+    if (index < 0 || index >= lanes.length) return from;
+    if (!lanes[index]!.receded) return index;
+  }
 }

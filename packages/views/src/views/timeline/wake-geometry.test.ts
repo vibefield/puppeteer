@@ -27,6 +27,7 @@ function lane(overrides: Partial<TimelineLane> = {}): TimelineLane {
       active: false,
     },
     kind: 'agent',
+    receded: false,
     bornMs: NOW - 60 * MIN,
     recordedFromMs: NOW - 60 * MIN,
     spans: [

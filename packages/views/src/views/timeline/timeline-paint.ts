@@ -2,7 +2,7 @@ import { luminance, resolveCssColor, type Rgba } from '../swarm/gpu/color.js';
 import type { MonitorPalette } from '../../monitor/palette.js';
 import type { MonitorHistoryStatus } from '../../monitor/status-history.js';
 import { resolveSwarmTheme } from '../swarm/swarm-theme.js';
-import type { TimelineLane } from './timeline-lanes.js';
+import { laneAlpha, type TimelineLane } from './timeline-lanes.js';
 import type { PulseBand, PulseMap } from './pulse-map.js';
 import { ticksBetween, tickStep } from './timeline-scale.js';
 import {
@@ -143,7 +143,7 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
   paint.lanes.forEach((placed, index) => {
     const { lane, y, h } = placed;
     const cy = y + h / 2;
-    const fade = (lit >= 0 && lit !== index ? 0.3 : 1) * (lane.endedAtMs !== undefined ? 0.45 : 1);
+    const fade = laneAlpha(lane, index, lit);
     ctx.globalAlpha = fade;
     // Time the record does not hold: a dotted thread, never a state.
     if (lane.recordedFromMs > lane.bornMs) {

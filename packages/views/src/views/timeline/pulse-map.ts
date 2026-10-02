@@ -1,4 +1,5 @@
 import type { MonitorHistorySpan } from '../../monitor/status-history.js';
+import type { TimelineLane } from './timeline-lanes.js';
 
 // The map of the day, drawn as Pulse (TL-D15): the whole field summed into one
 // ridge. Work stacks above a line in each project's colour, its height the
@@ -13,6 +14,22 @@ export interface PulseRow {
   /** Where the row's record stops: its end, or now. */
   readonly endMs: number;
   readonly spans: readonly MonitorHistorySpan[];
+}
+
+/**
+ * The map's rows: every agent lane on the record (not only those in view),
+ * except a receded one — the host is showing another group, and the map
+ * counts what the stage counts.
+ */
+export function pulseRowsFor(lanes: readonly TimelineLane[], nowMs: number): PulseRow[] {
+  return lanes
+    .filter((lane) => lane.kind === 'agent' && !lane.receded)
+    .map((lane) => ({
+      color: lane.agent.color,
+      recordedFromMs: lane.recordedFromMs,
+      endMs: lane.endedAtMs ?? nowMs,
+      spans: lane.spans,
+    }));
 }
 
 export interface PulseGeometry {
