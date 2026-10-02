@@ -5,13 +5,15 @@
    `--idle-bg`, `--panel-border`, …) and the swarm's resolved state lights, which the view sets on
    its root as `--vf-monitor-timeline-orange` and kin; a row's project colour arrives as `--pc`. */
 
+/* Transparent: in Godview the STAGE paints the ground (its glass, scanlines and vignette). Inset from
+   the left past the usage column when it shows tiles, as the list is (`styles/list.css`) — the whole
+   view, map included, so the map's lens stays over the lanes. */
 .vf-monitor-timeline {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 var(--vf-monitor-chrome-right, 0px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--monitor-bg);
   color: var(--text-main);
   font: 400 10px/1.2 var(--vf-font-mono, ui-monospace, monospace);
   user-select: none;

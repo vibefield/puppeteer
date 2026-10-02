@@ -49,7 +49,8 @@ body { margin: 0; background: var(--monitor-bg); }
 .timeline-lab-theme { margin-left: auto; font: 700 10px var(--vf-font-mono); padding: 5px 9px; border: 1px solid var(--panel-border); border-radius: 5px; background: var(--panel-bg); color: var(--text-main); cursor: pointer; }
 .timeline-lab-stages { display: grid; gap: 28px; }
 .timeline-lab-stage { margin: 0; }
-.timeline-lab-frame { position: relative; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 8px; }
+/* The frame stands in for Godview's stage, which paints the ground the (transparent) view sits on. */
+.timeline-lab-frame { position: relative; overflow: hidden; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--monitor-bg); }
 .timeline-lab-stage figcaption { display: flex; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--text-muted); }
 .timeline-lab-stage figcaption b { color: var(--text-main); }
 `;
