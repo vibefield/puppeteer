@@ -91,7 +91,7 @@ export interface MonitorPalette {
     readonly activeHead: string;
     readonly hoverTailRgb: string;
     readonly status: Readonly<
-      Record<AgentStatus, { readonly head: string; readonly tailRgb: string; readonly speed?: number | undefined }>
+      Record<AgentStatus, { readonly head: string; readonly tailRgb: string; readonly speed?: number }>
     >;
   };
   readonly timeline: TimelinePalette;

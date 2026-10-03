@@ -47,6 +47,8 @@ export interface MonitorWait {
   /** The runtime's own word, open: `permission`, `question`, `failure`, … */
   readonly kind: string;
   readonly since: number;
+  /** How many blockers wait, counted before any bound; this one is the first. Absent: one. */
+  readonly count?: number | undefined;
   /** A permission's tool. */
   readonly tool?: string | undefined;
   /** A failure's code. */
@@ -131,6 +133,9 @@ export interface MonitorAgentRow {
   readonly stale: boolean;
   /** Still there: the host's liveness, or the runtime's own word. */
   readonly alive: boolean;
+  /** The runtime has reported a state for this run. False while it starts, and while nothing drives it (with
+   * `pending`). A terminal is always observed, by its host. */
+  readonly observed: boolean;
   /** Alive, but nothing drives it yet (a run that resumes at its next idle). */
   readonly pending?: boolean | undefined;
   /** The line under the name, in the backend's words (the toolkit holds the shared words, MV-D11). */
