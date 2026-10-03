@@ -2860,6 +2860,40 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  it("lists every run's current monitor state and seals a removal with the run's epoch", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-list-'));
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('monitor-list', new Map())],
+    });
+    const removed: Array<[string, number]> = [];
+    runtime.onMonitorRemoved((runtimeRunId, removal) => removed.push([runtimeRunId, removal.runtimeEpoch]));
+
+    expect(runtime.monitorStates()).toEqual([]);
+    const first = await runtime.createSession({ agent: 'monitor-list' });
+    const second = await runtime.createSession({ agent: 'monitor-list' });
+    if ('error' in first || 'error' in second) throw new Error('unexpected create failure');
+
+    // The listing is the same reading monitorState(id) gives, for every run at once.
+    const listed = runtime.monitorStates();
+    expect(listed.map((state) => state.runtimeRunId).sort()).toEqual([first.runtimeRunId, second.runtimeRunId].sort());
+    for (const state of listed) expect(runtime.monitorState(state.runtimeRunId)).toBe(state);
+
+    // A completed run leaves the listing, and its removal names the epoch it seals.
+    await runtime.handleProcessExit(first.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+    expect(removed).toEqual([[first.runtimeRunId, first.runtimeEpoch]]);
+    expect(runtime.monitorStates().map((state) => state.runtimeRunId)).toEqual([second.runtimeRunId]);
+
+    // A retained failure is still a run the listing knows: dead, blocked, not removed.
+    await runtime.handleProcessExit(second.terminalSessionId, { exitCode: 1, signal: null, reason: 'crash' });
+    expect(runtime.monitorStates()).toMatchObject([
+      { runtimeRunId: second.runtimeRunId, alive: false, status: 'blocked' },
+    ]);
+    expect(removed).toHaveLength(1);
+    await runtime.dispose();
+  });
+
   it('makes the three-state monitor an invariant of every live Agent', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-invariant-'));
     const runtime = createAgentRuntime({
