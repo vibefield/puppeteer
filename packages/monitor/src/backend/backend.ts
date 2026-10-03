@@ -20,6 +20,7 @@ import {
   resolveProfileSet,
 } from './derive.js';
 import { deepEqual, freezeTree } from './equal.js';
+import { USAGE_STEP_MS, UsageLedger, type UsageHistory } from './usage-ledger.js';
 import type {
   CreateMonitorBackendOptions,
   MonitorBackend,
@@ -141,6 +142,13 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   /** Last assembly's terminal ids by session, so a run promoted from a shell that just left the list still finds it. */
   let terminalIdBySession: ReadonlyMap<string, string> = new Map();
   const terminalStatus = new Map<string, { status: AgentStatus; since: number }>();
+  /** The usage ledger, by run; a run's reading is taken once per state object. */
+  const ledger = new UsageLedger();
+  const observed = new Map<string, AgentMonitorState | undefined>();
+  const costCache = new Map<
+    string,
+    { history: UsageHistory | undefined; ratePerMin: number | undefined; cost: MonitorCost | undefined }
+  >();
   let entries = new Map<string, RowEntry>();
   let personasOf: { sets: readonly MonitorHostProfileSet[] | null; personas: ReadonlyMap<string, string> } | undefined;
 
@@ -148,7 +156,29 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const listeners = new Set<(change: MonitorModelChange) => void>();
   let cancelTick: (() => void) | undefined;
   let cancelRecency: (() => void) | undefined;
+  let cancelStep: (() => void) | undefined;
   let disposed = false;
+
+  /** The row's cost from the ledger's history and core's live rate; the same object while neither moved. */
+  const costOf = (
+    runtimeRunId: string,
+    history: UsageHistory | undefined,
+    ratePerMin: number | undefined,
+  ): MonitorCost | undefined => {
+    const cached = costCache.get(runtimeRunId);
+    if (cached && cached.history === history && cached.ratePerMin === ratePerMin) return cached.cost;
+    const cost =
+      history?.total === undefined
+        ? undefined
+        : freezeTree({
+            usd: history.total,
+            coverage: history.coverage,
+            ...(ratePerMin === undefined ? {} : { burnPerHour: ratePerMin * 60 }),
+            series: { stepMs: history.stepMs, steps: history.steps, lastStepAt: history.lastStepAt },
+          });
+    costCache.set(runtimeRunId, { history, ratePerMin, cost });
+    return cost;
+  };
 
   const personas = (sets: readonly MonitorHostProfileSet[] | null): ReadonlyMap<string, string> => {
     if (personasOf?.sets !== sets) personasOf = { sets, personas: personaSets(sets) };
@@ -242,8 +272,29 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
     // 3. Agent rows.
     for (const agent of agents) {
+      const { runtimeRunId } = agent.host;
       const key = projectKey(agent.host, agent.state);
       const seq = key === undefined ? undefined : (identity.seq(key) ?? identity.deal(key));
+      if (agent.state !== observed.get(runtimeRunId) || !observed.has(runtimeRunId)) {
+        // The reading Godview's seam makes: the run is `${runtimeRunId}:${epoch}` (a new epoch is a new run), the
+        // conversation is the provider plus the native session id, so a resume accumulates and a new one resets.
+        observed.set(runtimeRunId, agent.state);
+        const nativeSessionId = agent.state?.session.nativeSessionId ?? agent.host.nativeSessionId;
+        ledger.observe(
+          {
+            id: runtimeRunId,
+            ...(agent.state
+              ? {
+                  runId: `${runtimeRunId}:${agent.state.runtimeEpoch}`,
+                  revision: agent.state.revision,
+                  usage: agent.state.usage,
+                }
+              : {}),
+            ...(nativeSessionId ? { session: { providerId: agent.host.provider.id, nativeSessionId } } : {}),
+          },
+          nowMs,
+        );
+      }
       const inputs: AgentInputs = {
         kind: 'agent',
         host: agent.host,
@@ -252,7 +303,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
         seq,
         profileSet: resolveProfileSet(agent.host, sets),
         stale: isStale(agent.state, nowMs, staleAfterMs),
-        cost: undefined,
+        cost: costOf(runtimeRunId, ledger.history(runtimeRunId), agent.state?.usage.costRatePerMin),
         unread: false,
       };
       const previous = entries.get(agent.id);
@@ -295,8 +346,12 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     // 5. What left, and what to forget.
     const removed = [...entries.keys()].filter((id) => !next.has(id));
     const named = new Set(facts.runs.map((run) => run.runtimeRunId));
-    for (const runtimeRunId of [...idByRun.keys()]) {
-      if (!named.has(runtimeRunId) && store.getState(runtimeRunId) === undefined) idByRun.delete(runtimeRunId);
+    for (const runtimeRunId of new Set([...idByRun.keys(), ...observed.keys()])) {
+      if (named.has(runtimeRunId) || store.getState(runtimeRunId) !== undefined) continue;
+      idByRun.delete(runtimeRunId);
+      observed.delete(runtimeRunId);
+      costCache.delete(runtimeRunId);
+      ledger.forget(runtimeRunId);
     }
     terminalIdBySession = tidBySession;
     entries = next;
@@ -347,6 +402,17 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     });
   };
   armRecency();
+
+  // The 30 s step, aligned to the boundaries so every row's bars shift together; a priced row re-emits once per step.
+  const armStep = (): void => {
+    cancelStep = clock.schedule(USAGE_STEP_MS - (clock.now() % USAGE_STEP_MS), () => {
+      cancelStep = undefined;
+      if (disposed) return;
+      if (ledger.step(clock.now()).length > 0) schedule();
+      armStep();
+    });
+  };
+  armStep();
   schedule();
 
   return {
@@ -365,6 +431,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       cancelTick = undefined;
       cancelRecency?.();
       cancelRecency = undefined;
+      cancelStep?.();
+      cancelStep = undefined;
       unsubscribeState();
       unsubscribeNotification();
       unsubscribeRemoved();

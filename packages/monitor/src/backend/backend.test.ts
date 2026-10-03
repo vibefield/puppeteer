@@ -201,3 +201,108 @@ describe('order and recency', () => {
     expect(t.rows()[0]).toMatchObject({ status: 'working', statusSince: T0 + 1_000 });
   });
 });
+
+describe('cost', () => {
+  const priced = (overrides: Partial<ReturnType<typeof monitorState>> = {}) =>
+    monitorState({
+      usage: {
+        samples: [],
+        costUsd: 1.25,
+        costCoverage: 'complete',
+        costRatePerMin: 0.1,
+        costHistory: [
+          { at: iso(T0 - 30_000), costUsd: 0.75 },
+          { at: iso(T0), costUsd: 0.5 },
+        ],
+      },
+      session: { nativeSessionId: 'native-1' },
+      ...overrides,
+    });
+
+  it("carries the ledger's total, coverage, burn an hour and the 20-step series aligned to the boundary", async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [priced()] });
+    await t.backend.ready;
+    const [row] = t.rows();
+    expect(row?.cost).toEqual({
+      usd: 1.25,
+      coverage: 'complete',
+      burnPerHour: 6,
+      series: { stepMs: 30_000, steps: [...new Array<number>(18).fill(0), 0.75, 0.5], lastStepAt: T0 },
+    });
+    expect(Object.isFrozen(row?.cost)).toBe(true);
+  });
+
+  it('has no cost until something is priced, and a terminal never has one', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun()], terminals: [hostTerminal()] }),
+      states: [monitorState({ usage: { samples: [], cumulativeTokens: 500 } })],
+    });
+    await t.backend.ready;
+    const rows = t.rows();
+    expect(rows.map((row) => row.cost)).toEqual([undefined, undefined]);
+    expect(rows[0]?.tokens).toEqual({ total: 500 });
+  });
+
+  it('steps the series on the 30 s boundary and re-emits only the priced rows', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'paid', terminalSessionId: 'p1' }),
+          hostRun({ runtimeRunId: 'free', terminalSessionId: 'p2' }),
+        ],
+      }),
+      states: [priced({ runtimeRunId: 'paid' }), monitorState({ runtimeRunId: 'free' })],
+    });
+    await t.backend.ready;
+    const before = new Map(t.rows().map((row) => [row.id, row]));
+    const revision = t.backend.getSnapshot().revision;
+    t.scheduler.flush();
+    expect(t.backend.getSnapshot().revision).toBe(revision);
+    t.clock.advance(30_000);
+    const after = new Map(t.rows().map((row) => [row.id, row]));
+    expect(after.get('free')).toBe(before.get('free'));
+    expect(after.get('paid')).not.toBe(before.get('paid'));
+    expect(after.get('paid')?.cost?.series).toEqual({
+      stepMs: 30_000,
+      steps: [...new Array<number>(17).fill(0), 0.75, 0.5, 0],
+      lastStepAt: T0 + 30_000,
+    });
+    expect(t.changes.at(-1)?.upserts.map((row) => row.id)).toEqual(['paid']);
+  });
+
+  it('accumulates a resumed epoch of the same conversation and resets for a different one', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [priced()] });
+    await t.backend.ready;
+    expect(t.rows()[0]?.cost?.usd).toBe(1.25);
+    t.source.push(
+      priced({
+        runtimeEpoch: 2,
+        usage: { samples: [], costUsd: 0.5, costCoverage: 'complete', costHistory: [{ at: iso(T0), costUsd: 0.5 }] },
+      }),
+    );
+    expect(t.rows()[0]?.cost).toMatchObject({ usd: 1.75, coverage: 'complete' });
+    expect(t.rows()[0]?.cost?.burnPerHour).toBeUndefined();
+    t.source.push(
+      priced({
+        runtimeEpoch: 3,
+        session: { nativeSessionId: 'native-2' },
+        usage: { samples: [], costUsd: 0.25, costCoverage: 'partial', costHistory: [] },
+      }),
+    );
+    expect(t.rows()[0]?.cost).toMatchObject({ usd: 0.25, coverage: 'partial' });
+  });
+
+  it('forgets the ledger with the run', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [priced()] });
+    await t.backend.ready;
+    expect(t.rows()[0]?.cost?.usd).toBe(1.25);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    t.host.update({ runs: [] });
+    expect(t.rows()).toEqual([]);
+    t.host.update({ runs: [hostRun()] });
+    t.source.push(
+      priced({ runtimeEpoch: 2, usage: { samples: [], costUsd: 0.1, costCoverage: 'complete', costHistory: [] } }),
+    );
+    expect(t.rows()[0]?.cost?.usd).toBe(0.1);
+  });
+});
