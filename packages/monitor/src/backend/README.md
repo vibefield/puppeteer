@@ -89,9 +89,14 @@ for every run at the 30 s boundary (the series' `lastStepAt` moves then, so a pr
 ## Identity (L4)
 
 `ProjectIdentityStore.deal(key)`: a known key keeps its sequence; an unknown one takes the next, dealt in row order, from
-0, never reused. VibeField's `dealProjectSeqs` (counter `next`, never rewinds) and puppeteer's `nextProjectSequence`
-(max + 1) deal identically; the memory impl follows VibeField's counter. The one divergence is the KEY, a host choice:
-puppeteer folds to realpath + git toplevel in main; VibeField uses `workspace.root || sourcePath || monitor.cwd`.
+0, never reused. Compared (`identity.test.ts` replays both dealers from their sources): VibeField's `dealProjectSeqs`
+(counter `next`, never rewinds) and puppeteer's `nextProjectSequence` (max + 1) deal the same numbers fresh and after a
+reload of the same record; they part only when VibeField's cache has dropped its oldest keys (`MAX_PROJECT_KEYS` 256),
+where its persisted `next` keeps the dropped sequences retired and a max + 1 reader would not. The memory impl follows
+VibeField's: `createMemoryProjectIdentityStore(entries, { next })`, the larger of the floor and the dealt sequences
+(`loadProjectLedger`). The other divergence is the KEY, a host choice: puppeteer folds to realpath + git toplevel in
+main; VibeField uses `workspace.root || sourcePath || monitor.cwd`; the backend takes the host's key and falls back to the
+observed directory.
 
 ## Spawn menu
 

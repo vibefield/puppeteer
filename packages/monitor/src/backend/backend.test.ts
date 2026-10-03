@@ -442,3 +442,46 @@ describe('unread (L5)', () => {
     expect([...expected.unreadIds]).toEqual(['b']);
   });
 });
+
+describe('identity (L4)', () => {
+  it('deals each project a sequence in row order on first sight, shares it within a project, and rides it on the row', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'r1', terminalSessionId: 'p1', projectKey: '/repo', createdAt: T0 - 3 }),
+          hostRun({ runtimeRunId: 'r2', terminalSessionId: 'p2', projectKey: '/notes', createdAt: T0 - 2 }),
+          hostRun({ runtimeRunId: 'r3', terminalSessionId: 'p3', projectKey: '/repo', createdAt: T0 - 1 }),
+          hostRun({ runtimeRunId: 'r4', terminalSessionId: 'p4', createdAt: T0 }),
+        ],
+      }),
+    });
+    await t.backend.ready;
+    expect(t.rows().map((row) => [row.id, row.project.seq])).toEqual([
+      ['r1', 0],
+      ['r2', 1],
+      ['r3', 0],
+      ['r4', undefined],
+    ]);
+    expect([...t.identity.entries()]).toEqual([
+      ['/repo', 0],
+      ['/notes', 1],
+    ]);
+  });
+
+  it('deals from the observed directory when the host names no key, and only once the directory is known', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }) });
+    await t.backend.ready;
+    expect(t.rows()[0]?.project.seq).toBeUndefined();
+    t.source.push(monitorState({ environment: { cwd: '/Users/me/site', worktrees: [] } }));
+    expect(t.rows()[0]?.project).toEqual({ name: 'site', seq: 0 });
+  });
+
+  it('asks the store before dealing, so a host-restored sequence is kept', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun({ projectKey: '/repo' })] }) });
+    // the host hands its persisted sequences to the store before the first fold
+    t.identity.deal('/other');
+    t.identity.deal('/repo');
+    await t.backend.ready;
+    expect(t.rows()[0]?.project.seq).toBe(1);
+  });
+});
