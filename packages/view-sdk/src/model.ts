@@ -247,3 +247,38 @@ export function compareMonitorRows(a: MonitorAgentRow, b: MonitorAgentRow): numb
 export interface FrameScheduler {
   request(work: () => void): () => void;
 }
+
+/* What a view draws: the replica's join of the model with one window's own facts. Still plain
+ * data (no DOM), so the replica imports it from `./model` (L3). */
+
+/**
+ * One agent as a view sees it: the backend's row, joined by the replica with
+ * what only this window knows, and coloured by the view host.
+ */
+export interface AgentView extends MonitorAgentRow {
+  /** The project's colour in the current theme; the neutral ramp for no project. */
+  readonly colour: string;
+  /** Mounted in the pane the person is working in. */
+  readonly active: boolean;
+  /** The host is showing another group (VibeField's profile tabs): it keeps its place and is drawn faint. */
+  readonly receded: boolean;
+  /** The panes showing it here, and the colour of the one it is worked in. Absent: mounted nowhere. */
+  readonly attachment?: { readonly panes: number; readonly colour?: string | undefined } | undefined;
+  /** Where the person asked for it, for views that place new arrivals spatially. */
+  readonly spawnHint?: { readonly x: number; readonly y: number } | undefined;
+}
+
+/** The model a view draws. Unchanged agents keep their object across updates (MV-D21). */
+export interface MonitorModel {
+  readonly revision: number;
+  /** In the model's order: agents by birth, then bare terminals. */
+  readonly agents: readonly AgentView[];
+  readonly byId: ReadonlyMap<string, AgentView>;
+}
+
+/** Which agents moved since the view's last update, by id. */
+export interface ModelChanges {
+  readonly added: readonly string[];
+  readonly updated: readonly string[];
+  readonly removed: readonly string[];
+}
