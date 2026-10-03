@@ -11,42 +11,17 @@
  * cross into an isolated realm unchanged.
  */
 
-import type { AgentStatus, MonitorAgentRow, MonitorSpawnMenu, MonitorSpawnTarget } from './model.js';
+import type {
+  AgentStatus,
+  AgentView,
+  ModelChanges,
+  MonitorModel,
+  MonitorSpawnMenu,
+  MonitorSpawnTarget,
+} from './model.js';
 
 /** The contract's major. A host refuses a view built for a newer one; minors only add optional fields (MV-D10). */
 export const MONITOR_VIEW_SDK_MAJOR = 1;
-
-/**
- * One agent as a view sees it: the backend's row, joined by the replica with
- * what only this window knows, and coloured by the view host.
- */
-export interface AgentView extends MonitorAgentRow {
-  /** The project's colour in the current theme; the neutral ramp for no project. */
-  readonly colour: string;
-  /** Mounted in the pane the person is working in. */
-  readonly active: boolean;
-  /** The host is showing another group (VibeField's profile tabs): it keeps its place and is drawn faint. */
-  readonly receded: boolean;
-  /** The panes showing it here, and the colour of the one it is worked in. Absent: mounted nowhere. */
-  readonly attachment?: { readonly panes: number; readonly colour?: string | undefined } | undefined;
-  /** Where the person asked for it, for views that place new arrivals spatially. */
-  readonly spawnHint?: { readonly x: number; readonly y: number } | undefined;
-}
-
-/** The model a view draws. Unchanged agents keep their object across updates (MV-D21). */
-export interface MonitorModel {
-  readonly revision: number;
-  /** In the model's order: agents by birth, then bare terminals. */
-  readonly agents: readonly AgentView[];
-  readonly byId: ReadonlyMap<string, AgentView>;
-}
-
-/** Which agents moved since the view's last update, by id. */
-export interface ModelChanges {
-  readonly added: readonly string[];
-  readonly updated: readonly string[];
-  readonly removed: readonly string[];
-}
 
 export interface Rect {
   readonly x: number;
