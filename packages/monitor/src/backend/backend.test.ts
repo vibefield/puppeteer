@@ -485,3 +485,59 @@ describe('identity (L4)', () => {
     expect(t.rows()[0]?.project.seq).toBe(1);
   });
 });
+
+describe('the spawn menu in the model', () => {
+  const sets = [
+    { id: 'native', label: 'This Mac', kind: 'native' as const, isDefault: true, personas: [] },
+    { id: 'work', label: 'Work', kind: 'managed' as const, isDefault: false, personas: [] },
+  ];
+
+  it('rides the first snapshot as reading, then ready when the feed answers, and only a change carries it', async () => {
+    const t = testBackend();
+    await t.backend.ready;
+    t.rows();
+    expect(t.backend.getSnapshot().spawn).toEqual({
+      devices: [{ id: 'desk-1', label: 'Studio', self: true, state: 'reading' }],
+    });
+    expect(t.changes.at(-1)).toMatchObject({ since: 0, revision: 1, upserts: [], removed: [] });
+    expect(t.changes.at(-1)?.spawn).toBeDefined();
+    t.host.update({ profileSets: sets });
+    t.rows();
+    expect(t.backend.getSnapshot().spawn?.devices[0]).toMatchObject({
+      state: 'ready',
+      profiles: [{ id: 'native' }, { id: 'work' }],
+    });
+    expect(t.changes.at(-1)?.spawn).toBe(t.backend.getSnapshot().spawn);
+    const revision = t.backend.getSnapshot().revision;
+    t.host.update({ profileSets: sets.map((set) => ({ ...set })) });
+    t.rows();
+    expect(t.backend.getSnapshot().revision).toBe(revision);
+  });
+
+  it('lights a profile when an agent under it blocks, and the change carries the menu without touching other rows', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [hostRun({ profileSet: 'work' }), hostRun({ runtimeRunId: 'other', terminalSessionId: 'p2' })],
+        profileSets: sets,
+      }),
+      states: [monitorState(), monitorState({ runtimeRunId: 'other' })],
+    });
+    await t.backend.ready;
+    const other = t.rows().find((row) => row.id === 'other');
+    t.source.push(
+      monitorState({
+        revision: 2,
+        status: 'blocked',
+        blockers: [{ id: 'b', kind: 'permission', since: iso(T0), permission: { requestId: 'r', tool: 'Bash' } }],
+      }),
+    );
+    const change = t.changes.at(-1);
+    expect(change?.upserts.map((row) => row.id)).toEqual(['run-1']);
+    expect(change?.spawn?.devices[0]?.profiles?.map((profile) => [profile.id, profile.blocked])).toEqual([
+      ['native', undefined],
+      ['work', true],
+    ]);
+    expect(t.backend.getSnapshot().rows.find((row) => row.id === 'other')).toBe(other);
+    expect(Object.isFrozen(t.backend.getSnapshot().spawn)).toBe(true);
+  });
+});

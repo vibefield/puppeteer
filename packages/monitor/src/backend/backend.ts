@@ -7,6 +7,7 @@ import {
   type MonitorDeviceRef,
   type MonitorModelChange,
   type MonitorModelSnapshot,
+  type MonitorSpawnMenu,
 } from '@vibecook/puppeteer-view-sdk/model';
 import { createAgentMonitorStore } from '../store.js';
 import {
@@ -21,6 +22,7 @@ import {
   resolveProfileSet,
 } from './derive.js';
 import { deepEqual, freezeTree } from './equal.js';
+import { blockedProfileSets, spawnMenuOf } from './spawn.js';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadCandidate, type UnreadLedger } from './unread.js';
 import { USAGE_STEP_MS, UsageLedger, type UsageHistory } from './usage-ledger.js';
 import type {
@@ -155,6 +157,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   /** Unread (L5): the fold, and what each screen reports it shows in its active pane. */
   let unread: UnreadLedger = EMPTY_UNREAD_LEDGER;
   const shownByScreen = new Map<string, ReadonlySet<string>>();
+  /** The spawn menu as last emitted; a recompute carries a new one only when it differs. */
+  let lastSpawn: MonitorSpawnMenu | undefined;
   let personasOf: { sets: readonly MonitorHostProfileSet[] | null; personas: ReadonlyMap<string, string> } | undefined;
 
   let snapshot: MonitorModelSnapshot = Object.freeze({ revision: 0, rows: EMPTY_ROWS });
@@ -211,16 +215,18 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   ): void => {
     const since = snapshot.revision;
     const revision = since + 1;
+    const spawn = change.spawn ?? snapshot.spawn;
     snapshot = Object.freeze({
       revision,
       rows: Object.freeze(change.rows),
-      ...(snapshot.spawn ? { spawn: snapshot.spawn } : {}),
+      ...(spawn ? { spawn } : {}),
     });
     const published: MonitorModelChange = Object.freeze({
       since,
       revision,
       upserts: Object.freeze(change.upserts),
       removed: Object.freeze(change.removed),
+      ...(change.spawn ? { spawn: change.spawn } : {}),
     });
     for (const listener of [...listeners]) {
       try {
@@ -245,7 +251,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     return { row: freezeTree(row), inputs };
   };
 
-  const recompute = (): { upserts: MonitorAgentRow[]; removed: string[]; rows: MonitorAgentRow[] } | undefined => {
+  const recompute = ():
+    | { upserts: MonitorAgentRow[]; removed: string[]; rows: MonitorAgentRow[]; spawn?: MonitorSpawnMenu }
+    | undefined => {
     const facts = host.getFacts();
     const nowMs = clock.now();
     const device = facts.device;
@@ -408,9 +416,15 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     }
     terminalIdBySession = tidBySession;
     entries = next;
-    if (upserts.length === 0 && removed.length === 0) return undefined;
-    const rows = [...next.values()].map((entry) => entry.row).sort(compareMonitorRows);
-    return { upserts, removed, rows };
+
+    // 8. The spawn menu, from the host's device and profiles and the rows' blocked dots; carried only when it changed.
+    const unsorted = [...next.values()].map((entry) => entry.row);
+    const menu = spawnMenuOf(facts, blockedProfileSets(unsorted));
+    const spawn = lastSpawn && deepEqual(lastSpawn, menu) ? undefined : freezeTree(menu);
+    if (spawn) lastSpawn = spawn;
+    if (upserts.length === 0 && removed.length === 0 && !spawn) return undefined;
+    const rows = unsorted.sort(compareMonitorRows);
+    return { upserts, removed, rows, ...(spawn ? { spawn } : {}) };
   };
 
   // The run table, fed subscribe-before-list over the runtime's push bus.
