@@ -465,6 +465,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-view-sdk':
+        specifier: workspace:*
+        version: link:../view-sdk
     devDependencies:
       vitest:
         specifier: ^3.0.0

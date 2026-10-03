@@ -39,7 +39,8 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibecook/puppeteer-view-sdk": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
