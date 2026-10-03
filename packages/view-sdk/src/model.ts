@@ -236,3 +236,14 @@ export function compareMonitorRows(a: MonitorAgentRow, b: MonitorAgentRow): numb
   if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
+
+/**
+ * Batches work into frames. The replica's notifications and the view host's
+ * updates share ONE instance so their batches coincide: work requested while a
+ * frame is draining runs in that same frame (unless that task already ran in
+ * it), so a model change reaches the view in the frame it arrived in, never one
+ * later. `request` returns a cancel.
+ */
+export interface FrameScheduler {
+  request(work: () => void): () => void;
+}
