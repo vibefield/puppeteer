@@ -7,6 +7,7 @@
  */
 
 import { FIXTURE_EPOCH } from './fixtures.js';
+import { overrideProperty } from './override.js';
 
 export interface FixtureClock {
   /** Epoch milliseconds, as `Date.now()` answers while installed. */
@@ -32,13 +33,12 @@ export function createFixtureClock(start: number = FIXTURE_EPOCH): FixtureClock 
       time = epochMs;
     },
     install() {
-      const dateNow = Date.now;
-      const performanceNow = typeof performance === 'undefined' ? undefined : performance.now;
-      Date.now = () => clock.now();
-      if (performanceNow !== undefined) performance.now = () => clock.elapsed();
+      const restores = [overrideProperty(Date, 'now', () => clock.now())];
+      if (typeof performance !== 'undefined') {
+        restores.push(overrideProperty(performance, 'now', () => clock.elapsed()));
+      }
       return () => {
-        Date.now = dateNow;
-        if (performanceNow !== undefined) performance.now = performanceNow;
+        for (const restore of restores.reverse()) restore();
       };
     },
   };

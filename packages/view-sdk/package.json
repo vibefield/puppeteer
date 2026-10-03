@@ -16,7 +16,8 @@
     ".": "./src/index.ts",
     "./model": "./src/model.ts",
     "./react": "./src/react/index.ts",
-    "./host": "./src/host/index.ts"
+    "./host": "./src/host/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -39,6 +40,10 @@
       "./host": {
         "types": "./dist/host/index.d.ts",
         "import": "./dist/host/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
       }
     }
   },
@@ -55,13 +60,17 @@
   },
   "peerDependencies": {
     "react": ">=18 <20",
-    "react-dom": ">=18 <20"
+    "react-dom": ">=18 <20",
+    "vitest": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "vitest": {
       "optional": true
     }
   },

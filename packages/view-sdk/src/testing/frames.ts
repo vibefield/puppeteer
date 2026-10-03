@@ -10,17 +10,25 @@
 
 import { createFrameScheduler, type FrameScheduler } from '../host/frame-scheduler.js';
 import type { FixtureClock } from './clock.js';
+import { overrideProperty } from './override.js';
 
 export interface FrameDriverOptions {
   /** Milliseconds a frame lasts. Defaults to 1000 / 60. */
   readonly frameMs?: number | undefined;
   /** Advanced by `frameMs` before each frame runs; its `elapsed()` is the frame's timestamp. */
   readonly clock?: FixtureClock | undefined;
+  /**
+   * A callback that threw. The rest of its frame still runs, as on the
+   * platform. Absent, the frame's first error is rethrown once the frame is done.
+   */
+  readonly onError?: ((error: unknown) => void) | undefined;
 }
 
 export interface FrameDriver {
   /** Runs the next `count` frames (default 1): each runs what was requested before it began. Returns callbacks run. */
   step(count?: number): number;
+  /** Drops every callback waiting for the next frame (a leaked loop, after its failure is recorded). */
+  clear(): void;
   /** Callbacks waiting for the next frame. */
   readonly pending: number;
   /** Callbacks requested since the driver began. */
@@ -73,13 +81,23 @@ export function createFrameDriver(options: FrameDriverOptions = {}): FrameDriver
         // A callback requested during this frame waits for the next, as the platform's do.
         const running = queue;
         queue = new Map();
+        let failure: { error: unknown } | undefined;
         for (const callback of running.values()) {
           callbacks += 1;
           ran += 1;
-          callback(time);
+          try {
+            callback(time);
+          } catch (error) {
+            if (options.onError) options.onError(error);
+            else failure ??= { error };
+          }
         }
+        if (failure !== undefined) throw failure.error;
       }
       return callbacks;
+    },
+    clear() {
+      queue.clear();
     },
     get pending() {
       return queue.size;
@@ -104,21 +122,12 @@ export function createFrameDriver(options: FrameDriverOptions = {}): FrameDriver
     install() {
       const targets = new Set<object>([globalThis]);
       if (typeof window !== 'undefined') targets.add(window);
-      const restores = [...targets].map((target) => {
-        const frameTarget = target as { requestAnimationFrame?: unknown; cancelAnimationFrame?: unknown };
-        const request = Object.getOwnPropertyDescriptor(frameTarget, 'requestAnimationFrame');
-        const cancel = Object.getOwnPropertyDescriptor(frameTarget, 'cancelAnimationFrame');
-        frameTarget.requestAnimationFrame = requestFrame;
-        frameTarget.cancelAnimationFrame = cancelFrame;
-        return () => {
-          if (request) Object.defineProperty(frameTarget, 'requestAnimationFrame', request);
-          else delete frameTarget.requestAnimationFrame;
-          if (cancel) Object.defineProperty(frameTarget, 'cancelAnimationFrame', cancel);
-          else delete frameTarget.cancelAnimationFrame;
-        };
-      });
+      const restores = [...targets].flatMap((target) => [
+        overrideProperty(target, 'requestAnimationFrame', requestFrame),
+        overrideProperty(target, 'cancelAnimationFrame', cancelFrame),
+      ]);
       return () => {
-        for (const restore of restores) restore();
+        for (const restore of restores.reverse()) restore();
       };
     },
   };
