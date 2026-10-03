@@ -342,6 +342,83 @@ describe('createMonitorReplica', () => {
     expect(receded.mock.calls.map(([entry]) => entry.id)).toEqual(['c']);
   });
 
+  it('hides the rows the host does not show: absent from the model, hide and show read as removed and added (M3)', () => {
+    const { frames, replica, listener } = setup();
+    replica.setLocal(local({ visible: (entry) => entry.alive }));
+    replica.apply(
+      snapshot(1, [row('a'), row('b', { createdAt: 2_000, alive: false }), row('c', { createdAt: 3_000 })]),
+    );
+    frames.frame();
+    const first = replica.getSnapshot();
+    expect(first.model.agents.map((view) => view.id)).toEqual(['a', 'c']);
+    expect(first.model.byId.has('b')).toBe(false);
+    expect(first.changes).toEqual({ added: ['a', 'c'], updated: [], removed: [] });
+
+    // A run that ended leaves the model; a run alive again enters it.
+    replica.apply(change(1, 2, { upserts: [row('a', { alive: false }), row('b', { createdAt: 2_000 })] }));
+    frames.frame();
+    const second = replica.getSnapshot();
+    expect(second.model.agents.map((view) => view.id)).toEqual(['b', 'c']);
+    expect(second.changes).toEqual({ added: ['b'], updated: [], removed: ['a'] });
+    expect(second.model.byId.get('c')).toBe(first.model.byId.get('c'));
+
+    // A new predicate asks every row again; `c`, hidden and then shown unchanged, comes back as the same object.
+    const only = (ids: readonly string[]) => (entry: MonitorAgentRow) => ids.includes(entry.id);
+    replica.setLocal(local({ visible: only(['b']) }));
+    frames.frame();
+    expect(replica.getSnapshot().changes).toEqual({ added: [], updated: [], removed: ['c'] });
+    replica.setLocal(local({ visible: only(['b', 'c']) }));
+    frames.frame();
+    const shown = replica.getSnapshot();
+    expect(shown.changes).toEqual({ added: ['c'], updated: [], removed: [] });
+    expect(shown.model.byId.get('c')).toBe(first.model.byId.get('c'));
+
+    // A predicate that hides nothing new publishes nothing.
+    replica.setLocal(local({ visible: only(['b', 'c', 'elsewhere']) }));
+    frames.frame();
+    expect(replica.getSnapshot()).toBe(shown);
+    expect(listener).toHaveBeenCalledTimes(4);
+  });
+
+  it('shows a row unless the host says it is hidden', () => {
+    const { frames, replica } = setup();
+    // A predicate that answers nothing (a host's slip) hides nothing: only `false` hides.
+    replica.setLocal(local({ visible: () => undefined as unknown as boolean }));
+    replica.apply(snapshot(1, [row('a')]));
+    frames.frame();
+    expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a']);
+  });
+
+  it('a row that changes while hidden returns with its new facts; one removed while hidden is gone', () => {
+    const { frames, replica, listener } = setup();
+    const hide = (ids: readonly string[]) => local({ visible: (entry) => !ids.includes(entry.id) });
+    replica.apply(snapshot(1, [row('a'), row('c', { createdAt: 3_000 })]));
+    frames.frame();
+    const before = replica.getSnapshot().model.byId.get('c');
+
+    replica.setLocal(hide(['c']));
+    frames.frame();
+    replica.apply(change(1, 2, { upserts: [row('c', { createdAt: 3_000, status: 'working' })] }));
+    frames.frame();
+    // Nothing shown moved, so nothing was published for the hidden change.
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    replica.setLocal(hide([]));
+    frames.frame();
+    const after = replica.getSnapshot();
+    expect(after.changes).toEqual({ added: ['c'], updated: [], removed: [] });
+    expect(after.model.byId.get('c')?.status).toBe('working');
+    expect(after.model.byId.get('c')).not.toBe(before);
+
+    replica.setLocal(hide(['c']));
+    frames.frame();
+    replica.apply(change(2, 3, { removed: ['c'] }));
+    frames.frame();
+    replica.setLocal(hide([]));
+    frames.frame();
+    expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a']);
+  });
+
   it('a row that arrives later is joined with the facts already set', () => {
     const { frames, replica } = setup();
     replica.setLocal(local({ activeIds: new Set(['late']), spawnHints: new Map([['late', { x: 1, y: 2 }]]) }));
@@ -523,12 +600,21 @@ describe('createMonitorReplica', () => {
       receded: () => {
         throw new Error('receded');
       },
+      visible: () => {
+        throw new Error('visible');
+      },
     });
     replica.apply(snapshot(1, [row('a')]));
     frames.frame();
     expect(after).toHaveBeenCalledTimes(1);
+    // The honest defaults: shown, not receded, no colour.
     expect(replica.getSnapshot().model.byId.get('a')).toMatchObject({ colour: NO_THEME_COLOUR, receded: false });
-    expect(errors.map((error) => (error as Error).message).sort()).toEqual(['colour', 'listener', 'receded']);
+    expect(errors.map((error) => (error as Error).message).sort()).toEqual([
+      'colour',
+      'listener',
+      'receded',
+      'visible',
+    ]);
   });
 
   it('dispose cancels the pending frame and hears nothing more', () => {

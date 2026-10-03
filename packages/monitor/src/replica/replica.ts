@@ -44,6 +44,14 @@ export interface MonitorReplicaLocal {
   readonly activeIds: ReadonlySet<string>;
   /** The host is showing another group (VibeField's profile tabs). A new predicate is asked of every row again. */
   readonly receded?: ((row: MonitorAgentRow) => boolean) | undefined;
+  /**
+   * Which rows this window shows at all (M3): the model carries ended runs, and
+   * VibeField passes `row => row.alive`. A hidden row is absent from the model,
+   * hiding and showing read as removed and added, and a row shown again with
+   * nothing changed comes back as the same object. A new predicate is asked of
+   * every row again.
+   */
+  readonly visible?: ((row: MonitorAgentRow) => boolean) | undefined;
   /** Where the person asked for each row, for views that place new arrivals spatially. */
   readonly spawnHints: ReadonlyMap<string, { readonly x: number; readonly y: number }>;
 }
@@ -152,6 +160,8 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
   const rows = new Map<string, MonitorAgentRow>();
   /** The published views and the rows they were joined from. Changed only when a frame publishes. */
   const joined = new Map<string, Joined>();
+  /** The last published view of each row the host hides now, kept while the row lives so it can come back as itself. */
+  const hidden = new Map<string, Joined>();
   /** Rows whose view may differ from the published one. */
   const dirty = new Set<string>();
   /** Colours by project sequence under the current theme key. */
@@ -214,6 +224,17 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     }
   };
 
+  const visibleOf = (row: MonitorAgentRow): boolean => {
+    const visible = local.visible;
+    if (!visible) return true;
+    try {
+      return visible(row) !== false;
+    } catch (error) {
+      report(error);
+      return true;
+    }
+  };
+
   const attachmentOf = (id: string, held: AgentView['attachment']): AgentView['attachment'] => {
     const entry = local.attachments.get(id);
     if (!entry) return undefined;
@@ -263,17 +284,20 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     if (disposed) return;
     // Computed aside and committed at the end, so the published state never holds half a frame.
     const updates = new Map<string, Joined | undefined>();
+    const gone: string[] = [];
     for (const id of dirty) {
       const row = rows.get(id);
       const held = joined.get(id);
-      if (!row) {
+      if (!row || !visibleOf(row)) {
+        if (!row) gone.push(id);
         if (held) updates.set(id, undefined);
         continue;
       }
-      const view = join(row, held);
+      const view = join(row, held ?? hidden.get(id));
       if (view !== held?.view) updates.set(id, { row, view });
     }
     dirty.clear();
+    for (const id of gone) hidden.delete(id);
 
     let model = published.model;
     let changes = NO_CHANGES;
@@ -282,13 +306,17 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       const updated = new Set<string>();
       const removed = new Set<string>();
       for (const [id, next] of updates) {
+        const held = joined.get(id);
         if (!next) {
           joined.delete(id);
           removed.add(id);
+          // Hidden rather than gone: kept, so it can come back as itself.
+          if (held && rows.has(id)) hidden.set(id, held);
           continue;
         }
-        (joined.has(id) ? updated : added).add(id);
+        (held ? updated : added).add(id);
         joined.set(id, next);
+        hidden.delete(id);
       }
       const views =
         reorder || added.size > 0 || removed.size > 0
@@ -414,7 +442,9 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
         if (!held || held.x !== entry.x || held.y !== entry.y) touch(id);
       }
       for (const id of previous.spawnHints.keys()) if (!next.spawnHints.has(id)) touch(id);
-      if (next.receded !== previous.receded) for (const id of rows.keys()) dirty.add(id);
+      if (next.receded !== previous.receded || next.visible !== previous.visible) {
+        for (const id of rows.keys()) dirty.add(id);
+      }
       schedule();
     },
     setTheme(next) {
