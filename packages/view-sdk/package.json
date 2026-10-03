@@ -15,7 +15,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./model": "./src/model.ts",
-    "./react": "./src/react/index.ts"
+    "./react": "./src/react/index.ts",
+    "./host": "./src/host/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -34,6 +35,10 @@
       "./react": {
         "types": "./dist/react/index.d.ts",
         "import": "./dist/react/index.js"
+      },
+      "./host": {
+        "types": "./dist/host/index.d.ts",
+        "import": "./dist/host/index.js"
       }
     }
   },
