@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { DEVICE, T0, facts, hostRun, hostTerminal, iso, monitorState, testBackend } from './testing/fixtures.js';
+import { createMonitorBackend } from './backend.js';
+import { createMemoryProjectIdentityStore } from './identity.js';
+import {
+  DEVICE,
+  T0,
+  facts,
+  fakeHost,
+  fakeRunSource,
+  hostRun,
+  hostTerminal,
+  iso,
+  monitorState,
+  recordingSink,
+  testBackend,
+} from './testing/fixtures.js';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread } from './unread.js';
 
 describe('the join', () => {
@@ -539,5 +553,221 @@ describe('the spawn menu in the model', () => {
     ]);
     expect(t.backend.getSnapshot().rows.find((row) => row.id === 'other')).toBe(other);
     expect(Object.isFrozen(t.backend.getSnapshot().spawn)).toBe(true);
+  });
+});
+
+describe('emission', () => {
+  const twoRuns = () =>
+    testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa', createdAt: T0 - 2 }),
+          hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb', createdAt: T0 - 1 }),
+        ],
+      }),
+      states: [monitorState({ runtimeRunId: 'a' }), monitorState({ runtimeRunId: 'b' })],
+    });
+
+  it('keeps the snapshot and every untouched row by identity, and a state that draws the same row emits nothing', async () => {
+    const t = twoRuns();
+    await t.backend.ready;
+    t.rows();
+    const first = t.backend.getSnapshot();
+    expect(t.rows()).toBe(first.rows);
+    const [a, b] = first.rows;
+    // a new revision whose drawn facts are the same: subagents, compaction, fresh evidence
+    t.source.push(
+      monitorState({
+        runtimeRunId: 'a',
+        revision: 2,
+        subagentCount: 3,
+        compaction: { active: true, count: 1 },
+        freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0 + 1) },
+      }),
+    );
+    t.scheduler.flush();
+    expect(t.backend.getSnapshot()).toBe(first);
+    // a fact the row draws
+    t.source.push(monitorState({ runtimeRunId: 'a', revision: 3, model: { id: 'claude-opus-5-5' } }));
+    t.scheduler.flush();
+    const second = t.backend.getSnapshot();
+    expect(second).not.toBe(first);
+    expect(second.rows[0]).not.toBe(a);
+    expect(second.rows[1]).toBe(b);
+    expect(t.changes.at(-1)).toMatchObject({ upserts: [{ id: 'a', model: 'claude-opus-5-5' }], removed: [] });
+  });
+
+  it('emits nothing while idle: ticks, identical host facts, the recency clock', async () => {
+    const t = twoRuns();
+    await t.backend.ready;
+    t.rows();
+    const { revision } = t.backend.getSnapshot();
+    const emitted = t.changes.length;
+    t.scheduler.flush();
+    t.host.set({ ...t.host.current(), runs: t.host.current().runs.map((run) => ({ ...run })) });
+    t.scheduler.flush();
+    t.clock.advance(25_000);
+    t.scheduler.flush();
+    expect(t.backend.getSnapshot().revision).toBe(revision);
+    expect(t.changes.length).toBe(emitted);
+  });
+
+  it('chains since to revision, and the changes replayed on an empty model rebuild the snapshot row for row', async () => {
+    const t = twoRuns();
+    await t.backend.ready;
+    t.rows();
+    t.source.push(monitorState({ runtimeRunId: 'a', revision: 2, status: 'idle', activity: undefined }));
+    t.host.update({
+      runs: [hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb', createdAt: T0 - 1 })],
+      terminals: [hostTerminal({ sessionId: 'sh' })],
+    });
+    t.rows();
+    t.source.push(monitorState({ runtimeRunId: 'b', revision: 2, effort: { value: 'high' } }));
+    t.rows();
+    expect(t.changes.length).toBeGreaterThanOrEqual(4);
+    let previous = 0;
+    const replica = new Map<string, (typeof t.changes)[number]['upserts'][number]>();
+    for (const change of t.changes) {
+      expect(change.since).toBe(previous);
+      expect(change.revision).toBe(previous + 1);
+      previous = change.revision;
+      for (const id of change.removed) replica.delete(id);
+      for (const row of change.upserts) replica.set(row.id, row);
+    }
+    const snapshot = t.backend.getSnapshot();
+    expect(previous).toBe(snapshot.revision);
+    expect(replica.size).toBe(snapshot.rows.length);
+    for (const row of snapshot.rows) expect(replica.get(row.id)).toBe(row);
+    expect(snapshot.rows.map((row) => row.id)).toEqual(['b', 'sh']);
+    expect(t.changes.some((change) => change.removed.includes('a'))).toBe(true);
+  });
+
+  it('coalesces every non-urgent push in a tick into one change, in the model order', async () => {
+    const t = twoRuns();
+    await t.backend.ready;
+    t.rows();
+    const emitted = t.changes.length;
+    t.source.push(monitorState({ runtimeRunId: 'b', revision: 2, model: { id: 'm-b' } }));
+    t.source.push(monitorState({ runtimeRunId: 'a', revision: 2, model: { id: 'm-a' } }));
+    t.source.push(monitorState({ runtimeRunId: 'a', revision: 3, model: { id: 'm-a2' } }));
+    expect(t.changes.length).toBe(emitted);
+    expect(t.scheduler.pending()).toBe(1);
+    t.scheduler.flush();
+    expect(t.changes.length).toBe(emitted + 1);
+    expect(t.changes.at(-1)?.upserts.map((row) => [row.id, row.model])).toEqual([
+      ['a', 'm-a2'],
+      ['b', 'm-b'],
+    ]);
+  });
+
+  it('flushes the urgent facts at once: a blocker, liveness, a removal, a first state', async () => {
+    const t = twoRuns();
+    await t.backend.ready;
+    t.rows();
+    const emitted = t.changes.length;
+    t.source.push(
+      monitorState({
+        runtimeRunId: 'a',
+        revision: 2,
+        status: 'blocked',
+        blockers: [{ id: 'q', kind: 'question', since: iso(T0), questions: [{ prompt: 'Deploy?' }] }],
+      }),
+    );
+    expect(t.changes.length).toBe(emitted + 1);
+    expect(t.changes.at(-1)?.upserts[0]).toMatchObject({
+      id: 'a',
+      status: 'blocked',
+      wait: { kind: 'question', question: 'Deploy?' },
+    });
+    t.source.push(monitorState({ runtimeRunId: 'b', revision: 2, alive: false }));
+    expect(t.changes.length).toBe(emitted + 2);
+    expect(t.changes.at(-1)?.upserts[0]).toMatchObject({ id: 'b', alive: false });
+    t.source.remove({ runtimeRunId: 'b', runtimeEpoch: 1 });
+    expect(t.changes.length).toBe(emitted + 3);
+    expect(t.changes.at(-1)).toMatchObject({ upserts: [], removed: ['b'] });
+    t.host.update({ runs: [...t.host.current().runs, hostRun({ runtimeRunId: 'c', terminalSessionId: 'pc' })] });
+    t.rows();
+    const before = t.changes.length;
+    t.source.push(monitorState({ runtimeRunId: 'c' }));
+    expect(t.changes.length).toBe(before + 1);
+    expect(t.scheduler.pending()).toBe(0);
+  });
+
+  it('hands out frozen rows, snapshots and changes', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun()], terminals: [hostTerminal()] }),
+      states: [
+        monitorState({
+          usage: { samples: [], costUsd: 1, costCoverage: 'complete', costHistory: [{ at: iso(T0), costUsd: 1 }] },
+        }),
+      ],
+    });
+    await t.backend.ready;
+    const snapshot = t.backend.getSnapshot();
+    t.rows();
+    const after = t.backend.getSnapshot();
+    expect(Object.isFrozen(snapshot)).toBe(true);
+    expect(Object.isFrozen(after)).toBe(true);
+    expect(Object.isFrozen(after.rows)).toBe(true);
+    for (const row of after.rows) {
+      expect(Object.isFrozen(row)).toBe(true);
+      expect(Object.isFrozen(row.project)).toBe(true);
+      expect(Object.isFrozen(row.device)).toBe(true);
+      if (row.cost) expect(Object.isFrozen(row.cost.series?.steps)).toBe(true);
+    }
+    const change = t.changes.at(-1);
+    expect(Object.isFrozen(change)).toBe(true);
+    expect(Object.isFrozen(change?.upserts)).toBe(true);
+    expect(Object.isFrozen(change?.removed)).toBe(true);
+  });
+
+  it('lands every push of a turn in one macrotask with the default scheduler and clock', async () => {
+    const source = fakeRunSource([monitorState()]);
+    const host = fakeHost(facts({ runs: [hostRun()] }));
+    const changes: unknown[] = [];
+    const backend = createMonitorBackend({
+      runs: source.source,
+      host: host.host,
+      identity: createMemoryProjectIdentityStore(),
+      sink: recordingSink(),
+    });
+    backend.subscribe((change) => changes.push(change));
+    await backend.ready;
+    expect(changes).toHaveLength(0);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(changes).toHaveLength(1);
+    source.push(monitorState({ revision: 2, model: { id: 'one' } }));
+    source.push(monitorState({ revision: 3, model: { id: 'two' } }));
+    expect(changes).toHaveLength(1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(changes).toHaveLength(2);
+    expect(backend.getSnapshot().rows[0]?.model).toBe('two');
+    backend.dispose();
+  });
+
+  it('reports a listener that throws and keeps publishing to the rest; dispose stops everything', async () => {
+    const errors: unknown[] = [];
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), onError: (error) => errors.push(error) });
+    const seen: number[] = [];
+    t.backend.subscribe(() => {
+      throw new Error('a bad listener');
+    });
+    const unsubscribe = t.backend.subscribe((change) => seen.push(change.revision));
+    await t.backend.ready;
+    t.rows();
+    expect(errors).toHaveLength(1);
+    expect(seen).toEqual([1]);
+    unsubscribe();
+    t.source.push(monitorState({ status: 'idle', activity: undefined }));
+    expect(seen).toEqual([1]);
+    const { revision } = t.backend.getSnapshot();
+    t.backend.dispose();
+    t.source.push(monitorState({ revision: 5, status: 'blocked', blockers: [] }));
+    t.host.update({ runs: [] });
+    t.backend.reportShown('w', ['run-1']);
+    t.clock.advance(60_000);
+    t.scheduler.flush();
+    expect(t.backend.getSnapshot().revision).toBe(revision);
+    expect(t.backend.command({ type: 'select', id: 'run-1' })).toBe(false);
   });
 });
