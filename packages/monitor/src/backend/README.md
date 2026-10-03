@@ -126,4 +126,38 @@ an unresolvable command returns false and routes nothing.
 
 ## Bench (step 11)
 
-_(filled in at step 11)_
+`MONITOR_BENCH=1 pnpm exec vitest run src/backend/backend.bench.test.ts` (in `packages/monitor`; skipped without the
+variable). A tick is k state pushes then one flush, through the manual clock and scheduler, states built outside the
+timed region; medians of 200 ticks after 20 warm-up; it waits for the load average to fall below 60 first (L17) and
+prints the load beside the numbers. Reference, never a bound (L14). Recorded 2026-10-03 on James's Mac with the other
+MV lanes running (load average 40.0 before, 37.1 after):
+
+| n | tick | k changed | median tick | per changed row | upserts/tick |
+|---|---|---|---|---|---|
+| 10 | 1 row | 1 | 37 µs | 37.0 µs | 1.0 |
+| 10 | 10 % | 1 | 28 µs | 27.7 µs | 1.0 |
+| 10 | all | 10 | 147 µs | 14.7 µs | 10.0 |
+| 10 | all, nothing drawn moved | 10 | 147 µs | 14.7 µs | 0 emitted |
+| 10 | idle recompute, nothing changed | 0 | 11.8 µs | — | 0 |
+| 20 | 1 row | 1 | 34 µs | 34.3 µs | 1.0 |
+| 20 | 10 % | 2 | 45 µs | 22.4 µs | 2.0 |
+| 20 | all | 20 | 289 µs | 14.4 µs | 20.0 |
+| 20 | all, nothing drawn moved | 20 | 293 µs | 14.7 µs | 0 emitted |
+| 20 | idle recompute, nothing changed | 0 | 14.6 µs | — | 0 |
+| 60 | 1 row | 1 | 62 µs | 62.5 µs | 1.0 |
+| 60 | 10 % | 6 | 130 µs | 21.7 µs | 6.0 |
+| 60 | all | 60 | 824 µs | 13.7 µs | 60.0 |
+| 60 | all, nothing drawn moved | 60 | 860 µs | 14.3 µs | 0 emitted |
+| 60 | idle recompute, nothing changed | 0 | 45.5 µs | — | 0 |
+| 200 | 1 row | 1 | 177 µs | 177.0 µs | 1.0 |
+| 200 | 10 % | 20 | 427 µs | 21.4 µs | 20.0 |
+| 200 | all | 200 | 2825 µs | 14.1 µs | 200.0 |
+| 200 | all, nothing drawn moved | 200 | 3022 µs | 15.1 µs | 0 emitted |
+| 200 | idle recompute, nothing changed | 0 | 140.7 µs | — | 0 |
+
+Reading: a tick costs a scan floor of about 0.7 µs per row of the board (the idle row: host facts shallow-compared,
+recency re-read, the unread fold, the spawn menu rebuilt and compared) plus about 14–35 µs per row whose state object
+moved (the store's accept and freeze, derive, deep-compare, freeze, the sort and the emission). The cost follows what
+changed: at n = 200 one changed row is 177 µs against 2825 µs for all two hundred. A new state object whose drawn facts
+did not move costs the same derive and compare and emits nothing — the dirty check is by state identity, which is what
+the store hands out; comparing the drawn fields before deriving would be the next cut if the floor ever matters.
