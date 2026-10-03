@@ -63,3 +63,77 @@ if (!loop.running) draw(performance.now(), 0); // a stopped loop draws once per 
 
 While either switch says no, the loop holds no `requestAnimationFrame` at all, which is the conformance rule
 (MV-W4: no loop when off).
+
+## Workers and bundlers (MV-D7)
+
+A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver semantics into the SDK:
+- **The watchdog.** A worker posts `WORKER_READY` once its imports have evaluated. Any message counts as proof
+  of life, and a worker silent for 4 s is presumed never to arrive.
+- **Demotion with replay.** A worker that never proved itself, or fails to load, is terminated. The same
+  simulation then starts inline and is handed the world: the latest command of each `replayKey`, in the order of
+  their latest post. Gestures are not replayed.
+- **An honest mode.** `observeMode` reports `worker` or `inline`, and the view passes it to
+  `commands.report({ physics })`.
+- **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
+
+```ts
+// views/swarm/physics/driver.ts: the view's own code
+const driver = createWorkerDriver<Command, Message>({
+  createWorker: () =>
+    new Worker(new URL('./swarm-physics.worker.js', import.meta.url), { type: 'module', name: 'swarm-physics' }),
+  createInline: (deliver) => createInlinePhysics(deliver),
+  onMessage: receive,
+  replayKey: (command) => (WORLD.has(command.type) ? command.type : undefined),
+});
+const stop = driver.observeMode((physics) => commands.report({ physics }));
+
+// views/swarm/physics/swarm-physics.worker.ts: the worker entry, beside it
+import { serveWorker } from '@vibecook/puppeteer-view-sdk/toolkit';
+const end = serveWorker<Command>((command) => host.handle(command)); // after every import: `ready` is honest
+```
+
+Three rules make that one line work in every host:
+1. **Write the constructor literally:** `new Worker(new URL('./x.worker.js', import.meta.url), { static options })`.
+   Vite bundles only that exact shape: `new Worker(` directly followed by `new URL(…, import.meta.url)`, with
+   options it can read statically. A URL computed any other way, even `a ?? new URL(…)` inside the call, is
+   invisible to Vite.
+2. **Spell it `.js`.** A view is consumed as source, and Vite maps a missing `./x.worker.js` to the
+   `./x.worker.ts` beside it. A published build carries the `.js`, and an esbuild host emits `.js`.
+3. **Name it `<view>-<name>.worker.js`.** An esbuild host puts every view's worker in one flat output directory,
+   so the view's id in the name keeps two views from colliding.
+
+### What each host's bundler does with it
+
+Verified on 2026-10-03 with `scripts/verify-worker-bundling.mjs` (fixture in `test/worker-bundling/`). Each build
+ran in a hidden Electron 43.1.0 window, the way its host loads it, under its host's CSP. Vite 7.3.6 (this
+workspace) and Vite 8.1.5 (VibeField's) gave identical results; esbuild was 0.24.2 (apps/godview's).
+
+| Host bundler | Where the simulation ran | Why | What the host does |
+|---|---|---|---|
+| Vite build (VibeField's renderer, standard secure scheme, production CSP) | worker | Vite resolves the entry and emits a same-origin worker chunk | nothing |
+| Vite dev server (VibeField's `pnpm dev`) | worker | the same, served | nothing |
+| esbuild ESM (apps/godview/build.mjs, `loadFile`, Godview's CSP) | inline, demoted ("unknown worker error") | esbuild leaves `new URL(…)` untouched and emits no worker; the fetch fails and the `error` event demotes at once | see the next row |
+| esbuild ESM, with the host also building the entry | worker | `build({ entryPoints: { 'swarm-physics.worker': <the view's entry> }, outdir })` puts it beside the chunks, where `import.meta.url` resolves (build.mjs already copies ghosttea's `terminal-render.worker.js` the same way) | one more entry point per view worker |
+| esbuild IIFE (the labs' single page) | inline from the start ("Failed to construct 'URL'") | IIFE empties `import.meta`, so `new URL(…, undefined)` throws inside `createWorker` | nothing can fix this from inside the view |
+| esbuild IIFE, with a URL the page provides | worker | the page builds the entry as IIFE text and hands over a blob URL (labs have no CSP) | needs a way to hand the URL to the view (below) |
+
+So `new URL('./x.worker.js', import.meta.url)` gives a working worker under Vite as written. Under esbuild ESM it
+works once the host builds the entry beside its chunks. Under esbuild IIFE it never can. In every case where it
+cannot, the driver demotes, and the reported mode tells the truth.
+
+**Open (asked of the lead): a host-provided URL.** The contract has no way today to hand a view a worker URL its
+host built. The fixture's `__workerUrl` stands in for one. The candidate is an additive field
+(`MonitorViewManifest.workers` naming the entries, `MonitorViewInput.workers` mapping each name to a URL). With
+it, a lab gets a real worker and an esbuild host can pass its emitted file explicitly. Without it, labs simulate
+inline, honestly.
+
+### Running the proof
+
+```sh
+pnpm --filter @vibecook/puppeteer-view-sdk verify:worker-bundling            # this workspace's Vite
+pnpm --filter @vibecook/puppeteer-view-sdk verify:worker-bundling -- --vite <path to another vite package>
+```
+
+It is not part of `pnpm test`, because it starts Electron (hidden windows only, no input). It runs one Electron
+process per page. In a single session, Electron 43's main process died with SIGTRAP when the next window opened
+after a window whose page ran a dedicated worker had been destroyed. Each page on its own was reliable.

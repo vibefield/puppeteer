@@ -43,7 +43,8 @@
     "build": "pnpm clean && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "verify:worker-bundling": "node scripts/verify-worker-bundling.mjs"
   },
   "engines": {
     "node": ">=22.18.0"
