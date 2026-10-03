@@ -68,6 +68,7 @@ import {
 } from '@vibecook/puppeteer-workspaces';
 import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
 import type {
+  MonitorRemoval,
   AdoptPreparedSessionOptions,
   AdoptPreparedSessionResult,
   AgentProcessExit,
@@ -653,7 +654,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const listeners = new Set<(terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void>();
   const monitorStateListeners = new Set<(state: AgentMonitorState) => void>();
   const monitorNotificationListeners = new Set<(notification: MonitorNotification) => void>();
-  const monitorRemovedListeners = new Set<(runtimeRunId: string) => void>();
+  const monitorRemovedListeners = new Set<(runtimeRunId: string, removal: MonitorRemoval) => void>();
   const acknowledgedFailureBlockers = new Set<string>();
   const accountUsageListeners = new Set<(provider: AccountUsageProvider, result: AccountUsageFetchResult) => void>();
   const accountUsageInflight = new Map<string, Promise<AccountUsageFetchResult>>();
@@ -1054,13 +1055,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!monitor) return;
     monitor.remove();
     run.monitor = undefined;
-    publishMonitorRemoved(run.identity.runtimeRunId);
+    publishMonitorRemoved(run.identity.runtimeRunId, run.identity.runtimeEpoch);
   }
 
-  function publishMonitorRemoved(runtimeRunId: string): void {
+  function publishMonitorRemoved(runtimeRunId: string, runtimeEpoch: number): void {
+    const removal: MonitorRemoval = { runtimeEpoch };
     for (const listener of monitorRemovedListeners) {
       try {
-        listener(runtimeRunId);
+        listener(runtimeRunId, removal);
       } catch (error) {
         report(error);
       }
@@ -1082,7 +1084,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!retained) return false;
     terminalFailuresByRunId.delete(runtimeRunId);
     retained.monitor.remove();
-    publishMonitorRemoved(runtimeRunId);
+    publishMonitorRemoved(runtimeRunId, retained.info.runtimeEpoch);
     if (rememberInfo) rememberTerminalRunInfo(retained.info);
     return true;
   }
@@ -3648,6 +3650,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       sessionsByRunId.get(id)?.agent.monitor ??
       runs.get(id)?.monitor?.current() ??
       terminalFailuresByRunId.get(id)?.monitor.current(),
+    monitorStates() {
+      const states: AgentMonitorState[] = [];
+      for (const [id, run] of runs) {
+        // The same reading as monitorState(id): the live Agent's projection first.
+        const state = sessionsByRunId.get(id)?.agent.monitor ?? run.monitor?.current();
+        if (state) states.push(state);
+      }
+      for (const retained of terminalFailuresByRunId.values()) states.push(retained.monitor.current());
+      return states;
+    },
     observeMonitor(id) {
       const agent = sessionsByRunId.get(id)?.agent;
       if (agent) return agent.observeMonitor();

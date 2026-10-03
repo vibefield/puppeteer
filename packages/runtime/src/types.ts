@@ -772,6 +772,11 @@ export interface RestoreAgentSessionOptions {
   attaching?: boolean | undefined;
 }
 
+/** What a monitor removal seals: the run's epoch at the time it was removed. */
+export interface MonitorRemoval {
+  readonly runtimeEpoch: number;
+}
+
 /** The single application-facing surface for every agent provider. */
 export interface AgentRuntime {
   /** Primary API: spawn one provider and receive its per-run Agent event surface. */
@@ -962,10 +967,19 @@ export interface AgentRuntime {
   cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult>;
   runtimeRunInfo(runtimeRunId: RuntimeRunId): RuntimeRunInfo | undefined;
   monitorState(runtimeRunId: RuntimeRunId): AgentMonitorState | undefined;
+  /**
+   * Every run's current monitor state: the live runs and the retained terminal
+   * failures, in no particular order. The all-runs snapshot an aggregator
+   * subscribes to {@link onMonitorState} before taking, so a state published in
+   * between cannot be overwritten by an older one (the monitor store orders by
+   * epoch and revision).
+   */
+  monitorStates(): AgentMonitorState[];
   observeMonitor(runtimeRunId: RuntimeRunId): AgentMonitorHandle;
   onMonitorState(listener: (state: AgentMonitorState) => void): () => void;
   onMonitorNotification(listener: (notice: MonitorNotification) => void): () => void;
-  onMonitorRemoved(listener: (runtimeRunId: RuntimeRunId) => void): () => void;
+  /** A removal names the run and the epoch it seals; a newer epoch (a resume) revives the identity. */
+  onMonitorRemoved(listener: (runtimeRunId: RuntimeRunId, removal: MonitorRemoval) => void): () => void;
   acknowledgeFailureBlocker(runtimeRunId: RuntimeRunId, blockerId: string): Promise<boolean>;
   /** Best-effort audit-log health; undefined when recording is not configured. */
   recordingStatus(): ActionRecorderStatus | undefined;
