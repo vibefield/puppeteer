@@ -20,10 +20,9 @@
 
 import React from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { compareMonitorRows } from '../model.js';
+import { compareMonitorRows, type AgentView } from '../model.js';
 import { allAdded, diffModels } from '../internal/input.js';
 import type {
-  AgentView,
   MonitorCapabilities,
   MonitorParameterValues,
   MonitorTheme,

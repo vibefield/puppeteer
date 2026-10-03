@@ -1,10 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { agentViewFixture, agentViewsFixture, fixtureStage, fixtureTheme } from '../testing/fixtures.js';
-import { createFrameDriver } from '../testing/frames.js';
+import {
+  agentViewFixture,
+  agentViewsFixture,
+  fixtureSpawnMenu,
+  fixtureStage,
+  fixtureTheme,
+} from '../testing/fixtures.js';
+import { createFrameDriver, type FrameDriver } from '../testing/frames.js';
 import { createRecordingView } from '../testing/recording-view.js';
-import { createFixtureReplica } from '../testing/replica.js';
+import { createFixtureReplica, type FixtureReplica } from '../testing/replica.js';
 import { defineMonitorView, type MonitorView, type MonitorViewManifest } from '../view.js';
+import { createFrameScheduler } from './frame-scheduler.js';
 import { createViewSlot, VIEW_ROOT_ATTRIBUTE, VIEW_SLOT_ATTRIBUTES, type ViewSlotOptions } from './slot.js';
 
 const elements: HTMLElement[] = [];
@@ -12,12 +19,20 @@ afterEach(() => {
   for (const element of elements.splice(0)) element.remove();
 });
 
-function setup(overrides: Partial<ViewSlotOptions> = {}) {
+interface SetupOptions extends Partial<Omit<ViewSlotOptions, 'replica'>> {
+  readonly replica?: FixtureReplica;
+  /** Whose frames the slot's scheduler runs on (unless `scheduler` is given too). */
+  readonly frames?: FrameDriver;
+}
+
+function setup({
+  replica = createFixtureReplica(agentViewsFixture(3)),
+  frames = createFrameDriver(),
+  ...overrides
+}: SetupOptions = {}) {
   const element = document.createElement('section');
   document.body.append(element);
   elements.push(element);
-  const frames = createFrameDriver();
-  const replica = createFixtureReplica(agentViewsFixture(3));
   const recording = createRecordingView('first');
   const commands = { select: vi.fn(), create: vi.fn() };
   const onReport = vi.fn();
@@ -34,6 +49,8 @@ function setup(overrides: Partial<ViewSlotOptions> = {}) {
 }
 
 const roots = (element: HTMLElement) => element.querySelectorAll(`[${VIEW_ROOT_ATTRIBUTE}]`);
+
+const hostParts = () => ({ stage: fixtureStage('default'), theme: fixtureTheme('dark'), parameters: { speed: 1 } });
 
 describe('createViewSlot', () => {
   it("mounts one view in a fresh root inside the host's element, with the replica's model and the host's parts", () => {
@@ -280,5 +297,75 @@ describe('createViewSlot', () => {
     const { recording, commands } = setup();
     recording.commands[0]!.create({ x: 4, y: 5 }, { deviceId: 'peer', profileSet: 'native' });
     expect(commands.create).toHaveBeenCalledWith({ x: 4, y: 5 }, { deviceId: 'peer', profileSet: 'native' });
+  });
+});
+
+describe("the replica's spawn menu (M2)", () => {
+  it('fills capabilities.spawn when the host has no menu of its own, as one object for as long as nothing moves', () => {
+    const menu = fixtureSpawnMenu();
+    const replica = createFixtureReplica({ revision: 1, rows: agentViewsFixture(2), spawn: menu });
+    const { frames, recording, slot } = setup({ replica, input: { ...hostParts(), capabilities: {} } });
+    const first = recording.lastInput!;
+    expect(first.capabilities.spawn).toBe(menu);
+
+    slot.setInput({ theme: fixtureTheme('light') });
+    frames.step();
+    expect(recording.lastInput!.capabilities).toBe(first.capabilities);
+
+    const next = { devices: menu.devices.slice(1) };
+    replica.setSpawn(next);
+    frames.step();
+    expect(recording.updates).toBe(2);
+    expect(recording.lastInput!.capabilities.spawn).toBe(next);
+    expect(recording.lastInput!.model).toBe(first.model);
+    expect(recording.lastInput!.changes).toEqual({ added: [], updated: [], removed: [] });
+  });
+
+  it("keeps the host's own menu over the replica's", () => {
+    const own = { devices: [] };
+    const replica = createFixtureReplica({ revision: 1, rows: agentViewsFixture(2), spawn: fixtureSpawnMenu() });
+    const { frames, recording } = setup({ replica, input: { ...hostParts(), capabilities: { spawn: own } } });
+    expect(recording.lastInput!.capabilities.spawn).toBe(own);
+    replica.setSpawn({ devices: fixtureSpawnMenu().devices.slice(2) });
+    frames.step();
+    expect(recording.updates).toBe(0);
+  });
+
+  it("hands the host's capabilities through as they are while the replica has no menu", () => {
+    const capabilities = {};
+    const { recording } = setup({ input: { ...hostParts(), capabilities } });
+    expect(recording.lastInput!.capabilities).toBe(capabilities);
+  });
+});
+
+describe('one scheduler for the replica and the slot (M7)', () => {
+  it('brings a change to the view in the frame it arrived in', () => {
+    const frames = createFrameDriver();
+    // The host's wiring: ONE instance, handed to the replica and to the slot.
+    const scheduler = frames.scheduler;
+    const replica = createFixtureReplica(agentViewsFixture(2), { scheduler });
+    const { recording } = setup({ replica, scheduler });
+    replica.apply({ upsert: [agentViewFixture({ id: 'agent-new', createdAt: Date.UTC(2027, 0, 1) })] });
+    expect(recording.updates).toBe(0);
+    // One platform frame: the replica's notify and the slot's update both drain in it.
+    expect(frames.step()).toBe(1);
+    expect(recording.updates).toBe(1);
+    expect(recording.lastInput!.changes.added).toEqual(['agent-new']);
+    expect(recording.lastInput!.model).toBe(replica.getSnapshot().model);
+    expect(frames.pending).toBe(0);
+  });
+
+  it('lands a frame late when the replica batches on a scheduler of its own (the control)', () => {
+    const frames = createFrameDriver();
+    const own = createFrameScheduler((run) => {
+      frames.requestAnimationFrame(() => run());
+    });
+    const replica = createFixtureReplica(agentViewsFixture(2), { scheduler: own });
+    const { recording } = setup({ replica, scheduler: frames.scheduler });
+    replica.apply({ upsert: [agentViewFixture({ id: 'agent-new', createdAt: Date.UTC(2027, 0, 1) })] });
+    frames.step();
+    expect(recording.updates).toBe(0);
+    frames.step();
+    expect(recording.updates).toBe(1);
   });
 });

@@ -7,12 +7,19 @@
  * plausible, distinct in the two schemes, and the same on every run.
  */
 
-import type { AgentStatus, MonitorAgentRow, MonitorDeviceRef, MonitorProject } from '../model.js';
+import type {
+  AgentStatus,
+  AgentView,
+  MonitorAgentRow,
+  MonitorDeviceRef,
+  MonitorModel,
+  MonitorProject,
+  MonitorSpawnMenu,
+  MonitorWait,
+} from '../model.js';
 import { allAdded } from '../internal/input.js';
 import type {
-  AgentView,
   MonitorCapabilities,
-  MonitorModel,
   MonitorPalette,
   MonitorParameterGroup,
   MonitorParameterValues,
@@ -170,9 +177,9 @@ export function fixtureColour(project: MonitorProject, scheme: FixtureScheme = '
 }
 
 /**
- * One complete `AgentView`: an idle agent in `project`, born at the epoch, on
- * this desktop, mounted nowhere. Every field can be overridden; `project` and
- * `device` merge into their defaults.
+ * One complete `AgentView`: an idle, observed agent in `project`, born at the
+ * epoch, on this desktop, mounted nowhere. Every field can be overridden;
+ * `project` and `device` merge into their defaults.
  */
 export function agentViewFixture(partial: AgentViewFixturePartial = {}): AgentView {
   const { project: projectPartial, device: devicePartial, ...rest } = partial;
@@ -187,6 +194,7 @@ export function agentViewFixture(partial: AgentViewFixturePartial = {}): AgentVi
     statusSince: FIXTURE_EPOCH,
     stale: false,
     alive: true,
+    observed: true,
     detail: '',
     project,
     unread: false,
@@ -214,6 +222,15 @@ const DETAILS: readonly string[] = [
   'Reading the design notes',
   'Editing src/view.ts',
 ];
+/** One wait of each kind the views word differently (M2), the second with more blockers behind it (M10). */
+const WAITS: readonly Omit<MonitorWait, 'since'>[] = [
+  { kind: 'permission', tool: 'Bash', detail: 'pnpm test --run' },
+  { kind: 'question', count: 3, header: 'Which branch?', question: 'Merge into main, or keep the lane open?' },
+  { kind: 'failure', code: 'E_RATE_LIMIT', detail: 'Rate limited; retrying in 30 s' },
+];
+/** The rows that have not been heard from yet: one starting, one that resumes at its next idle (M4, M10). */
+const STARTING_INDEX = 4;
+const PENDING_INDEX = 11;
 
 /** mulberry32: a seeded stream, so a "random-looking" model is the same model on every run. */
 function seeded(seed: number): () => number {
@@ -236,65 +253,129 @@ export interface AgentViewsFixtureOptions {
 
 /**
  * `count` agents spread over every status, five projects and a few bare
- * terminals, born a minute apart: a crowded stage that is the same on every run.
+ * terminals, born a minute apart: a crowded stage that is the same on every
+ * run. It carries every fact a view draws: each kind of wait with its parts and
+ * a blocker count, effort with its intent, an activity line, a reply, the
+ * context used, a starting row and a pending one (neither observed yet), and
+ * terminals busy and idle.
  */
 export function agentViewsFixture(count: number, options: AgentViewsFixtureOptions = {}): AgentView[] {
   const random = seeded(options.seed ?? 1);
   const terminals = options.terminals ?? true;
   const agents: AgentView[] = [];
+  let blocked = 0;
   for (let index = 0; index < count; index += 1) {
     const id = `agent-${String(index + 1).padStart(2, '0')}`;
     const createdAt = FIXTURE_EPOCH + index * 60_000;
+    const since = createdAt + 30_000;
     if (terminals && index % 7 === 6) {
+      const busy = index % 2 === 1;
       agents.push(
         agentViewFixture({
           id,
           kind: 'terminal',
           createdAt,
-          statusSince: createdAt,
+          status: busy ? 'working' : 'idle',
+          statusSince: since,
           project: { name: '', seq: undefined },
-          activity: 'zsh',
+          activity: { kind: busy ? 'foreground-job' : 'idle' },
           attachable: true,
         }),
       );
       continue;
     }
-    const status = STATUSES[index % STATUSES.length]!;
     const seq = index % PROJECTS.length;
-    const since = createdAt + 30_000;
+    const facts: AgentViewFixturePartial = {
+      id,
+      createdAt,
+      statusSince: since,
+      project: { name: PROJECTS[seq]!, seq, branch: 'main' },
+      provider: { id: 'claude', label: 'Claude' },
+      model: 'fixture-model',
+      context: { usedPercent: (index * 7) % 100 },
+      active: index === 0,
+    };
+    if (index === STARTING_INDEX || index === PENDING_INDEX) {
+      const pending = index === PENDING_INDEX;
+      agents.push(
+        agentViewFixture({
+          ...facts,
+          observed: false,
+          detail: pending ? 'unobserved · resumes when idle' : 'starting',
+          ...(pending ? { pending: true } : { activity: { kind: 'starting', since } }),
+        }),
+      );
+      continue;
+    }
+    const status = STATUSES[index % STATUSES.length]!;
     const usd = Math.round(random() * 2_000) / 100;
-    agents.push(
-      agentViewFixture({
-        id,
-        createdAt,
-        status,
-        statusSince: since,
-        detail: DETAILS[Math.floor(random() * DETAILS.length)]!,
-        project: { name: PROJECTS[seq]!, seq, branch: 'main' },
-        provider: { id: 'claude', label: 'Claude' },
-        model: 'fixture-model',
-        unread: status === 'idle' && index % 2 === 0,
-        ...(status === 'blocked' ? { wait: { kind: 'permission', since, tool: 'Bash' } } : {}),
-        ...(status === 'working'
-          ? {
-              cost: {
-                usd,
-                coverage: 'complete' as const,
-                burnPerHour: Math.round(random() * 600) / 100,
-                series: {
-                  stepMs: 30_000,
-                  steps: Array.from({ length: 20 }, () => Math.round(random() * 10) / 100),
-                  lastStepAt: since,
-                },
-              },
-            }
-          : {}),
-        active: index === 0,
-      }),
-    );
+    const detail = DETAILS[Math.floor(random() * DETAILS.length)]!;
+    if (status === 'working') {
+      agents.push(
+        agentViewFixture({
+          ...facts,
+          status,
+          detail,
+          activity: { kind: 'tool', line: detail, since },
+          effort: index % 2 === 0 ? { value: 'high', intent: 'observed' } : { value: 'medium', intent: 'configured' },
+          cost: {
+            usd,
+            coverage: index % 4 === 3 ? 'partial' : 'complete',
+            burnPerHour: Math.round(random() * 600) / 100,
+            series: {
+              stepMs: 30_000,
+              steps: Array.from({ length: 20 }, () => Math.round(random() * 10) / 100),
+              lastStepAt: since,
+            },
+          },
+        }),
+      );
+    } else if (status === 'blocked') {
+      agents.push(agentViewFixture({ ...facts, status, detail, wait: { ...WAITS[blocked % WAITS.length]!, since } }));
+      blocked += 1;
+    } else {
+      agents.push(
+        agentViewFixture({
+          ...facts,
+          status,
+          detail,
+          unread: index % 2 === 0,
+          reply: { text: 'Done. The suite passes.', at: since, final: true },
+          cost: { usd, coverage: 'complete' },
+        }),
+      );
+    }
   }
   return agents;
 }
+
+/**
+ * A spawn menu (capability `spawn`, MV-D4): this desktop with two profiles, a
+ * ready peer, one asleep and one still being read. The same object on every
+ * call, as a replica keeps it until a change carries a new one.
+ */
+export function fixtureSpawnMenu(): MonitorSpawnMenu {
+  return SPAWN_MENU;
+}
+
+const SPAWN_MENU: MonitorSpawnMenu = freezeDeep({
+  devices: [
+    {
+      id: 'desk',
+      label: 'Desk',
+      self: true,
+      state: 'ready',
+      word: 'HERE',
+      profiles: [
+        { id: 'native', label: 'Native', kind: 'native', isDefault: true, signedIn: ['Claude', 'Codex'] },
+        { id: 'work', label: 'Work', kind: 'managed', blocked: true, signedIn: ['Claude'] },
+      ],
+    },
+    { id: 'studio', label: 'Studio', state: 'ready', word: '2 RUNNING', profiles: [] },
+    { id: 'laptop', label: 'Laptop', state: 'asleep', word: 'ASLEEP · 2 H', phrase: 'is asleep' },
+    { id: 'tower', label: 'Tower', state: 'reading' },
+  ],
+});
 
 /** A model over `agents`, in their order, indexed by id. */
 export function fixtureModel(agents: readonly AgentView[], revision = 1): MonitorModel {

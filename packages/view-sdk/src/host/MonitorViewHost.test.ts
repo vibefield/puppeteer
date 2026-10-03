@@ -4,7 +4,13 @@ import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { reactMonitorView } from '../react/index.js';
-import { agentViewsFixture, fixtureStage, fixtureTheme } from '../testing/fixtures.js';
+import {
+  agentViewFixture,
+  agentViewsFixture,
+  fixtureSpawnMenu,
+  fixtureStage,
+  fixtureTheme,
+} from '../testing/fixtures.js';
 import { createFrameDriver } from '../testing/frames.js';
 import { createRecordingView } from '../testing/recording-view.js';
 import { createFixtureReplica } from '../testing/replica.js';
@@ -139,6 +145,28 @@ describe('MonitorViewHost', () => {
     await act(async () => root.render(element({ view: recording.view })));
     await act(async () => frames.step());
     expect(recording.lastInput!.capabilities).toEqual({});
+    await act(async () => root.unmount());
+  });
+
+  it('wires one scheduler into the replica and the slot, so a change lands in the frame it arrived in (M7)', async () => {
+    const { root, frames, element } = host();
+    const replica = createFixtureReplica(agentViewsFixture(2), { scheduler: frames.scheduler });
+    const recording = createRecordingView('list');
+    await act(async () => root.render(element({ view: recording.view, replica, scheduler: frames.scheduler })));
+    replica.apply({ upsert: [agentViewFixture({ id: 'agent-new', createdAt: Date.UTC(2027, 0, 1) })] });
+    await act(async () => frames.step());
+    expect(recording.updates).toBe(1);
+    expect(recording.lastInput!.changes.added).toEqual(['agent-new']);
+    await act(async () => root.unmount());
+  });
+
+  it("fills the view's spawn from the replica when the host passes none (M2)", async () => {
+    const { root, element } = host();
+    const menu = fixtureSpawnMenu();
+    const replica = createFixtureReplica({ revision: 1, rows: agentViewsFixture(2), spawn: menu });
+    const recording = createRecordingView('list');
+    await act(async () => root.render(element({ view: recording.view, replica })));
+    expect(recording.lastInput!.capabilities.spawn).toBe(menu);
     await act(async () => root.unmount());
   });
 

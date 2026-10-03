@@ -1,5 +1,7 @@
 /**
- * When the view host does its work: at most once per frame (L6, MV-D21).
+ * When the view host does its work: at most once per frame (L6, MV-D21). The
+ * implementation of the contract's `FrameScheduler` (M7), which the replica
+ * takes too: a host passes ONE instance to both.
  *
  * A frame drains every piece of work requested for it, each at most once:
  * the same function queued twice runs once. Work requested while a frame
@@ -12,10 +14,7 @@
  *   updates again only in the next frame, never twice in one.
  */
 
-export interface FrameScheduler {
-  /** Queues `work` for the coming frame. The returned function cancels it. */
-  request(work: () => void): () => void;
-}
+import type { FrameScheduler } from '../model.js';
 
 /** Asks the platform for one frame and runs `run` in it. */
 export type RequestFrame = (run: () => void) => void;

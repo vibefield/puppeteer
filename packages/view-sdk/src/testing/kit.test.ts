@@ -7,6 +7,7 @@ import {
   agentViewsFixture,
   FIXTURE_EPOCH,
   fixtureInput,
+  fixtureSpawnMenu,
   fixtureTheme,
   parameterDefaults,
 } from './fixtures.js';
@@ -22,6 +23,43 @@ describe('fixtures', () => {
     expect(new Set(crowd.map((agent) => agent.status))).toEqual(new Set(['working', 'blocked', 'idle']));
     expect(crowd.filter((agent) => agent.kind === 'terminal')).toHaveLength(2);
     expect(crowd.every((agent) => agent.createdAt >= FIXTURE_EPOCH)).toBe(true);
+  });
+
+  it("carry every fact a view reads: the wait's parts and count, effort's intent, activity, observed (M2, M10)", () => {
+    const crowd = agentViewsFixture(20);
+    const waits = crowd.flatMap((agent) => (agent.wait ? [agent.wait] : []));
+    expect(waits.find((wait) => wait.kind === 'permission')).toMatchObject({ tool: 'Bash', detail: 'pnpm test --run' });
+    expect(waits.find((wait) => wait.kind === 'question')).toMatchObject({
+      count: 3,
+      header: 'Which branch?',
+      question: 'Merge into main, or keep the lane open?',
+    });
+    expect(waits.find((wait) => wait.kind === 'failure')).toMatchObject({ code: 'E_RATE_LIMIT' });
+    expect(new Set(crowd.flatMap((agent) => (agent.effort?.intent ? [agent.effort.intent] : [])))).toEqual(
+      new Set(['observed', 'configured']),
+    );
+    const working = crowd.find((agent) => agent.kind === 'agent' && agent.status === 'working')!;
+    expect(working.activity).toEqual({ kind: 'tool', line: working.detail, since: working.statusSince });
+    expect(
+      crowd.filter((agent) => agent.kind === 'terminal').map((terminal) => [terminal.activity?.kind, terminal.status]),
+    ).toEqual([
+      ['idle', 'idle'],
+      ['foreground-job', 'working'],
+    ]);
+    expect(
+      crowd.filter((agent) => !agent.observed).map((agent) => [agent.detail, agent.pending ?? false, agent.activity]),
+    ).toEqual([
+      ['starting', false, { kind: 'starting', since: crowd[4]!.statusSince }],
+      ['unobserved · resumes when idle', true, undefined],
+    ]);
+    expect(crowd.some((agent) => agent.reply?.final === true)).toBe(true);
+    expect(agentViewFixture().observed).toBe(true);
+  });
+
+  it('keep the spawn menu a replica would keep: the same object on every call', () => {
+    expect(fixtureSpawnMenu()).toBe(fixtureSpawnMenu());
+    expect(fixtureSpawnMenu().devices.map((device) => device.state)).toEqual(['ready', 'ready', 'asleep', 'reading']);
+    expect(Object.isFrozen(fixtureSpawnMenu().devices[0]!.profiles)).toBe(true);
   });
 
   it('keep the theme a host would keep: the same object until something changed', () => {
@@ -106,6 +144,45 @@ describe('createFixtureReplica', () => {
     replica.set(agentViewsFixture(1));
     expect(listener).not.toHaveBeenCalled();
     expect(replica.subscribers).toBe(0);
+  });
+
+  it('keeps the spawn menu until a write carries a new one (M2)', () => {
+    const menu = fixtureSpawnMenu();
+    const replica = createFixtureReplica({ revision: 1, rows: agentViewsFixture(2), spawn: menu });
+    const listener = vi.fn();
+    replica.subscribe(listener);
+    const model = replica.getSnapshot().model;
+    expect(replica.getSnapshot().spawn).toBe(menu);
+
+    replica.setSpawn(menu);
+    replica.apply({ upsert: [] });
+    expect(listener).not.toHaveBeenCalled();
+
+    const next = { devices: menu.devices.slice(0, 1) };
+    replica.setSpawn(next);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(replica.getSnapshot()).toEqual({ model, changes: { added: [], updated: [], removed: [] }, spawn: next });
+    expect(replica.getSnapshot().model).toBe(model);
+
+    replica.apply({ spawn: undefined });
+    expect(replica.getSnapshot().spawn).toBeUndefined();
+    expect('spawn' in replica.getSnapshot()).toBe(false);
+  });
+
+  it('given a scheduler, tells its subscribers once per frame what moved over the whole frame', () => {
+    const frames = createFrameDriver();
+    const replica = createFixtureReplica(agentViewsFixture(3, { terminals: false }), { scheduler: frames.scheduler });
+    const listener = vi.fn();
+    replica.subscribe(listener);
+    const [first, second] = replica.getSnapshot().model.agents;
+    replica.apply({ upsert: [{ ...first!, status: 'blocked' }] });
+    replica.apply({ remove: [second!.id] });
+    expect(listener).not.toHaveBeenCalled();
+    frames.step();
+    expect(listener).toHaveBeenCalledOnce();
+    expect(replica.getSnapshot().changes).toEqual({ added: [], updated: [first!.id], removed: [second!.id] });
+    frames.step();
+    expect(listener).toHaveBeenCalledOnce();
   });
 });
 

@@ -32,7 +32,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(happy-dom@20.11.0)(tsx@4.23.0)
 
   apps/godview:
     dependencies:
@@ -207,7 +207,7 @@ importers:
         version: link:../testing
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-claude:
     dependencies:
@@ -264,7 +264,7 @@ importers:
         version: link:../testing
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-grok:
     dependencies:
@@ -286,7 +286,7 @@ importers:
         version: 1.2.0-beta.15
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-hermes:
     dependencies:
@@ -308,7 +308,7 @@ importers:
         version: 1.2.0-beta.15
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-kimi:
     dependencies:
@@ -327,7 +327,7 @@ importers:
         version: 1.2.0-beta.15
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-opencode:
     dependencies:
@@ -349,7 +349,7 @@ importers:
         version: 1.2.0-beta.15
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/adapter-pi:
     dependencies:
@@ -368,7 +368,7 @@ importers:
         version: link:../testing
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/builtin-providers:
     dependencies:
@@ -411,7 +411,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/core:
     dependencies:
@@ -468,13 +468,13 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/native-observation:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/react:
     dependencies:
@@ -493,7 +493,7 @@ importers:
         version: 19.2.7
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/record:
     dependencies:
@@ -521,7 +521,7 @@ importers:
         version: 0.24.2
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/surface: {}
 
@@ -533,7 +533,7 @@ importers:
     devDependencies:
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/view-sdk:
     devDependencies:
@@ -544,8 +544,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
       happy-dom:
-        specifier: ^20.14.5
-        version: 20.14.5
+        specifier: 20.11.0
+        version: 20.11.0
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -554,7 +554,7 @@ importers:
         version: 19.2.7(react@19.2.7)
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/views:
     dependencies:
@@ -588,7 +588,7 @@ importers:
         version: 19.2.7(react@19.2.7)
       vitest:
         specifier: ^3.0.0
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0)
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0)
 
   packages/workspaces: {}
 
@@ -1408,8 +1408,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  happy-dom@20.14.5:
-    resolution: {integrity: sha512-x/RzkpWO40bTjIoT30iQtt64FLLmH/iRcUCN2X//bLx7H3ifkdfPXyqsro/OYtqzIAhiLMMA7mmiOR9C3NOKjQ==}
+  happy-dom@20.11.0:
+    resolution: {integrity: sha512-XogN4asPd1a56di9prVG6bZxteNcXsZxxKmAvcEfc5Px5Ca2hMyMgk8wvqK2K1V8zXg40j9VANXsDaJYh9DeNA==}
     engines: {node: '>=20.0.0'}
 
   indent-string@5.0.0:
@@ -2151,14 +2151,6 @@ snapshots:
     optionalDependencies:
       vite: 7.3.6(@types/node@22.20.1)(tsx@4.23.0)
 
-  '@vitest/mocker@3.2.7(vite@7.3.6(@types/node@24.13.3)(tsx@4.23.0))':
-    dependencies:
-      '@vitest/spy': 3.2.7
-      estree-walker: 3.0.3
-      magic-string: 0.30.21
-    optionalDependencies:
-      vite: 7.3.6(@types/node@24.13.3)(tsx@4.23.0)
-
   '@vitest/pretty-format@3.2.7':
     dependencies:
       tinyrainbow: 2.0.0
@@ -2342,7 +2334,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  happy-dom@20.14.5:
+  happy-dom@20.11.0:
     dependencies:
       '@types/node': 22.20.1
       '@types/whatwg-mimetype': 3.0.2
@@ -2648,7 +2640,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.23.0
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(happy-dom@20.14.5)(tsx@4.23.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@22.20.1)(happy-dom@20.11.0)(tsx@4.23.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
@@ -2676,7 +2668,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.13
       '@types/node': 22.20.1
-      happy-dom: 20.14.5
+      happy-dom: 20.11.0
     transitivePeerDependencies:
       - jiti
       - less
@@ -2691,11 +2683,11 @@ snapshots:
       - tsx
       - yaml
 
-  vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.14.5)(tsx@4.23.0):
+  vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.0)(tsx@4.23.0):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
-      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@24.13.3)(tsx@4.23.0))
+      '@vitest/mocker': 3.2.7(vite@7.3.6(@types/node@22.20.1)(tsx@4.23.0))
       '@vitest/pretty-format': 3.2.7
       '@vitest/runner': 3.2.7
       '@vitest/snapshot': 3.2.7
@@ -2719,7 +2711,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.13
       '@types/node': 24.13.3
-      happy-dom: 20.14.5
+      happy-dom: 20.11.0
     transitivePeerDependencies:
       - jiti
       - less

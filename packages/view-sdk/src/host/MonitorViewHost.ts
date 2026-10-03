@@ -18,7 +18,7 @@ import type {
   StageGeometry,
   ViewReport,
 } from '../view.js';
-import type { FrameScheduler } from './frame-scheduler.js';
+import type { FrameScheduler } from '../model.js';
 import {
   createViewSlot,
   type MonitorReplicaLike,

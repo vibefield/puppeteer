@@ -3,7 +3,8 @@
  * may use (L16). Never imported by a view's own code.
  *
  * - Fixtures: deterministic agents, models, themes, stages and inputs.
- * - `createFixtureReplica`: a hand-driven replica keeping the identity rules.
+ * - `createFixtureReplica`: a hand-driven replica keeping the identity rules,
+ *   its spawn menu included; given the slot's scheduler it batches like the real one.
  * - `checkConformance` / `runConformance`: the suite every view passes (MV-W4).
  * - Instruments: `countCommits` (React commits, through a Profiler),
  *   `countReactEffects` (effect runs and cleanups), `createFrameDriver`
@@ -41,6 +42,7 @@ export {
   fixtureInput,
   fixtureModel,
   fixturePalette,
+  fixtureSpawnMenu,
   fixtureStage,
   fixtureTheme,
   NO_CAPABILITIES,
@@ -55,4 +57,11 @@ export {
 export { createFrameDriver, type FrameDriver, type FrameDriverOptions } from './frames.js';
 export { deepFreeze } from './freeze.js';
 export { createRecordingView, type RecordingView, type RecordingViewOptions } from './recording-view.js';
-export { createFixtureReplica, type FixtureReplica, type FixtureReplicaSource, type FixtureRow } from './replica.js';
+export {
+  createFixtureReplica,
+  type FixtureReplica,
+  type FixtureReplicaOptions,
+  type FixtureReplicaSnapshot,
+  type FixtureReplicaSource,
+  type FixtureRow,
+} from './replica.js';

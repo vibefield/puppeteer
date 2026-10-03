@@ -8,7 +8,8 @@
  * one-shot paint would need.
  */
 
-import { createFrameScheduler, type FrameScheduler } from '../host/frame-scheduler.js';
+import { createFrameScheduler } from '../host/frame-scheduler.js';
+import type { FrameScheduler } from '../model.js';
 import type { FixtureClock } from './clock.js';
 import { overrideProperty } from './override.js';
 

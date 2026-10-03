@@ -10,12 +10,10 @@
  */
 
 import { allAdded, diffModels, NO_CHANGES } from '../internal/input.js';
-import type { MonitorSpawnTarget } from '../model.js';
+import type { FrameScheduler, ModelChanges, MonitorModel, MonitorSpawnMenu, MonitorSpawnTarget } from '../model.js';
 import {
   defineMonitorView,
-  type ModelChanges,
   type MonitorCapabilities,
-  type MonitorModel,
   type MonitorParameterValues,
   type MonitorTheme,
   type MonitorView,
@@ -25,16 +23,22 @@ import {
   type StageGeometry,
   type ViewReport,
 } from '../view.js';
-import { frameScheduler, type FrameScheduler } from './frame-scheduler.js';
+import { frameScheduler } from './frame-scheduler.js';
 import { keepRecord, keepStage, keepTheme } from './parts.js';
 
 /**
- * The replica as the slot reads it: the model and a change signal. The slot
- * diffs the model it last gave the view against the new one (by identity,
- * MV-D21), so it reads `model` only; `changes` is the replica's own account.
+ * The replica as the slot reads it: the model, the spawn menu, and a change
+ * signal. The slot diffs the model it last gave the view against the new one
+ * (by identity, MV-D21), so it reads `model` and `spawn`; `changes` is the
+ * replica's own account.
  */
 export interface MonitorReplicaLike {
-  getSnapshot(): { readonly model: MonitorModel; readonly changes: ModelChanges };
+  getSnapshot(): {
+    readonly model: MonitorModel;
+    readonly changes: ModelChanges;
+    /** The backend's spawn menu (M2), the same object until a change carries a new one. */
+    readonly spawn?: MonitorSpawnMenu | undefined;
+  };
   subscribe(onChange: () => void): () => void;
 }
 
@@ -43,6 +47,7 @@ export interface ViewSlotInput {
   readonly stage: StageGeometry;
   readonly theme: MonitorTheme;
   readonly parameters: MonitorParameterValues;
+  /** The host's own. With no `spawn` of its own, the replica's menu fills `capabilities.spawn` (M2). */
   readonly capabilities?: MonitorCapabilities | undefined;
 }
 
@@ -118,12 +123,33 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
   let stage = options.input.stage;
   let theme = options.input.theme;
   let parameters = options.input.parameters;
-  let capabilities = options.input.capabilities ?? NO_CAPABILITIES;
+  let hostCapabilities = options.input.capabilities ?? NO_CAPABILITIES;
+  let replicaSpawn: MonitorSpawnMenu | undefined;
+  let joined:
+    | { readonly host: MonitorCapabilities; readonly spawn: MonitorSpawnMenu; readonly value: MonitorCapabilities }
+    | undefined;
   let mounted: Mounted | undefined;
   let report = NO_REPORT;
   let modelDirty = false;
   let cancelFrame: (() => void) | undefined;
   let disposed = false;
+
+  /**
+   * The capabilities the view sees: the host's, with the replica's spawn menu
+   * when the host has none of its own. One object for as long as both parts
+   * keep theirs, so the menu arriving again is no update.
+   */
+  const capabilities = (): MonitorCapabilities => {
+    if (hostCapabilities.spawn !== undefined || replicaSpawn === undefined) return hostCapabilities;
+    if (joined?.host !== hostCapabilities || joined.spawn !== replicaSpawn) {
+      joined = {
+        host: hostCapabilities,
+        spawn: replicaSpawn,
+        value: Object.freeze({ ...hostCapabilities, spawn: replicaSpawn }),
+      };
+    }
+    return joined.value;
+  };
 
   const fail = (error: unknown, phase: ViewSlotPhase, failing: MonitorView): void => {
     if (options.onError) options.onError(error, phase, failing);
@@ -190,8 +216,17 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
     root.style.cssText = 'position: absolute; inset: 0;';
     slot.append(root);
     slot.setAttribute(VIEW_SLOT_ATTRIBUTES.view, next.manifest.id);
-    const model = replica.getSnapshot().model;
-    const input: MonitorViewInput = { model, changes: allAdded(model), stage, theme, parameters, capabilities };
+    const snapshot = replica.getSnapshot();
+    const model = snapshot.model;
+    replicaSpawn = snapshot.spawn;
+    const input: MonitorViewInput = {
+      model,
+      changes: allAdded(model),
+      stage,
+      theme,
+      parameters,
+      capabilities: capabilities(),
+    };
     const entry: Mounted = { view: next, root, input, instance: undefined };
     mounted = entry;
     try {
@@ -236,14 +271,20 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
       return;
     }
     const previous = current.input;
-    const model = modelDirty ? replica.getSnapshot().model : previous.model;
+    let model = previous.model;
+    if (modelDirty) {
+      const snapshot = replica.getSnapshot();
+      model = snapshot.model;
+      replicaSpawn = snapshot.spawn;
+    }
     modelDirty = false;
+    const nextCapabilities = capabilities();
     if (
       model === previous.model &&
       stage === previous.stage &&
       theme === previous.theme &&
       parameters === previous.parameters &&
-      capabilities === previous.capabilities
+      nextCapabilities === previous.capabilities
     ) {
       return;
     }
@@ -253,7 +294,7 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
       stage,
       theme,
       parameters,
-      capabilities,
+      capabilities: nextCapabilities,
     };
     current.input = input;
     try {
@@ -304,19 +345,19 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
       const nextTheme = parts.theme === undefined ? theme : keepTheme(theme, parts.theme);
       const nextParameters = parts.parameters === undefined ? parameters : keepRecord(parameters, parts.parameters);
       const nextCapabilities =
-        parts.capabilities === undefined ? capabilities : keepRecord(capabilities, parts.capabilities);
+        parts.capabilities === undefined ? hostCapabilities : keepRecord(hostCapabilities, parts.capabilities);
       if (
         nextStage === stage &&
         nextTheme === theme &&
         nextParameters === parameters &&
-        nextCapabilities === capabilities
+        nextCapabilities === hostCapabilities
       ) {
         return;
       }
       stage = nextStage;
       theme = nextTheme;
       parameters = nextParameters;
-      capabilities = nextCapabilities;
+      hostCapabilities = nextCapabilities;
       requestFlush();
     },
     setReplica(next) {

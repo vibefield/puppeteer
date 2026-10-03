@@ -7,7 +7,8 @@
  * memo, the host's gate and the fixtures can never disagree about it.
  */
 
-import type { ModelChanges, MonitorModel, MonitorViewInput } from '../view.js';
+import type { ModelChanges, MonitorModel } from '../model.js';
+import type { MonitorViewInput } from '../view.js';
 
 const NONE: readonly string[] = Object.freeze([]);
 
