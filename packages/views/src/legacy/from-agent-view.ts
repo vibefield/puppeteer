@@ -57,20 +57,24 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  *   - attachment: the contract carries a pane COUNT, so the pane ids are opaque
  *     placeholders (`<id>:pane:<n>`). Their number and the colour are true;
  *     nothing may look a pane up by them.
- *   - remote is present for a row on another desktop. Its write policy follows
- *     `attachable`, VibeField's rule today (both are "the owner names its PTY").
+ *   - remote is present for a row on another desktop. The contract carries no
+ *     write policy, so `hostWritable` follows `attachable`. That is VibeField's
+ *     rule (field-app godview/monitor/agents.ts:377-378, where both mean "the
+ *     owner names its PTY"), ruled M2. Puppeteer's Godview has no peers.
  *   - agent.usage comes from `cost`: no total where nothing was priced; no steps
  *     where no series crosses. agent.monitor.usage.costRatePerMin is
  *     `cost.burnPerHour / 60`.
- *   - agent.monitor.blockers holds the row's wait, when it is one of the three
- *     kinds the views draw. Another word is no blocker, which those views draw as
- *     a blocked body with no words of its own.
+ *   - agent.monitor.blockers holds the row's wait with every part the views word:
+ *     its detail, a permission's tool, a question's header and prompt, a
+ *     failure's code. Only the three kinds the views draw count; another word is
+ *     no blocker, which they draw as a blocked body with no words of its own.
+ *     The parts stay apart because the views word them in two orders: the
+ *     swarm's (header or prompt, detail, tool, code, then the reply, then the
+ *     word) and the ledger's (detail, then prompt). Only a design event may
+ *     unify those (M2).
+ *   - activity: an agent's is agent.monitor.activity ({kind, line, since}); a
+ *     terminal's kind is its session's.
  *   - times are ISO strings again, from the row's epoch milliseconds.
- *
- * WHAT IT CANNOT SAY. The model carries no blocker detail, question header or
- * failure code; no effort intent; no activity line for an agent (asked of the
- * lead, 2026-10-03). Those read as absent: a blocked body falls back to the
- * permission's tool, the question or the reply, and an effort reads as observed.
  *
  * ONE DELIBERATE WIDENING. The legacy type demands facts the model never
  * carries: a peer's own session id, Core's whole mirror, a terminal summary.
@@ -105,18 +109,38 @@ function legacyAttachment(view: AgentView, attachment: NonNullable<AgentView['at
   });
 }
 
+function legacyQuestions(wait: NonNullable<AgentView['wait']>) {
+  if (wait.question === undefined && wait.header === undefined) return Object.freeze([]);
+  // A header with no prompt still needs one: the swarm reads `prompt.trim()` when the header says nothing.
+  const question = { ...(wait.header === undefined ? {} : { header: wait.header }), prompt: wait.question ?? '' };
+  return Object.freeze([Object.freeze(question)]);
+}
+
 function legacyBlockers(view: AgentView) {
   const wait = view.wait;
   if (!wait || !DRAWN_WAITS.has(wait.kind)) return Object.freeze([]);
   const since = isoTime(wait.since);
-  const base = { kind: wait.kind, ...(since === undefined ? {} : { since }) };
+  const base = {
+    kind: wait.kind,
+    ...(since === undefined ? {} : { since }),
+    ...(wait.detail === undefined ? {} : { detail: wait.detail }),
+  };
   const blocker =
     wait.kind === 'permission'
-      ? { ...base, ...(wait.tool ? { permission: Object.freeze({ tool: wait.tool }) } : {}) }
+      ? { ...base, ...(wait.tool === undefined ? {} : { permission: Object.freeze({ tool: wait.tool }) }) }
       : wait.kind === 'question'
-        ? { ...base, questions: Object.freeze(wait.question ? [Object.freeze({ prompt: wait.question })] : []) }
-        : base;
+        ? { ...base, questions: legacyQuestions(wait) }
+        : { ...base, ...(wait.code === undefined ? {} : { failure: Object.freeze({ code: wait.code }) }) };
   return Object.freeze([Object.freeze(blocker)]);
+}
+
+function legacyActivity(activity: NonNullable<AgentView['activity']>) {
+  const since = isoTime(activity.since);
+  return Object.freeze({
+    kind: activity.kind,
+    ...(activity.line === undefined ? {} : { line: activity.line }),
+    ...(since === undefined ? {} : { since }),
+  });
 }
 
 function legacyFacet(view: AgentView) {
@@ -126,6 +150,7 @@ function legacyFacet(view: AgentView) {
   const monitor = Object.freeze({
     ...(statusSince === undefined ? {} : { statusSince }),
     blockers: legacyBlockers(view),
+    ...(view.activity ? { activity: legacyActivity(view.activity) } : {}),
     ...(reply
       ? {
           lastAssistantMessage: Object.freeze({
@@ -135,7 +160,14 @@ function legacyFacet(view: AgentView) {
           }),
         }
       : {}),
-    ...(view.effort ? { effort: Object.freeze({ value: view.effort }) } : {}),
+    ...(view.effort
+      ? {
+          effort: Object.freeze({
+            value: view.effort.value,
+            ...(view.effort.intent === undefined ? {} : { intent: view.effort.intent }),
+          }),
+        }
+      : {}),
     usage: Object.freeze({
       ...(cost ? { costCoverage: cost.coverage } : {}),
       ...(cost?.burnPerHour === undefined ? {} : { costRatePerMin: cost.burnPerHour / 60 }),
@@ -191,7 +223,7 @@ function legacyAgent(view: AgentView): MonitorAgent {
           }),
         }),
     ...(!agent && view.activity !== undefined
-      ? { session: Object.freeze({ activity: Object.freeze({ kind: view.activity }) }) }
+      ? { session: Object.freeze({ activity: Object.freeze({ kind: view.activity.kind }) }) }
       : {}),
     ...(agent ? { agent: legacyFacet(view) } : {}),
   });

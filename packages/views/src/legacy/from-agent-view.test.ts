@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState, type MonitorBlocker } from '@vibecook/puppeteer-core';
 import type { AgentView, MonitorModel } from '@vibecook/puppeteer-view-sdk';
 import { remoteWriteLabel } from '../monitor/remote-write.js';
 import { EMPTY_STATUS_LEDGER, observeStatuses } from '../monitor/status-ledger.js';
@@ -27,7 +27,7 @@ function agentView(overrides: Partial<AgentView> = {}): AgentView {
     project: { name: 'puppeteer', branch: 'mv/land', seq: 2 },
     provider: { id: 'imposter', label: 'Imposter' },
     model: 'Opus 5.5',
-    effort: 'high',
+    effort: { value: 'high' },
     account: 'work',
     context: { usedPercent: 42.6 },
     cost: {
@@ -59,7 +59,7 @@ function terminalView(overrides: Partial<AgentView> = {}): AgentView {
     stale: false,
     alive: true,
     detail: 'Unassigned terminal',
-    activity: 'unknown',
+    activity: { kind: 'unknown' },
     project: { name: '' },
     unread: false,
     device: { id: 'desk-1', name: 'Studio', os: 'mac', self: true },
@@ -227,14 +227,40 @@ describe('toMonitorAgent', () => {
     const since = NOW - 5_000;
     const blockers = (wait: AgentView['wait'], id: string) =>
       toMonitorAgent(agentView({ id, status: 'blocked', wait })).agent?.monitor?.blockers;
-    expect(blockers({ kind: 'permission', since, tool: 'Bash' }, 'w1')).toEqual([
-      { kind: 'permission', since: iso(since), permission: { tool: 'Bash' } },
+    expect(blockers({ kind: 'permission', since, tool: 'Bash', detail: 'rm -rf build' }, 'w1')).toEqual([
+      { kind: 'permission', since: iso(since), detail: 'rm -rf build', permission: { tool: 'Bash' } },
     ]);
-    expect(blockers({ kind: 'question', since, question: 'Ship it?' }, 'w2')).toEqual([
-      { kind: 'question', since: iso(since), questions: [{ prompt: 'Ship it?' }] },
+    expect(blockers({ kind: 'question', since, header: 'Deploy', question: 'Ship it?' }, 'w2')).toEqual([
+      { kind: 'question', since: iso(since), questions: [{ header: 'Deploy', prompt: 'Ship it?' }] },
     ]);
-    expect(blockers({ kind: 'failure', since }, 'w3')).toEqual([{ kind: 'failure', since: iso(since) }]);
+    expect(blockers({ kind: 'failure', since, code: 'E_TOOL' }, 'w3')).toEqual([
+      { kind: 'failure', since: iso(since), failure: { code: 'E_TOOL' } },
+    ]);
     expect(blockers({ kind: 'approval', since }, 'w4')).toEqual([]);
+    // A cut that carries no content: the blocker, and no words of its own.
+    expect(blockers({ kind: 'question', since }, 'w5')).toEqual([
+      { kind: 'question', since: iso(since), questions: [] },
+    ]);
+    // A header with no prompt still gives the swarm a prompt to trim.
+    expect(blockers({ kind: 'question', since, header: '  ' }, 'w6')).toEqual([
+      { kind: 'question', since: iso(since), questions: [{ header: '  ', prompt: '' }] },
+    ]);
+  });
+
+  it('says an agent’s activity as the monitor’s, and its effort with the intent', () => {
+    const facts = toMonitorAgent(
+      agentView({
+        id: 'run-act',
+        activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
+        effort: { value: 'max', intent: 'configured' },
+      }),
+    ).agent?.monitor;
+    expect(facts?.activity).toEqual({ kind: 'tool', line: 'Running the tests', since: iso(NOW - 30_000) });
+    expect(facts?.effort).toEqual({ value: 'max', intent: 'configured' });
+    // A cut with no line: the kind alone.
+    expect(
+      toMonitorAgent(agentView({ id: 'run-act2', activity: { kind: 'reasoning' } })).agent?.monitor?.activity,
+    ).toEqual({ kind: 'reasoning' });
   });
 
   it('says cost: no total where nothing was priced, the rate per minute from the burn per hour', () => {
@@ -294,6 +320,67 @@ describe('the shipping views draw the shim', () => {
       ),
     ).toBe('All green.');
     expect(draw(terminalView()).state).toBe('terminal-empty');
+  });
+
+  it('the swarm words a wait in its own order: header or prompt, detail, tool, code, then the reply, then the word', () => {
+    const since = NOW - 5_000;
+    const reply = { text: 'Waiting on you.\nmore', at: NOW, final: true };
+    const words = (id: string, wait: NonNullable<AgentView['wait']>, withReply = false) =>
+      draw(agentView({ id, status: 'blocked', wait, ...(withReply ? { reply } : {}) })).copy.find(
+        (line) => line.key === 'state',
+      )?.text;
+    const all = { since, header: 'Deploy', question: 'Ship it?', detail: 'the detail', tool: 'Bash', code: 'E_TOOL' };
+    expect(words('o1', { kind: 'question', ...all })).toBe('Deploy');
+    expect(words('o2', { kind: 'question', ...all, header: undefined })).toBe('Ship it?');
+    expect(words('o3', { kind: 'question', ...all, header: undefined, question: undefined })).toBe('the detail');
+    expect(words('o4', { kind: 'permission', ...all })).toBe('the detail');
+    expect(words('o5', { kind: 'permission', since, tool: 'Bash' })).toBe('Bash');
+    expect(words('o6', { kind: 'failure', since, code: 'E_TOOL' })).toBe('E_TOOL');
+    expect(words('o7', { kind: 'failure', since }, true)).toBe('Waiting on you.');
+    expect(words('o8', { kind: 'failure', since })).toBe('failed');
+    // A header that says nothing falls to the prompt, and an absent prompt to the detail: no crash on either.
+    expect(words('o9', { kind: 'question', since, header: '  ', detail: 'the detail' })).toBe('the detail');
+  });
+
+  it('the ledger and the timeline word a wait in theirs: detail, then prompt', () => {
+    const since = NOW - 5_000;
+    const ledgerWords = (id: string, wait: NonNullable<AgentView['wait']>) =>
+      observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(agentView({ id, status: 'blocked', wait }))], NOW).lanes.get(
+        id,
+      )?.changes[0]?.blocker;
+    expect(
+      ledgerWords('l1', { kind: 'question', since, header: 'Deploy', question: 'Ship it?', detail: 'the detail' }),
+    ).toEqual({ kind: 'question', detail: 'the detail' });
+    expect(ledgerWords('l2', { kind: 'question', since, header: 'Deploy', question: 'Ship it?' })).toEqual({
+      kind: 'question',
+      detail: 'Ship it?',
+    });
+    expect(ledgerWords('l3', { kind: 'question', since, header: 'Deploy' })).toEqual({ kind: 'question' });
+    expect(ledgerWords('l4', { kind: 'permission', since, tool: 'Bash' })).toEqual({ kind: 'permission' });
+    const lane = laneFromRow(
+      toMonitorAgent(
+        agentView({ id: 'l5', status: 'blocked', wait: { kind: 'permission', since, detail: 'rm -rf build' } }),
+      ),
+      NOW,
+    );
+    expect(lane.spans[0]?.blocker).toEqual({ kind: 'permission', detail: 'rm -rf build' });
+  });
+
+  it('a working agent’s activity line is what its stretch did, and a launch effort reads in italics', () => {
+    const working = agentView({
+      id: 'did',
+      activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
+      effort: { value: 'max', intent: 'configured' },
+    });
+    expect(laneFromRow(toMonitorAgent(working), NOW).spans[0]?.did).toBe('Running the tests');
+    expect(observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(working)], NOW).lanes.get('did')?.changes[0]?.did).toBe(
+      'Running the tests',
+    );
+    const modelLine = (view: AgentView) => draw(view).copy.find((line) => line.key === 'model');
+    expect(modelLine(working)).toMatchObject({ text: 'Opus 5.5 · max', style: { italic: true } });
+    expect(
+      modelLine(agentView({ id: 'seen', effort: { value: 'max', intent: 'observed' } }))?.style.italic,
+    ).toBeUndefined();
   });
 
   it('the rain and the timeline', () => {
@@ -368,36 +455,58 @@ describe('viewReadProjection', () => {
     expect(shim).toEqual(today);
   });
 
-  it('pins what the model cannot say yet: the blocker detail, an effort’s intent, an agent’s activity line', () => {
-    const blocked = coreState({
-      status: 'blocked',
-      blockers: [
+  it('round trip with every part of a wait, the effort’s intent and the activity line (M2)', () => {
+    const since = NOW - 5_000;
+    const cases: readonly (readonly [MonitorBlocker, NonNullable<AgentView['wait']>])[] = [
+      [
         {
           id: 'b',
           kind: 'permission',
-          since: iso(NOW - 5_000),
+          since: iso(since),
           detail: 'rm -rf build',
-          permission: { requestId: 'r' },
+          permission: { requestId: 'r', tool: 'Bash' },
         },
+        { kind: 'permission', since, detail: 'rm -rf build', tool: 'Bash' },
       ],
-      effort: { value: 'high', intent: 'configured' },
-      activity: { kind: 'tool', line: 'Running the tests', since: iso(NOW - 30_000) },
-    });
-    const today = viewReadProjection(todaysRow(blocked));
-    const shim = viewReadProjection(
-      toMonitorAgent(
-        agentView({
-          status: 'blocked',
-          wait: { kind: 'permission', since: NOW - 5_000 },
-          reply: { text: 'Done with the first pass.' },
-        }),
-      ),
-    );
-    expect(differingPaths(today, shim)).toEqual([
-      'agent.monitor.blockers.0.detail',
-      'agent.monitor.activity',
-      'agent.monitor.effort.intent',
-    ]);
+      [
+        {
+          id: 'b',
+          kind: 'question',
+          since: iso(since),
+          detail: 'asks',
+          questions: [{ header: 'Deploy', prompt: 'Ship it?' }],
+        },
+        { kind: 'question', since, detail: 'asks', header: 'Deploy', question: 'Ship it?' },
+      ],
+      [
+        { id: 'b', kind: 'failure', since: iso(since), failure: { code: 'E_TOOL', recoverable: true } },
+        { kind: 'failure', since, code: 'E_TOOL' },
+      ],
+    ];
+    for (const [blocker, wait] of cases) {
+      const today = viewReadProjection(
+        todaysRow(
+          coreState({
+            status: 'blocked',
+            blockers: [blocker],
+            effort: { value: 'high', intent: 'configured' },
+            activity: { kind: 'tool', line: 'Running the tests', since: iso(NOW - 30_000) },
+          }),
+        ),
+      );
+      const shim = viewReadProjection(
+        toMonitorAgent(
+          agentView({
+            status: 'blocked',
+            wait,
+            effort: { value: 'high', intent: 'configured' },
+            activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
+            reply: { text: 'Done with the first pass.' },
+          }),
+        ),
+      );
+      expect(differingPaths(today, shim)).toEqual([]);
+    }
   });
 
   it('reads identity as the views do, and a row with no facets without failing', () => {
