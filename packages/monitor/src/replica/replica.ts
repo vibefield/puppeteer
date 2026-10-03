@@ -1,6 +1,7 @@
 import {
   compareMonitorRows,
   type AgentView,
+  type FrameScheduler,
   type ModelChanges,
   type MonitorAgentRow,
   type MonitorModel,
@@ -54,12 +55,14 @@ export interface MonitorReplicaTheme {
   colourFor(seq?: number): string;
 }
 
-/** Runs `callback` once, before the next frame, and returns its cancel. */
-export type MonitorReplicaScheduler = (callback: () => void) => () => void;
-
 export interface CreateMonitorReplicaOptions {
-  /** Default: `requestAnimationFrame` where there is one, else a 16 ms timer. */
-  scheduler?: MonitorReplicaScheduler;
+  /**
+   * The host's ONE frame scheduler, the same instance its view host's slot uses
+   * (M7). Work requested while a frame drains joins that frame, so the slot's
+   * update lands in the frame this replica's notification ran in. Default:
+   * `requestAnimationFrame` where there is one, else a 16 ms timer.
+   */
+  scheduler?: FrameScheduler;
   /** Hears what a listener or a host callback threw; nothing a host passes in can stop a publication. */
   onListenerError?: (error: unknown) => void;
 }
@@ -112,17 +115,28 @@ const frameGlobals = globalThis as typeof globalThis & {
   readonly cancelAnimationFrame?: (handle: number) => void;
 };
 
-function frameScheduler(): MonitorReplicaScheduler {
+/**
+ * The frame when a host passes none: requestAnimationFrame where there is one,
+ * else a 16 ms timer. It needs no draining queue: it is this replica's own, and
+ * its one task is the only work on it, so "joins the draining frame" never
+ * arises, and the task asked again from inside its own run waits for the next
+ * frame, as the interface says.
+ */
+function frameScheduler(): FrameScheduler {
   const { requestAnimationFrame, cancelAnimationFrame } = frameGlobals;
   if (typeof requestAnimationFrame === 'function' && typeof cancelAnimationFrame === 'function') {
-    return (callback) => {
-      const handle = requestAnimationFrame.call(globalThis, () => callback());
-      return () => cancelAnimationFrame.call(globalThis, handle);
+    return {
+      request(work) {
+        const handle = requestAnimationFrame.call(globalThis, () => work());
+        return () => cancelAnimationFrame.call(globalThis, handle);
+      },
     };
   }
-  return (callback) => {
-    const handle = setTimeout(callback, 16);
-    return () => clearTimeout(handle);
+  return {
+    request(work) {
+      const handle = setTimeout(work, 16);
+      return () => clearTimeout(handle);
+    },
   };
 }
 
@@ -297,14 +311,21 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     for (const listener of [...listeners]) call(listener);
   };
 
+  /**
+   * The one task this replica asks of its scheduler, one request a frame. It is
+   * always the same function, and a scheduler runs a task at most once a frame,
+   * so a change a listener makes while it runs is heard in the next frame.
+   */
+  const runFrame = (): void => {
+    framePending = false;
+    cancelFrame = undefined;
+    flush();
+  };
+
   const schedule = (): void => {
     if (disposed || framePending || (dirty.size === 0 && spawn === published.spawn)) return;
     framePending = true;
-    const cancel = scheduler(() => {
-      framePending = false;
-      cancelFrame = undefined;
-      flush();
-    });
+    const cancel = scheduler.request(runFrame);
     // A scheduler may run the frame before it returns; then there is nothing left to cancel.
     if (framePending) cancelFrame = cancel;
   };

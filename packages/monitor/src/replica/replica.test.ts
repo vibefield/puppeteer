@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   compareMonitorRows,
+  type FrameScheduler,
   type MonitorAgentRow,
   type MonitorModelChange,
   type MonitorModelSnapshot,
@@ -11,7 +12,6 @@ import {
   NO_THEME_COLOUR,
   type MonitorReplicaAttachment,
   type MonitorReplicaLocal,
-  type MonitorReplicaScheduler,
 } from './index.js';
 
 function row(id: string, overrides: Partial<MonitorAgentRow> = {}): MonitorAgentRow {
@@ -59,21 +59,41 @@ function wire<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-/** Frames stepped by hand: nothing is published until the test says a frame has passed. */
+/**
+ * Frames stepped by hand, under the contract's rule (M7): work requested while
+ * a frame drains joins that frame, unless that task already ran in it.
+ */
 function manualFrames() {
-  const queue: (() => void)[] = [];
-  const scheduler: MonitorReplicaScheduler = (callback) => {
-    queue.push(callback);
-    return () => {
-      const index = queue.indexOf(callback);
-      if (index >= 0) queue.splice(index, 1);
-    };
+  let waiting: (() => void)[] = [];
+  let draining: { readonly ran: Set<() => void>; readonly queue: (() => void)[] } | undefined;
+  let count = 0;
+  const scheduler: FrameScheduler = {
+    request(work) {
+      const queue = draining && !draining.ran.has(work) ? draining.queue : waiting;
+      queue.push(work);
+      return () => {
+        const index = queue.indexOf(work);
+        if (index >= 0) queue.splice(index, 1);
+      };
+    },
   };
   return {
     scheduler,
-    pending: () => queue.length,
+    /** Work waiting for the next frame. */
+    pending: () => waiting.length,
+    /** The frame running now, or the last one run. */
+    current: () => count,
     frame: () => {
-      for (const callback of queue.splice(0)) callback();
+      count += 1;
+      const frame = { ran: new Set<() => void>(), queue: waiting };
+      waiting = [];
+      draining = frame;
+      for (let index = 0; index < frame.queue.length; index += 1) {
+        const work = frame.queue[index]!;
+        frame.ran.add(work);
+        work();
+      }
+      draining = undefined;
     },
   };
 }
@@ -405,6 +425,29 @@ describe('createMonitorReplica', () => {
     frames.frame();
     expect(listener).toHaveBeenCalledTimes(2);
     expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['b']);
+  });
+
+  it('a subscriber’s own request on the shared scheduler lands in the frame that notified it (M7)', () => {
+    const { frames, replica } = setup();
+    const updates: { frame: number; revision: number }[] = [];
+    // The view host's slot: it hears the replica, then asks the SAME scheduler for its update.
+    replica.subscribe(() => {
+      frames.scheduler.request(() => {
+        updates.push({ frame: frames.current(), revision: replica.getSnapshot().model.revision });
+      });
+    });
+    replica.apply(snapshot(1, [row('a')]));
+    expect(frames.pending()).toBe(1);
+    frames.frame();
+    expect(updates).toEqual([{ frame: 1, revision: 1 }]);
+    expect(frames.pending()).toBe(0);
+
+    replica.apply(change(1, 2, { upserts: [row('b', { createdAt: 2_000 })] }));
+    frames.frame();
+    expect(updates).toEqual([
+      { frame: 1, revision: 1 },
+      { frame: 2, revision: 2 },
+    ]);
   });
 
   it('publishes the spawn menu, and keeps the model when only the menu moved', () => {
