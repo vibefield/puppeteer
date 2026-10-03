@@ -1,0 +1,214 @@
+/**
+ * The monitor model: what the backend knows about every agent, as plain data.
+ *
+ * One backend per desktop computes every business fact once, beside the runtime
+ * (MV-D22). The sync plane carries this model and nothing view-shaped. Each
+ * screen holds a replica, and a view draws the replica (`./view.ts`).
+ *
+ * Nothing here may reference the DOM, React, a runtime, a transport or a host:
+ * the model crosses processes and devices as JSON, and the backend imports this
+ * file from Node. Every timestamp is epoch milliseconds.
+ */
+
+/** A run's state. Evidence recency is never a fourth state: see `MonitorAgentRow.stale`. */
+export type AgentStatus = 'idle' | 'working' | 'blocked';
+
+/** What a row stands for: a run the runtime monitors, or a terminal no agent runs in yet. */
+export type AgentRowKind = 'agent' | 'terminal';
+
+/** How the desktop holds the row: a run it manages, one it ingested, or one on another desktop. */
+export type AgentTier = 'managed' | 'ingested' | 'remote';
+
+/** The OS mark a device is drawn by. Devices are marks, never names, in a row. */
+export type DeviceOs = 'mac' | 'windows' | 'linux' | 'ios' | 'android';
+
+/** A fixed-bucket series, oldest first. */
+export interface MonitorSeries {
+  readonly stepMs: number;
+  /** Bucket values, oldest first. The last is the current bucket, still filling. */
+  readonly steps: readonly number[];
+  /** When the last bucket began, so a view can align the series of different rows. */
+  readonly lastStepAt: number;
+}
+
+export interface MonitorDeviceRef {
+  readonly id: string;
+  readonly name: string;
+  readonly os?: DeviceOs | undefined;
+  /** The desktop this model is read on. */
+  readonly self: boolean;
+}
+
+/** What a blocked run waits on: the first blocker, as far as the reader's cut carries it. */
+export interface MonitorWait {
+  /** The runtime's own word, open: `permission`, `question`, `failure`, … */
+  readonly kind: string;
+  readonly since: number;
+  /** A permission's tool. */
+  readonly tool?: string | undefined;
+  /** A question's prompt, bounded. Absent on a cut that carries no content (the phone's). */
+  readonly question?: string | undefined;
+}
+
+/** The run's latest reply, bounded. Absent on a cut that carries no content. */
+export interface MonitorReply {
+  readonly text: string;
+  readonly at?: number | undefined;
+  /** False while the reply is still streaming. */
+  readonly final?: boolean | undefined;
+}
+
+/** How much of the observed work was priced: puppeteer's own word. */
+export type CostCoverage = 'complete' | 'partial' | 'unavailable';
+
+export interface MonitorCost {
+  /** Estimated API-equivalent USD for observed work, never an invoice. */
+  readonly usd: number;
+  readonly coverage: CostCoverage;
+  /** USD an hour, at the backend's current burn. */
+  readonly burnPerHour?: number | undefined;
+  /** USD per step over the recent window (today 20 × 30 s). */
+  readonly series?: MonitorSeries | undefined;
+}
+
+export interface MonitorTokens {
+  readonly total?: number | undefined;
+  readonly perMinute?: number | undefined;
+}
+
+export interface MonitorProject {
+  /** A folder NAME, never a path (EL7 B1). Empty for a terminal in no project. */
+  readonly name: string;
+  /** Absent: nothing looked. Null: looked, and there is no branch. */
+  readonly branch?: string | null | undefined;
+  /** The project's colour sequence, dealt the first time an agent runs in it.
+   * The view host turns it into a colour with the theme; absent wears the
+   * neutral ramp. */
+  readonly seq?: number | undefined;
+}
+
+/**
+ * One row of the model: everything a screen may draw about one agent or bare
+ * terminal, computed by the backend.
+ *
+ * Presentation-free. There is no colour here (the view host derives it from
+ * `project.seq` and the theme), and nothing only one window knows (attachment,
+ * the active pane, receding, spawn hints): the replica joins those into
+ * `AgentView`.
+ */
+export interface MonitorAgentRow {
+  /** Stable identity. It survives a terminal being promoted to an agent and a
+   * run resuming in a new terminal, so a view keys by this and nothing else. */
+  readonly id: string;
+  readonly kind: AgentRowKind;
+  /** When the row was born, from whichever half of it knows. */
+  readonly createdAt: number;
+  readonly status: AgentStatus;
+  /** When the current status began. */
+  readonly statusSince: number;
+  /** Not heard from lately. Presentation metadata, never a status. */
+  readonly stale: boolean;
+  /** Still there: the host's liveness, or the runtime's own word. */
+  readonly alive: boolean;
+  /** Alive, but nothing drives it yet (a run that resumes at its next idle). */
+  readonly pending?: boolean | undefined;
+  /** The line under the name, in the backend's words (the toolkit holds the shared words, MV-D11). */
+  readonly detail: string;
+  /** What a terminal is doing when no agent words it. */
+  readonly activity?: string | undefined;
+  readonly project: MonitorProject;
+  readonly provider?: { readonly id: string; readonly label: string } | undefined;
+  readonly model?: string | undefined;
+  readonly effort?: string | undefined;
+  readonly account?: string | undefined;
+  readonly context?: { readonly usedPercent: number } | undefined;
+  readonly wait?: MonitorWait | undefined;
+  readonly reply?: MonitorReply | undefined;
+  readonly cost?: MonitorCost | undefined;
+  readonly tokens?: MonitorTokens | undefined;
+  /** A finished turn nobody has looked at yet: the backend's mark, cleared when any screen shows it. */
+  readonly unread: boolean;
+  readonly device: MonitorDeviceRef;
+  readonly tier?: AgentTier | undefined;
+  /** The Agent Profile SET it runs under (`native` for the machine's own). */
+  readonly profileSet?: string | undefined;
+  /** A pane on the reading desktop can show it now. */
+  readonly attachable: boolean;
+}
+
+/** An Agent Profile the spawn bloom offers under a desktop. */
+export interface MonitorSpawnProfile {
+  readonly id: string;
+  readonly label: string;
+  readonly glyph?: string | undefined;
+  readonly kind?: 'native' | 'managed' | undefined;
+  /** The desktop's default: letting go on the desktop itself opens this one. */
+  readonly isDefault?: boolean | undefined;
+  /** An agent under it waits on the person. */
+  readonly blocked?: boolean | undefined;
+  /** The agents signed in under it, in the host's order. */
+  readonly signedIn?: readonly string[] | undefined;
+}
+
+/** Whether a desktop can take a terminal right now. Only `ready` takes one. */
+export type MonitorSpawnDeviceState = 'ready' | 'asleep' | 'silent' | 'incompatible' | 'reading';
+
+/** A desktop a new terminal can be born on. */
+export interface MonitorSpawnDevice {
+  readonly id: string;
+  readonly label: string;
+  readonly self?: boolean | undefined;
+  readonly state: MonitorSpawnDeviceState;
+  /** The state line under its bud, worded by the backend. */
+  readonly word?: string | undefined;
+  /** How the words say a faint desktop cannot take one, after its name. */
+  readonly phrase?: string | undefined;
+  /** Absent while they are being read. */
+  readonly profiles?: readonly MonitorSpawnProfile[] | undefined;
+}
+
+/** What a new terminal can be born under (capability `spawn`, MV-D4). */
+export interface MonitorSpawnMenu {
+  readonly devices: readonly MonitorSpawnDevice[];
+}
+
+/** The desktop and profile a create asks for. Absent fields: this desktop, its default profile. */
+export interface MonitorSpawnTarget {
+  readonly deviceId?: string | undefined;
+  readonly profileSet?: string | undefined;
+}
+
+/**
+ * The whole model at one revision.
+ *
+ * Rows are in the model's order: agents by birth, then bare terminals, ties by
+ * id. An unchanged row keeps its object from one snapshot to the next (MV-D21).
+ */
+export interface MonitorModelSnapshot {
+  readonly revision: number;
+  readonly rows: readonly MonitorAgentRow[];
+  readonly spawn?: MonitorSpawnMenu | undefined;
+}
+
+/**
+ * What changed between two revisions.
+ *
+ * It applies on top of `since`. A reader whose revision is not `since` has lost
+ * a change and asks for a snapshot: the tolerant reader's rule, never an ack
+ * protocol. An idle model emits nothing.
+ */
+export interface MonitorModelChange {
+  readonly since: number;
+  readonly revision: number;
+  readonly upserts: readonly MonitorAgentRow[];
+  readonly removed: readonly string[];
+  /** Present only when the spawn menu changed. */
+  readonly spawn?: MonitorSpawnMenu | undefined;
+}
+
+/** Orders rows the way every snapshot does: agents by birth, then terminals, ties by id. */
+export function compareMonitorRows(a: MonitorAgentRow, b: MonitorAgentRow): number {
+  if (a.kind !== b.kind) return a.kind === 'agent' ? -1 : 1;
+  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}

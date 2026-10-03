@@ -1,5 +1,6 @@
 export const publicPackages = [
   ['packages/core', '@vibecook/puppeteer-core'],
+  ['packages/view-sdk', '@vibecook/puppeteer-view-sdk'],
   ['packages/monitor', '@vibecook/puppeteer-monitor'],
   ['packages/react', '@vibecook/puppeteer-react'],
   ['packages/views', '@vibecook/puppeteer-views'],

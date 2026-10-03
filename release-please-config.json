@@ -15,6 +15,11 @@
         },
         {
           "type": "json",
+          "path": "packages/view-sdk/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "packages/monitor/package.json",
           "jsonpath": "$.version"
         },

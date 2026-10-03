@@ -82,6 +82,7 @@ const architectureDependencies = new Map([
       '@vibecook/puppeteer-runtime',
     ],
   ],
+  ['packages/view-sdk', []],
   ['packages/monitor', ['@vibecook/puppeteer-core']],
   ['packages/react', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-monitor']],
   ['packages/views', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-react']],
