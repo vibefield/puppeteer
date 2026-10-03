@@ -11,6 +11,7 @@ import {
 import { createAgentMonitorStore } from '../store.js';
 import {
   DEFAULT_REPLY_MAX_LENGTH,
+  agentStatus,
   classifyTerminalStatus,
   deriveAgentRow,
   deriveTerminalRow,
@@ -20,6 +21,7 @@ import {
   resolveProfileSet,
 } from './derive.js';
 import { deepEqual, freezeTree } from './equal.js';
+import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadCandidate, type UnreadLedger } from './unread.js';
 import { USAGE_STEP_MS, UsageLedger, type UsageHistory } from './usage-ledger.js';
 import type {
   CreateMonitorBackendOptions,
@@ -150,6 +152,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     { history: UsageHistory | undefined; ratePerMin: number | undefined; cost: MonitorCost | undefined }
   >();
   let entries = new Map<string, RowEntry>();
+  /** Unread (L5): the fold, and what each screen reports it shows in its active pane. */
+  let unread: UnreadLedger = EMPTY_UNREAD_LEDGER;
+  const shownByScreen = new Map<string, ReadonlySet<string>>();
   let personasOf: { sets: readonly MonitorHostProfileSet[] | null; personas: ReadonlyMap<string, string> } | undefined;
 
   let snapshot: MonitorModelSnapshot = Object.freeze({ revision: 0, rows: EMPTY_ROWS });
@@ -226,6 +231,14 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     }
   };
 
+  /** Every row some screen shows: in front of the user. */
+  const shownIds = (): ReadonlySet<string> => {
+    if (shownByScreen.size === 1) return shownByScreen.values().next().value ?? new Set<string>();
+    const union = new Set<string>();
+    for (const ids of shownByScreen.values()) for (const id of ids) union.add(id);
+    return union;
+  };
+
   /** Keeps the previous frozen row when the newly derived one says the same thing (MV-D21). */
   const settle = (previous: RowEntry | undefined, row: MonitorAgentRow, inputs: RowInputs): RowEntry => {
     if (previous && deepEqual(previous.row, row)) return { row: previous.row, inputs };
@@ -270,7 +283,54 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       agents.push({ host: run, state, id });
     }
 
-    // 3. Agent rows.
+    // 3. The terminals no agent speaks for (its PTY, the one it replaced, or its very id), each on its status clock.
+    const claimedSessions = new Set<string>();
+    for (const agent of agents) {
+      if (agent.host.terminalSessionId !== undefined) claimedSessions.add(agent.host.terminalSessionId);
+      if (agent.host.replacedTerminalSessionId !== undefined) claimedSessions.add(agent.host.replacedTerminalSessionId);
+    }
+    const terminals: Array<{ host: MonitorHostTerminal; id: string; statusSince: number }> = [];
+    const liveTerminalIds = new Set<string>();
+    for (const terminal of liveTerminals) {
+      const id = tidBySession.get(terminal.sessionId) ?? terminal.sessionId;
+      if (claimedSessions.has(terminal.sessionId) || taken.has(id) || liveTerminalIds.has(id)) continue;
+      liveTerminalIds.add(id);
+      const status = classifyTerminalStatus(terminal.activity);
+      let known = terminalStatus.get(id);
+      if (!known || known.status !== status) {
+        known = { status, since: known ? nowMs : terminal.createdAt || nowMs };
+        terminalStatus.set(id, known);
+      }
+      terminals.push({ host: terminal, id, statusSince: known.since });
+    }
+    for (const id of [...terminalStatus.keys()]) if (!liveTerminalIds.has(id)) terminalStatus.delete(id);
+
+    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown".
+    const shown = shownIds();
+    unread = reconcileUnread(
+      unread,
+      [
+        ...agents.map((agent): UnreadCandidate => {
+          const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
+          return {
+            id: agent.id,
+            status: agentStatus(agent.host, agent.state),
+            active: shown.has(agent.id),
+            hasAgent: true,
+            ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
+          };
+        }),
+        ...terminals.map((terminal): UnreadCandidate => ({
+          id: terminal.id,
+          status: classifyTerminalStatus(terminal.host.activity),
+          active: shown.has(terminal.id),
+          hasAgent: false,
+        })),
+      ],
+      nowMs,
+    );
+
+    // 5. Agent rows.
     for (const agent of agents) {
       const { runtimeRunId } = agent.host;
       const key = projectKey(agent.host, agent.state);
@@ -304,7 +364,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
         profileSet: resolveProfileSet(agent.host, sets),
         stale: isStale(agent.state, nowMs, staleAfterMs),
         cost: costOf(runtimeRunId, ledger.history(runtimeRunId), agent.state?.usage.costRatePerMin),
-        unread: false,
+        unread: unread.unreadIds.has(agent.id),
       };
       const previous = entries.get(agent.id);
       const entry =
@@ -315,35 +375,28 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (entry.row !== previous?.row) upserts.push(entry.row);
     }
 
-    // 4. Terminal rows: the ones no agent speaks for (its PTY, the one it replaced, or its very id).
-    const claimedSessions = new Set<string>();
-    for (const agent of agents) {
-      if (agent.host.terminalSessionId !== undefined) claimedSessions.add(agent.host.terminalSessionId);
-      if (agent.host.replacedTerminalSessionId !== undefined) claimedSessions.add(agent.host.replacedTerminalSessionId);
-    }
-    const liveTerminalIds = new Set<string>();
-    for (const terminal of liveTerminals) {
-      const id = tidBySession.get(terminal.sessionId) ?? terminal.sessionId;
-      if (claimedSessions.has(terminal.sessionId) || taken.has(id) || liveTerminalIds.has(id)) continue;
-      liveTerminalIds.add(id);
-      const status = classifyTerminalStatus(terminal.activity);
-      let known = terminalStatus.get(id);
-      if (!known || known.status !== status) {
-        known = { status, since: known ? nowMs : terminal.createdAt || nowMs };
-        terminalStatus.set(id, known);
-      }
-      const inputs: TerminalInputs = { kind: 'terminal', host: terminal, device, statusSince: known.since };
-      const previous = entries.get(id);
+    // 6. Terminal rows.
+    for (const terminal of terminals) {
+      const inputs: TerminalInputs = {
+        kind: 'terminal',
+        host: terminal.host,
+        device,
+        statusSince: terminal.statusSince,
+      };
+      const previous = entries.get(terminal.id);
       const entry =
         previous && sameInputs(previous.inputs, inputs)
           ? { row: previous.row, inputs }
-          : settle(previous, deriveTerminalRow({ id, host: terminal, device, statusSince: known.since }), inputs);
-      next.set(id, entry);
+          : settle(
+              previous,
+              deriveTerminalRow({ id: terminal.id, host: terminal.host, device, statusSince: terminal.statusSince }),
+              inputs,
+            );
+      next.set(terminal.id, entry);
       if (entry.row !== previous?.row) upserts.push(entry.row);
     }
-    for (const id of [...terminalStatus.keys()]) if (!liveTerminalIds.has(id)) terminalStatus.delete(id);
 
-    // 5. What left, and what to forget.
+    // 7. What left, and what to forget.
     const removed = [...entries.keys()].filter((id) => !next.has(id));
     const named = new Set(facts.runs.map((run) => run.runtimeRunId));
     for (const runtimeRunId of new Set([...idByRun.keys(), ...observed.keys()])) {
@@ -423,7 +476,19 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       return () => listeners.delete(onChange);
     },
     command: () => false,
-    reportShown: () => undefined,
+    reportShown(screenId, ids) {
+      if (disposed) return;
+      const next = new Set(ids);
+      const previous = shownByScreen.get(screenId);
+      const same = previous
+        ? previous.size === next.size && [...next].every((id) => previous.has(id))
+        : next.size === 0;
+      if (same) return;
+      if (next.size === 0) shownByScreen.delete(screenId);
+      else shownByScreen.set(screenId, next);
+      // Looking at a row clears its mark now, not a tick later: the screen that reported is waiting on it.
+      flush();
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

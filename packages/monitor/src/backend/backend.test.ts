@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEVICE, T0, facts, hostRun, hostTerminal, iso, monitorState, testBackend } from './testing/fixtures.js';
+import { EMPTY_UNREAD_LEDGER, reconcileUnread } from './unread.js';
 
 describe('the join', () => {
   it('shows a run the host names before the runtime has spoken, as starting', async () => {
@@ -304,5 +305,140 @@ describe('cost', () => {
       priced({ runtimeEpoch: 2, usage: { samples: [], costUsd: 0.1, costCoverage: 'complete', costHistory: [] } }),
     );
     expect(t.rows()[0]?.cost?.usd).toBe(0.1);
+  });
+});
+
+describe('unread (L5)', () => {
+  // The store takes only a newer revision per run, so every state the helpers make is newer than the last.
+  let rev = 0;
+  const working = (id: string, since: number) =>
+    monitorState({ runtimeRunId: id, revision: ++rev, status: 'working', statusSince: iso(since) });
+  const idle = (id: string, since: number) =>
+    monitorState({ runtimeRunId: id, revision: ++rev, status: 'idle', statusSince: iso(since), activity: undefined });
+  const two = () =>
+    testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa' }),
+          hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb' }),
+        ],
+      }),
+      states: [working('a', T0 - 10_000), working('b', T0 - 10_000)],
+    });
+  const unreadIds = (t: ReturnType<typeof testBackend>) =>
+    t
+      .rows()
+      .filter((row) => row.unread)
+      .map((row) => row.id);
+
+  it('marks a turn that finishes while no screen shows the row, and clears it when any screen does', async () => {
+    const t = two();
+    await t.backend.ready;
+    expect(unreadIds(t)).toEqual([]);
+    t.clock.advance(5_000);
+    t.source.push(idle('a', T0 + 4_000));
+    expect(unreadIds(t)).toEqual(['a']);
+    expect(t.changes.at(-1)?.upserts.map((row) => [row.id, row.unread])).toEqual([['a', true]]);
+    t.backend.reportShown('window-1', ['a']);
+    expect(unreadIds(t)).toEqual([]);
+    t.backend.reportShown('window-1', []);
+    expect(unreadIds(t)).toEqual([]);
+  });
+
+  it('never marks a row a screen is showing when its turn ends, even while another screen is not', async () => {
+    const t = two();
+    await t.backend.ready;
+    t.backend.reportShown('window-1', ['b']);
+    t.backend.reportShown('window-2', ['a']);
+    t.clock.advance(5_000);
+    t.source.push(idle('a', T0 + 4_000));
+    expect(unreadIds(t)).toEqual([]);
+    t.backend.reportShown('window-2', []);
+    t.clock.advance(5_000);
+    t.source.push(idle('a', T0 + 9_000));
+    t.source.push(working('a', T0 + 9_500));
+    t.source.push(idle('a', T0 + 9_800));
+    expect(unreadIds(t)).toEqual(['a']);
+    t.backend.reportShown('phone', ['a']);
+    expect(unreadIds(t)).toEqual([]);
+  });
+
+  it('does not mark a turn that began and ended between two ticks when a screen showed it, but does when none did', async () => {
+    const t = two();
+    await t.backend.ready;
+    t.backend.reportShown('window-1', ['a']);
+    t.clock.advance(5_000);
+    t.source.push(idle('a', T0 + 2_000));
+    t.source.push(idle('b', T0 + 2_000));
+    expect(unreadIds(t)).toEqual(['b']);
+  });
+
+  it('never marks a bare terminal, and a report of an unchanged set emits nothing', async () => {
+    const t = testBackend({
+      facts: facts({ terminals: [hostTerminal({ sessionId: 'sh', activity: { kind: 'foreground-job' } })] }),
+    });
+    await t.backend.ready;
+    t.rows();
+    t.clock.advance(5_000);
+    t.host.update({ terminals: [hostTerminal({ sessionId: 'sh' })] });
+    expect(t.rows().map((row) => [row.status, row.unread])).toEqual([['idle', false]]);
+    const revision = t.backend.getSnapshot().revision;
+    t.backend.reportShown('window-1', []);
+    t.backend.reportShown('window-1', ['nobody']);
+    t.backend.reportShown('window-1', ['nobody']);
+    expect(t.backend.getSnapshot().revision).toBe(revision);
+  });
+
+  it('is exactly the single-window fold: one screen reporting its active row replays the ledger', async () => {
+    // The scripted day: (seconds, which row is active, each run's status and when it began).
+    const script: Array<[number, string | undefined, Record<string, ['idle' | 'working', number]>]> = [
+      [0, 'a', { a: ['working', -60], b: ['working', -60] }],
+      [10, 'a', { a: ['working', -60], b: ['idle', 8] }],
+      [20, 'b', { a: ['idle', 15], b: ['idle', 8] }],
+      [30, 'b', { a: ['idle', 15], b: ['idle', 25] }],
+      [40, undefined, { a: ['idle', 35], b: ['working', 38] }],
+      [50, 'a', { a: ['idle', 35], b: ['idle', 48] }],
+    ];
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa' }),
+          hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb' }),
+        ],
+      }),
+      deferList: true,
+    });
+    let expected = EMPTY_UNREAD_LEDGER;
+    let revision = 0;
+    for (const [seconds, active, runs] of script) {
+      t.clock.advance(T0 + seconds * 1000 - t.clock.now());
+      t.backend.reportShown('window', active === undefined ? [] : [active]);
+      for (const [id, [status, since]] of Object.entries(runs)) {
+        revision += 1;
+        t.source.push(
+          monitorState({
+            runtimeRunId: id,
+            revision,
+            status,
+            statusSince: iso(T0 + since * 1000),
+            activity: undefined,
+          }),
+        );
+      }
+      const rows = t.rows();
+      expected = reconcileUnread(
+        expected,
+        rows.map((row) => ({
+          id: row.id,
+          status: row.status,
+          active: row.id === active,
+          hasAgent: true,
+          statusSinceMs: row.statusSince,
+        })),
+        t.clock.now(),
+      );
+      expect(rows.filter((row) => row.unread).map((row) => row.id)).toEqual([...expected.unreadIds]);
+    }
+    expect([...expected.unreadIds]).toEqual(['b']);
   });
 });
