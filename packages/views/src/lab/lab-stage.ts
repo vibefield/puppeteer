@@ -207,18 +207,18 @@ export function mountViewLab(options: ViewLabOptions): ViewLab {
   }
   createRoot(options.mount).render(createElement(Lab));
 
-  const macrotask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+  const frames = async (count: number): Promise<void> => {
+    for (let frame = 0; frame < count; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
+  };
   window.__vfLab = {
     capture: params.capture,
     ready: async () => {
       await mounted;
       await document.fonts.ready;
-      await macrotask();
+      // The first layout's observers (and what they re-render) land before any frame is stepped.
+      await (clock ? clock.settle() : frames(2));
     },
-    step: async (frames) => {
-      if (clock) return clock.step(frames);
-      for (let frame = 0; frame < frames; frame += 1) await new Promise((resolve) => requestAnimationFrame(resolve));
-    },
+    step: (count) => (clock ? clock.step(count) : frames(count)),
   };
   return { params, setParameters: (parameters) => pushParameters(parameters), setTheme, setAnimations };
 }
