@@ -416,7 +416,8 @@ function stylesheetsUnder(root, paths) {
 export function checkViewWall({
   root = scriptRoot,
   views = 'packages/views/src/views',
-  hostStylesheets = ['apps/godview/src/renderer'],
+  // M14: views.css is loaded globally by every host, so a monitor-view selector there is the host's side naming a view.
+  hostStylesheets = ['apps/godview/src/renderer', 'packages/views/src/styles'],
   includeLabs = false,
 } = {}) {
   const viewsRoot = resolve(root, views);
