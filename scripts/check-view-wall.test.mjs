@@ -1,16 +1,22 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
+import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checkViewWall, cssPreludes, importBreach, summarizeViewWall } from './check-view-wall.mjs';
 
 const script = join(dirname(fileURLToPath(import.meta.url)), 'check-view-wall.mjs');
+const fixtures = [];
+
+after(() => {
+  for (const root of fixtures) rmSync(root, { recursive: true, force: true });
+});
 
 function fixture(files) {
   const root = mkdtempSync(join(tmpdir(), 'puppeteer-view-wall-'));
+  fixtures.push(root);
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), text);
