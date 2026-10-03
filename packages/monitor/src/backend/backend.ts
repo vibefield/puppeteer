@@ -128,6 +128,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const replyMaxLength = options.replyMaxLength ?? DEFAULT_REPLY_MAX_LENGTH;
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs;
   const recencyIntervalMs = options.recencyIntervalMs ?? DEFAULT_RECENCY_INTERVAL_MS;
+  const accumulateAcrossEpochs = (options.cost?.acrossEpochs ?? 'accumulate') === 'accumulate';
   const report = (error: unknown): void => {
     try {
       options.onError?.(error);
@@ -353,8 +354,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       const key = projectKey(agent.host, agent.state);
       const seq = key === undefined ? undefined : (identity.seq(key) ?? identity.deal(key));
       if (agent.state !== observed.get(runtimeRunId) || !observed.has(runtimeRunId)) {
-        // The reading Godview's seam makes: the run is `${runtimeRunId}:${epoch}` (a new epoch is a new run), the
-        // conversation is the provider plus the native session id, so a resume accumulates and a new one resets.
+        // M15 — `accumulate` is Godview's reading: the run is `${runtimeRunId}:${epoch}` (a new epoch is a new run)
+        // and the conversation the provider plus the native session id, so a resume adds up and a new conversation
+        // resets. `current` is VibeField's: the run alone, so a new epoch replaces the total.
         observed.set(runtimeRunId, agent.state);
         const nativeSessionId = agent.state?.session.nativeSessionId ?? agent.host.nativeSessionId;
         ledger.observe(
@@ -362,12 +364,14 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
             id: runtimeRunId,
             ...(agent.state
               ? {
-                  runId: `${runtimeRunId}:${agent.state.runtimeEpoch}`,
+                  ...(accumulateAcrossEpochs ? { runId: `${runtimeRunId}:${agent.state.runtimeEpoch}` } : {}),
                   revision: agent.state.revision,
                   usage: agent.state.usage,
                 }
               : {}),
-            ...(nativeSessionId ? { session: { providerId: agent.host.provider.id, nativeSessionId } } : {}),
+            ...(accumulateAcrossEpochs && nativeSessionId
+              ? { session: { providerId: agent.host.provider.id, nativeSessionId } }
+              : {}),
           },
           nowMs,
         );
@@ -516,6 +520,21 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
               }
             : { id: command.id, kind: 'terminal', terminalSessionId: inputs.host.sessionId };
         route(() => options.sink.select(target));
+        return true;
+      }
+      if (command.type === 'acknowledge') {
+        // Godview's keep-until-acknowledged flow (monitor-ipc.ts `acknowledgeAgentFailureForIpc`): a crashed run's
+        // row stays until its failure is acknowledged. The runtime accepts only a retained, dead failure blocker,
+        // then removes the run, and the row goes through the ordinary removal.
+        const inputs = entries.get(command.id)?.inputs;
+        const acknowledge = source.acknowledgeFailure;
+        if (!inputs || inputs.kind !== 'agent' || !acknowledge) return false;
+        const state = inputs.state;
+        const failure =
+          state?.alive === false ? state.blockers.find((blocker) => blocker.kind === 'failure') : undefined;
+        if (!failure) return false;
+        const { runtimeRunId } = inputs.host;
+        route(() => acknowledge(runtimeRunId, failure.id).then(() => undefined));
         return true;
       }
       const menu = lastSpawn ?? spawnMenuOf(host.getFacts(), new Set());

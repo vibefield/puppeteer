@@ -35,6 +35,7 @@ const row = (overrides: Partial<MonitorAgentRow>): MonitorAgentRow => ({
   statusSince: T0,
   stale: false,
   alive: true,
+  observed: true,
   detail: 'permission · Bash',
   project: { name: 'repo' },
   unread: false,

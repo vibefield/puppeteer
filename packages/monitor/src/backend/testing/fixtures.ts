@@ -1,6 +1,6 @@
 import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
 import type { MonitorAgentRow, MonitorDeviceRef, MonitorModelChange } from '@vibecook/puppeteer-view-sdk/model';
-import type { AgentMonitorRemoval, AgentMonitorSource } from '../../store.js';
+import type { AgentMonitorRemoval } from '../../store.js';
 import { createMonitorBackend } from '../backend.js';
 import { createMemoryProjectIdentityStore } from '../identity.js';
 import type {
@@ -12,6 +12,7 @@ import type {
   MonitorHostPort,
   MonitorHostRun,
   MonitorHostTerminal,
+  MonitorRunSource,
   MonitorScheduler,
   MonitorSelectTarget,
 } from '../ports.js';
@@ -132,12 +133,14 @@ export function manualScheduler(): ManualScheduler {
 }
 
 export interface FakeRunSource {
-  source: AgentMonitorSource;
+  source: MonitorRunSource;
   /** The states `listStates` answers with; resolved when the test says so. */
   list(states: readonly AgentMonitorState[]): void;
   push(state: AgentMonitorState): void;
   notify(notification: MonitorNotification): void;
   remove(removal: AgentMonitorRemoval): void;
+  /** Every failure acknowledgement the backend asked for: `[runtimeRunId, blockerId]`. */
+  acknowledged: Array<[string, string]>;
 }
 
 /** With no `initial`, the listing waits for `list()`: a test can push live states under it first. */
@@ -147,8 +150,14 @@ export function fakeRunSource(initial?: readonly AgentMonitorState[]): FakeRunSo
   const stateListeners = new Set<(state: AgentMonitorState) => void>();
   const noticeListeners = new Set<(notification: MonitorNotification) => void>();
   const removedListeners = new Set<(removal: AgentMonitorRemoval) => void>();
+  const acknowledged: Array<[string, string]> = [];
   return {
+    acknowledged,
     source: {
+      acknowledgeFailure(runtimeRunId, blockerId) {
+        acknowledged.push([runtimeRunId, blockerId]);
+        return Promise.resolve(true);
+      },
       listStates: () =>
         new Promise((resolve) => {
           if (listed !== undefined) resolve(listed);

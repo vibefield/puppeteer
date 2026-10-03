@@ -120,3 +120,20 @@ describe('runtimeRunSource', () => {
     expect(store.getSnapshot().notifications).toEqual([notification]);
   });
 });
+
+describe('runtimeRunSource acknowledge (M3)', () => {
+  it('passes a failure acknowledgement to a runtime that has the verb, and offers none otherwise', async () => {
+    const calls: Array<[string, string]> = [];
+    const fake = fakeRuntime();
+    const withVerb = runtimeRunSource({
+      ...fake.runtime,
+      async acknowledgeFailureBlocker(runtimeRunId, blockerId) {
+        calls.push([runtimeRunId, blockerId]);
+        return true;
+      },
+    });
+    await expect(withVerb.acknowledgeFailure?.('run-1', 'b-1')).resolves.toBe(true);
+    expect(calls).toEqual([['run-1', 'b-1']]);
+    expect(runtimeRunSource(fake.runtime).acknowledgeFailure).toBeUndefined();
+  });
+});

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agentActivity,
   agentAlive,
   agentDetail,
+  agentEffort,
+  agentObserved,
   agentReply,
   agentStatus,
   agentStatusSince,
@@ -28,6 +31,21 @@ const derive = (host = hostRun(), state = monitorState(), seq?: number) =>
     state,
     device: DEVICE,
     seq,
+    profileSet: 'native',
+    stale: false,
+    cost: undefined,
+    unread: false,
+    replyMaxLength: 280,
+  });
+
+/** The row of a run nobody has heard from: no state at all (a default parameter would swallow an explicit undefined). */
+const deriveUnheard = (host = hostRun()) =>
+  deriveAgentRow({
+    id: 'row',
+    host,
+    state: undefined,
+    device: DEVICE,
+    seq: undefined,
     profileSet: 'native',
     stale: false,
     cost: undefined,
@@ -123,14 +141,16 @@ describe('provider, model, effort, account, context', () => {
       hostRun({ account: 'work@example.com' }),
       monitorState({
         model: { id: 'claude-opus-5-5', displayName: 'Opus 5.5' },
-        effort: { value: 'high' },
+        effort: { value: 'high', intent: 'configured' },
         context: { usedPercent: 42, percentageSource: 'provider', asOf: iso(T0) },
       }),
     );
     expect(row.provider).toEqual({ id: 'claude', label: 'Claude Code' });
     expect(row.account).toBe('work@example.com');
     expect(row.model).toBe('Opus 5.5');
-    expect(row.effort).toBe('high');
+    expect(row.effort).toEqual({ value: 'high', intent: 'configured' });
+    expect(agentEffort(monitorState({ effort: { value: 'low' } }))).toEqual({ value: 'low' });
+    expect(agentEffort(monitorState())).toBeUndefined();
     expect(row.context).toEqual({ usedPercent: 42 });
   });
   it('falls back to the model id and leaves absent what the runtime did not say', () => {
@@ -139,12 +159,12 @@ describe('provider, model, effort, account, context', () => {
     expect(row.effort).toBeUndefined();
     expect(row.account).toBeUndefined();
     expect(row.context).toBeUndefined();
-    expect(derive(hostRun(), undefined).model).toBeUndefined();
+    expect(deriveUnheard().model).toBeUndefined();
   });
 });
 
 describe('wait and reply', () => {
-  it('carries the first blocker with its tool or its question, bounded', () => {
+  it('carries the first blocker with its tool, its code or its prompt, bounded, and how many wait', () => {
     const permission = agentWait(
       monitorState({
         blockers: [
@@ -155,7 +175,7 @@ describe('wait and reply', () => {
       T0,
       280,
     );
-    expect(permission).toEqual({ kind: 'permission', since: T0 + 1, tool: 'Bash' });
+    expect(permission).toEqual({ kind: 'permission', since: T0 + 1, count: 2, tool: 'Bash' });
     const question = agentWait(
       monitorState({
         blockers: [
@@ -166,18 +186,42 @@ describe('wait and reply', () => {
       12,
     );
     expect(question).toEqual({ kind: 'question', since: T0, question: 'Which branch' });
-    expect(agentWait(monitorState(), T0, 280)).toBeUndefined();
-    expect(agentWait(undefined, T0, 280)).toBeUndefined();
-  });
-  it('prefers a question header to its prompt', () => {
-    const wait = agentWait(
+    const failure = agentWait(
       monitorState({
-        blockers: [{ id: 'q', kind: 'question', since: iso(T0), questions: [{ header: 'Branch', prompt: 'Which?' }] }],
+        blockers: [
+          {
+            id: 'f',
+            kind: 'failure',
+            since: iso(T0),
+            detail: ' exit 1 · the process crashed ',
+            failure: { code: 'crash' },
+          },
+        ],
       }),
       T0,
       280,
     );
-    expect(wait?.question).toBe('Branch');
+    expect(failure).toEqual({ kind: 'failure', since: T0, code: 'crash', detail: 'exit 1 · the process crashed' });
+    expect(agentWait(monitorState(), T0, 280)).toBeUndefined();
+    expect(agentWait(undefined, T0, 280)).toBeUndefined();
+  });
+  it('keeps a question’s header and prompt apart, each bounded, and counts the blockers core left out', () => {
+    const wait = agentWait(
+      monitorState({
+        blockers: [
+          {
+            id: 'q',
+            kind: 'question',
+            since: iso(T0),
+            questions: [{ header: 'Branch choice', prompt: 'Which branch?' }],
+          },
+        ],
+        omitted: { blockers: 3 },
+      }),
+      T0,
+      5,
+    );
+    expect(wait).toEqual({ kind: 'question', since: T0, count: 4, header: 'Branc', question: 'Which' });
   });
   it('bounds the reply by code points and drops a blank one', () => {
     const reply = agentReply(
@@ -198,6 +242,25 @@ describe('wait and reply', () => {
       text: 'still',
       final: false,
     });
+  });
+});
+
+describe('activity and observed', () => {
+  it('carries the runtime’s activity with its line bounded and its start, or nothing', () => {
+    expect(agentActivity(monitorState(), 280)).toEqual({ kind: 'tool', line: 'Edit · src/app.ts', since: T0 });
+    expect(agentActivity(monitorState({ activity: { kind: 'reasoning', line: '  ', since: 'bad' } }), 280)).toEqual({
+      kind: 'reasoning',
+    });
+    expect(agentActivity(monitorState(), 4)?.line).toBe('Edit');
+    expect(agentActivity(monitorState({ activity: undefined }), 280)).toBeUndefined();
+    expect(agentActivity(undefined, 280)).toBeUndefined();
+  });
+  it('is observed once the runtime has spoken and something drives the run', () => {
+    expect(agentObserved(hostRun(), monitorState())).toBe(true);
+    expect(agentObserved(hostRun(), undefined)).toBe(false);
+    expect(agentObserved(hostRun({ pending: 'resume-when-idle' }), monitorState())).toBe(false);
+    expect(deriveUnheard()).toMatchObject({ observed: false, detail: 'starting' });
+    expect(derive().observed).toBe(true);
   });
 });
 
@@ -249,7 +312,9 @@ describe('profile set, tier, device, attachable', () => {
       statusSince: T0,
       stale: false,
       alive: true,
+      observed: true,
       detail: 'Edit · src/app.ts',
+      activity: { kind: 'tool', line: 'Edit · src/app.ts', since: T0 },
       project: { name: 'Claude Code' },
       unread: false,
       profileSet: 'native',
@@ -279,8 +344,9 @@ describe('terminal rows', () => {
       statusSince: 5,
       stale: false,
       alive: true,
+      observed: true,
       detail: '/Users/me/notes',
-      activity: 'foreground-job',
+      activity: { kind: 'foreground-job' },
       project: { name: 'notes' },
       unread: false,
       device: DEVICE,

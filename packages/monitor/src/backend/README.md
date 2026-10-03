@@ -10,7 +10,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 
 | Port | Shape | Who implements |
 |---|---|---|
-| `runs` | `AgentMonitorSource` (store.ts): `listStates()` · `onState` · `onNotification` · `onRemoved({runtimeRunId, runtimeEpoch\|null})`, subscribe-before-list | `runtimeRunSource(runtime)` over the runtime's push bus; the runtime gains `monitorStates()` (the all-runs snapshot it lacked) and passes the run's epoch to `onMonitorRemoved` (both additive) |
+| `runs` | `MonitorRunSource` = the store's `AgentMonitorSource` (`listStates()` · `onState` · `onNotification` · `onRemoved({runtimeRunId, runtimeEpoch\|null})`, subscribe-before-list) + optional `acknowledgeFailure(runtimeRunId, blockerId)` (M3) | `runtimeRunSource(runtime)` over the runtime's push bus; the runtime gains `monitorStates()` (the all-runs snapshot it lacked) and passes the run's epoch to `onMonitorRemoved` (both additive); `acknowledgeFailureBlocker` passed through when the runtime has it |
 | `host` | `{ getFacts(): MonitorHostFacts; subscribe(cb) }` — `device` (this desktop, `self: true`), `runs[]` (per-run host facts), `terminals[]` (bare PTYs), `profileSets \| null` (null = still reading), `spawnPeers?` (other desktops, passed through) | fieldd's fold + roster + profile feed; Godview main's session records + workspace + profiles |
 | `identity` | `ProjectIdentityStore`: `seq(key)`, `deal(key)` — sync; never reuses a sequence | fieldd's state store; Godview's project registry (L4); `createMemoryProjectIdentityStore()` for tests |
 | `clock` | `{ now(), schedule(ms, fn) → cancel }` | default `Date.now` + `setTimeout`; tests pass a manual clock |
@@ -34,18 +34,19 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 | `statusSince` | `Date.parse(state.statusSince)`; no state → `createdAt` | when the backend saw the status flip (live state), else `createdAt` |
 | `stale` | `classifyMonitorRecency(freshness.lastEvidenceAt, now) === 'stale'`, re-read on the 10 s clock | false |
 | `alive` | host `alive` when it says false (vf's witnessed exit outranks a lagging mirror), else `state.alive`, else true | true |
+| `observed` | a state has arrived and `pending` is unset (M10) | true |
 | `pending` | host `pending !== undefined` | — |
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
-| `activity` | — | the host's activity kind |
+| `activity` | core's `{ kind, line (bounded), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
 | `project.branch` | observation first (vf): `git !== undefined ? git?.branch ?? null : workspace.branch` | — |
 | `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key | absent (the ramp) |
 | `provider` | host `provider` | — |
 | `model` | `state.model.displayName \|\| state.model.id` | — |
-| `effort` | `state.effort.value` | — |
+| `effort` | `{ value: state.effort.value, intent? }` (M2) | — |
 | `account` | host `account` (pu: profile label from the registry; vf: fieldd's) | — |
 | `context` | `{ usedPercent }` when `state.context.usedPercent` is a number | — |
-| `wait` | first blocker: `{ kind, since, tool: permission.tool, question: questions[0].header ?? prompt }`, bounded | — |
+| `wait` | first blocker, parts kept apart (M2): `{ kind, since, count?, tool: permission.tool, code: failure.code, header: questions[0].header, question: questions[0].prompt, detail: blocker.detail }`, text bounded like the reply; `count` = `blockers.length + omitted.blockers`, absent when one (M10) | — |
 | `reply` | `lastAssistantMessage` → `{ text (trimmed, ≤ replyMaxLength, default 280), at, final }` | — |
 | `cost` | the usage ledger (below): `{ usd, coverage, burnPerHour: costRatePerMin × 60, series }`; absent when nothing is priced | — |
 | `tokens` | `{ total: usage.cumulativeTokens, perMinute: usage.burnRatePerMin }` | — |
@@ -86,6 +87,12 @@ a session continuity rule (same provider + native session accumulates across epo
 a daemon restart (L11; seed/export persistence is NOT ported). Histories are recomputed per run on its state change and
 for every run at the 30 s boundary (the series' `lastStepAt` moves then, so a priced row emits once per step).
 
+**Across a resumed conversation (M15)** the reading is a host option, `cost: { acrossEpochs }`: `accumulate` (puppeteer
+Godview's seam — the run is `${runtimeRunId}:${epoch}`, the conversation the provider + native session, so a resumed
+epoch adds up and a new conversation resets; the default) or `current` (VibeField's seam — the run alone, so a new epoch
+replaces the total). OPEN: if core replays priced history into a resumed epoch, `accumulate` double counts — the exposure
+puppeteer's Godview has today; look before unifying the two.
+
 ## Identity (L4)
 
 `ProjectIdentityStore.deal(key)`: a known key keeps its sequence; an unknown one takes the next, dealt in row order, from
@@ -113,14 +120,18 @@ facts flush synchronously inside the push: a state whose `alive`, `blockers` or 
 removal; everything else coalesces to the scheduler's tick. Rows are frozen (`freezeTree`). Commands: `select(id)`
 resolves the row → `sink.select({ id, kind, runtimeRunId?, terminalSessionId? })`; `create(at?, target?)` resolves the
 device (self ready/reading, a peer only ready) and the profile against the menu → `sink.create({ at?, device, profileSet? })`;
-an unresolvable command returns false and routes nothing.
+`acknowledge(id)` (M3, Godview's keep-until-acknowledged flow from `monitor-ipc.ts`) takes a dead agent row with a
+failure blocker and asks the run source's `acknowledgeFailure(runtimeRunId, blockerId)` — the runtime removes the run,
+and the row goes through the ordinary removal; an unresolvable command returns false and routes nothing.
 
-## Recorded divergences (for the shim and MV-3, not decided here)
+## Recorded divergences (ruled in build-mv §7)
 
-- pu keeps a crashed run's row (alive false, failure blocker) until acknowledged; vf drops `alive === false` at its
-  seam. The model carries the row with `alive: false` — the fact — as the desk row already does; readers filter.
-- pu's detail appends `+N blockers` and `~$x estimated API cost · $y/min`; vf's prefers the reply line and `kind · tool`.
-  The row's `detail` is the headline; `reply`, `wait`, `cost` carry the rest for the toolkit/shim to compose.
+- **M3** pu keeps a crashed run's row (alive false, failure blocker) until acknowledged; vf drops `alive === false` at
+  its seam. The model carries the row with `alive: false`, as the desk row already does; visibility is the replica's host
+  policy (`setLocal({ visible })`, vf passes `row => row.alive`); pu's flow is the `acknowledge` command above.
+- **M4** pu's detail appends `+N blockers` and `~$x estimated API cost · $y/min`; vf's prefers the reply line and
+  `kind · tool`. The row's `detail` is the headline; `reply`, `wait` (with `count`), `cost` carry the rest; the legacy
+  shim composes each host's line (`detail: 'reply-first' | 'headline-cost'`), ported views use vf's reply-first rule.
 - vf's floor rows say `agent PTY · in no pane` — "in no pane" is a window fact; here they are terminals with no cwd.
 - Notifications stay in the store (bounded); the model carries none (not in the contract).
 

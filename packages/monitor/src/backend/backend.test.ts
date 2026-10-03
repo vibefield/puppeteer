@@ -10,6 +10,8 @@ import {
   hostRun,
   hostTerminal,
   iso,
+  manualClock,
+  manualScheduler,
   monitorState,
   recordingSink,
   testBackend,
@@ -859,5 +861,130 @@ describe('commands', () => {
     expect(t.backend.command({ type: 'create' })).toBe(true);
     await Promise.resolve();
     expect(errors.map((error) => (error as Error).message)).toEqual(['sync', 'async']);
+  });
+});
+
+describe('observed (M10)', () => {
+  it('is false while a run starts or is pending, true once the runtime has spoken, and always true for a terminal', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [hostRun(), hostRun({ runtimeRunId: 'held', terminalSessionId: 'p2', pending: 'resume-when-idle' })],
+        terminals: [hostTerminal({ sessionId: 'sh' })],
+      }),
+      states: [monitorState({ runtimeRunId: 'held' })],
+    });
+    await t.backend.ready;
+    expect(t.rows().map((row) => [row.id, row.observed])).toEqual([
+      ['held', false],
+      ['run-1', false],
+      ['sh', true],
+    ]);
+    t.source.push(monitorState());
+    expect(t.rows().find((row) => row.id === 'run-1')).toMatchObject({ observed: true, detail: 'Edit · src/app.ts' });
+  });
+});
+
+describe('acknowledge (M3)', () => {
+  const crashed = (overrides: Partial<ReturnType<typeof monitorState>> = {}) =>
+    monitorState({
+      revision: 2,
+      status: 'blocked',
+      alive: false,
+      activity: undefined,
+      blockers: [{ id: 'run:runtime', kind: 'failure', since: iso(T0), detail: 'exit 1', failure: { code: 'crash' } }],
+      ...overrides,
+    });
+
+  it('asks the run source to acknowledge a crashed row’s failure; the row goes when the runtime removes the run', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [crashed()] });
+    await t.backend.ready;
+    expect(t.rows()).toMatchObject([
+      { alive: false, status: 'blocked', wait: { kind: 'failure', code: 'crash', detail: 'exit 1' } },
+    ]);
+    expect(t.backend.command({ type: 'acknowledge', id: 'run-1' })).toBe(true);
+    expect(t.source.acknowledged).toEqual([['run-1', 'run:runtime']]);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    expect(t.backend.getSnapshot().rows).toEqual([]);
+    expect(t.changes.at(-1)).toMatchObject({ upserts: [], removed: ['run-1'] });
+  });
+
+  it('refuses a live row, a dead row with no failure, an unknown row and a terminal', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [hostRun(), hostRun({ runtimeRunId: 'ended', terminalSessionId: 'p2' })],
+        terminals: [hostTerminal({ sessionId: 'sh' })],
+      }),
+      states: [
+        monitorState(),
+        monitorState({ runtimeRunId: 'ended', status: 'idle', alive: false, activity: undefined }),
+      ],
+    });
+    await t.backend.ready;
+    t.rows();
+    for (const id of ['run-1', 'ended', 'nobody', 'sh']) {
+      expect(t.backend.command({ type: 'acknowledge', id })).toBe(false);
+    }
+    expect(t.source.acknowledged).toEqual([]);
+  });
+
+  it('is not routed on a run source without the verb, and a rejection is reported', async () => {
+    const plain = fakeRunSource([crashed()]);
+    const bare: typeof plain.source = { ...plain.source };
+    delete bare.acknowledgeFailure;
+    const scheduler = manualScheduler();
+    const backend = createMonitorBackend({
+      runs: bare,
+      host: fakeHost(facts({ runs: [hostRun()] })).host,
+      identity: createMemoryProjectIdentityStore(),
+      sink: recordingSink(),
+      scheduler: scheduler.scheduler,
+      clock: manualClock().clock,
+    });
+    await backend.ready;
+    scheduler.flush();
+    expect(backend.getSnapshot().rows).toHaveLength(1);
+    expect(backend.command({ type: 'acknowledge', id: 'run-1' })).toBe(false);
+    backend.dispose();
+
+    const errors: unknown[] = [];
+    const t = testBackend({
+      facts: facts({ runs: [hostRun()] }),
+      states: [crashed()],
+      onError: (error) => errors.push(error),
+    });
+    await t.backend.ready;
+    t.rows();
+    t.source.source.acknowledgeFailure = () => Promise.reject(new Error('nope'));
+    expect(t.backend.command({ type: 'acknowledge', id: 'run-1' })).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(errors.map((error) => (error as Error).message)).toEqual(['nope']);
+  });
+});
+
+describe('cost across epochs (M15)', () => {
+  const priced = (epoch: number, usd: number) =>
+    monitorState({
+      runtimeEpoch: epoch,
+      session: { nativeSessionId: 'native-1' },
+      usage: { samples: [], costUsd: usd, costCoverage: 'complete', costHistory: [{ at: iso(T0), costUsd: usd }] },
+    });
+
+  it("'accumulate' (Godview's) adds a resumed epoch of one conversation; 'current' (VibeField's) shows the current epoch alone", async () => {
+    for (const [mode, expected] of [
+      ['accumulate', 1.75],
+      ['current', 0.5],
+    ] as const) {
+      const t = testBackend({
+        facts: facts({ runs: [hostRun()] }),
+        states: [priced(1, 1.25)],
+        cost: { acrossEpochs: mode },
+      });
+      await t.backend.ready;
+      expect(t.rows()[0]?.cost?.usd).toBe(1.25);
+      t.source.push(priced(2, 0.5));
+      expect(t.rows()[0]?.cost).toMatchObject({ usd: expected, coverage: 'complete' });
+      expect(t.rows()[0]?.cost?.series?.steps.at(-1)).toBe(expected);
+    }
   });
 });

@@ -1,5 +1,6 @@
 import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
-import type { AgentMonitorRemoval, AgentMonitorSource } from '../store.js';
+import type { AgentMonitorRemoval } from '../store.js';
+import type { MonitorRunSource } from './ports.js';
 
 /**
  * The slice of puppeteer's `AgentRuntime` the backend reads, spelled
@@ -12,6 +13,8 @@ export interface MonitorRuntimeSource {
   onMonitorState(listener: (state: AgentMonitorState) => void): () => void;
   onMonitorNotification(listener: (notification: MonitorNotification) => void): () => void;
   onMonitorRemoved(listener: (runtimeRunId: string, removal: { readonly runtimeEpoch: number }) => void): () => void;
+  /** The runtime's own verb for a retained, dead failure blocker (M3); absent on a runtime without it. */
+  acknowledgeFailureBlocker?(runtimeRunId: string, blockerId: string): Promise<boolean>;
 }
 
 /**
@@ -21,12 +24,14 @@ export interface MonitorRuntimeSource {
  * runtime names; a runtime from before that argument seals the last epoch this
  * source saw for the run, and null when it never saw one (store.ts semantics).
  */
-export function runtimeRunSource(runtime: MonitorRuntimeSource): AgentMonitorSource {
+export function runtimeRunSource(runtime: MonitorRuntimeSource): MonitorRunSource {
   const lastEpochByRun = new Map<string, number>();
   const remember = (state: AgentMonitorState): void => {
     lastEpochByRun.set(state.runtimeRunId, state.runtimeEpoch);
   };
+  const acknowledge = runtime.acknowledgeFailureBlocker?.bind(runtime);
   return {
+    ...(acknowledge ? { acknowledgeFailure: (runtimeRunId, blockerId) => acknowledge(runtimeRunId, blockerId) } : {}),
     async listStates() {
       const states = [...runtime.monitorStates()];
       for (const state of states) remember(state);

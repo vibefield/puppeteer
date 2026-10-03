@@ -6,9 +6,11 @@ import {
 } from '@vibecook/puppeteer-core';
 import type {
   AgentStatus,
+  MonitorActivity,
   MonitorAgentRow,
   MonitorCost,
   MonitorDeviceRef,
+  MonitorEffort,
   MonitorReply,
   MonitorTokens,
   MonitorWait,
@@ -111,29 +113,73 @@ function blockerTool(blocker: MonitorBlocker): string | undefined {
   return blocker.kind === 'permission' ? blocker.permission?.tool || undefined : undefined;
 }
 
-function blockerQuestion(blocker: MonitorBlocker, maxLength: number): string | undefined {
-  if (blocker.kind !== 'question') return undefined;
-  const question = blocker.questions[0];
-  const text = question?.header ?? question?.prompt;
-  return text === undefined || text.trim() === '' ? undefined : boundText(text, maxLength);
+function blockerCode(blocker: MonitorBlocker): string | undefined {
+  return blocker.kind === 'failure' ? blocker.failure?.code || undefined : undefined;
 }
 
-/** The first blocker, bounded. */
+/** Trimmed and bounded; absent when blank. */
+function boundedOrAbsent(text: string | undefined, maxLength: number): string | undefined {
+  if (text === undefined) return undefined;
+  const bounded = boundText(text, maxLength);
+  return bounded === '' ? undefined : bounded;
+}
+
+/**
+ * The first blocker, its parts kept separate (M2) — the swarm and the timeline
+ * word them in different orders — each bounded like the reply. `count` is how
+ * many wait, counted before core's own bound (its `omitted.blockers`), and
+ * absent when it is one (M10).
+ */
 export function agentWait(
   state: AgentMonitorState | undefined,
   statusSince: number,
   maxLength: number,
 ): MonitorWait | undefined {
-  const blocker = state?.blockers[0];
-  if (!blocker) return undefined;
+  const blockers = state?.blockers ?? [];
+  const blocker = blockers[0];
+  if (!blocker || !state) return undefined;
+  const count = blockers.length + (state.omitted?.blockers ?? 0);
+  const question = blocker.kind === 'question' ? blocker.questions[0] : undefined;
   const tool = blockerTool(blocker);
-  const question = blockerQuestion(blocker, maxLength);
+  const code = blockerCode(blocker);
+  const header = boundedOrAbsent(question?.header, maxLength);
+  const prompt = boundedOrAbsent(question?.prompt, maxLength);
+  const detail = boundedOrAbsent(blocker.detail, maxLength);
   return {
     kind: blocker.kind,
     since: parseTime(blocker.since) ?? statusSince,
+    ...(count > 1 ? { count } : {}),
     ...(tool === undefined ? {} : { tool }),
-    ...(question === undefined ? {} : { question }),
+    ...(code === undefined ? {} : { code }),
+    ...(header === undefined ? {} : { header }),
+    ...(prompt === undefined ? {} : { question: prompt }),
+    ...(detail === undefined ? {} : { detail }),
   };
+}
+
+/** The runtime's activity: its kind, its line bounded, and when it began. */
+export function agentActivity(state: AgentMonitorState | undefined, maxLength: number): MonitorActivity | undefined {
+  const activity = state?.activity;
+  if (!activity) return undefined;
+  const line = boundedOrAbsent(activity.line, maxLength);
+  const since = parseTime(activity.since);
+  return {
+    kind: activity.kind,
+    ...(line === undefined ? {} : { line }),
+    ...(since === undefined ? {} : { since }),
+  };
+}
+
+/** The effort the run works at, and whether that is evidence or only the launch's intent. */
+export function agentEffort(state: AgentMonitorState | undefined): MonitorEffort | undefined {
+  const effort = state?.effort;
+  if (!effort) return undefined;
+  return { value: effort.value, ...(effort.intent === undefined ? {} : { intent: effort.intent }) };
+}
+
+/** The runtime has reported a state and something drives the run (M10): false while starting and while pending. */
+export function agentObserved(host: MonitorHostRun, state: AgentMonitorState | undefined): boolean {
+  return state !== undefined && host.pending === undefined;
 }
 
 /** The latest reply line, bounded; absent when the runtime has none or it is blank. */
@@ -182,7 +228,8 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
   const statusSince = agentStatusSince(host, state);
   const branch = projectBranch(host, state);
   const model = state?.model ? state.model.displayName || state.model.id : undefined;
-  const effort = state?.effort?.value;
+  const effort = agentEffort(state);
+  const activity = agentActivity(state, input.replyMaxLength);
   const usedPercent = state?.context?.usedPercent;
   const wait = agentWait(state, statusSince, input.replyMaxLength);
   const reply = agentReply(state, input.replyMaxLength);
@@ -195,8 +242,10 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
     statusSince,
     stale: input.stale,
     alive: agentAlive(host, state),
+    observed: agentObserved(host, state),
     ...(host.pending === undefined ? {} : { pending: true }),
     detail: agentDetail(host, state),
+    ...(activity === undefined ? {} : { activity }),
     project: {
       name: projectName(host, state),
       ...(branch === undefined ? {} : { branch }),
@@ -239,8 +288,9 @@ export function deriveTerminalRow(input: DeriveTerminalRowInput): MonitorAgentRo
     statusSince: input.statusSince,
     stale: false,
     alive: true,
+    observed: true,
     detail: path ?? 'Unassigned terminal',
-    ...(host.activity === undefined ? {} : { activity: host.activity.kind }),
+    ...(host.activity === undefined ? {} : { activity: { kind: host.activity.kind } }),
     project: { name: folderName(path, host.title || 'terminal') },
     unread: false,
     device: input.device,

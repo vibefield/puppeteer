@@ -9,6 +9,12 @@ import type {
 } from '@vibecook/puppeteer-view-sdk/model';
 import type { AgentMonitorSource } from '../store.js';
 
+/** The runtime's door into the backend: the store's source, plus the one verb the runtime answers (M3). */
+export interface MonitorRunSource extends AgentMonitorSource {
+  /** Acknowledges a retained, dead failure blocker; the runtime then removes the run and the row goes with it. */
+  acknowledgeFailure?(runtimeRunId: string, blockerId: string): Promise<boolean>;
+}
+
 /**
  * The ports the backend is built from. Everything a host knows and the runtime
  * does not comes through `MonitorHostPort`; the runtime comes through the
@@ -151,13 +157,21 @@ export type MonitorCommand =
       readonly type: 'create';
       readonly at?: { readonly x: number; readonly y: number } | undefined;
       readonly target?: MonitorSpawnTarget | undefined;
-    };
+    }
+  /** Godview's keep-until-acknowledged flow (M3): a crashed row stays until its failure is acknowledged; this removes it. */
+  | { readonly type: 'acknowledge'; readonly id: string };
 
 export interface CreateMonitorBackendOptions {
-  runs: AgentMonitorSource;
+  runs: MonitorRunSource;
   host: MonitorHostPort;
   identity: ProjectIdentityStore;
   sink: MonitorCommandSink;
+  /**
+   * Cost across a resumed conversation (M15): `accumulate` is puppeteer Godview's reading (a new epoch of the same
+   * provider + native session adds up; a new conversation resets), `current` is VibeField's (the current epoch alone).
+   * Default `accumulate`.
+   */
+  cost?: { readonly acrossEpochs?: 'accumulate' | 'current' | undefined } | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
   /** The longest reply or question text a row carries. Default 280. */
