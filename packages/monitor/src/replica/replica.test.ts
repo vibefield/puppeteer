@@ -23,6 +23,7 @@ function row(id: string, overrides: Partial<MonitorAgentRow> = {}): MonitorAgent
     statusSince: 1_000,
     stale: false,
     alive: true,
+    observed: true,
     detail: 'idle',
     project: { name: 'alpha', seq: 0 },
     unread: false,
