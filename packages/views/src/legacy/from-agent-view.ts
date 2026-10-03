@@ -1,4 +1,5 @@
 import type { AgentView, MonitorModel } from '@vibecook/puppeteer-view-sdk';
+import { formatUsd } from '../monitor/cost-format.js';
 import type { MonitorAgent } from '../monitor/types.js';
 import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
 
@@ -76,6 +77,22 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  *     terminal's kind is its session's.
  *   - times are ISO strings again, from the row's epoch milliseconds.
  *
+ * TWO HOST OPTIONS keep each host's rows exactly as they are until its views port.
+ *   - `detail` (M4): the backend's `detail` is Core's headline, and the reply, the
+ *     wait and the cost ride as their own fields. Each host composes the old line
+ *     from those:
+ *       'reply-first'   VibeField (field-app godview/monitor/agent-status.ts
+ *                       agentDetail; a peer's mesh-rows.ts remoteDetail after its
+ *                       desktop's name, which prefers the question it asks);
+ *       'headline-cost' puppeteer's Godview (apps/godview/src/renderer/monitor/
+ *                       agents.ts, monitorAgentFromSession): the headline, the
+ *                       blockers beyond the first, the cost, the burn.
+ *     A terminal's line is the backend's own; both hosts word it alike.
+ *   - `peerMonitor` (M9): 'omit' gives a row on another desktop what VibeField's
+ *     peers carry today (agents.ts monitorAgentFromMesh): no Core facts, no
+ *     context window, no account, so wave 2 changes nothing a peer shows,
+ *     including where its timeline lane starts. 'map' carries what the row has.
+ *
  * ONE DELIBERATE WIDENING. The legacy type demands facts the model never
  * carries: a peer's own session id, Core's whole mirror, a terminal summary.
  * The shim builds only what it can say truly and widens once, at the end of
@@ -87,8 +104,20 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  * unchanged model the same list, because every view caches on identity.
  */
 
+/** How a host's rows go through the shim until its views port (M4, M9). */
+export interface LegacyShimOptions {
+  /** The line under the name: VibeField's 'reply-first', puppeteer Godview's 'headline-cost'. */
+  readonly detail: 'reply-first' | 'headline-cost';
+  /** A peer's Core facts: VibeField 'omit's them, as its peers carry none today; 'map' carries the row's. */
+  readonly peerMonitor: 'omit' | 'map';
+}
+
 /** What both hosts name a terminal in no folder (`folderName(path, 'terminal')`). */
 const TERMINAL_NAME = 'terminal';
+
+/** M4's words, the backend's too: a run nothing drives yet, and one the runtime has not reported. */
+const PENDING_LINE = 'unobserved · resumes when idle';
+const STARTING_LINE = 'starting';
 
 /** The views draw these blockers; any other word in the row's wait is none to them. */
 const DRAWN_WAITS = new Set(['permission', 'question', 'failure']);
@@ -143,8 +172,57 @@ function legacyActivity(activity: NonNullable<AgentView['activity']>) {
   });
 }
 
-function legacyFacet(view: AgentView) {
+/** A wait in VibeField's words: its kind, and the permission's tool (agent-status.ts blockerTool). */
+function waitWords(wait: NonNullable<AgentView['wait']>): string {
+  return wait.tool ? `${wait.kind} · ${wait.tool}` : wait.kind;
+}
+
+/** VibeField's line: agent-status.ts agentDetail, or for a peer its desktop's name, then mesh-rows.ts remoteDetail. */
+function replyFirstLine(view: AgentView): string {
+  const reply = view.reply?.text.trim() || undefined;
+  if (!view.device.self) {
+    const question = view.wait?.question?.trim() || undefined;
+    const line = view.pending
+      ? PENDING_LINE
+      : view.status === 'blocked'
+        ? view.wait
+          ? (question ?? waitWords(view.wait))
+          : 'blocked'
+        : (reply ?? view.status);
+    return `${view.device.name} · ${line}`;
+  }
+  if (view.pending) return PENDING_LINE;
+  if (!view.observed) return STARTING_LINE;
+  if (view.status === 'blocked') return view.wait ? waitWords(view.wait) : 'blocked';
+  return reply ?? view.status;
+}
+
+/** Puppeteer Godview's line (agents.ts monitorAgentFromSession): the headline, more blockers, the cost, the burn. */
+function headlineCostLine(view: AgentView): string {
+  const { cost, wait } = view;
+  const blockers = wait ? (wait.count ?? 1) : 0;
+  const priced = cost !== undefined && cost.coverage !== 'unavailable';
+  return [
+    view.detail,
+    blockers > 1 ? `+${blockers - 1} blockers` : undefined,
+    priced
+      ? `~${formatUsd(cost.usd)} estimated API cost${cost.coverage === 'partial' ? ' (partial)' : ''}`
+      : 'cost unavailable',
+    cost?.burnPerHour === undefined ? undefined : `${formatUsd(cost.burnPerHour / 60)}/min`,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(' · ');
+}
+
+function legacyDetail(view: AgentView, options: LegacyShimOptions): string {
+  if (view.kind !== 'agent') return view.detail;
+  return options.detail === 'reply-first' ? replyFirstLine(view) : headlineCostLine(view);
+}
+
+function legacyFacet(view: AgentView, options: LegacyShimOptions) {
   const { cost, reply } = view;
+  // M9: what VibeField's peers carry today, and no more.
+  const coreFacts = view.device.self || options.peerMonitor === 'map';
   const statusSince = isoTime(view.statusSince);
   const replyAt = isoTime(reply?.at);
   const monitor = Object.freeze({
@@ -176,9 +254,9 @@ function legacyFacet(view: AgentView) {
   return Object.freeze({
     provider: Object.freeze({ id: view.provider?.id ?? '', label: view.provider?.label ?? '' }),
     ...(view.model ? { model: view.model } : {}),
-    ...(view.account ? { account: view.account } : {}),
+    ...(coreFacts && view.account ? { account: view.account } : {}),
     ...(view.project.branch ? { branch: view.project.branch } : {}),
-    ...(view.context ? { contextWindow: Object.freeze({ usedPercent: view.context.usedPercent }) } : {}),
+    ...(coreFacts && view.context ? { contextWindow: Object.freeze({ usedPercent: view.context.usedPercent }) } : {}),
     ...(cost
       ? {
           usage: Object.freeze({
@@ -189,11 +267,11 @@ function legacyFacet(view: AgentView) {
           }),
         }
       : {}),
-    monitor,
+    ...(coreFacts ? { monitor } : {}),
   });
 }
 
-function legacyAgent(view: AgentView): MonitorAgent {
+function legacyAgent(view: AgentView, options: LegacyShimOptions): MonitorAgent {
   const agent = view.kind === 'agent';
   const fallback = agent ? (view.provider?.label ?? '') : TERMINAL_NAME;
   const legacy = Object.freeze({
@@ -201,7 +279,7 @@ function legacyAgent(view: AgentView): MonitorAgent {
     createdAtMs: view.createdAt,
     status: view.status,
     project: view.project.name || fallback,
-    detail: view.detail,
+    detail: legacyDetail(view, options),
     color: view.colour,
     active: view.active,
     ...(view.stale ? { stale: true } : {}),
@@ -225,30 +303,46 @@ function legacyAgent(view: AgentView): MonitorAgent {
     ...(!agent && view.activity !== undefined
       ? { session: Object.freeze({ activity: Object.freeze({ kind: view.activity.kind }) }) }
       : {}),
-    ...(agent ? { agent: legacyFacet(view) } : {}),
+    ...(agent ? { agent: legacyFacet(view, options) } : {}),
   });
   // The one widening (see the header): absent facts stay absent rather than invented.
   return legacy as unknown as MonitorAgent;
 }
 
-const agentsByView = new WeakMap<AgentView, MonitorAgent>();
-const listsByModel = new WeakMap<MonitorModel, readonly MonitorAgent[]>();
+interface Memo {
+  readonly agents: WeakMap<AgentView, MonitorAgent>;
+  readonly lists: WeakMap<MonitorModel, readonly MonitorAgent[]>;
+}
+
+/** One memo per option VALUE, so a host that passes a fresh options object each time still keeps identity. */
+const memos = new Map<string, Memo>();
+
+function memoFor(options: LegacyShimOptions): Memo {
+  const key = `${options.detail}:${options.peerMonitor}`;
+  const held = memos.get(key);
+  if (held) return held;
+  const memo: Memo = { agents: new WeakMap(), lists: new WeakMap() };
+  memos.set(key, memo);
+  return memo;
+}
 
 /** The legacy row for one `AgentView`: the same object for as long as the view is. */
-export function toMonitorAgent(view: AgentView): MonitorAgent {
-  const held = agentsByView.get(view);
+export function toMonitorAgent(view: AgentView, options: LegacyShimOptions): MonitorAgent {
+  const { agents } = memoFor(options);
+  const held = agents.get(view);
   if (held) return held;
-  const legacy = legacyAgent(view);
-  agentsByView.set(view, legacy);
+  const legacy = legacyAgent(view, options);
+  agents.set(view, legacy);
   return legacy;
 }
 
 /** The legacy rows for a model, in its order: the same list for as long as the model is. */
-export function toMonitorAgents(model: MonitorModel): readonly MonitorAgent[] {
-  const held = listsByModel.get(model);
+export function toMonitorAgents(model: MonitorModel, options: LegacyShimOptions): readonly MonitorAgent[] {
+  const { lists } = memoFor(options);
+  const held = lists.get(model);
   if (held) return held;
-  const list = Object.freeze(model.agents.map((view) => toMonitorAgent(view)));
-  listsByModel.set(model, list);
+  const list = Object.freeze(model.agents.map((view) => toMonitorAgent(view, options)));
+  lists.set(model, list);
   return list;
 }
 

@@ -9,10 +9,19 @@ import { rainDataString } from '../views/rain/rain-streams.js';
 import { bubbleModel } from '../views/swarm/bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from '../views/swarm/swarm-parameters.js';
 import { laneFromRow } from '../views/timeline/timeline-lanes.js';
-import { toMonitorAgent, toMonitorAgents, viewReadProjection } from './index.js';
+import { toMonitorAgent, toMonitorAgents, viewReadProjection, type LegacyShimOptions } from './index.js';
 
 const NOW = Date.parse('2026-10-03T22:00:00.000Z');
 const iso = (ms: number): string => new Date(ms).toISOString();
+
+/** Each host's options, as it will pass them (M4, M9). */
+const VIBEFIELD: LegacyShimOptions = { detail: 'reply-first', peerMonitor: 'omit' };
+const GODVIEW: LegacyShimOptions = { detail: 'headline-cost', peerMonitor: 'map' };
+
+/** Core's headline for the fixture's working run: the backend's `detail` (M4). */
+const HEADLINE = 'Reading src/app.ts';
+/** What puppeteer's Godview appends to it today for the fixture's cost: ~$1.20 so far, $6 an hour. */
+const COST_WORDS = '~$1.20 estimated API cost · $0.10/min';
 
 function agentView(overrides: Partial<AgentView> = {}): AgentView {
   return {
@@ -24,7 +33,7 @@ function agentView(overrides: Partial<AgentView> = {}): AgentView {
     stale: false,
     alive: true,
     observed: true,
-    detail: 'Reading src/app.ts · ~$1.20 estimated API cost',
+    detail: HEADLINE,
     project: { name: 'puppeteer', branch: 'mv/land', seq: 2 },
     provider: { id: 'imposter', label: 'Imposter' },
     model: 'Opus 5.5',
@@ -48,6 +57,18 @@ function agentView(overrides: Partial<AgentView> = {}): AgentView {
     attachment: { panes: 2, colour: 'pane-blue' },
     ...overrides,
   };
+}
+
+/** The same run, on another desktop. */
+function peerView(overrides: Partial<AgentView> = {}): AgentView {
+  return agentView({
+    id: 'run-p',
+    device: { id: 'desk-2', name: 'Laptop', os: 'linux', self: false },
+    tier: 'remote',
+    attachment: undefined,
+    active: false,
+    ...overrides,
+  });
 }
 
 function terminalView(overrides: Partial<AgentView> = {}): AgentView {
@@ -105,7 +126,7 @@ function coreState(overrides: Partial<AgentMonitorState> = {}): AgentMonitorStat
 }
 
 /** Today's row for the same run: what puppeteer's Godview seam assembles (`monitorAgentFromSession` + decorate). */
-function todaysRow(state: AgentMonitorState = coreState()): MonitorAgent {
+function todaysRow(state: AgentMonitorState = coreState(), detail = `${HEADLINE} · ${COST_WORDS}`): MonitorAgent {
   return {
     id: 'run-a',
     session: { id: 'pty-7', createdAtMs: NOW - 600_000, cwd: '/work/puppeteer' },
@@ -113,7 +134,7 @@ function todaysRow(state: AgentMonitorState = coreState()): MonitorAgent {
     createdAtMs: NOW - 600_000,
     status: state.status,
     project: 'puppeteer',
-    detail: 'Reading src/app.ts · ~$1.20 estimated API cost',
+    detail,
     color: 'oklch(70% 0.1 200)',
     active: true,
     cwd: '/work/puppeteer',
@@ -150,12 +171,12 @@ function differingPaths(left: unknown, right: unknown, path = ''): string[] {
 
 describe('toMonitorAgent', () => {
   it('says an agent row in the legacy shape, each fact under its old name', () => {
-    expect(toMonitorAgent(agentView())).toEqual({
+    expect(toMonitorAgent(agentView(), GODVIEW)).toEqual({
       id: 'run-a',
       createdAtMs: NOW - 600_000,
       status: 'working',
       project: 'puppeteer',
-      detail: 'Reading src/app.ts · ~$1.20 estimated API cost',
+      detail: `${HEADLINE} · ${COST_WORDS}`,
       color: 'oklch(70% 0.1 200)',
       active: true,
       tier: 'managed',
@@ -181,6 +202,7 @@ describe('toMonitorAgent', () => {
   it('carries the flags only when set, and says nothing it does not know', () => {
     const legacy = toMonitorAgent(
       agentView({ stale: true, unread: true, receded: true, spawnHint: { x: 3, y: 4 }, attachment: undefined }),
+      GODVIEW,
     );
     expect(legacy).toMatchObject({ stale: true, unread: true, receded: true, spawnHint: { x: 3, y: 4 } });
     expect(legacy.attachment).toBeUndefined();
@@ -189,27 +211,27 @@ describe('toMonitorAgent', () => {
     expect(legacy.session).toBeUndefined();
     expect(legacy.remote).toBeUndefined();
     expect(legacy.agent?.recency).toBeUndefined();
-    const plain = toMonitorAgent(agentView());
+    const plain = toMonitorAgent(agentView(), GODVIEW);
     expect('stale' in plain || 'unread' in plain || 'receded' in plain).toBe(false);
   });
 
   it('says a terminal: no agent facet, its activity as the session’s, `terminal` where it has no folder', () => {
-    const legacy = toMonitorAgent(terminalView());
-    expect(legacy.agent).toBeUndefined();
-    expect(legacy.project).toBe('terminal');
-    expect(legacy.session?.activity?.kind).toBe('unknown');
-    expect(toMonitorAgent(terminalView({ id: 'shell-2', project: { name: 'notes' } })).project).toBe('notes');
-    expect(toMonitorAgent(terminalView({ id: 'shell-3', activity: undefined })).session).toBeUndefined();
+    for (const options of [VIBEFIELD, GODVIEW]) {
+      const legacy = toMonitorAgent(terminalView(), options);
+      expect(legacy.agent).toBeUndefined();
+      expect(legacy.project).toBe('terminal');
+      expect(legacy.session?.activity?.kind).toBe('unknown');
+    }
+    expect(toMonitorAgent(terminalView({ id: 'shell-2', project: { name: 'notes' } }), GODVIEW).project).toBe('notes');
+    expect(toMonitorAgent(terminalView({ id: 'shell-3', activity: undefined }), GODVIEW).session).toBeUndefined();
   });
 
   it('names an agent with no folder by its provider, as both hosts do', () => {
-    expect(toMonitorAgent(agentView({ id: 'run-f', project: { name: '' } })).project).toBe('Imposter');
+    expect(toMonitorAgent(agentView({ id: 'run-f', project: { name: '' } }), GODVIEW).project).toBe('Imposter');
   });
 
   it('says a row on another desktop as the remote facet, its write policy following attachable', () => {
-    const peer = toMonitorAgent(
-      agentView({ id: 'run-p', device: { id: 'desk-2', name: 'Laptop', os: 'linux', self: false }, tier: 'remote' }),
-    );
+    const peer = toMonitorAgent(peerView(), GODVIEW);
     expect(peer.remote).toEqual({
       deviceId: 'desk-2',
       deviceName: 'Laptop',
@@ -218,9 +240,7 @@ describe('toMonitorAgent', () => {
       cwdLabel: 'puppeteer',
     });
     expect(remoteWriteLabel(peer.remote!)).toBe('writable host');
-    const shut = toMonitorAgent(
-      agentView({ id: 'run-q', device: { id: 'desk-2', name: 'Laptop', self: false }, attachable: false }),
-    );
+    const shut = toMonitorAgent(peerView({ id: 'run-q', attachable: false }), GODVIEW);
     expect(shut.remote).toMatchObject({ attachable: false, hostWritable: false });
     expect(remoteWriteLabel(shut.remote!)).toBe('read-only host');
   });
@@ -228,7 +248,7 @@ describe('toMonitorAgent', () => {
   it('says the three waits the views draw, and no blocker for any other word', () => {
     const since = NOW - 5_000;
     const blockers = (wait: AgentView['wait'], id: string) =>
-      toMonitorAgent(agentView({ id, status: 'blocked', wait })).agent?.monitor?.blockers;
+      toMonitorAgent(agentView({ id, status: 'blocked', wait }), GODVIEW).agent?.monitor?.blockers;
     expect(blockers({ kind: 'permission', since, tool: 'Bash', detail: 'rm -rf build' }, 'w1')).toEqual([
       { kind: 'permission', since: iso(since), detail: 'rm -rf build', permission: { tool: 'Bash' } },
     ]);
@@ -256,43 +276,166 @@ describe('toMonitorAgent', () => {
         activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
         effort: { value: 'max', intent: 'configured' },
       }),
+      GODVIEW,
     ).agent?.monitor;
     expect(facts?.activity).toEqual({ kind: 'tool', line: 'Running the tests', since: iso(NOW - 30_000) });
     expect(facts?.effort).toEqual({ value: 'max', intent: 'configured' });
     // A cut with no line: the kind alone.
     expect(
-      toMonitorAgent(agentView({ id: 'run-act2', activity: { kind: 'reasoning' } })).agent?.monitor?.activity,
+      toMonitorAgent(agentView({ id: 'run-act2', activity: { kind: 'reasoning' } }), GODVIEW).agent?.monitor?.activity,
     ).toEqual({ kind: 'reasoning' });
   });
 
   it('says cost: no total where nothing was priced, the rate per minute from the burn per hour', () => {
-    const unpriced = toMonitorAgent(agentView({ id: 'run-u', cost: { usd: 0, coverage: 'unavailable' } })).agent;
+    const unpriced = toMonitorAgent(
+      agentView({ id: 'run-u', cost: { usd: 0, coverage: 'unavailable' } }),
+      GODVIEW,
+    ).agent;
     expect(unpriced?.usage).toEqual({ coverage: 'unavailable', steps: [], stepMs: USAGE_STEP_MS });
     expect(unpriced?.monitor?.usage).toEqual({ costCoverage: 'unavailable' });
-    const none = toMonitorAgent(agentView({ id: 'run-n', cost: undefined })).agent;
+    const none = toMonitorAgent(agentView({ id: 'run-n', cost: undefined }), GODVIEW).agent;
     expect(none?.usage).toBeUndefined();
     expect(none?.monitor?.usage).toEqual({});
   });
 
-  it('keeps identity: the same view the same row, the same model the same list, an unchanged row in a new model too', () => {
+  it('keeps identity per view and per model, under each host’s options however they are passed', () => {
     const a = agentView();
     const b = agentView({ id: 'run-b', createdAt: NOW - 500_000 });
     const first = model([a, b]);
     const second = model([a, { ...b, status: 'idle' }]);
-    expect(toMonitorAgent(a)).toBe(toMonitorAgent(a));
-    expect(toMonitorAgents(first)).toBe(toMonitorAgents(first));
-    expect(toMonitorAgents(second)).not.toBe(toMonitorAgents(first));
-    expect(toMonitorAgents(second)[0]).toBe(toMonitorAgents(first)[0]);
-    expect(toMonitorAgents(second)[1]).not.toBe(toMonitorAgents(first)[1]);
-    expect(toMonitorAgents(second).map((row) => row.id)).toEqual(['run-a', 'run-b']);
-    expect(Object.isFrozen(toMonitorAgent(a))).toBe(true);
-    expect(Object.isFrozen(toMonitorAgents(first))).toBe(true);
+    expect(toMonitorAgent(a, GODVIEW)).toBe(toMonitorAgent(a, GODVIEW));
+    expect(toMonitorAgents(first, GODVIEW)).toBe(toMonitorAgents(first, GODVIEW));
+    expect(toMonitorAgents(second, GODVIEW)).not.toBe(toMonitorAgents(first, GODVIEW));
+    expect(toMonitorAgents(second, GODVIEW)[0]).toBe(toMonitorAgents(first, GODVIEW)[0]);
+    expect(toMonitorAgents(second, GODVIEW)[1]).not.toBe(toMonitorAgents(first, GODVIEW)[1]);
+    expect(toMonitorAgents(second, GODVIEW).map((row) => row.id)).toEqual(['run-a', 'run-b']);
+    // A host that writes its options inline each time keeps identity: the memo goes by their values.
+    expect(toMonitorAgents(first, { detail: 'headline-cost', peerMonitor: 'map' })).toBe(
+      toMonitorAgents(first, GODVIEW),
+    );
+    // Another host's options are another row.
+    expect(toMonitorAgent(a, VIBEFIELD)).not.toBe(toMonitorAgent(a, GODVIEW));
+    expect(Object.isFrozen(toMonitorAgent(a, GODVIEW))).toBe(true);
+    expect(Object.isFrozen(toMonitorAgents(first, GODVIEW))).toBe(true);
+  });
+});
+
+describe('the line under the name (M4)', () => {
+  const line = (view: AgentView, options: LegacyShimOptions) => toMonitorAgent(view, options).detail;
+  const since = NOW - 5_000;
+  const permission = { kind: 'permission', since, tool: 'Bash' } as const;
+
+  it('reply-first is VibeField’s agentDetail (field-app godview/monitor/agent-status.ts:111-124)', () => {
+    expect(line(agentView({ id: 'v1', pending: true, observed: false, status: 'idle' }), VIBEFIELD)).toBe(
+      'unobserved · resumes when idle',
+    );
+    expect(line(agentView({ id: 'v2', observed: false }), VIBEFIELD)).toBe('starting');
+    expect(line(agentView({ id: 'v3', status: 'blocked', wait: permission }), VIBEFIELD)).toBe('permission · Bash');
+    expect(
+      line(agentView({ id: 'v4', status: 'blocked', wait: { kind: 'question', since, question: 'Ship?' } }), VIBEFIELD),
+    ).toBe('question');
+    expect(line(agentView({ id: 'v5', status: 'blocked' }), VIBEFIELD)).toBe('blocked');
+    expect(line(agentView({ id: 'v6', status: 'blocked', wait: { kind: 'approval', since } }), VIBEFIELD)).toBe(
+      'approval',
+    );
+    // The whole reply, trimmed: VibeField's line is not the swarm's first line.
+    expect(
+      line(agentView({ id: 'v7', status: 'idle', reply: { text: '  All green.\nNext: docs  ' } }), VIBEFIELD),
+    ).toBe('All green.\nNext: docs');
+    expect(line(agentView({ id: 'v8', status: 'idle', reply: { text: '   ' } }), VIBEFIELD)).toBe('idle');
+    // The status word, never the backend's headline.
+    expect(line(agentView({ id: 'v9' }), VIBEFIELD)).toBe('working');
+  });
+
+  it('reply-first words a peer as remoteDetail after its desktop’s name (mesh-rows.ts:72-84, agents.ts:364)', () => {
+    expect(
+      line(peerView({ id: 'p1', status: 'blocked', wait: { ...permission, question: ' Ship it? ' } }), VIBEFIELD),
+    ).toBe('Laptop · Ship it?');
+    expect(line(peerView({ id: 'p2', status: 'blocked', wait: permission }), VIBEFIELD)).toBe(
+      'Laptop · permission · Bash',
+    );
+    expect(line(peerView({ id: 'p3', status: 'blocked' }), VIBEFIELD)).toBe('Laptop · blocked');
+    expect(line(peerView({ id: 'p4', status: 'idle', reply: { text: 'All green. ' } }), VIBEFIELD)).toBe(
+      'Laptop · All green.',
+    );
+    expect(line(peerView({ id: 'p5', pending: true, observed: false, status: 'idle' }), VIBEFIELD)).toBe(
+      'Laptop · unobserved · resumes when idle',
+    );
+    // A peer has no "starting" branch: its owner's row is read as it stands.
+    expect(line(peerView({ id: 'p6', observed: false }), VIBEFIELD)).toBe('Laptop · working');
+  });
+
+  it('headline-cost is puppeteer Godview’s line (apps/godview/src/renderer/monitor/agents.ts:112-124)', () => {
+    expect(line(agentView({ id: 'g1' }), GODVIEW)).toBe(`${HEADLINE} · ${COST_WORDS}`);
+    const blocked = { status: 'blocked', detail: 'permission: Bash' } as const;
+    expect(line(agentView({ id: 'g2', ...blocked, wait: { ...permission, count: 3 } }), GODVIEW)).toBe(
+      `permission: Bash · +2 blockers · ${COST_WORDS}`,
+    );
+    expect(line(agentView({ id: 'g3', ...blocked, wait: { ...permission, count: 1 } }), GODVIEW)).toBe(
+      `permission: Bash · ${COST_WORDS}`,
+    );
+    expect(line(agentView({ id: 'g4', ...blocked, wait: permission }), GODVIEW)).toBe(
+      `permission: Bash · ${COST_WORDS}`,
+    );
+    expect(line(agentView({ id: 'g5', cost: { usd: 1.2, coverage: 'partial', burnPerHour: 6 } }), GODVIEW)).toBe(
+      `${HEADLINE} · ~$1.20 estimated API cost (partial) · $0.10/min`,
+    );
+    expect(
+      line(agentView({ id: 'g6', status: 'idle', detail: 'idle', cost: { usd: 0, coverage: 'unavailable' } }), GODVIEW),
+    ).toBe('idle · cost unavailable');
+    expect(line(agentView({ id: 'g7', status: 'idle', detail: 'idle', cost: undefined }), GODVIEW)).toBe(
+      'idle · cost unavailable',
+    );
+    expect(line(agentView({ id: 'g8', cost: { usd: 0.0005, coverage: 'complete' } }), GODVIEW)).toBe(
+      `${HEADLINE} · ~<$0.001 estimated API cost`,
+    );
+  });
+
+  it('a terminal’s line is the backend’s under either option', () => {
+    for (const options of [VIBEFIELD, GODVIEW]) {
+      expect(line(terminalView(), options)).toBe('Unassigned terminal');
+    }
+  });
+});
+
+describe('peers (M9)', () => {
+  const rich = {
+    status: 'blocked',
+    wait: { kind: 'permission', since: NOW - 5_000, tool: 'Bash' },
+    reply: { text: 'Need a hand.' },
+    activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
+  } as const;
+
+  it('omit: a peer carries what VibeField’s peers carry today, so nothing a peer shows changes', () => {
+    const peer = toMonitorAgent(peerView({ id: 'm1', ...rich }), VIBEFIELD);
+    expect(peer.agent).toEqual({
+      provider: { id: 'imposter', label: 'Imposter' },
+      model: 'Opus 5.5',
+      branch: 'mv/land',
+      usage: { total: 1.2, coverage: 'complete', steps: [0, 0.1, 0.2], stepMs: USAGE_STEP_MS },
+    });
+    // Including where its timeline lane starts: at first sight, as today, not at the owner's statusSince.
+    expect(laneFromRow(peer, NOW, NOW - 10_000).spans[0]?.fromMs).toBe(NOW - 10_000);
+    // The line still says what the owner's row says.
+    expect(peer.detail).toBe('Laptop · permission · Bash');
+    // This desktop's own rows keep their Core facts under the same options.
+    expect(toMonitorAgent(agentView({ id: 'm2', ...rich }), VIBEFIELD).agent?.monitor?.blockers).toHaveLength(1);
+  });
+
+  it('map: a peer carries the row’s facts', () => {
+    const peer = toMonitorAgent(peerView({ id: 'm3', ...rich }), GODVIEW);
+    expect(peer.agent?.monitor?.blockers).toEqual([
+      { kind: 'permission', since: iso(NOW - 5_000), permission: { tool: 'Bash' } },
+    ]);
+    expect(peer.agent?.contextWindow).toEqual({ usedPercent: 42.6 });
+    expect(peer.agent?.account).toBe('work');
+    expect(laneFromRow(peer, NOW, NOW - 10_000).spans[0]?.fromMs).toBe(NOW - 60_000);
   });
 });
 
 describe('the shipping views draw the shim', () => {
   const draw = (view: AgentView, unread = false) =>
-    bubbleModel({ agent: toMonitorAgent(view), parameters: DEFAULT_SWARM_PARAMETERS, nowMs: NOW, unread });
+    bubbleModel({ agent: toMonitorAgent(view, GODVIEW), parameters: DEFAULT_SWARM_PARAMETERS, nowMs: NOW, unread });
 
   it('the swarm: a working body’s figures, branch, name and model line', () => {
     const body = draw(agentView());
@@ -300,7 +443,7 @@ describe('the shipping views draw the shim', () => {
     expect(body.figures?.top?.text).toBe('42%');
     expect(body.figures?.bottom?.text).toBe('~$1.20');
     expect(body.burn).toMatchObject({ priced: true });
-    expect(body.copy.map((line) => line.text)).toEqual(['mv/land', 'puppeteer', 'Opus 5.5 · high']);
+    expect(body.copy.map((entry) => entry.text)).toEqual(['mv/land', 'puppeteer', 'Opus 5.5 · high']);
     expect(body.accent).toBe('oklch(70% 0.1 200)');
     expect(body.linked).toBe('pane-blue');
   });
@@ -308,7 +451,7 @@ describe('the shipping views draw the shim', () => {
   it('the swarm: what a blocked or unread body says', () => {
     const since = NOW - 5_000;
     const words = (view: AgentView, unread = false) =>
-      draw(view, unread).copy.find((line) => line.key === 'state')?.text;
+      draw(view, unread).copy.find((entry) => entry.key === 'state')?.text;
     expect(words(agentView({ id: 'b1', status: 'blocked', wait: { kind: 'permission', since, tool: 'Bash' } }))).toBe(
       'Bash',
     );
@@ -329,7 +472,7 @@ describe('the shipping views draw the shim', () => {
     const reply = { text: 'Waiting on you.\nmore', at: NOW, final: true };
     const words = (id: string, wait: NonNullable<AgentView['wait']>, withReply = false) =>
       draw(agentView({ id, status: 'blocked', wait, ...(withReply ? { reply } : {}) })).copy.find(
-        (line) => line.key === 'state',
+        (entry) => entry.key === 'state',
       )?.text;
     const all = { since, header: 'Deploy', question: 'Ship it?', detail: 'the detail', tool: 'Bash', code: 'E_TOOL' };
     expect(words('o1', { kind: 'question', ...all })).toBe('Deploy');
@@ -347,9 +490,11 @@ describe('the shipping views draw the shim', () => {
   it('the ledger and the timeline word a wait in theirs: detail, then prompt', () => {
     const since = NOW - 5_000;
     const ledgerWords = (id: string, wait: NonNullable<AgentView['wait']>) =>
-      observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(agentView({ id, status: 'blocked', wait }))], NOW).lanes.get(
-        id,
-      )?.changes[0]?.blocker;
+      observeStatuses(
+        EMPTY_STATUS_LEDGER,
+        [toMonitorAgent(agentView({ id, status: 'blocked', wait }), GODVIEW)],
+        NOW,
+      ).lanes.get(id)?.changes[0]?.blocker;
     expect(
       ledgerWords('l1', { kind: 'question', since, header: 'Deploy', question: 'Ship it?', detail: 'the detail' }),
     ).toEqual({ kind: 'question', detail: 'the detail' });
@@ -362,6 +507,7 @@ describe('the shipping views draw the shim', () => {
     const lane = laneFromRow(
       toMonitorAgent(
         agentView({ id: 'l5', status: 'blocked', wait: { kind: 'permission', since, detail: 'rm -rf build' } }),
+        GODVIEW,
       ),
       NOW,
     );
@@ -374,11 +520,11 @@ describe('the shipping views draw the shim', () => {
       activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
       effort: { value: 'max', intent: 'configured' },
     });
-    expect(laneFromRow(toMonitorAgent(working), NOW).spans[0]?.did).toBe('Running the tests');
-    expect(observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(working)], NOW).lanes.get('did')?.changes[0]?.did).toBe(
-      'Running the tests',
-    );
-    const modelLine = (view: AgentView) => draw(view).copy.find((line) => line.key === 'model');
+    expect(laneFromRow(toMonitorAgent(working, GODVIEW), NOW).spans[0]?.did).toBe('Running the tests');
+    expect(
+      observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(working, GODVIEW)], NOW).lanes.get('did')?.changes[0]?.did,
+    ).toBe('Running the tests');
+    const modelLine = (view: AgentView) => draw(view).copy.find((entry) => entry.key === 'model');
     expect(modelLine(working)).toMatchObject({ text: 'Opus 5.5 · max', style: { italic: true } });
     expect(
       modelLine(agentView({ id: 'seen', effort: { value: 'max', intent: 'observed' } }))?.style.italic,
@@ -386,16 +532,23 @@ describe('the shipping views draw the shim', () => {
   });
 
   it('the rain and the timeline', () => {
-    expect(rainDataString(toMonitorAgent(agentView()))).toBe(' puppeteer mv land Opus 5.5 CTX 43% ');
+    expect(rainDataString(toMonitorAgent(agentView(), GODVIEW))).toBe(' puppeteer mv land Opus 5.5 CTX 43% ');
     const lane = laneFromRow(
-      toMonitorAgent(agentView({ id: 't1', status: 'blocked', wait: { kind: 'failure', since: NOW - 5_000 } })),
+      toMonitorAgent(
+        agentView({ id: 't1', status: 'blocked', wait: { kind: 'failure', since: NOW - 5_000 } }),
+        GODVIEW,
+      ),
       NOW,
     );
     expect(lane.spans).toEqual([{ status: 'blocked', fromMs: NOW - 60_000, blocker: { kind: 'failure' } }]);
   });
 
   it('the status ledger (L10) folds the shim’s rows', () => {
-    const ledger = observeStatuses(EMPTY_STATUS_LEDGER, toMonitorAgents(model([agentView(), terminalView()])), NOW);
+    const ledger = observeStatuses(
+      EMPTY_STATUS_LEDGER,
+      toMonitorAgents(model([agentView(), terminalView()]), GODVIEW),
+      NOW,
+    );
     expect(ledger.lanes.get('run-a')?.changes).toEqual([{ status: 'working', atMs: NOW - 60_000 }]);
     // A terminal has no run whose state began somewhere: its lane starts at first sight, as today.
     expect(ledger.lanes.get('shell-1')?.changes).toEqual([{ status: 'idle', atMs: NOW }]);
@@ -404,14 +557,14 @@ describe('the shipping views draw the shim', () => {
 
 describe('viewReadProjection', () => {
   it('is exactly the audited reads, as plain JSON', () => {
-    const reads = viewReadProjection(toMonitorAgent(agentView({ unread: true })));
+    const reads = viewReadProjection(toMonitorAgent(agentView({ unread: true }), GODVIEW));
     expect(reads).toEqual({
       id: 'run-a',
       visualId: 'run-a',
       createdAtMs: NOW - 600_000,
       status: 'working',
       project: 'puppeteer',
-      detail: 'Reading src/app.ts · ~$1.20 estimated API cost',
+      detail: `${HEADLINE} · ${COST_WORDS}`,
       color: 'oklch(70% 0.1 200)',
       stale: false,
       active: true,
@@ -434,7 +587,7 @@ describe('viewReadProjection', () => {
       },
     });
     expect(JSON.parse(JSON.stringify(reads))).toEqual(reads);
-    expect(viewReadProjection(toMonitorAgent(terminalView()))).toEqual({
+    expect(viewReadProjection(toMonitorAgent(terminalView(), GODVIEW))).toEqual({
       id: 'shell-1',
       visualId: 'shell-1',
       createdAtMs: NOW - 120_000,
@@ -451,7 +604,9 @@ describe('viewReadProjection', () => {
   });
 
   it('round trip: today’s row and the shim’s row of the same facts read the same', () => {
-    const shim = viewReadProjection(toMonitorAgent(agentView({ reply: { text: 'Done with the first pass.' } })));
+    const shim = viewReadProjection(
+      toMonitorAgent(agentView({ reply: { text: 'Done with the first pass.' } }), GODVIEW),
+    );
     const today = viewReadProjection(todaysRow());
     expect(differingPaths(today, shim)).toEqual([]);
     expect(shim).toEqual(today);
@@ -486,6 +641,7 @@ describe('viewReadProjection', () => {
       ],
     ];
     for (const [blocker, wait] of cases) {
+      const headline = `${blocker.kind}: ${blocker.detail ?? 'waits'}`;
       const today = viewReadProjection(
         todaysRow(
           coreState({
@@ -494,17 +650,20 @@ describe('viewReadProjection', () => {
             effort: { value: 'high', intent: 'configured' },
             activity: { kind: 'tool', line: 'Running the tests', since: iso(NOW - 30_000) },
           }),
+          `${headline} · ${COST_WORDS}`,
         ),
       );
       const shim = viewReadProjection(
         toMonitorAgent(
           agentView({
             status: 'blocked',
+            detail: headline,
             wait,
             effort: { value: 'high', intent: 'configured' },
             activity: { kind: 'tool', line: 'Running the tests', since: NOW - 30_000 },
             reply: { text: 'Done with the first pass.' },
           }),
+          GODVIEW,
         ),
       );
       expect(differingPaths(today, shim)).toEqual([]);

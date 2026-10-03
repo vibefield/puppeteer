@@ -3,6 +3,7 @@ export {
   toMonitorAgent,
   toMonitorAgents,
   viewReadProjection,
+  type LegacyShimOptions,
   type MonitorAgentViewReads,
   type MonitorAgentViewReadsBlocker,
 } from './from-agent-view.js';
