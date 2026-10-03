@@ -15,7 +15,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./model": "./src/model.ts",
-    "./toolkit": "./src/toolkit/index.ts"
+    "./toolkit": "./src/toolkit/index.ts",
+    "./react": "./src/react/index.ts",
+    "./host": "./src/host/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -34,6 +37,18 @@
       "./toolkit": {
         "types": "./dist/toolkit/index.d.ts",
         "import": "./dist/toolkit/index.js"
+      },
+      "./react": {
+        "types": "./dist/react/index.d.ts",
+        "import": "./dist/react/index.js"
+      },
+      "./host": {
+        "types": "./dist/host/index.d.ts",
+        "import": "./dist/host/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
       }
     }
   },
@@ -49,7 +64,28 @@
   "engines": {
     "node": ">=22.18.0"
   },
-  "devDependencies": {
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20",
     "vitest": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "20.11.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }
