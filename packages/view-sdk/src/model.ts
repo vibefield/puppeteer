@@ -39,15 +39,38 @@ export interface MonitorDeviceRef {
   readonly self: boolean;
 }
 
-/** What a blocked run waits on: the first blocker, as far as the reader's cut carries it. */
+/** What a blocked run waits on: the first blocker, as far as the reader's cut carries it.
+ * The parts stay separate because views word them in their own order (the
+ * swarm's body: header or prompt, then detail, then tool, then code; the
+ * timeline's lane: detail, then prompt). */
 export interface MonitorWait {
   /** The runtime's own word, open: `permission`, `question`, `failure`, … */
   readonly kind: string;
   readonly since: number;
+  /** How many blockers wait, counted before any bound; this one is the first. Absent: one. */
+  readonly count?: number | undefined;
   /** A permission's tool. */
   readonly tool?: string | undefined;
-  /** A question's prompt, bounded. Absent on a cut that carries no content (the phone's). */
+  /** A failure's code. */
+  readonly code?: string | undefined;
+  /** A question's header, bounded. Absent on a cut that carries no content (the phone's). */
+  readonly header?: string | undefined;
+  /** A question's prompt, bounded. Absent on a cut that carries no content. */
   readonly question?: string | undefined;
+  /** The blocker's own detail line, in the adapter's words, bounded. Absent on a cut that carries no content. */
+  readonly detail?: string | undefined;
+}
+
+export interface MonitorActivity {
+  readonly kind: string;
+  readonly line?: string | undefined;
+  readonly since?: number | undefined;
+}
+
+/** The effort a run works at, and whether that is the provider's evidence or only the launch's intent. */
+export interface MonitorEffort {
+  readonly value: string;
+  readonly intent?: 'configured' | 'observed' | undefined;
 }
 
 /** The run's latest reply, bounded. Absent on a cut that carries no content. */
@@ -110,16 +133,22 @@ export interface MonitorAgentRow {
   readonly stale: boolean;
   /** Still there: the host's liveness, or the runtime's own word. */
   readonly alive: boolean;
+  /** The runtime has reported a state for this run. False while it starts, and while nothing drives it (with
+   * `pending`). A terminal is always observed, by its host. */
+  readonly observed: boolean;
   /** Alive, but nothing drives it yet (a run that resumes at its next idle). */
   readonly pending?: boolean | undefined;
   /** The line under the name, in the backend's words (the toolkit holds the shared words, MV-D11). */
   readonly detail: string;
-  /** What a terminal is doing when no agent words it. */
-  readonly activity?: string | undefined;
+  /** What the row is doing now. An agent: the runtime's activity kind
+   * (`starting`, `responding`, `reasoning`, `tool`, `delegating`, `compacting`,
+   * `other`) and its line, bounded (absent on a cut that carries no content). A
+   * terminal: its session's activity kind, and no line. */
+  readonly activity?: MonitorActivity | undefined;
   readonly project: MonitorProject;
   readonly provider?: { readonly id: string; readonly label: string } | undefined;
   readonly model?: string | undefined;
-  readonly effort?: string | undefined;
+  readonly effort?: MonitorEffort | undefined;
   readonly account?: string | undefined;
   readonly context?: { readonly usedPercent: number } | undefined;
   readonly wait?: MonitorWait | undefined;
@@ -211,4 +240,50 @@ export function compareMonitorRows(a: MonitorAgentRow, b: MonitorAgentRow): numb
   if (a.kind !== b.kind) return a.kind === 'agent' ? -1 : 1;
   if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+/**
+ * Batches work into frames. The replica's notifications and the view host's
+ * updates share ONE instance so their batches coincide: work requested while a
+ * frame is draining runs in that same frame (unless that task already ran in
+ * it), so a model change reaches the view in the frame it arrived in, never one
+ * later. `request` returns a cancel.
+ */
+export interface FrameScheduler {
+  request(work: () => void): () => void;
+}
+
+/* What a view draws: the replica's join of the model with one window's own facts. Still plain
+ * data (no DOM), so the replica imports it from `./model` (L3). */
+
+/**
+ * One agent as a view sees it: the backend's row, joined by the replica with
+ * what only this window knows, and coloured by the view host.
+ */
+export interface AgentView extends MonitorAgentRow {
+  /** The project's colour in the current theme; the neutral ramp for no project. */
+  readonly colour: string;
+  /** Mounted in the pane the person is working in. */
+  readonly active: boolean;
+  /** The host is showing another group (VibeField's profile tabs): it keeps its place and is drawn faint. */
+  readonly receded: boolean;
+  /** The panes showing it here, and the colour of the one it is worked in. Absent: mounted nowhere. */
+  readonly attachment?: { readonly panes: number; readonly colour?: string | undefined } | undefined;
+  /** Where the person asked for it, for views that place new arrivals spatially. */
+  readonly spawnHint?: { readonly x: number; readonly y: number } | undefined;
+}
+
+/** The model a view draws. Unchanged agents keep their object across updates (MV-D21). */
+export interface MonitorModel {
+  readonly revision: number;
+  /** In the model's order: agents by birth, then bare terminals. */
+  readonly agents: readonly AgentView[];
+  readonly byId: ReadonlyMap<string, AgentView>;
+}
+
+/** Which agents moved since the view's last update, by id. */
+export interface ModelChanges {
+  readonly added: readonly string[];
+  readonly updated: readonly string[];
+  readonly removed: readonly string[];
 }
