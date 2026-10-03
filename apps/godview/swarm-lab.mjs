@@ -40,19 +40,26 @@ const css = [
   await readFile(join(views, 'styles/usage.css'), 'utf8'),
   await readFile(join(views, 'views/swarm/swarm.css'), 'utf8'),
   await readFile(join(views, 'views/swarm/lab/lab.css'), 'utf8'),
+  // The shipping view's stages, as the other view labs lay them out.
+  await readFile(join(views, 'lab/view-lab.css'), 'utf8'),
 ].join('\n');
 
 const body = `<title>Swarm Lab</title>
 <style>
 ${css}
 </style>
-<div id="lab" class="swarm-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
+<div id="lab" class="lab-root swarm-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
   <canvas class="lab-canvas" aria-hidden="true"></canvas>
   <div class="lab-controls"></div>
   <header class="lab-header">
     <h1>Swarm Lab</h1>
     <p>The production WebGPU swarm renderer over fixture agents: every state, the light's variants, and a settled field. What is drawn here is what Godview draws. The panel on the right holds the view's own tunables and follows you down the page.</p>
   </header>
+  <section class="lab-part lab-view-head">
+    <h2>The view</h2>
+    <p class="lab-lede">AgentSwarm itself, on the inline physics, over the seeded world in Godview’s stage at its three sizes: ?n= sets the rows, ?size= one stage.</p>
+  </section>
+  <div class="lab-view"></div>
   <p class="lab-notice" hidden></p>
   <div class="lab-parts"></div>
 </div>

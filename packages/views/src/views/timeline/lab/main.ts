@@ -1,7 +1,10 @@
 import { createElement, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { mountViewLab } from '../../../lab/lab-stage.js';
 import { useMonitorPalette } from '../../../monitor/palette.js';
+import { monitorParameterDefaults } from '../../../monitor/parameters.js';
 import type { MonitorActions, MonitorAgent } from '../../../monitor/types.js';
+import { timelineMonitorView } from '../index.js';
 import { TimelineView } from '../TimelineView.js';
 import { DEFAULT_TIMELINE_PARAMETERS } from '../timeline-parameters.js';
 import { timelineWorld } from './timeline-fixtures.js';
@@ -12,6 +15,10 @@ import { timelineWorld } from './timeline-fixtures.js';
 // is what Godview draws; a design change is reviewed here as pixels.
 //
 // `?theme=dark` opens dark; `?only=wide` (or narrow, bare) shows one stage; `?recede=<ids>` recedes rows; `?chrome=<px>` insets the view past a usage column.
+//
+// `?n=<rows>` (or `?capture=1`) swaps the afternoon for the seeded world in Godview's stage, as the
+// other view labs show it (`lab/lab-stage.ts`): `?size=`, `?animations=0`, and `?book=0` for the
+// rows with no book. That page is what the goldens capture.
 
 interface Stage {
   id: string;
@@ -110,6 +117,19 @@ function main(): void {
   const mount = root?.querySelector('.timeline-lab-mount');
   if (!root || !mount) return;
   const params = new URLSearchParams(location.search);
+  if (params.has('n') || params.get('capture') === '1') {
+    const lab = mountViewLab({
+      root,
+      mount,
+      Component: timelineMonitorView.Component,
+      parameters: monitorParameterDefaults(timelineMonitorView.parameterGroups),
+      book: true,
+    });
+    root
+      .querySelector<HTMLButtonElement>('.timeline-lab-theme')
+      ?.addEventListener('click', () => lab.setTheme(root.classList.contains('theme-dark') ? 'light' : 'dark'));
+    return;
+  }
   const setTheme = (theme: 'light' | 'dark'): void => {
     root.classList.toggle('theme-light', theme === 'light');
     root.classList.toggle('theme-dark', theme === 'dark');

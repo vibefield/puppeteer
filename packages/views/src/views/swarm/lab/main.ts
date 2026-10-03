@@ -1,5 +1,8 @@
+import { createElement } from 'react';
 import { AGENT_MARK_CANDIDATES } from '../../../icons/AgentIcon.js';
+import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';
+import { monitorParameterDefaults, type MonitorParameters } from '../../../monitor/parameters.js';
 import { paneTint, projectTint } from '../../../colour/project-tint.js';
 import { bubbleModel, type SwarmBubbleModel } from '../bubble-model.js';
 import { resolveCssColor, type Rgba } from '../gpu/color.js';
@@ -16,6 +19,9 @@ import {
   normalizeSwarmParameters,
   type SwarmParameters,
 } from '../swarm-parameters.js';
+import { swarmMonitorView } from '../index.js';
+import { SwarmPhysicsProvider } from '../physics/context.js';
+import { createInlineSwarmPhysicsDriver } from '../physics/inline-driver.js';
 import { resolveSwarmTheme } from '../swarm-theme.js';
 import {
   bloomStages,
@@ -37,6 +43,13 @@ import {
 // The page is one WebGPU canvas behind a normal-flow document: each stage is a
 // DOM cell whose rectangle is measured and handed to the renderer as a body's
 // position, so captions and layout stay ordinary HTML.
+//
+// Above the parts, the SHIPPING view: `AgentSwarm` itself on the inline physics,
+// over the seeded world in Godview's stage (`lab/lab-stage.ts`), so what ships —
+// its models, its physics, its chrome avoidance — is under review too, not only
+// the renderer. The theme, the motion box and the sliders drive both. Its URL is
+// the other view labs': `?n=`, `?size=`, `?theme=dark`, `?animations=0`, and
+// `?capture=1` shows the view alone, on the capture clock.
 
 interface PlacedStage {
   stage: LabStage;
@@ -116,9 +129,19 @@ function settle(radii: readonly number[], width: number, height: number, seed = 
 async function main(): Promise<void> {
   const root = document.getElementById('lab');
   if (!root) return;
+  let viewParameters: MonitorParameters = monitorParameterDefaults(swarmMonitorView.parameterGroups);
+  const view = mountViewLab({
+    root,
+    mount: root.querySelector('.lab-view')!,
+    Component: swarmMonitorView.Component,
+    parameters: viewParameters,
+    wrap: (swarm) => createElement(SwarmPhysicsProvider, { factory: createInlineSwarmPhysicsDriver }, swarm),
+  });
+  // The golden page is the view alone: the renderer-direct parts would only draw under it.
+  if (view.params.capture) return;
   const nowMs = Date.now();
   let parameters: SwarmParameters = { ...DEFAULT_SWARM_PARAMETERS };
-  let motion = true;
+  let motion = view.params.animations;
   let theme: SwarmTheme | undefined;
   const colourCache = new Map<string, Rgba>();
   const accentOf = (value: string): Rgba => {
@@ -149,12 +172,12 @@ async function main(): Promise<void> {
     panelToggle.setAttribute('aria-expanded', String(opening));
   });
 
-  const themeButton = element('button', 'lab-theme', 'Dark');
+  const themeButton = element('button', 'lab-theme', view.params.theme === 'dark' ? 'Light' : 'Dark');
   themeButton.type = 'button';
   const motionLabel = element('label', 'lab-check');
   const motionInput = element('input');
   motionInput.type = 'checkbox';
-  motionInput.checked = true;
+  motionInput.checked = motion;
   motionLabel.append(motionInput, document.createTextNode('motion'));
   const panelRow = element('div', 'lab-panel-row');
   panelRow.append(themeButton, motionLabel);
@@ -180,6 +203,8 @@ async function main(): Promise<void> {
       input.addEventListener('input', () => {
         value.textContent = input.value;
         parameters = normalizeSwarmParameters({ ...parameters, [control.key]: Number(input.value) });
+        viewParameters = { ...viewParameters, [control.key]: Number(input.value) };
+        view.setParameters(viewParameters);
         // The STATE GLOW colours are resolved into the theme rather than sent as
         // uniforms, so a slider re-applies the theme rather than only rebuilding.
         applyTheme();
@@ -417,14 +442,15 @@ async function main(): Promise<void> {
     rebuild();
   };
   themeButton.addEventListener('click', () => {
-    const dark = root.classList.toggle('theme-dark');
-    root.classList.toggle('theme-light', !dark);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const dark = !root.classList.contains('theme-dark');
+    view.setTheme(dark ? 'dark' : 'light');
     themeButton.textContent = dark ? 'Light' : 'Dark';
     applyTheme();
   });
   motionInput.addEventListener('change', () => {
     motion = motionInput.checked;
+    // The view reads the host's switch, as it does in Godview.
+    view.setAnimations(motion);
   });
 
   const result = await createSwarmRenderer(canvas);
