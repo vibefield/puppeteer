@@ -43,8 +43,12 @@ export interface MonitorViewHostProps {
   readonly className?: string | undefined;
 }
 
+/** Every part is always given here: absent capabilities are none, never "keep the last ones". */
+const NO_CAPABILITIES: MonitorCapabilities = Object.freeze({});
+
 export function MonitorViewHost(props: MonitorViewHostProps): ReactElement {
-  const { replica, view, stage, theme, parameters, capabilities, className } = props;
+  const { replica, view, stage, theme, parameters, className } = props;
+  const capabilities = props.capabilities ?? NO_CAPABILITIES;
   const element = useRef<HTMLDivElement>(null);
   const slot = useRef<ViewSlot | null>(null);
   const latest = useRef(props);
@@ -63,7 +67,7 @@ export function MonitorViewHost(props: MonitorViewHostProps): ReactElement {
           stage: initial.stage,
           theme: initial.theme,
           parameters: initial.parameters,
-          capabilities: initial.capabilities,
+          capabilities: initial.capabilities ?? NO_CAPABILITIES,
         },
         commands: {
           select: (agentId) => latest.current.commands.select(agentId),

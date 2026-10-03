@@ -130,6 +130,18 @@ describe('MonitorViewHost', () => {
     await act(async () => root.unmount());
   });
 
+  it('takes capabilities that go away as none, not as the last ones', async () => {
+    const { root, frames, element } = host();
+    const recording = createRecordingView('list');
+    const spawn = { devices: [{ id: 'desk', label: 'Desk', self: true, state: 'ready' as const }] };
+    await act(async () => root.render(element({ view: recording.view, capabilities: { spawn } })));
+    expect(recording.lastInput!.capabilities).toEqual({ spawn });
+    await act(async () => root.render(element({ view: recording.view })));
+    await act(async () => frames.step());
+    expect(recording.lastInput!.capabilities).toEqual({});
+    await act(async () => root.unmount());
+  });
+
   it('leaves exactly one view mounted under StrictMode', async () => {
     const { container, root, element } = host();
     const recording = createRecordingView('list');
