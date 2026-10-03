@@ -771,3 +771,93 @@ describe('emission', () => {
     expect(t.backend.command({ type: 'select', id: 'run-1' })).toBe(false);
   });
 });
+
+describe('commands', () => {
+  const sets = [
+    { id: 'native', label: 'This Mac', kind: 'native' as const, isDefault: true, personas: [] },
+    { id: 'work', label: 'Work', kind: 'managed' as const, isDefault: false, personas: [] },
+  ];
+
+  it('resolves a select to the row’s run and PTY, a promoted row to its run, a terminal to its PTY', async () => {
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'r1', terminalSessionId: 'pty-1' }),
+          hostRun({ runtimeRunId: 'r2', terminalSessionId: undefined }),
+        ],
+        terminals: [hostTerminal({ sessionId: 'pty-1' }), hostTerminal({ sessionId: 'sh' })],
+      }),
+    });
+    await t.backend.ready;
+    expect(t.rows().map((row) => row.id)).toEqual(['pty-1', 'r2', 'sh']);
+    expect(t.backend.command({ type: 'select', id: 'pty-1' })).toBe(true);
+    expect(t.backend.command({ type: 'select', id: 'r2' })).toBe(true);
+    expect(t.backend.command({ type: 'select', id: 'sh' })).toBe(true);
+    expect(t.backend.command({ type: 'select', id: 'nobody' })).toBe(false);
+    expect(t.sink.selected).toEqual([
+      { id: 'pty-1', kind: 'agent', runtimeRunId: 'r1', terminalSessionId: 'pty-1' },
+      { id: 'r2', kind: 'agent', runtimeRunId: 'r2' },
+      { id: 'sh', kind: 'terminal', terminalSessionId: 'sh' },
+    ]);
+  });
+
+  it('creates on this desktop by default, under a profile the menu knows, and refuses one it does not', async () => {
+    const t = testBackend({ facts: facts({ profileSets: sets }) });
+    await t.backend.ready;
+    t.rows();
+    expect(t.backend.command({ type: 'create' })).toBe(true);
+    expect(t.backend.command({ type: 'create', at: { x: 10, y: 20 }, target: { profileSet: 'work' } })).toBe(true);
+    expect(t.backend.command({ type: 'create', target: { deviceId: 'desk-1', profileSet: 'play' } })).toBe(false);
+    expect(t.backend.command({ type: 'create', target: { deviceId: 'desk-9' } })).toBe(false);
+    expect(t.sink.created).toEqual([
+      { device: { id: 'desk-1', self: true } },
+      { at: { x: 10, y: 20 }, device: { id: 'desk-1', self: true }, profileSet: 'work' },
+    ]);
+  });
+
+  it('takes a create while this desktop is still reading its profiles, and before the first tick', async () => {
+    const t = testBackend();
+    expect(t.backend.command({ type: 'create', at: { x: 1, y: 2 } })).toBe(true);
+    await t.backend.ready;
+    t.rows();
+    expect(t.backend.getSnapshot().spawn?.devices[0]?.state).toBe('reading');
+    expect(t.backend.command({ type: 'create', target: { profileSet: 'work' } })).toBe(true);
+    expect(t.sink.created).toEqual([
+      { at: { x: 1, y: 2 }, device: { id: 'desk-1', self: true } },
+      { device: { id: 'desk-1', self: true }, profileSet: 'work' },
+    ]);
+  });
+
+  it('routes to a ready peer and refuses one that is asleep', async () => {
+    const t = testBackend({
+      facts: facts({
+        profileSets: sets,
+        spawnPeers: [
+          { id: 'laptop', label: 'Laptop', state: 'ready', profiles: [{ id: 'native', label: 'That Mac' }] },
+          { id: 'tower', label: 'Tower', state: 'asleep', phrase: 'is asleep' },
+        ],
+      }),
+    });
+    await t.backend.ready;
+    t.rows();
+    expect(t.backend.command({ type: 'create', target: { deviceId: 'laptop', profileSet: 'native' } })).toBe(true);
+    expect(t.backend.command({ type: 'create', target: { deviceId: 'laptop', profileSet: 'work' } })).toBe(false);
+    expect(t.backend.command({ type: 'create', target: { deviceId: 'tower' } })).toBe(false);
+    expect(t.sink.created).toEqual([{ device: { id: 'laptop', self: false }, profileSet: 'native' }]);
+  });
+
+  it('reports a sink that throws or rejects, and still counts the command as routed', async () => {
+    const errors: unknown[] = [];
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), onError: (error) => errors.push(error) });
+    await t.backend.ready;
+    t.rows();
+    t.sink.select = () => {
+      throw new Error('sync');
+    };
+    t.sink.create = () => Promise.reject(new Error('async'));
+    expect(t.backend.command({ type: 'select', id: 'run-1' })).toBe(true);
+    expect(t.backend.command({ type: 'create' })).toBe(true);
+    await Promise.resolve();
+    expect(errors.map((error) => (error as Error).message)).toEqual(['sync', 'async']);
+  });
+});

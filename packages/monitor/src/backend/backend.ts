@@ -33,6 +33,7 @@ import type {
   MonitorHostRun,
   MonitorHostTerminal,
   MonitorScheduler,
+  MonitorSelectTarget,
 } from './ports.js';
 
 export const DEFAULT_RECENCY_INTERVAL_MS = 10_000;
@@ -132,6 +133,14 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       options.onError?.(error);
     } catch {
       // a diagnostic hook cannot interrupt the backend
+    }
+  };
+  /** A verb's outcome is the host's to say; here a sink that throws or rejects is only reported. */
+  const route = (call: () => void | Promise<void>): void => {
+    try {
+      Promise.resolve(call()).catch(report);
+    } catch (error) {
+      report(error);
     }
   };
 
@@ -489,7 +498,52 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       listeners.add(onChange);
       return () => listeners.delete(onChange);
     },
-    command: () => false,
+    command(command) {
+      if (disposed) return false;
+      if (command.type === 'select') {
+        const entry = entries.get(command.id);
+        if (!entry) return false;
+        const { inputs } = entry;
+        const target: MonitorSelectTarget =
+          inputs.kind === 'agent'
+            ? {
+                id: command.id,
+                kind: 'agent',
+                runtimeRunId: inputs.host.runtimeRunId,
+                ...(inputs.host.terminalSessionId === undefined
+                  ? {}
+                  : { terminalSessionId: inputs.host.terminalSessionId }),
+              }
+            : { id: command.id, kind: 'terminal', terminalSessionId: inputs.host.sessionId };
+        route(() => options.sink.select(target));
+        return true;
+      }
+      const menu = lastSpawn ?? spawnMenuOf(host.getFacts(), new Set());
+      const deviceId = command.target?.deviceId;
+      const device =
+        deviceId === undefined
+          ? menu.devices.find((candidate) => candidate.self === true)
+          : menu.devices.find((candidate) => candidate.id === deviceId);
+      if (!device) return false;
+      // Only `ready` takes a terminal; this desktop also while its profiles are still being read (today's hold).
+      if (device.state !== 'ready' && !(device.self === true && device.state === 'reading')) return false;
+      const profileSet = command.target?.profileSet;
+      if (
+        profileSet !== undefined &&
+        device.profiles !== undefined &&
+        !device.profiles.some((profile) => profile.id === profileSet)
+      ) {
+        return false;
+      }
+      route(() =>
+        options.sink.create({
+          ...(command.at ? { at: command.at } : {}),
+          device: { id: device.id, self: device.self === true },
+          ...(profileSet === undefined ? {} : { profileSet }),
+        }),
+      );
+      return true;
+    },
     reportShown(screenId, ids) {
       if (disposed) return;
       const next = new Set(ids);
