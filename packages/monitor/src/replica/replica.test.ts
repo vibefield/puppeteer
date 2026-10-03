@@ -499,9 +499,9 @@ describe('createMonitorReplica', () => {
   });
 
   it('defaults to requestAnimationFrame where there is one', () => {
-    const frames: FrameRequestCallback[] = [];
+    const frames: ((time: number) => void)[] = [];
     const cancel = vi.fn();
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('requestAnimationFrame', (callback: (time: number) => void) => frames.push(callback));
     vi.stubGlobal('cancelAnimationFrame', cancel);
     const replica = createMonitorReplica();
     const listener = vi.fn();
@@ -518,7 +518,7 @@ describe('createMonitorReplica', () => {
 
   it('falls back to a 16 ms timer where there is no frame', () => {
     vi.useFakeTimers();
-    expect(typeof globalThis.requestAnimationFrame).toBe('undefined');
+    expect('requestAnimationFrame' in globalThis).toBe(false);
     const replica = createMonitorReplica();
     const listener = vi.fn();
     replica.subscribe(listener);

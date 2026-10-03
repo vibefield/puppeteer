@@ -1,7 +1,9 @@
-import type { AgentView, ModelChanges, MonitorModel } from '@vibecook/puppeteer-view-sdk';
 import {
   compareMonitorRows,
+  type AgentView,
+  type ModelChanges,
   type MonitorAgentRow,
+  type MonitorModel,
   type MonitorModelChange,
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
@@ -104,11 +106,18 @@ interface Joined {
   readonly view: AgentView;
 }
 
+/** A browser's frame, reached narrowly: this package compiles without the DOM (M8), and Node has no frame. */
+const frameGlobals = globalThis as typeof globalThis & {
+  readonly requestAnimationFrame?: (callback: () => void) => number;
+  readonly cancelAnimationFrame?: (handle: number) => void;
+};
+
 function frameScheduler(): MonitorReplicaScheduler {
-  if (typeof globalThis.requestAnimationFrame === 'function') {
+  const { requestAnimationFrame, cancelAnimationFrame } = frameGlobals;
+  if (typeof requestAnimationFrame === 'function' && typeof cancelAnimationFrame === 'function') {
     return (callback) => {
-      const handle = globalThis.requestAnimationFrame(() => callback());
-      return () => globalThis.cancelAnimationFrame(handle);
+      const handle = requestAnimationFrame.call(globalThis, () => callback());
+      return () => cancelAnimationFrame.call(globalThis, handle);
     };
   }
   return (callback) => {
