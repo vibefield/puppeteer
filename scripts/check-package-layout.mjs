@@ -85,7 +85,7 @@ const architectureDependencies = new Map([
   ['packages/view-sdk', []],
   ['packages/monitor', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-view-sdk']],
   ['packages/react', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-monitor']],
-  ['packages/views', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-react']],
+  ['packages/views', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-react', '@vibecook/puppeteer-view-sdk']],
   [
     'apps/godview',
     [

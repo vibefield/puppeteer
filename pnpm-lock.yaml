@@ -552,6 +552,9 @@ importers:
       '@vibecook/puppeteer-react':
         specifier: workspace:*
         version: link:../react
+      '@vibecook/puppeteer-view-sdk':
+        specifier: workspace:*
+        version: link:../view-sdk
       '@webgpu/types':
         specifier: 0.1.72
         version: 0.1.72
