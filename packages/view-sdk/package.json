@@ -14,7 +14,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./model": "./src/model.ts"
+    "./model": "./src/model.ts",
+    "./toolkit": "./src/toolkit/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -29,6 +30,10 @@
       "./model": {
         "types": "./dist/model.d.ts",
         "import": "./dist/model.js"
+      },
+      "./toolkit": {
+        "types": "./dist/toolkit/index.d.ts",
+        "import": "./dist/toolkit/index.js"
       }
     }
   },
