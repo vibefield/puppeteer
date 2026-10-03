@@ -14,7 +14,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./model": "./src/model.ts"
+    "./model": "./src/model.ts",
+    "./react": "./src/react/index.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -29,6 +30,10 @@
       "./model": {
         "types": "./dist/model.d.ts",
         "import": "./dist/model.js"
+      },
+      "./react": {
+        "types": "./dist/react/index.d.ts",
+        "import": "./dist/react/index.js"
       }
     }
   },
@@ -43,7 +48,24 @@
   "engines": {
     "node": ">=22.18.0"
   },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "^20.14.5",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "vitest": "^3.0.0"
   }
 }
