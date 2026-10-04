@@ -126,7 +126,9 @@ describe('AgentMonitorInspector', () => {
       },
       omitted: { subagents: 3 },
     });
-    const markup = renderToStaticMarkup(<AgentMonitorInspector state={root} nowMs={Date.parse(OBSERVED_AT)} />);
+    const markup = renderToStaticMarkup(
+      <AgentMonitorInspector state={root} nowMs={Date.parse(OBSERVED_AT)} onAcknowledge={() => undefined} />,
+    );
     const content = plainText(markup);
 
     expect(content).toContain(
@@ -157,7 +159,9 @@ describe('AgentMonitorInspector', () => {
   it('keeps unavailable usage unknown instead of presenting zero', () => {
     const empty = monitorState('run-empty');
     const content = plainText(
-      renderToStaticMarkup(<AgentMonitorInspector state={empty} nowMs={Date.parse(OBSERVED_AT)} />),
+      renderToStaticMarkup(
+        <AgentMonitorInspector state={empty} nowMs={Date.parse(OBSERVED_AT)} onAcknowledge={() => undefined} />,
+      ),
     );
 
     expect(content).toContain('run total · idle usage unavailable');

@@ -675,6 +675,18 @@ describe('identity (L4)', () => {
     expect(t.rows()[0]?.project).toEqual({ name: 'site', seq: 0 });
   });
 
+  it('deals nothing for a key the host is still folding (null), then the key the host names', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ projectKey: null })] }),
+      states: [monitorState({ environment: { cwd: '/Users/me/site', worktrees: [] } })],
+    });
+    await t.backend.ready;
+    expect(t.rows()[0]?.project).toEqual({ name: 'site' });
+    expect(t.identity.seq('/Users/me/site')).toBeUndefined();
+    t.host.update({ runs: [hostRun({ projectKey: '/Users/me/site' })] });
+    expect(t.rows()[0]?.project).toEqual({ name: 'site', seq: 0 });
+  });
+
   it('asks the store before dealing, so a host-restored sequence is kept', async () => {
     const t = testBackend({ facts: facts({ runs: [hostRun({ projectKey: '/repo' })] }) });
     // the host hands its persisted sequences to the store before the first fold
@@ -1304,6 +1316,81 @@ describe('cost across epochs (M15)', () => {
       expect(t.rows()[0]?.cost).toMatchObject({ usd: expected, coverage: 'complete' });
       expect(t.rows()[0]?.cost?.series?.steps.at(-1)).toBe(expected);
     }
+  });
+});
+
+describe('unobserved agents (M17)', () => {
+  const shellAndRun = () =>
+    facts({
+      runs: [hostRun({ terminalSessionId: 'pty-1' })],
+      terminals: [hostTerminal({ sessionId: 'pty-1' })],
+    });
+
+  it("'row' (the default, VibeField's): a run before its first state is a starting row that speaks for its terminal", async () => {
+    for (const options of [{}, { unobservedAgents: 'row' as const }]) {
+      const t = testBackend({ facts: shellAndRun(), ...options });
+      await t.backend.ready;
+      expect(t.rows().map((row) => [row.id, row.kind, row.observed, row.detail])).toEqual([
+        ['pty-1', 'agent', false, 'starting'],
+      ]);
+    }
+  });
+
+  it("'terminal' (Godview's): no agent row before the first state, and the run's terminal stands in, not deduped", async () => {
+    const t = testBackend({ facts: shellAndRun(), unobservedAgents: 'terminal' });
+    await t.backend.ready;
+    expect(t.rows().map((row) => [row.id, row.kind, row.detail])).toEqual([['pty-1', 'terminal', '/Users/me/notes']]);
+    // A run with no terminal on this desktop is no row at all until the runtime speaks.
+    t.host.update({
+      runs: [hostRun({ terminalSessionId: 'pty-1' }), hostRun({ runtimeRunId: 'run-2', terminalSessionId: undefined })],
+    });
+    expect(t.rows().map((row) => row.id)).toEqual(['pty-1']);
+  });
+
+  it("'terminal': the first state promotes the terminal's row in place, at once: the agent takes its id and the shell row goes", async () => {
+    const t = testBackend({ facts: shellAndRun(), unobservedAgents: 'terminal' });
+    await t.backend.ready;
+    const [shell] = t.rows();
+    expect(shell).toMatchObject({ id: 'pty-1', kind: 'terminal' });
+    const before = t.changes.length;
+    t.source.push(monitorState());
+    // Urgent: a first state flushes inside the push, with no tick.
+    expect(t.changes.length).toBe(before + 1);
+    expect(t.backend.getSnapshot().rows.map((row) => [row.id, row.kind, row.observed, row.detail])).toEqual([
+      ['pty-1', 'agent', true, 'Edit · src/app.ts'],
+    ]);
+    expect(t.changes.at(-1)).toMatchObject({ upserts: [{ id: 'pty-1', kind: 'agent' }], removed: [] });
+    expect(t.backend.getSnapshot().rows[0]).not.toBe(shell);
+  });
+
+  it("'terminal': a run on no terminal appears under its own id at its first state, and goes with its removal", async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ terminalSessionId: undefined })] }),
+      unobservedAgents: 'terminal',
+    });
+    await t.backend.ready;
+    expect(t.rows()).toEqual([]);
+    t.source.push(monitorState());
+    expect(t.backend.getSnapshot().rows.map((row) => [row.id, row.kind])).toEqual([['run-1', 'agent']]);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    expect(t.backend.getSnapshot().rows).toEqual([]);
+  });
+
+  it("'terminal': once the runtime removes the run, its terminal is a terminal row again under the same id", async () => {
+    const t = testBackend({ facts: shellAndRun(), states: [monitorState()], unobservedAgents: 'terminal' });
+    await t.backend.ready;
+    expect(t.rows().map((row) => [row.id, row.kind])).toEqual([['pty-1', 'agent']]);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    expect(t.rows().map((row) => [row.id, row.kind])).toEqual([['pty-1', 'terminal']]);
+  });
+
+  it("'terminal' leaves an observed run exactly as 'row' does", async () => {
+    const rows = async (unobservedAgents: 'row' | 'terminal') => {
+      const t = testBackend({ facts: shellAndRun(), states: [monitorState()], unobservedAgents });
+      await t.backend.ready;
+      return t.rows();
+    };
+    expect(await rows('terminal')).toEqual(await rows('row'));
   });
 });
 

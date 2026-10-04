@@ -2618,7 +2618,8 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
             <div class="callout">
               <strong>Companion app APIs.</strong> The
               <a href="agent-management-api.html#godview">management reference</a> documents the Agents drawer, profile
-              defaults, quota batches and <a href="agent-management-api.html#usage-history">persisted usage ledger</a>.
+              defaults, quota batches and the <a href="agent-management-api.html#usage-history">usage ledger</a> (its file
+              store retired 2026-10-04, MV-2).
               The <a href="agent-aggregation-api.html">aggregation reference</a> documents Find, indexed history and
               native-session joins. The monitor transport below continues to own live state and operational
               notifications.
@@ -3377,7 +3378,14 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               >
               <a class="source-link" href="../apps/godview/src/main/monitor-ipc.ts"
                 ><strong>godview/main/monitor-ipc.ts</strong
-                ><span>Relay, tombstones, race-free handles and IPC validation.</span></a
+                ><span
+                  >Relay, tombstones, race-free handles and IPC validation. Since 2026-10-04 (MV-2) it feeds only the
+                  chrome outside the monitor views and the notifications; the views read the backend's model.</span
+                ></a
+              >
+              <a class="source-link" href="../apps/godview/src/main/monitor-host.ts"
+                ><strong>godview/main/monitor-host.ts</strong
+                ><span>MV-2: the monitor backend's host port (runs, terminals, identity, accounts).</span></a
               >
               <a class="source-link" href="../apps/godview/src/preload/preload.ts"
                 ><strong>godview/preload/preload.ts</strong
@@ -3389,11 +3397,17 @@ function isMonitorStateAfterRemoval(state, sealedEpoch) {
               >
               <a class="source-link" href="../apps/godview/src/renderer/monitor/useMonitorAgents.ts"
                 ><strong>godview/monitor/useMonitorAgents.ts</strong
-                ><span>Live-first renderer bootstrap and combined subscription.</span></a
+                ><span
+                  >Since 2026-10-04 (MV-2): the window's replica of the backend's model, its local join, and the legacy
+                  bridge for the four views.</span
+                ></a
               >
-              <a class="source-link" href="../apps/godview/src/renderer/monitor/agents.ts"
-                ><strong>godview/monitor/agents.ts</strong
-                ><span>Pure session/terminal → <span class="mono">MonitorAgent[]</span> projection.</span></a
+              <a class="source-link" href="../apps/godview/src/renderer/monitor/differential/old-agents.ts"
+                ><strong>godview/monitor/differential/old-agents.ts</strong
+                ><span
+                  >The pre-MV-2 session/terminal → <span class="mono">MonitorAgent[]</span> projection, frozen as the
+                  differential's reference (agents.ts retired 2026-10-04).</span
+                ></a
               >
               <a class="source-link" href="../apps/godview/src/renderer/monitor/types.ts"
                 ><strong>godview/monitor/types.ts</strong

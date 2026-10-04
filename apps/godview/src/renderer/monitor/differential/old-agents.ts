@@ -1,11 +1,24 @@
+/**
+ * THE OLD SEAM, FROZEN (MV-2's differential reference; never edit).
+ *
+ * `apps/godview/src/renderer/monitor/agents.ts` exactly as it stood at puppeteer
+ * 1afaff7 (only its import paths moved with the file), and below it the
+ * projection `useMonitorAgents.ts` ran over it at 1afaff7, as a plain stepper:
+ * the record bookkeeping of its subscription effect, and the body of its
+ * `agents` memo (usage fold, assembly, visual ids, unread fold, account). The
+ * libraries it calls (puppeteer-views' ledgers and formats, core's headline and
+ * recency, the monitor store) are byte-identical to 1afaff7 on this branch
+ * (`git diff 1afaff7 -- packages/views/src packages/core/src
+ * packages/monitor/src/store.ts` is empty), so they are imported, not copied.
+ */
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { classifyMonitorRecency, presentAgentMonitorHeadline, type AgentMonitorState } from '@vibecook/puppeteer-core';
-import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../agent-status.js';
+import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../../protocol.js';
+import { classifyTerminalStatus, projectLabel, type AgentVisualStatus } from '../../agent-status.js';
 import { folderName, formatUsd } from '@vibecook/puppeteer-views';
-import type { PaneAttachment } from '../pane-attachments.js';
+import type { PaneAttachment } from '../../pane-attachments.js';
 import { projectTint, type ProjectTint } from '@vibecook/puppeteer-views';
-import type { MonitorAgent } from './types.js';
+import type { MonitorAgent } from '../types.js';
 import type { UsageHistory } from '@vibecook/puppeteer-views';
 
 export interface MonitorAgentRecord {

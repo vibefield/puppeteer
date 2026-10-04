@@ -40,9 +40,7 @@ import {
   type GodviewTuning,
   type TweakSection,
 } from './TweakPanel.js';
-import type { AgentVisualStatus } from './agent-status.js';
 import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
-import { monitorAgentCounts, nextMonitorAgentForStatus } from './monitor/agents.js';
 import { useMonitorPalette } from '@vibecook/puppeteer-views';
 import {
   loadMonitorParameters,
@@ -52,6 +50,8 @@ import {
   type MonitorParameters,
 } from '@vibecook/puppeteer-views';
 import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
+import type { MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
+import { frameScheduler, MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
 import type { AgentMonitorView } from '@vibecook/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
@@ -183,6 +183,26 @@ const usagePort: AccountUsagePort = {
   snapshot: () => window.puppeteer.accountUsage(),
   subscribe: (listener) => window.puppeteer.onAccountUsage(listener),
 };
+
+/** The stage before its first measurement: nothing to steer around yet. */
+const EMPTY_STAGE: StageGeometry = Object.freeze({
+  width: 0,
+  height: 0,
+  insets: Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 }),
+  obstacles: Object.freeze([]),
+});
+
+/** The person's reduced-motion preference, live. */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = (): void => setReduced(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  return reduced;
+}
 
 const WorkspaceReporterContext = createContext<(workspace: GhostteaWorkspaceContext) => void>(() => undefined);
 
@@ -329,7 +349,10 @@ function Godview() {
   }, [tweakPanelOpen]);
 
   // Views that lay out in flow clear the chrome with these; the swarm instead
-  // reads the chrome's rect directly and steers bodies around it.
+  // reads the chrome's rect directly and steers bodies around it. The same
+  // measurement is the view host's stage (MV-D19): its size, the chrome's right
+  // edge as the left inset, and the chrome's rect as an obstacle.
+  const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
     const chrome = chromeRef.current;
@@ -337,14 +360,34 @@ function Godview() {
     const publish = (): void => {
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
+      const chromeRight = Math.round(rect.right - stageRect.left);
       stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${Math.round(rect.right - stageRect.left)}px`);
+      stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
+      setStageGeometry({
+        width: Math.round(stageRect.width),
+        height: Math.round(stageRect.height),
+        insets: { top: 0, right: 0, bottom: 0, left: chromeRight },
+        obstacles: [
+          {
+            x: Math.round(rect.left - stageRect.left),
+            y: Math.round(rect.top - stageRect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          },
+        ],
+      });
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
+    observer.observe(stage);
     publish();
     return () => observer.disconnect();
   }, []);
+  const reducedMotion = useReducedMotion();
+  const monitorTheme = useMemo<MonitorTheme>(
+    () => ({ scheme: theme, tokens: palette, reducedMotion, animations: true }),
+    [palette, reducedMotion, theme],
+  );
 
   // Each pane owns a colour (record §02, revised 2026-09-12): dealt as panes
   // open, on the wheel parallel to the projects', retired with the pane. The
@@ -399,7 +442,7 @@ function Godview() {
     [workspace],
   );
 
-  const { agents, actions, history, notifications, dismissNotification } = useMonitorAgents({
+  const monitor = useMonitorAgents({
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
@@ -407,23 +450,15 @@ function Godview() {
     closingSessionIds,
     onSessionExited,
     palette,
-    profileLabels: profiles.labels,
   });
+  // The chrome's rows (M19): the inspector, Find, the deck's frames and split sessions read these; the views, the
+  // counts and the status shortcuts read the model through the replica.
+  const { agents, actions, counts, selectNextStatus, notifications, dismissNotification } = monitor;
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
   const frameFallbackCwds = useMemo(() => paneFallbackCwds(agentsBySession), [agentsBySession]);
   const activeAgent = agents.find((agent) => agent.active);
-
-  const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
-
-  const selectNextStatus = useCallback(
-    (status: AgentVisualStatus): void => {
-      const next = nextMonitorAgentForStatus(agents, status, workspace?.activeSession?.id);
-      if (next) actions.select(next);
-    },
-    [actions, agents, workspace?.activeSession?.id],
-  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -645,7 +680,6 @@ function Godview() {
     '--vf-scanline-opacity': stageParameters[SCANLINE_OPACITY_KEY] ?? 0.4,
     '--vf-vignette-opacity': stageParameters[VIGNETTE_OPACITY_KEY] ?? 1,
   } as CSSProperties;
-  const MonitorView = view.Component;
 
   return (
     <div
@@ -763,7 +797,16 @@ function Godview() {
       />
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-        <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} history={history} />
+        {/* One view, through the view host's legacy bridge (L6), drawn from this window's replica (MV-2). */}
+        <MonitorViewHost
+          replica={monitor.replica}
+          view={monitor.views.get(view.id)!}
+          stage={stageGeometry}
+          theme={monitorTheme}
+          parameters={parameters}
+          commands={monitor.commands}
+          scheduler={frameScheduler}
+        />
         <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
           <UsageColumn port={usagePort} />
         </div>
@@ -772,6 +815,7 @@ function Godview() {
             key={activeAgent.agent.monitor.runtimeRunId}
             state={activeAgent.agent.monitor}
             nowMs={Date.now()}
+            onAcknowledge={() => monitor.acknowledge(activeAgent.id)}
             {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
           />
         ) : null}

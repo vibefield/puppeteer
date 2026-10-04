@@ -5,9 +5,9 @@ import type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
 } from '@vibecook/puppeteer-views';
+import type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
+import type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
 import type {
   LauncherAgent,
   LauncherHistoryStatus,
@@ -36,7 +36,6 @@ import type {
   ReleaseCheckResult,
 } from '@vibecook/puppeteer-runtime';
 import type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -49,7 +48,6 @@ export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
 export type WorkspaceFinalEvent = AgentWorkspaceFinal;
 export type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -191,10 +189,9 @@ export type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
-  UsageRunRecord,
 } from '@vibecook/puppeteer-views';
+export type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
+export type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
 
 /* The empty pane launcher (QL-1): the port's questions as main answers them.
    The shapes are the launcher's own (`@vibecook/puppeteer-views/launcher`);
@@ -248,11 +245,28 @@ export interface PuppeteerBridge {
   interruptAgent(runtimeSessionId: string): Promise<AgentInterruptResult>;
   /** Resume an exited agent from its own continuation; the caller mounts the returned session. */
   resumeAgentSession(runtimeSessionId: string): Promise<CreateAgentSessionResult>;
-  listAgentMonitors(): Promise<AgentMonitorStateMessage[]>;
-  onAgentMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  /**
+   * THE CHROME'S FEED (M19): every run's full monitor state, for the chrome outside the monitor views (the inspector,
+   * Find, the deck's pane frames, split sessions) and nothing else. The views, the counts and the status shortcuts
+   * read the model (`onMonitorModel`).
+   */
+  listChromeMonitors(): Promise<AgentMonitorStateMessage[]>;
+  onChromeMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  onChromeMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;
-  onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
-  acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
+  /**
+   * The monitor model (MV-2): asks main for a snapshot, at mount and again after a gap. It arrives through
+   * `onMonitorModel`, on the one ordered channel the changes travel (M23); a window that is no Godview tab gets none.
+   */
+  requestMonitorSnapshot(): void;
+  /** The model for this window's replica: the snapshot it asked for, and every change, in revision order. */
+  onMonitorModel(cb: (update: MonitorModelSnapshot | MonitorModelChange) => void): () => void;
+  /** This window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact). */
+  reportMonitorTerminals(terminals: MonitorHostTerminal[]): void;
+  /** The rows this window shows in its active pane (L5): any window showing a row clears its unread mark. */
+  reportMonitorShown(ids: string[]): void;
+  /** Acknowledges a crashed row's failure (M3); false when the row has none to acknowledge. */
+  acknowledgeMonitorRow(id: string): Promise<boolean>;
   workspaceDiff(runtimeSessionId: string): Promise<WorkspaceDiff | null>;
   onWorkspaceFinal(cb: (event: WorkspaceFinalEvent) => void): () => void;
   accountUsage(): Promise<AccountUsageBatch>;
@@ -290,8 +304,4 @@ export interface PuppeteerBridge {
   launcherWords(request: LauncherWordsRequest): Promise<LauncherWordsAnswer>;
   /** Resume a past conversation by provider-native id; the caller mounts the returned session. */
   resumeNativeSession(request: ResumeNativeSessionRequest): Promise<CreateAgentSessionResult>;
-  /** The persisted usage ledger for a conversation, or null when none was saved. */
-  loadUsageHistory(key: UsageHistoryKey): Promise<UsageLedgerRecord | null>;
-  /** Persist the live agents' usage ledgers; main merges them into the cache. */
-  saveUsageHistory(records: UsageLedgerRecord[]): Promise<void>;
 }

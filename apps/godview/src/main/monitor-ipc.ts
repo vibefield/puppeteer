@@ -26,11 +26,6 @@ export interface AgentMonitorRemovedMessage {
   revision: number | null;
 }
 
-export interface AcknowledgeAgentFailureRequest {
-  runtimeRunId: string;
-  blockerId: string;
-}
-
 /** Shared renderer ordering rule for full replacement messages. */
 export function isNewerAgentMonitorStateMessage(
   current: AgentMonitorStateMessage | undefined,
@@ -66,32 +61,6 @@ export function isOpaqueMonitorIdentifier(value: unknown): value is string {
     !value.toLowerCase().startsWith('file:') &&
     !/^[a-zA-Z]:/.test(value)
   );
-}
-
-export function parseAcknowledgeAgentFailureRequest(value: unknown): AcknowledgeAgentFailureRequest | undefined {
-  if (!isRecord(value)) return undefined;
-  if (!isOpaqueMonitorIdentifier(value.runtimeRunId) || !isOpaqueMonitorIdentifier(value.blockerId)) return undefined;
-  return { runtimeRunId: value.runtimeRunId, blockerId: value.blockerId };
-}
-
-export interface MonitorIpcRuntimeActions {
-  acknowledgeFailureBlocker(runtimeRunId: string, blockerId: string): Promise<boolean>;
-}
-
-export interface MonitorIpcRunLookup {
-  hasRun(runtimeRunId: string): boolean;
-}
-
-export function acknowledgeAgentFailureForIpc(
-  runtime: MonitorIpcRuntimeActions,
-  runs: MonitorIpcRunLookup,
-  input: unknown,
-): Promise<boolean> {
-  const request = parseAcknowledgeAgentFailureRequest(input);
-  if (!request || !runs.hasRun(request.runtimeRunId)) return Promise.resolve(false);
-  // The runtime accepts only retained, dead failure blockers. Permission and
-  // question blockers cannot be dismissed through this operation.
-  return runtime.acknowledgeFailureBlocker(request.runtimeRunId, request.blockerId);
 }
 
 export interface MonitorIpcRelayOptions {
@@ -226,7 +195,7 @@ export class MonitorIpcRelay {
   }
 }
 
-export interface MonitorIpcRuntimeSource extends MonitorIpcRuntimeActions {
+export interface MonitorIpcRuntimeSource {
   runtimeRunInfo(runtimeRunId: string):
     | {
         status: 'allocated' | 'preparing' | 'prepared' | 'active' | 'terminal';

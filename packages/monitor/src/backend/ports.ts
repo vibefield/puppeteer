@@ -34,8 +34,13 @@ export interface MonitorHostRun {
   readonly replacedTerminalSessionId?: string | undefined;
   /** The stable identity the host keeps for its PTY across handoffs, when it keeps one. */
   readonly terminalIdentity?: string | undefined;
-  /** The canonical root the host folds the project to: the key its colour is dealt by. */
-  readonly projectKey?: string | undefined;
+  /**
+   * The canonical root the host folds the project to: the key its colour is dealt by. Absent: the backend falls back to
+   * the observed directory. Null: the host folds projects itself and has not folded this run's yet, so the row deals
+   * nothing and wears the neutral ramp until the host names its key (puppeteer Godview's registry folds a workspace to
+   * its Git root asynchronously, and its rows wear the ramp until then).
+   */
+  readonly projectKey?: string | null | undefined;
   readonly workspace?:
     | {
         readonly root?: string | undefined;
@@ -43,6 +48,12 @@ export interface MonitorHostRun {
         readonly branch?: string | undefined;
       }
     | undefined;
+  /**
+   * A branch the host supplies for when the observation names none (M26): shown when the runtime saw no repository
+   * (`git: null`) or no branch (a detached HEAD), and when nothing looked. Puppeteer's Godview supplies its
+   * workspace's branch, as its seam fell back to it; VibeField supplies none, which keeps its observation-first rule.
+   */
+  readonly fallbackBranch?: string | undefined;
   /** The terminal's own directory, the last fallback for the project's name. */
   readonly cwd?: string | undefined;
   readonly profileId?: string | undefined;
@@ -172,6 +183,13 @@ export interface CreateMonitorBackendOptions {
    * Default `accumulate`.
    */
   cost?: { readonly acrossEpochs?: 'accumulate' | 'current' | undefined } | undefined;
+  /**
+   * An agent before its first state (M17): `row` is VibeField's reading (the run is a "starting" row, `observed: false`,
+   * and speaks for its terminal at once); `terminal` is puppeteer Godview's (no agent row until the runtime reports a
+   * state; the run's terminal stands in, NOT deduped, and the agent row takes its id when the first state arrives).
+   * Default `row`.
+   */
+  unobservedAgents?: 'row' | 'terminal' | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
   /**

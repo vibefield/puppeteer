@@ -2630,6 +2630,13 @@ interface AccountUsageBatch {
           <section id="usage-history">
             <h2>Godview usage persistence</h2>
             <p class="section-note">
+              <strong>Retired 2026-10-04 (MV-2, plan decision L11).</strong> The usage file store, its two bridge
+              methods and the renderer's persistence are gone: the monitor backend in main keeps the ten-minute window
+              in memory for the app's lifetime and refills it from Core's own cost buckets
+              (<a href="../packages/monitor/src/backend/README.md">backend README, Cost</a>). The text below describes
+              the retired store.
+            </p>
+            <p class="section-note">
               The renderer keeps held totals and step snapshots so a resumed conversation can restore its usage bars.
               Main stores this ledger under the application cache directory.
             </p>
@@ -2715,9 +2722,9 @@ interface UsageHistoryKey {
               ><a class="source-link" href="../apps/godview/src/main/account-usage-monitor.ts"
                 ><strong>Usage scheduling</strong
                 ><span>Polling, push ingestion, profile rows and retained stale results.</span></a
-              ><a class="source-link" href="../apps/godview/src/main/usage-history-store.ts"
-                ><strong>Usage persistence</strong
-                ><span>Bounded app cache for restored conversation usage bars.</span></a
+              ><a class="source-link" href="../packages/monitor/src/backend/usage-ledger.ts"
+                ><strong>Usage ledger</strong
+                ><span>The backend's in-memory ledger (the file store retired in MV-2, L11).</span></a
               ><a class="source-link" href="../apps/godview/src/renderer/AgentsDrawer.tsx"
                 ><strong>Agents drawer</strong><span>Current installs/accounts UI and management actions.</span></a
               ><a class="source-link" href="rfcs/006-agent-distribution-and-account-profiles.md"

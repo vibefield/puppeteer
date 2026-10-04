@@ -95,6 +95,7 @@ const architectureDependencies = new Map([
       '@vibecook/puppeteer-react',
       '@vibecook/puppeteer-record',
       '@vibecook/puppeteer-runtime',
+      '@vibecook/puppeteer-view-sdk',
       '@vibecook/puppeteer-views',
       '@vibecook/puppeteer-workspaces',
     ],

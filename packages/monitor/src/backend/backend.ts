@@ -129,6 +129,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs;
   const recencyIntervalMs = options.recencyIntervalMs ?? DEFAULT_RECENCY_INTERVAL_MS;
   const accumulateAcrossEpochs = (options.cost?.acrossEpochs ?? 'accumulate') === 'accumulate';
+  const withholdUnobserved = (options.unobservedAgents ?? 'row') === 'terminal';
   const report = (error: unknown): void => {
     try {
       options.onError?.(error);
@@ -309,6 +310,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       // M25: one record of removals, the store's capped seal. A run the runtime removed and nothing has revived is
       // no row, even while the host names it again, as long as its seal is within the cap.
       if (!state && store.isSealed(run.runtimeRunId)) continue;
+      // M17 — Godview's reading: until the runtime's first state the run is no row and claims nothing, so its
+      // terminal stands in; at that state the run takes the terminal row's id below, and the shell keeps its body.
+      if (!state && withholdUnobserved) continue;
       let id = idByRun.get(run.runtimeRunId);
       if (id === undefined || taken.has(id)) {
         const terminalId = (session: string | undefined): string | undefined =>

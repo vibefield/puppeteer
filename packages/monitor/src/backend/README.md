@@ -19,7 +19,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 
 `MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
 (AR-4) · `terminalIdentity?` · `projectKey?` (the canonical root the host folds to) · `workspace? {root, sourcePath,
-branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
+branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
 `MonitorHostTerminal`: `sessionId` · `identity?` · `createdAt` (0 = unknown, VibeField's floor rows) · `cwd?` · `title?` ·
 `activity? {kind}` · `profileSet?` · `workloadClass?` · `exited?`.
 
@@ -64,8 +64,8 @@ host that breaks one.
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
 | `activity` | core's `{ kind, line (trimmed), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
-| `project.branch` | observation first (vf): `git !== undefined ? git?.branch ?? null : workspace.branch` | — |
-| `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key | absent (the ramp) |
+| `project.branch` | the observed branch when the observation names one; else the host's `fallbackBranch` (M26: pu supplies its workspace's, as its seam read `git?.branch ?? workspace.branch`; vf supplies none); else vf's rule: `git !== undefined ? null : workspace.branch` | — |
+| `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key, and while the host's key is `null` (it is still folding the project: no fallback) | absent (the ramp) |
 | `provider` | host `provider` | — |
 | `model` | `state.model.displayName \|\| state.model.id` | — |
 | `effort` | `{ value: state.effort.value, intent? }` (M2) | — |
@@ -137,7 +137,9 @@ where its persisted `next` keeps the dropped sequences retired and a max + 1 rea
 VibeField's: `createMemoryProjectIdentityStore(entries, { next })`, the larger of the floor and the dealt sequences
 (`loadProjectLedger`). The other divergence is the KEY, a host choice: puppeteer folds to realpath + git toplevel in
 main; VibeField uses `workspace.root || sourcePath || monitor.cwd`; the backend takes the host's key and falls back to the
-observed directory.
+observed directory. A host that folds asynchronously says `projectKey: null` until it has (puppeteer Godview: its
+registry folds a workspace to the Git root, and today's rows wear the ramp until then), so nothing is dealt from the
+observed directory meanwhile.
 
 ## Spawn menu
 
@@ -169,6 +171,11 @@ and the row goes through the ordinary removal; an unresolvable command returns f
 - **M4** pu's detail appends `+N blockers` and `~$x estimated API cost · $y/min`; vf's prefers the reply line and
   `kind · tool`. The row's `detail` is the headline; `reply`, `wait` (with `count`), `cost` carry the rest; the legacy
   shim composes each host's line (`detail: 'reply-first' | 'headline-cost'`), ported views use vf's reply-first rule.
+- **M17** an agent before its first state is a host option, `unobservedAgents: 'row' | 'terminal'`. `row` (the
+  default, vf's): the run is a "starting" row (`observed: false`) that speaks for its terminal at once. `terminal`
+  (pu's): the run is no row and claims nothing until the runtime reports a state, so its terminal stands in, not
+  deduped; at the first state (urgent, so it flushes inside the push) the agent row takes the terminal row's id and the
+  shell keeps its body.
 - vf's floor rows say `agent PTY · in no pane` — "in no pane" is a window fact; here they are terminals with no cwd.
 - Notifications stay in the store (bounded); the model carries none (not in the contract).
 

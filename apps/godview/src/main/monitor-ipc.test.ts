@@ -6,12 +6,11 @@ import {
   type MonitorNotification,
 } from '@vibecook/puppeteer-core';
 import {
-  acknowledgeAgentFailureForIpc,
   connectMonitorIpcRelay,
   isAgentMonitorStateAfterRemoval,
   isNewerAgentMonitorStateMessage,
+  isOpaqueMonitorIdentifier,
   MonitorIpcRelay,
-  parseAcknowledgeAgentFailureRequest,
   type AgentMonitorNotificationMessage,
   type AgentMonitorRemovedMessage,
   type AgentMonitorStateMessage,
@@ -168,26 +167,12 @@ describe('MonitorIpcRelay', () => {
 });
 
 describe('monitor IPC request boundary', () => {
-  it('accepts only opaque failure blocker identities', () => {
-    expect(parseAcknowledgeAgentFailureRequest({ runtimeRunId: 'run-1', blockerId: 'run:runtime' })).toEqual({
-      runtimeRunId: 'run-1',
-      blockerId: 'run:runtime',
-    });
-    expect(parseAcknowledgeAgentFailureRequest({ runtimeRunId: 'run-1', blockerId: '/tmp/blocker' })).toBeUndefined();
-    expect(parseAcknowledgeAgentFailureRequest({ runtimeRunId: '../run', blockerId: 'failure' })).toBeUndefined();
-  });
-
-  it('does not dispatch invalid or non-live failure acknowledgments', async () => {
-    const acknowledgeFailureBlocker = vi.fn().mockResolvedValue(true);
-    const runtime = { acknowledgeFailureBlocker };
-    const relay = new MonitorIpcRelay();
-
-    await expect(
-      acknowledgeAgentFailureForIpc(runtime, relay, { runtimeRunId: 'run-1', blockerId: 'permission-1' }),
-    ).resolves.toBe(false);
-    await expect(
-      acknowledgeAgentFailureForIpc(runtime, relay, { runtimeRunId: 'run-1', blockerId: '/tmp/failure' }),
-    ).resolves.toBe(false);
-    expect(acknowledgeFailureBlocker).not.toHaveBeenCalled();
+  it('accepts only opaque identities from a renderer (a row to acknowledge, a terminal, a shown row)', () => {
+    for (const id of ['run-1', 'run:runtime', '6b0c5c1e-0f7e-4d8a-9a51-6c1f3a0d2b11']) {
+      expect(isOpaqueMonitorIdentifier(id)).toBe(true);
+    }
+    for (const id of ['', ' run', '/tmp/blocker', '../run', '..', 'file:x', 'C:run', 'a\\b', 7, undefined]) {
+      expect(isOpaqueMonitorIdentifier(id)).toBe(false);
+    }
   });
 });

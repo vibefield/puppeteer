@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import type { ProjectIdentityStore } from '@vibecook/puppeteer-monitor';
 import { workspaceIdentity } from '@vibecook/puppeteer-workspaces';
 import type { AgentProjectRef } from '../protocol.js';
 
@@ -59,6 +60,8 @@ export interface ProjectRegistry {
   deal(sourcePath: string): Promise<AgentProjectRef>;
   /** The answer without touching disk or Git, for a source path this registry has already folded. */
   known(sourcePath: string): AgentProjectRef | undefined;
+  /** The project of a key that is ALREADY a canonical root, dealt at once if it is new: no Git, no fold. */
+  dealRoot(key: string): AgentProjectRef;
 }
 
 export interface ProjectRegistryOptions {
@@ -190,6 +193,7 @@ export function createProjectRegistry(path: string, options: ProjectRegistryOpti
   return {
     path,
     list: () => projects.map((project) => ({ ...project })),
+    dealRoot,
     known(sourcePath) {
       const key = rootsBySource.get(sourcePath) ?? (byKey.has(sourcePath) ? sourcePath : undefined);
       if (!key) return undefined;
@@ -207,5 +211,18 @@ export function createProjectRegistry(path: string, options: ProjectRegistryOpti
       dealing = next.catch(() => undefined);
       return next;
     },
+  };
+}
+
+/**
+ * The registry as the monitor backend's identity port (L4). The backend keys a
+ * run by its host's canonical root (`info.project.key`, which this registry
+ * dealt), so a key is always known; a new one would be dealt as a root.
+ * Persistence stays the registry's: the backend only asks.
+ */
+export function projectIdentityStore(registry: ProjectRegistry): ProjectIdentityStore {
+  return {
+    seq: (key) => registry.known(key)?.seq,
+    deal: (key) => registry.known(key)?.seq ?? registry.dealRoot(key).seq,
   };
 }

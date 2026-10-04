@@ -1,38 +1,60 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { GhostteaWorkspaceContext } from '@vibecook/ghosttea-react/workspace';
 import type { MonitorNotification } from '@vibecook/puppeteer-core';
-import { createAgentMonitorStore } from '@vibecook/puppeteer-monitor';
+import { createAgentMonitorStore, type MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
+import { createMonitorReplica, type MonitorReplica } from '@vibecook/puppeteer-monitor/replica';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
-import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
-import type { PaneAttachment } from '../pane-attachments.js';
-import type { MonitorPalette } from '@vibecook/puppeteer-views';
 import {
-  assembleMonitorAgents,
-  mergeMonitorTerminals,
-  monitorIdentity,
-  type MonitorAgentRecord,
-  type MonitorTerminalRecord,
-} from './agents.js';
-import type { MonitorActions, MonitorAgent } from './types.js';
+  frameScheduler,
+  legacyView,
+  type LegacyMonitorView,
+  type ViewSlotCommands,
+} from '@vibecook/puppeteer-view-sdk/host';
+import type { AgentStatus, MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
+import { projectColourFor } from '@vibecook/puppeteer-view-sdk/toolkit';
 import {
   EMPTY_STATUS_LEDGER,
-  EMPTY_UNREAD_LEDGER,
+  MONITOR_VIEWS,
   observeStatuses,
-  reconcileUnread,
   statusHistoryBook,
+  type AgentMonitorProps,
+  type MonitorActions as ViewsMonitorActions,
+  type MonitorAgent as ViewsMonitorAgent,
   type MonitorHistoryBook,
+  type MonitorPalette,
+  type MonitorParameters,
   type StatusLedger,
-  type UnreadLedger,
 } from '@vibecook/puppeteer-views';
+import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
+import type { PaneAttachment } from '../pane-attachments.js';
+import { chromeRows, type ChromeAgentRecord } from './chrome-rows.js';
+import { createLegacyRows, type LegacyRowsFacts } from './legacy-rows.js';
+import type { MonitorAgent } from './types.js';
 import {
-  EMPTY_USAGE_LEDGER,
-  reconcileUsage,
-  seedUsage,
-  USAGE_STEP_MS,
-  type UsageLedger,
-  type UsageLedgerKey,
-} from '@vibecook/puppeteer-views';
-import { createUsageHistoryPersistence } from './usage-history-persistence.js';
+  agentSessionsByRow,
+  mergeMonitorTerminals,
+  sessionIdForRow,
+  terminalReport,
+  windowLocal,
+  windowTerminalIds,
+  type MonitorTerminalRecord,
+} from './window-facts.js';
+
+/**
+ * Puppeteer's Godview on the monitor backend (MV-2).
+ *
+ * The backend in main computes every row; this window holds a REPLICA of its
+ * model (a snapshot, then the changes, on one ordered channel: M23) and joins
+ * only what the window knows: its panes, the pane it works in, the terminals it
+ * holds, the theme's colours. The four views mount through the view host's
+ * legacy bridge with props built by the legacy shim (L9) in Godview's words
+ * (`headline-cost`, M4). The counts and the status shortcuts read the model.
+ *
+ * The chrome outside the views (the inspector, the find sheet, the deck's pane
+ * frames, split sessions, pane recovery) reads rows joined with the chrome's own
+ * full-state feed (M19, `chrome-rows.ts`). Nothing the views draw reads it.
+ */
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext | undefined;
@@ -44,27 +66,40 @@ export interface UseMonitorAgentsOptions {
   closingSessionIds?: ReadonlySet<string> | undefined;
   /** Terminal-runtime exits, so a placeholder for a closed terminal stops being shown. */
   onSessionExited(listener: (sessionId: string) => void): () => void;
-  /** The live tokens; a row's colour is its project's tint, or the ramp with no project. */
+  /** The live tokens: the theme's project colours (L7). */
   palette: MonitorPalette;
-  /** Account id -> label, so a row can name the account its session was launched under. */
-  profileLabels?: ReadonlyMap<string, string> | undefined;
 }
 
 export interface MonitorAgentsResult {
+  /** This window's replica of the backend's model; the view host mounts the view on it. */
+  replica: MonitorReplica;
+  model: MonitorModel;
+  /** The four views, each through the legacy bridge, by view id. */
+  views: ReadonlyMap<string, LegacyMonitorView>;
+  /** The view host's commands: select and create stay this window's own. */
+  commands: ViewSlotCommands;
+  /** Agent rows by status, from the model. */
+  counts: Record<AgentStatus, number>;
+  /** Mounts the next agent in `status` after the active one, from the model. */
+  selectNextStatus(status: AgentStatus): void;
+  /** The chrome's rows (M19); never handed to a view. */
   agents: readonly MonitorAgent[];
-  actions: MonitorActions;
-  /** What each lane did while this window watched, for views that draw the past. */
-  history: MonitorHistoryBook;
+  /** The chrome's verbs: mount a row's session in the active pane; open a terminal there. */
+  actions: {
+    select(agent: Pick<ViewsMonitorAgent, 'id'>): void;
+    createAt(position?: { x: number; y: number }): Promise<void>;
+  };
+  /** Acknowledges a crashed row's failure through the backend, so the row leaves the model and the chrome alike. */
+  acknowledge(id: string): void;
   notifications: readonly MonitorNotification[];
   dismissNotification(runtimeRunId: string, notificationId: string): void;
 }
 
-/**
- * The single subscription to everything a monitor view renders.
- *
- * It lives beside the view contract rather than inside any one view, so a
- * second view is a consumer of this hook and never a consumer of the swarm.
- */
+/** The replica's theme key (L7): the same tint and ramp are the same colours. */
+function themeKey(palette: Pick<MonitorPalette, 'tint' | 'neutral'>): string {
+  return `${palette.tint.l}:${palette.tint.c}:${palette.neutral}`;
+}
+
 export function useMonitorAgents({
   workspace,
   attachments,
@@ -73,43 +108,54 @@ export function useMonitorAgents({
   closingSessionIds,
   onSessionExited,
   palette,
-  profileLabels,
 }: UseMonitorAgentsOptions): MonitorAgentsResult {
-  const [records, setRecords] = useState(() => new Map<string, MonitorAgentRecord>());
-  const [terminals, setTerminals] = useState<readonly MonitorTerminalRecord[]>([]);
-  const [exitedTerminalIds, setExitedTerminalIds] = useState(() => new Set<string>());
-  const [monitorStore] = useState(() => createAgentMonitorStore({ notificationCapacity: 4 }));
-  const monitorSnapshot = useAgentMonitorStore(monitorStore);
-  const [nowMs, setNowMs] = useState(Date.now());
-  const unreadRef = useRef<UnreadLedger>(EMPTY_UNREAD_LEDGER);
-  const visualIdsRef = useRef<ReadonlyMap<string, string>>(new Map());
-  const usageRef = useRef<UsageLedger>(EMPTY_USAGE_LEDGER);
-  // What each lane did while this window watched (the timeline's record). Godview keeps no durable one.
-  const statusRef = useRef<StatusLedger>(EMPTY_STATUS_LEDGER);
-  /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
-  const [usageStep, setUsageStep] = useState(0);
-  const [usageSeed, setUsageSeed] = useState(0);
-  const [usagePersistence] = useState(() =>
-    createUsageHistoryPersistence({
-      store: {
-        load: (key) => window.puppeteer.loadUsageHistory(key),
-        save: (records) => window.puppeteer.saveUsageHistory([...records]),
-      },
-      read: () => usageRef.current,
-      seed: (id, record) => {
-        usageRef.current = seedUsage(usageRef.current, id, record, Date.now());
-        setUsageSeed((seed) => seed + 1);
-      },
-      now: Date.now,
-    }),
-  );
+  // The window's replica, on the view host's ONE frame scheduler (M7). It lives as long as the window and is never
+  // disposed, so a StrictMode remount finds it whole. The theme is set at once: no frame of uncoloured rows.
+  const [replica] = useState(() => {
+    const created = createMonitorReplica({
+      scheduler: frameScheduler,
+      onListenerError: (error) => console.error('[monitor] replica listener', error),
+    });
+    created.setTheme({ key: themeKey(palette), colourFor: projectColourFor(palette) });
+    return created;
+  });
+  const model = useSyncExternalStore(replica.subscribe, replica.getSnapshot).model;
 
+  // The model (M23): ask, then take every message of the one channel; a change before the first snapshot is in it.
+  useEffect(() => {
+    let synced = false;
+    const unsubscribe = window.puppeteer.onMonitorModel((update) => {
+      if ('rows' in update) synced = true;
+      else if (!synced) return;
+      replica.apply(update);
+    });
+    const unsubscribeGap = replica.onGap(() => window.puppeteer.requestMonitorSnapshot());
+    window.puppeteer.requestMonitorSnapshot();
+    return () => {
+      unsubscribe();
+      unsubscribeGap();
+    };
+  }, [replica]);
+
+  const { tint, neutral } = palette;
+  useEffect(() => {
+    replica.setTheme({ key: themeKey({ tint, neutral }), colourFor: projectColourFor({ tint, neutral }) });
+  }, [neutral, replica, tint]);
+
+  // THE CHROME'S FEED (M19): main's agent records and each run's full state (`monitor:chrome-state`), joined by
+  // terminal session exactly as the seam joined them. Only `chromeRows` reads `records`: the replica, the views, the
+  // counts and the status shortcuts never do. Notifications keep their own store and UX.
+  const [records, setRecords] = useState(() => new Map<string, ChromeAgentRecord>());
+  const [notificationStore] = useState(() => createAgentMonitorStore({ notificationCapacity: 4 }));
+  const notificationSnapshot = useAgentMonitorStore(notificationStore);
   useEffect(() => {
     let alive = true;
     let publishFrame: number | undefined;
-    const current = new Map<string, MonitorAgentRecord>();
+    const current = new Map<string, ChromeAgentRecord>();
     const monitorsByRun = new Map<string, AgentMonitorStateMessage>();
     const removed = new Set<string>();
+    // Orders full replacements and seals removed epochs, as the seam's store did.
+    const chromeStore = createAgentMonitorStore();
     const publish = (): void => {
       if (publishFrame !== undefined) return;
       publishFrame = window.requestAnimationFrame(() => {
@@ -131,16 +177,16 @@ export function useMonitorAgents({
       if (current.delete(runtimeSessionId)) publish();
     };
     const acceptMonitor = (message: AgentMonitorStateMessage): boolean => {
-      if (!monitorStore.acceptState(message.state)) return false;
+      if (!chromeStore.acceptState(message.state)) return false;
       monitorsByRun.set(message.runtimeRunId, message);
       return true;
     };
+    const terminalOf = (runtimeRunId: string, terminalSessionId: string | null): string | undefined =>
+      terminalSessionId ??
+      [...current.values()].find((record) => record.info.runtimeRunId === runtimeRunId)?.info.runtimeSessionId;
     const updateMonitor = (message: AgentMonitorStateMessage): void => {
       if (!acceptMonitor(message)) return;
-      const terminalSessionId =
-        message.terminalSessionId ??
-        [...current.values()].find((record) => record.info.runtimeRunId === message.runtimeRunId)?.info
-          .runtimeSessionId;
+      const terminalSessionId = terminalOf(message.runtimeRunId, message.terminalSessionId);
       if (!terminalSessionId) return;
       const record = current.get(terminalSessionId);
       if (!record || record.info.runtimeRunId !== message.runtimeRunId) return;
@@ -148,35 +194,28 @@ export function useMonitorAgents({
       publish();
     };
     const removeMonitor = (message: AgentMonitorRemovedMessage): void => {
-      if (!monitorStore.remove({ runtimeRunId: message.runtimeRunId, runtimeEpoch: message.runtimeEpoch })) return;
+      if (!chromeStore.remove({ runtimeRunId: message.runtimeRunId, runtimeEpoch: message.runtimeEpoch })) return;
       monitorsByRun.delete(message.runtimeRunId);
-      const terminalSessionId =
-        message.terminalSessionId ??
-        [...current.values()].find((record) => record.info.runtimeRunId === message.runtimeRunId)?.info
-          .runtimeSessionId;
-      if (!terminalSessionId) return;
-      forget(terminalSessionId);
-    };
-    const publishNotification = (notification: MonitorNotification): void => {
-      if (alive) monitorStore.acceptNotification(notification);
+      const terminalSessionId = terminalOf(message.runtimeRunId, message.terminalSessionId);
+      if (terminalSessionId) forget(terminalSessionId);
     };
 
     const unsubscribeSession = window.puppeteer.onAgentSession(remember);
     const unsubscribeRemoved = window.puppeteer.onAgentRemoved(forget);
-    const unsubscribeMonitorState = window.puppeteer.onAgentMonitorState(updateMonitor);
-    const unsubscribeMonitorRemoved = window.puppeteer.onAgentMonitorRemoved(removeMonitor);
-    const unsubscribeMonitorNotification = window.puppeteer.onAgentMonitorNotification((message) =>
-      publishNotification(message.notification),
-    );
+    const unsubscribeState = window.puppeteer.onChromeMonitorState(updateMonitor);
+    const unsubscribeMonitorRemoved = window.puppeteer.onChromeMonitorRemoved(removeMonitor);
+    const unsubscribeNotification = window.puppeteer.onAgentMonitorNotification((message) => {
+      if (alive) notificationStore.acceptNotification(message.notification);
+    });
 
     void (async () => {
       const [snapshots, monitorSnapshots] = await Promise.all([
         window.puppeteer.listAgentSessions(),
-        window.puppeteer.listAgentMonitors(),
+        window.puppeteer.listChromeMonitors(),
       ]);
       if (!alive) return;
       for (const monitor of monitorSnapshots) acceptMonitor(monitor);
-      const next = new Map<string, MonitorAgentRecord>();
+      const next = new Map<string, ChromeAgentRecord>();
       for (const snapshot of snapshots) {
         const id = snapshot.info.runtimeSessionId;
         const monitor = monitorsByRun.get(snapshot.info.runtimeRunId);
@@ -200,187 +239,152 @@ export function useMonitorAgents({
       if (publishFrame !== undefined) window.cancelAnimationFrame(publishFrame);
       unsubscribeSession();
       unsubscribeRemoved();
-      unsubscribeMonitorState();
+      unsubscribeState();
       unsubscribeMonitorRemoved();
-      unsubscribeMonitorNotification();
-      monitorStore.clear();
+      unsubscribeNotification();
+      chromeStore.clear();
     };
-  }, []);
+  }, [notificationStore]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowMs(Date.now()), 10_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    let interval: number | undefined;
-    // Aligned to the step boundaries, so every agent's bars shift together.
-    const timeout = window.setTimeout(
-      () => {
-        setUsageStep((step) => step + 1);
-        interval = window.setInterval(() => setUsageStep((step) => step + 1), USAGE_STEP_MS);
-      },
-      USAGE_STEP_MS - (Date.now() % USAGE_STEP_MS),
-    );
-    return () => {
-      window.clearTimeout(timeout);
-      if (interval !== undefined) window.clearInterval(interval);
-    };
-  }, []);
-
-  // Persistence: a resumed conversation is seeded with the ledger it had, and
-  // the live ledgers are saved at every step and when the page goes away, by
-  // provider and native session id, the identity a resume continues. The
-  // monitor's announced id is preferred: it arrives with the first state,
-  // before main has re-broadcast the session record.
-  const usageKeys = useMemo<UsageLedgerKey[]>(
-    () =>
-      [...records.values()].flatMap((record) => {
-        const nativeSessionId = record.monitor?.state.session.nativeSessionId ?? record.info.nativeSession?.id;
-        if (!record.monitor || !nativeSessionId) return [];
-        return [
-          {
-            id: monitorIdentity(record.info.session.id, terminalIdentities),
-            providerId: record.info.provider.id,
-            nativeSessionId,
-          },
-        ];
-      }),
-    [records, terminalIdentities],
-  );
-  useEffect(() => {
-    usagePersistence.sync(usageKeys);
-  }, [usageKeys, usagePersistence]);
-  useEffect(() => {
-    usagePersistence.save();
-  }, [usageKeys, usageSeed, usageStep, usagePersistence]);
-  useEffect(() => {
-    window.addEventListener('pagehide', usagePersistence.save);
-    return () => {
-      usagePersistence.save();
-      usagePersistence.disconnect();
-      window.removeEventListener('pagehide', usagePersistence.save);
-    };
-  }, [usagePersistence]);
-
+  // This window's terminals: the shells it opened here (with where it asked for them) and every session its panes
+  // show, minus the ones that exited or that it is closing.
+  const [explicitTerminals, setExplicitTerminals] = useState<readonly MonitorTerminalRecord[]>([]);
+  const [exitedTerminalIds, setExitedTerminalIds] = useState(() => new Set<string>());
   useEffect(
     () =>
       onSessionExited((sessionId) => {
         setExitedTerminalIds((current) => new Set(current).add(sessionId));
-        setTerminals((current) => {
+        setExplicitTerminals((current) => {
           const next = current.filter((terminal) => terminal.session.id !== sessionId);
           return next.length === current.length ? current : next;
         });
       }),
     [onSessionExited],
   );
-
   const sessions = useMemo(
     () => new Map((workspace?.sessions ?? []).map((session) => [session.id, session] as const)),
     [workspace?.sessions],
   );
-
-  // The workspace is the authority for mounted terminal resources. Explicit
-  // records only add gesture metadata such as a swarm spawn position; restored
-  // shells and agent handoffs must not need a second creation-only registry in
-  // order to remain visible.
-  const visibleTerminals = useMemo(
+  const terminals = useMemo(
     () =>
       mergeMonitorTerminals({
-        explicit: terminals,
+        explicit: explicitTerminals,
         workspaceSessions: workspace?.sessions ?? [],
         exitedSessionIds: exitedTerminalIds,
         closingSessionIds,
         identities: terminalIdentities,
       }),
-    [closingSessionIds, exitedTerminalIds, terminalIdentities, terminals, workspace?.sessions],
+    [closingSessionIds, exitedTerminalIds, explicitTerminals, terminalIdentities, workspace?.sessions],
+  );
+  // The host port's terminals are what each window reports: a bare terminal is a window fact.
+  const reported = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const report: MonitorHostTerminal[] = terminalReport(terminals, sessions, terminalIdentities);
+    const key = JSON.stringify(report);
+    if (reported.current === key) return;
+    reported.current = key;
+    window.puppeteer.reportMonitorTerminals(report);
+  }, [sessions, terminalIdentities, terminals]);
+
+  // Each agent row's terminal session, in main's record order.
+  const agentSessions = useMemo(
+    () => agentSessionsByRow(records.keys(), terminalIdentities),
+    [records, terminalIdentities],
   );
 
-  const agents = useMemo(() => {
-    // Every view reads the same corrected USD total and observation buckets.
-    // The UI clock ages buckets; it never derives new spend from total changes.
-    const usage = reconcileUsage(
-      usageRef.current,
-      [...records.values()].map((record) => {
-        const state = record.monitor?.state;
-        const nativeSessionId = state?.session.nativeSessionId ?? record.info.nativeSession?.id;
-        return {
-          id: monitorIdentity(record.info.session.id, terminalIdentities),
-          runId: `${state?.runtimeRunId ?? record.info.runtimeRunId}:${state?.runtimeEpoch ?? record.info.runtimeEpoch}`,
-          ...(nativeSessionId ? { session: { providerId: record.info.provider.id, nativeSessionId } } : {}),
-          ...(state ? { usage: state.usage, revision: state.revision } : {}),
-        };
+  // The replica's local join. `visible` keeps every agent and only this window's terminals; it keeps its identity
+  // while the set does, because a new predicate asks every row again.
+  const terminalIdsKey = useMemo(
+    () => [...windowTerminalIds(terminals, terminalIdentities)].sort().join('\n'),
+    [terminalIdentities, terminals],
+  );
+  const visible = useMemo(() => {
+    const ids = new Set(terminalIdsKey ? terminalIdsKey.split('\n') : []);
+    return (row: MonitorAgentRow): boolean => row.kind === 'agent' || ids.has(row.id);
+  }, [terminalIdsKey]);
+  // A pane joins the row its session backs, which only a row's kind can change: the agent ids stand for the kinds.
+  const agentIdsKey = useMemo(
+    () =>
+      model.agents
+        .filter((row) => row.kind === 'agent')
+        .map((row) => row.id)
+        .join('\n'),
+    [model],
+  );
+  const modelRef = useRef(model);
+  modelRef.current = model;
+  const activeSessionId = workspace?.activeSession?.id;
+  const local = useMemo(
+    () =>
+      windowLocal(
+        {
+          model: modelRef.current,
+          agentSessions,
+          attachments,
+          activeSessionId,
+          terminals,
+          identities: terminalIdentities,
+        },
+        visible,
+      ),
+    // The model's agent ids stand for its kinds (`agentIdsKey`); the model itself is read through the ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeSessionId, agentIdsKey, agentSessions, attachments, terminalIdentities, terminals, visible],
+  );
+  useLayoutEffect(() => replica.setLocal(local), [local, replica]);
+
+  // L5/M20: a screen's shown rows are whatever its active pane shows; any window showing a row clears its mark.
+  const shownKey = useMemo(() => [...local.activeIds].sort().join('\n'), [local]);
+  useEffect(() => {
+    window.puppeteer.reportMonitorShown(shownKey ? shownKey.split('\n') : []);
+  }, [shownKey]);
+
+  // The legacy rows (L9, legacy-rows.ts): the shim's, with the swarm's spatial identity this window carried. One list
+  // per model and window facts.
+  const windowFacts = useMemo<LegacyRowsFacts>(
+    () => ({ agentSessions, terminals, identities: terminalIdentities, visualIds: terminalVisualIds }),
+    [agentSessions, terminalIdentities, terminalVisualIds, terminals],
+  );
+  const facts = useRef(windowFacts);
+  facts.current = windowFacts;
+  /** The rows the views were last given, so a change of window facts alone can draw them again. */
+  const given = useRef<readonly ViewsMonitorAgent[] | undefined>(undefined);
+  const [legacy] = useState(createLegacyRows);
+  const legacyRowsFor = useCallback(
+    (current: MonitorModel): readonly ViewsMonitorAgent[] => legacy.rowsFor(current, facts.current),
+    [legacy],
+  );
+
+  // L10: the status ledger stays fed through the shim until MV-6, folded once per published model, before the view
+  // host's update in the same frame reads it.
+  const statusLedger = useRef<StatusLedger>(EMPTY_STATUS_LEDGER);
+  const history = useRef<MonitorHistoryBook>(statusHistoryBook(EMPTY_STATUS_LEDGER));
+  useEffect(
+    () =>
+      replica.subscribe(() => {
+        const rows = legacyRowsFor(replica.getSnapshot().model);
+        statusLedger.current = observeStatuses(statusLedger.current, rows, Date.now());
+        history.current = statusHistoryBook(statusLedger.current);
       }),
-      Date.now(),
-    );
-    usageRef.current = usage;
-    const assembled = assembleMonitorAgents({
-      agents: [...records.values()],
-      terminals: visibleTerminals,
-      sessions,
-      attachments,
-      identities: terminalIdentities,
-      visualIds: terminalVisualIds,
-      previousVisualIds: visualIdsRef.current,
-      nowMs,
-      colours: { tint: palette.tint, neutral: palette.neutral },
-      usage: usage.histories,
-      ...(workspace?.activeSession ? { activeSessionId: workspace.activeSession.id } : {}),
-    });
-    // Unread is a fold over successive projections; the ledger is the only
-    // state here that is not derivable from one snapshot.
-    visualIdsRef.current = new Map(assembled.map((agent) => [agent.id, agent.visualId ?? agent.id]));
-    const ledger = reconcileUnread(
-      unreadRef.current,
-      assembled.map((agent) => {
-        const statusSinceMs = agent.agent ? Date.parse(agent.agent.monitor.statusSince) : Number.NaN;
-        return {
-          id: agent.id,
-          status: agent.status,
-          active: agent.active,
-          hasAgent: agent.agent !== undefined,
-          ...(Number.isFinite(statusSinceMs) ? { statusSinceMs } : {}),
-        };
-      }),
-      Date.now(),
-    );
-    unreadRef.current = ledger;
-    const projected = assembled.map((agent) => {
-      const unread = ledger.unreadIds.has(agent.id);
-      // The account is an identity ground, resolved from the registry rather
-      // than from anything the session said about itself.
-      const profileId = agent.agent?.info.profileId;
-      const account = profileId ? profileLabels?.get(profileId) : undefined;
-      if (!unread && !account) return agent;
-      return {
-        ...agent,
-        ...(unread ? { unread: true } : {}),
-        ...(account && agent.agent ? { agent: { ...agent.agent, account } } : {}),
-      };
-    });
-    statusRef.current = observeStatuses(statusRef.current, projected, Date.now());
-    return projected;
-  }, [
-    attachments,
-    nowMs,
-    palette.neutral,
-    palette.tint,
-    profileLabels,
-    records,
-    sessions,
-    terminalIdentities,
-    terminalVisualIds,
-    usageSeed,
-    usageStep,
-    visibleTerminals,
-    workspace?.activeSession,
-  ]);
+    [legacyRowsFor, replica],
+  );
 
   const select = useCallback(
-    (agent: MonitorAgent): void => {
-      workspace?.mountSession(agent.session);
+    (session: SessionSummary | undefined): void => {
+      if (session) workspace?.mountSession(session);
     },
     [workspace],
+  );
+  /** A row's session as this window mounts it: an agent's from its record, a terminal's live summary. */
+  const sessionForRow = useCallback(
+    (row: Pick<MonitorAgentRow, 'id' | 'kind'>): SessionSummary | undefined => {
+      const sessionId = sessionIdForRow(row, agentSessions, terminals, terminalIdentities);
+      if (sessionId === undefined) return undefined;
+      if (row.kind === 'agent') return records.get(sessionId)?.info.session;
+      const terminal = terminals.find((candidate) => candidate.session.id === sessionId);
+      return terminal ? (sessions.get(sessionId) ?? terminal.session) : undefined;
+    },
+    [agentSessions, records, sessions, terminalIdentities, terminals],
   );
 
   const createAt = useCallback(
@@ -396,7 +400,7 @@ export function useMonitorAgents({
         return next;
       });
       const cwd = session.cwd ?? sourceCwd;
-      setTerminals((current) => [
+      setExplicitTerminals((current) => [
         ...current.filter((terminal) => terminal.session.id !== session.id),
         { session, ...(cwd ? { cwd } : {}), ...(position ? { spawnHint: position } : {}) },
       ]);
@@ -404,22 +408,126 @@ export function useMonitorAgents({
     [workspace],
   );
 
-  const actions = useMemo<MonitorActions>(() => ({ select, createAt }), [createAt, select]);
+  // The view host reads its commands through the latest props; these reach the latest window too.
+  const latest = useRef({ model, sessionForRow, select, createAt });
+  latest.current = { model, sessionForRow, select, createAt };
+  const commands = useMemo<ViewSlotCommands>(
+    () => ({
+      select(agentId) {
+        const { model: current, sessionForRow: resolve, select: mount } = latest.current;
+        const row = current.byId.get(agentId);
+        if (row) mount(resolve(row));
+      },
+      create(at) {
+        void latest.current.createAt(at);
+      },
+    }),
+    [],
+  );
+
+  // The four views through the legacy bridge (L6), built once per window: `toProps` reads the shim's rows.
+  const views = useMemo(() => {
+    const actions = new WeakMap<object, ViewsMonitorActions>();
+    const actionsFor = (bridge: Pick<ViewSlotCommands, 'select' | 'create'>): ViewsMonitorActions => {
+      const held = actions.get(bridge);
+      if (held) return held;
+      const made: ViewsMonitorActions = {
+        select: (agent) => bridge.select(agent.id),
+        createAt: (position, target) => bridge.create(position, target),
+      };
+      actions.set(bridge, made);
+      return made;
+    };
+    return new Map(
+      MONITOR_VIEWS.map(
+        (view) =>
+          [
+            view.id,
+            legacyView<AgentMonitorProps>(view, view.Component, (input, bridge) => {
+              const agents = legacyRowsFor(input.model);
+              given.current = agents;
+              return {
+                agents,
+                parameters: input.parameters as MonitorParameters,
+                actions: actionsFor(bridge),
+                palette: input.theme.tokens as MonitorPalette,
+                history: history.current,
+              };
+            }),
+          ] as const,
+      ),
+    );
+  }, [legacyRowsFor]);
+
+  // The window facts the legacy rows read moved (a handoff carried a body, a record arrived): a view whose rows
+  // changed without the model changing draws again (the bridge's `refresh`, for host state beside the input).
+  useLayoutEffect(() => {
+    if (given.current === undefined) return;
+    if (legacyRowsFor(replica.getSnapshot().model) !== given.current) for (const view of views.values()) view.refresh();
+  }, [legacyRowsFor, replica, views, windowFacts]);
+
+  // M19: the counts and the status shortcuts read the model, never the chrome's feed.
+  const counts = useMemo(() => {
+    const result: Record<AgentStatus, number> = { idle: 0, working: 0, blocked: 0 };
+    for (const row of model.agents) if (row.kind === 'agent') result[row.status] += 1;
+    return result;
+  }, [model]);
+  const selectNextStatus = useCallback(
+    (status: AgentStatus): void => {
+      const matching = model.agents.filter((row) => row.kind === 'agent' && row.status === status);
+      if (matching.length === 0) return;
+      const currentIndex = matching.findIndex((row) => agentSessions.get(row.id) === activeSessionId);
+      select(sessionForRow(matching[(currentIndex + 1) % matching.length]!));
+    },
+    [activeSessionId, agentSessions, model, select, sessionForRow],
+  );
+
+  const agents = useMemo(
+    () =>
+      chromeRows({
+        model,
+        legacy: legacyRowsFor(model),
+        agentSessions,
+        records,
+        terminals,
+        sessions,
+        attachments,
+        identities: terminalIdentities,
+      }),
+    [agentSessions, attachments, legacyRowsFor, model, records, sessions, terminalIdentities, terminals],
+  );
+
+  const actions = useMemo(
+    () => ({
+      select: (agent: Pick<ViewsMonitorAgent, 'id'>): void =>
+        select(agents.find((candidate) => candidate.id === agent.id)?.session),
+      createAt,
+    }),
+    [agents, createAt, select],
+  );
+
+  const acknowledge = useCallback((id: string): void => {
+    void window.puppeteer.acknowledgeMonitorRow(id);
+  }, []);
 
   const dismissNotification = useCallback(
     (runtimeRunId: string, notificationId: string): void => {
-      monitorStore.dismissNotification(runtimeRunId, notificationId);
+      notificationStore.dismissNotification(runtimeRunId, notificationId);
     },
-    [monitorStore],
+    [notificationStore],
   );
 
-  const history = useMemo<MonitorHistoryBook>(() => statusHistoryBook(statusRef.current), [agents]);
-
   return {
+    replica,
+    model,
+    views,
+    commands,
+    counts,
+    selectNextStatus,
     agents,
     actions,
-    history,
-    notifications: monitorSnapshot.notifications,
+    acknowledge,
+    notifications: notificationSnapshot.notifications,
     dismissNotification,
   };
 }

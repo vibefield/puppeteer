@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { open as openFile, writeFile } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import { basename, delimiter, isAbsolute, join, resolve } from 'node:path';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, powerMonitor, shell } from 'electron';
 import {
@@ -28,6 +29,7 @@ import {
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentHost } from '@vibecook/puppeteer-core';
+import { createMonitorBackend, runtimeRunSource } from '@vibecook/puppeteer-monitor';
 import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
 import { createActionRecorder } from '@vibecook/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
@@ -49,8 +51,6 @@ import type {
   AgentSessionInfo,
   AgentSessionSnapshot,
   CheckReleasesRequest,
-  UsageHistoryKey,
-  UsageLedgerRecord,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileRequest,
@@ -72,8 +72,7 @@ import type {
 } from '../protocol.js';
 import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibecook/puppeteer-runtime';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
-import { createProjectRegistry } from './project-registry.js';
-import { appCacheDirectory, createUsageHistoryStore } from './usage-history-store.js';
+import { createProjectRegistry, projectIdentityStore } from './project-registry.js';
 import {
   createHistorySearchService,
   defaultAnnounceDirectory,
@@ -84,7 +83,8 @@ import {
 } from './history-search.js';
 import { createHistorySettingsStore } from './history-settings.js';
 import { registerLauncherIpc } from './launcher-ipc.js';
-import { acknowledgeAgentFailureForIpc, connectMonitorIpcRelay, MonitorIpcRelay } from './monitor-ipc.js';
+import { connectMonitorIpcRelay, isOpaqueMonitorIdentifier, MonitorIpcRelay } from './monitor-ipc.js';
+import { createGodviewMonitorHost, parseMonitorShownReport, parseMonitorTerminalReport } from './monitor-host.js';
 import {
   APPEARANCE_BLOCK_START,
   appearanceBlock,
@@ -347,13 +347,21 @@ function broadcast(channel: string, value: unknown): void {
   }
 }
 
+/**
+ * THE CHROME'S FEED (M19): every run's full monitor state, ordered and sealed by
+ * the relay, for the chrome outside the monitor views only (the inspector, Find,
+ * the deck's pane frames, split sessions). The model the views, the counts and
+ * the status shortcuts draw comes from the backend (`monitor:change`) and never
+ * from here. Notifications keep their channel and their UX.
+ */
 const monitorRelay = new MonitorIpcRelay({
-  onState: (message) => broadcast('puppeteer:agent-monitor-state', message),
+  onState: (message) => broadcast('monitor:chrome-state', message),
   onNotification: (message) => broadcast('puppeteer:agent-monitor-notification', message),
   onRemoved: (message) => {
-    broadcast('puppeteer:agent-monitor-removed', message);
+    broadcast('monitor:chrome-removed', message);
     if (message.terminalSessionId) {
       agentRecords.delete(message.terminalSessionId);
+      monitorHost.runsChanged();
       scheduleRestoreCheckpoint(true);
     }
   },
@@ -709,8 +717,55 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
 /** The projects agents have run in, each dealt a colour sequence for life (record §02). */
 const projectRegistry = createProjectRegistry(join(app.getPath('userData'), 'projects.json'));
-/** The renderer's usage ledgers per conversation, kept in the app's cache so a resumed session opens with its numbers. */
-const usageHistoryStore = createUsageHistoryStore(join(appCacheDirectory(app.name), 'usage-history.json'));
+/** The identity a handed-off shell carries for the monitor: the dead agent's terminal it replaced (see the handoff). */
+const monitorTerminalIdentities = new Map<string, string>();
+/** Account id -> label, the registry's own words, for the account a row names. */
+let monitorAccountLabels: ReadonlyMap<string, string> = new Map();
+/**
+ * The monitor backend (MV-2), beside the runtime: every agent's facts are
+ * computed here once and every window receives the same model over IPC. A
+ * window asks (`monitor:snapshot`) and main answers on the ONE ordered channel
+ * the changes travel on (`monitor:change`), so a snapshot can never race the
+ * changes after it (M23). A window joins only its own panes.
+ */
+const monitorHost = createGodviewMonitorHost({
+  device: { id: hostname(), name: hostname(), os: monitorDeviceOs(), self: true },
+  records: () => agentRecords.values(),
+  identityOf: (sessionId) => monitorTerminalIdentities.get(sessionId),
+  accountLabel: (profileId) => monitorAccountLabels.get(profileId),
+});
+const monitorBackend = createMonitorBackend({
+  runs: runtimeRunSource(agentRuntime),
+  host: monitorHost.port,
+  identity: projectIdentityStore(projectRegistry),
+  // A select mounts in, and a create opens, the asking window's own panes: both stay in the renderer.
+  sink: { select: () => undefined, create: () => undefined },
+  // M15: a resumed epoch of the same conversation adds up, as this app's seam always counted it.
+  cost: { acrossEpochs: 'accumulate' },
+  // M17: no agent row before the run's first state; its terminal stands in, as this app's seam drew it.
+  unobservedAgents: 'terminal',
+  // No replyMaxLength (M21): Core already bounds the reply, and this app's seam read the texts whole.
+  onError: (error) => process.stderr.write(`[main] monitor backend: ${String(error)}\n`),
+});
+monitorBackend.subscribe((change) => broadcast('monitor:change', change));
+
+/** A window that closed or reloads: its terminals and its active pane are nobody's until it reports again. */
+function forgetMonitorWindow(windowId: string): void {
+  monitorHost.forgetWindow(windowId);
+  // M20: a screen lives as long as its window (its first shown report opened it, an empty one too).
+  monitorBackend.forgetScreen(windowId);
+}
+
+function monitorDeviceOs(): 'mac' | 'windows' | 'linux' {
+  if (process.platform === 'darwin') return 'mac';
+  return process.platform === 'win32' ? 'windows' : 'linux';
+}
+
+/** The labels the registry gives its accounts; a row names its run's account by them. */
+function refreshMonitorAccountLabels(profiles: readonly AgentProfile[]): void {
+  monitorAccountLabels = new Map(profiles.map((profile) => [profile.id, profile.label] as const));
+  monitorHost.runsChanged();
+}
 /** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
 const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
 /** Where the transcript history daemon lives; hand-edited, never written by Godview. */
@@ -761,6 +816,7 @@ agentRuntime.onAccountUsage((provider, result) => {
 });
 agentRuntime.onProfilesChanged((profiles) => {
   if (quitting) return;
+  refreshMonitorAccountLabels(profiles);
   broadcast('puppeteer:profiles', profiles);
   void accountUsageMonitor
     .refreshProfiles()
@@ -773,7 +829,7 @@ function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   // A crash remains a small blocked monitor until acknowledgment. Clean
   // completion has already emitted monitor removal and can leave the board.
   const retainedFailure = record && monitorRelay.hasRun(record.info.runtimeRunId);
-  if (!retainedFailure) agentRecords.delete(final.runtimeSessionId);
+  if (!retainedFailure && agentRecords.delete(final.runtimeSessionId)) monitorHost.runsChanged();
 }
 
 function stopAdoptedProcessMonitor(runtimeSessionId: string): void {
@@ -790,6 +846,7 @@ function finishAdoptedProcess(runtimeSessionId: string, reason = 'process-exited
   const record = agentRecords.get(runtimeSessionId);
   if (record) {
     record.agentProcessAlive = false;
+    monitorHost.runsChanged();
     scheduleRestoreCheckpoint(true);
   }
   const cleanup = agentRuntime
@@ -1061,11 +1118,13 @@ async function dealProjectLater(runtimeSessionId: string, workspace: AgentWorksp
   const record = agentRecords.get(runtimeSessionId);
   if (!project || !record || record.info.project) return;
   record.info = { ...record.info, project };
+  monitorHost.runsChanged();
   broadcast('puppeteer:agent-session', record.info);
 }
 
 function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
   agentRecords.set(info.runtimeSessionId, { info, session, agentProcessAlive: true });
+  monitorHost.runsChanged();
   const agent = agentRuntime.agent(info.runtimeSessionId);
   agent?.on('*', () => {
     const runtimeInfo = agent.info;
@@ -1078,6 +1137,7 @@ function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
         continuation: { ...runtimeInfo.continuation },
         sessionId: runtimeInfo.nativeSession.id,
       };
+      monitorHost.runsChanged();
       scheduleRestoreCheckpoint(true);
       broadcast('puppeteer:agent-session', record.info);
     }
@@ -1110,6 +1170,7 @@ function onSessionExited(event: SessionExitedEvent, preserveAgentForRecovery = f
   }
   if (record) {
     record.agentProcessAlive = false;
+    monitorHost.runsChanged();
     record.session = {
       ...record.session,
       exited: true,
@@ -1157,6 +1218,9 @@ function wireAutomation(client: GhostteaAutomationClient): void {
   wiredAutomationClients.add(client);
   client.on('session-exited', (event) => {
     void onSessionExited(event);
+  });
+  client.on('session-exited', (event) => {
+    if (monitorTerminalIdentities.delete(event.sessionId)) monitorHost.runsChanged();
   });
   // An account is verified when its login terminal ends, independently of the
   // agent-session bookkeeping above: a login pane owns no run.
@@ -1336,6 +1400,10 @@ async function handoffExitedAgentTerminal(
       }
     }
     scheduleRestoreCheckpoint(true);
+    // The shell wears the dead agent's identity, as the renderer is told below: an agent later adopted in it is
+    // that row again.
+    monitorTerminalIdentities.set(session.id, runtimeSessionId);
+    monitorHost.runsChanged();
     for (const [window, previousSessionId] of previousByWindow) {
       dispatchTerminalHandoff(window, previousSessionId, runtimeSessionId, session);
     }
@@ -1578,6 +1646,7 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       stopAdoptedProcessMonitor(runtimeSessionId);
       managedTerminalIds.delete(runtimeSessionId);
       agentRecords.delete(runtimeSessionId);
+      monitorHost.runsChanged();
       broadcast('puppeteer:agent-removed', runtimeSessionId);
     }
     process.stderr.write(`[main] spawn-through exec failed: ${request.message}\n`);
@@ -1911,23 +1980,37 @@ function registerIpc(): void {
       final: record.final,
     })),
   );
-  ipcMain.handle('puppeteer:load-usage-history', (_event, key: unknown): UsageLedgerRecord | null => {
-    if (!key || typeof key !== 'object') return null;
-    const { providerId, nativeSessionId } = key as Partial<UsageHistoryKey>;
-    if (typeof providerId !== 'string' || typeof nativeSessionId !== 'string') return null;
-    return usageHistoryStore.load({ providerId, nativeSessionId }) ?? null;
+  // The model, for a window's replica: asked at mount and after a gap, answered on the change channel itself, so
+  // every change after it arrives after it (M23).
+  ipcMain.on('monitor:snapshot', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window && tabs.get(window)) safeSend(window, 'monitor:change', monitorBackend.getSnapshot());
   });
-  ipcMain.handle('puppeteer:save-usage-history', (_event, records: unknown): void => {
-    usageHistoryStore.save(records);
+  // A window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact).
+  ipcMain.on('monitor:terminals', (event, value: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const record = window ? tabs.get(window) : undefined;
+    const terminals = parseMonitorTerminalReport(value);
+    if (record && terminals) monitorHost.reportTerminals(record.id, terminals);
   });
-  ipcMain.handle('puppeteer:list-agent-monitors', (event) => {
+  // L5: the rows a window shows in its active pane; any window showing a row clears its unread mark.
+  ipcMain.on('monitor:shown', (event, value: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const record = window ? tabs.get(window) : undefined;
+    const ids = parseMonitorShownReport(value);
+    if (record && ids) monitorBackend.reportShown(record.id, ids);
+  });
+  // M3: a crashed row stays until its failure is acknowledged; the backend asks the runtime, and the row goes with
+  // the run. Only retained, dead failure blockers can be acknowledged.
+  ipcMain.handle('monitor:acknowledge', (event, id: unknown): boolean => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window || !tabs.get(window) || !isOpaqueMonitorIdentifier(id)) return false;
+    return monitorBackend.command({ type: 'acknowledge', id });
+  });
+  // The chrome's feed (M19), its listing: the relay's ordered states, for the chrome only (see `monitorRelay`).
+  ipcMain.handle('monitor:chrome-states', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];
-  });
-  ipcMain.handle('puppeteer:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !tabs.get(window)) return Promise.resolve(false);
-    return acknowledgeAgentFailureForIpc(agentRuntime, monitorRelay, input);
   });
   ipcMain.handle(
     'puppeteer:submit-prompt',
@@ -2529,6 +2612,7 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     // shutdown. Removing the attachment record is intentionally observational.
     const closed = tabs.delete(window);
     if (closed) terminateDetachedPlainSessions(tabs.unreferencedSessionIds(closed.sessionIds));
+    if (closed) forgetMonitorWindow(closed.id);
     dirtyConfigEditorSenders.delete(windowWebContents);
     scheduleRestoreCheckpoint(true);
     if (rendererRecoveryTimer) clearTimeout(rendererRecoveryTimer);
@@ -2540,6 +2624,8 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
   });
   window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
     if (isMainFrame && !isInPlace) dirtyConfigEditorSenders.delete(windowWebContents);
+    // A reloading renderer reports its terminals and its active pane again once it mounts.
+    if (isMainFrame && !isInPlace) forgetMonitorWindow(record.id);
   });
   window.webContents.on('console-message', (details) => {
     if (details.level === 'error') {
@@ -3056,6 +3142,7 @@ function shutdown(): Promise<void> {
     const finals = await agentRuntime.dispose();
     for (const final of finals) pushWorkspaceFinal(final);
     await monitorConnection.close();
+    monitorBackend.dispose();
     backend?.stop();
     backend = undefined;
     // Before the home goes: a refresh in flight would publish it again.
@@ -3137,6 +3224,13 @@ app
       return;
     }
     accountUsageMonitor.start();
+    // A row names its run's account by the registry's label; later changes arrive with onProfilesChanged.
+    void agentRuntime
+      .profiles()
+      .then((profiles) => {
+        if (!quitting) refreshMonitorAccountLabels(profiles);
+      })
+      .catch((error: unknown) => process.stderr.write(`[main] monitor account labels: ${String(error)}\n`));
     // The registry decides how many readings a provider has; without this the
     // first poll would be one unkeyed row per provider until an account changed.
     void accountUsageMonitor

@@ -95,15 +95,21 @@ export function projectName(host: MonitorHostRun, state: AgentMonitorState | und
   return folderName(path, host.provider.label.trim() || host.provider.id);
 }
 
-/** The observation decides: a git value of null means "not in a repo" and is an answer; absent falls through to the workspace. */
+/**
+ * The observed branch when the observation names one; else the branch the host supplies for that case (M26); else
+ * the observation's answer — null for "looked: no repository, or no branch" — and when nothing looked, the workspace's.
+ */
 export function projectBranch(host: MonitorHostRun, state: AgentMonitorState | undefined): string | null | undefined {
   const git = state?.environment.git;
+  if (git?.branch) return git.branch;
+  if (host.fallbackBranch) return host.fallbackBranch;
   if (git !== undefined) return git?.branch ?? null;
   return host.workspace?.branch;
 }
 
-/** The key a project's colour is dealt by: the host's canonical root, else the observed directory. */
+/** The key a project's colour is dealt by: the host's canonical root, else the observed directory; none while the host is folding it (null). */
 export function projectKey(host: MonitorHostRun, state: AgentMonitorState | undefined): string | undefined {
+  if (host.projectKey === null) return undefined;
   return host.projectKey || state?.environment.cwd || undefined;
 }
 

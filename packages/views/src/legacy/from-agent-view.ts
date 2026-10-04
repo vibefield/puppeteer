@@ -64,7 +64,9 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  *     owner names its PTY"), ruled M2. Puppeteer's Godview has no peers.
  *   - agent.usage comes from `cost`: no total where nothing was priced; no steps
  *     where no series crosses. agent.monitor.usage.costRatePerMin is
- *     `cost.burnPerHour / 60`.
+ *     `cost.burnPerHour / 60`, restored to the per-minute rate it was multiplied from
+ *     (`perMinute`: the round trip can miss it by an ulp, which flips a half cent
+ *     in `formatUsd`, M27).
  *   - agent.monitor and agent.usage are absent while the row is not `observed`
  *     (starting, or pending): today such a run has no mirror, and the status
  *     ledger starts its lane at first sight.
@@ -200,6 +202,16 @@ function replyFirstLine(view: AgentView): string {
   return reply ?? view.status;
 }
 
+/**
+ * The views' per-minute rate from the row's per-hour burn. The backend multiplies
+ * Core's per-minute rate by 60; dividing back can land an ulp away (0.015 comes
+ * back as 0.014999999999999998), and `formatUsd` would print a half cent the other
+ * way ("$0.01/min" for today's "$0.02/min"). Fifteen significant digits restore it.
+ */
+function perMinute(burnPerHour: number): number {
+  return Number((burnPerHour / 60).toPrecision(15));
+}
+
 /** Puppeteer Godview's line (agents.ts monitorAgentFromSession): the headline, more blockers, the cost, the burn. */
 function headlineCostLine(view: AgentView): string {
   const { cost, wait } = view;
@@ -211,7 +223,7 @@ function headlineCostLine(view: AgentView): string {
     priced
       ? `~${formatUsd(cost.usd)} estimated API cost${cost.coverage === 'partial' ? ' (partial)' : ''}`
       : 'cost unavailable',
-    cost?.burnPerHour === undefined ? undefined : `${formatUsd(cost.burnPerHour / 60)}/min`,
+    cost?.burnPerHour === undefined ? undefined : `${formatUsd(perMinute(cost.burnPerHour))}/min`,
   ]
     .filter((part): part is string => Boolean(part))
     .join(' · ');
@@ -254,7 +266,7 @@ function legacyFacet(view: AgentView, options: LegacyShimOptions) {
       : {}),
     usage: Object.freeze({
       ...(cost ? { costCoverage: cost.coverage } : {}),
-      ...(cost?.burnPerHour === undefined ? {} : { costRatePerMin: cost.burnPerHour / 60 }),
+      ...(cost?.burnPerHour === undefined ? {} : { costRatePerMin: perMinute(cost.burnPerHour) }),
     }),
   });
   return Object.freeze({
