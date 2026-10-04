@@ -68,6 +68,8 @@ export interface LabHandle {
   ready(): Promise<void>;
   /** Capture mode: `frames` frames of virtual time at 60 Hz; otherwise that many real frames. */
   step(frames: number): Promise<void>;
+  /** Move the world on (`labWorld({ churn: true })`) and let React commit it: a frame sequence's change. */
+  churn(): Promise<void>;
 }
 
 declare global {
@@ -102,17 +104,18 @@ interface StageProps {
   params: LabParams;
   options: ViewLabOptions;
   parameters: MonitorParameters;
+  churn: boolean;
   onCommit(): void;
 }
 
-function Stage({ size, params, options, parameters, onCommit }: StageProps): ReactElement {
+function Stage({ size, params, options, parameters, churn, onCommit }: StageProps): ReactElement {
   const { width, height, note } = LAB_SIZES[size];
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(stageRef);
   const world = useMemo(
-    () => labWorld({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral }),
-    [params.n, params.seed, palette.tint, palette.neutral],
+    () => labWorld({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
+    [params.n, params.seed, palette.tint, palette.neutral, churn],
   );
   const [selected, setSelected] = useState<string>();
   const actions = useMemo<MonitorActions>(
@@ -196,13 +199,18 @@ export function mountViewLab(options: ViewLabOptions): ViewLab {
     if (committed >= params.sizes.length) signalReady();
   };
   let pushParameters: (parameters: MonitorParameters) => void = () => undefined;
+  let pushChurn: () => void = () => undefined;
   function Lab(): ReactElement {
     const [parameters, setParameters] = useState(options.parameters);
+    const [churn, setChurn] = useState(false);
     pushParameters = setParameters;
+    pushChurn = () => setChurn(true);
     return createElement(
       'div',
       { className: 'view-lab-stages' },
-      params.sizes.map((size) => createElement(Stage, { key: size, size, params, options, parameters, onCommit })),
+      params.sizes.map((size) =>
+        createElement(Stage, { key: size, size, params, options, parameters, churn, onCommit }),
+      ),
     );
   }
   createRoot(options.mount).render(createElement(Lab));
@@ -219,6 +227,11 @@ export function mountViewLab(options: ViewLabOptions): ViewLab {
       await (clock ? clock.settle() : frames(2));
     },
     step: (count) => (clock ? clock.step(count) : frames(count)),
+    churn: async () => {
+      pushChurn();
+      // React commits on a message: two turns of the real loop and the new rows are in.
+      for (let turn = 0; turn < 2; turn += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    },
   };
   return { params, setParameters: (parameters) => pushParameters(parameters), setTheme, setAnimations };
 }

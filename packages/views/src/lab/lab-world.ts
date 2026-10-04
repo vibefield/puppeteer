@@ -135,6 +135,9 @@ export interface LabWorldOptions {
   readonly tint?: ProjectTint | undefined;
   /** The ramp a bare terminal wears (`palette.neutral`): a resolved colour, because the rain paints it into a canvas. */
   readonly neutral?: string | undefined;
+  /** The same field a moment later: the active agent stops on a permission, the one asking a question gets its
+   * answer and works, an unread one is closed, and a new one arrives. Every other row is unchanged. */
+  readonly churn?: boolean | undefined;
 }
 
 export interface LabWorld {
@@ -201,6 +204,45 @@ export function labWorld(options: LabWorldOptions): LabWorld {
         projectColour,
         mountIn,
         project: PROJECTS[index % 10]!,
+      }),
+    );
+  }
+  if (options.churn) {
+    const at = (id: string): number => rows.findIndex((row) => row.agent.id === id);
+    const stopped = at('working-full');
+    if (stopped !== -1) {
+      const words = 'Bash · git push origin main';
+      rows[stopped] = moved(rows[stopped]!, nowMs, 'blocked', {
+        blocker: {
+          id: 'b',
+          kind: 'permission',
+          since: iso(nowMs),
+          detail: words,
+          permission: { requestId: 'r', tool: 'Bash' },
+        },
+        words,
+      });
+    }
+    const answered = at('blocked-question');
+    if (answered !== -1) {
+      rows[answered] = moved(rows[answered]!, nowMs, 'working', {
+        activity: { kind: 'tool', line: 'Edit src/grants.ts +12 −3', since: iso(nowMs) },
+      });
+    }
+    const closed = at('idle-unread');
+    if (closed !== -1) rows.splice(closed, 1);
+    const id = 'late-arrival';
+    rows.push(
+      buildRow({
+        archetype: 'working-delegating',
+        cycle: 0,
+        id,
+        random: seededRandom(`${seed}:${id}`),
+        nowMs,
+        neutral,
+        projectColour,
+        mountIn,
+        project: PROJECTS[1]!,
       }),
     );
   }
@@ -475,6 +517,32 @@ function buildRow(input: BuildInput): Row {
         { tier: 'ingested', ...input.mountIn(2, false) },
       );
   }
+}
+
+/** A row whose agent changed state just now, as the runtime would report it. */
+function moved(
+  row: Row,
+  nowMs: number,
+  status: 'working' | 'blocked',
+  change: { blocker?: MonitorBlocker; words?: string; activity?: NonNullable<AgentMonitorState['activity']> },
+): Row {
+  const facet = row.agent.agent!;
+  const { activity: _activity, ...rest } = facet.monitor!;
+  const monitor: AgentMonitorState = {
+    ...rest,
+    status,
+    statusSince: iso(nowMs),
+    blockers: change.blocker ? [change.blocker] : [],
+    ...(change.activity ? { activity: change.activity } : {}),
+  };
+  return {
+    ...row,
+    agent: { ...row.agent, status, detail: detailOf(monitor, facet.usage?.total), agent: { ...facet, monitor } },
+    state: status,
+    since: nowMs,
+    ...(change.blocker ? { blocker: { kind: change.blocker.kind, detail: change.words } } : { blocker: undefined }),
+    ...(change.activity ? { did: change.activity.line } : {}),
+  };
 }
 
 /** The detail line as Godview's host composes it: the headline, more blockers, the cost and the burn. */

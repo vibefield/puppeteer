@@ -93,6 +93,28 @@ describe('labWorld', () => {
   });
 });
 
+describe('labWorld churn', () => {
+  it('moves exactly three rows and adds one, leaving every other row as it was', () => {
+    const before = labWorld({ n: 20 });
+    const after = labWorld({ n: 20, churn: true });
+    const byId = (world: ReturnType<typeof labWorld>) => new Map(world.agents.map((agent) => [agent.id, agent]));
+    const was = byId(before);
+    const now = byId(after);
+    expect(now.get('working-full')).toMatchObject({ status: 'blocked' });
+    expect(now.get('working-full')?.agent?.monitor?.blockers.map((blocker) => blocker.kind)).toEqual(['permission']);
+    expect(now.get('blocked-question')).toMatchObject({ status: 'working' });
+    expect(now.get('blocked-question')?.agent?.monitor?.blockers).toEqual([]);
+    expect(now.has('idle-unread')).toBe(false);
+    expect(now.get('late-arrival')).toMatchObject({ status: 'working' });
+    for (const [id, agent] of now) {
+      if (['working-full', 'blocked-question', 'late-arrival'].includes(id)) continue;
+      expect(agent, id).toEqual(was.get(id));
+    }
+    const open = after.history.lanes.get('working-full')!.spans.at(-1)!;
+    expect(open).toMatchObject({ status: 'blocked', fromMs: LAB_NOW_MS, blocker: { kind: 'permission' } });
+  });
+});
+
 describe('seededRandom', () => {
   it('repeats its sequence for the same text, in [0, 1)', () => {
     const a = seededRandom('mv0');

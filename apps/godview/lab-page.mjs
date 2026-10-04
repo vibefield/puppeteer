@@ -26,10 +26,11 @@ export function labEntry(name) {
   return entry;
 }
 
-/** The entry as one IIFE, safe to inline in a script tag. */
-export async function labScript(entry) {
+/** The entry as one IIFE, safe to inline in a script tag; `plugins` let a golden tool swap one module (the paint spy). */
+export async function labScript(entry, plugins = []) {
   const bundle = await build({
     entryPoints: [entry],
+    plugins,
     bundle: true,
     write: false,
     platform: 'browser',

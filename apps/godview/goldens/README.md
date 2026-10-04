@@ -17,8 +17,40 @@ parameters and sha256 and the environment that recorded them.
 | rows   | n = 1 and n = 20 from the seeded world (`packages/views/src/lab/lab-world.ts`)                                                                          |
 | motion | animations off (`data-godview-animations="off"`), 60 frames stepped on the capture clock                                                                |
 
-The swarm is not here. Its golden is its frame sequence (`packages/views/src/views/swarm/goldens`), because what
-matters there is the physics and the models it hands its renderer, not one frame of pixels.
+The swarm's goldens are its frame sequences, in `swarm/` (below): what matters there is the physics and the models it
+hands its renderer over time, not one frame of pixels.
+
+## The swarm's frame goldens
+
+`swarm/<scenario>.json`: the frames the shipping `AgentSwarm` hands its renderer, recorded by `swarm-frames.mjs`
+through a paint spy. At bundle time the spy replaces `createSwarmRenderer`, for AgentSwarm alone, with a renderer that
+records. Everything else runs as shipped:
+
+- the view and its bubble models;
+- the inline physics, stepped by the capture clock's exact 60 Hz frames, so a fixed timestep;
+- real layout and the usage column as an obstacle, in the same offscreen window as the pixel goldens.
+
+| scenario            | stage    | rows | theme |
+| ------------------- | -------- | ---- | ----- |
+| `default-n20-light` | 1180×252 | 20   | light |
+| `compact-n20-dark`  | 680×170  | 20   | dark  |
+| `default-n1-light`  | 1180×252 | 1    | light |
+
+Each scenario runs 60 frames from mount, then the world moves on (`labWorld({ churn: true })`): the active agent stops
+on a permission, the one asking gets its answer, an unread one is closed, and one arrives. Then it runs 60 more frames
+(motion on).
+
+A golden keeps every 4th frame, the frames either side of the change, and the last. Per body it records:
+
+- place, eased radius, arrival scale and opacity, focus, phase seed, accent and link;
+- its bubble model, stored once under a hash (numbers rounded to 1e-4).
+
+The compare is field by field and exact, and it prints the first differences with their paths.
+
+```sh
+node goldens/swarm-frames.mjs            # record into a temp dir and compare against goldens/swarm
+node goldens/swarm-frames.mjs --update   # re-record (an intentional change, named in its commit)
+```
 
 ## Commands
 
@@ -72,6 +104,9 @@ environment, and re-record (`--update`) when the environment changes, saying so 
 - A/A: three captures in a row, 48 of 48 identical.
 - Mutation probe: moving the list's top padding by 1 px (`styles/list.css`) failed all 12 list goldens (1.4–4.3 % of
   pixels each) with the shifted edges in the diff panels; reverted.
+- Swarm frames: two recordings after the golden matched it exactly (3 of 3). A probe softening the radius spring
+  (`RADIUS_SPRING_OMEGA` 16 → 15) failed on exactly the bodies the churn changed, from the first frame after it
+  (`/frames/17/bodies/7/radius: 55.77 → 55.31`); reverted.
 
 ## Notes
 

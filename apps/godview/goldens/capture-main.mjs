@@ -57,8 +57,13 @@ async function capture() {
     try {
       window.setContentSize(page.width, page.height);
       await window.loadURL(page.url);
+      // A page's script: frames to step and changes to make, in order (`swarm-frames.mjs`); else just the frames.
+      const script = page.script ?? [{ step: job.frames }];
+      const actions = script.map((action) =>
+        action.churn ? 'await window.__vfLab.churn();' : `await window.__vfLab.step(${action.step});`,
+      );
       await window.webContents.executeJavaScript(
-        `(async () => { await window.__vfLab.ready(); await window.__vfLab.step(${job.frames}); return true; })()`,
+        `(async () => { await window.__vfLab.ready(); ${actions.join(' ')} return true; })()`,
       );
       const rect = await window.webContents.executeJavaScript(PROBE);
       const placed = rect && rect.x === 0 && rect.y === 0 && rect.width === page.width && rect.height === page.height;
@@ -66,6 +71,17 @@ async function capture() {
         throw new Error(`the stage is not ${page.width}×${page.height} at the origin: ${JSON.stringify(rect)}`);
       if (rect.dpr !== job.dpr) throw new Error(`devicePixelRatio is ${rect.dpr}, not ${job.dpr}`);
       if (errors.length > 0) throw new Error(`the page logged errors: ${errors.join(' | ')}`);
+      if (page.collect === 'frames') {
+        // What the paint spy recorded: every frame the view handed its renderer.
+        const frames = await window.webContents.executeJavaScript('JSON.stringify(window.__vfSwarmFrames ?? null)');
+        if (frames === 'null') throw new Error('no frames recorded: is this the paint-spy page?');
+        mkdirSync(dirname(page.out), { recursive: true });
+        writeFileSync(page.out, frames);
+        console.log(
+          `GOLDEN ${JSON.stringify({ id: page.id, frames: JSON.parse(frames).length, ms: Date.now() - started })}`,
+        );
+        continue;
+      }
       const image = await window.webContents.capturePage({ x: 0, y: 0, width: page.width, height: page.height });
       mkdirSync(dirname(page.out), { recursive: true });
       writeFileSync(page.out, image.toPNG());
