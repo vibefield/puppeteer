@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createMonitorReplica } from '../replica/replica.js';
 import { createMonitorBackend } from './backend.js';
 import { createMemoryProjectIdentityStore } from './identity.js';
 import {
@@ -771,6 +772,90 @@ describe('emission', () => {
     t.scheduler.flush();
     expect(t.backend.getSnapshot().revision).toBe(revision);
     expect(t.backend.command({ type: 'select', id: 'run-1' })).toBe(false);
+  });
+});
+
+describe('emission while a listener reacts (mv-review finding 1)', () => {
+  // A turn finishes while a screen elsewhere shows another row, so it earns the mark (L5, M20); the first listener
+  // then does what a host does once a window's active pane shows the row: it reports it shown, synchronously,
+  // inside the change callback. That flush must wait for the listener loop, or a later listener hears 2→3 first.
+  const reacting = async (react: (t: ReturnType<typeof testBackend>) => void) => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun(), hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2' })] }),
+      states: [monitorState(), monitorState({ runtimeRunId: 'run-2' })],
+    });
+    await t.backend.ready;
+    t.backend.reportShown('win-2', ['run-2']);
+    t.rows();
+    expect(t.backend.getSnapshot().revision).toBe(1);
+    let reacted = false;
+    t.backend.subscribe(() => {
+      if (reacted) return;
+      reacted = true;
+      react(t);
+    });
+    return t;
+  };
+  const finishTurn = (t: ReturnType<typeof testBackend>) => {
+    t.clock.advance(1_000);
+    t.source.push(monitorState({ revision: 2, status: 'idle', statusSince: iso(T0 + 1_000), activity: undefined }));
+  };
+
+  it('a listener that reports shown inside a change: every listener hears 1→2 before 2→3', async () => {
+    const t = await reacting((backend) => backend.backend.reportShown('win-1', ['run-1']));
+    const heard: Array<{ since: number; revision: number; unread: boolean | undefined }> = [];
+    t.backend.subscribe((change) =>
+      heard.push({ since: change.since, revision: change.revision, unread: change.upserts[0]?.unread }),
+    );
+    finishTurn(t);
+    expect(heard).toEqual([
+      { since: 1, revision: 2, unread: true },
+      { since: 2, revision: 3, unread: false },
+    ]);
+    // the listener installed before the reacting one heard the same chain
+    expect(t.changes.slice(-2).map((change) => [change.since, change.revision])).toEqual([
+      [1, 2],
+      [2, 3],
+    ]);
+    expect(t.backend.getSnapshot()).toMatchObject({ revision: 3, rows: [{ id: 'run-1', unread: false }, {}] });
+  });
+
+  it('…and a replica fed by a later listener applies the whole chain, with no gap', async () => {
+    const t = await reacting((backend) => backend.backend.reportShown('win-1', ['run-1']));
+    const replica = createMonitorReplica({ scheduler: { request: (work) => (work(), () => {}) } });
+    replica.apply(t.backend.getSnapshot());
+    let gaps = 0;
+    replica.onGap(() => {
+      gaps += 1;
+    });
+    const applied: boolean[] = [];
+    t.backend.subscribe((change) => applied.push(replica.apply(change)));
+    finishTurn(t);
+    expect({ gaps, applied }).toEqual({ gaps: 0, applied: [true, true] });
+    expect(replica.getSnapshot().model).toMatchObject({ revision: 3, agents: [{ id: 'run-1', unread: false }, {}] });
+  });
+
+  it('holds any flush a listener causes until the loop ends: an urgent push, a removal, a host change', async () => {
+    for (const react of [
+      (t: ReturnType<typeof testBackend>) =>
+        t.source.push(monitorState({ runtimeRunId: 'run-2', revision: 2, status: 'blocked' })),
+      (t: ReturnType<typeof testBackend>) => t.source.remove({ runtimeRunId: 'run-2', runtimeEpoch: 1 }),
+      (t: ReturnType<typeof testBackend>) => {
+        // a host whose scheduler runs the tick at once
+        t.host.update({ runs: [hostRun()] });
+        t.scheduler.flush();
+      },
+    ]) {
+      const t = await reacting(react);
+      const heard: Array<[number, number]> = [];
+      t.backend.subscribe((change) => heard.push([change.since, change.revision]));
+      finishTurn(t);
+      expect(heard).toEqual([
+        [1, 2],
+        [2, 3],
+      ]);
+      expect(t.backend.getSnapshot().revision).toBe(3);
+    }
   });
 });
 

@@ -173,6 +173,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
   let snapshot: MonitorModelSnapshot = Object.freeze({ revision: 0, rows: EMPTY_ROWS });
   const listeners = new Set<(change: MonitorModelChange) => void>();
+  /** Listeners are hearing a change; a flush asked for meanwhile is held until they have all heard it. */
+  let emitting = false;
+  let flushHeld = false;
   let cancelTick: (() => void) | undefined;
   let cancelRecency: (() => void) | undefined;
   let cancelStep: (() => void) | undefined;
@@ -214,10 +217,19 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
   const flush = (): void => {
     if (disposed) return;
-    cancelTick?.();
-    cancelTick = undefined;
-    const change = recompute();
-    if (change) emit(change);
+    // A flush asked for while the listeners hear a change (a screen reporting what it shows, an urgent push, a tick
+    // run at once) waits for the loop to end, so every listener hears revision n before n + 1.
+    if (emitting) {
+      flushHeld = true;
+      return;
+    }
+    do {
+      flushHeld = false;
+      cancelTick?.();
+      cancelTick = undefined;
+      const change = recompute();
+      if (change) emit(change);
+    } while (flushHeld && !disposed);
   };
 
   const emit = (
@@ -238,12 +250,17 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       removed: Object.freeze(change.removed),
       ...(change.spawn ? { spawn: change.spawn } : {}),
     });
-    for (const listener of [...listeners]) {
-      try {
-        listener(published);
-      } catch (error) {
-        report(error);
+    emitting = true;
+    try {
+      for (const listener of [...listeners]) {
+        try {
+          listener(published);
+        } catch (error) {
+          report(error);
+        }
       }
+    } finally {
+      emitting = false;
     }
   };
 

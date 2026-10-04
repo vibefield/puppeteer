@@ -117,7 +117,9 @@ host passes them (SB-6 later). Emitted on the change only (deep compare).
 `revision` from 0; each tick that changed something emits one `MonitorModelChange { since, revision, upserts (rows whose
 object changed), removed, spawn? }`; idle emits nothing; `getSnapshot()` is one frozen object until a change. Urgent
 facts flush synchronously inside the push: a state whose `alive`, `blockers` or `status` differ from the last, and every
-removal; everything else coalesces to the scheduler's tick. Rows are frozen (`freezeTree`). Commands: `select(id)`
+removal; everything else coalesces to the scheduler's tick. A flush asked for while the listeners hear a change (a
+listener that reports shown, pushes, removes or runs a tick at once) is held until every listener has heard it, so each
+hears revision n before n + 1. Rows are frozen (`freezeTree`). Commands: `select(id)`
 resolves the row → `sink.select({ id, kind, runtimeRunId?, terminalSessionId? })`; `create(at?, target?)` resolves the
 device (self ready/reading, a peer only ready) and the profile against the menu → `sink.create({ at?, device, profileSet? })`;
 `acknowledge(id)` (M3, Godview's keep-until-acknowledged flow from `monitor-ipc.ts`) takes a dead agent row with a
