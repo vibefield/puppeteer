@@ -113,7 +113,8 @@ observed directory.
 ## Spawn menu
 
 Self device: `{ id: device.id, label: device.name, self, state: profileSets === null ? 'reading' : 'ready', profiles }`,
-each profile `{ id, label, glyph, kind, isDefault, blocked (some agent row under it is blocked), signedIn }` with
+each profile `{ id, label, glyph, kind, isDefault, blocked (some live agent row under it is blocked; a crashed row,
+`alive: false`, lights nothing), signedIn }` with
 `signedIn` as vf's `signedInLabels` (managed: every persona; native: logged-in only; deduped). Peers are appended as the
 host passes them (SB-6 later). Emitted on the change only (deep compare).
 

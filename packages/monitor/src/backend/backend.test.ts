@@ -631,6 +631,33 @@ describe('the spawn menu in the model', () => {
     expect(t.backend.getSnapshot().rows.find((row) => row.id === 'other')).toBe(other);
     expect(Object.isFrozen(t.backend.getSnapshot().spawn)).toBe(true);
   });
+
+  it('lights no profile for a crashed agent under it, although the row stays for acknowledging (mv-review)', async () => {
+    const crashed = (revision: number) =>
+      monitorState({
+        revision,
+        status: 'blocked',
+        alive: false,
+        activity: undefined,
+        blockers: [
+          { id: 'run:runtime', kind: 'failure', since: iso(T0), detail: 'exit 1', failure: { code: 'crash' } },
+        ],
+      });
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ profileSet: 'work' })], profileSets: sets }),
+      states: [crashed(2)],
+    });
+    await t.backend.ready;
+    expect(t.rows()).toMatchObject([{ id: 'run-1', status: 'blocked', alive: false }]);
+    const work = () => t.backend.getSnapshot().spawn?.devices[0]?.profiles?.find((profile) => profile.id === 'work');
+    expect(work()).toMatchObject({ id: 'work' });
+    expect(work()?.blocked).toBeUndefined();
+    // a live agent blocked under the same profile still lights it
+    t.host.update({ runs: [...t.host.current().runs, hostRun({ runtimeRunId: 'live', profileSet: 'work' })] });
+    t.source.push(monitorState({ runtimeRunId: 'live', status: 'blocked' }));
+    t.rows();
+    expect(work()).toMatchObject({ id: 'work', blocked: true });
+  });
 });
 
 describe('emission', () => {

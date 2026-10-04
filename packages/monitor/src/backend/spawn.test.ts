@@ -93,6 +93,16 @@ describe('the spawn menu', () => {
     ]).toEqual(['work']);
   });
 
+  it('lights no profile for a crashed row: a dead agent waits on nobody (mv-review)', () => {
+    expect([
+      ...blockedProfileSets([
+        row({ id: 'a', status: 'blocked', alive: false, profileSet: 'work' }),
+        row({ id: 'b', status: 'blocked', alive: false, profileSet: 'native' }),
+        row({ id: 'c', status: 'blocked', profileSet: 'native' }),
+      ]),
+    ]).toEqual(['native']);
+  });
+
   it('appends the peers as the host words them', () => {
     const peer = { id: 'desk-2', label: 'Laptop', state: 'asleep' as const, word: 'ASLEEP · 2 H', phrase: 'is asleep' };
     expect(spawnMenuOf({ device: DEVICE, profileSets: [], spawnPeers: [peer] }, new Set()).devices).toEqual([
