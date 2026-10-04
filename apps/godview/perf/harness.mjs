@@ -3,8 +3,9 @@
 // Godview's paired perf harness (MV-0; build-mv L14, L17; README.md beside this file). It runs
 // the REAL app — main, runtime, ghosttead, renderer — with imposter agents that change state on a
 // fixed schedule, and measures each monitor view: frame time (p50/p95 of rAF deltas), long
-// animation frames, and the React commits that rendered the view. Two builds are compared
-// interleaved in one session, judged against an A/A null arm:
+// animation frames, the React commits that rendered the view, and the TOTAL work — every React
+// root's render time and the renderer main thread's task time from DevTools' Performance domain
+// (build-mv M33). Two builds are compared interleaved in one session, judged against an A/A null arm:
 //
 //   node perf/harness.mjs                                  A/A on this app (the baseline)
 //   node perf/harness.mjs --b /path/to/other/apps/godview   A/B/A' rounds (A is --a, this app by default)
@@ -147,6 +148,22 @@ function startDriver(plane, stepMs) {
   };
 }
 
+/**
+ * What the renderer did between two `Performance.getMetrics` reads: each cumulative duration,
+ * time and count's difference, durations in ms. `TaskDuration` is every main-thread task; Script,
+ * Layout and RecalcStyle are its parts.
+ */
+function metricDeltas(before, after) {
+  const start = new Map(before.metrics.map((metric) => [metric.name, metric.value]));
+  const deltas = {};
+  for (const { name, value } of after.metrics) {
+    if (!start.has(name) || !/(Duration|Time|Count|Timestamp)$/.test(name)) continue;
+    const delta = value - start.get(name);
+    deltas[name] = /Count$/.test(name) ? delta : delta * 1000;
+  }
+  return deltas;
+}
+
 function frameStats(deltas) {
   const sorted = [...deltas].sort((left, right) => left - right);
   const at = (q) => (sorted.length === 0 ? null : sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]);
@@ -246,6 +263,8 @@ async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
       if (parts.probe && parts.stage && parts.bridge) return parts;
       throw new Error(JSON.stringify(parts));
     }).then((parts) => log(`page ready: ${JSON.stringify(parts)}`));
+    // The renderer's own accounting of main-thread work, read around each window (M33).
+    await page.send('Performance.enable');
     driver = startDriver(plane, config.stepMs);
     let spawned = 0;
     for (const count of config.counts) {
@@ -280,8 +299,12 @@ async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
         await delay(config.warmupMs);
         const sentBefore = driver.stats.sent;
         await page.evaluate('window.__gvPerf.begin()');
+        // Read inside the probe's window, so neither evaluate's own work is in the totals.
+        const metricsBefore = await page.send('Performance.getMetrics');
         await delay(config.windowMs);
+        const metricsAfter = await page.send('Performance.getMetrics');
         const sample = await page.evaluate('window.__gvPerf.end()');
+        const thread = metricDeltas(metricsBefore, metricsAfter);
         // The list's rows by status: evidence that the agents really walk working → blocked → idle.
         const board = await page.evaluate(
           `(() => { const rows = [...document.querySelectorAll('.vf-monitor-list-row')]; if (rows.length === 0) return null; const tally = { rows: rows.length, working: 0, blocked: 0, idle: 0 }; for (const row of rows) for (const status of ['working', 'blocked', 'idle']) if (row.classList.contains('is-' + status)) tally[status] += 1; return tally; })()`,
@@ -306,13 +329,16 @@ async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
             viewCommits: sample.viewCommits,
             viewRenderMs: sample.viewRenderMs,
             viewNames: sample.viewNames,
+            rootRenderMs: sample.rootRenderMs,
+            roots: sample.roots,
           },
+          main: thread,
           ops: driver.stats.sent - sentBefore,
           agents: plane.sessions.size,
           ...(board ? { board } : {}),
         });
         log(
-          `round ${round} ${label} n=${count} ${view}: p50 ${measurements.at(-1).frames.p50?.toFixed(1)} ms · p95 ${measurements.at(-1).frames.p95?.toFixed(1)} ms · LoAF ${loafs.length} · view commits ${sample.viewCommits}`,
+          `round ${round} ${label} n=${count} ${view}: p50 ${measurements.at(-1).frames.p50?.toFixed(1)} ms · p95 ${measurements.at(-1).frames.p95?.toFixed(1)} ms · LoAF ${loafs.length} · view commits ${sample.viewCommits} · roots render ${sample.rootRenderMs.toFixed(0)} ms (${sample.roots.map((root) => `${root.place} ${root.commits}`).join(', ')}) · tasks ${thread.TaskDuration?.toFixed(0) ?? '—'} ms`,
         );
       }
     }
