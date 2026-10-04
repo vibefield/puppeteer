@@ -119,8 +119,8 @@ const puppeteer: PuppeteerBridge = {
     onIpcMessage('puppeteer:agent-monitor-removed', callback),
   acknowledgeAgentFailure: (request: AcknowledgeAgentFailureRequest): Promise<boolean> =>
     ipcRenderer.invoke('puppeteer:acknowledge-agent-failure', request),
-  monitorSnapshot: (): Promise<MonitorModelSnapshot | null> => ipcRenderer.invoke('monitor:snapshot'),
-  onMonitorChange: (callback: (change: MonitorModelChange) => void): (() => void) =>
+  requestMonitorSnapshot: (): void => ipcRenderer.send('monitor:snapshot'),
+  onMonitorModel: (callback: (update: MonitorModelSnapshot | MonitorModelChange) => void): (() => void) =>
     onIpcMessage('monitor:change', callback),
   reportMonitorTerminals: (terminals: MonitorHostTerminal[]): void => ipcRenderer.send('monitor:terminals', terminals),
   reportMonitorShown: (ids: string[]): void => ipcRenderer.send('monitor:shown', ids),

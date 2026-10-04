@@ -253,12 +253,12 @@ export interface PuppeteerBridge {
   onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
   /**
-   * The monitor model (MV-2): the backend's snapshot for this window's replica, taken at mount and again after a gap;
-   * null for a window that is not a Godview tab.
+   * The monitor model (MV-2): asks main for a snapshot, at mount and again after a gap. It arrives through
+   * `onMonitorModel`, on the one ordered channel the changes travel (M23); a window that is no Godview tab gets none.
    */
-  monitorSnapshot(): Promise<MonitorModelSnapshot | null>;
-  /** Every change after the snapshot, in revision order. */
-  onMonitorChange(cb: (change: MonitorModelChange) => void): () => void;
+  requestMonitorSnapshot(): void;
+  /** The model for this window's replica: the snapshot it asked for, and every change, in revision order. */
+  onMonitorModel(cb: (update: MonitorModelSnapshot | MonitorModelChange) => void): () => void;
   /** This window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact). */
   reportMonitorTerminals(terminals: MonitorHostTerminal[]): void;
   /** The rows this window shows in its active pane (L5): any window showing a row clears its unread mark. */

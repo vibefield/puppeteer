@@ -721,8 +721,10 @@ const monitorTerminalIdentities = new Map<string, string>();
 let monitorAccountLabels: ReadonlyMap<string, string> = new Map();
 /**
  * The monitor backend (MV-2), beside the runtime: every agent's facts are
- * computed here once and every window receives the same model over IPC
- * (`monitor:snapshot`, then `monitor:change`); a window joins only its own panes.
+ * computed here once and every window receives the same model over IPC. A
+ * window asks (`monitor:snapshot`) and main answers on the ONE ordered channel
+ * the changes travel on (`monitor:change`), so a snapshot can never race the
+ * changes after it (M23). A window joins only its own panes.
  */
 const monitorHost = createGodviewMonitorHost({
   device: { id: hostname(), name: hostname(), os: monitorDeviceOs(), self: true },
@@ -740,8 +742,7 @@ const monitorBackend = createMonitorBackend({
   cost: { acrossEpochs: 'accumulate' },
   // M17: no agent row before the run's first state; its terminal stands in, as this app's seam drew it.
   unobservedAgents: 'terminal',
-  // The texts arrive as Core bounds them (its reply at 400) and the views clip their own lines, as today.
-  replyMaxLength: Number.POSITIVE_INFINITY,
+  // No replyMaxLength (M21): Core already bounds the reply, and this app's seam read the texts whole.
   onError: (error) => process.stderr.write(`[main] monitor backend: ${String(error)}\n`),
 });
 monitorBackend.subscribe((change) => broadcast('monitor:change', change));
@@ -749,7 +750,11 @@ monitorBackend.subscribe((change) => broadcast('monitor:change', change));
 /** A window that closed or reloads: its terminals and its active pane are nobody's until it reports again. */
 function forgetMonitorWindow(windowId: string): void {
   monitorHost.forgetWindow(windowId);
-  monitorBackend.reportShown(windowId, []);
+  // M20: a screen's lifetime is its window's. `forgetScreen` lands with the fix lane (M22); until then an empty
+  // report is the same forgetting.
+  const screens = monitorBackend as { forgetScreen?: (screenId: string) => void };
+  if (screens.forgetScreen) screens.forgetScreen(windowId);
+  else monitorBackend.reportShown(windowId, []);
 }
 
 function monitorDeviceOs(): 'mac' | 'windows' | 'linux' {
@@ -1976,10 +1981,11 @@ function registerIpc(): void {
       final: record.final,
     })),
   );
-  // The model, for a window's replica: a snapshot at mount (and after a gap), then every change (`monitor:change`).
-  ipcMain.handle('monitor:snapshot', (event) => {
+  // The model, for a window's replica: asked at mount and after a gap, answered on the change channel itself, so
+  // every change after it arrives after it (M23).
+  ipcMain.on('monitor:snapshot', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
-    return window && tabs.get(window) ? monitorBackend.getSnapshot() : null;
+    if (window && tabs.get(window)) safeSend(window, 'monitor:change', monitorBackend.getSnapshot());
   });
   // A window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact).
   ipcMain.on('monitor:terminals', (event, value: unknown) => {
