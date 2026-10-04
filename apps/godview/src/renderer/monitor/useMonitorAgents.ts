@@ -26,17 +26,16 @@ import {
   type MonitorParameters,
   type StatusLedger,
 } from '@vibecook/puppeteer-views';
-import { toMonitorAgents, type LegacyShimOptions } from '@vibecook/puppeteer-views/legacy';
 import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import { chromeRows, type ChromeAgentRecord } from './chrome-rows.js';
+import { createLegacyRows, type LegacyRowsFacts } from './legacy-rows.js';
 import type { MonitorAgent } from './types.js';
 import {
   agentSessionsByRow,
   mergeMonitorTerminals,
   sessionIdForRow,
   terminalReport,
-  visualIdsForRows,
   windowLocal,
   windowTerminalIds,
   type MonitorTerminalRecord,
@@ -96,35 +95,9 @@ export interface MonitorAgentsResult {
   dismissNotification(runtimeRunId: string, notificationId: string): void;
 }
 
-/** Godview's rows through the shim: its line under the name (M4); it has no peers, so `map` changes nothing (M9). */
-const SHIM: LegacyShimOptions = { detail: 'headline-cost', peerMonitor: 'map' };
-
-const NO_ROWS: readonly ViewsMonitorAgent[] = Object.freeze([]);
-
 /** The replica's theme key (L7): the same tint and ramp are the same colours. */
 function themeKey(palette: Pick<MonitorPalette, 'tint' | 'neutral'>): string {
   return `${palette.tint.l}:${palette.tint.c}:${palette.neutral}`;
-}
-
-function sameList<T>(left: readonly T[], right: readonly T[]): boolean {
-  return left.length === right.length && left.every((item, index) => item === right[index]);
-}
-
-/** What the legacy rows read of this window, kept current for the bridge's `toProps` (it runs in the host's frame). */
-interface WindowFacts {
-  readonly agentSessions: ReadonlyMap<string, string>;
-  readonly terminals: readonly MonitorTerminalRecord[];
-  readonly identities: ReadonlyMap<string, string> | undefined;
-  readonly visualIds: ReadonlyMap<string, string> | undefined;
-}
-
-interface LegacyMemo {
-  readonly model?: MonitorModel;
-  readonly facts?: WindowFacts;
-  readonly rows: readonly ViewsMonitorAgent[];
-  /** Every row's visual id last time: the seam's carry-forward. */
-  readonly visualIds: ReadonlyMap<string, string>;
-  readonly patched: WeakMap<ViewsMonitorAgent, { readonly visualId: string; readonly row: ViewsMonitorAgent }>;
 }
 
 export function useMonitorAgents({
@@ -366,9 +339,9 @@ export function useMonitorAgents({
     window.puppeteer.reportMonitorShown(shownKey ? shownKey.split('\n') : []);
   }, [shownKey]);
 
-  // The legacy rows (L9): the shim's, with the swarm's spatial identity this window carried (`visualId`, as the seam
-  // named it: a launcher's agent keeps the fresh shell's body). One list per model and window facts.
-  const windowFacts = useMemo<WindowFacts>(
+  // The legacy rows (L9, legacy-rows.ts): the shim's, with the swarm's spatial identity this window carried. One list
+  // per model and window facts.
+  const windowFacts = useMemo<LegacyRowsFacts>(
     () => ({ agentSessions, terminals, identities: terminalIdentities, visualIds: terminalVisualIds }),
     [agentSessions, terminalIdentities, terminalVisualIds, terminals],
   );
@@ -376,32 +349,11 @@ export function useMonitorAgents({
   facts.current = windowFacts;
   /** The rows the views were last given, so a change of window facts alone can draw them again. */
   const given = useRef<readonly ViewsMonitorAgent[] | undefined>(undefined);
-  const legacyMemo = useRef<LegacyMemo>({ rows: NO_ROWS, visualIds: new Map(), patched: new WeakMap() });
-  const legacyRowsFor = useCallback((current: MonitorModel): readonly ViewsMonitorAgent[] => {
-    const memo = legacyMemo.current;
-    const windowFacts = facts.current;
-    if (memo.model === current && memo.facts === windowFacts) return memo.rows;
-    const shim = toMonitorAgents(current, SHIM);
-    const visualIds = visualIdsForRows(
-      current.agents,
-      (row) => sessionIdForRow(row, windowFacts.agentSessions, windowFacts.terminals, windowFacts.identities),
-      windowFacts.visualIds,
-      memo.visualIds,
-    );
-    const rows = shim.map((row) => {
-      const visualId = visualIds.get(row.id) ?? row.id;
-      if (visualId === row.id) return row;
-      const held = memo.patched.get(row);
-      if (held?.visualId === visualId) return held.row;
-      const patched = Object.freeze({ ...row, visualId });
-      memo.patched.set(row, { visualId, row: patched });
-      return patched;
-    });
-    // The same list while every row is the same object: every view caches on identity.
-    const list = sameList(rows, shim) ? shim : sameList(rows, memo.rows) ? memo.rows : Object.freeze(rows);
-    legacyMemo.current = { model: current, facts: windowFacts, rows: list, visualIds, patched: memo.patched };
-    return list;
-  }, []);
+  const [legacy] = useState(createLegacyRows);
+  const legacyRowsFor = useCallback(
+    (current: MonitorModel): readonly ViewsMonitorAgent[] => legacy.rowsFor(current, facts.current),
+    [legacy],
+  );
 
   // L10: the status ledger stays fed through the shim until MV-6, folded once per published model, before the view
   // host's update in the same frame reads it.
