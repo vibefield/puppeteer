@@ -124,6 +124,28 @@ Per n and view:
   and script +244 ms/s, z 191, **worse**; `all roots render` stays put (−2.6 ms/s), since the busy wait is in rAF,
   not in React.
 
+## MV-2's A/B on the totals (`baselines/2026-10-04-mv2-ab-totals`)
+
+A = the pre-MV-2 export (`1afaff7`), B = pu `mv/land` `2fe8425`; R = 7, n = 10/20/60, four views. 21 launches, none
+failed, 0 failed ops. The load at launch was 4.9–53.6, but it spiked DURING five launches (to 309 at the end of
+round 3's B, 228 at round 2's B, 95 at round 6's B, 80 and 74 in two A′ launches), and n = 60 is measured last in
+each launch, so it took the most.
+
+- **The totals are lower in B in every cell.** Main-thread tasks: −3 to −20 ms/s at n = 10 and 20, −31 (swarm),
+  −46 (rain), −130 (timeline) and −149 (list) ms/s at n = 60, with z > 4 in six cells. All roots render: −3.6 to
+  −98 ms/s. Frame p50 is 16.7 ms everywhere, LoAF blocking stays 0.
+- **Three gate readings are worse, all layout:** n = 10 timeline +0.14 ms/s (z 4.7, A 0.67), n = 20 list +0.29
+  (z 9.0, A 1.41), n = 20 timeline +0.22 (z 5.4, A 1.61). B lays out more often (+0.5 to +8 passes/s; two roots
+  commit at different moments, the view's in the frame scheduler's rAF), and each pass is cheaper (0.10–0.30 ms
+  against 0.13–0.31). The same cells' tasks fall 9–20 ms/s.
+- Near the line, no verdict: n = 60 timeline's LoAF duration +46 ms/s (z 3.9), fewer long frames (33 against 53 per
+  10 s) each longer, with no blocking time; the A/A arm read +23 (z 2.4) in the same cell.
+- Context that rose, as M33 foresaw: rAF work (n = 10/20/60 list, n = 60 rain and swarm: the frame scheduler) and all
+  commits (n = 10 list, swarm and timeline, n = 20 list: two roots commit where one did).
+- The A/A arm: of 108 gate readings, 13 exceed z 2.3, the highest 6.8 (n = 20 rain layout, negative), and two meet the
+  regression rule, script at n = 60 swarm (+6.3 ms/s, z 4.2) and n = 60 timeline (+17.1 ms/s, z 5.0), under the
+  load spikes above. MV-2's earlier run, at a calmer load, read a highest A/A z of 1.1.
+
 ## Limits
 
 - Offscreen frames are not the display's: the A/B pairing is valid because both arms run the same way, not because the
