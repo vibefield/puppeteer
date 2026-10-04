@@ -52,6 +52,17 @@ node goldens/swarm-frames.mjs            # record into a temp dir and compare ag
 node goldens/swarm-frames.mjs --update   # re-record (an intentional change, named in its commit)
 ```
 
+The same three sequences also run under vitest with happy-dom (build-mv M1), in every `pnpm test`:
+`packages/views/src/views/swarm/AgentSwarm.frames.test.tsx`, with its goldens beside it in `goldens/`.
+
+- The same paint spy (`vi.mock` of the renderer module), inline physics on fake rAF, fake time from `LAB_NOW_MS`, and
+  a seeded `Math.random`.
+- happy-dom lays nothing out, so the stage's box and the usage column's rect are Godview's geometry, given by hand.
+- Re-record with `pnpm exec vitest run src/views/swarm/AgentSwarm.frames.test.tsx -u`.
+
+The two are kept on purpose. The vitest one is the every-commit gate. The Electron one is the witness with real layout,
+real colours and real chrome.
+
 ## Commands
 
 From `apps/godview`:
