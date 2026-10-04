@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMonitorReplica } from '../replica/replica.js';
+import { DEFAULT_MONITOR_SEAL_CAPACITY } from '../store.js';
 import { createMonitorBackend } from './backend.js';
 import { createMemoryProjectIdentityStore } from './identity.js';
 import {
@@ -48,23 +49,36 @@ describe('the join', () => {
     expect(t.rows()).toMatchObject([{ id: 'run-1', status: 'idle' }]);
   });
 
-  it('forgets a removal once the host stops naming the run, while the store still refuses the removed epoch (mv-review)', async () => {
+  it('keeps a removed run hidden when the host drops it and names it again, while its seal is within the cap (M25)', async () => {
     const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
     await t.backend.ready;
     expect(t.rows()).toHaveLength(1);
     t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
     expect(t.rows()).toEqual([]);
-    // The host lets the run go: the backend keeps no tombstone for a run nobody names.
     t.host.update({ runs: [] });
     expect(t.rows()).toEqual([]);
-    // So a host that names it again shows it as starting, like any run the runtime has not spoken for…
+    // One record of removals, the store's: a host naming the run again does not bring it back, as today…
     t.host.update({ runs: [hostRun()] });
-    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, detail: 'starting' }]);
-    // …while the store's seal still refuses the removed epoch's late state, and a newer epoch revives it.
+    expect(t.rows()).toEqual([]);
+    // …nor does the removed epoch's late state; a newer epoch revives it.
     t.source.push(monitorState({ runtimeEpoch: 1, revision: 9, status: 'idle', activity: undefined }));
-    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, status: 'working' }]);
+    expect(t.rows()).toEqual([]);
     t.source.push(monitorState({ runtimeEpoch: 2, revision: 1, status: 'idle', activity: undefined }));
     expect(t.rows()).toMatchObject([{ id: 'run-1', observed: true, status: 'idle' }]);
+  });
+
+  it('past the store’s cap a removal is forgotten: a run named again then reads as starting (drop a run only for good)', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+    await t.backend.ready;
+    t.rows();
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    t.host.update({ runs: [] });
+    expect(t.rows()).toEqual([]);
+    for (let index = 0; index < DEFAULT_MONITOR_SEAL_CAPACITY; index += 1) {
+      t.source.remove({ runtimeRunId: `gone-${index}`, runtimeEpoch: 1 });
+    }
+    t.host.update({ runs: [hostRun()] });
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, detail: 'starting' }]);
   });
 
   it('merges the listing under live pushes: a newer push is not overwritten by an older listing', async () => {

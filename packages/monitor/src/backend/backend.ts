@@ -149,8 +149,6 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     ...(options.notificationCapacity === undefined ? {} : { notificationCapacity: options.notificationCapacity }),
     onListenerError: report,
   });
-  /** Runs the runtime removed and nothing has revived: no row while the host still names them. */
-  const sealed = new Set<string>();
   /** The model id each run carries, for the backend's lifetime. */
   const idByRun = new Map<string, string>();
   /**
@@ -308,7 +306,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     const agents: Array<{ host: MonitorHostRun; state: AgentMonitorState | undefined; id: string }> = [];
     for (const run of facts.runs) {
       const state = store.getState(run.runtimeRunId);
-      if (!state && sealed.has(run.runtimeRunId)) continue;
+      // M25: one record of removals, the store's capped seal. A run the runtime removed and nothing has revived is
+      // no row, even while the host names it again, as long as its seal is within the cap.
+      if (!state && store.isSealed(run.runtimeRunId)) continue;
       let id = idByRun.get(run.runtimeRunId);
       if (id === undefined || taken.has(id)) {
         const terminalId = (session: string | undefined): string | undefined =>
@@ -447,11 +447,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (entry.row !== previous?.row) upserts.push(entry.row);
     }
 
-    // 7. What left, and what to forget. A removal is kept only while the host still names the run; after that the
-    //    store's own seal refuses the removed epoch's late state.
+    // 7. What left, and what to forget.
     const removed = [...entries.keys()].filter((id) => !next.has(id));
     const named = new Set(facts.runs.map((run) => run.runtimeRunId));
-    for (const runtimeRunId of sealed) if (!named.has(runtimeRunId)) sealed.delete(runtimeRunId);
     for (const runtimeRunId of new Set([...idByRun.keys(), ...observed.keys()])) {
       if (named.has(runtimeRunId) || store.getState(runtimeRunId) !== undefined) continue;
       idByRun.delete(runtimeRunId);
@@ -477,7 +475,6 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     if (disposed) return;
     const previous = store.getState(state.runtimeRunId);
     if (!store.acceptState(state)) return;
-    sealed.delete(state.runtimeRunId);
     if (isUrgentTransition(previous, state)) flush();
     else schedule();
   });
@@ -487,16 +484,13 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const unsubscribeRemoved = source.onRemoved((removal) => {
     if (disposed) return;
     if (!store.remove(removal)) return;
-    sealed.add(removal.runtimeRunId);
     flush();
   });
   const ready = source
     .listStates()
     .then((states) => {
       if (disposed) return;
-      for (const state of states) {
-        if (store.acceptState(state)) sealed.delete(state.runtimeRunId);
-      }
+      store.acceptStates(states);
       schedule();
     })
     .catch((error: unknown) => {

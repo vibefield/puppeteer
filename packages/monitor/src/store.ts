@@ -19,6 +19,11 @@ export interface AgentMonitorStoreSnapshot {
 export interface AgentMonitorStore {
   getSnapshot(): AgentMonitorStoreSnapshot;
   getState(runtimeRunId: string): AgentMonitorState | undefined;
+  /**
+   * The runtime removed the run and no newer epoch has revived it: its late states are refused. Seals are capped
+   * (`sealCapacity`), so this is the record of the newest removals only.
+   */
+  isSealed(runtimeRunId: string): boolean;
   subscribe(listener: () => void): () => void;
   acceptState(state: AgentMonitorState): boolean;
   acceptStates(states: readonly AgentMonitorState[]): number;
@@ -120,6 +125,7 @@ export function createAgentMonitorStore(options: CreateAgentMonitorStoreOptions 
   return {
     getSnapshot: () => snapshot,
     getState: (runtimeRunId) => statesByRunId.get(runtimeRunId),
+    isSealed: (runtimeRunId) => sealedEpochs.has(runtimeRunId),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

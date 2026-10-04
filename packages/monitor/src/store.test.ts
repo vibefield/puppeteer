@@ -73,6 +73,23 @@ describe('createAgentMonitorStore', () => {
     expect(store.acceptState(state(1, 5, 'a'))).toBe(true);
   });
 
+  it('says whether a run is sealed: removed and not revived, within the cap (M25)', () => {
+    const store = createAgentMonitorStore({ sealCapacity: 2 });
+    store.acceptState(state(1, 1, 'a'));
+    expect(store.isSealed('a')).toBe(false);
+    store.remove({ runtimeRunId: 'a', runtimeEpoch: 1 });
+    expect(store.isSealed('a')).toBe(true);
+    expect(store.isSealed('unknown')).toBe(false);
+    store.acceptState(state(2, 1, 'a'));
+    expect(store.isSealed('a')).toBe(false);
+    store.remove({ runtimeRunId: 'a', runtimeEpoch: 2 });
+    store.remove({ runtimeRunId: 'b', runtimeEpoch: null });
+    store.remove({ runtimeRunId: 'c', runtimeEpoch: 1 });
+    expect([store.isSealed('a'), store.isSealed('b'), store.isSealed('c')]).toEqual([false, true, true]);
+    store.clear();
+    expect(store.isSealed('b')).toBe(false);
+  });
+
   it('makes a run sealed again the newest seal', () => {
     const store = createAgentMonitorStore({ sealCapacity: 2 });
     store.remove({ runtimeRunId: 'a', runtimeEpoch: 1 });

@@ -34,9 +34,9 @@ host that breaks one.
    run is named (any tick between — the 10 s recency clock, the 30 s step, an unrelated push) reads as the shell
    removed and a different row added under the run's id. Drop the terminal after the run is named, or in the same
    update.
-2. **Name a run until you are done with it.** The backend forgets a removal once the host stops naming the run
-   (bounded tombstones, below); a run named again afterwards reads as "starting" until the runtime speaks, though the
-   store still refuses the removed epoch's late state.
+2. **Drop a run only for good.** A removed run stays hidden while its seal is within the store's cap (the newest 4096
+   removals, M25), even if the host names it again. Past the cap the removal is forgotten, and a run named again then
+   reads as "starting" until the runtime speaks.
 3. **Open and close screens (M20).** A screen opens with its first `reportShown(screenId, ids)`, an empty list too
    (its active pane shows nothing), and closes with `forgetScreen(screenId)` when it goes away: fieldd when the
    screen's door subscription closes, puppeteer's Godview when the window closes. A screen never forgotten keeps marks
@@ -86,10 +86,10 @@ host that breaks one.
 1. **Join**: every host run → the store's state for its `runtimeRunId` (`AgentMonitorStore`: epochs, revisions, sealed
    removals). A run the store has REMOVED makes no row while the host still names it, until a newer epoch revives it; a
    run the host names but the store has never heard of is a "starting" row; a state the host has not named is no row
-   (both hosts wait for the host's record today). **Tombstones are bounded:** the backend forgets a removal once the host
-   stops naming the run (so a run named again later reads as "starting" until the runtime speaks), and the store keeps
-   the newest `DEFAULT_MONITOR_SEAL_CAPACITY` (4096) seals, forgetting the oldest first — each still refuses its removed
-   epoch's late state, which lags the removal by moments.
+   (both hosts wait for the host's record today). **One record of removals (M25):** the store's seal, read through
+   `store.isSealed(runtimeRunId)`; the backend keeps none of its own. The store keeps the newest
+   `DEFAULT_MONITOR_SEAL_CAPACITY` (4096) seals, forgetting the oldest first, so tombstones are bounded: within the cap
+   a removed run stays hidden even when the host names it again, and its removed epoch's late state is refused.
 2. **Identity carry-forward** (`id`): `idByRun` for the backend's lifetime. A new run takes the id of the bare-terminal
    row its `terminalSessionId` (or `replacedTerminalSessionId`) stood for — a promoted shell keeps its body — else its
    `runtimeRunId`, which already survives epochs and PTY swaps (AR-4). An id is never held by two rows at once.
