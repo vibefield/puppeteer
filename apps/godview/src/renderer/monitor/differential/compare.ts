@@ -150,16 +150,6 @@ export const KNOWN_CAUSES: Readonly<Record<string, DifferenceCause>> = {
     return unpriced && difference.next === undefined ? 'yes' : undefined;
   },
   /**
-   * M21, pending mv1-fix: until the backend's default `replyMaxLength` becomes
-   * none, a text longer than 280 code points is cut there (Core bounds the reply
-   * at 400). Accepted only as exactly that cut; it disappears when the fix lands.
-   */
-  'M21 pending: the backend still cuts a text at 280 until mv1-fix lands': (difference) => {
-    if (typeof difference.old !== 'string' || typeof difference.next !== 'string') return undefined;
-    const points = Array.from(difference.old.trim());
-    return points.length > 280 && difference.next === points.slice(0, 280).join('') ? 'yes' : undefined;
-  },
-  /**
    * The same-frame unread race: the turn ended in the very frame the person
    * moved their active pane. The old seam folded both in one render; the backend
    * read the end while the window still showed the row (its shown report comes

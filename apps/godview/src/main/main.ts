@@ -752,11 +752,8 @@ monitorBackend.subscribe((change) => broadcast('monitor:change', change));
 /** A window that closed or reloads: its terminals and its active pane are nobody's until it reports again. */
 function forgetMonitorWindow(windowId: string): void {
   monitorHost.forgetWindow(windowId);
-  // M20: a screen's lifetime is its window's. `forgetScreen` lands with the fix lane (M22); until then an empty
-  // report is the same forgetting.
-  const screens = monitorBackend as { forgetScreen?: (screenId: string) => void };
-  if (screens.forgetScreen) screens.forgetScreen(windowId);
-  else monitorBackend.reportShown(windowId, []);
+  // M20: a screen lives as long as its window (its first shown report opened it, an empty one too).
+  monitorBackend.forgetScreen(windowId);
 }
 
 function monitorDeviceOs(): 'mac' | 'windows' | 'linux' {
