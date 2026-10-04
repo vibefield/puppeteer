@@ -179,13 +179,30 @@ class Harness {
   private readonly replica: MonitorReplica;
   private readonly legacy: LegacyRows = createLegacyRows();
   private readonly start: number;
+  /** What crossed main -> window and window -> main, for M19's feed measurement. */
+  readonly traffic: FeedTraffic = {
+    chromeMessages: 0,
+    chromeBytes: 0,
+    modelChanges: 0,
+    modelBytes: 0,
+    terminalReports: 0,
+    shownReports: 0,
+  };
+  private lastTerminalReport = '';
+  private lastShownReport = '';
 
   constructor(scenario: DifferentialScenario) {
     this.start = scenario.start;
     this.clock = manualClock(scenario.start);
     this.relay = new MonitorIpcRelay({
-      onState: (message) => this.old.updateMonitor(message),
+      onState: (message) => {
+        this.traffic.chromeMessages += 1;
+        this.traffic.chromeBytes += JSON.stringify(message).length;
+        this.old.updateMonitor(message);
+      },
       onRemoved: (message) => {
+        this.traffic.chromeMessages += 1;
+        this.traffic.chromeBytes += JSON.stringify(message).length;
         this.old.removeMonitor(message);
         // Main's own side effect of a removal: the record goes (the new window's chrome feed forgets it too).
         if (message.terminalSessionId) {
@@ -230,7 +247,11 @@ class Harness {
     this.replica = createMonitorReplica({ scheduler: createFrameScheduler((run) => frameRequests.push(run)) });
     this.replica.setTheme({ key: 'differential', colourFor: projectColourFor({ tint: TINT, neutral: NEUTRAL }) });
     this.replica.apply(this.backend.getSnapshot());
-    this.backend.subscribe((change) => this.replica.apply(change));
+    this.backend.subscribe((change) => {
+      this.traffic.modelChanges += 1;
+      this.traffic.modelBytes += JSON.stringify(change).length;
+      this.replica.apply(change);
+    });
   }
 
   private readonly frameRun: () => void;
@@ -343,7 +364,14 @@ class Harness {
       identities: window.identities,
     });
     const liveSessions = new Map(sessions.map((session) => [session.id, session] as const));
-    this.host.reportTerminals('window', terminalReport(terminals, liveSessions, window.identities));
+    const report = terminalReport(terminals, liveSessions, window.identities);
+    const reportKey = JSON.stringify(report);
+    // The window sends only a report that changed, as the hook does.
+    if (reportKey !== this.lastTerminalReport) {
+      this.lastTerminalReport = reportKey;
+      this.traffic.terminalReports += 1;
+    }
+    this.host.reportTerminals('window', report);
     this.ticks.flush();
     const terminalIds = windowTerminalIds(terminals, window.identities);
     const visible = (row: MonitorAgentRow): boolean => row.kind === 'agent' || terminalIds.has(row.id);
@@ -383,6 +411,11 @@ class Harness {
       },
       visible,
     ).activeIds;
+    const shownKey = [...shown].sort().join('\n');
+    if (shownKey !== this.lastShownReport) {
+      this.lastShownReport = shownKey;
+      this.traffic.shownReports += 1;
+    }
     this.backend.reportShown('window', [...shown]);
     this.ticks.flush();
     this.frameRun();
@@ -411,14 +444,29 @@ class Harness {
   }
 }
 
-/** Runs a scenario through both paths; one entry per frame. */
-export function runDifferential(scenario: DifferentialScenario): FrameRows[] {
+/** Counts and JSON sizes of what each feed carried over a scenario. */
+export interface FeedTraffic {
+  /** The chrome's feed (M19): the relay's full states and removals, one message each — the old seam's only feed. */
+  chromeMessages: number;
+  chromeBytes: number;
+  /** The model (`monitor:change`): what the new path adds. */
+  modelChanges: number;
+  modelBytes: number;
+  /** Window -> main: the terminal reports and the shown reports that changed. */
+  terminalReports: number;
+  shownReports: number;
+}
+
+/** Runs a scenario through both paths; one entry per frame, and what crossed between main and the window. */
+export function runDifferential(scenario: DifferentialScenario): FrameRows[] & { traffic?: FeedTraffic } {
   const harness = new Harness(scenario);
   try {
-    return scenario.frames.map((frame) => {
+    const frames: FrameRows[] & { traffic?: FeedTraffic } = scenario.frames.map((frame) => {
       const rows = harness.step(frame);
       return { ...rows, next: harness.settled() };
     });
+    frames.traffic = { ...harness.traffic };
+    return frames;
   } finally {
     harness.dispose();
   }

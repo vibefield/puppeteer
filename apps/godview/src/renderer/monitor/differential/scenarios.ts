@@ -758,3 +758,40 @@ export function churnScenario(n: number, seed: number): DifferentialScenario {
   }
   return { name: `churn n=${n} seed=${seed}`, start: T0, projects, frames };
 }
+
+/** The launcher's race: the agent's first state arrives while the fresh shell it takes over is still in its pane. */
+export function launcherRaceScenario(): DifferentialScenario {
+  const fresh = session('sh-f', { createdAtMs: T0 - 10_000, cwd: '/repos/app' });
+  const launched = session('ag-r', { createdAtMs: T0 + 1_000, cwd: '/repos/app' });
+  const project = { key: '/repos/app', name: 'app', seq: 0 };
+  return {
+    name: 'launcher race',
+    start: T0,
+    projects: [['/repos/app', 0]],
+    frames: [
+      frame(
+        0,
+        ev.window((w) => setPanes(w, [['p1', fresh]], 'p1')),
+      ),
+      // The launch: main remembers the agent; the window hands it the fresh shell's body before mounting it.
+      frame(
+        1_000,
+        ev.remember(info('ag-r', { createdAt: T0 + 1_000, project })),
+        ev.window((w) => w.visualIds.set('ag-r', w.visualIds.get('sh-f') ?? 'sh-f')),
+      ),
+      // Its first state lands before the mount: two rows would wear the shell's body; the agent speaks for it.
+      frame(1_500, ev.state(state('run-ag-r', { at: T0 + 1_500, activity: activity('starting', T0 + 1_500) }))),
+      frame(
+        2_500,
+        ev.window((w) => {
+          setPanes(w, [['p1', launched]]);
+          w.closing.add('sh-f');
+        }),
+      ),
+      frame(
+        3_000,
+        ev.state(state('run-ag-r', { at: T0 + 3_000, revision: 2, activity: activity('tool', T0 + 3_000, 'Read') })),
+      ),
+    ],
+  };
+}

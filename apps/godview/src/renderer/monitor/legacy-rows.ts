@@ -9,7 +9,11 @@ import { sessionIdForRow, visualIdsForRows, type MonitorTerminalRecord } from '.
  * it has no peers, so `map` changes nothing, M9), with the one window fact the
  * views read that the model has no field for: the swarm's spatial identity
  * (`visualId`), carried exactly as the seam carried it, so a launcher's agent
- * keeps the fresh shell's body and a handed-off shell the dead agent's.
+ * keeps the fresh shell's body and a handed-off shell the dead agent's. And
+ * the seam's one rule over it: one body per visual identity — when two rows
+ * would wear the same one (a launched agent's first state can arrive while the
+ * fresh shell it takes over is still in its pane), the earlier row in the
+ * model's order (agents first) speaks for it and the other is not drawn.
  *
  * Identity is kept (MV-D21): the same model and the same window facts give the
  * same list; a row whose visual id did not move keeps its object.
@@ -55,20 +59,31 @@ export function createLegacyRows(): LegacyRows {
         windowFacts.visualIds,
         visualIds,
       );
-      const drawn = shim.map((row) => {
+      const drawn: ViewsMonitorAgent[] = [];
+      const bodies = new Set<string>();
+      for (const row of shim) {
         const visualId = next.get(row.id) ?? row.id;
-        if (visualId === row.id) return row;
+        if (bodies.has(visualId)) continue;
+        bodies.add(visualId);
+        if (visualId === row.id) {
+          drawn.push(row);
+          continue;
+        }
         const held = patched.get(row);
-        if (held?.visualId === visualId) return held.row;
+        if (held?.visualId === visualId) {
+          drawn.push(held.row);
+          continue;
+        }
         const made = Object.freeze({ ...row, visualId });
         patched.set(row, { visualId, row: made });
-        return made;
-      });
+        drawn.push(made);
+      }
       // The same list while every row is the same object: every view caches on identity.
       rows = sameList(drawn, shim) ? shim : sameList(drawn, rows) ? rows : Object.freeze(drawn);
       model = current;
       facts = windowFacts;
-      visualIds = next;
+      // The seam carried forward only the rows it drew.
+      visualIds = new Map(drawn.map((row) => [row.id, row.visualId ?? row.id] as const));
       return rows;
     },
   };

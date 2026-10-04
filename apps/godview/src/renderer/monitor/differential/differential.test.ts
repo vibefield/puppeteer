@@ -3,6 +3,7 @@ import { classify, compareFrame } from './compare.js';
 import { runDifferential, type DifferentialScenario } from './harness.js';
 import {
   churnScenario,
+  launcherRaceScenario,
   lifecycleScenario,
   projectsScenario,
   promotionScenario,
@@ -37,12 +38,13 @@ function report(scenario: DifferentialScenario) {
       );
     }
   }
-  return { frames: frames.length, rows, explained, unexplained, membership };
+  return { frames: frames.length, rows, explained, unexplained, membership, traffic: frames.traffic };
 }
 
 describe('MV-2 differential: the old seam and the backend read the same, frame by frame', () => {
   for (const scenario of [
     lifecycleScenario(),
+    launcherRaceScenario(),
     terminalsScenario(),
     promotionScenario(),
     projectsScenario(),
@@ -55,6 +57,8 @@ describe('MV-2 differential: the old seam and the backend read the same, frame b
       console.log(
         `[differential] ${scenario.name}: ${result.frames} frames, ${result.rows} rows compared; explained ${JSON.stringify(Object.fromEntries(result.explained))}`,
       );
+      // M19's measurement: the chrome's feed is the old seam's one feed, unchanged; the model's changes are added.
+      console.log(`[feeds] ${scenario.name}: ${JSON.stringify(result.traffic)}`);
       expect(result.membership).toEqual([]);
       expect(result.unexplained).toEqual([]);
     });

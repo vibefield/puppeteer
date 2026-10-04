@@ -27,7 +27,7 @@ export interface ChromeAgentRecord {
 
 export interface ChromeRowsInput {
   readonly model: MonitorModel;
-  /** The shim's rows for `model`, in its order. */
+  /** The rows the views draw for `model` (the shim's, one per visual identity), in its order. */
   readonly legacy: readonly ViewsMonitorAgent[];
   /** Each agent row's terminal session. */
   readonly agentSessions: ReadonlyMap<string, string>;
@@ -68,13 +68,14 @@ export function chromeRows(input: ChromeRowsInput): readonly MonitorAgent[] {
     if (!terminalBySession.has(rowId)) terminalBySession.set(rowId, terminal);
   }
   const rows: MonitorAgent[] = [];
-  input.model.agents.forEach((row, index) => {
-    const legacy = input.legacy[index];
-    if (!legacy || legacy.id !== row.id) return;
+  // The views' rows, each joined: a row the views do not draw (a second body for one visual identity) is none here.
+  for (const legacy of input.legacy) {
+    const row = input.model.byId.get(legacy.id);
+    if (!row) continue;
     if (row.kind === 'agent') {
       const sessionId = input.agentSessions.get(row.id);
       const record = sessionId === undefined ? undefined : input.records.get(sessionId);
-      if (!record) return;
+      if (!record) continue;
       const { info } = record;
       const monitor = record.monitor?.state;
       const attachment = input.attachments.get(info.session.id);
@@ -82,7 +83,7 @@ export function chromeRows(input: ChromeRowsInput): readonly MonitorAgent[] {
       // drew a run before its first state.
       if (!monitor) {
         rows.push(withSession(legacy, info.session, info.session.cwd ?? undefined, attachment));
-        return;
+        continue;
       }
       const facet = legacy.agent;
       rows.push({
@@ -100,14 +101,14 @@ export function chromeRows(input: ChromeRowsInput): readonly MonitorAgent[] {
           info,
         },
       });
-      return;
+      continue;
     }
     const terminal = terminalBySession.get(row.id);
-    if (!terminal) return;
+    if (!terminal) continue;
     const session = liveSession(terminal, input.sessions);
     rows.push(
       withSession(legacy, session, session.cwd ?? terminal.cwd ?? undefined, input.attachments.get(session.id)),
     );
-  });
+  }
   return rows;
 }
