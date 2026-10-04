@@ -59,9 +59,12 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 ## Assembly
 
 1. **Join**: every host run → the store's state for its `runtimeRunId` (`AgentMonitorStore`: epochs, revisions, sealed
-   removals). A run the store has REMOVED makes no row until a newer epoch revives it; a run the host names but the store
-   has never heard of is a "starting" row; a state the host has not named is no row (both hosts wait for the host's
-   record today).
+   removals). A run the store has REMOVED makes no row while the host still names it, until a newer epoch revives it; a
+   run the host names but the store has never heard of is a "starting" row; a state the host has not named is no row
+   (both hosts wait for the host's record today). **Tombstones are bounded:** the backend forgets a removal once the host
+   stops naming the run (so a run named again later reads as "starting" until the runtime speaks), and the store keeps
+   the newest `DEFAULT_MONITOR_SEAL_CAPACITY` (4096) seals, forgetting the oldest first — each still refuses its removed
+   epoch's late state, which lags the removal by moments.
 2. **Identity carry-forward** (`id`): `idByRun` for the backend's lifetime. A new run takes the id of the bare-terminal
    row its `terminalSessionId` (or `replacedTerminalSessionId`) stood for — a promoted shell keeps its body — else its
    `runtimeRunId`, which already survives epochs and PTY swaps (AR-4). An id is never held by two rows at once.

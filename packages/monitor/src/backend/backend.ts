@@ -149,7 +149,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     ...(options.notificationCapacity === undefined ? {} : { notificationCapacity: options.notificationCapacity }),
     onListenerError: report,
   });
-  /** Runs the runtime removed and nothing has revived: no row, even when the host still names them. */
+  /** Runs the runtime removed and nothing has revived: no row while the host still names them. */
   const sealed = new Set<string>();
   /** The model id each run carries, for the backend's lifetime. */
   const idByRun = new Map<string, string>();
@@ -439,9 +439,11 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (entry.row !== previous?.row) upserts.push(entry.row);
     }
 
-    // 7. What left, and what to forget.
+    // 7. What left, and what to forget. A removal is kept only while the host still names the run; after that the
+    //    store's own seal refuses the removed epoch's late state.
     const removed = [...entries.keys()].filter((id) => !next.has(id));
     const named = new Set(facts.runs.map((run) => run.runtimeRunId));
+    for (const runtimeRunId of sealed) if (!named.has(runtimeRunId)) sealed.delete(runtimeRunId);
     for (const runtimeRunId of new Set([...idByRun.keys(), ...observed.keys()])) {
       if (named.has(runtimeRunId) || store.getState(runtimeRunId) !== undefined) continue;
       idByRun.delete(runtimeRunId);

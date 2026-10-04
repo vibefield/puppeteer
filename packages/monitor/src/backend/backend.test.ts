@@ -48,6 +48,25 @@ describe('the join', () => {
     expect(t.rows()).toMatchObject([{ id: 'run-1', status: 'idle' }]);
   });
 
+  it('forgets a removal once the host stops naming the run, while the store still refuses the removed epoch (mv-review)', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+    await t.backend.ready;
+    expect(t.rows()).toHaveLength(1);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    expect(t.rows()).toEqual([]);
+    // The host lets the run go: the backend keeps no tombstone for a run nobody names.
+    t.host.update({ runs: [] });
+    expect(t.rows()).toEqual([]);
+    // So a host that names it again shows it as starting, like any run the runtime has not spoken for…
+    t.host.update({ runs: [hostRun()] });
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, detail: 'starting' }]);
+    // …while the store's seal still refuses the removed epoch's late state, and a newer epoch revives it.
+    t.source.push(monitorState({ runtimeEpoch: 1, revision: 9, status: 'idle', activity: undefined }));
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, status: 'working' }]);
+    t.source.push(monitorState({ runtimeEpoch: 2, revision: 1, status: 'idle', activity: undefined }));
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: true, status: 'idle' }]);
+  });
+
   it('merges the listing under live pushes: a newer push is not overwritten by an older listing', async () => {
     const t = testBackend({ facts: facts({ runs: [hostRun()] }), deferList: true });
     t.source.push(monitorState({ revision: 5, status: 'blocked', blockers: [], activity: undefined }));
