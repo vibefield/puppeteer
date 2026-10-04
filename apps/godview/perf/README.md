@@ -11,17 +11,18 @@ node perf/harness.mjs                                     # A/A on this app: the
 node perf/harness.mjs --b /path/to/slice/apps/godview      # A/B/A′ rounds; A is --a (this app by default)
 ```
 
-| option                        | default                  |                                                                                                      |
-| ----------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `--a`, `--b`                  | this app, none           | the `apps/godview` directories to compare (each built)                                               |
-| `--rounds`                    | 7                        | each round runs every arm once, in an order rotated per round; seven before z is read (build-mv M24) |
-| `--counts`                    | 10,20,60                 | agents on the board, grown in one launch: 10, then 20, then 60                                       |
-| `--views`                     | swarm,list,rain,timeline | measured at each count, in an order rotated per round                                                |
-| `--warmup-ms` / `--window-ms` | 3000 / 10000             | after switching view, settle, then measure                                                           |
-| `--step-ms`                   | 3000                     | each agent changes state this often, its phase offset by its place                                   |
-| `--fps`                       | 60                       | the offscreen frame rate (Electron allows up to 240)                                                 |
-| `--load-max`                  | 60                       | before each launch, wait for the 1-minute load average to fall below this (L17)                      |
-| `--out`                       | `perf/runs/<time>`       | `results.json`, `summary.md`, one Electron log per launch                                            |
+| option                        | default                  |                                                                                                                               |
+| ----------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--a`, `--b`                  | this app, none           | the `apps/godview` directories to compare (each built)                                                                        |
+| `--rounds`                    | 7                        | each round runs every arm once, in an order rotated per round; seven before z is read (build-mv M24)                          |
+| `--counts`                    | 10,20,60                 | agents on the board, grown in one launch: 10, then 20, then 60                                                                |
+| `--views`                     | swarm,list,rain,timeline | measured at each count, in an order rotated per round                                                                         |
+| `--warmup-ms` / `--window-ms` | 3000 / 10000             | after switching view, settle, then measure                                                                                    |
+| `--step-ms`                   | 3000                     | each agent changes state this often, its phase offset by its place                                                            |
+| `--fps`                       | 60                       | the offscreen frame rate (Electron allows up to 240)                                                                          |
+| `--synthetic-b-ms`            | none                     | the negative control: with no `--b`, B is A's own build plus this many ms of busy wait in every page animation-frame callback |
+| `--load-max`                  | 60                       | before each launch, wait for the 1-minute load average to fall below this (L17)                                               |
+| `--out`                       | `perf/runs/<time>`       | `results.json`, `summary.md`, one Electron log per launch                                                                     |
 
 ## What one launch does
 
@@ -70,6 +71,18 @@ Per n and view:
   nothing;
 - rates are per second of the nominal window, and differences are rounded to 1e-3, so equal counts never read as a
   difference.
+
+## Proved (`baselines/`)
+
+- **A/A, R = 7** (`2026-10-04-aa-r7`, today's views):
+  - 14 launches, none failed; load at launch 15.6–59.0;
+  - of about 108 readings (12 cells × 9 metrics), three exceed z 2.3, the highest 3.6, and none meets the regression
+    rule.
+- **Negative control** (`2026-10-04-negative-control`, `--synthetic-b-ms 2`, R = 7, n = 10):
+  - the swarm's rAF work reads B − A = +242 ms/s (two callbacks a frame × 60 Hz × 2 ms = 240), z 401, **worse**;
+  - the timeline reads +128 ms/s, z 182, **worse**;
+  - the A/A arm in the same rounds reads z 0.5 and 0.3;
+  - frame p50 stays 16.7 ms: a 2 ms cost per callback is invisible to frame time and plain in rAF work.
 
 ## Limits
 

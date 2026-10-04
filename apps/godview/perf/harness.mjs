@@ -8,6 +8,8 @@
 //
 //   node perf/harness.mjs                                  A/A on this app (the baseline)
 //   node perf/harness.mjs --b /path/to/other/apps/godview   A/B/A' rounds (A is --a, this app by default)
+//   node perf/harness.mjs --synthetic-b-ms 2                the negative control: B is A plus a 2 ms
+//                                                         busy wait in every animation-frame callback
 //   options: --rounds 7 · --counts 10,20,60 · --views swarm,list,rain,timeline · --warmup-ms 3000
 //            --window-ms 10000 · --step-ms 3000 · --fps 60 · --load-max 60 · --out <dir>
 //
@@ -45,6 +47,7 @@ function option(name, fallback) {
 const config = {
   a: resolve(option('a', thisApp)),
   b: option('b') ? resolve(option('b')) : undefined,
+  syntheticBMs: Number(option('synthetic-b-ms', 0)),
   rounds: Number(option('rounds', 7)),
   counts: option('counts', '10,20,60').split(',').map(Number),
   views: option('views', 'swarm,list,rain,timeline').split(','),
@@ -151,7 +154,7 @@ function frameStats(deltas) {
 }
 
 /** One launch of one build: agents up to each count in turn, every view measured at each. */
-async function runArm(appDir, round, label, viewOrder) {
+async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
   const runDir = mkdtempSync('/tmp/gvp-');
   const profile = join(runDir, 'profile');
   const home = join(runDir, 'home');
@@ -233,7 +236,7 @@ async function runArm(appDir, round, label, viewOrder) {
     page = await connectPage(target.webSocketDebuggerUrl);
     await page.send('Page.enable');
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: readFileSync(join(here, 'page-probe.js'), 'utf8'),
+      source: `${slowMs > 0 ? `window.__gvPerfSlowMs = ${slowMs};\n` : ''}${readFileSync(join(here, 'page-probe.js'), 'utf8')}`,
     });
     writeFileSync(gate, '');
     await until('the probe and the monitor stage', async () => {
@@ -350,11 +353,13 @@ async function main() {
       throw new Error(`${app} is not built: run \`node build.mjs\` there first`);
   }
   mkdirSync(config.out, { recursive: true });
-  const builds = { A: config.a, ...(config.b ? { B: config.b } : {}) };
+  // The negative control's B is A's own build; only the probe slows it.
+  const synthetic = !config.b && config.syntheticBMs > 0;
+  const builds = { A: config.a, ...(config.b ? { B: config.b } : synthetic ? { B: config.a } : {}) };
   const plan = [];
   for (let round = 0; round < config.rounds; round += 1) {
     // A' is the null arm: the same build as A, measured in the same round.
-    const arms = config.b ? ['A', 'B', "A'"] : ['A', "A'"];
+    const arms = builds.B ? ['A', 'B', "A'"] : ['A', "A'"];
     const rotated = arms.map((_, index) => arms[(index + round) % arms.length]);
     const viewOrder = config.views.map((_, index) => config.views[(index + round) % config.views.length]);
     for (const arm of rotated) plan.push({ round, arm, app: arm === 'B' ? builds.B : builds.A, viewOrder });
@@ -366,7 +371,8 @@ async function main() {
     log(`round ${step.round} arm ${step.arm} (${step.app}) at load ${before.load[0]}`);
     const started = Date.now();
     try {
-      const outcome = await runArm(step.app, step.round, step.arm.replace("'", '2'), step.viewOrder);
+      const slowMs = synthetic && step.arm === 'B' ? config.syntheticBMs : 0;
+      const outcome = await runArm(step.app, step.round, step.arm.replace("'", '2'), step.viewOrder, slowMs);
       results.runs.push({
         ...step,
         load: { before, after: loadavg().map((value) => Number(value.toFixed(2))) },

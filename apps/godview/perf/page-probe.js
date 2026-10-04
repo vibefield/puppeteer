@@ -25,11 +25,17 @@
   // The page's callbacks are timed through a wrapper installed before any page script runs; the
   // probe's own sampler uses the original and is not counted.
   const nativeFrame = window.requestAnimationFrame.bind(window);
+  // The harness's negative control (`--synthetic-b-ms`): arm B busy-waits this long in every callback.
+  const slowMs = Number(window.__gvPerfSlowMs ?? 0);
   window.requestAnimationFrame = (callback) =>
     nativeFrame((time) => {
       const started = performance.now();
       try {
         callback(time);
+        if (slowMs > 0) {
+          const until = performance.now() + slowMs;
+          while (performance.now() < until);
+        }
       } finally {
         callbacks.push({ at: started, ms: performance.now() - started });
         if (callbacks.length > 60000) callbacks.splice(0, 30000);

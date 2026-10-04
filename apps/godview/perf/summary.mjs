@@ -99,6 +99,11 @@ export function summarise(results) {
     `# Godview perf — ${hasB ? 'A/B with an A/A null arm' : 'A/A baseline'}`,
     '',
     `- A: \`${results.config.builds.A}\`${hasB ? `\n- B: \`${results.config.builds.B}\`` : ''}`,
+    ...(results.config.syntheticBMs > 0
+      ? [
+          `- B is A's own build plus a ${results.config.syntheticBMs} ms busy wait in every page animation-frame callback: the negative control, which the gate must call worse.`,
+        ]
+      : []),
     `- ${results.config.rounds} rounds · n = ${results.config.counts.join(', ')} · views ${results.config.views.join(', ')} · ${results.config.warmupMs / 1000} s warm-up + ${results.config.windowMs / 1000} s window per view · a state change per agent every ${results.config.stepMs / 1000} s · offscreen at ${results.config.fps ?? 60} Hz, DPR 2`,
     `- started ${results.startedAt}${results.finishedAt ? `, finished ${results.finishedAt}` : ' (unfinished)'}`,
     '',
