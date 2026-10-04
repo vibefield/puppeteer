@@ -36,7 +36,6 @@ import type {
   ReleaseCheckResult,
 } from '@vibecook/puppeteer-runtime';
 import type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -49,7 +48,6 @@ export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
 export type WorkspaceFinalEvent = AgentWorkspaceFinal;
 export type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -247,11 +245,15 @@ export interface PuppeteerBridge {
   interruptAgent(runtimeSessionId: string): Promise<AgentInterruptResult>;
   /** Resume an exited agent from its own continuation; the caller mounts the returned session. */
   resumeAgentSession(runtimeSessionId: string): Promise<CreateAgentSessionResult>;
-  listAgentMonitors(): Promise<AgentMonitorStateMessage[]>;
-  onAgentMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  /**
+   * THE CHROME'S FEED (M19): every run's full monitor state, for the chrome outside the monitor views (the inspector,
+   * Find, the deck's pane frames, split sessions) and nothing else. The views, the counts and the status shortcuts
+   * read the model (`onMonitorModel`).
+   */
+  listChromeMonitors(): Promise<AgentMonitorStateMessage[]>;
+  onChromeMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  onChromeMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;
-  onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
-  acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
   /**
    * The monitor model (MV-2): asks main for a snapshot, at mount and again after a gap. It arrives through
    * `onMonitorModel`, on the one ordered channel the changes travel (M23); a window that is no Godview tab gets none.

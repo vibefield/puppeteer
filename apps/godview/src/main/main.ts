@@ -83,12 +83,7 @@ import {
 } from './history-search.js';
 import { createHistorySettingsStore } from './history-settings.js';
 import { registerLauncherIpc } from './launcher-ipc.js';
-import {
-  acknowledgeAgentFailureForIpc,
-  connectMonitorIpcRelay,
-  isOpaqueMonitorIdentifier,
-  MonitorIpcRelay,
-} from './monitor-ipc.js';
+import { connectMonitorIpcRelay, isOpaqueMonitorIdentifier, MonitorIpcRelay } from './monitor-ipc.js';
 import { createGodviewMonitorHost, parseMonitorShownReport, parseMonitorTerminalReport } from './monitor-host.js';
 import {
   APPEARANCE_BLOCK_START,
@@ -352,11 +347,18 @@ function broadcast(channel: string, value: unknown): void {
   }
 }
 
+/**
+ * THE CHROME'S FEED (M19): every run's full monitor state, ordered and sealed by
+ * the relay, for the chrome outside the monitor views only (the inspector, Find,
+ * the deck's pane frames, split sessions). The model the views, the counts and
+ * the status shortcuts draw comes from the backend (`monitor:change`) and never
+ * from here. Notifications keep their channel and their UX.
+ */
 const monitorRelay = new MonitorIpcRelay({
-  onState: (message) => broadcast('puppeteer:agent-monitor-state', message),
+  onState: (message) => broadcast('monitor:chrome-state', message),
   onNotification: (message) => broadcast('puppeteer:agent-monitor-notification', message),
   onRemoved: (message) => {
-    broadcast('puppeteer:agent-monitor-removed', message);
+    broadcast('monitor:chrome-removed', message);
     if (message.terminalSessionId) {
       agentRecords.delete(message.terminalSessionId);
       monitorHost.runsChanged();
@@ -2008,14 +2010,10 @@ function registerIpc(): void {
     if (!window || !tabs.get(window) || !isOpaqueMonitorIdentifier(id)) return false;
     return monitorBackend.command({ type: 'acknowledge', id });
   });
-  ipcMain.handle('puppeteer:list-agent-monitors', (event) => {
+  // The chrome's feed (M19), its listing: the relay's ordered states, for the chrome only (see `monitorRelay`).
+  ipcMain.handle('monitor:chrome-states', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];
-  });
-  ipcMain.handle('puppeteer:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !tabs.get(window)) return Promise.resolve(false);
-    return acknowledgeAgentFailureForIpc(agentRuntime, monitorRelay, input);
   });
   ipcMain.handle(
     'puppeteer:submit-prompt',

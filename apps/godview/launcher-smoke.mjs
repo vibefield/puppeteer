@@ -553,7 +553,7 @@ try {
     if (checkAgentExit) {
       await until('the launched agent to be ready for /exit', () =>
         page.evaluate(`(async () => {
-          const agents = await window.puppeteer.listAgentMonitors();
+          const agents = await window.puppeteer.listChromeMonitors();
           return agents.some((agent) => agent.terminalSessionId === ${JSON.stringify(launched.session)} && agent.state.alive && agent.state.status === 'idle');
         })()`),
       );

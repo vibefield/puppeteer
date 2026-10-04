@@ -6,7 +6,6 @@ import {
   forwardGhostteaRendererPorts,
 } from '@vibecook/ghosttea-electron/preload';
 import type {
-  AcknowledgeAgentFailureRequest,
   AccountUsageBatch,
   AgentInstallationsSnapshot,
   AgentInterruptResult,
@@ -110,15 +109,15 @@ const puppeteer: PuppeteerBridge = {
     ipcRenderer.invoke('puppeteer:interrupt-agent', runtimeSessionId),
   resumeAgentSession: (runtimeSessionId: string): Promise<CreateAgentSessionResult> =>
     ipcRenderer.invoke('puppeteer:resume-agent-session', runtimeSessionId),
-  listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
-  onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
-    onIpcMessage('puppeteer:agent-monitor-state', callback),
+  // The chrome's feed (M19): full per-run states for the inspector, Find, the deck's frames and split sessions only.
+  // The monitor views, the counts and the status shortcuts read the model (`onMonitorModel`), never this.
+  listChromeMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('monitor:chrome-states'),
+  onChromeMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
+    onIpcMessage('monitor:chrome-state', callback),
   onAgentMonitorNotification: (callback: (message: AgentMonitorNotificationMessage) => void): (() => void) =>
     onIpcMessage('puppeteer:agent-monitor-notification', callback),
-  onAgentMonitorRemoved: (callback: (message: AgentMonitorRemovedMessage) => void): (() => void) =>
-    onIpcMessage('puppeteer:agent-monitor-removed', callback),
-  acknowledgeAgentFailure: (request: AcknowledgeAgentFailureRequest): Promise<boolean> =>
-    ipcRenderer.invoke('puppeteer:acknowledge-agent-failure', request),
+  onChromeMonitorRemoved: (callback: (message: AgentMonitorRemovedMessage) => void): (() => void) =>
+    onIpcMessage('monitor:chrome-removed', callback),
   requestMonitorSnapshot: (): void => ipcRenderer.send('monitor:snapshot'),
   onMonitorModel: (callback: (update: MonitorModelSnapshot | MonitorModelChange) => void): (() => void) =>
     onIpcMessage('monitor:change', callback),
