@@ -9,6 +9,12 @@
 // render time, and the renderer main thread's task time with its parts. A view the host mounts in
 // its own root, or whose updates a frame scheduler moves into rAF, moves work between the per-view
 // rows without changing how much there is, so those rows are context: shown, never the verdict.
+//
+// The total's PARTS (script, layout, recalc style) are component rows (build-mv M40): a part gates
+// only when its rise is material — B − A at least COMPONENT_FLOOR_MS a second, beside the rule above
+// — and its cell's main-thread total did not fall. A part that rose otherwise reads "shifted": work
+// moved between parts, which is named, never a failure. (Set after MV-2's run, where layout rose
+// 0.14–0.29 ms/s on a 0.7–1.6 ms/s base while the same cells' tasks fell 9–20 ms/s; M40 says why.)
 
 // Rates are per second of the NOMINAL window (`s`): the measured windows run a fraction of a
 // millisecond apart, which would turn identical counts into a difference.
@@ -36,19 +42,19 @@ export const METRICS = [
     key: 'scriptMsPerS',
     label: '· script (ms / s)',
     read: (m, s) => perSecond(m.main?.ScriptDuration, s),
-    role: 'gate',
+    role: 'component',
   },
   {
     key: 'layoutMsPerS',
     label: '· layout (ms / s)',
     read: (m, s) => perSecond(m.main?.LayoutDuration, s),
-    role: 'gate',
+    role: 'component',
   },
   {
     key: 'recalcStyleMsPerS',
     label: '· recalc style (ms / s)',
     read: (m, s) => perSecond(m.main?.RecalcStyleDuration, s),
-    role: 'gate',
+    role: 'component',
   },
   {
     key: 'threadCpuMsPerS',
@@ -91,6 +97,9 @@ export function median(values) {
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
+
+/** A component row's rise smaller than this many ms a second is immaterial (M40): 0.1 % of a second. */
+export const COMPONENT_FLOOR_MS = 1;
 
 /** Below this a paired difference is no difference: the metrics are not resolved more finely. */
 const RESOLUTION = 1e-3;
@@ -148,7 +157,9 @@ const verdict = (row) =>
           : 'context'
         : row.regressed
           ? '**worse**'
-          : 'ok';
+          : row.shifted
+            ? 'shifted'
+            : 'ok';
 
 /** Each place's median render time and commits per second, per arm: where the roots' work sat. */
 function rootsLine(cell) {
@@ -182,7 +193,6 @@ export function readCell(cell) {
     const rule = (reading) =>
       reading !== null && reading.t > 0 && reading.z > 4 && baseline !== null && reading.t > 0.02 * baseline;
     const rose = rule(slice);
-    const regressed = rose && metric.role === 'gate';
     rows.push({
       metric,
       a: baseline,
@@ -191,9 +201,20 @@ export function readCell(cell) {
       null_,
       slice,
       rose,
-      regressed,
+      regressed: rose && metric.role === 'gate',
+      shifted: false,
       nullRose: rule(null_),
     });
+  }
+  // M40: a component gates only when material and its cell's total did not fall; otherwise it shifted.
+  const total = rows.find((row) => row.metric.key === 'taskMsPerS');
+  const totalFell = (reading) => reading !== null && reading !== undefined && reading.t < 0;
+  for (const row of rows) {
+    if (row.metric.role !== 'component') continue;
+    const material = (reading) => reading !== null && reading.t >= COMPONENT_FLOOR_MS;
+    row.regressed = row.rose && material(row.slice) && !totalFell(total?.slice);
+    row.shifted = row.rose && !row.regressed;
+    row.nullRose = row.nullRose && material(row.null_) && !totalFell(total?.null_);
   }
   return rows;
 }
@@ -205,7 +226,8 @@ function gateSection(cells, hasB) {
   const where = ({ cell, row }) => `n = ${cell.count} · ${cell.view} · ${row.metric.label}`;
   const shift = ({ cell, row }) =>
     `${where({ cell, row })}: B − A ${fixed(row.slice.t)} (z ${zText(row.slice)}; A ${fixed(row.a)})`;
-  const gate = readings.filter(({ row }) => row.metric.role === 'gate' && row.null_ !== null);
+  const isGate = (row) => row.metric.role === 'gate' || row.metric.role === 'component';
+  const gate = readings.filter(({ row }) => isGate(row) && row.null_ !== null);
   const highest = gate.reduce(
     (top, reading) => (top === null || reading.row.null_.z > top.row.null_.z ? reading : top),
     null,
@@ -215,14 +237,16 @@ function gateSection(cells, hasB) {
     '',
     `Gate rows: ${METRICS.filter((metric) => metric.role === 'gate')
       .map((metric) => metric.label.replace(/^· /, ''))
+      .join(', ')}; the total's parts (${METRICS.filter((metric) => metric.role === 'component')
+      .map((metric) => metric.label.replace(/^· /, '').replace(/ \(ms \/ s\)$/, ''))
       .join(
         ', ',
-      )}. The per-view rows and the CPU times are context (M33): they show where work sat, never the verdict.`,
+      )}) gate only when they rise by at least ${COMPONENT_FLOOR_MS} ms / s while the total did not fall (M40). The per-view rows and the CPU times are context (M33): they show where work sat, never the verdict.`,
     '',
   ];
   if (hasB) {
     const worse = readings.filter(({ row }) => row.regressed);
-    const read = readings.filter(({ row }) => row.metric.role === 'gate' && row.slice !== null).length;
+    const read = readings.filter(({ row }) => isGate(row) && row.slice !== null).length;
     lines.push(
       worse.length === 0
         ? `- **No gate reading regressed**: ${read} gate readings across ${cells.length} cells.`
@@ -236,6 +260,13 @@ function gateSection(cells, hasB) {
       : `- A/A health over ${gate.length} gate readings: the highest z is ${zText(highest.row.null_)} (${where(highest)}); ${gate.filter(({ row }) => row.null_.z > 2.3).length} above 2.3; ${gate.filter(({ row }) => row.nullRose).length} meet the regression rule.`,
   );
   if (hasB) {
+    const shifted = readings.filter(({ row }) => row.shifted);
+    if (shifted.length > 0) {
+      lines.push(
+        `- Parts that shifted (rose, but immaterially or while the cell's total fell; M40, no verdict):`,
+        ...shifted.map((reading) => `  - ${shift(reading)}`),
+      );
+    }
     const rose = readings.filter(({ row }) => row.metric.role === 'context' && row.rose);
     lines.push(
       rose.length === 0

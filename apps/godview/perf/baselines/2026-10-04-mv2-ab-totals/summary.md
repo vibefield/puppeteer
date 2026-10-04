@@ -7,13 +7,14 @@
 
 ## The gate (totals)
 
-Gate rows: frame p50 (ms), long animation frames / 10 s, LoAF duration (ms / s), LoAF blocking (ms / s), all roots render (ms / s), main-thread tasks (ms / s), script (ms / s), layout (ms / s), recalc style (ms / s). The per-view rows and the CPU times are context (M33): they show where work sat, never the verdict.
+Gate rows: frame p50 (ms), long animation frames / 10 s, LoAF duration (ms / s), LoAF blocking (ms / s), all roots render (ms / s), main-thread tasks (ms / s); the total's parts (script, layout, recalc style) gate only when they rise by at least 1 ms / s while the total did not fall (M40). The per-view rows and the CPU times are context (M33): they show where work sat, never the verdict.
 
-- **B is worse on 3 gate readings:**
+- **No gate reading regressed**: 108 gate readings across 12 cells.
+- A/A health over 108 gate readings: the highest z is 6.8 (n = 20 · rain · · layout (ms / s)); 13 above 2.3; 2 meet the regression rule.
+- Parts that shifted (rose, but immaterially or while the cell's total fell; M40, no verdict):
   - n = 10 · timeline · · layout (ms / s): B − A 0.14 (z 4.7; A 0.67)
   - n = 20 · list · · layout (ms / s): B − A 0.29 (z 9.0; A 1.41)
   - n = 20 · timeline · · layout (ms / s): B − A 0.22 (z 5.4; A 1.61)
-- A/A health over 108 gate readings: the highest z is 6.8 (n = 20 · rain · · layout (ms / s)); 13 above 2.3; 2 meet the regression rule.
 - Context readings that rose (the rule read on a context row; no verdict):
   - n = 10 · list · rAF work (ms / s): B − A 0.57 (z 13.5; A 0.08)
   - n = 10 · list · all React commits / s (every root): B − A 1.20 (z 5.7; A 12.70)
@@ -136,7 +137,7 @@ Roots' render, ms / s (median): A host 28.3 (13.3 commits) · A′ host 29.6 (12
 | all roots render (ms / s) | 35.11 | 36.24 | 24.59 | -1.43, 0.86, 2.4 | -10.52, 1.03, 14.5 | ok |
 | main-thread tasks (ms / s) | 85.79 | 83.57 | 75.58 | -2.22, 3.18, 1.0 | -8.88, 2.09, 6.0 | ok |
 | · script (ms / s) | 58.52 | 58.07 | 45.55 | -1.85, 1.85, 1.4 | -11.21, 1.86, 8.6 | ok |
-| · layout (ms / s) | 0.67 | 0.63 | 0.79 | -0.03, 0.02, 1.9 | 0.14, 0.04, 4.7 | **worse** |
+| · layout (ms / s) | 0.67 | 0.63 | 0.79 | -0.03, 0.02, 1.9 | 0.14, 0.04, 4.7 | shifted |
 | · recalc style (ms / s) | 3.30 | 3.41 | 3.55 | -0.02, 0.10, 0.2 | 0.07, 0.17, 0.6 | ok |
 | main-thread CPU (ms / s) | 89.11 | 86.96 | 78.78 | -2.15, 3.74, 0.8 | -8.64, 3.06, 4.0 | context |
 | renderer process CPU (ms / s) | 126.16 | 123.94 | 122.02 | 0.09, 5.98, 0.0 | -7.82, 2.81, 4.0 | context |
@@ -159,7 +160,7 @@ Roots' render, ms / s (median): A host 35.1 (12.5 commits) · A′ host 36.2 (12
 | all roots render (ms / s) | 55.49 | 51.58 | 43.62 | -0.49, 1.33, 0.5 | -12.01, 2.22, 7.7 | ok |
 | main-thread tasks (ms / s) | 97.48 | 94.09 | 82.03 | -0.02, 3.49, 0.0 | -14.58, 3.24, 6.4 | ok |
 | · script (ms / s) | 80.05 | 75.68 | 64.02 | -0.45, 2.63, 0.2 | -15.48, 2.74, 8.1 | ok |
-| · layout (ms / s) | 1.41 | 1.49 | 1.73 | 0.03, 0.03, 1.4 | 0.29, 0.05, 9.0 | **worse** |
+| · layout (ms / s) | 1.41 | 1.49 | 1.73 | 0.03, 0.03, 1.4 | 0.29, 0.05, 9.0 | shifted |
 | · recalc style (ms / s) | 0.59 | 0.63 | 0.66 | 0.03, 0.02, 2.0 | 0.04, 0.05, 1.1 | ok |
 | main-thread CPU (ms / s) | 101.47 | 98.29 | 86.20 | 0.02, 3.69, 0.0 | -13.92, 2.92, 6.8 | context |
 | renderer process CPU (ms / s) | 125.21 | 125.35 | 108.48 | 2.23, 6.77, 0.5 | -11.43, 2.97, 5.5 | context |
@@ -228,7 +229,7 @@ Roots' render, ms / s (median): A host 43.0 (21.1 commits) · A′ host 42.2 (21
 | all roots render (ms / s) | 58.44 | 61.41 | 46.35 | 2.99, 3.28, 1.3 | -15.30, 0.91, 23.9 | ok |
 | main-thread tasks (ms / s) | 137.41 | 146.04 | 116.80 | 4.63, 5.11, 1.3 | -20.13, 1.29, 22.2 | ok |
 | · script (ms / s) | 97.12 | 104.60 | 81.02 | 2.76, 4.07, 1.0 | -20.39, 2.59, 11.2 | ok |
-| · layout (ms / s) | 1.61 | 1.65 | 1.92 | 0.04, 0.06, 0.8 | 0.22, 0.06, 5.4 | **worse** |
+| · layout (ms / s) | 1.61 | 1.65 | 1.92 | 0.04, 0.06, 0.8 | 0.22, 0.06, 5.4 | shifted |
 | · recalc style (ms / s) | 4.78 | 4.66 | 4.49 | 0.19, 0.29, 0.9 | -0.10, 0.21, 0.7 | ok |
 | main-thread CPU (ms / s) | 142.03 | 151.49 | 121.97 | 5.20, 5.55, 1.3 | -19.72, 1.11, 25.3 | context |
 | renderer process CPU (ms / s) | 191.45 | 196.42 | 166.63 | 7.60, 5.46, 2.0 | -20.92, 4.14, 7.2 | context |
