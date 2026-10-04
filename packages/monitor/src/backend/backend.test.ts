@@ -351,6 +351,8 @@ describe('unread (L5)', () => {
   it('marks a turn that finishes while no screen shows the row, and clears it when any screen does', async () => {
     const t = two();
     await t.backend.ready;
+    // a screen is open, its active pane showing nothing (M20: a screen counts from its first report)
+    t.backend.reportShown('window-1', []);
     expect(unreadIds(t)).toEqual([]);
     t.clock.advance(5_000);
     t.source.push(idle('a', T0 + 4_000));
@@ -457,6 +459,78 @@ describe('unread (L5)', () => {
       expect(rows.filter((row) => row.unread).map((row) => row.id)).toEqual([...expected.unreadIds]);
     }
     expect([...expected.unreadIds]).toEqual(['b']);
+  });
+
+  describe('lifetime: today the ledger lives only while a screen is open (M20, mv-review finding 2)', () => {
+    it('marks no turn that finished while no screen was open: a screen that opens later sees no mark', async () => {
+      for (const opensShowing of [['something-else'], []]) {
+        const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+        await t.backend.ready;
+        t.rows();
+        // the turn finishes while Godview is closed
+        t.clock.advance(5_000);
+        t.source.push(monitorState({ revision: 2, status: 'idle', statusSince: iso(T0 + 5_000), activity: undefined }));
+        expect(t.rows()[0]).toMatchObject({ id: 'run-1', status: 'idle', unread: false });
+        // Godview opens, its active pane showing another row or nothing: first sight is now, so this turn is seen
+        t.clock.advance(1_000);
+        t.backend.reportShown('win-1', opensShowing);
+        expect(t.backend.getSnapshot().rows[0]).toMatchObject({ id: 'run-1', unread: false });
+        // the next turn that finishes while it is open is marked
+        t.clock.advance(1_000);
+        t.source.push(monitorState({ revision: 3, status: 'working', statusSince: iso(T0 + 7_000) }));
+        t.clock.advance(1_000);
+        t.source.push(monitorState({ revision: 4, status: 'idle', statusSince: iso(T0 + 8_000), activity: undefined }));
+        expect(t.rows()[0]).toMatchObject({ id: 'run-1', unread: true });
+      }
+    });
+
+    it('forgetting the last screen drops every mark and returns to no screen; forgetting one of two keeps the ledger', async () => {
+      const t = two();
+      await t.backend.ready;
+      t.backend.reportShown('window-1', ['b']);
+      t.backend.reportShown('window-2', []);
+      t.clock.advance(5_000);
+      t.source.push(idle('a', T0 + 4_000));
+      expect(unreadIds(t)).toEqual(['a']);
+      // one of two windows closes: the other is still open, the mark stays and keeps accruing
+      t.backend.forgetScreen('window-1');
+      expect(unreadIds(t)).toEqual(['a']);
+      t.clock.advance(1_000);
+      t.source.push(idle('b', T0 + 5_500));
+      expect(unreadIds(t)).toEqual(['a', 'b']);
+      // the last window closes: today its ledger goes with it
+      t.backend.forgetScreen('window-2');
+      expect(unreadIds(t)).toEqual([]);
+      expect(t.changes.at(-1)?.upserts.map((row) => [row.id, row.unread])).toEqual([
+        ['a', false],
+        ['b', false],
+      ]);
+      // a turn that ends while no screen is open is not marked, also after a screen opens again
+      t.clock.advance(5_000);
+      t.source.push(working('a', T0 + 9_000));
+      t.source.push(idle('a', T0 + 9_500));
+      expect(unreadIds(t)).toEqual([]);
+      t.backend.reportShown('window-3', []);
+      expect(unreadIds(t)).toEqual([]);
+      // forgetting a screen nobody registered, twice, or after dispose changes nothing
+      const { revision } = t.backend.getSnapshot();
+      t.backend.forgetScreen('nobody');
+      t.backend.forgetScreen('window-1');
+      expect(t.backend.getSnapshot().revision).toBe(revision);
+      t.backend.dispose();
+      t.backend.forgetScreen('window-3');
+      expect(t.backend.getSnapshot().revision).toBe(revision);
+    });
+
+    it('a screen that reports an empty list stays open: the single-window fold still runs while its pane shows nothing', async () => {
+      const t = two();
+      await t.backend.ready;
+      t.backend.reportShown('window-1', ['a']);
+      t.backend.reportShown('window-1', []);
+      t.clock.advance(5_000);
+      t.source.push(idle('a', T0 + 4_000));
+      expect(unreadIds(t)).toEqual(['a']);
+    });
   });
 });
 

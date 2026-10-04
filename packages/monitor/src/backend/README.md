@@ -75,9 +75,14 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 ## Unread (L5)
 
 `unread.ts` is `views/monitor/unread.ts` verbatim (`reconcileUnread`), run on every tick with `active =` "some screen
-reports it shown". `reportShown(screenId, ids)` replaces that screen's set (empty clears it). One screen reporting its
-active pane's row is exactly today's fold — the parity tests prove it against the ported function. Terminals never earn
-the mark. The ledger lives in memory for the daemon's lifetime (runtime only).
+reports it shown". `reportShown(screenId, ids)` replaces that screen's set; the first report opens the screen, an empty
+one too (its pane shows nothing), and `forgetScreen(screenId)` closes it. One screen reporting its active pane's row is
+exactly today's fold — the parity tests prove it against the ported function. Terminals never earn the mark.
+
+**Lifetime (M20).** Today the ledger lives only while Godview is open, so a turn that finished while it was closed is
+never marked. The backend keeps that: while no screen is open nothing accrues and the ledger is empty, the first screen to
+open stamps first sight for every row, and forgetting the last screen drops every mark. The ledger is memory only
+(runtime only). Marking turns that finished while nobody looked would be a design event for James, not MV's.
 
 ## Cost
 

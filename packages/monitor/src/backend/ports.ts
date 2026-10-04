@@ -190,8 +190,16 @@ export interface MonitorBackend {
   subscribe(onChange: (change: MonitorModelChange) => void): () => void;
   /** Routes a validated command to the sink; false when nothing it names exists. */
   command(command: MonitorCommand): boolean;
-  /** Which rows a screen shows in its active pane; an empty list clears the screen (L5). */
+  /**
+   * Which rows a screen shows in its active pane (L5). The first report opens the screen, an empty list included
+   * (its pane shows none); it stays open until `forgetScreen`.
+   */
   reportShown(screenId: string, ids: readonly string[]): void;
+  /**
+   * The screen went away (M20): its window closed, its subscription ended. While no screen is open no mark accrues,
+   * so forgetting the last one drops every mark, and the next screen to open sees each row for the first time.
+   */
+  forgetScreen(screenId: string): void;
   /** Resolves once the runtime's all-runs listing has been merged. */
   readonly ready: Promise<void>;
   dispose(): void;

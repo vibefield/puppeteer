@@ -340,30 +340,35 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     }
     for (const id of [...terminalStatus.keys()]) if (!liveTerminalIds.has(id)) terminalStatus.delete(id);
 
-    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown".
+    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown". Today the
+    //    ledger lives only while a screen is open (M20): with none, nothing accrues, and the first screen to open
+    //    sees every row for the first time.
     const shown = shownIds();
-    unread = reconcileUnread(
-      unread,
-      [
-        ...agents.map((agent): UnreadCandidate => {
-          const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
-          return {
-            id: agent.id,
-            status: agentStatus(agent.host, agent.state),
-            active: shown.has(agent.id),
-            hasAgent: true,
-            ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
-          };
-        }),
-        ...terminals.map((terminal): UnreadCandidate => ({
-          id: terminal.id,
-          status: classifyTerminalStatus(terminal.host.activity),
-          active: shown.has(terminal.id),
-          hasAgent: false,
-        })),
-      ],
-      nowMs,
-    );
+    unread =
+      shownByScreen.size === 0
+        ? EMPTY_UNREAD_LEDGER
+        : reconcileUnread(
+            unread,
+            [
+              ...agents.map((agent): UnreadCandidate => {
+                const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
+                return {
+                  id: agent.id,
+                  status: agentStatus(agent.host, agent.state),
+                  active: shown.has(agent.id),
+                  hasAgent: true,
+                  ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
+                };
+              }),
+              ...terminals.map((terminal): UnreadCandidate => ({
+                id: terminal.id,
+                status: classifyTerminalStatus(terminal.host.activity),
+                active: shown.has(terminal.id),
+                hasAgent: false,
+              })),
+            ],
+            nowMs,
+          );
 
     // 5. Agent rows.
     for (const agent of agents) {
@@ -584,13 +589,14 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (disposed) return;
       const next = new Set(ids);
       const previous = shownByScreen.get(screenId);
-      const same = previous
-        ? previous.size === next.size && [...next].every((id) => previous.has(id))
-        : next.size === 0;
-      if (same) return;
-      if (next.size === 0) shownByScreen.delete(screenId);
-      else shownByScreen.set(screenId, next);
+      if (previous && previous.size === next.size && [...next].every((id) => previous.has(id))) return;
+      // A first report opens the screen, an empty one too: an open screen whose pane shows nothing still sees marks.
+      shownByScreen.set(screenId, next);
       // Looking at a row clears its mark now, not a tick later: the screen that reported is waiting on it.
+      flush();
+    },
+    forgetScreen(screenId) {
+      if (disposed || !shownByScreen.delete(screenId)) return;
       flush();
     },
     dispose() {
