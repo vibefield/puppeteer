@@ -174,7 +174,10 @@ export interface CreateMonitorBackendOptions {
   cost?: { readonly acrossEpochs?: 'accumulate' | 'current' | undefined } | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
-  /** The longest reply or question text a row carries. Default 280. */
+  /**
+   * The longest reply, wait or activity text a row carries, in code points. Default: no bound of the backend's
+   * own (M21), since Core already bounds the mirror's text.
+   */
   replyMaxLength?: number | undefined;
   /** Evidence older than this is stale. Default: core's policy, 30 s. */
   staleAfterMs?: number | undefined;

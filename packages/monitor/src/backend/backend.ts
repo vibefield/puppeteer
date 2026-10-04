@@ -11,7 +11,6 @@ import {
 } from '@vibecook/puppeteer-view-sdk/model';
 import { createAgentMonitorStore } from '../store.js';
 import {
-  DEFAULT_REPLY_MAX_LENGTH,
   agentStatus,
   classifyTerminalStatus,
   deriveAgentRow,
@@ -125,7 +124,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const { runs: source, host, identity } = options;
   const clock = options.clock ?? defaultClock;
   const scheduler = options.scheduler ?? defaultScheduler;
-  const replyMaxLength = options.replyMaxLength ?? DEFAULT_REPLY_MAX_LENGTH;
+  // M21: no bound of the backend's own; Core already bounds the mirror's text. A host may still pass one.
+  const replyMaxLength = options.replyMaxLength ?? Number.POSITIVE_INFINITY;
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs;
   const recencyIntervalMs = options.recencyIntervalMs ?? DEFAULT_RECENCY_INTERVAL_MS;
   const accumulateAcrossEpochs = (options.cost?.acrossEpochs ?? 'accumulate') === 'accumulate';

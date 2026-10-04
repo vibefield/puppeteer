@@ -1174,3 +1174,44 @@ describe('cost across epochs (M15)', () => {
     }
   });
 });
+
+describe('text bounds (M21)', () => {
+  const long = (word: string, length: number) => word.repeat(length).slice(0, length);
+  const wordy = () =>
+    monitorState({
+      status: 'blocked',
+      activity: { kind: 'tool', line: long('line', 900), since: iso(T0) },
+      lastAssistantMessage: { text: long('reply', 1_200), at: iso(T0), final: true },
+      blockers: [
+        {
+          id: 'q',
+          kind: 'question',
+          since: iso(T0),
+          detail: long('detail', 600),
+          questions: [{ header: long('header', 400), prompt: long('prompt', 700) }],
+        },
+      ],
+    });
+
+  it('adds no bound of its own by default: Core already bounds the mirror, and this window reads it whole', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [wordy()] });
+    await t.backend.ready;
+    const [row] = t.rows();
+    expect(row?.reply?.text).toHaveLength(1_200);
+    expect(row?.activity?.line).toHaveLength(900);
+    expect([row?.wait?.question, row?.wait?.header, row?.wait?.detail].map((text) => text?.length)).toEqual([
+      700, 400, 600,
+    ]);
+  });
+
+  it('bounds every text by code points when a host passes replyMaxLength, trimmed as before', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [wordy()], replyMaxLength: 280 });
+    await t.backend.ready;
+    const [row] = t.rows();
+    expect(
+      [row?.reply?.text, row?.activity?.line, row?.wait?.question, row?.wait?.header, row?.wait?.detail].map(
+        (text) => text?.length,
+      ),
+    ).toEqual([280, 280, 280, 280, 280]);
+  });
+});

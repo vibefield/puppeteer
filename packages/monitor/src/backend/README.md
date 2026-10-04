@@ -37,7 +37,7 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 | `observed` | a state has arrived and `pending` is unset (M10) | true |
 | `pending` | host `pending !== undefined` | — |
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
-| `activity` | core's `{ kind, line (bounded), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
+| `activity` | core's `{ kind, line (trimmed), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
 | `project.branch` | observation first (vf): `git !== undefined ? git?.branch ?? null : workspace.branch` | — |
 | `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key | absent (the ramp) |
@@ -46,8 +46,8 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 | `effort` | `{ value: state.effort.value, intent? }` (M2) | — |
 | `account` | host `account` (pu: profile label from the registry; vf: fieldd's) | — |
 | `context` | `{ usedPercent }` when `state.context.usedPercent` is a number | — |
-| `wait` | first blocker, parts kept apart (M2): `{ kind, since, count?, tool: permission.tool, code: failure.code, header: questions[0].header, question: questions[0].prompt, detail: blocker.detail }`, text bounded like the reply; `count` = `blockers.length + omitted.blockers`, absent when one (M10) | — |
-| `reply` | `lastAssistantMessage` → `{ text (trimmed, ≤ replyMaxLength, default 280), at, final }` | — |
+| `wait` | first blocker, parts kept apart (M2): `{ kind, since, count?, tool: permission.tool, code: failure.code, header: questions[0].header, question: questions[0].prompt, detail: blocker.detail }`, text trimmed like the reply; `count` = `blockers.length + omitted.blockers`, absent when one (M10) | — |
+| `reply` | `lastAssistantMessage` → `{ text (trimmed), at, final }`; no bound of the backend's own (M21: core bounds the message; a host may pass `replyMaxLength`, which bounds the reply, the wait's texts and the activity line by code points) | — |
 | `cost` | the usage ledger (below): `{ usd, coverage, burnPerHour: costRatePerMin × 60, series }`; absent when nothing is priced | — |
 | `tokens` | `{ total: usage.cumulativeTokens, perMinute: usage.burnRatePerMin }` | — |
 | `unread` | the unread ledger (L5) | false |
