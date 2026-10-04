@@ -8,6 +8,7 @@ import {
   type MonitorModelChange,
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
+  type MonitorActivity,
 } from '@vibecook/puppeteer-view-sdk/model';
 import { freezeJson, sameJson } from './json.js';
 
@@ -54,6 +55,14 @@ export interface MonitorReplicaLocal {
   readonly visible?: ((row: MonitorAgentRow) => boolean) | undefined;
   /** Where the person asked for each row, for views that place new arrivals spatially. */
   readonly spawnHints: ReadonlyMap<string, { readonly x: number; readonly y: number }>;
+  /**
+   * What each bare terminal is doing, as only this window knows it (M28): the
+   * window's panes hear it from the terminal renderer, while the host's floor
+   * knows a PTY's cwd and title but not its activity. Terminal rows only; an
+   * agent's activity is the runtime's and is never replaced. Absent entry: the
+   * row's own.
+   */
+  readonly activity?: ReadonlyMap<string, MonitorActivity> | undefined;
 }
 
 /** The theme's colour function (L7). The same `key` promises the same colours, so only a new key re-colours. */
@@ -272,6 +281,19 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     return Object.freeze({ x: entry.x, y: entry.y });
   };
 
+  /** A terminal's activity from this window's panes when it has one, else the row's own (M28). */
+  const activityOf = (row: MonitorAgentRow, held: AgentView['activity']): AgentView['activity'] => {
+    if (row.kind !== 'terminal') return row.activity;
+    const entry = local.activity?.get(row.id);
+    if (!entry) return row.activity;
+    if (held && held.kind === entry.kind && held.line === entry.line && held.since === entry.since) return held;
+    return Object.freeze({
+      kind: entry.kind,
+      ...(entry.line === undefined ? {} : { line: entry.line }),
+      ...(entry.since === undefined ? {} : { since: entry.since }),
+    });
+  };
+
   /** The row joined with this window's facts: the published view itself when none of them moved. */
   const join = (row: MonitorAgentRow, held: Joined | undefined): AgentView => {
     const previous = held?.view;
@@ -280,6 +302,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     const receded = recededOf(row);
     const attachment = attachmentOf(row.id, previous?.attachment);
     const spawnHint = spawnHintOf(row.id, previous?.spawnHint);
+    const activity = activityOf(row, previous?.activity);
     if (
       previous !== undefined &&
       held?.row === row &&
@@ -287,7 +310,8 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       previous.active === active &&
       previous.receded === receded &&
       previous.attachment === attachment &&
-      previous.spawnHint === spawnHint
+      previous.spawnHint === spawnHint &&
+      previous.activity === activity
     ) {
       return previous;
     }
@@ -298,6 +322,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       receded,
       ...(attachment ? { attachment } : {}),
       ...(spawnHint ? { spawnHint } : {}),
+      ...(activity ? { activity } : {}),
     });
   };
 
@@ -486,6 +511,17 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
         if (!held || held.x !== entry.x || held.y !== entry.y) touch(id);
       }
       for (const id of previous.spawnHints.keys()) if (!next.spawnHints.has(id)) touch(id);
+      if (next.activity !== previous.activity) {
+        const before = previous.activity;
+        const after = next.activity;
+        if (after) {
+          for (const [id, entry] of after) {
+            const held = before?.get(id);
+            if (!held || held.kind !== entry.kind || held.line !== entry.line || held.since !== entry.since) touch(id);
+          }
+        }
+        if (before) for (const id of before.keys()) if (!after?.has(id)) touch(id);
+      }
       if (next.receded !== previous.receded || next.visible !== previous.visible) {
         for (const id of rows.keys()) dirty.add(id);
       }

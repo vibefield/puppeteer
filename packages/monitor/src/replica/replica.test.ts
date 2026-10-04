@@ -772,3 +772,65 @@ describe('createMonitorReplica', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a terminal's activity from this window (M28)", () => {
+  const shell = (id: string, overrides: Partial<MonitorAgentRow> = {}): MonitorAgentRow =>
+    row(id, { kind: 'terminal', project: { name: '' }, detail: '', activity: { kind: 'idle' }, ...overrides });
+
+  it("joins the window's activity onto a terminal row and never replaces an agent's", () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [shell('t1'), row('a1', { activity: { kind: 'tool', line: 'Editing', since: 900 } })]));
+    replica.setLocal(
+      local({
+        activity: new Map([
+          ['t1', { kind: 'foreground-job' }],
+          ['a1', { kind: 'idle' }],
+        ]),
+      }),
+    );
+    frames.frame();
+    const { model } = replica.getSnapshot();
+    expect(model.byId.get('t1')?.activity).toEqual({ kind: 'foreground-job' });
+    expect(model.byId.get('a1')?.activity).toEqual({ kind: 'tool', line: 'Editing', since: 900 });
+  });
+
+  it('keeps every view object when the window re-sends equal activity, and re-joins only the row that moved', () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [shell('t1'), shell('t2')]));
+    const sent = () =>
+      new Map([
+        ['t1', { kind: 'foreground-job' }],
+        ['t2', { kind: 'idle' }],
+      ]);
+    replica.setLocal(local({ activity: sent() }));
+    frames.frame();
+    const first = replica.getSnapshot().model;
+    replica.setLocal(local({ activity: sent() }));
+    frames.frame();
+    expect(replica.getSnapshot().model).toBe(first);
+    replica.setLocal(
+      local({
+        activity: new Map([
+          ['t1', { kind: 'idle' }],
+          ['t2', { kind: 'idle' }],
+        ]),
+      }),
+    );
+    frames.frame();
+    const next = replica.getSnapshot();
+    expect(next.changes.updated).toEqual(['t1']);
+    expect(next.model.byId.get('t2')).toBe(first.byId.get('t2'));
+    expect(next.model.byId.get('t1')?.activity).toEqual({ kind: 'idle' });
+  });
+
+  it("falls back to the row's own activity when the window drops its entry", () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [shell('t1', { activity: { kind: 'idle' } })]));
+    replica.setLocal(local({ activity: new Map([['t1', { kind: 'foreground-job' }]]) }));
+    frames.frame();
+    expect(replica.getSnapshot().model.byId.get('t1')?.activity).toEqual({ kind: 'foreground-job' });
+    replica.setLocal(local());
+    frames.frame();
+    expect(replica.getSnapshot().model.byId.get('t1')?.activity).toEqual({ kind: 'idle' });
+  });
+});
