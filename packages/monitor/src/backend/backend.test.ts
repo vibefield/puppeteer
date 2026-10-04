@@ -943,6 +943,30 @@ describe('emission', () => {
     backend.dispose();
   });
 
+  it('keeps ticking with a scheduler that runs the tick at once, before it returns', async () => {
+    const source = fakeRunSource([monitorState()]);
+    const host = fakeHost(facts({ runs: [hostRun()] }));
+    const backend = createMonitorBackend({
+      runs: source.source,
+      host: host.host,
+      identity: createMemoryProjectIdentityStore(),
+      sink: recordingSink(),
+      clock: manualClock().clock,
+      scheduler: (task) => {
+        task();
+        return () => {};
+      },
+    });
+    await backend.ready;
+    expect(backend.getSnapshot().rows).toMatchObject([{ id: 'run-1', observed: true }]);
+    // a push that is not urgent and a host change both wait for a tick, which this scheduler runs at once
+    source.push(monitorState({ revision: 2, model: { id: 'one' } }));
+    expect(backend.getSnapshot().rows[0]?.model).toBe('one');
+    host.update({ runs: [hostRun(), hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 })] });
+    expect(backend.getSnapshot().rows.map((row) => row.id)).toEqual(['run-1', 'run-2']);
+    backend.dispose();
+  });
+
   it('reports a listener that throws and keeps publishing to the rest; dispose stops everything', async () => {
     const errors: unknown[] = [];
     const t = testBackend({ facts: facts({ runs: [hostRun()] }), onError: (error) => errors.push(error) });

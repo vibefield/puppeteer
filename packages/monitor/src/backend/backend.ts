@@ -212,10 +212,15 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
   const schedule = (): void => {
     if (disposed || cancelTick) return;
-    cancelTick = scheduler(() => {
+    let ran = false;
+    const cancel = scheduler(() => {
+      ran = true;
       cancelTick = undefined;
       flush();
     });
+    // A scheduler may run the tick before it returns; then nothing is left to cancel, and holding its cancel would
+    // stall every later tick.
+    if (!ran) cancelTick = cancel;
   };
 
   const flush = (): void => {

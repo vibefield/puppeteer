@@ -14,7 +14,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 | `host` | `{ getFacts(): MonitorHostFacts; subscribe(cb) }` — `device` (this desktop, `self: true`), `runs[]` (per-run host facts), `terminals[]` (bare PTYs), `profileSets \| null` (null = still reading), `spawnPeers?` (other desktops, passed through) | fieldd's fold + roster + profile feed; Godview main's session records + workspace + profiles |
 | `identity` | `ProjectIdentityStore`: `seq(key)`, `deal(key)` — sync; never reuses a sequence | fieldd's state store; Godview's project registry (L4); `createMemoryProjectIdentityStore()` for tests |
 | `clock` | `{ now(), schedule(ms, fn) → cancel }` | default `Date.now` + `setTimeout`; tests pass a manual clock |
-| `scheduler` | `(fn) → cancel`: one emission per tick | default one macrotask (`setTimeout 0`); the host may pass a frame |
+| `scheduler` | `(fn) → cancel`: one emission per tick; it may run the tick before it returns | default one macrotask (`setTimeout 0`); the host may pass a frame |
 | `sink` | `select(resolved)` · `create(resolved)` | fieldd's doors; the Ghosttea workspace |
 
 `MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
