@@ -25,11 +25,16 @@ export function signedInLabels(set: MonitorHostProfileSet): string[] {
   return labels;
 }
 
-/** The profile sets with an agent waiting on the person under them: the tabs' orange dot. */
+/**
+ * The profile sets with an agent waiting on the person under them: the tabs' orange dot. A crashed row
+ * (`alive: false`) waits on nobody, although puppeteer's Godview keeps it until acknowledged (M3) and
+ * VibeField hides it: the dot is lit by live agents only.
+ */
 export function blockedProfileSets(rows: readonly MonitorAgentRow[]): ReadonlySet<string> {
   const blocked = new Set<string>();
   for (const row of rows) {
-    if (row.kind === 'agent' && row.status === 'blocked' && row.profileSet !== undefined) blocked.add(row.profileSet);
+    if (row.kind !== 'agent' || row.status !== 'blocked' || row.alive === false) continue;
+    if (row.profileSet !== undefined) blocked.add(row.profileSet);
   }
   return blocked;
 }

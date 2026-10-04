@@ -66,7 +66,10 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  *     where no series crosses. agent.monitor.usage.costRatePerMin is
  *     `cost.burnPerHour / 60`, restored to the per-minute rate it was multiplied from
  *     (`perMinute`: the round trip can miss it by an ulp, which flips a half cent
- *     in `formatUsd`).
+ *     in `formatUsd`, M27).
+ *   - agent.monitor and agent.usage are absent while the row is not `observed`
+ *     (starting, or pending): today such a run has no mirror, and the status
+ *     ledger starts its lane at first sight.
  *   - agent.monitor.blockers holds the row's wait with every part the views word:
  *     its detail, a permission's tool, a question's header and prompt, a
  *     failure's code. Only the three kinds the views draw count; another word is
@@ -235,6 +238,9 @@ function legacyFacet(view: AgentView, options: LegacyShimOptions) {
   const { cost, reply } = view;
   // M9: what VibeField's peers carry today, and no more.
   const coreFacts = view.device.self || options.peerMonitor === 'map';
+  // A run the runtime has not spoken for (starting, or pending) has no mirror today, so no monitor and no usage
+  // history: a monitor dated at the birth would start the status ledger's lane there instead of at first sight.
+  const mirrored = view.observed;
   const statusSince = isoTime(view.statusSince);
   const replyAt = isoTime(reply?.at);
   const monitor = Object.freeze({
@@ -269,7 +275,7 @@ function legacyFacet(view: AgentView, options: LegacyShimOptions) {
     ...(coreFacts && view.account ? { account: view.account } : {}),
     ...(view.project.branch ? { branch: view.project.branch } : {}),
     ...(coreFacts && view.context ? { contextWindow: Object.freeze({ usedPercent: view.context.usedPercent }) } : {}),
-    ...(cost
+    ...(mirrored && cost
       ? {
           usage: Object.freeze({
             ...(cost.coverage === 'unavailable' ? {} : { total: cost.usd }),
@@ -279,7 +285,7 @@ function legacyFacet(view: AgentView, options: LegacyShimOptions) {
           }),
         }
       : {}),
-    ...(coreFacts ? { monitor } : {}),
+    ...(mirrored && coreFacts ? { monitor } : {}),
   });
 }
 

@@ -9,6 +9,7 @@ import {
 } from '@vibecook/puppeteer-view-sdk/model';
 import {
   createMonitorReplica,
+  DEFAULT_GAP_BUFFER,
   NO_THEME_COLOUR,
   type MonitorReplicaAttachment,
   type MonitorReplicaLocal,
@@ -246,6 +247,118 @@ describe('createMonitorReplica', () => {
     expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['b']);
     expect(replica.getSnapshot().model.revision).toBe(11);
     expect(gap).toHaveBeenCalledTimes(2);
+  });
+
+  describe('healing a gap (M22, M23: the buffer is the backstop)', () => {
+    it('holds the changes heard during a gap and replays, after the healing snapshot, those it does not hold', () => {
+      const { frames, replica } = setup();
+      const gap = vi.fn();
+      replica.onGap(gap);
+      replica.apply(snapshot(1, [row('a')]));
+      frames.frame();
+      // 1→2 is lost on the way; 2→3 and 3→4 arrive before the snapshot the gap asked for
+      expect(replica.apply(change(2, 3, { upserts: [row('b', { createdAt: 2_000 })] }))).toBe(false);
+      expect(replica.apply(change(3, 4, { upserts: [row('c', { createdAt: 3_000 })] }))).toBe(false);
+      expect(gap).toHaveBeenCalledTimes(1);
+      expect(frames.pending()).toBe(0);
+      // taken at 3, the snapshot holds 1→2 and 2→3 but not 3→4, which is not lost
+      expect(
+        replica.apply(snapshot(3, [row('a'), row('b', { createdAt: 2_000 }), row('x', { createdAt: 2_500 })])),
+      ).toBe(true);
+      frames.frame();
+      expect(replica.getSnapshot().model.revision).toBe(4);
+      expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a', 'b', 'x', 'c']);
+      // the chain goes on from 4, with no second gap
+      expect(replica.apply(change(4, 5, { removed: ['x'] }))).toBe(true);
+      frames.frame();
+      expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a', 'b', 'c']);
+      expect(gap).toHaveBeenCalledTimes(1);
+    });
+
+    it('cannot loop on snapshots under continuous change: one gap, one snapshot, and the buffer catches up', () => {
+      const { frames, replica } = setup();
+      // The backend: its board and revision. A gap asks for a snapshot on another channel, taken at once and
+      // delivered three changes later, while the change channel keeps flowing.
+      const board = new Map<string, MonitorAgentRow>([['a', row('a')]]);
+      let revision = 1;
+      let due: { at: number; snapshot: MonitorModelSnapshot } | undefined;
+      let snapshots = 0;
+      replica.onGap(() => {
+        snapshots += 1;
+        due = { at: revision + 3, snapshot: wire(snapshot(revision, [...board.values()])) };
+      });
+      replica.apply(snapshot(1, [row('a')]));
+      for (let step = 0; step < 40; step += 1) {
+        const next = row(`r${step % 5}`, { createdAt: 2_000 + (step % 5), detail: `step ${step}` });
+        board.set(next.id, next);
+        const delivered = change(revision, revision + 1, { upserts: [next] });
+        revision += 1;
+        // the first change is lost on the way
+        if (step !== 0) replica.apply(wire(delivered));
+        if (due && revision >= due.at) {
+          const healing = due.snapshot;
+          due = undefined;
+          replica.apply(healing);
+        }
+        frames.frame();
+      }
+      expect(snapshots).toBe(1);
+      expect(replica.getSnapshot().model.revision).toBe(revision);
+      expect(replica.getSnapshot().model.agents.map((view) => [view.id, view.detail])).toEqual(
+        [...board.values()].sort(compareMonitorRows).map((entry) => [entry.id, entry.detail]),
+      );
+    });
+
+    it('a link missing behind the snapshot is a new gap: what follows it is held for the next snapshot', () => {
+      const { frames, replica } = setup();
+      const gap = vi.fn();
+      replica.onGap(gap);
+      replica.apply(snapshot(1, [row('a')]));
+      replica.apply(change(2, 3, { upserts: [row('b', { createdAt: 2_000 })] }));
+      replica.apply(change(3, 4, { upserts: [row('c', { createdAt: 3_000 })] }));
+      // 4→5 is lost too
+      replica.apply(change(5, 6, { upserts: [row('d', { createdAt: 4_000 })] }));
+      expect(gap).toHaveBeenCalledTimes(1);
+      replica.apply(snapshot(3, [row('a'), row('b', { createdAt: 2_000 })]));
+      frames.frame();
+      expect(gap).toHaveBeenCalledTimes(2);
+      expect(replica.getSnapshot().model).toMatchObject({ revision: 4 });
+      expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a', 'b', 'c']);
+      replica.apply(change(6, 7, { removed: ['a'] }));
+      replica.apply(snapshot(6, [row('a'), row('b', { createdAt: 2_000 }), row('c', { createdAt: 3_000 })]));
+      frames.frame();
+      expect(replica.getSnapshot().model.revision).toBe(7);
+      expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['b', 'c']);
+      expect(gap).toHaveBeenCalledTimes(2);
+    });
+
+    it('bounds the buffer: past it the held changes are dropped and the replica waits for the snapshot, as before', () => {
+      const frames = manualFrames();
+      const replica = createMonitorReplica({ scheduler: frames.scheduler, gapBuffer: 2 });
+      const gap = vi.fn();
+      replica.onGap(gap);
+      replica.apply(snapshot(1, [row('a')]));
+      for (let since = 2; since <= 5; since += 1) {
+        expect(replica.apply(change(since, since + 1, { upserts: [row(`r${since}`)] }))).toBe(false);
+      }
+      replica.apply(snapshot(3, [row('a')]));
+      frames.frame();
+      expect(replica.getSnapshot().model.revision).toBe(3);
+      expect(gap).toHaveBeenCalledTimes(1);
+      // what was dropped is missing, so the next change is a new gap and the host snapshots again
+      expect(replica.apply(change(6, 7))).toBe(false);
+      expect(gap).toHaveBeenCalledTimes(2);
+      expect(() => createMonitorReplica({ gapBuffer: -1 })).toThrow(RangeError);
+    });
+
+    it('holds DEFAULT_GAP_BUFFER changes by default', () => {
+      const { frames, replica } = setup();
+      replica.apply(snapshot(1, [row('a')]));
+      for (let since = 2; since < 2 + DEFAULT_GAP_BUFFER; since += 1) replica.apply(change(since, since + 1));
+      replica.apply(snapshot(2, [row('a')]));
+      frames.frame();
+      expect(replica.getSnapshot().model.revision).toBe(2 + DEFAULT_GAP_BUFFER);
+    });
   });
 
   it('joins this window’s facts and re-joins only the rows they touch', () => {

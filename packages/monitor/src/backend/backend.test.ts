@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { createMonitorReplica } from '../replica/replica.js';
+import { DEFAULT_MONITOR_SEAL_CAPACITY } from '../store.js';
 import { createMonitorBackend } from './backend.js';
 import { createMemoryProjectIdentityStore } from './identity.js';
 import {
@@ -45,6 +47,38 @@ describe('the join', () => {
     expect(t.rows()).toEqual([]);
     t.source.push(monitorState({ runtimeEpoch: 2, revision: 1, status: 'idle', activity: undefined }));
     expect(t.rows()).toMatchObject([{ id: 'run-1', status: 'idle' }]);
+  });
+
+  it('keeps a removed run hidden when the host drops it and names it again, while its seal is within the cap (M25)', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+    await t.backend.ready;
+    expect(t.rows()).toHaveLength(1);
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    expect(t.rows()).toEqual([]);
+    t.host.update({ runs: [] });
+    expect(t.rows()).toEqual([]);
+    // One record of removals, the store's: a host naming the run again does not bring it back, as today…
+    t.host.update({ runs: [hostRun()] });
+    expect(t.rows()).toEqual([]);
+    // …nor does the removed epoch's late state; a newer epoch revives it.
+    t.source.push(monitorState({ runtimeEpoch: 1, revision: 9, status: 'idle', activity: undefined }));
+    expect(t.rows()).toEqual([]);
+    t.source.push(monitorState({ runtimeEpoch: 2, revision: 1, status: 'idle', activity: undefined }));
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: true, status: 'idle' }]);
+  });
+
+  it('past the store’s cap a removal is forgotten: a run named again then reads as starting (drop a run only for good)', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+    await t.backend.ready;
+    t.rows();
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 1 });
+    t.host.update({ runs: [] });
+    expect(t.rows()).toEqual([]);
+    for (let index = 0; index < DEFAULT_MONITOR_SEAL_CAPACITY; index += 1) {
+      t.source.remove({ runtimeRunId: `gone-${index}`, runtimeEpoch: 1 });
+    }
+    t.host.update({ runs: [hostRun()] });
+    expect(t.rows()).toMatchObject([{ id: 'run-1', observed: false, detail: 'starting' }]);
   });
 
   it('merges the listing under live pushes: a newer push is not overwritten by an older listing', async () => {
@@ -154,6 +188,81 @@ describe('identity carry-forward and dedupe', () => {
     });
     await t.backend.ready;
     expect(t.rows().map((row) => row.id)).toEqual(['pty-1', 'same']);
+  });
+
+  it('the host contract: a PTY kept listed until its run is named carries its id through any tick between (mv-review)', async () => {
+    for (const keepsListed of [true, false]) {
+      const t = testBackend({
+        facts: facts({ terminals: [hostTerminal({ sessionId: 'pty-1', identity: 'shell-A', cwd: '/w' })] }),
+      });
+      await t.backend.ready;
+      expect(t.rows()).toMatchObject([{ id: 'shell-A', kind: 'terminal' }]);
+      const before = t.changes.length;
+      // The PTY is an agent's now. A host that breaks the contract drops it from its roster first…
+      if (!keepsListed) t.host.update({ terminals: [] });
+      // …and any tick lands before the run is named: here the 10 s recency clock.
+      t.clock.advance(10_000);
+      t.scheduler.flush();
+      t.host.update({ runs: [hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-1' })] });
+      t.scheduler.flush();
+      // Once the run is named the terminal may go.
+      t.host.update({ terminals: [] });
+      t.scheduler.flush();
+      const tail = t.changes.slice(before).map((change) => ({
+        upserts: change.upserts.map((row) => `${row.kind}:${row.id}`),
+        removed: [...change.removed],
+      }));
+      expect(tail).toEqual(
+        keepsListed
+          ? [{ upserts: ['agent:shell-A'], removed: [] }]
+          : // what a view sees then: the shell's body removed, a different body added (the one-tick memory cannot
+            // bridge it)
+            [
+              { upserts: [], removed: ['shell-A'] },
+              { upserts: ['agent:run-1'], removed: [] },
+            ],
+      );
+    }
+  });
+
+  it('says which row a run is with idOf: the shell’s id after a promotion, the run’s own otherwise (mv3a’s ask)', async () => {
+    const t = testBackend({
+      facts: facts({ terminals: [hostTerminal({ sessionId: 'pty-1', identity: 'shell-A', cwd: '/w' })] }),
+    });
+    await t.backend.ready;
+    expect(t.rows()).toMatchObject([{ id: 'shell-A', kind: 'terminal' }]);
+    expect(t.backend.idOf('run-1')).toBeUndefined();
+    // the host names the run in that PTY, keeping the terminal listed until then (the host contract)
+    t.host.update({
+      runs: [
+        hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-1' }),
+        hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 }),
+      ],
+    });
+    expect(t.rows().map((row) => [row.id, row.kind])).toEqual([
+      ['shell-A', 'agent'],
+      ['run-2', 'agent'],
+    ]);
+    expect(t.backend.idOf('run-1')).toBe('shell-A');
+    expect(t.backend.idOf('run-2')).toBe('run-2');
+    // the id survives a new epoch in a new PTY (AR-4)
+    t.host.update({
+      runs: [
+        hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-3', replacedTerminalSessionId: 'pty-1' }),
+        hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 }),
+      ],
+      terminals: [],
+    });
+    t.source.push(monitorState({ runtimeEpoch: 2, revision: 1 }));
+    t.rows();
+    expect(t.backend.idOf('run-1')).toBe('shell-A');
+    // a run with no row has no id: removed by the runtime, unknown, or after dispose
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 2 });
+    expect(t.backend.getSnapshot().rows.map((row) => row.id)).toEqual(['run-2']);
+    expect(t.backend.idOf('run-1')).toBeUndefined();
+    expect(t.backend.idOf('nobody')).toBeUndefined();
+    t.backend.dispose();
+    expect(t.backend.idOf('run-2')).toBeUndefined();
   });
 });
 
@@ -350,6 +459,8 @@ describe('unread (L5)', () => {
   it('marks a turn that finishes while no screen shows the row, and clears it when any screen does', async () => {
     const t = two();
     await t.backend.ready;
+    // a screen is open, its active pane showing nothing (M20: a screen counts from its first report)
+    t.backend.reportShown('window-1', []);
     expect(unreadIds(t)).toEqual([]);
     t.clock.advance(5_000);
     t.source.push(idle('a', T0 + 4_000));
@@ -456,6 +567,78 @@ describe('unread (L5)', () => {
       expect(rows.filter((row) => row.unread).map((row) => row.id)).toEqual([...expected.unreadIds]);
     }
     expect([...expected.unreadIds]).toEqual(['b']);
+  });
+
+  describe('lifetime: today the ledger lives only while a screen is open (M20, mv-review finding 2)', () => {
+    it('marks no turn that finished while no screen was open: a screen that opens later sees no mark', async () => {
+      for (const opensShowing of [['something-else'], []]) {
+        const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
+        await t.backend.ready;
+        t.rows();
+        // the turn finishes while Godview is closed
+        t.clock.advance(5_000);
+        t.source.push(monitorState({ revision: 2, status: 'idle', statusSince: iso(T0 + 5_000), activity: undefined }));
+        expect(t.rows()[0]).toMatchObject({ id: 'run-1', status: 'idle', unread: false });
+        // Godview opens, its active pane showing another row or nothing: first sight is now, so this turn is seen
+        t.clock.advance(1_000);
+        t.backend.reportShown('win-1', opensShowing);
+        expect(t.backend.getSnapshot().rows[0]).toMatchObject({ id: 'run-1', unread: false });
+        // the next turn that finishes while it is open is marked
+        t.clock.advance(1_000);
+        t.source.push(monitorState({ revision: 3, status: 'working', statusSince: iso(T0 + 7_000) }));
+        t.clock.advance(1_000);
+        t.source.push(monitorState({ revision: 4, status: 'idle', statusSince: iso(T0 + 8_000), activity: undefined }));
+        expect(t.rows()[0]).toMatchObject({ id: 'run-1', unread: true });
+      }
+    });
+
+    it('forgetting the last screen drops every mark and returns to no screen; forgetting one of two keeps the ledger', async () => {
+      const t = two();
+      await t.backend.ready;
+      t.backend.reportShown('window-1', ['b']);
+      t.backend.reportShown('window-2', []);
+      t.clock.advance(5_000);
+      t.source.push(idle('a', T0 + 4_000));
+      expect(unreadIds(t)).toEqual(['a']);
+      // one of two windows closes: the other is still open, the mark stays and keeps accruing
+      t.backend.forgetScreen('window-1');
+      expect(unreadIds(t)).toEqual(['a']);
+      t.clock.advance(1_000);
+      t.source.push(idle('b', T0 + 5_500));
+      expect(unreadIds(t)).toEqual(['a', 'b']);
+      // the last window closes: today its ledger goes with it
+      t.backend.forgetScreen('window-2');
+      expect(unreadIds(t)).toEqual([]);
+      expect(t.changes.at(-1)?.upserts.map((row) => [row.id, row.unread])).toEqual([
+        ['a', false],
+        ['b', false],
+      ]);
+      // a turn that ends while no screen is open is not marked, also after a screen opens again
+      t.clock.advance(5_000);
+      t.source.push(working('a', T0 + 9_000));
+      t.source.push(idle('a', T0 + 9_500));
+      expect(unreadIds(t)).toEqual([]);
+      t.backend.reportShown('window-3', []);
+      expect(unreadIds(t)).toEqual([]);
+      // forgetting a screen nobody registered, twice, or after dispose changes nothing
+      const { revision } = t.backend.getSnapshot();
+      t.backend.forgetScreen('nobody');
+      t.backend.forgetScreen('window-1');
+      expect(t.backend.getSnapshot().revision).toBe(revision);
+      t.backend.dispose();
+      t.backend.forgetScreen('window-3');
+      expect(t.backend.getSnapshot().revision).toBe(revision);
+    });
+
+    it('a screen that reports an empty list stays open: the single-window fold still runs while its pane shows nothing', async () => {
+      const t = two();
+      await t.backend.ready;
+      t.backend.reportShown('window-1', ['a']);
+      t.backend.reportShown('window-1', []);
+      t.clock.advance(5_000);
+      t.source.push(idle('a', T0 + 4_000));
+      expect(unreadIds(t)).toEqual(['a']);
+    });
   });
 });
 
@@ -567,6 +750,33 @@ describe('the spawn menu in the model', () => {
     ]);
     expect(t.backend.getSnapshot().rows.find((row) => row.id === 'other')).toBe(other);
     expect(Object.isFrozen(t.backend.getSnapshot().spawn)).toBe(true);
+  });
+
+  it('lights no profile for a crashed agent under it, although the row stays for acknowledging (mv-review)', async () => {
+    const crashed = (revision: number) =>
+      monitorState({
+        revision,
+        status: 'blocked',
+        alive: false,
+        activity: undefined,
+        blockers: [
+          { id: 'run:runtime', kind: 'failure', since: iso(T0), detail: 'exit 1', failure: { code: 'crash' } },
+        ],
+      });
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ profileSet: 'work' })], profileSets: sets }),
+      states: [crashed(2)],
+    });
+    await t.backend.ready;
+    expect(t.rows()).toMatchObject([{ id: 'run-1', status: 'blocked', alive: false }]);
+    const work = () => t.backend.getSnapshot().spawn?.devices[0]?.profiles?.find((profile) => profile.id === 'work');
+    expect(work()).toMatchObject({ id: 'work' });
+    expect(work()?.blocked).toBeUndefined();
+    // a live agent blocked under the same profile still lights it
+    t.host.update({ runs: [...t.host.current().runs, hostRun({ runtimeRunId: 'live', profileSet: 'work' })] });
+    t.source.push(monitorState({ runtimeRunId: 'live', status: 'blocked' }));
+    t.rows();
+    expect(work()).toMatchObject({ id: 'work', blocked: true });
   });
 });
 
@@ -759,6 +969,30 @@ describe('emission', () => {
     backend.dispose();
   });
 
+  it('keeps ticking with a scheduler that runs the tick at once, before it returns', async () => {
+    const source = fakeRunSource([monitorState()]);
+    const host = fakeHost(facts({ runs: [hostRun()] }));
+    const backend = createMonitorBackend({
+      runs: source.source,
+      host: host.host,
+      identity: createMemoryProjectIdentityStore(),
+      sink: recordingSink(),
+      clock: manualClock().clock,
+      scheduler: (task) => {
+        task();
+        return () => {};
+      },
+    });
+    await backend.ready;
+    expect(backend.getSnapshot().rows).toMatchObject([{ id: 'run-1', observed: true }]);
+    // a push that is not urgent and a host change both wait for a tick, which this scheduler runs at once
+    source.push(monitorState({ revision: 2, model: { id: 'one' } }));
+    expect(backend.getSnapshot().rows[0]?.model).toBe('one');
+    host.update({ runs: [hostRun(), hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 })] });
+    expect(backend.getSnapshot().rows.map((row) => row.id)).toEqual(['run-1', 'run-2']);
+    backend.dispose();
+  });
+
   it('reports a listener that throws and keeps publishing to the rest; dispose stops everything', async () => {
     const errors: unknown[] = [];
     const t = testBackend({ facts: facts({ runs: [hostRun()] }), onError: (error) => errors.push(error) });
@@ -783,6 +1017,90 @@ describe('emission', () => {
     t.scheduler.flush();
     expect(t.backend.getSnapshot().revision).toBe(revision);
     expect(t.backend.command({ type: 'select', id: 'run-1' })).toBe(false);
+  });
+});
+
+describe('emission while a listener reacts (mv-review finding 1)', () => {
+  // A turn finishes while a screen elsewhere shows another row, so it earns the mark (L5, M20); the first listener
+  // then does what a host does once a window's active pane shows the row: it reports it shown, synchronously,
+  // inside the change callback. That flush must wait for the listener loop, or a later listener hears 2→3 first.
+  const reacting = async (react: (t: ReturnType<typeof testBackend>) => void) => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun(), hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2' })] }),
+      states: [monitorState(), monitorState({ runtimeRunId: 'run-2' })],
+    });
+    await t.backend.ready;
+    t.backend.reportShown('win-2', ['run-2']);
+    t.rows();
+    expect(t.backend.getSnapshot().revision).toBe(1);
+    let reacted = false;
+    t.backend.subscribe(() => {
+      if (reacted) return;
+      reacted = true;
+      react(t);
+    });
+    return t;
+  };
+  const finishTurn = (t: ReturnType<typeof testBackend>) => {
+    t.clock.advance(1_000);
+    t.source.push(monitorState({ revision: 2, status: 'idle', statusSince: iso(T0 + 1_000), activity: undefined }));
+  };
+
+  it('a listener that reports shown inside a change: every listener hears 1→2 before 2→3', async () => {
+    const t = await reacting((backend) => backend.backend.reportShown('win-1', ['run-1']));
+    const heard: Array<{ since: number; revision: number; unread: boolean | undefined }> = [];
+    t.backend.subscribe((change) =>
+      heard.push({ since: change.since, revision: change.revision, unread: change.upserts[0]?.unread }),
+    );
+    finishTurn(t);
+    expect(heard).toEqual([
+      { since: 1, revision: 2, unread: true },
+      { since: 2, revision: 3, unread: false },
+    ]);
+    // the listener installed before the reacting one heard the same chain
+    expect(t.changes.slice(-2).map((change) => [change.since, change.revision])).toEqual([
+      [1, 2],
+      [2, 3],
+    ]);
+    expect(t.backend.getSnapshot()).toMatchObject({ revision: 3, rows: [{ id: 'run-1', unread: false }, {}] });
+  });
+
+  it('…and a replica fed by a later listener applies the whole chain, with no gap', async () => {
+    const t = await reacting((backend) => backend.backend.reportShown('win-1', ['run-1']));
+    const replica = createMonitorReplica({ scheduler: { request: (work) => (work(), () => {}) } });
+    replica.apply(t.backend.getSnapshot());
+    let gaps = 0;
+    replica.onGap(() => {
+      gaps += 1;
+    });
+    const applied: boolean[] = [];
+    t.backend.subscribe((change) => applied.push(replica.apply(change)));
+    finishTurn(t);
+    expect({ gaps, applied }).toEqual({ gaps: 0, applied: [true, true] });
+    expect(replica.getSnapshot().model).toMatchObject({ revision: 3, agents: [{ id: 'run-1', unread: false }, {}] });
+  });
+
+  it('holds any flush a listener causes until the loop ends: an urgent push, a removal, a host change', async () => {
+    for (const react of [
+      (t: ReturnType<typeof testBackend>) =>
+        t.source.push(monitorState({ runtimeRunId: 'run-2', revision: 2, status: 'blocked' })),
+      (t: ReturnType<typeof testBackend>) => t.source.remove({ runtimeRunId: 'run-2', runtimeEpoch: 1 }),
+      (t: ReturnType<typeof testBackend>) => {
+        // a host whose scheduler runs the tick at once
+        t.host.update({ runs: [hostRun()] });
+        t.scheduler.flush();
+      },
+    ]) {
+      const t = await reacting(react);
+      const heard: Array<[number, number]> = [];
+      t.backend.subscribe((change) => heard.push([change.since, change.revision]));
+      finishTurn(t);
+      expect(heard).toEqual([
+        [1, 2],
+        [2, 3],
+      ]);
+      expect(t.backend.getSnapshot().revision).toBe(3);
+    }
   });
 });
 
@@ -1073,5 +1391,46 @@ describe('unobserved agents (M17)', () => {
       return t.rows();
     };
     expect(await rows('terminal')).toEqual(await rows('row'));
+  });
+});
+
+describe('text bounds (M21)', () => {
+  const long = (word: string, length: number) => word.repeat(length).slice(0, length);
+  const wordy = () =>
+    monitorState({
+      status: 'blocked',
+      activity: { kind: 'tool', line: long('line', 900), since: iso(T0) },
+      lastAssistantMessage: { text: long('reply', 1_200), at: iso(T0), final: true },
+      blockers: [
+        {
+          id: 'q',
+          kind: 'question',
+          since: iso(T0),
+          detail: long('detail', 600),
+          questions: [{ header: long('header', 400), prompt: long('prompt', 700) }],
+        },
+      ],
+    });
+
+  it('adds no bound of its own by default: Core already bounds the mirror, and this window reads it whole', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [wordy()] });
+    await t.backend.ready;
+    const [row] = t.rows();
+    expect(row?.reply?.text).toHaveLength(1_200);
+    expect(row?.activity?.line).toHaveLength(900);
+    expect([row?.wait?.question, row?.wait?.header, row?.wait?.detail].map((text) => text?.length)).toEqual([
+      700, 400, 600,
+    ]);
+  });
+
+  it('bounds every text by code points when a host passes replyMaxLength, trimmed as before', async () => {
+    const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [wordy()], replyMaxLength: 280 });
+    await t.backend.ready;
+    const [row] = t.rows();
+    expect(
+      [row?.reply?.text, row?.activity?.line, row?.wait?.question, row?.wait?.header, row?.wait?.detail].map(
+        (text) => text?.length,
+      ),
+    ).toEqual([280, 280, 280, 280, 280]);
   });
 });

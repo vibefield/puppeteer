@@ -71,9 +71,20 @@ export interface CreateMonitorReplicaOptions {
    * `requestAnimationFrame` where there is one, else a 16 ms timer.
    */
   scheduler?: FrameScheduler;
+  /**
+   * How many changes heard during a gap are held for the snapshot that heals it (M22). Past it the held changes are
+   * dropped and the replica waits for the snapshot alone. Default `DEFAULT_GAP_BUFFER`.
+   */
+  gapBuffer?: number;
   /** Hears what a listener or a host callback threw; nothing a host passes in can stop a publication. */
   onListenerError?: (error: unknown) => void;
 }
+
+/**
+ * The changes a gap holds by default: the backend emits at most one change a tick, and a snapshot's round trip is
+ * a moment, so this is generous; it bounds what a gap that never heals can hold.
+ */
+export const DEFAULT_GAP_BUFFER = 256;
 
 /** What a replica publishes: stable until the next publication, at most once a frame. */
 export interface MonitorReplicaSnapshot {
@@ -89,10 +100,13 @@ export interface MonitorReplica {
   /**
    * A snapshot replaces the model whole. A change applies on top of the held
    * revision only: one whose `since` is not it is a gap, so it is not applied
-   * and `onGap` asks the host for a snapshot. False: nothing was applied.
+   * and `onGap` asks the host for a snapshot. Changes heard during the gap are
+   * held (bounded), and the snapshot that heals it replays those whose `since`
+   * is at or after its revision, in order: a change that arrives before its
+   * snapshot is not lost (M22). False: nothing was applied.
    */
   apply(update: MonitorModelSnapshot | MonitorModelChange): boolean;
-  /** Heard once each time the chain breaks; changes are refused until the next snapshot. */
+  /** Heard once each time the chain breaks; changes are held, not applied, until the next snapshot. */
   onGap(listener: () => void): () => void;
   setLocal(local: MonitorReplicaLocal): void;
   setTheme(theme: MonitorReplicaTheme): void;
@@ -156,6 +170,10 @@ function idsIn(views: readonly AgentView[], ids: ReadonlySet<string>): readonly 
 
 export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}): MonitorReplica {
   const scheduler = options.scheduler ?? frameScheduler();
+  const gapBuffer = options.gapBuffer ?? DEFAULT_GAP_BUFFER;
+  if (!Number.isSafeInteger(gapBuffer) || gapBuffer < 0) {
+    throw new RangeError('gapBuffer must be a safe integer, zero or more');
+  }
   /** The backend's rows at the held revision, frozen. */
   const rows = new Map<string, MonitorAgentRow>();
   /** The published views and the rows they were joined from. Changed only when a frame publishes. */
@@ -170,6 +188,9 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
   const gapListeners = new Set<() => void>();
   let revision: number | undefined;
   let gapped = false;
+  /** The changes heard since the chain broke, for the snapshot that heals it; dropped whole past `gapBuffer`. */
+  let held: MonitorModelChange[] = [];
+  let overflowed = false;
   /** A row's place in the order may have moved (its kind or birth changed). */
   let reorder = false;
   let spawn: MonitorSpawnMenu | undefined;
@@ -385,6 +406,33 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     for (const listener of [...gapListeners]) call(listener);
   };
 
+  /** Held for the healing snapshot; past the bound everything held goes, and the snapshot alone heals, as before. */
+  const hold = (update: MonitorModelChange): void => {
+    if (overflowed) return;
+    if (held.length >= gapBuffer) {
+      held = [];
+      overflowed = true;
+      return;
+    }
+    held.push(update);
+  };
+
+  /** A change on the chain applies; off it, or while the chain is broken, it is held and the gap heard once. */
+  const applyChange = (update: MonitorModelChange): boolean => {
+    if (!gapped && (revision === undefined || update.since !== revision)) gap();
+    if (gapped) {
+      hold(update);
+      return false;
+    }
+    revision = update.revision;
+    for (const row of update.upserts) take(row);
+    for (const id of update.removed) {
+      if (rows.delete(id)) dirty.add(id);
+    }
+    if (update.spawn !== undefined) takeSpawn(update.spawn);
+    return true;
+  };
+
   return {
     apply(update) {
       if (disposed) return false;
@@ -402,18 +450,14 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
           dirty.add(id);
         }
         takeSpawn(update.spawn);
-      } else {
-        if (gapped) return false;
-        if (revision === undefined || update.since !== revision) {
-          gap();
-          return false;
-        }
-        revision = update.revision;
-        for (const row of update.upserts) take(row);
-        for (const id of update.removed) {
-          if (rows.delete(id)) dirty.add(id);
-        }
-        if (update.spawn !== undefined) takeSpawn(update.spawn);
+        // The changes heard during the gap that the snapshot does not hold, in order; a link missing among them is
+        // a new gap, and what follows it is held for the next snapshot.
+        const replay = held.filter((change) => change.since >= update.revision);
+        held = [];
+        overflowed = false;
+        for (const change of replay) applyChange(change);
+      } else if (!applyChange(update)) {
+        return false;
       }
       schedule();
       return true;

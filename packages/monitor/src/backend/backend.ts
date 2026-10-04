@@ -11,7 +11,6 @@ import {
 } from '@vibecook/puppeteer-view-sdk/model';
 import { createAgentMonitorStore } from '../store.js';
 import {
-  DEFAULT_REPLY_MAX_LENGTH,
   agentStatus,
   classifyTerminalStatus,
   deriveAgentRow,
@@ -125,7 +124,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const { runs: source, host, identity } = options;
   const clock = options.clock ?? defaultClock;
   const scheduler = options.scheduler ?? defaultScheduler;
-  const replyMaxLength = options.replyMaxLength ?? DEFAULT_REPLY_MAX_LENGTH;
+  // M21: no bound of the backend's own; Core already bounds the mirror's text. A host may still pass one.
+  const replyMaxLength = options.replyMaxLength ?? Number.POSITIVE_INFINITY;
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs;
   const recencyIntervalMs = options.recencyIntervalMs ?? DEFAULT_RECENCY_INTERVAL_MS;
   const accumulateAcrossEpochs = (options.cost?.acrossEpochs ?? 'accumulate') === 'accumulate';
@@ -150,11 +150,12 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     ...(options.notificationCapacity === undefined ? {} : { notificationCapacity: options.notificationCapacity }),
     onListenerError: report,
   });
-  /** Runs the runtime removed and nothing has revived: no row, even when the host still names them. */
-  const sealed = new Set<string>();
   /** The model id each run carries, for the backend's lifetime. */
   const idByRun = new Map<string, string>();
-  /** Last assembly's terminal ids by session, so a run promoted from a shell that just left the list still finds it. */
+  /**
+   * The previous assembly's terminal ids by session, so a run named in the very tick its shell left the list still
+   * finds it. One tick only: across more, the host contract (keep the PTY listed until its run is named) carries it.
+   */
   let terminalIdBySession: ReadonlyMap<string, string> = new Map();
   const terminalStatus = new Map<string, { status: AgentStatus; since: number }>();
   /** The usage ledger, by run; a run's reading is taken once per state object. */
@@ -174,6 +175,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
   let snapshot: MonitorModelSnapshot = Object.freeze({ revision: 0, rows: EMPTY_ROWS });
   const listeners = new Set<(change: MonitorModelChange) => void>();
+  /** Listeners are hearing a change; a flush asked for meanwhile is held until they have all heard it. */
+  let emitting = false;
+  let flushHeld = false;
   let cancelTick: (() => void) | undefined;
   let cancelRecency: (() => void) | undefined;
   let cancelStep: (() => void) | undefined;
@@ -207,18 +211,32 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
 
   const schedule = (): void => {
     if (disposed || cancelTick) return;
-    cancelTick = scheduler(() => {
+    let ran = false;
+    const cancel = scheduler(() => {
+      ran = true;
       cancelTick = undefined;
       flush();
     });
+    // A scheduler may run the tick before it returns; then nothing is left to cancel, and holding its cancel would
+    // stall every later tick.
+    if (!ran) cancelTick = cancel;
   };
 
   const flush = (): void => {
     if (disposed) return;
-    cancelTick?.();
-    cancelTick = undefined;
-    const change = recompute();
-    if (change) emit(change);
+    // A flush asked for while the listeners hear a change (a screen reporting what it shows, an urgent push, a tick
+    // run at once) waits for the loop to end, so every listener hears revision n before n + 1.
+    if (emitting) {
+      flushHeld = true;
+      return;
+    }
+    do {
+      flushHeld = false;
+      cancelTick?.();
+      cancelTick = undefined;
+      const change = recompute();
+      if (change) emit(change);
+    } while (flushHeld && !disposed);
   };
 
   const emit = (
@@ -239,12 +257,17 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       removed: Object.freeze(change.removed),
       ...(change.spawn ? { spawn: change.spawn } : {}),
     });
-    for (const listener of [...listeners]) {
-      try {
-        listener(published);
-      } catch (error) {
-        report(error);
+    emitting = true;
+    try {
+      for (const listener of [...listeners]) {
+        try {
+          listener(published);
+        } catch (error) {
+          report(error);
+        }
       }
+    } finally {
+      emitting = false;
     }
   };
 
@@ -284,7 +307,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     const agents: Array<{ host: MonitorHostRun; state: AgentMonitorState | undefined; id: string }> = [];
     for (const run of facts.runs) {
       const state = store.getState(run.runtimeRunId);
-      if (!state && sealed.has(run.runtimeRunId)) continue;
+      // M25: one record of removals, the store's capped seal. A run the runtime removed and nothing has revived is
+      // no row, even while the host names it again, as long as its seal is within the cap.
+      if (!state && store.isSealed(run.runtimeRunId)) continue;
       // M17 — Godview's reading: until the runtime's first state the run is no row and claims nothing, so its
       // terminal stands in; at that state the run takes the terminal row's id below, and the shell keeps its body.
       if (!state && withholdUnobserved) continue;
@@ -327,30 +352,35 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     }
     for (const id of [...terminalStatus.keys()]) if (!liveTerminalIds.has(id)) terminalStatus.delete(id);
 
-    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown".
+    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown". Today the
+    //    ledger lives only while a screen is open (M20): with none, nothing accrues, and the first screen to open
+    //    sees every row for the first time.
     const shown = shownIds();
-    unread = reconcileUnread(
-      unread,
-      [
-        ...agents.map((agent): UnreadCandidate => {
-          const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
-          return {
-            id: agent.id,
-            status: agentStatus(agent.host, agent.state),
-            active: shown.has(agent.id),
-            hasAgent: true,
-            ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
-          };
-        }),
-        ...terminals.map((terminal): UnreadCandidate => ({
-          id: terminal.id,
-          status: classifyTerminalStatus(terminal.host.activity),
-          active: shown.has(terminal.id),
-          hasAgent: false,
-        })),
-      ],
-      nowMs,
-    );
+    unread =
+      shownByScreen.size === 0
+        ? EMPTY_UNREAD_LEDGER
+        : reconcileUnread(
+            unread,
+            [
+              ...agents.map((agent): UnreadCandidate => {
+                const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
+                return {
+                  id: agent.id,
+                  status: agentStatus(agent.host, agent.state),
+                  active: shown.has(agent.id),
+                  hasAgent: true,
+                  ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
+                };
+              }),
+              ...terminals.map((terminal): UnreadCandidate => ({
+                id: terminal.id,
+                status: classifyTerminalStatus(terminal.host.activity),
+                active: shown.has(terminal.id),
+                hasAgent: false,
+              })),
+            ],
+            nowMs,
+          );
 
     // 5. Agent rows.
     for (const agent of agents) {
@@ -449,7 +479,6 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     if (disposed) return;
     const previous = store.getState(state.runtimeRunId);
     if (!store.acceptState(state)) return;
-    sealed.delete(state.runtimeRunId);
     if (isUrgentTransition(previous, state)) flush();
     else schedule();
   });
@@ -459,16 +488,13 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const unsubscribeRemoved = source.onRemoved((removal) => {
     if (disposed) return;
     if (!store.remove(removal)) return;
-    sealed.add(removal.runtimeRunId);
     flush();
   });
   const ready = source
     .listStates()
     .then((states) => {
       if (disposed) return;
-      for (const state of states) {
-        if (store.acceptState(state)) sealed.delete(state.runtimeRunId);
-      }
+      store.acceptStates(states);
       schedule();
     })
     .catch((error: unknown) => {
@@ -571,14 +597,21 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (disposed) return;
       const next = new Set(ids);
       const previous = shownByScreen.get(screenId);
-      const same = previous
-        ? previous.size === next.size && [...next].every((id) => previous.has(id))
-        : next.size === 0;
-      if (same) return;
-      if (next.size === 0) shownByScreen.delete(screenId);
-      else shownByScreen.set(screenId, next);
+      if (previous && previous.size === next.size && [...next].every((id) => previous.has(id))) return;
+      // A first report opens the screen, an empty one too: an open screen whose pane shows nothing still sees marks.
+      shownByScreen.set(screenId, next);
       // Looking at a row clears its mark now, not a tick later: the screen that reported is waiting on it.
       flush();
+    },
+    forgetScreen(screenId) {
+      if (disposed || !shownByScreen.delete(screenId)) return;
+      flush();
+    },
+    idOf(runtimeRunId) {
+      if (disposed) return undefined;
+      const id = idByRun.get(runtimeRunId);
+      const inputs = id === undefined ? undefined : entries.get(id)?.inputs;
+      return inputs?.kind === 'agent' && inputs.host.runtimeRunId === runtimeRunId ? id : undefined;
     },
     dispose() {
       if (disposed) return;

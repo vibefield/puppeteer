@@ -14,7 +14,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 | `host` | `{ getFacts(): MonitorHostFacts; subscribe(cb) }` — `device` (this desktop, `self: true`), `runs[]` (per-run host facts), `terminals[]` (bare PTYs), `profileSets \| null` (null = still reading), `spawnPeers?` (other desktops, passed through) | fieldd's fold + roster + profile feed; Godview main's session records + workspace + profiles |
 | `identity` | `ProjectIdentityStore`: `seq(key)`, `deal(key)` — sync; never reuses a sequence | fieldd's state store; Godview's project registry (L4); `createMemoryProjectIdentityStore()` for tests |
 | `clock` | `{ now(), schedule(ms, fn) → cancel }` | default `Date.now` + `setTimeout`; tests pass a manual clock |
-| `scheduler` | `(fn) → cancel`: one emission per tick | default one macrotask (`setTimeout 0`); the host may pass a frame |
+| `scheduler` | `(fn) → cancel`: one emission per tick; it may run the tick before it returns | default one macrotask (`setTimeout 0`); the host may pass a frame |
 | `sink` | `select(resolved)` · `create(resolved)` | fieldd's doors; the Ghosttea workspace |
 
 `MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
@@ -22,6 +22,31 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
 `MonitorHostTerminal`: `sessionId` · `identity?` · `createdAt` (0 = unknown, VibeField's floor rows) · `cwd?` · `title?` ·
 `activity? {kind}` · `profileSet?` · `workloadClass?` · `exited?`.
+
+## The host contract
+
+What a host owes the backend. Each rule keeps a row's body or the revision chain whole; the backend cannot repair a
+host that breaks one.
+
+1. **Keep a PTY listed in `terminals` until its run is named in `runs`.** While both are listed, the dedupe shows one
+   row (the agent speaks for its PTY) and the run takes the shell row's id, so a promoted shell keeps its body. The
+   backend remembers the previous assembly's terminals for ONE tick only: a shell that leaves the list a tick before its
+   run is named (any tick between — the 10 s recency clock, the 30 s step, an unrelated push) reads as the shell
+   removed and a different row added under the run's id. Drop the terminal after the run is named, or in the same
+   update.
+2. **Drop a run only for good.** A removed run stays hidden while its seal is within the store's cap (the newest 4096
+   removals, M25), even if the host names it again. Past the cap the removal is forgotten, and a run named again then
+   reads as "starting" until the runtime speaks.
+3. **Open and close screens (M20).** A screen opens with its first `reportShown(screenId, ids)`, an empty list too
+   (its active pane shows nothing), and closes with `forgetScreen(screenId)` when it goes away: fieldd when the
+   screen's door subscription closes, puppeteer's Godview when the window closes. A screen never forgotten keeps marks
+   accruing as if someone were looking.
+4. **One ordered channel (M23).** Deliver a snapshot and the changes after it on ONE ordered channel wherever the
+   transport allows (puppeteer's Godview: the snapshot as a message on the change channel, not a separate invoke). The
+   replica holds the changes it hears during a gap and replays those after the healing snapshot's revision
+   (`gapBuffer`, default 256), but that is the backstop, not the design.
+5. **Ask for a run's row by `idOf(runtimeRunId)`**, never by assuming its id is the `runtimeRunId`: a promoted shell's
+   run carries the shell's id.
 
 ## Every `MonitorAgentRow` field, per host
 
@@ -37,7 +62,7 @@ branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` �
 | `observed` | a state has arrived and `pending` is unset (M10) | true |
 | `pending` | host `pending !== undefined` | — |
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
-| `activity` | core's `{ kind, line (bounded), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
+| `activity` | core's `{ kind, line (trimmed), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
 | `project.branch` | the observed branch when the observation names one; else the host's `fallbackBranch` (M26: pu supplies its workspace's, as its seam read `git?.branch ?? workspace.branch`; vf supplies none); else vf's rule: `git !== undefined ? null : workspace.branch` | — |
 | `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key, and while the host's key is `null` (it is still folding the project: no fallback) | absent (the ramp) |
@@ -46,8 +71,8 @@ branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` �
 | `effort` | `{ value: state.effort.value, intent? }` (M2) | — |
 | `account` | host `account` (pu: profile label from the registry; vf: fieldd's) | — |
 | `context` | `{ usedPercent }` when `state.context.usedPercent` is a number | — |
-| `wait` | first blocker, parts kept apart (M2): `{ kind, since, count?, tool: permission.tool, code: failure.code, header: questions[0].header, question: questions[0].prompt, detail: blocker.detail }`, text bounded like the reply; `count` = `blockers.length + omitted.blockers`, absent when one (M10) | — |
-| `reply` | `lastAssistantMessage` → `{ text (trimmed, ≤ replyMaxLength, default 280), at, final }` | — |
+| `wait` | first blocker, parts kept apart (M2): `{ kind, since, count?, tool: permission.tool, code: failure.code, header: questions[0].header, question: questions[0].prompt, detail: blocker.detail }`, text trimmed like the reply; `count` = `blockers.length + omitted.blockers`, absent when one (M10) | — |
+| `reply` | `lastAssistantMessage` → `{ text (trimmed), at, final }`; no bound of the backend's own (M21: core bounds the message; a host may pass `replyMaxLength`, which bounds the reply, the wait's texts and the activity line by code points) | — |
 | `cost` | the usage ledger (below): `{ usd, coverage, burnPerHour: costRatePerMin × 60, series }`; absent when nothing is priced | — |
 | `tokens` | `{ total: usage.cumulativeTokens, perMinute: usage.burnRatePerMin }` | — |
 | `unread` | the unread ledger (L5) | false |
@@ -59,12 +84,16 @@ branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` �
 ## Assembly
 
 1. **Join**: every host run → the store's state for its `runtimeRunId` (`AgentMonitorStore`: epochs, revisions, sealed
-   removals). A run the store has REMOVED makes no row until a newer epoch revives it; a run the host names but the store
-   has never heard of is a "starting" row; a state the host has not named is no row (both hosts wait for the host's
-   record today).
+   removals). A run the store has REMOVED makes no row while the host still names it, until a newer epoch revives it; a
+   run the host names but the store has never heard of is a "starting" row; a state the host has not named is no row
+   (both hosts wait for the host's record today). **One record of removals (M25):** the store's seal, read through
+   `store.isSealed(runtimeRunId)`; the backend keeps none of its own. The store keeps the newest
+   `DEFAULT_MONITOR_SEAL_CAPACITY` (4096) seals, forgetting the oldest first, so tombstones are bounded: within the cap
+   a removed run stays hidden even when the host names it again, and its removed epoch's late state is refused.
 2. **Identity carry-forward** (`id`): `idByRun` for the backend's lifetime. A new run takes the id of the bare-terminal
    row its `terminalSessionId` (or `replacedTerminalSessionId`) stood for — a promoted shell keeps its body — else its
    `runtimeRunId`, which already survives epochs and PTY swaps (AR-4). An id is never held by two rows at once.
+   `idOf(runtimeRunId)` tells a host which row a run is in the current snapshot (undefined while it has none).
 3. **Dedupe**: a terminal whose `sessionId`/`identity` is claimed by an agent row (its terminal, the one it replaced, or
    its id) is not a row: the agent speaks for both (vf "one identity, one row"; pu's launcher-handoff rule).
 4. **Order**: `compareMonitorRows` — agents by `createdAt`, then terminals, ties by id.
@@ -75,9 +104,14 @@ branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` �
 ## Unread (L5)
 
 `unread.ts` is `views/monitor/unread.ts` verbatim (`reconcileUnread`), run on every tick with `active =` "some screen
-reports it shown". `reportShown(screenId, ids)` replaces that screen's set (empty clears it). One screen reporting its
-active pane's row is exactly today's fold — the parity tests prove it against the ported function. Terminals never earn
-the mark. The ledger lives in memory for the daemon's lifetime (runtime only).
+reports it shown". `reportShown(screenId, ids)` replaces that screen's set; the first report opens the screen, an empty
+one too (its pane shows nothing), and `forgetScreen(screenId)` closes it. One screen reporting its active pane's row is
+exactly today's fold — the parity tests prove it against the ported function. Terminals never earn the mark.
+
+**Lifetime (M20).** Today the ledger lives only while Godview is open, so a turn that finished while it was closed is
+never marked. The backend keeps that: while no screen is open nothing accrues and the ledger is empty, the first screen to
+open stamps first sight for every row, and forgetting the last screen drops every mark. The ledger is memory only
+(runtime only). Marking turns that finished while nobody looked would be a design event for James, not MV's.
 
 ## Cost
 
@@ -110,7 +144,8 @@ observed directory meanwhile.
 ## Spawn menu
 
 Self device: `{ id: device.id, label: device.name, self, state: profileSets === null ? 'reading' : 'ready', profiles }`,
-each profile `{ id, label, glyph, kind, isDefault, blocked (some agent row under it is blocked), signedIn }` with
+each profile `{ id, label, glyph, kind, isDefault, blocked (some live agent row under it is blocked; a crashed row,
+`alive: false`, lights nothing), signedIn }` with
 `signedIn` as vf's `signedInLabels` (managed: every persona; native: logged-in only; deduped). Peers are appended as the
 host passes them (SB-6 later). Emitted on the change only (deep compare).
 
@@ -119,7 +154,9 @@ host passes them (SB-6 later). Emitted on the change only (deep compare).
 `revision` from 0; each tick that changed something emits one `MonitorModelChange { since, revision, upserts (rows whose
 object changed), removed, spawn? }`; idle emits nothing; `getSnapshot()` is one frozen object until a change. Urgent
 facts flush synchronously inside the push: a state whose `alive`, `blockers` or `status` differ from the last, and every
-removal; everything else coalesces to the scheduler's tick. Rows are frozen (`freezeTree`). Commands: `select(id)`
+removal; everything else coalesces to the scheduler's tick. A flush asked for while the listeners hear a change (a
+listener that reports shown, pushes, removes or runs a tick at once) is held until every listener has heard it, so each
+hears revision n before n + 1. Rows are frozen (`freezeTree`). Commands: `select(id)`
 resolves the row → `sink.select({ id, kind, runtimeRunId?, terminalSessionId? })`; `create(at?, target?)` resolves the
 device (self ready/reading, a peer only ready) and the profile against the menu → `sink.create({ at?, device, profileSet? })`;
 `acknowledge(id)` (M3, Godview's keep-until-acknowledged flow from `monitor-ipc.ts`) takes a dead agent row with a

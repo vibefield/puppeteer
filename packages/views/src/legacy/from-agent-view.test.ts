@@ -439,6 +439,51 @@ describe('peers (M9)', () => {
   });
 });
 
+describe('a row the runtime has not spoken for (observed: false; mv-review)', () => {
+  // Today such a run has no mirror, so neither host's row carries `agent.monitor` or a usage history. The backend
+  // dates a starting row's statusSince at the host's createdAt; a monitor carrying it would start the status
+  // ledger's lane at the birth (status-ledger.ts:146-152) instead of at first sight.
+  const starting = (overrides: Partial<AgentView> = {}): AgentView =>
+    agentView({
+      id: 'run-s',
+      observed: false,
+      detail: 'starting',
+      statusSince: NOW - 600_000,
+      model: undefined,
+      effort: undefined,
+      context: undefined,
+      activity: undefined,
+      ...overrides,
+    });
+
+  it('carries no Core facts and no usage while starting, under either host’s options', () => {
+    for (const options of [VIBEFIELD, GODVIEW]) {
+      const legacy = toMonitorAgent(starting(), options);
+      expect(legacy.agent?.monitor).toBeUndefined();
+      expect(legacy.agent?.usage).toBeUndefined();
+      expect(legacy.agent?.provider).toEqual({ id: 'imposter', label: 'Imposter' });
+    }
+    expect(toMonitorAgent(starting(), VIBEFIELD).detail).toBe('starting');
+  });
+
+  it('nor while pending (AR-4): nothing drives the run yet', () => {
+    const pending = starting({ pending: true, status: 'idle', detail: 'unobserved · resumes when idle' });
+    for (const options of [VIBEFIELD, GODVIEW]) {
+      const legacy = toMonitorAgent(pending, options);
+      expect(legacy.agent?.monitor).toBeUndefined();
+      expect(legacy.agent?.usage).toBeUndefined();
+    }
+  });
+
+  it('so the status ledger starts its lane at first sight, as today, and at the state once the runtime speaks', () => {
+    const before = observeStatuses(EMPTY_STATUS_LEDGER, toMonitorAgents(model([starting()]), VIBEFIELD), NOW);
+    expect(before.lanes.get('run-s')?.changes).toEqual([{ status: 'working', atMs: NOW }]);
+    const spoken = toMonitorAgent(starting({ observed: true, statusSince: NOW - 30_000 }), VIBEFIELD);
+    expect(spoken.agent?.monitor?.statusSince).toBe(iso(NOW - 30_000));
+    expect(spoken.agent?.usage).toMatchObject({ total: 1.2 });
+  });
+});
+
 describe('the shipping views draw the shim', () => {
   const draw = (view: AgentView, unread = false) =>
     bubbleModel({ agent: toMonitorAgent(view, GODVIEW), parameters: DEFAULT_SWARM_PARAMETERS, nowMs: NOW, unread });

@@ -192,7 +192,10 @@ export interface CreateMonitorBackendOptions {
   unobservedAgents?: 'row' | 'terminal' | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
-  /** The longest reply or question text a row carries. Default 280. */
+  /**
+   * The longest reply, wait or activity text a row carries, in code points. Default: no bound of the backend's
+   * own (M21), since Core already bounds the mirror's text.
+   */
   replyMaxLength?: number | undefined;
   /** Evidence older than this is stale. Default: core's policy, 30 s. */
   staleAfterMs?: number | undefined;
@@ -208,8 +211,21 @@ export interface MonitorBackend {
   subscribe(onChange: (change: MonitorModelChange) => void): () => void;
   /** Routes a validated command to the sink; false when nothing it names exists. */
   command(command: MonitorCommand): boolean;
-  /** Which rows a screen shows in its active pane; an empty list clears the screen (L5). */
+  /**
+   * Which rows a screen shows in its active pane (L5). The first report opens the screen, an empty list included
+   * (its pane shows none); it stays open until `forgetScreen`.
+   */
   reportShown(screenId: string, ids: readonly string[]): void;
+  /**
+   * The screen went away (M20): its window closed, its subscription ended. While no screen is open no mark accrues,
+   * so forgetting the last one drops every mark, and the next screen to open sees each row for the first time.
+   */
+  forgetScreen(screenId: string): void;
+  /**
+   * The id of the row a run is in the current snapshot: the shell's id it carried at a promotion, else its
+   * `runtimeRunId`. Undefined while the run has no row (not named, removed, or the backend disposed).
+   */
+  idOf(runtimeRunId: string): string | undefined;
   /** Resolves once the runtime's all-runs listing has been merged. */
   readonly ready: Promise<void>;
   dispose(): void;

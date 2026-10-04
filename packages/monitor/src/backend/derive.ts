@@ -22,8 +22,6 @@ import type { MonitorHostProfileSet, MonitorHostRun, MonitorHostTerminal } from 
 // `godview/monitor/agents.ts` + `agent-status.ts`, Godview's
 // `renderer/monitor/agents.ts`); where they differ the README names the pick.
 
-export const DEFAULT_REPLY_MAX_LENGTH = 280;
-
 /** The native set's id: the agents' own folders ("This Mac"). */
 export const NATIVE_PROFILE_SET = 'native';
 
