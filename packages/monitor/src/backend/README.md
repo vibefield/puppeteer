@@ -19,7 +19,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 
 `MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
 (AR-4) · `terminalIdentity?` · `projectKey?` (the canonical root the host folds to) · `workspace? {root, sourcePath,
-branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
+branch}` · `fallbackBranch?` (M26) · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · `pending?` · `alive?` · `nativeSessionId?`.
 `MonitorHostTerminal`: `sessionId` · `identity?` · `createdAt` (0 = unknown, VibeField's floor rows) · `cwd?` · `title?` ·
 `activity? {kind}` · `profileSet?` · `workloadClass?` · `exited?`.
 
@@ -39,7 +39,7 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 | `detail` | pending → `unobserved · resumes when idle`; no state → `starting`; else core's `presentAgentMonitorHeadline(state).detail` | `cwd ?? 'Unassigned terminal'` |
 | `activity` | core's `{ kind, line (bounded), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
-| `project.branch` | observation first (vf): `git !== undefined ? git?.branch ?? null : workspace.branch` | — |
+| `project.branch` | the observed branch when the observation names one; else the host's `fallbackBranch` (M26: pu supplies its workspace's, as its seam read `git?.branch ?? workspace.branch`; vf supplies none); else vf's rule: `git !== undefined ? null : workspace.branch` | — |
 | `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key, and while the host's key is `null` (it is still folding the project: no fallback) | absent (the ramp) |
 | `provider` | host `provider` | — |
 | `model` | `state.model.displayName \|\| state.model.id` | — |

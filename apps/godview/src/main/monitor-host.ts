@@ -72,6 +72,8 @@ export function monitorHostRun(
       ...(sourcePath ? { sourcePath } : {}),
       ...(branch ? { branch } : {}),
     },
+    // M26: the seam read `git?.branch ?? workspace.branch`, so the workspace's branch is the fallback.
+    ...(branch ? { fallbackBranch: branch } : {}),
     ...(info.session.cwd ? { cwd: info.session.cwd } : {}),
     ...(info.profileId ? { profileId: info.profileId } : {}),
     ...(account ? { account } : {}),

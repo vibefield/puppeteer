@@ -48,6 +48,12 @@ export interface MonitorHostRun {
         readonly branch?: string | undefined;
       }
     | undefined;
+  /**
+   * A branch the host supplies for when the observation names none (M26): shown when the runtime saw no repository
+   * (`git: null`) or no branch (a detached HEAD), and when nothing looked. Puppeteer's Godview supplies its
+   * workspace's branch, as its seam fell back to it; VibeField supplies none, which keeps its observation-first rule.
+   */
+  readonly fallbackBranch?: string | undefined;
   /** The terminal's own directory, the last fallback for the project's name. */
   readonly cwd?: string | undefined;
   readonly profileId?: string | undefined;

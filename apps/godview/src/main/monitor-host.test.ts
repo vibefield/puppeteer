@@ -73,6 +73,28 @@ describe('monitorHostRun', () => {
     expect(folded).toMatchObject({ projectKey: '/repos/app', profileId: 'p-1', account: 'me@work' });
   });
 
+  it("supplies the workspace's branch as the fallback for when the observation names none (M26)", () => {
+    const branched = record('pty-1', { workspace: { mode: 'direct', root: '/repos/app', branch: 'wip' } as never });
+    expect(
+      monitorHostRun(
+        branched,
+        () => undefined,
+        () => undefined,
+      ),
+    ).toMatchObject({
+      workspace: { root: '/repos/app', branch: 'wip' },
+      fallbackBranch: 'wip',
+    });
+    expect(
+      'fallbackBranch' in
+        monitorHostRun(
+          record('pty-2'),
+          () => undefined,
+          () => undefined,
+        ),
+    ).toBe(false);
+  });
+
   it('says a witnessed exit of the adopted process, and nothing while it lives', () => {
     expect(
       monitorHostRun(

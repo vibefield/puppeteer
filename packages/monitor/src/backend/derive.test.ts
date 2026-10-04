@@ -118,6 +118,21 @@ describe('project', () => {
     expect(projectBranch(host, monitorState())).toBe('main');
     expect(projectBranch(hostRun(), undefined)).toBeUndefined();
   });
+  it('falls back to the branch the host supplies whenever the observation names none (M26), and only then', () => {
+    // VibeField supplies none: the rule above, unchanged (looked and none is null; nothing looked is the workspace's).
+    const vibefield = hostRun({ workspace: { branch: 'main' } });
+    const detached = monitorState({ environment: { git: { branch: undefined } as never, worktrees: [] } });
+    expect(projectBranch(vibefield, detached)).toBeNull();
+    // Puppeteer's Godview supplies its workspace's, as its seam read `git?.branch ?? workspace.branch`.
+    const godview = hostRun({ workspace: { branch: 'wip' }, fallbackBranch: 'wip' });
+    expect(projectBranch(godview, monitorState({ environment: { git: null, worktrees: [] } }))).toBe('wip');
+    expect(projectBranch(godview, detached)).toBe('wip');
+    expect(projectBranch(godview, monitorState())).toBe('wip');
+    expect(projectBranch(godview, undefined)).toBe('wip');
+    expect(
+      projectBranch(godview, monitorState({ environment: { git: { branch: 'feat' } as never, worktrees: [] } })),
+    ).toBe('feat');
+  });
   it('deals colour by the host key, else the observed directory, else nothing', () => {
     expect(
       projectKey(hostRun({ projectKey: '/repo' }), monitorState({ environment: { cwd: '/x', worktrees: [] } })),
