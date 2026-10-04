@@ -132,6 +132,11 @@ and the row goes through the ordinary removal; an unresolvable command returns f
 - **M4** pu's detail appends `+N blockers` and `~$x estimated API cost · $y/min`; vf's prefers the reply line and
   `kind · tool`. The row's `detail` is the headline; `reply`, `wait` (with `count`), `cost` carry the rest; the legacy
   shim composes each host's line (`detail: 'reply-first' | 'headline-cost'`), ported views use vf's reply-first rule.
+- **M17** an agent before its first state is a host option, `unobservedAgents: 'row' | 'terminal'`. `row` (the
+  default, vf's): the run is a "starting" row (`observed: false`) that speaks for its terminal at once. `terminal`
+  (pu's): the run is no row and claims nothing until the runtime reports a state, so its terminal stands in, not
+  deduped; at the first state (urgent, so it flushes inside the push) the agent row takes the terminal row's id and the
+  shell keeps its body.
 - vf's floor rows say `agent PTY · in no pane` — "in no pane" is a window fact; here they are terminals with no cwd.
 - Notifications stay in the store (bounded); the model carries none (not in the contract).
 

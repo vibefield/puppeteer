@@ -129,6 +129,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const staleAfterMs = options.staleAfterMs ?? DEFAULT_MONITOR_FRESHNESS_POLICY.staleAfterMs;
   const recencyIntervalMs = options.recencyIntervalMs ?? DEFAULT_RECENCY_INTERVAL_MS;
   const accumulateAcrossEpochs = (options.cost?.acrossEpochs ?? 'accumulate') === 'accumulate';
+  const withholdUnobserved = (options.unobservedAgents ?? 'row') === 'terminal';
   const report = (error: unknown): void => {
     try {
       options.onError?.(error);
@@ -284,6 +285,9 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     for (const run of facts.runs) {
       const state = store.getState(run.runtimeRunId);
       if (!state && sealed.has(run.runtimeRunId)) continue;
+      // M17 — Godview's reading: until the runtime's first state the run is no row and claims nothing, so its
+      // terminal stands in; at that state the run takes the terminal row's id below, and the shell keeps its body.
+      if (!state && withholdUnobserved) continue;
       let id = idByRun.get(run.runtimeRunId);
       if (id === undefined || taken.has(id)) {
         const terminalId = (session: string | undefined): string | undefined =>

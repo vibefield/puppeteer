@@ -172,6 +172,13 @@ export interface CreateMonitorBackendOptions {
    * Default `accumulate`.
    */
   cost?: { readonly acrossEpochs?: 'accumulate' | 'current' | undefined } | undefined;
+  /**
+   * An agent before its first state (M17): `row` is VibeField's reading (the run is a "starting" row, `observed: false`,
+   * and speaks for its terminal at once); `terminal` is puppeteer Godview's (no agent row until the runtime reports a
+   * state; the run's terminal stands in, NOT deduped, and the agent row takes its id when the first state arrives).
+   * Default `row`.
+   */
+  unobservedAgents?: 'row' | 'terminal' | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
   /** The longest reply or question text a row carries. Default 280. */
