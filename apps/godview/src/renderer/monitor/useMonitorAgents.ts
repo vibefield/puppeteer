@@ -24,15 +24,7 @@ import {
   type StatusLedger,
   type UnreadLedger,
 } from '@vibecook/puppeteer-views';
-import {
-  EMPTY_USAGE_LEDGER,
-  reconcileUsage,
-  seedUsage,
-  USAGE_STEP_MS,
-  type UsageLedger,
-  type UsageLedgerKey,
-} from '@vibecook/puppeteer-views';
-import { createUsageHistoryPersistence } from './usage-history-persistence.js';
+import { EMPTY_USAGE_LEDGER, reconcileUsage, USAGE_STEP_MS, type UsageLedger } from '@vibecook/puppeteer-views';
 
 export interface UseMonitorAgentsOptions {
   workspace?: GhostteaWorkspaceContext | undefined;
@@ -88,21 +80,6 @@ export function useMonitorAgents({
   const statusRef = useRef<StatusLedger>(EMPTY_STATUS_LEDGER);
   /** The usage ledger's clock: a fold at every step boundary, whether or not anything else changed. */
   const [usageStep, setUsageStep] = useState(0);
-  const [usageSeed, setUsageSeed] = useState(0);
-  const [usagePersistence] = useState(() =>
-    createUsageHistoryPersistence({
-      store: {
-        load: (key) => window.puppeteer.loadUsageHistory(key),
-        save: (records) => window.puppeteer.saveUsageHistory([...records]),
-      },
-      read: () => usageRef.current,
-      seed: (id, record) => {
-        usageRef.current = seedUsage(usageRef.current, id, record, Date.now());
-        setUsageSeed((seed) => seed + 1);
-      },
-      now: Date.now,
-    }),
-  );
 
   useEffect(() => {
     let alive = true;
@@ -228,41 +205,6 @@ export function useMonitorAgents({
     };
   }, []);
 
-  // Persistence: a resumed conversation is seeded with the ledger it had, and
-  // the live ledgers are saved at every step and when the page goes away, by
-  // provider and native session id, the identity a resume continues. The
-  // monitor's announced id is preferred: it arrives with the first state,
-  // before main has re-broadcast the session record.
-  const usageKeys = useMemo<UsageLedgerKey[]>(
-    () =>
-      [...records.values()].flatMap((record) => {
-        const nativeSessionId = record.monitor?.state.session.nativeSessionId ?? record.info.nativeSession?.id;
-        if (!record.monitor || !nativeSessionId) return [];
-        return [
-          {
-            id: monitorIdentity(record.info.session.id, terminalIdentities),
-            providerId: record.info.provider.id,
-            nativeSessionId,
-          },
-        ];
-      }),
-    [records, terminalIdentities],
-  );
-  useEffect(() => {
-    usagePersistence.sync(usageKeys);
-  }, [usageKeys, usagePersistence]);
-  useEffect(() => {
-    usagePersistence.save();
-  }, [usageKeys, usageSeed, usageStep, usagePersistence]);
-  useEffect(() => {
-    window.addEventListener('pagehide', usagePersistence.save);
-    return () => {
-      usagePersistence.save();
-      usagePersistence.disconnect();
-      window.removeEventListener('pagehide', usagePersistence.save);
-    };
-  }, [usagePersistence]);
-
   useEffect(
     () =>
       onSessionExited((sessionId) => {
@@ -370,7 +312,6 @@ export function useMonitorAgents({
     sessions,
     terminalIdentities,
     terminalVisualIds,
-    usageSeed,
     usageStep,
     visibleTerminals,
     workspace?.activeSession,

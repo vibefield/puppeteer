@@ -7,6 +7,7 @@ import {
   createProjectRegistry,
   nextProjectSequence,
   parseProjectRegistry,
+  projectIdentityStore,
   serializeProjectRegistry,
   type ProjectRecord,
 } from './project-registry.js';
@@ -119,5 +120,37 @@ describe('project registry', () => {
       projects: [{ key: '/repos/voyager', name: 'voyager', seq: 0, firstSeenAt: '2026-09-11T01:02:03.000Z' }],
     });
     expect(serializeProjectRegistry(registry.list())).toBe(`${JSON.stringify(written, null, 2)}\n`);
+  });
+});
+
+describe("the registry as the monitor backend's identity port (L4)", () => {
+  it('answers a canonical root with the sequence the registry dealt, and keeps it across a reload', async () => {
+    const path = registryPath();
+    const registry = createProjectRegistry(path, { resolveRoot: fold });
+    await registry.deal('/repos/voyager');
+    const { key } = await registry.deal('/worktrees/puppeteer-feat');
+    const identity = projectIdentityStore(registry);
+    expect(key).toBe('/repos/puppeteer');
+    expect(identity.seq('/repos/puppeteer')).toBe(1);
+    expect(identity.deal('/repos/puppeteer')).toBe(1);
+    expect(identity.seq('/repos/unknown')).toBeUndefined();
+    expect(projectIdentityStore(createProjectRegistry(path, { resolveRoot: fold })).seq('/repos/puppeteer')).toBe(1);
+  });
+
+  it('deals a new key as a root at once, persisted, and never reuses a sequence', () => {
+    const path = registryPath();
+    const registry = createProjectRegistry(path, { resolveRoot: fold });
+    const identity = projectIdentityStore(registry);
+    expect(identity.deal('/repos/a')).toBe(0);
+    expect(identity.deal('/repos/b')).toBe(1);
+    expect(identity.deal('/repos/a')).toBe(0);
+    expect(
+      createProjectRegistry(path)
+        .list()
+        .map((project) => [project.key, project.seq]),
+    ).toEqual([
+      ['/repos/a', 0],
+      ['/repos/b', 1],
+    ]);
   });
 });

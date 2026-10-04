@@ -72,6 +72,9 @@ importers:
       '@vibecook/puppeteer-runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
+      '@vibecook/puppeteer-view-sdk':
+        specifier: workspace:*
+        version: link:../../packages/view-sdk
       '@vibecook/puppeteer-views':
         specifier: workspace:*
         version: link:../../packages/views

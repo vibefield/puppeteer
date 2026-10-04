@@ -5,9 +5,9 @@ import type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
 } from '@vibecook/puppeteer-views';
+import type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
+import type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
 import type {
   LauncherAgent,
   LauncherHistoryStatus,
@@ -191,10 +191,9 @@ export type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
-  UsageRunRecord,
 } from '@vibecook/puppeteer-views';
+export type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
+export type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
 
 /* The empty pane launcher (QL-1): the port's questions as main answers them.
    The shapes are the launcher's own (`@vibecook/puppeteer-views/launcher`);
@@ -253,6 +252,19 @@ export interface PuppeteerBridge {
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;
   onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
+  /**
+   * The monitor model (MV-2): the backend's snapshot for this window's replica, taken at mount and again after a gap;
+   * null for a window that is not a Godview tab.
+   */
+  monitorSnapshot(): Promise<MonitorModelSnapshot | null>;
+  /** Every change after the snapshot, in revision order. */
+  onMonitorChange(cb: (change: MonitorModelChange) => void): () => void;
+  /** This window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact). */
+  reportMonitorTerminals(terminals: MonitorHostTerminal[]): void;
+  /** The rows this window shows in its active pane (L5): any window showing a row clears its unread mark. */
+  reportMonitorShown(ids: string[]): void;
+  /** Acknowledges a crashed row's failure (M3); false when the row has none to acknowledge. */
+  acknowledgeMonitorRow(id: string): Promise<boolean>;
   workspaceDiff(runtimeSessionId: string): Promise<WorkspaceDiff | null>;
   onWorkspaceFinal(cb: (event: WorkspaceFinalEvent) => void): () => void;
   accountUsage(): Promise<AccountUsageBatch>;
@@ -290,8 +302,4 @@ export interface PuppeteerBridge {
   launcherWords(request: LauncherWordsRequest): Promise<LauncherWordsAnswer>;
   /** Resume a past conversation by provider-native id; the caller mounts the returned session. */
   resumeNativeSession(request: ResumeNativeSessionRequest): Promise<CreateAgentSessionResult>;
-  /** The persisted usage ledger for a conversation, or null when none was saved. */
-  loadUsageHistory(key: UsageHistoryKey): Promise<UsageLedgerRecord | null>;
-  /** Persist the live agents' usage ledgers; main merges them into the cache. */
-  saveUsageHistory(records: UsageLedgerRecord[]): Promise<void>;
 }

@@ -47,8 +47,9 @@ import type {
   TerminalSessionHandoff,
   UpdateInstallationRequest,
   UpdateReceipt,
-  UsageHistoryKey,
-  UsageLedgerRecord,
+  MonitorHostTerminal,
+  MonitorModelChange,
+  MonitorModelSnapshot,
   WorkspaceDiff,
   WorkspaceFinalEvent,
 } from '../protocol.js';
@@ -110,10 +111,6 @@ const puppeteer: PuppeteerBridge = {
   resumeAgentSession: (runtimeSessionId: string): Promise<CreateAgentSessionResult> =>
     ipcRenderer.invoke('puppeteer:resume-agent-session', runtimeSessionId),
   listAgentMonitors: (): Promise<AgentMonitorStateMessage[]> => ipcRenderer.invoke('puppeteer:list-agent-monitors'),
-  loadUsageHistory: (key: UsageHistoryKey): Promise<UsageLedgerRecord | null> =>
-    ipcRenderer.invoke('puppeteer:load-usage-history', key),
-  saveUsageHistory: (records: UsageLedgerRecord[]): Promise<void> =>
-    ipcRenderer.invoke('puppeteer:save-usage-history', records),
   onAgentMonitorState: (callback: (message: AgentMonitorStateMessage) => void): (() => void) =>
     onIpcMessage('puppeteer:agent-monitor-state', callback),
   onAgentMonitorNotification: (callback: (message: AgentMonitorNotificationMessage) => void): (() => void) =>
@@ -122,6 +119,12 @@ const puppeteer: PuppeteerBridge = {
     onIpcMessage('puppeteer:agent-monitor-removed', callback),
   acknowledgeAgentFailure: (request: AcknowledgeAgentFailureRequest): Promise<boolean> =>
     ipcRenderer.invoke('puppeteer:acknowledge-agent-failure', request),
+  monitorSnapshot: (): Promise<MonitorModelSnapshot | null> => ipcRenderer.invoke('monitor:snapshot'),
+  onMonitorChange: (callback: (change: MonitorModelChange) => void): (() => void) =>
+    onIpcMessage('monitor:change', callback),
+  reportMonitorTerminals: (terminals: MonitorHostTerminal[]): void => ipcRenderer.send('monitor:terminals', terminals),
+  reportMonitorShown: (ids: string[]): void => ipcRenderer.send('monitor:shown', ids),
+  acknowledgeMonitorRow: (id: string): Promise<boolean> => ipcRenderer.invoke('monitor:acknowledge', id),
   workspaceDiff: (runtimeSessionId: string): Promise<WorkspaceDiff | null> =>
     ipcRenderer.invoke('puppeteer:workspace-diff', runtimeSessionId),
   installations: (request?: InstallationsRequest): Promise<AgentInstallationsSnapshot> =>
