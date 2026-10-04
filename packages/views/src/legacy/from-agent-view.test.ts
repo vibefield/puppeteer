@@ -380,6 +380,12 @@ describe('the line under the name (M4)', () => {
     expect(line(agentView({ id: 'g5', cost: { usd: 1.2, coverage: 'partial', burnPerHour: 6 } }), GODVIEW)).toBe(
       `${HEADLINE} · ~$1.20 estimated API cost (partial) · $0.10/min`,
     );
+    // The backend carried Core's 0.015/min as 0.015 × 60; dividing back lands an ulp low (0.014999999999999998), which
+    // formatUsd would print as $0.01. The shim restores the rate the seam printed: $0.02, and 0.015 for the swarm.
+    const halfCent = agentView({ id: 'g5b', cost: { usd: 1.2, coverage: 'complete', burnPerHour: 0.015 * 60 } });
+    expect((0.015 * 60) / 60).not.toBe(0.015);
+    expect(line(halfCent, GODVIEW)).toBe(`${HEADLINE} · ~$1.20 estimated API cost · $0.02/min`);
+    expect(toMonitorAgent(halfCent, GODVIEW).agent?.monitor?.usage.costRatePerMin).toBe(0.015);
     expect(
       line(agentView({ id: 'g6', status: 'idle', detail: 'idle', cost: { usd: 0, coverage: 'unavailable' } }), GODVIEW),
     ).toBe('idle · cost unavailable');
