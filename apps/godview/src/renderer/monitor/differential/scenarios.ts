@@ -62,8 +62,8 @@ export function info(sessionId: string, options: InfoOptions = {}): AgentSession
   const runtimeRunId = options.runtimeRunId ?? `run-${sessionId}`;
   const workspace = options.workspace ?? { root: '/repos/app', sourcePath: '/repos/app' };
   return {
-    provider: options.provider ?? { id: 'codex', label: 'Codex' },
-    agent: (options.provider ?? { id: 'codex' }).id,
+    provider: options.provider ?? { id: 'agent-a', label: 'Agent A' },
+    agent: (options.provider ?? { id: 'agent-a' }).id,
     runtimeRunId,
     runtimeEpoch: options.epoch ?? 1,
     terminalSessionId: sessionId,
@@ -178,11 +178,15 @@ export function lifecycleScenario(): DifferentialScenario {
   const agentSession = session('ag-1', { createdAtMs: T0 + 2_000, cwd: '/repos/app' });
   const handedShell = session('sh-3', { createdAtMs: T0 + 101_000, cwd: '/repos/app' });
   const run = 'run-ag-1';
-  const base = { provider: { id: 'codex', label: 'Codex' }, createdAt: T0 + 2_000, nativeSessionId: 'n-1' } as const;
+  const base = {
+    provider: { id: 'agent-a', label: 'Agent A' },
+    createdAt: T0 + 2_000,
+    nativeSessionId: 'n-1',
+  } as const;
   const folded = { ...base, project: { key: '/repos/app', name: 'app', seq: 0 } };
   const environment: AgentMonitorState['environment'] = { cwd: '/repos/app/pkg', git: git('main'), worktrees: [] };
   const common = {
-    model: { id: 'gpt-5', displayName: 'GPT-5' },
+    model: { id: 'model-a', displayName: 'Model A' },
     effort: { value: 'high', intent: 'configured' },
     context: context(12),
     environment,
@@ -568,7 +572,7 @@ export function projectsScenario(): DifferentialScenario {
         ev.remember(
           info('ag-5', {
             createdAt: T0 + 5_000,
-            provider: { id: 'claude', label: 'Claude Code' },
+            provider: { id: 'agent-b', label: 'Agent B' },
             project: { key: '/repos/app', name: 'app', seq: 0 },
           }),
         ),
@@ -589,7 +593,7 @@ export function projectsScenario(): DifferentialScenario {
             at: T0 + 2_000,
             status: 'idle',
             lastAssistantMessage: { text: longReply, at: iso(T0 + 2_000), final: true },
-            model: { id: 'opus' },
+            model: { id: 'model-b' },
             context: context(63.5),
           }),
         ),
@@ -735,7 +739,7 @@ export function churnScenario(n: number, seed: number): DifferentialScenario {
               : {}),
             session: { nativeSessionId: `n-${agent.sessionId}` },
             environment: { cwd: key, worktrees: [] },
-            model: { id: pick(['gpt-5', 'opus', 'kimi-k2']) },
+            model: { id: pick(['model-a', 'model-b', 'model-c']) },
             ...(next() < 0.6 ? { context: context(Math.round(next() * 1000) / 10, at) } : {}),
             usage: priced(offset, agent.usd, Math.round(next() * 100) / 1000, [
               [Math.floor(offset / 30_000) * 30_000, agent.usd],
