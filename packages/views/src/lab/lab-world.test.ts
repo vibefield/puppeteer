@@ -66,9 +66,10 @@ describe('labWorld', () => {
     const { agents } = labWorld({ n: 20, tint, neutral: 'rgb(1, 2, 3)' });
     const local = agents.filter((agent) => agent.agent && !agent.remote);
     expect(local[0]?.color).toBe(projectTint(0, tint));
-    for (const agent of agents) if (!agent.agent) expect(agent.color).toBe('rgb(1, 2, 3)');
+    // Bare terminals and peers' rows wear the ramp: neither has a project of this desktop's (M16).
+    for (const agent of agents) if (!agent.agent || agent.remote) expect(agent.color).toBe('rgb(1, 2, 3)');
     const byProject = new Map<string, string>();
-    for (const agent of agents.filter((row) => row.agent)) {
+    for (const agent of agents.filter((row) => row.agent && !row.remote)) {
       expect(byProject.get(agent.project) ?? agent.color).toBe(agent.color);
       byProject.set(agent.project, agent.color);
     }

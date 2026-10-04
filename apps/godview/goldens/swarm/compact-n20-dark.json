@@ -51,12 +51,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -102,12 +102,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -119,12 +119,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -193,12 +193,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -210,12 +210,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -227,12 +227,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -244,12 +244,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -261,12 +261,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -278,9 +278,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -289,7 +289,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -301,12 +301,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -358,12 +358,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -375,12 +375,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -416,12 +416,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -467,12 +467,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -484,12 +484,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -558,12 +558,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -575,12 +575,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -592,12 +592,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -609,12 +609,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -626,12 +626,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -643,9 +643,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -654,7 +654,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -666,12 +666,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -723,12 +723,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -740,12 +740,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -781,12 +781,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -832,12 +832,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -849,12 +849,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -923,12 +923,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -940,12 +940,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -957,12 +957,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -974,12 +974,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -991,12 +991,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -1008,9 +1008,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -1019,7 +1019,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -1031,12 +1031,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -1088,12 +1088,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -1105,12 +1105,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -1146,12 +1146,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -1197,12 +1197,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -1214,12 +1214,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -1288,12 +1288,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -1305,12 +1305,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -1322,12 +1322,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -1339,12 +1339,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -1356,12 +1356,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -1373,9 +1373,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -1384,7 +1384,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -1396,12 +1396,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -1453,12 +1453,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -1470,12 +1470,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -1511,12 +1511,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -1562,12 +1562,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -1579,12 +1579,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -1653,12 +1653,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -1670,12 +1670,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -1687,12 +1687,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -1704,12 +1704,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -1721,12 +1721,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -1738,9 +1738,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -1749,7 +1749,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -1761,12 +1761,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -1818,12 +1818,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -1835,12 +1835,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -1876,12 +1876,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -1927,12 +1927,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -1944,12 +1944,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -2018,12 +2018,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -2035,12 +2035,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -2052,12 +2052,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -2069,12 +2069,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -2086,12 +2086,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -2103,9 +2103,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -2114,7 +2114,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -2126,12 +2126,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -2183,12 +2183,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -2200,12 +2200,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -2241,12 +2241,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -2292,12 +2292,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -2309,12 +2309,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -2383,12 +2383,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -2400,12 +2400,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -2417,12 +2417,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -2434,12 +2434,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -2451,12 +2451,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -2468,9 +2468,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -2479,7 +2479,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -2491,12 +2491,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -2548,12 +2548,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -2565,12 +2565,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -2606,12 +2606,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -2657,12 +2657,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -2674,12 +2674,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -2748,12 +2748,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -2765,12 +2765,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -2782,12 +2782,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -2799,12 +2799,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -2816,12 +2816,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -2833,9 +2833,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -2844,7 +2844,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -2856,12 +2856,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -2913,12 +2913,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -2930,12 +2930,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -2971,12 +2971,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -3022,12 +3022,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -3039,12 +3039,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -3113,12 +3113,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -3130,12 +3130,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -3147,12 +3147,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -3164,12 +3164,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -3181,12 +3181,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -3198,9 +3198,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -3209,7 +3209,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -3221,12 +3221,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -3278,12 +3278,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -3295,12 +3295,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -3336,12 +3336,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -3387,12 +3387,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -3404,12 +3404,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -3478,12 +3478,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -3495,12 +3495,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -3512,12 +3512,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -3529,12 +3529,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -3546,12 +3546,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -3563,9 +3563,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -3574,7 +3574,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -3586,12 +3586,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -3643,12 +3643,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -3660,12 +3660,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -3701,12 +3701,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -3752,12 +3752,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -3769,12 +3769,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -3843,12 +3843,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -3860,12 +3860,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -3877,12 +3877,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -3894,12 +3894,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -3911,12 +3911,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -3928,9 +3928,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -3939,7 +3939,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -3951,12 +3951,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -4008,12 +4008,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -4025,12 +4025,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -4066,12 +4066,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -4117,12 +4117,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -4134,12 +4134,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -4208,12 +4208,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -4225,12 +4225,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -4242,12 +4242,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -4259,12 +4259,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -4276,12 +4276,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -4293,9 +4293,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -4304,7 +4304,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -4316,12 +4316,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -4373,12 +4373,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -4390,12 +4390,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -4431,12 +4431,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -4482,12 +4482,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -4499,12 +4499,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -4573,12 +4573,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -4590,12 +4590,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -4607,12 +4607,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -4624,12 +4624,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -4641,12 +4641,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -4658,9 +4658,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -4669,7 +4669,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -4681,12 +4681,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -4738,12 +4738,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -4755,12 +4755,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -4796,12 +4796,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -4847,12 +4847,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -4864,12 +4864,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -4938,12 +4938,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -4955,12 +4955,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -4972,12 +4972,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -4989,12 +4989,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -5006,12 +5006,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -5023,9 +5023,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -5034,7 +5034,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -5046,12 +5046,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -5103,12 +5103,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -5120,12 +5120,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -5161,12 +5161,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -5212,12 +5212,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -5229,12 +5229,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -5303,12 +5303,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -5320,12 +5320,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -5337,12 +5337,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -5354,12 +5354,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -5371,12 +5371,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -5388,9 +5388,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -5399,7 +5399,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -5411,12 +5411,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -5468,12 +5468,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -5485,12 +5485,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -5526,12 +5526,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -5577,12 +5577,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -5594,12 +5594,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -5668,12 +5668,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -5685,12 +5685,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -5702,12 +5702,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -5719,12 +5719,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -5736,12 +5736,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -5753,9 +5753,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -5764,7 +5764,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -5776,12 +5776,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -5833,12 +5833,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -5850,12 +5850,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -5891,12 +5891,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -5942,12 +5942,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -5959,12 +5959,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -6033,12 +6033,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -6050,12 +6050,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -6067,12 +6067,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -6084,12 +6084,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -6101,12 +6101,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -6118,9 +6118,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -6129,7 +6129,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -6141,12 +6141,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "blocked-permission",
@@ -6198,12 +6198,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -6215,12 +6215,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -6239,12 +6239,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -6290,12 +6290,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -6307,12 +6307,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -6375,12 +6375,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -6392,12 +6392,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -6409,12 +6409,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -6426,12 +6426,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -6443,12 +6443,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -6460,9 +6460,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -6471,7 +6471,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -6483,12 +6483,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -6563,12 +6563,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -6580,12 +6580,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -6604,12 +6604,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -6655,12 +6655,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -6672,12 +6672,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -6740,12 +6740,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -6757,12 +6757,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -6774,12 +6774,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -6791,12 +6791,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -6808,12 +6808,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -6825,9 +6825,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -6836,7 +6836,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -6848,12 +6848,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -6928,12 +6928,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -6945,12 +6945,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -6969,12 +6969,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -7020,12 +7020,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -7037,12 +7037,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -7105,12 +7105,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -7122,12 +7122,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -7139,12 +7139,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -7156,12 +7156,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -7173,12 +7173,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -7190,9 +7190,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -7201,7 +7201,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -7213,12 +7213,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -7293,12 +7293,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -7310,12 +7310,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -7334,12 +7334,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -7385,12 +7385,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -7402,12 +7402,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -7470,12 +7470,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -7487,12 +7487,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -7504,12 +7504,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -7521,12 +7521,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -7538,12 +7538,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -7555,9 +7555,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -7566,7 +7566,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -7578,12 +7578,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -7658,12 +7658,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -7675,12 +7675,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -7699,12 +7699,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -7750,12 +7750,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -7767,12 +7767,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -7835,12 +7835,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -7852,12 +7852,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -7869,12 +7869,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -7886,12 +7886,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -7903,12 +7903,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -7920,9 +7920,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -7931,7 +7931,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -7943,12 +7943,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -8023,12 +8023,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -8040,12 +8040,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -8064,12 +8064,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -8115,12 +8115,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -8132,12 +8132,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -8200,12 +8200,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -8217,12 +8217,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -8234,12 +8234,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -8251,12 +8251,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -8268,12 +8268,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -8285,9 +8285,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -8296,7 +8296,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -8308,12 +8308,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -8388,12 +8388,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -8405,12 +8405,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -8429,12 +8429,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -8480,12 +8480,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -8497,12 +8497,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -8565,12 +8565,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -8582,12 +8582,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -8599,12 +8599,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -8616,12 +8616,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -8633,12 +8633,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -8650,9 +8650,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -8661,7 +8661,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -8673,12 +8673,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -8753,12 +8753,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -8770,12 +8770,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -8794,12 +8794,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -8845,12 +8845,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -8862,12 +8862,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -8930,12 +8930,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -8947,12 +8947,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -8964,12 +8964,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -8981,12 +8981,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -8998,12 +8998,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -9015,9 +9015,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -9026,7 +9026,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -9038,12 +9038,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -9118,12 +9118,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -9135,12 +9135,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -9159,12 +9159,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -9210,12 +9210,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -9227,12 +9227,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -9295,12 +9295,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -9312,12 +9312,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -9329,12 +9329,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -9346,12 +9346,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -9363,12 +9363,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -9380,9 +9380,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -9391,7 +9391,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -9403,12 +9403,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -9483,12 +9483,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -9500,12 +9500,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -9524,12 +9524,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -9575,12 +9575,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -9592,12 +9592,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -9660,12 +9660,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -9677,12 +9677,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -9694,12 +9694,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -9711,12 +9711,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -9728,12 +9728,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -9745,9 +9745,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -9756,7 +9756,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -9768,12 +9768,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -9848,12 +9848,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -9865,12 +9865,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -9889,12 +9889,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -9940,12 +9940,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -9957,12 +9957,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -10025,12 +10025,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -10042,12 +10042,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -10059,12 +10059,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -10076,12 +10076,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -10093,12 +10093,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -10110,9 +10110,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -10121,7 +10121,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -10133,12 +10133,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -10213,12 +10213,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -10230,12 +10230,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -10254,12 +10254,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -10305,12 +10305,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -10322,12 +10322,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -10390,12 +10390,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -10407,12 +10407,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -10424,12 +10424,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -10441,12 +10441,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -10458,12 +10458,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -10475,9 +10475,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -10486,7 +10486,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -10498,12 +10498,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -10578,12 +10578,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -10595,12 +10595,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -10619,12 +10619,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -10670,12 +10670,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -10687,12 +10687,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -10755,12 +10755,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -10772,12 +10772,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -10789,12 +10789,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -10806,12 +10806,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -10823,12 +10823,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -10840,9 +10840,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -10851,7 +10851,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -10863,12 +10863,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -10943,12 +10943,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -10960,12 +10960,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -10984,12 +10984,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -11035,12 +11035,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -11052,12 +11052,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -11120,12 +11120,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -11137,12 +11137,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -11154,12 +11154,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -11171,12 +11171,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -11188,12 +11188,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -11205,9 +11205,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -11216,7 +11216,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -11228,12 +11228,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -11308,12 +11308,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -11325,12 +11325,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   },
@@ -11349,12 +11349,12 @@
      "focus": false,
      "seed": 4.1408,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.808,
+      0.549,
+      0.922,
       1
      ],
-     "model": "b05130e26a0d"
+     "model": "add99ae79d2a"
     },
     {
      "id": "starting",
@@ -11400,12 +11400,12 @@
      "focus": false,
      "seed": 5.3933,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "951c610ebee0"
+     "model": "dbaad0daa1a3"
     },
     {
      "id": "peer-idle",
@@ -11417,12 +11417,12 @@
      "focus": false,
      "seed": 3.9899,
      "accent": [
-      0.208,
-      0.78,
-      0.545,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "645d77ad1c21"
+     "model": "48ce14bb36c6"
     },
     {
      "id": "terminal-running",
@@ -11485,12 +11485,12 @@
      "focus": false,
      "seed": 5.1265,
      "accent": [
-      0.808,
-      0.549,
-      0.922,
+      0.851,
+      0.627,
+      0.055,
       1
      ],
-     "model": "0c0a3f3716d7"
+     "model": "b7317a302748"
     },
     {
      "id": "receded-working",
@@ -11502,12 +11502,12 @@
      "focus": false,
      "seed": 6.1206,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "9273ab7819e7"
+     "model": "67afe5bf7b58"
     },
     {
      "id": "long-names",
@@ -11519,12 +11519,12 @@
      "focus": false,
      "seed": 1.3271,
      "accent": [
-      0.678,
-      0.706,
-      0.176,
+      0.518,
+      0.655,
+      1,
       1
      ],
-     "model": "0bb690ffda48"
+     "model": "11773e9bc7a0"
     },
     {
      "id": "bare-facets",
@@ -11536,12 +11536,12 @@
      "focus": false,
      "seed": 0.0078,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.678,
+      0.706,
+      0.176,
       1
      ],
-     "model": "89bc2d413cb8"
+     "model": "cede386f2427"
     },
     {
      "id": "working-delegating",
@@ -11553,12 +11553,12 @@
      "focus": false,
      "seed": 1.3726,
      "accent": [
-      0.98,
-      0.518,
-      0.416,
+      0.208,
+      0.78,
+      0.545,
       1
      ],
-     "model": "2ca870eae0f0"
+     "model": "a289eafdb007"
     },
     {
      "id": "working-ingested",
@@ -11570,9 +11570,9 @@
      "focus": false,
      "seed": 4.0753,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
      "link": [
@@ -11581,7 +11581,7 @@
       0.129,
       1
      ],
-     "model": "668471d123a0"
+     "model": "bd01318a90a7"
     },
     {
      "id": "peer-working",
@@ -11593,12 +11593,12 @@
      "focus": false,
      "seed": 0.3648,
      "accent": [
-      0.851,
-      0.627,
-      0.055,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "dfd853c89ddd"
+     "model": "9a3d3798c4e3"
     },
     {
      "id": "late-arrival",
@@ -11673,12 +11673,12 @@
      "focus": false,
      "seed": 3.7127,
      "accent": [
+      0.98,
       0.518,
-      0.655,
-      1,
+      0.416,
       1
      ],
-     "model": "47b7f5cfd606"
+     "model": "4648d6089040"
     },
     {
      "id": "peer-blocked",
@@ -11690,12 +11690,12 @@
      "focus": false,
      "seed": 1.9567,
      "accent": [
-      0.969,
-      0.498,
-      0.627,
+      0.333,
+      0.333,
+      0.333,
       1
      ],
-     "model": "4ebc09070924"
+     "model": "d8334402df54"
     }
    ]
   }
@@ -11780,9 +11780,9 @@
    "ariaLabel": "billing-api, K2, idle: idle · ~$0.91 estimated API cost · $0.00/min, CTX:38%, new message: Done — 14 files changed, verify is green.",
    "title": "billing-api · K2 · idle · ~$0.91 estimated API cost · $0.00/min"
   },
-  "b05130e26a0d": {
+  "add99ae79d2a": {
    "id": "idle-plain",
-   "accent": "#35c78b",
+   "accent": "#ce8ceb",
    "stale": false,
    "active": false,
    "state": "idle",
@@ -11947,9 +11947,9 @@
    "ariaLabel": "puppeteer, Sonnet 4.5, idle: idle · ~$0.73 estimated API cost · $0.00/min, CTX:40%",
    "title": "puppeteer · Sonnet 4.5 · idle · ~$0.73 estimated API cost · $0.00/min"
   },
-  "951c610ebee0": {
+  "dbaad0daa1a3": {
    "id": "receded-idle-unread",
-   "accent": "#ce8ceb",
+   "accent": "#d9a00e",
    "stale": false,
    "active": false,
    "state": "idle",
@@ -12026,9 +12026,9 @@
    "ariaLabel": "swarm-lab, Opus 4.5, idle: idle · ~$0.93 estimated API cost · $0.00/min, CTX:52%, new message: Benchmarks are in: the new path is 3.1× faster at n = 60.",
    "title": "swarm-lab · Opus 4.5 · idle · ~$0.93 estimated API cost · $0.00/min"
   },
-  "645d77ad1c21": {
+  "48ce14bb36c6": {
    "id": "peer-idle",
-   "accent": "#35c78b",
+   "accent": "#555555",
    "stale": false,
    "active": false,
    "state": "idle",
@@ -12284,9 +12284,9 @@
    "ariaLabel": "vibe-field, K2, working: Edit packages/views/src/lab/lab-world.ts +214 −18 · ~$1.39 estimated API cost · $0.35/min, CTX:41%, burning $21/hr",
    "title": "vibe-field · K2 · Edit packages/views/src/lab/lab-world.ts +214 −18 · ~$1.39 estimated API cost · $0.35/min · $21/hr"
   },
-  "0c0a3f3716d7": {
+  "b7317a302748": {
    "id": "working-blaze",
-   "accent": "#ce8ceb",
+   "accent": "#d9a00e",
    "stale": false,
    "active": false,
    "state": "working",
@@ -12375,9 +12375,9 @@
    "ariaLabel": "swarm-lab, Opus 4.5, working: Grep \"createMonitorBackend\" packages/ · ~$12.40 estimated API cost · $1.42/min, CTX:92%, burning $85/hr",
    "title": "swarm-lab · Opus 4.5 · Grep \"createMonitorBackend\" packages/ · ~$12.40 estimated API cost · $1.42/min · $85/hr"
   },
-  "9273ab7819e7": {
+  "67afe5bf7b58": {
    "id": "receded-working",
-   "accent": "#fa846a",
+   "accent": "#35c78b",
    "stale": false,
    "active": false,
    "state": "working",
@@ -12466,9 +12466,9 @@
    "ariaLabel": "design-kit, K2, working: Read docs/rfcs/004-layered-agent-runtime.md · ~$1.97 estimated API cost · $0.08/min, CTX:41%, burning $4.7/hr",
    "title": "design-kit · K2 · Read docs/rfcs/004-layered-agent-runtime.md · ~$1.97 estimated API cost · $0.08/min · $4.7/hr"
   },
-  "0bb690ffda48": {
+  "11773e9bc7a0": {
    "id": "long-names",
-   "accent": "#adb42d",
+   "accent": "#84a7ff",
    "stale": false,
    "active": false,
    "state": "working",
@@ -12557,9 +12557,9 @@
    "ariaLabel": "an-unusually-long-project-folder-name-that-overflows-every-label, opus-4-5-20251101 (extended thinking, a million tokens of context), working: Edit packages/views/src/views/timeline/lab/a-path-that-goes-on-for-a-very-long-way/main.ts +1024 −512 · ~$3.19 estimated API cost · $0.12/min, CTX:41%, burning $7.3/hr",
    "title": "an-unusually-long-project-folder-name-that-overflows-every-label · opus-4-5-20251101 (extended thinking, a million tokens of context) · Edit packages/views/src/views/timeline/lab/a-path-that-goes-on-for-a-very-long-way/main.ts +1024 −512 · ~$3.19 estimated API cost · $0.12/min · $7.3/hr"
   },
-  "89bc2d413cb8": {
+  "cede386f2427": {
    "id": "bare-facets",
-   "accent": "#d9a00e",
+   "accent": "#adb42d",
    "stale": false,
    "active": false,
    "state": "working",
@@ -12627,9 +12627,9 @@
    "ariaLabel": "ghosttea, Opencode, working: working · cost unavailable, CTX:--%, burning —/hr",
    "title": "ghosttea · Opencode · working · cost unavailable · —/hr"
   },
-  "2ca870eae0f0": {
+  "a289eafdb007": {
    "id": "working-delegating",
-   "accent": "#fa846a",
+   "accent": "#35c78b",
    "stale": false,
    "active": false,
    "state": "working",
@@ -12718,9 +12718,9 @@
    "ariaLabel": "design-kit, Opus 4.5, working: Delegating to 3 subagents · ~$3.74 estimated API cost · $0.07/min, CTX:23%, burning $4.4/hr",
    "title": "design-kit · Opus 4.5 · Delegating to 3 subagents · ~$3.74 estimated API cost · $0.07/min · $4.4/hr"
   },
-  "668471d123a0": {
+  "bd01318a90a7": {
    "id": "working-ingested",
-   "accent": "#84a7ff",
+   "accent": "#fa846a",
    "stale": false,
    "active": false,
    "linked": "#b7b021",
@@ -12810,9 +12810,9 @@
    "ariaLabel": "notes, Haiku 4.5, working: Thinking · ~$1.29 estimated API cost · $0.39/min, CTX:36%, burning $23/hr",
    "title": "notes · Haiku 4.5 · Thinking · ~$1.29 estimated API cost · $0.39/min · $23/hr"
   },
-  "dfd853c89ddd": {
+  "9a3d3798c4e3": {
    "id": "peer-working",
-   "accent": "#d9a00e",
+   "accent": "#555555",
    "stale": false,
    "active": false,
    "state": "working",
@@ -13062,9 +13062,9 @@
    "ariaLabel": "rosetta, Haiku 4.5, blocked: Should the grant expire with the session, or after an hour? · ~$3.31 estimated API cost · $0.13/min, CTX:69%, question: Should the grant expire with the session, or after an hour?",
    "title": "rosetta · Haiku 4.5 · Should the grant expire with the session, or after an hour? · ~$3.31 estimated API cost · $0.13/min"
   },
-  "47b7f5cfd606": {
+  "4648d6089040": {
    "id": "blocked-failure",
-   "accent": "#84a7ff",
+   "accent": "#fa846a",
    "stale": false,
    "active": false,
    "state": "blocked",
@@ -13142,9 +13142,9 @@
    "ariaLabel": "notes, Sonnet 4.5, blocked: rate limited · retrying · ~$1.21 estimated API cost · $0.27/min, CTX:38%, failed: rate limited · retrying",
    "title": "notes · Sonnet 4.5 · rate limited · retrying · ~$1.21 estimated API cost · $0.27/min"
   },
-  "4ebc09070924": {
+  "d8334402df54": {
    "id": "peer-blocked",
-   "accent": "#f77fa0",
+   "accent": "#555555",
    "stale": false,
    "active": false,
    "state": "blocked",

@@ -343,7 +343,14 @@ function buildRow(input: BuildInput): Row {
       message: pick(REPLIES, random),
     };
   };
-  const agent = (shape: AgentShape, since: number, extra: Partial<MonitorAgent> = {}, project = input.project): Row => {
+  /** A local agent deals its project a sequence; a peer's row (`local: false`) deals none and wears the ramp (M16). */
+  const agent = (
+    shape: AgentShape,
+    since: number,
+    extra: Partial<MonitorAgent> = {},
+    project = input.project,
+    local = true,
+  ): Row => {
     const base = agentFixture(
       {
         id,
@@ -379,7 +386,7 @@ function buildRow(input: BuildInput): Row {
       session: { ...base.session!, createdAtMs: born, cwd },
       createdAtMs: born,
       cwd,
-      color: input.projectColour(project),
+      color: local ? input.projectColour(project) : input.neutral,
       tier: 'managed',
       detail: detailOf(monitor, facet.usage?.total),
       agent: { ...facet, monitor },
@@ -397,7 +404,7 @@ function buildRow(input: BuildInput): Row {
   };
   const peer = (shape: AgentShape, since: number, overrides: Partial<MonitorRemoteFacet> = {}): Row => {
     const device = PEERS[(cycle + id.length) % PEERS.length]!;
-    const built = agent(shape, since);
+    const built = agent(shape, since, {}, input.project, false);
     // A peer's row has no terminal here and no path to resolve: only the peer's own label.
     const { session: _session, cwd: _cwd, ...rest } = built.agent;
     const remote: MonitorRemoteFacet = {
