@@ -23,6 +23,31 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 `MonitorHostTerminal`: `sessionId` · `identity?` · `createdAt` (0 = unknown, VibeField's floor rows) · `cwd?` · `title?` ·
 `activity? {kind}` · `profileSet?` · `workloadClass?` · `exited?`.
 
+## The host contract
+
+What a host owes the backend. Each rule keeps a row's body or the revision chain whole; the backend cannot repair a
+host that breaks one.
+
+1. **Keep a PTY listed in `terminals` until its run is named in `runs`.** While both are listed, the dedupe shows one
+   row (the agent speaks for its PTY) and the run takes the shell row's id, so a promoted shell keeps its body. The
+   backend remembers the previous assembly's terminals for ONE tick only: a shell that leaves the list a tick before its
+   run is named (any tick between — the 10 s recency clock, the 30 s step, an unrelated push) reads as the shell
+   removed and a different row added under the run's id. Drop the terminal after the run is named, or in the same
+   update.
+2. **Name a run until you are done with it.** The backend forgets a removal once the host stops naming the run
+   (bounded tombstones, below); a run named again afterwards reads as "starting" until the runtime speaks, though the
+   store still refuses the removed epoch's late state.
+3. **Open and close screens (M20).** A screen opens with its first `reportShown(screenId, ids)`, an empty list too
+   (its active pane shows nothing), and closes with `forgetScreen(screenId)` when it goes away: fieldd when the
+   screen's door subscription closes, puppeteer's Godview when the window closes. A screen never forgotten keeps marks
+   accruing as if someone were looking.
+4. **One ordered channel (M23).** Deliver a snapshot and the changes after it on ONE ordered channel wherever the
+   transport allows (puppeteer's Godview: the snapshot as a message on the change channel, not a separate invoke). The
+   replica holds the changes it hears during a gap and replays those after the healing snapshot's revision
+   (`gapBuffer`, default 256), but that is the backstop, not the design.
+5. **Ask for a run's row by `idOf(runtimeRunId)`**, never by assuming its id is the `runtimeRunId`: a promoted shell's
+   run carries the shell's id.
+
 ## Every `MonitorAgentRow` field, per host
 
 | Field | Agent row (source → rule) | Terminal row |

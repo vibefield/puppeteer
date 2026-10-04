@@ -176,6 +176,41 @@ describe('identity carry-forward and dedupe', () => {
     expect(t.rows().map((row) => row.id)).toEqual(['pty-1', 'same']);
   });
 
+  it('the host contract: a PTY kept listed until its run is named carries its id through any tick between (mv-review)', async () => {
+    for (const keepsListed of [true, false]) {
+      const t = testBackend({
+        facts: facts({ terminals: [hostTerminal({ sessionId: 'pty-1', identity: 'shell-A', cwd: '/w' })] }),
+      });
+      await t.backend.ready;
+      expect(t.rows()).toMatchObject([{ id: 'shell-A', kind: 'terminal' }]);
+      const before = t.changes.length;
+      // The PTY is an agent's now. A host that breaks the contract drops it from its roster first…
+      if (!keepsListed) t.host.update({ terminals: [] });
+      // …and any tick lands before the run is named: here the 10 s recency clock.
+      t.clock.advance(10_000);
+      t.scheduler.flush();
+      t.host.update({ runs: [hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-1' })] });
+      t.scheduler.flush();
+      // Once the run is named the terminal may go.
+      t.host.update({ terminals: [] });
+      t.scheduler.flush();
+      const tail = t.changes.slice(before).map((change) => ({
+        upserts: change.upserts.map((row) => `${row.kind}:${row.id}`),
+        removed: [...change.removed],
+      }));
+      expect(tail).toEqual(
+        keepsListed
+          ? [{ upserts: ['agent:shell-A'], removed: [] }]
+          : // what a view sees then: the shell's body removed, a different body added (the one-tick memory cannot
+            // bridge it)
+            [
+              { upserts: [], removed: ['shell-A'] },
+              { upserts: ['agent:run-1'], removed: [] },
+            ],
+      );
+    }
+  });
+
   it('says which row a run is with idOf: the shell’s id after a promotion, the run’s own otherwise (mv3a’s ask)', async () => {
     const t = testBackend({
       facts: facts({ terminals: [hostTerminal({ sessionId: 'pty-1', identity: 'shell-A', cwd: '/w' })] }),

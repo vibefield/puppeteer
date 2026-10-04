@@ -153,7 +153,10 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   const sealed = new Set<string>();
   /** The model id each run carries, for the backend's lifetime. */
   const idByRun = new Map<string, string>();
-  /** Last assembly's terminal ids by session, so a run promoted from a shell that just left the list still finds it. */
+  /**
+   * The previous assembly's terminal ids by session, so a run named in the very tick its shell left the list still
+   * finds it. One tick only: across more, the host contract (keep the PTY listed until its run is named) carries it.
+   */
   let terminalIdBySession: ReadonlyMap<string, string> = new Map();
   const terminalStatus = new Map<string, { status: AgentStatus; since: number }>();
   /** The usage ledger, by run; a run's reading is taken once per state object. */
