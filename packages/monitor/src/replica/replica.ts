@@ -10,6 +10,7 @@ import {
   type MonitorSpawnMenu,
   type MonitorActivity,
 } from '@vibecook/puppeteer-view-sdk/model';
+import { classifyTerminalStatus } from '../terminal-status.js';
 import { freezeJson, sameJson } from './json.js';
 
 /**
@@ -60,7 +61,8 @@ export interface MonitorReplicaLocal {
    * window's panes hear it from the terminal renderer, while the host's floor
    * knows a PTY's cwd and title but not its activity. Terminal rows only; an
    * agent's activity is the runtime's and is never replaced. Absent entry: the
-   * row's own.
+   * row's own. A joined activity also decides the terminal's status, by the
+   * backend's own rule (`classifyTerminalStatus`): a foreground job works.
    */
   readonly activity?: ReadonlyMap<string, MonitorActivity> | undefined;
 }
@@ -87,6 +89,8 @@ export interface CreateMonitorReplicaOptions {
   gapBuffer?: number;
   /** Hears what a listener or a host callback threw; nothing a host passes in can stop a publication. */
   onListenerError?: (error: unknown) => void;
+  /** The clock a window-joined status flip is stamped by when its activity carries no `since` (M28). Default `Date.now`. */
+  now?: () => number;
 }
 
 /**
@@ -193,6 +197,9 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
   const dirty = new Set<string>();
   /** Colours by project sequence under the current theme key. */
   const colours = new Map<number | undefined, string>();
+  /** A window-joined terminal status that differs from the backend's, and since when (M28). */
+  const terminalClock = new Map<string, { readonly status: AgentView['status']; readonly since: number }>();
+  const now = options.now ?? Date.now;
   const listeners = new Set<() => void>();
   const gapListeners = new Set<() => void>();
   let revision: number | undefined;
@@ -294,6 +301,32 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     });
   };
 
+  /**
+   * A terminal whose activity the window joined reads the status that activity means (M28), on its own clock: stamped
+   * when the joined status first differs from the backend's (the activity's own `since` when it has one), kept while it
+   * holds, and dropped when the backend's status agrees again or the window's entry goes.
+   */
+  const statusOf = (
+    row: MonitorAgentRow,
+    activity: AgentView['activity'],
+  ): { readonly status: AgentView['status']; readonly statusSince: number } => {
+    if (row.kind !== 'terminal' || local.activity?.has(row.id) !== true) {
+      terminalClock.delete(row.id);
+      return { status: row.status, statusSince: row.statusSince };
+    }
+    const status = classifyTerminalStatus(activity);
+    if (status === row.status) {
+      terminalClock.delete(row.id);
+      return { status, statusSince: row.statusSince };
+    }
+    let clock = terminalClock.get(row.id);
+    if (!clock || clock.status !== status) {
+      clock = { status, since: activity?.since ?? now() };
+      terminalClock.set(row.id, clock);
+    }
+    return { status, statusSince: clock.since };
+  };
+
   /** The row joined with this window's facts: the published view itself when none of them moved. */
   const join = (row: MonitorAgentRow, held: Joined | undefined): AgentView => {
     const previous = held?.view;
@@ -303,6 +336,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     const attachment = attachmentOf(row.id, previous?.attachment);
     const spawnHint = spawnHintOf(row.id, previous?.spawnHint);
     const activity = activityOf(row, previous?.activity);
+    const { status, statusSince } = statusOf(row, activity);
     if (
       previous !== undefined &&
       held?.row === row &&
@@ -311,12 +345,16 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       previous.receded === receded &&
       previous.attachment === attachment &&
       previous.spawnHint === spawnHint &&
-      previous.activity === activity
+      previous.activity === activity &&
+      previous.status === status &&
+      previous.statusSince === statusSince
     ) {
       return previous;
     }
     return Object.freeze({
       ...row,
+      status,
+      statusSince,
       colour,
       active,
       receded,
@@ -343,7 +381,10 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       if (view !== held?.view) updates.set(id, { row, view });
     }
     dirty.clear();
-    for (const id of gone) hidden.delete(id);
+    for (const id of gone) {
+      hidden.delete(id);
+      terminalClock.delete(id);
+    }
 
     let model = published.model;
     let changes = NO_CHANGES;

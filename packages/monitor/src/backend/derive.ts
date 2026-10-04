@@ -15,6 +15,7 @@ import type {
   MonitorTokens,
   MonitorWait,
 } from '@vibecook/puppeteer-view-sdk/model';
+import { classifyTerminalStatus } from '../terminal-status.js';
 import type { MonitorHostProfileSet, MonitorHostRun, MonitorHostTerminal } from './ports.js';
 
 // The pure derivations: one host record and one runtime state in, one row's
@@ -31,10 +32,8 @@ export function folderName(path: string | null | undefined, fallback: string): s
   return normalized.split(/[\\/]/).pop() || fallback;
 }
 
-/** A terminal no agent has claimed: working while a foreground job runs, idle otherwise. */
-export function classifyTerminalStatus(activity: { kind: string } | undefined): Exclude<AgentStatus, 'blocked'> {
-  return activity?.kind === 'foreground-job' ? 'working' : 'idle';
-}
+/** A terminal no agent has claimed: the one rule lives beside the replica, which applies it too (M28). */
+export { classifyTerminalStatus };
 
 /** Trimmed and bounded by code points, so a cut never splits a surrogate pair. */
 export function boundText(text: string, maxLength: number): string {

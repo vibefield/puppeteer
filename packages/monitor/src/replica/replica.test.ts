@@ -834,3 +834,60 @@ describe("a terminal's activity from this window (M28)", () => {
     expect(replica.getSnapshot().model.byId.get('t1')?.activity).toEqual({ kind: 'idle' });
   });
 });
+
+describe("a terminal's status follows the activity the window joined (M28)", () => {
+  const shell = (id: string, overrides: Partial<MonitorAgentRow> = {}): MonitorAgentRow =>
+    row(id, {
+      kind: 'terminal',
+      project: { name: '' },
+      detail: '',
+      status: 'idle',
+      statusSince: 1_000,
+      activity: { kind: 'idle' },
+      ...overrides,
+    });
+
+  it("reads working while the window says a foreground job runs, by the backend's rule, on the activity's clock", () => {
+    const frames = manualFrames();
+    const replica = createMonitorReplica({ scheduler: frames.scheduler, now: () => 9_999 });
+    replica.apply(snapshot(1, [shell('t1'), shell('t2')]));
+    replica.setLocal(
+      local({
+        activity: new Map([
+          ['t1', { kind: 'foreground-job', since: 5_000 }],
+          ['t2', { kind: 'foreground-job' }],
+        ]),
+      }),
+    );
+    frames.frame();
+    const { model } = replica.getSnapshot();
+    expect(model.byId.get('t1')).toMatchObject({ status: 'working', statusSince: 5_000 });
+    expect(model.byId.get('t2')).toMatchObject({ status: 'working', statusSince: 9_999 });
+  });
+
+  it('keeps the view and its clock while the window re-sends the same activity, and hands back when it goes', () => {
+    let clock = 9_999;
+    const frames = manualFrames();
+    const replica = createMonitorReplica({ scheduler: frames.scheduler, now: () => clock });
+    replica.apply(snapshot(1, [shell('t1')]));
+    replica.setLocal(local({ activity: new Map([['t1', { kind: 'foreground-job' }]]) }));
+    frames.frame();
+    const working = replica.getSnapshot().model.byId.get('t1');
+    clock = 20_000;
+    replica.setLocal(local({ activity: new Map([['t1', { kind: 'foreground-job' }]]) }));
+    frames.frame();
+    expect(replica.getSnapshot().model.byId.get('t1')).toBe(working);
+    expect(working).toMatchObject({ status: 'working', statusSince: 9_999 });
+    replica.setLocal(local());
+    frames.frame();
+    expect(replica.getSnapshot().model.byId.get('t1')).toMatchObject({ status: 'idle', statusSince: 1_000 });
+  });
+
+  it("never re-decides an agent's status", () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [row('a1', { status: 'blocked', statusSince: 2_000 })]));
+    replica.setLocal(local({ activity: new Map([['a1', { kind: 'foreground-job' }]]) }));
+    frames.frame();
+    expect(replica.getSnapshot().model.byId.get('a1')).toMatchObject({ status: 'blocked', statusSince: 2_000 });
+  });
+});
