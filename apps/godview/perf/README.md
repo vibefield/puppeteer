@@ -55,17 +55,42 @@ node perf/harness.mjs --b /path/to/slice/apps/godview      # A/B/A′ rounds; A 
     React's PerformedWork flag;
   - its `actualDuration` is the view's render time, as a `<Profiler>` around it would report (Godview's renderer
     bundle is React's development build, which times every render);
-  - all commits are counted too.
+  - all commits are counted too, every root's.
+- **Every React root's render time** (build-mv M33). A view that `/host`'s legacy bridge mounts in its OWN root is no
+  fiber of the host's tree, so the view row above cannot see it. The same hook therefore records, for every committed
+  root of every renderer, the root fiber's `actualDuration`: the time React spent rendering that commit, the whole
+  tree's. `all roots render` is their sum. Each root also carries its container's name, its first named components and
+  its place: `host` (it holds the monitor stage), `stage` (below the stage: a view's own root) or `other`.
+- **Main-thread tasks** (build-mv M33), from DevTools' Performance domain: `Performance.enable` once the page is ready,
+  then `Performance.getMetrics` read inside each probe window, so neither evaluate's own work is counted. The
+  cumulative counters' differences are recorded (`measurement.main`):
+  - `TaskDuration`: every task the renderer's main thread ran, React, rAF, input, timers, layout and paint alike. Work
+    a slice moves between a message handler and an animation frame stays inside this total.
+  - its parts: `ScriptDuration`, `LayoutDuration`, `RecalcStyleDuration`;
+  - context: `ThreadTime` (the main thread's CPU time) and `ProcessTime` (the renderer process's CPU time, every
+    thread).
 - **The board**: the list's rows by status, as evidence the agents walk their turns.
 
 ## Reading the summary (summary.mjs)
+
+The summary opens with **the gate**: it reads TOTALS (M33), because a slice can move work between the per-view rows
+without changing how much there is (its own root, a frame scheduler moving updates into rAF):
+
+- gate rows: frame p50, long animation frames (count, duration, blocking), `all roots render`, `main-thread tasks`
+  and its parts (script, layout, recalc style);
+- context rows: rAF work, all commits, the host root's view commits and render, and the CPU times. They show where the
+  work sat. When the regression rule fires on one it reads `context · up`, which is no verdict;
+- frame p95 is weather.
+
+The section lists the gate readings that regressed, the A/A arm's health over the gate readings and the context
+readings that rose. Each cell ends with where the roots' render time sat, per arm.
 
 Per n and view:
 
 - each arm's median over rounds;
 - the paired per-round differences A′ − A (the null arm, the same build twice) and B − A, read with one estimator:
   T = the median difference, MAD = its spread, z = |T| ÷ (1.858·MAD/√R);
-- a metric regresses when B − A > 0, z > 4 and T > 2 % of A's median;
+- a gate metric regresses when B − A > 0, z > 4 and T > 2 % of A's median;
 - the A/A z is the instrument's health: near 2 or below;
 - seven rounds come before z is read (M24): with three, MAD often collapses to 0 and z reads ∞ on a difference of
   nothing;
@@ -83,6 +108,21 @@ Per n and view:
   - the timeline reads +128 ms/s, z 182, **worse**;
   - the A/A arm in the same rounds reads z 0.5 and 0.3;
   - frame p50 stays 16.7 ms: a 2 ms cost per callback is invisible to frame time and plain in rAF work.
+- Those two runs predate the totals (M33): their summaries were read when rAF work was a gate row.
+- **The totals see a separate root** (`2026-10-04-totals-proof-ab`: A = the pre-MV-2 export, B = MV-2, R = 2, n = 10,
+  the list):
+  - A has one root, `div#root` (host); its `AgentList` fiber renders 11.8 ms/s inside the host's 42.9;
+  - B has two: the host's, and a `stage` root below the monitor stage whose first components are `AgentList`,
+    `AgentIcon`, the legacy view in its own root. It renders 2.5 ms/s over 3.8 commits/s, 0.65–0.77 ms a render
+    against A's 0.94. It commits as often as the field changes (n ÷ 3 a second) where A's view re-rendered on almost
+    every host commit, so the per-second figure is lower, not missing;
+  - the hook sees one renderer in both builds, so the view's root is the host's own `react-dom`;
+  - CDP's script time moves with the roots' render time (B − A −14.4 against −12.8 ms/s), an independent instrument
+    agreeing. R = 2 reads no z (M24); the full run does.
+- **The totals' negative control** (`2026-10-04-totals-negative-control`, `--synthetic-b-ms 2`, R = 2, n = 10, the
+  swarm): main-thread tasks read B − A = +244 ms/s (two callbacks a frame × 60 Hz × 2 ms = 240), z 152, **worse**,
+  and script +244 ms/s, z 191, **worse**; `all roots render` stays put (−2.6 ms/s), since the busy wait is in rAF,
+  not in React.
 
 ## Limits
 

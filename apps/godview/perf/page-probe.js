@@ -101,8 +101,25 @@
     return fiber?.stateNode === stageNode ? fiber : undefined;
   };
   const viewName = (fiber) => fiber?.type?.displayName ?? fiber?.type?.name ?? null;
-  /** Each root the hook has seen: its id, its container's name and where it sits (BELOW the stage: a
-   * view's own root; HOLDING the stage: the host's). */
+  /** The first few named components below a root, depth first: what the root draws. */
+  const componentsOf = (root) => {
+    const names = [];
+    const stack = [root.current?.child];
+    for (let visited = 0; stack.length > 0 && names.length < 4 && visited < 200; visited += 1) {
+      const fiber = stack.pop();
+      if (!fiber) continue;
+      const type = fiber.type;
+      const name =
+        typeof type === 'function'
+          ? (type.displayName ?? type.name)
+          : (type?.displayName ?? type?.type?.displayName ?? type?.type?.name ?? type?.render?.name);
+      if (name && !names.includes(name)) names.push(name);
+      stack.push(fiber.sibling, fiber.child);
+    }
+    return names;
+  };
+  /** Each root the hook has seen: its id, its container's name, what it draws and where it sits
+   * (BELOW the stage: a view's own root; HOLDING the stage: the host's). */
   const roots = new WeakMap();
   let rootCount = 0;
   const rootOf = (root) => {
@@ -113,9 +130,10 @@
         ? 'unknown'
         : `${container.nodeName.toLowerCase()}${container.id ? `#${container.id}` : ''}${typeof container.className === 'string' && container.className ? `.${container.className.trim().split(/\s+/).join('.')}` : ''}`;
       rootCount += 1;
-      known = { id: rootCount, name, place: undefined };
+      known = { id: rootCount, name, place: undefined, components: [] };
       roots.set(root, known);
     }
+    if (known.components.length === 0) known.components = componentsOf(root);
     // Placed on the first commit that finds both in the document (the stage can arrive after a root).
     if (!known.place) {
       const stage = document.querySelector('section.vf-godview-monitor-stage');
@@ -179,6 +197,7 @@
         const entry = byRoot.get(commit.root) ?? {
           id: commit.root.id,
           name: commit.root.name,
+          components: commit.root.components,
           commits: 0,
           renderMs: 0,
         };

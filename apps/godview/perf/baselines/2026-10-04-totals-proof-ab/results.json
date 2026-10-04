@@ -1,0 +1,681 @@
+{
+  "config": {
+    "a": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+    "b": "/Volumes/SamsungRed/lanes/mv/mv2-perf/puppeteer/apps/godview",
+    "syntheticBMs": 0,
+    "rounds": 2,
+    "counts": [
+      10
+    ],
+    "views": [
+      "list"
+    ],
+    "warmupMs": 3000,
+    "windowMs": 10000,
+    "stepMs": 3000,
+    "fps": 60,
+    "loadMax": 60,
+    "loadWaitMs": 2700000,
+    "out": "/Volumes/SamsungRed/lanes/mv/mv2-perf/logs/proof-ab",
+    "builds": {
+      "A": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+      "B": "/Volumes/SamsungRed/lanes/mv/mv2-perf/puppeteer/apps/godview"
+    }
+  },
+  "startedAt": "2026-10-04T21:12:20.312Z",
+  "runs": [
+    {
+      "round": 0,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            7.03,
+            12.98,
+            10.69
+          ]
+        },
+        "after": [
+          5.73,
+          12.3,
+          10.5
+        ]
+      },
+      "ms": 23311,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10005.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.0999999642372131,
+            "callbacks": 38,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 1,
+              "commits": 332,
+              "stage": 332
+            },
+            "commits": 137,
+            "viewCommits": 128,
+            "viewRenderMs": 116.89999994635582,
+            "viewNames": [
+              "AgentList"
+            ],
+            "rootRenderMs": 423.4000001549721,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 137,
+                "renderMs": 423.4000001549721,
+                "place": "host"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10004.677999997512,
+            "LayoutCount": 48,
+            "RecalcStyleCount": 24,
+            "LayoutDuration": 8.107999999999997,
+            "RecalcStyleDuration": 2.993,
+            "DevToolsCommandDuration": 0.06300000000000013,
+            "ScriptDuration": 585.6490000000001,
+            "V8CompileDuration": 0,
+            "TaskDuration": 729.743,
+            "TaskOtherDuration": 132.93,
+            "ThreadTime": 763.4290000000001,
+            "ProcessTime": 1029.7059999999997
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    },
+    {
+      "round": 0,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-perf/puppeteer/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            5.73,
+            12.3,
+            10.5
+          ]
+        },
+        "after": [
+          5.33,
+          11.7,
+          10.33
+        ]
+      },
+      "ms": 23174,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10004.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 6.799999922513962,
+            "callbacks": 74,
+            "maxMs": 0.30000001192092896
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 4,
+              "commits": 322,
+              "stage": 243
+            },
+            "commits": 147,
+            "viewCommits": 100,
+            "viewRenderMs": 2.5000000596046448,
+            "viewNames": [
+              "MonitorViewHost"
+            ],
+            "rootRenderMs": 252.60000023245811,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 110,
+                "renderMs": 231.80000019073486,
+                "place": "host"
+              },
+              {
+                "id": 4,
+                "name": "div",
+                "components": [
+                  "AgentList",
+                  "AgentIcon"
+                ],
+                "commits": 37,
+                "renderMs": 20.80000004172325,
+                "place": "stage"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10002.426999999443,
+            "LayoutCount": 51,
+            "RecalcStyleCount": 24,
+            "LayoutDuration": 7.674,
+            "RecalcStyleDuration": 2.5410000000000004,
+            "DevToolsCommandDuration": 0.10800000000000003,
+            "ScriptDuration": 375.628,
+            "V8CompileDuration": 0,
+            "TaskDuration": 505.557,
+            "TaskOtherDuration": 119.60599999999997,
+            "ThreadTime": 537.689,
+            "ProcessTime": 775.058
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    },
+    {
+      "round": 0,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            5.33,
+            11.7,
+            10.33
+          ]
+        },
+        "after": [
+          10.27,
+          12.51,
+          10.68
+        ]
+      },
+      "ms": 23399,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10067.300000011921,
+          "frames": {
+            "count": 603,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.40000003576278687,
+            "callbacks": 38,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 1,
+              "commits": 317,
+              "stage": 317
+            },
+            "commits": 126,
+            "viewCommits": 118,
+            "viewRenderMs": 89.19999995827675,
+            "viewNames": [
+              "AgentList"
+            ],
+            "rootRenderMs": 329.70000010728836,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 126,
+                "renderMs": 329.70000010728836,
+                "place": "host"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10031.242000026396,
+            "LayoutCount": 39,
+            "RecalcStyleCount": 16,
+            "LayoutDuration": 6.577,
+            "RecalcStyleDuration": 2.1719999999999997,
+            "DevToolsCommandDuration": 0.055000000000000035,
+            "ScriptDuration": 454.9120000000001,
+            "V8CompileDuration": 0,
+            "TaskDuration": 579.702,
+            "TaskOtherDuration": 115.98599999999998,
+            "ThreadTime": 607.0930000000001,
+            "ProcessTime": 836.73
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-perf/puppeteer/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.27,
+            12.51,
+            10.68
+          ]
+        },
+        "after": [
+          8.28,
+          11.92,
+          10.51
+        ]
+      },
+      "ms": 23229,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10004.299999982119,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 10.500000178813934,
+            "callbacks": 76,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 4,
+              "commits": 307,
+              "stage": 229
+            },
+            "commits": 148,
+            "viewCommits": 100,
+            "viewRenderMs": 2.8000000417232513,
+            "viewNames": [
+              "MonitorViewHost"
+            ],
+            "rootRenderMs": 349.80000001192093,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 110,
+                "renderMs": 321.1999998986721,
+                "place": "host"
+              },
+              {
+                "id": 4,
+                "name": "div",
+                "components": [
+                  "AgentList",
+                  "AgentIcon"
+                ],
+                "commits": 38,
+                "renderMs": 28.600000113248825,
+                "place": "stage"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10003.066999983275,
+            "LayoutCount": 52,
+            "RecalcStyleCount": 24,
+            "LayoutDuration": 9.197999999999999,
+            "RecalcStyleDuration": 2.6020000000000003,
+            "DevToolsCommandDuration": 0.06999999999999997,
+            "ScriptDuration": 518,
+            "V8CompileDuration": 0,
+            "TaskDuration": 683.2770000000002,
+            "TaskOtherDuration": 153.40699999999998,
+            "ThreadTime": 721.4490000000001,
+            "ProcessTime": 1023.0190000000001
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            8.28,
+            11.92,
+            10.51
+          ]
+        },
+        "after": [
+          7.25,
+          11.42,
+          10.37
+        ]
+      },
+      "ms": 23165,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10004.600000023842,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.0999999642372131,
+            "callbacks": 38,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 1,
+              "commits": 312,
+              "stage": 312
+            },
+            "commits": 127,
+            "viewCommits": 118,
+            "viewRenderMs": 138.10000002384186,
+            "viewNames": [
+              "AgentList"
+            ],
+            "rootRenderMs": 494.99999982118607,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 127,
+                "renderMs": 494.99999982118607,
+                "place": "host"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10002.716000017244,
+            "LayoutCount": 40,
+            "RecalcStyleCount": 16,
+            "LayoutDuration": 7.710000000000002,
+            "RecalcStyleDuration": 2.5069999999999997,
+            "DevToolsCommandDuration": 0.10200000000000009,
+            "ScriptDuration": 675.8669999999998,
+            "V8CompileDuration": 0,
+            "TaskDuration": 838.504,
+            "TaskOtherDuration": 152.31799999999998,
+            "ThreadTime": 874.8240000000001,
+            "ProcessTime": 1180.7130000000002
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv2-pu/base/apps/godview",
+      "viewOrder": [
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            7.25,
+            11.42,
+            10.37
+          ]
+        },
+        "after": [
+          8.99,
+          11.59,
+          10.46
+        ]
+      },
+      "ms": 23127,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10004.899999976158,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1,
+            "callbacks": 38,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "roots": 1,
+              "commits": 313,
+              "stage": 313
+            },
+            "commits": 133,
+            "viewCommits": 124,
+            "viewRenderMs": 119.10000023245811,
+            "viewNames": [
+              "AgentList"
+            ],
+            "rootRenderMs": 435.10000017285347,
+            "roots": [
+              {
+                "id": 1,
+                "name": "div#root",
+                "components": [
+                  "GhostteaProvider",
+                  "Godview",
+                  "InstrumentBar",
+                  "Tip"
+                ],
+                "commits": 133,
+                "renderMs": 435.10000017285347,
+                "place": "host"
+              }
+            ]
+          },
+          "main": {
+            "Timestamp": 10003.104000003077,
+            "LayoutCount": 44,
+            "RecalcStyleCount": 20,
+            "LayoutDuration": 7.375000000000006,
+            "RecalcStyleDuration": 2.2430000000000003,
+            "DevToolsCommandDuration": 0.08799999999999997,
+            "ScriptDuration": 596.3870000000001,
+            "V8CompileDuration": 0,
+            "TaskDuration": 739.9259999999999,
+            "TaskOtherDuration": 133.833,
+            "ThreadTime": 772.875,
+            "ProcessTime": 1060.9269999999997
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 54,
+        "failed": 0
+      }
+    }
+  ],
+  "finishedAt": "2026-10-04T21:14:39.719Z"
+}
