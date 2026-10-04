@@ -124,6 +124,10 @@ describe('project', () => {
     ).toBe('/repo');
     expect(projectKey(hostRun(), monitorState({ environment: { cwd: '/x', worktrees: [] } }))).toBe('/x');
     expect(projectKey(hostRun({ projectKey: '' }), monitorState())).toBeUndefined();
+    // Null: the host is still folding it, so the observed directory is not dealt either.
+    expect(
+      projectKey(hostRun({ projectKey: null }), monitorState({ environment: { cwd: '/x', worktrees: [] } })),
+    ).toBeUndefined();
     expect(derive(hostRun(), monitorState(), 3).project.seq).toBe(3);
     expect(derive().project.seq).toBeUndefined();
   });

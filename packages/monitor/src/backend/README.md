@@ -40,7 +40,7 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 | `activity` | core's `{ kind, line (bounded), since }` (M2) | `{ kind }`: the host's session activity kind, no line |
 | `project.name` | `folderName(state.environment.cwd \|\| workspace.sourcePath \|\| workspace.root \|\| host.cwd, provider.label)` — both hosts' chain | `folderName(cwd, title \|\| 'terminal')` |
 | `project.branch` | observation first (vf): `git !== undefined ? git?.branch ?? null : workspace.branch` | — |
-| `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key | absent (the ramp) |
+| `project.seq` | `identity.deal(projectKey ?? state.environment.cwd)` in row order; absent with no key, and while the host's key is `null` (it is still folding the project: no fallback) | absent (the ramp) |
 | `provider` | host `provider` | — |
 | `model` | `state.model.displayName \|\| state.model.id` | — |
 | `effort` | `{ value: state.effort.value, intent? }` (M2) | — |
@@ -103,7 +103,9 @@ where its persisted `next` keeps the dropped sequences retired and a max + 1 rea
 VibeField's: `createMemoryProjectIdentityStore(entries, { next })`, the larger of the floor and the dealt sequences
 (`loadProjectLedger`). The other divergence is the KEY, a host choice: puppeteer folds to realpath + git toplevel in
 main; VibeField uses `workspace.root || sourcePath || monitor.cwd`; the backend takes the host's key and falls back to the
-observed directory.
+observed directory. A host that folds asynchronously says `projectKey: null` until it has (puppeteer Godview: its
+registry folds a workspace to the Git root, and today's rows wear the ramp until then), so nothing is dealt from the
+observed directory meanwhile.
 
 ## Spawn menu
 

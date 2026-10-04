@@ -492,6 +492,18 @@ describe('identity (L4)', () => {
     expect(t.rows()[0]?.project).toEqual({ name: 'site', seq: 0 });
   });
 
+  it('deals nothing for a key the host is still folding (null), then the key the host names', async () => {
+    const t = testBackend({
+      facts: facts({ runs: [hostRun({ projectKey: null })] }),
+      states: [monitorState({ environment: { cwd: '/Users/me/site', worktrees: [] } })],
+    });
+    await t.backend.ready;
+    expect(t.rows()[0]?.project).toEqual({ name: 'site' });
+    expect(t.identity.seq('/Users/me/site')).toBeUndefined();
+    t.host.update({ runs: [hostRun({ projectKey: '/Users/me/site' })] });
+    expect(t.rows()[0]?.project).toEqual({ name: 'site', seq: 0 });
+  });
+
   it('asks the store before dealing, so a host-restored sequence is kept', async () => {
     const t = testBackend({ facts: facts({ runs: [hostRun({ projectKey: '/repo' })] }) });
     // the host hands its persisted sequences to the store before the first fold

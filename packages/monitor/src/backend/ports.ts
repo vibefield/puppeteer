@@ -34,8 +34,13 @@ export interface MonitorHostRun {
   readonly replacedTerminalSessionId?: string | undefined;
   /** The stable identity the host keeps for its PTY across handoffs, when it keeps one. */
   readonly terminalIdentity?: string | undefined;
-  /** The canonical root the host folds the project to: the key its colour is dealt by. */
-  readonly projectKey?: string | undefined;
+  /**
+   * The canonical root the host folds the project to: the key its colour is dealt by. Absent: the backend falls back to
+   * the observed directory. Null: the host folds projects itself and has not folded this run's yet, so the row deals
+   * nothing and wears the neutral ramp until the host names its key (puppeteer Godview's registry folds a workspace to
+   * its Git root asynchronously, and its rows wear the ramp until then).
+   */
+  readonly projectKey?: string | null | undefined;
   readonly workspace?:
     | {
         readonly root?: string | undefined;

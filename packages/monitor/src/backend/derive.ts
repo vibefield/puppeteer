@@ -104,8 +104,9 @@ export function projectBranch(host: MonitorHostRun, state: AgentMonitorState | u
   return host.workspace?.branch;
 }
 
-/** The key a project's colour is dealt by: the host's canonical root, else the observed directory. */
+/** The key a project's colour is dealt by: the host's canonical root, else the observed directory; none while the host is folding it (null). */
 export function projectKey(host: MonitorHostRun, state: AgentMonitorState | undefined): string | undefined {
+  if (host.projectKey === null) return undefined;
   return host.projectKey || state?.environment.cwd || undefined;
 }
 
