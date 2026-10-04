@@ -175,6 +175,46 @@ describe('identity carry-forward and dedupe', () => {
     await t.backend.ready;
     expect(t.rows().map((row) => row.id)).toEqual(['pty-1', 'same']);
   });
+
+  it('says which row a run is with idOf: the shell’s id after a promotion, the run’s own otherwise (mv3a’s ask)', async () => {
+    const t = testBackend({
+      facts: facts({ terminals: [hostTerminal({ sessionId: 'pty-1', identity: 'shell-A', cwd: '/w' })] }),
+    });
+    await t.backend.ready;
+    expect(t.rows()).toMatchObject([{ id: 'shell-A', kind: 'terminal' }]);
+    expect(t.backend.idOf('run-1')).toBeUndefined();
+    // the host names the run in that PTY, keeping the terminal listed until then (the host contract)
+    t.host.update({
+      runs: [
+        hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-1' }),
+        hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 }),
+      ],
+    });
+    expect(t.rows().map((row) => [row.id, row.kind])).toEqual([
+      ['shell-A', 'agent'],
+      ['run-2', 'agent'],
+    ]);
+    expect(t.backend.idOf('run-1')).toBe('shell-A');
+    expect(t.backend.idOf('run-2')).toBe('run-2');
+    // the id survives a new epoch in a new PTY (AR-4)
+    t.host.update({
+      runs: [
+        hostRun({ runtimeRunId: 'run-1', terminalSessionId: 'pty-3', replacedTerminalSessionId: 'pty-1' }),
+        hostRun({ runtimeRunId: 'run-2', terminalSessionId: 'pty-2', createdAt: T0 }),
+      ],
+      terminals: [],
+    });
+    t.source.push(monitorState({ runtimeEpoch: 2, revision: 1 }));
+    t.rows();
+    expect(t.backend.idOf('run-1')).toBe('shell-A');
+    // a run with no row has no id: removed by the runtime, unknown, or after dispose
+    t.source.remove({ runtimeRunId: 'run-1', runtimeEpoch: 2 });
+    expect(t.backend.getSnapshot().rows.map((row) => row.id)).toEqual(['run-2']);
+    expect(t.backend.idOf('run-1')).toBeUndefined();
+    expect(t.backend.idOf('nobody')).toBeUndefined();
+    t.backend.dispose();
+    expect(t.backend.idOf('run-2')).toBeUndefined();
+  });
 });
 
 describe('order and recency', () => {

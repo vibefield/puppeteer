@@ -68,6 +68,7 @@ branch}` · `cwd?` · `profileId?` · `profileSet?` · `account?` · `tier?` · 
 2. **Identity carry-forward** (`id`): `idByRun` for the backend's lifetime. A new run takes the id of the bare-terminal
    row its `terminalSessionId` (or `replacedTerminalSessionId`) stood for — a promoted shell keeps its body — else its
    `runtimeRunId`, which already survives epochs and PTY swaps (AR-4). An id is never held by two rows at once.
+   `idOf(runtimeRunId)` tells a host which row a run is in the current snapshot (undefined while it has none).
 3. **Dedupe**: a terminal whose `sessionId`/`identity` is claimed by an agent row (its terminal, the one it replaced, or
    its id) is not a row: the agent speaks for both (vf "one identity, one row"; pu's launcher-handoff rule).
 4. **Order**: `compareMonitorRows` — agents by `createdAt`, then terminals, ties by id.

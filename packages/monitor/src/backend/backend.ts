@@ -601,6 +601,12 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       if (disposed || !shownByScreen.delete(screenId)) return;
       flush();
     },
+    idOf(runtimeRunId) {
+      if (disposed) return undefined;
+      const id = idByRun.get(runtimeRunId);
+      const inputs = id === undefined ? undefined : entries.get(id)?.inputs;
+      return inputs?.kind === 'agent' && inputs.host.runtimeRunId === runtimeRunId ? id : undefined;
+    },
     dispose() {
       if (disposed) return;
       disposed = true;

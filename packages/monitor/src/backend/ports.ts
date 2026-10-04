@@ -203,6 +203,11 @@ export interface MonitorBackend {
    * so forgetting the last one drops every mark, and the next screen to open sees each row for the first time.
    */
   forgetScreen(screenId: string): void;
+  /**
+   * The id of the row a run is in the current snapshot: the shell's id it carried at a promotion, else its
+   * `runtimeRunId`. Undefined while the run has no row (not named, removed, or the backend disposed).
+   */
+  idOf(runtimeRunId: string): string | undefined;
   /** Resolves once the runtime's all-runs listing has been merged. */
   readonly ready: Promise<void>;
   dispose(): void;
