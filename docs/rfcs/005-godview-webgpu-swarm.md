@@ -204,6 +204,10 @@ Reading Core's timestamp rather than watching the status change is what survives
 and end between two renders. The rule lives in `monitor/unread.ts` and is applied in `useMonitorAgents`, so any view
 may draw it; the swarm draws the dot.
 
+> **Erratum (2026-10-04, MV-2):** the rule is now applied by the monitor backend in main (`packages/monitor`
+> `backend/unread.ts`, verbatim, plan decision L5), with "in front of the user" being what any window reports its
+> active pane shows; `useMonitorAgents` holds the window's replica and no longer folds it.
+
 ### Failure and fallback
 
 No adapter or device: the stage shows one line, `WebGPU is unavailable on this GPU`, and the hidden button list keeps
