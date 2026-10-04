@@ -37,10 +37,24 @@ body {
 }
 
 .lab-header,
+.lab-view-head,
+.lab-view,
 .lab-parts,
 .lab-notice {
   position: relative;
   z-index: 2;
+}
+
+/* The shipping view's stages run at Godview's widths, wider than the parts' column. */
+.lab-view-head {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.lab-view {
+  padding: 0 28px 8px;
+  overflow-x: auto;
 }
 
 .lab-header {

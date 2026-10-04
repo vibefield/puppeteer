@@ -37,6 +37,8 @@ const css = [
   await readFile(join(renderer, 'styles/tokens.css'), 'utf8'),
   await readFile(join(renderer, 'styles/godview.css'), 'utf8'),
   await readFile(join(views, 'views/timeline/timeline.css'), 'utf8'),
+  // The seeded world's stages (`?n=`, `?capture=1`), as the other view labs lay them out.
+  await readFile(join(views, 'lab/view-lab.css'), 'utf8'),
 ].join('\n');
 
 const lab = `
@@ -60,7 +62,7 @@ const body = `<title>Timeline Lab</title>
 ${css}
 ${lab}
 </style>
-<div id="timeline-lab" class="timeline-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
+<div id="timeline-lab" class="lab-root timeline-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
   <header>
     <h1>Timeline Lab</h1>
     <p>The shipping timeline view over the example afternoon, at Godview's sizes. Drag to pan, ⌘-scroll to zoom, point at a lane to light it, press the map to put the head there.</p>

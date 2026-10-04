@@ -1,0 +1,98 @@
+/* The view labs (MV-0, `lab/lab-stage.ts`): one view per stage in Godview's own
+   stage box, over the seeded world. The page root carries `vf-godview` and the
+   theme, so every token resolves as in the app, and it paints the glass the
+   (transparent) stage sits on, as Godview's window does. */
+
+/* The app stylesheet pins html and body to the window; a lab is a document that scrolls. */
+html,
+body {
+  height: auto;
+  overflow: auto;
+}
+
+.lab-root.view-lab {
+  display: block;
+  min-height: 100vh;
+  height: auto;
+  padding: 24px 24px 48px;
+  overflow: visible;
+  font-family: var(--vf-font-mono);
+}
+
+.view-lab > header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.view-lab h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.view-lab > header p {
+  max-width: 80ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.view-lab-theme {
+  margin-left: auto;
+  padding: 5px 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-main);
+  background: var(--panel-bg);
+  font: 700 10px var(--vf-font-mono);
+  cursor: pointer;
+}
+
+.view-lab-stages {
+  display: grid;
+  justify-items: start;
+  gap: 28px;
+}
+
+.view-lab-stage {
+  margin: 0;
+}
+
+/* The stage keeps godview.css's own box (border, min-height, overflow); only its
+   flex sizing means nothing outside the window's column. */
+.view-lab-stage > .vf-godview-monitor-stage {
+  flex: none;
+}
+
+.view-lab-stage figcaption {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.view-lab-stage figcaption b {
+  color: var(--text-main);
+}
+
+/* Capture mode (`capture=1`, the golden tool): the stages alone at the page's
+   origin. Nothing else on the page may draw, so a clip is the stage and only it. */
+html[data-lab-capture] .lab-root {
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-lab-capture] .lab-root > :not(.view-lab-mount) {
+  display: none !important;
+}
+
+html[data-lab-capture] .view-lab-mount {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-lab-capture] .view-lab-stages {
+  gap: 0;
+}

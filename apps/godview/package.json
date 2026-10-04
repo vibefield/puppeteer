@@ -20,7 +20,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "restore-smoke": "pnpm bundle && node restore-smoke.mjs",
     "swarm-lab": "node swarm-lab.mjs",
-    "timeline-lab": "node timeline-lab.mjs"
+    "timeline-lab": "node timeline-lab.mjs",
+    "list-lab": "node list-lab.mjs",
+    "rain-lab": "node rain-lab.mjs"
   },
   "dependencies": {
     "@parcel/watcher": "^2.5.0",
