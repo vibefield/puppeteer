@@ -179,14 +179,14 @@ function budStyle(bud: BloomBudView, delay: number, grow: number | null): CSSPro
   const half = bud.d / 2;
   const px = (value: number): string => `${Math.round(value * 100) / 100}px`;
   return {
-    '--vf-bloom-d': px(bud.d),
-    '--vf-bloom-hx': px(bud.hx - half),
-    '--vf-bloom-hy': px(bud.hy - half),
-    '--vf-bloom-tx': px(bud.x - half),
-    '--vf-bloom-ty': px(bud.y - half),
-    '--vf-bloom-delay': `${Math.round(delay)}ms`,
-    '--vf-bloom-lean': bud.lean.toFixed(3),
-    ...(grow === null ? {} : { '--vf-bloom-grow': grow.toFixed(2) }),
+    '--mv-swarm-bloom-d': px(bud.d),
+    '--mv-swarm-bloom-hx': px(bud.hx - half),
+    '--mv-swarm-bloom-hy': px(bud.hy - half),
+    '--mv-swarm-bloom-tx': px(bud.x - half),
+    '--mv-swarm-bloom-ty': px(bud.y - half),
+    '--mv-swarm-bloom-delay': `${Math.round(delay)}ms`,
+    '--mv-swarm-bloom-lean': bud.lean.toFixed(3),
+    ...(grow === null ? {} : { '--mv-swarm-bloom-grow': grow.toFixed(2) }),
   } as CSSProperties;
 }
 
@@ -219,7 +219,7 @@ function SlateView({ say, stepping }: { say: BloomSay; stepping: 'in' | 'out' | 
       data-bloom-words={words.parts.map((part) => part[0]).join('')}
       data-bloom-slate={say.slate}
       aria-hidden={stepping === 'out' ? true : undefined}
-      style={{ left: say.x, top: say.y, width: say.m.w, '--vf-bloom-say': `${say.m.size}px` } as CSSProperties}
+      style={{ left: say.x, top: say.y, width: say.m.w, '--mv-swarm-bloom-say': `${say.m.size}px` } as CSSProperties}
     >
       <div className="vf-bloom-say-line">
         {words.parts.map(([text, role], index) => (
@@ -373,9 +373,9 @@ export function SpawnBloom({
 
   const scale = motionScale;
   const rootStyle = {
-    '--vf-bloom-pop': `${Math.round(BLOOM.pop * scale)}ms`,
-    '--vf-bloom-lift': `${Math.round(BLOOM.lift * scale)}ms`,
-    '--vf-bloom-retract': `${Math.round(BLOOM.retract * scale)}ms`,
+    '--mv-swarm-bloom-pop': `${Math.round(BLOOM.pop * scale)}ms`,
+    '--mv-swarm-bloom-lift': `${Math.round(BLOOM.lift * scale)}ms`,
+    '--mv-swarm-bloom-retract': `${Math.round(BLOOM.retract * scale)}ms`,
   } as CSSProperties;
 
   const current = stage.state && stage.view ? { state: stage.state, view: stage.view } : null;
@@ -486,7 +486,7 @@ export function SpawnBloom({
                   top: seat.box.y,
                   width: seat.box.w,
                   // the words leave WITH their bud, not after their reveal delay
-                  '--vf-bloom-delay': `${leaving ? 0 : Math.round(bud.labelDelay)}ms`,
+                  '--mv-swarm-bloom-delay': `${leaving ? 0 : Math.round(bud.labelDelay)}ms`,
                 } as CSSProperties
               }
             >

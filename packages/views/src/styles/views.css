@@ -5,10 +5,9 @@
    (`--vf-orange`, `--vf-green`, `--vf-select`); a HOST ships those (Godview's
    `styles/godview.css` + `tokens.css`, VibeField's design kit), never this file.
    Imported once by the host beside its skin. A view on the SDK brings its own stylesheet from its entry module
-   (L18), so the list's and the rain's are not here: views/list/list.css, views/rain/rain.css. */
+   (L18), so the list's, the rain's and the swarm's are not here: views/list/list.css, views/rain/rain.css,
+   views/swarm/swarm.css and views/swarm/bloom/spawn-bloom.css. */
 @import './bar.css';
 @import './usage.css';
 @import './find-sheet.css';
-@import '../views/swarm/swarm.css';
-@import '../views/swarm/bloom/spawn-bloom.css';
 @import '../views/timeline/timeline.css';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorAgent } from '../../../monitor/types.js';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import { polar, type BloomPoint } from './geometry.js';
 import {
@@ -299,31 +299,12 @@ describe('keyBloom', () => {
 });
 
 describe('bloomView and litOf', () => {
-  const row = (patch: Partial<MonitorAgent>): MonitorAgent => ({
-    id: 'r',
-    createdAtMs: 0,
-    status: 'idle',
-    project: '',
-    detail: '',
-    color: '',
-    active: false,
-    ...patch,
-  });
+  const row = (patch: AgentViewFixturePartial) => agentViewFixture({ id: 'r', ...patch });
   const local = row({ id: 'local', profileSet: 'work' });
   const localDemo = row({ id: 'demo', profileSet: 'demo' });
+  // A row from another desktop: the device it lives on, not this one (M9: a view reads `device`, never a facet).
   const peer = (profileSet?: string) =>
-    row({
-      id: 'peer',
-      profileSet,
-      remote: {
-        deviceId: 'mini',
-        deviceName: 'mini',
-        remoteSessionId: 'x',
-        attachable: true,
-        hostWritable: true,
-        cwdLabel: null,
-      },
-    });
+    row({ id: 'peer', profileSet, device: { id: 'mini', name: 'mini', self: false } });
 
   it('draws the veil, the hub, ring one’s clearing and the words’ while open', () => {
     const view = bloomView(open());

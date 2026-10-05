@@ -1,32 +1,34 @@
 // @vitest-environment happy-dom
 import { createHash } from 'node:crypto';
 import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LAB_NOW_MS, labWorld, seededRandom } from '../../lab/lab-world.js';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '../../monitor/chrome.js';
-import { readMonitorPalette } from '../../monitor/palette.js';
-import { monitorParameterDefaults } from '../../monitor/parameters.js';
-import { AgentSwarm } from './AgentSwarm.js';
-import type { SwarmFrame } from './gpu/swarm-renderer.js';
-import { SwarmPhysicsProvider } from './physics/context.js';
-import { createInlineSwarmPhysicsDriver } from './physics/inline-driver.js';
-import { SWARM_PARAMETER_GROUPS } from './swarm-parameters.js';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MonitorModel, MonitorViewInput, MonitorViewInstance, StageGeometry } from '@vibecook/puppeteer-view-sdk';
+import { countingCommands, parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
+import { labModel } from '../src/lab/lab-model.js';
+import { LAB_NOW_MS, seededRandom } from '../src/lab/lab-world.js';
+import { readMonitorPalette } from '../src/monitor/palette.js';
+import type { SwarmFrame } from '../src/views/swarm/gpu/swarm-renderer.js';
+import { SWARM_MANIFEST, swarmMonitorView } from '../src/views/swarm/index.js';
 
-// The swarm's frame parity (MV-0): the frames the shipping AgentSwarm hands its
-// renderer, for the seeded world at a fixed timestep, against goldens recorded
-// on today's view. Only GPU submission is replaced: a paint spy records each
-// frame, while the view, its bubble models and the inline physics (the same
-// host the worker runs) all run as shipped. Each scenario runs 60 frames from
-// mount, moves the world on (`labWorld({ churn: true })`), and runs 60 more.
+// The swarm's frame parity (MV-0, on the SDK since MV-5): the frames the shipping
+// swarm hands its renderer, for the seeded world at a fixed timestep, against
+// goldens recorded on the ported view (re-recorded for M4: a body's title and
+// accessible name are reply-first now, and the models carry them). Only GPU
+// submission is replaced: a paint spy records each frame, while the view, its
+// bubble models and the inline physics (the same host the worker runs; there is
+// no Worker in happy-dom, so the driver runs inline from the start and says so)
+// all run as shipped. Each scenario runs 60 frames from mount, moves the world on
+// (`labModel({ churn: true })`), and runs 60 more.
 //
 // happy-dom lays nothing out, so the stage's box and the usage column's rect are
-// Godview's geometry, given by hand; apps/godview/goldens/swarm records the same
-// sequences with real layout in Electron. Re-record after an INTENTIONAL change:
-// `pnpm exec vitest run src/views/swarm/AgentSwarm.frames.test.tsx -u`.
+// Godview's geometry, given by hand as the stage the host would measure (MV-D19);
+// apps/godview/goldens/swarm records the same sequences with real layout in
+// Electron. This file lives outside the view's folder because its world is the
+// lab's (the wall, W1, reads a view's tests too). Re-record after an INTENTIONAL
+// change: `pnpm exec vitest run test/swarm-frames.test.tsx -u`.
 
 const { paint } = vi.hoisted(() => ({ paint: vi.fn<(frame: SwarmFrame) => void>() }));
-vi.mock('./gpu/swarm-renderer.js', async (original) => ({
+vi.mock('../src/views/swarm/gpu/swarm-renderer.js', async (original) => ({
   ...(await original<object>()),
   createSwarmRenderer: async () => ({
     ok: true,
@@ -42,10 +44,14 @@ const SCENARIOS = [
 const BEFORE = 60;
 const AFTER = 60;
 const KEEP_EVERY = 4;
+const NO_CHANGES = Object.freeze({ added: [], updated: [], removed: [] });
 
 let stage = { width: 0, height: 0 };
-let host: HTMLDivElement;
-let root: Root;
+let root: HTMLDivElement;
+
+beforeAll(() => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+});
 
 beforeEach(() => {
   vi.useFakeTimers({
@@ -55,21 +61,13 @@ beforeEach(() => {
   vi.spyOn(Math, 'random').mockImplementation(seededRandom('mv0:random'));
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => stage.width);
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(() => stage.height);
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function rect(this: HTMLElement) {
-    // godview.css's usage column: 46 px wide at (13, 11), the stage's height less 17.
-    return this.hasAttribute(MONITOR_CHROME_ATTRIBUTE)
-      ? new DOMRect(13, 11, 46, stage.height - 17)
-      : new DOMRect(0, 0, stage.width, stage.height);
-  });
   paint.mockClear();
-  host = document.createElement('div');
-  document.body.append(host);
-  root = createRoot(host);
+  root = document.createElement('div');
+  document.body.append(root);
 });
 
-afterEach(async () => {
-  await act(async () => root.unmount());
-  host.remove();
+afterEach(() => {
+  root.remove();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -113,22 +111,26 @@ function project(frame: SwarmFrame, index: number, models: Record<string, unknow
   };
 }
 
-async function show(n: number, churn: boolean): Promise<void> {
-  await act(async () =>
-    root.render(
-      <section className={MONITOR_STAGE_CLASS}>
-        <SwarmPhysicsProvider factory={createInlineSwarmPhysicsDriver}>
-          <AgentSwarm
-            agents={labWorld({ n, churn }).agents}
-            parameters={monitorParameterDefaults(SWARM_PARAMETER_GROUPS)}
-            palette={readMonitorPalette()}
-            actions={{ select: () => undefined, createAt: () => undefined }}
-          />
-        </SwarmPhysicsProvider>
-        <div className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }} />
-      </section>,
-    ),
-  );
+/** Godview's stage as the host measures it (MV-D19): the usage column (godview.css) at (13, 11), 46 wide, the
+ * stage's height less 17, as an obstacle and the left inset. */
+function stageOf(width: number, height: number): StageGeometry {
+  return {
+    width,
+    height,
+    insets: { top: 0, right: 0, bottom: 0, left: 13 + 46 },
+    obstacles: [{ x: 13, y: 11, width: 46, height: height - 17 }],
+  };
+}
+
+function inputFor(model: MonitorModel, geometry: StageGeometry): MonitorViewInput {
+  return {
+    model,
+    changes: NO_CHANGES,
+    stage: geometry,
+    theme: { scheme: 'light', tokens: readMonitorPalette(), reducedMotion: false, animations: true },
+    parameters: parameterDefaults(SWARM_MANIFEST),
+    capabilities: {},
+  };
 }
 
 async function frames(count: number): Promise<void> {
@@ -139,13 +141,18 @@ async function frames(count: number): Promise<void> {
   }
 }
 
-describe('AgentSwarm frames', () => {
+describe('the swarm’s frames', () => {
   it.each(SCENARIOS)('match the golden for $name', async ({ name, width, height, n }) => {
     stage = { width, height };
-    await show(n, false);
+    const geometry = stageOf(width, height);
+    const { commands, reports } = countingCommands();
+    let instance!: MonitorViewInstance;
+    await act(async () => {
+      instance = swarmMonitorView.mount(root, inputFor(labModel({ n }), geometry), commands);
+    });
     await frames(BEFORE);
     const before = paint.mock.calls.length;
-    await show(n, true);
+    await act(async () => instance.update(inputFor(labModel({ n, churn: true }), geometry)));
     await frames(AFTER);
     const recorded = paint.mock.calls.map(([frame]) => frame);
     // One frame per animation frame once the renderer answered, and the change landed between them.
@@ -161,7 +168,10 @@ describe('AgentSwarm frames', () => {
     const ids = (frame: SwarmFrame | undefined) => new Set(frame?.bodies.map((body) => body.model.id));
     expect(ids(recorded[before - 1]).has('late-arrival')).toBe(false);
     expect(ids(recorded.at(-1)).has('late-arrival')).toBe(true);
+    // No Worker here: the physics ran in this thread from the start, and the view said so (MV-D7).
+    expect(reports).toContainEqual({ physics: 'inline' });
+    await act(async () => instance.unmount());
     const golden = { scenario: name, recorded: recorded.length, changedAt: before, frames: kept, models };
-    await expect(`${JSON.stringify(golden, null, 1)}\n`).toMatchFileSnapshot(`./goldens/${name}.json`);
+    await expect(`${JSON.stringify(golden, null, 1)}\n`).toMatchFileSnapshot(`./goldens/swarm/${name}.json`);
   });
 });

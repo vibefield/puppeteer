@@ -7,7 +7,7 @@
 // reads the same tree and a ported view imports only the SDK, so it moved there
 // with identical output. The bloom keeps its own bud word for a desktop.
 
-import type { MonitorSpawnDevice } from '../../../monitor/types.js';
+import type { MonitorSpawnDevice } from '@vibecook/puppeteer-view-sdk';
 
 export {
   blooms,

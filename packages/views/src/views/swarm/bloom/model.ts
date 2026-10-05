@@ -10,11 +10,11 @@
 // the state carries. Nothing here reads a clock, a canvas or the DOM.
 
 import type {
-  MonitorAgent,
+  AgentView,
   MonitorSpawnDevice,
   MonitorSpawnMenu,
   MonitorSpawnProfile,
-} from '../../../monitor/types.js';
+} from '@vibecook/puppeteer-view-sdk';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import {
@@ -59,7 +59,7 @@ export interface BloomBody {
   /** How far it is lit above the veil right now, 0..1 (the renderer's eased mix). Over 0.5 counts twice. */
   readonly lit?: number | undefined;
   /** The row it draws: it counts twice while the bloom's target lights it (`litOf`). */
-  readonly agent?: MonitorAgent | undefined;
+  readonly agent?: AgentView | undefined;
 }
 
 /** What the machine reads from the world on every transition. */
@@ -369,13 +369,13 @@ export function bloomRects(s: Pick<BloomState, 'P' | 'l1' | 'l2'>): BloomRect[] 
  * desktop you sit at, every row that is not remote; for a peer, the rows whose
  * `remote.deviceId` is it — and a profile (or the hub, under the default)
  * lights the rows under that profile set on that desktop. Open ground: none. */
-function litFor(menu: BloomOpenMenu, t: BloomTarget | null): (agent: MonitorAgent) => boolean {
+function litFor(menu: BloomOpenMenu, t: BloomTarget | null): (agent: AgentView) => boolean {
   if (!t || t.kind === 'none') return () => false;
   const device = t.kind === 'hub' ? menu.hub.device : t.item.device;
   const profile = t.kind === 'hub' ? menu.hub.profile : t.kind === 'profile' ? t.item.profile : null;
   const here = device.id === menu.self.id;
   return (agent) => {
-    const on = here ? !agent.remote : agent.remote?.deviceId === device.id;
+    const on = here ? agent.device.self : !agent.device.self && agent.device.id === device.id;
     if (!on) return false;
     if (!profile) return true;
     return agent.profileSet === profile.id;
@@ -986,7 +986,7 @@ export function bloomView(state: BloomState): BloomView {
 
 /** Which rows light while the bloom points (SB-D8): the target's desktop, or
  * its profile set on that desktop; nothing for open ground or once closed. */
-export function litOf(state: BloomState): (agent: MonitorAgent) => boolean {
+export function litOf(state: BloomState): (agent: AgentView) => boolean {
   if (state.closed) return () => false;
   return litFor(state.menu, state.target);
 }

@@ -379,7 +379,9 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
   const sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
-  const atlas = new GlyphAtlas(device, Math.max(1, window.devicePixelRatio || 1));
+  const atlas = new GlyphAtlas(device, Math.max(1, window.devicePixelRatio || 1), undefined, () =>
+    canvas.ownerDocument.createElement('canvas'),
+  );
   const marks = await loadMarks(device);
 
   let bodyCapacity = INITIAL_BODIES;

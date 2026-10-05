@@ -144,7 +144,7 @@ describe('the spawn bloom, posed', () => {
     const markup = html(done.state);
     expect(markup).toContain('data-bloom-state="committed"');
     expect(markup).toMatch(
-      /class="vf-bloom-bud is-out is-chosen is-hot"[^>]*data-bloom-bud-id="demo"[^>]*--vf-bloom-grow:2\.08/,
+      /class="vf-bloom-bud is-out is-chosen is-hot"[^>]*data-bloom-bud-id="demo"[^>]*--mv-swarm-bloom-grow:2\.08/,
     );
     expect(count(markup, /class="vf-bloom-bud is-back/g)).toBe(2);
     // every label leaves at once, the chosen one's too

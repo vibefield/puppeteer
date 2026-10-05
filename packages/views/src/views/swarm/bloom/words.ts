@@ -5,7 +5,7 @@
 // where the terminal lands and under whom. The prototype's `wordsFor`,
 // `measureWords` and the controller's `placeWords`, pure.
 
-import type { MonitorSpawnProfile } from '../../../monitor/types.js';
+import type { MonitorSpawnProfile } from '@vibecook/puppeteer-view-sdk';
 import { BLOOM, BLOOM_FONT, type BloomTextMeasure } from './constants.js';
 import type { BloomAlign, BloomRect, BloomSize } from './geometry.js';
 import { deviceWord, hereWord, profileWord, ready, type BloomOpenMenu } from './menu.js';

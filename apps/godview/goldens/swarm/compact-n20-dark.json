@@ -39,7 +39,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -56,7 +56,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -90,7 +90,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -107,7 +107,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -124,7 +124,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -181,7 +181,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -198,7 +198,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -215,7 +215,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -232,7 +232,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -249,7 +249,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -266,7 +266,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -289,7 +289,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -306,7 +306,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -329,7 +329,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -346,7 +346,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -363,7 +363,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -380,7 +380,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -404,7 +404,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -421,7 +421,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -455,7 +455,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -472,7 +472,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -489,7 +489,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -546,7 +546,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -563,7 +563,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -580,7 +580,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -597,7 +597,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -614,7 +614,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -631,7 +631,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -654,7 +654,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -671,7 +671,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -694,7 +694,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -711,7 +711,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -728,7 +728,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -745,7 +745,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -769,7 +769,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -786,7 +786,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -820,7 +820,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -837,7 +837,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -854,7 +854,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -911,7 +911,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -928,7 +928,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -945,7 +945,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -962,7 +962,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -979,7 +979,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -996,7 +996,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -1019,7 +1019,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -1036,7 +1036,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -1059,7 +1059,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -1076,7 +1076,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -1093,7 +1093,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -1110,7 +1110,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -1134,7 +1134,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -1151,7 +1151,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -1185,7 +1185,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -1202,7 +1202,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -1219,7 +1219,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -1276,7 +1276,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -1293,7 +1293,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -1310,7 +1310,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -1327,7 +1327,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -1344,7 +1344,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -1361,7 +1361,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -1384,7 +1384,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -1401,7 +1401,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -1424,7 +1424,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -1441,7 +1441,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -1458,7 +1458,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -1475,7 +1475,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -1499,7 +1499,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -1516,7 +1516,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -1550,7 +1550,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -1567,7 +1567,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -1584,7 +1584,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -1641,7 +1641,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -1658,7 +1658,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -1675,7 +1675,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -1692,7 +1692,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -1709,7 +1709,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -1726,7 +1726,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -1749,7 +1749,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -1766,7 +1766,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -1789,7 +1789,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -1806,7 +1806,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -1823,7 +1823,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -1840,7 +1840,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -1864,7 +1864,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -1881,7 +1881,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -1915,7 +1915,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -1932,7 +1932,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -1949,7 +1949,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -2006,7 +2006,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -2023,7 +2023,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -2040,7 +2040,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -2057,7 +2057,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -2074,7 +2074,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -2091,7 +2091,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -2114,7 +2114,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -2131,7 +2131,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -2154,7 +2154,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -2171,7 +2171,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -2188,7 +2188,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -2205,7 +2205,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -2229,7 +2229,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -2246,7 +2246,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -2280,7 +2280,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -2297,7 +2297,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -2314,7 +2314,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -2371,7 +2371,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -2388,7 +2388,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -2405,7 +2405,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -2422,7 +2422,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -2439,7 +2439,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -2456,7 +2456,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -2479,7 +2479,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -2496,7 +2496,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -2519,7 +2519,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -2536,7 +2536,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -2553,7 +2553,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -2570,7 +2570,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -2594,7 +2594,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -2611,7 +2611,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -2645,7 +2645,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -2662,7 +2662,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -2679,7 +2679,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -2736,7 +2736,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -2753,7 +2753,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -2770,7 +2770,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -2787,7 +2787,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -2804,7 +2804,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -2821,7 +2821,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -2844,7 +2844,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -2861,7 +2861,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -2884,7 +2884,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -2901,7 +2901,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -2918,7 +2918,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -2935,7 +2935,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -2959,7 +2959,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -2976,7 +2976,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -3010,7 +3010,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -3027,7 +3027,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -3044,7 +3044,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -3101,7 +3101,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -3118,7 +3118,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -3135,7 +3135,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -3152,7 +3152,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -3169,7 +3169,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -3186,7 +3186,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -3209,7 +3209,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -3226,7 +3226,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -3249,7 +3249,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -3266,7 +3266,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -3283,7 +3283,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -3300,7 +3300,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -3324,7 +3324,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -3341,7 +3341,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -3375,7 +3375,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -3392,7 +3392,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -3409,7 +3409,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -3466,7 +3466,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -3483,7 +3483,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -3500,7 +3500,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -3517,7 +3517,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -3534,7 +3534,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -3551,7 +3551,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -3574,7 +3574,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -3591,7 +3591,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -3614,7 +3614,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -3631,7 +3631,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -3648,7 +3648,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -3665,7 +3665,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -3689,7 +3689,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -3706,7 +3706,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -3740,7 +3740,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -3757,7 +3757,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -3774,7 +3774,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -3831,7 +3831,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -3848,7 +3848,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -3865,7 +3865,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -3882,7 +3882,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -3899,7 +3899,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -3916,7 +3916,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -3939,7 +3939,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -3956,7 +3956,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -3979,7 +3979,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -3996,7 +3996,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -4013,7 +4013,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -4030,7 +4030,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -4054,7 +4054,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -4071,7 +4071,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -4105,7 +4105,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -4122,7 +4122,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -4139,7 +4139,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -4196,7 +4196,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -4213,7 +4213,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -4230,7 +4230,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -4247,7 +4247,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -4264,7 +4264,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -4281,7 +4281,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -4304,7 +4304,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -4321,7 +4321,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -4344,7 +4344,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -4361,7 +4361,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -4378,7 +4378,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -4395,7 +4395,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -4419,7 +4419,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -4436,7 +4436,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -4470,7 +4470,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -4487,7 +4487,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -4504,7 +4504,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -4561,7 +4561,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -4578,7 +4578,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -4595,7 +4595,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -4612,7 +4612,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -4629,7 +4629,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -4646,7 +4646,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -4669,7 +4669,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -4686,7 +4686,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -4709,7 +4709,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -4726,7 +4726,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -4743,7 +4743,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -4760,7 +4760,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -4784,7 +4784,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -4801,7 +4801,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -4835,7 +4835,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -4852,7 +4852,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -4869,7 +4869,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -4926,7 +4926,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -4943,7 +4943,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -4960,7 +4960,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -4977,7 +4977,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -4994,7 +4994,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -5011,7 +5011,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -5034,7 +5034,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -5051,7 +5051,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -5074,7 +5074,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -5091,7 +5091,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -5108,7 +5108,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -5125,7 +5125,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -5149,7 +5149,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -5166,7 +5166,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -5200,7 +5200,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -5217,7 +5217,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -5234,7 +5234,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -5291,7 +5291,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -5308,7 +5308,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -5325,7 +5325,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -5342,7 +5342,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -5359,7 +5359,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -5376,7 +5376,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -5399,7 +5399,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -5416,7 +5416,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -5439,7 +5439,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -5456,7 +5456,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -5473,7 +5473,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -5490,7 +5490,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -5514,7 +5514,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -5531,7 +5531,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -5565,7 +5565,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -5582,7 +5582,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -5599,7 +5599,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -5656,7 +5656,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -5673,7 +5673,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -5690,7 +5690,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -5707,7 +5707,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -5724,7 +5724,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -5741,7 +5741,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -5764,7 +5764,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -5781,7 +5781,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -5804,7 +5804,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -5821,7 +5821,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -5838,7 +5838,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -5855,7 +5855,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -5879,7 +5879,7 @@
       0.839,
       1
      ],
-     "model": "7d40b1d93f31"
+     "model": "299f6b772819"
     },
     {
      "id": "idle-plain",
@@ -5896,7 +5896,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -5930,7 +5930,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -5947,7 +5947,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -5964,7 +5964,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -6021,7 +6021,7 @@
       0.455,
       1
      ],
-     "model": "127878054cd0"
+     "model": "c24768904bc3"
     },
     {
      "id": "working-blaze",
@@ -6038,7 +6038,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -6055,7 +6055,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -6072,7 +6072,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -6089,7 +6089,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -6106,7 +6106,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -6129,7 +6129,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -6146,7 +6146,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "blocked-permission",
@@ -6169,7 +6169,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-question",
@@ -6186,7 +6186,7 @@
       0.627,
       1
      ],
-     "model": "7044772ac7ed"
+     "model": "6f126c91e8bd"
     },
     {
      "id": "blocked-failure",
@@ -6203,7 +6203,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -6220,7 +6220,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -6244,7 +6244,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -6278,7 +6278,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -6295,7 +6295,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -6312,7 +6312,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -6363,7 +6363,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -6380,7 +6380,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -6397,7 +6397,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -6414,7 +6414,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -6431,7 +6431,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -6448,7 +6448,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -6471,7 +6471,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -6488,7 +6488,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -6505,7 +6505,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -6528,7 +6528,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -6551,7 +6551,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -6568,7 +6568,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -6585,7 +6585,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -6609,7 +6609,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -6643,7 +6643,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -6660,7 +6660,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -6677,7 +6677,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -6728,7 +6728,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -6745,7 +6745,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -6762,7 +6762,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -6779,7 +6779,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -6796,7 +6796,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -6813,7 +6813,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -6836,7 +6836,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -6853,7 +6853,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -6870,7 +6870,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -6893,7 +6893,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -6916,7 +6916,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -6933,7 +6933,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -6950,7 +6950,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -6974,7 +6974,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -7008,7 +7008,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -7025,7 +7025,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -7042,7 +7042,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -7093,7 +7093,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -7110,7 +7110,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -7127,7 +7127,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -7144,7 +7144,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -7161,7 +7161,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -7178,7 +7178,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -7201,7 +7201,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -7218,7 +7218,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -7235,7 +7235,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -7258,7 +7258,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -7281,7 +7281,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -7298,7 +7298,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -7315,7 +7315,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -7339,7 +7339,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -7373,7 +7373,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -7390,7 +7390,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -7407,7 +7407,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -7458,7 +7458,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -7475,7 +7475,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -7492,7 +7492,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -7509,7 +7509,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -7526,7 +7526,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -7543,7 +7543,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -7566,7 +7566,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -7583,7 +7583,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -7600,7 +7600,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -7623,7 +7623,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -7646,7 +7646,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -7663,7 +7663,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -7680,7 +7680,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -7704,7 +7704,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -7738,7 +7738,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -7755,7 +7755,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -7772,7 +7772,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -7823,7 +7823,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -7840,7 +7840,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -7857,7 +7857,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -7874,7 +7874,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -7891,7 +7891,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -7908,7 +7908,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -7931,7 +7931,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -7948,7 +7948,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -7965,7 +7965,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -7988,7 +7988,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -8011,7 +8011,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -8028,7 +8028,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -8045,7 +8045,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -8069,7 +8069,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -8103,7 +8103,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -8120,7 +8120,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -8137,7 +8137,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -8188,7 +8188,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -8205,7 +8205,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -8222,7 +8222,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -8239,7 +8239,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -8256,7 +8256,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -8273,7 +8273,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -8296,7 +8296,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -8313,7 +8313,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -8330,7 +8330,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -8353,7 +8353,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -8376,7 +8376,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -8393,7 +8393,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -8410,7 +8410,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -8434,7 +8434,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -8468,7 +8468,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -8485,7 +8485,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -8502,7 +8502,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -8553,7 +8553,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -8570,7 +8570,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -8587,7 +8587,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -8604,7 +8604,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -8621,7 +8621,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -8638,7 +8638,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -8661,7 +8661,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -8678,7 +8678,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -8695,7 +8695,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -8718,7 +8718,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -8741,7 +8741,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -8758,7 +8758,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -8775,7 +8775,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -8799,7 +8799,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -8833,7 +8833,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -8850,7 +8850,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -8867,7 +8867,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -8918,7 +8918,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -8935,7 +8935,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -8952,7 +8952,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -8969,7 +8969,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -8986,7 +8986,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -9003,7 +9003,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -9026,7 +9026,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -9043,7 +9043,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -9060,7 +9060,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -9083,7 +9083,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -9106,7 +9106,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -9123,7 +9123,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -9140,7 +9140,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -9164,7 +9164,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -9198,7 +9198,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -9215,7 +9215,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -9232,7 +9232,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -9283,7 +9283,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -9300,7 +9300,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -9317,7 +9317,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -9334,7 +9334,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -9351,7 +9351,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -9368,7 +9368,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -9391,7 +9391,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -9408,7 +9408,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -9425,7 +9425,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -9448,7 +9448,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -9471,7 +9471,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -9488,7 +9488,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -9505,7 +9505,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -9529,7 +9529,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -9563,7 +9563,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -9580,7 +9580,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -9597,7 +9597,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -9648,7 +9648,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -9665,7 +9665,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -9682,7 +9682,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -9699,7 +9699,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -9716,7 +9716,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -9733,7 +9733,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -9756,7 +9756,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -9773,7 +9773,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -9790,7 +9790,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -9813,7 +9813,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -9836,7 +9836,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -9853,7 +9853,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -9870,7 +9870,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -9894,7 +9894,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -9928,7 +9928,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -9945,7 +9945,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -9962,7 +9962,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -10013,7 +10013,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -10030,7 +10030,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -10047,7 +10047,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -10064,7 +10064,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -10081,7 +10081,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -10098,7 +10098,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -10121,7 +10121,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -10138,7 +10138,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -10155,7 +10155,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -10178,7 +10178,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -10201,7 +10201,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -10218,7 +10218,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -10235,7 +10235,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -10259,7 +10259,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -10293,7 +10293,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -10310,7 +10310,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -10327,7 +10327,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -10378,7 +10378,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -10395,7 +10395,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -10412,7 +10412,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -10429,7 +10429,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -10446,7 +10446,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -10463,7 +10463,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -10486,7 +10486,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -10503,7 +10503,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -10520,7 +10520,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -10543,7 +10543,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -10566,7 +10566,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -10583,7 +10583,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -10600,7 +10600,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -10624,7 +10624,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -10658,7 +10658,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -10675,7 +10675,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -10692,7 +10692,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -10743,7 +10743,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -10760,7 +10760,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -10777,7 +10777,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -10794,7 +10794,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -10811,7 +10811,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -10828,7 +10828,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -10851,7 +10851,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -10868,7 +10868,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -10885,7 +10885,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -10908,7 +10908,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -10931,7 +10931,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -10948,7 +10948,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -10965,7 +10965,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -10989,7 +10989,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -11023,7 +11023,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -11040,7 +11040,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -11057,7 +11057,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -11108,7 +11108,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -11125,7 +11125,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -11142,7 +11142,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -11159,7 +11159,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -11176,7 +11176,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -11193,7 +11193,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -11216,7 +11216,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -11233,7 +11233,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -11250,7 +11250,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -11273,7 +11273,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -11296,7 +11296,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -11313,7 +11313,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -11330,7 +11330,7 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   },
@@ -11354,7 +11354,7 @@
       0.922,
       1
      ],
-     "model": "add99ae79d2a"
+     "model": "795fa1ce9033"
     },
     {
      "id": "starting",
@@ -11388,7 +11388,7 @@
       0.318,
       1
      ],
-     "model": "c179c7000e64"
+     "model": "655b3fa5357d"
     },
     {
      "id": "receded-idle-unread",
@@ -11405,7 +11405,7 @@
       0.055,
       1
      ],
-     "model": "dbaad0daa1a3"
+     "model": "406fd73bef48"
     },
     {
      "id": "peer-idle",
@@ -11422,7 +11422,7 @@
       0.333,
       1
      ],
-     "model": "48ce14bb36c6"
+     "model": "858126e6dadc"
     },
     {
      "id": "terminal-running",
@@ -11473,7 +11473,7 @@
       0.627,
       1
      ],
-     "model": "1812219ca2ae"
+     "model": "970311ea79a9"
     },
     {
      "id": "working-blaze",
@@ -11490,7 +11490,7 @@
       0.055,
       1
      ],
-     "model": "b7317a302748"
+     "model": "91736722e406"
     },
     {
      "id": "receded-working",
@@ -11507,7 +11507,7 @@
       0.545,
       1
      ],
-     "model": "67afe5bf7b58"
+     "model": "b193453590e3"
     },
     {
      "id": "long-names",
@@ -11524,7 +11524,7 @@
       1,
       1
      ],
-     "model": "11773e9bc7a0"
+     "model": "37daa1a0a2fd"
     },
     {
      "id": "bare-facets",
@@ -11541,7 +11541,7 @@
       0.176,
       1
      ],
-     "model": "cede386f2427"
+     "model": "183be66a543b"
     },
     {
      "id": "working-delegating",
@@ -11558,7 +11558,7 @@
       0.545,
       1
      ],
-     "model": "a289eafdb007"
+     "model": "f1a66dda1069"
     },
     {
      "id": "working-ingested",
@@ -11581,7 +11581,7 @@
       0.129,
       1
      ],
-     "model": "bd01318a90a7"
+     "model": "afa3fbf0615b"
     },
     {
      "id": "peer-working",
@@ -11598,7 +11598,7 @@
       0.333,
       1
      ],
-     "model": "9a3d3798c4e3"
+     "model": "c654108d4980"
     },
     {
      "id": "late-arrival",
@@ -11615,7 +11615,7 @@
       0.318,
       1
      ],
-     "model": "8d1b469bc60a"
+     "model": "499c8eebfe04"
     },
     {
      "id": "working-full",
@@ -11638,7 +11638,7 @@
       0.455,
       1
      ],
-     "model": "638b1c3d8c08"
+     "model": "ed5b2e561fa2"
     },
     {
      "id": "blocked-permission",
@@ -11661,7 +11661,7 @@
       0.98,
       1
      ],
-     "model": "8583008bcb91"
+     "model": "b1b4e2d880e8"
     },
     {
      "id": "blocked-failure",
@@ -11678,7 +11678,7 @@
       0.416,
       1
      ],
-     "model": "4648d6089040"
+     "model": "171ec426d762"
     },
     {
      "id": "peer-blocked",
@@ -11695,13 +11695,13 @@
       0.333,
       1
      ],
-     "model": "d8334402df54"
+     "model": "8d2dbf538495"
     }
    ]
   }
  ],
  "models": {
-  "7d40b1d93f31": {
+  "299f6b772819": {
    "id": "idle-unread",
    "accent": "#00c0d6",
    "stale": false,
@@ -11777,10 +11777,10 @@
     "sprite": "grok",
     "opacity": 0.1
    },
-   "ariaLabel": "billing-api, K2, idle: idle · ~$0.91 estimated API cost · $0.00/min, CTX:38%, new message: Done — 14 files changed, verify is green.",
-   "title": "billing-api · K2 · idle · ~$0.91 estimated API cost · $0.00/min"
+   "ariaLabel": "billing-api, K2, idle: Done — 14 files changed, verify is green., CTX:38%, new message: Done — 14 files changed, verify is green.",
+   "title": "billing-api · K2 · Done — 14 files changed, verify is green."
   },
-  "add99ae79d2a": {
+  "795fa1ce9033": {
    "id": "idle-plain",
    "accent": "#ce8ceb",
    "stale": false,
@@ -11834,8 +11834,8 @@
     "sprite": "opencode",
     "opacity": 0.1
    },
-   "ariaLabel": "truffle, Haiku 4.5, idle: idle · ~$0.43 estimated API cost · $0.00/min, CTX:34%",
-   "title": "truffle · Haiku 4.5 · idle · ~$0.43 estimated API cost · $0.00/min"
+   "ariaLabel": "truffle, Haiku 4.5, idle: idle, CTX:34%",
+   "title": "truffle · Haiku 4.5 · idle"
   },
   "8076a2ec3cdb": {
    "id": "starting",
@@ -11890,7 +11890,7 @@
    "ariaLabel": "vibe-field, Sonnet 4.5, idle: starting, CTX:--%",
    "title": "vibe-field · Sonnet 4.5 · starting"
   },
-  "c179c7000e64": {
+  "655b3fa5357d": {
    "id": "idle-stale",
    "accent": "#89bd51",
    "stale": true,
@@ -11944,10 +11944,10 @@
     "sprite": "claude",
     "opacity": 0.1
    },
-   "ariaLabel": "puppeteer, Sonnet 4.5, idle: idle · ~$0.73 estimated API cost · $0.00/min, CTX:40%",
-   "title": "puppeteer · Sonnet 4.5 · idle · ~$0.73 estimated API cost · $0.00/min"
+   "ariaLabel": "puppeteer, Sonnet 4.5, idle: idle, CTX:40%",
+   "title": "puppeteer · Sonnet 4.5 · idle"
   },
-  "dbaad0daa1a3": {
+  "406fd73bef48": {
    "id": "receded-idle-unread",
    "accent": "#d9a00e",
    "stale": false,
@@ -12023,10 +12023,10 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "swarm-lab, Opus 4.5, idle: idle · ~$0.93 estimated API cost · $0.00/min, CTX:52%, new message: Benchmarks are in: the new path is 3.1× faster at n = 60.",
-   "title": "swarm-lab · Opus 4.5 · idle · ~$0.93 estimated API cost · $0.00/min"
+   "ariaLabel": "swarm-lab, Opus 4.5, idle: Benchmarks are in: the new path is 3.1× faster at n = 60., CTX:52%, new message: Benchmarks are in: the new path is 3.1× faster at n = 60.",
+   "title": "swarm-lab · Opus 4.5 · Benchmarks are in: the new path is 3.1× faster at n = 60."
   },
-  "48ce14bb36c6": {
+  "858126e6dadc": {
    "id": "peer-idle",
    "accent": "#555555",
    "stale": false,
@@ -12080,8 +12080,8 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "truffle, GPT-5, idle: idle · ~$1.86 estimated API cost · $0.00/min, CTX:25%",
-   "title": "truffle · GPT-5 · idle · ~$1.86 estimated API cost · $0.00/min"
+   "ariaLabel": "truffle, GPT-5, idle: tower · idle, CTX:25%",
+   "title": "truffle · GPT-5 · tower · idle"
   },
   "dc4445c91dad": {
    "id": "terminal-running",
@@ -12192,7 +12192,7 @@
    "ariaLabel": "james, unassigned terminal, idle",
    "title": "/Users/james"
   },
-  "127878054cd0": {
+  "c24768904bc3": {
    "id": "working-full",
    "accent": "#a29dff",
    "stale": false,
@@ -12281,10 +12281,10 @@
     "sprite": "opencode",
     "opacity": 0.1
    },
-   "ariaLabel": "vibe-field, K2, working: Edit packages/views/src/lab/lab-world.ts +214 −18 · ~$1.39 estimated API cost · $0.35/min, CTX:41%, burning $21/hr",
-   "title": "vibe-field · K2 · Edit packages/views/src/lab/lab-world.ts +214 −18 · ~$1.39 estimated API cost · $0.35/min · $21/hr"
+   "ariaLabel": "vibe-field, K2, working: working, CTX:41%, burning $21/hr",
+   "title": "vibe-field · K2 · working · $21/hr"
   },
-  "b7317a302748": {
+  "91736722e406": {
    "id": "working-blaze",
    "accent": "#d9a00e",
    "stale": false,
@@ -12372,10 +12372,10 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "swarm-lab, Opus 4.5, working: Grep \"createMonitorBackend\" packages/ · ~$12.40 estimated API cost · $1.42/min, CTX:92%, burning $85/hr",
-   "title": "swarm-lab · Opus 4.5 · Grep \"createMonitorBackend\" packages/ · ~$12.40 estimated API cost · $1.42/min · $85/hr"
+   "ariaLabel": "swarm-lab, Opus 4.5, working: working, CTX:92%, burning $85/hr",
+   "title": "swarm-lab · Opus 4.5 · working · $85/hr"
   },
-  "67afe5bf7b58": {
+  "b193453590e3": {
    "id": "receded-working",
    "accent": "#35c78b",
    "stale": false,
@@ -12463,10 +12463,10 @@
     "sprite": "opencode",
     "opacity": 0.1
    },
-   "ariaLabel": "design-kit, K2, working: Read docs/rfcs/004-layered-agent-runtime.md · ~$1.97 estimated API cost · $0.08/min, CTX:41%, burning $4.7/hr",
-   "title": "design-kit · K2 · Read docs/rfcs/004-layered-agent-runtime.md · ~$1.97 estimated API cost · $0.08/min · $4.7/hr"
+   "ariaLabel": "design-kit, K2, working: working, CTX:41%, burning $4.7/hr",
+   "title": "design-kit · K2 · working · $4.7/hr"
   },
-  "11773e9bc7a0": {
+  "37daa1a0a2fd": {
    "id": "long-names",
    "accent": "#84a7ff",
    "stale": false,
@@ -12554,10 +12554,10 @@
     "sprite": "opencode",
     "opacity": 0.1
    },
-   "ariaLabel": "an-unusually-long-project-folder-name-that-overflows-every-label, opus-4-5-20251101 (extended thinking, a million tokens of context), working: Edit packages/views/src/views/timeline/lab/a-path-that-goes-on-for-a-very-long-way/main.ts +1024 −512 · ~$3.19 estimated API cost · $0.12/min, CTX:41%, burning $7.3/hr",
-   "title": "an-unusually-long-project-folder-name-that-overflows-every-label · opus-4-5-20251101 (extended thinking, a million tokens of context) · Edit packages/views/src/views/timeline/lab/a-path-that-goes-on-for-a-very-long-way/main.ts +1024 −512 · ~$3.19 estimated API cost · $0.12/min · $7.3/hr"
+   "ariaLabel": "an-unusually-long-project-folder-name-that-overflows-every-label, opus-4-5-20251101 (extended thinking, a million tokens of context), working: working, CTX:41%, burning $7.3/hr",
+   "title": "an-unusually-long-project-folder-name-that-overflows-every-label · opus-4-5-20251101 (extended thinking, a million tokens of context) · working · $7.3/hr"
   },
-  "cede386f2427": {
+  "183be66a543b": {
    "id": "bare-facets",
    "accent": "#adb42d",
    "stale": false,
@@ -12624,10 +12624,10 @@
     "sprite": "opencode",
     "opacity": 0.1
    },
-   "ariaLabel": "ghosttea, Opencode, working: working · cost unavailable, CTX:--%, burning —/hr",
-   "title": "ghosttea · Opencode · working · cost unavailable · —/hr"
+   "ariaLabel": "ghosttea, Opencode, working: working, CTX:--%, burning —/hr",
+   "title": "ghosttea · Opencode · working · —/hr"
   },
-  "a289eafdb007": {
+  "f1a66dda1069": {
    "id": "working-delegating",
    "accent": "#35c78b",
    "stale": false,
@@ -12715,10 +12715,10 @@
     "sprite": "kimi",
     "opacity": 0.1
    },
-   "ariaLabel": "design-kit, Opus 4.5, working: Delegating to 3 subagents · ~$3.74 estimated API cost · $0.07/min, CTX:23%, burning $4.4/hr",
-   "title": "design-kit · Opus 4.5 · Delegating to 3 subagents · ~$3.74 estimated API cost · $0.07/min · $4.4/hr"
+   "ariaLabel": "design-kit, Opus 4.5, working: working, CTX:23%, burning $4.4/hr",
+   "title": "design-kit · Opus 4.5 · working · $4.4/hr"
   },
-  "bd01318a90a7": {
+  "afa3fbf0615b": {
    "id": "working-ingested",
    "accent": "#fa846a",
    "stale": false,
@@ -12807,10 +12807,10 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "notes, Haiku 4.5, working: Thinking · ~$1.29 estimated API cost · $0.39/min, CTX:36%, burning $23/hr",
-   "title": "notes · Haiku 4.5 · Thinking · ~$1.29 estimated API cost · $0.39/min · $23/hr"
+   "ariaLabel": "notes, Haiku 4.5, working: working, CTX:36%, burning $23/hr",
+   "title": "notes · Haiku 4.5 · working · $23/hr"
   },
-  "9a3d3798c4e3": {
+  "c654108d4980": {
    "id": "peer-working",
    "accent": "#555555",
    "stale": false,
@@ -12898,10 +12898,10 @@
     "sprite": "copilot",
     "opacity": 0.1
    },
-   "ariaLabel": "ghosttea, GPT-5, working: Run pnpm verify · ~$1.66 estimated API cost · $0.28/min, CTX:34%, burning $17/hr",
-   "title": "ghosttea · GPT-5 · Run pnpm verify · ~$1.66 estimated API cost · $0.28/min · $17/hr"
+   "ariaLabel": "ghosttea, GPT-5, working: studio · working, CTX:34%, burning $17/hr",
+   "title": "ghosttea · GPT-5 · studio · working · $17/hr"
   },
-  "8583008bcb91": {
+  "b1b4e2d880e8": {
    "id": "blocked-permission",
    "accent": "#89bd51",
    "stale": false,
@@ -12979,10 +12979,10 @@
     "opacity": 0.1
    },
    "blockerKind": "permission",
-   "ariaLabel": "puppeteer, Sonnet 4.5, blocked: Bash · git push origin main · ~$2.09 estimated API cost · $0.05/min, CTX:45%, permission: Bash · git push origin main",
-   "title": "puppeteer · Sonnet 4.5 · Bash · git push origin main · ~$2.09 estimated API cost · $0.05/min"
+   "ariaLabel": "puppeteer, Sonnet 4.5, blocked: permission · Bash, CTX:45%, permission: Bash · git push origin main",
+   "title": "puppeteer · Sonnet 4.5 · permission · Bash"
   },
-  "7044772ac7ed": {
+  "6f126c91e8bd": {
    "id": "blocked-question",
    "accent": "#f77fa0",
    "stale": false,
@@ -13059,10 +13059,10 @@
     "opacity": 0.1
    },
    "blockerKind": "question",
-   "ariaLabel": "rosetta, Haiku 4.5, blocked: Should the grant expire with the session, or after an hour? · ~$3.31 estimated API cost · $0.13/min, CTX:69%, question: Should the grant expire with the session, or after an hour?",
-   "title": "rosetta · Haiku 4.5 · Should the grant expire with the session, or after an hour? · ~$3.31 estimated API cost · $0.13/min"
+   "ariaLabel": "rosetta, Haiku 4.5, blocked: question, CTX:69%, question: Should the grant expire with the session, or after an hour?",
+   "title": "rosetta · Haiku 4.5 · question"
   },
-  "4648d6089040": {
+  "171ec426d762": {
    "id": "blocked-failure",
    "accent": "#fa846a",
    "stale": false,
@@ -13139,10 +13139,10 @@
     "opacity": 0.1
    },
    "blockerKind": "failure",
-   "ariaLabel": "notes, Sonnet 4.5, blocked: rate limited · retrying · ~$1.21 estimated API cost · $0.27/min, CTX:38%, failed: rate limited · retrying",
-   "title": "notes · Sonnet 4.5 · rate limited · retrying · ~$1.21 estimated API cost · $0.27/min"
+   "ariaLabel": "notes, Sonnet 4.5, blocked: failure, CTX:38%, failed: rate limited · retrying",
+   "title": "notes · Sonnet 4.5 · failure"
   },
-  "d8334402df54": {
+  "8d2dbf538495": {
    "id": "peer-blocked",
    "accent": "#555555",
    "stale": false,
@@ -13219,10 +13219,10 @@
     "opacity": 0.1
    },
    "blockerKind": "permission",
-   "ariaLabel": "rosetta, Sonnet 4.5, blocked: Bash · git push origin main · ~$1.55 estimated API cost · $0.04/min, CTX:21%, permission: Bash · git push origin main",
-   "title": "rosetta · Sonnet 4.5 · Bash · git push origin main · ~$1.55 estimated API cost · $0.04/min"
+   "ariaLabel": "rosetta, Sonnet 4.5, blocked: studio · permission · Bash, CTX:21%, permission: Bash · git push origin main",
+   "title": "rosetta · Sonnet 4.5 · studio · permission · Bash"
   },
-  "1812219ca2ae": {
+  "970311ea79a9": {
    "id": "blocked-question",
    "accent": "#f77fa0",
    "stale": false,
@@ -13310,10 +13310,10 @@
     "sprite": "antigravity",
     "opacity": 0.1
    },
-   "ariaLabel": "rosetta, Haiku 4.5, working: Edit src/grants.ts +12 −3 · ~$3.31 estimated API cost · $0.13/min, CTX:69%, burning $8.0/hr",
-   "title": "rosetta · Haiku 4.5 · Edit src/grants.ts +12 −3 · ~$3.31 estimated API cost · $0.13/min · $8.0/hr"
+   "ariaLabel": "rosetta, Haiku 4.5, working: Done — 14 files changed, verify is green., CTX:69%, burning $8.0/hr",
+   "title": "rosetta · Haiku 4.5 · Done — 14 files changed, verify is green. · $8.0/hr"
   },
-  "8d1b469bc60a": {
+  "499c8eebfe04": {
    "id": "late-arrival",
    "accent": "#89bd51",
    "stale": false,
@@ -13401,10 +13401,10 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "puppeteer, Sonnet 4.5, working: Delegating to 3 subagents · ~$1.33 estimated API cost · $0.27/min, CTX:65%, burning $16/hr",
-   "title": "puppeteer · Sonnet 4.5 · Delegating to 3 subagents · ~$1.33 estimated API cost · $0.27/min · $16/hr"
+   "ariaLabel": "puppeteer, Sonnet 4.5, working: working, CTX:65%, burning $16/hr",
+   "title": "puppeteer · Sonnet 4.5 · working · $16/hr"
   },
-  "638b1c3d8c08": {
+  "ed5b2e561fa2": {
    "id": "working-full",
    "accent": "#a29dff",
    "stale": false,
@@ -13482,8 +13482,8 @@
     "opacity": 0.1
    },
    "blockerKind": "permission",
-   "ariaLabel": "vibe-field, K2, blocked: Bash · git push origin main · ~$1.39 estimated API cost · $0.35/min, CTX:41%, permission: Bash · git push origin main",
-   "title": "vibe-field · K2 · Bash · git push origin main · ~$1.39 estimated API cost · $0.35/min"
+   "ariaLabel": "vibe-field, K2, blocked: permission · Bash, CTX:41%, permission: Bash · git push origin main",
+   "title": "vibe-field · K2 · permission · Bash"
   }
  }
 }

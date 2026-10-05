@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorAgent } from '../../../monitor/types.js';
+import { agentViewFixture } from '@vibecook/puppeteer-view-sdk/testing';
 import { approximateBloomMeasure } from './canvas-measure.js';
 import { BLOOM } from './constants.js';
 import {
@@ -86,7 +86,7 @@ describe('the field under a bloom', () => {
     const work = s.l1.find((b) => b.item.profile?.id === 'work');
     if (!work) throw new Error('no work');
     const pointing = pointBloom(env(1100), s, { x: work.x, y: work.y });
-    const row = { id: 'r', profileSet: 'work' } as MonitorAgent;
+    const row = agentViewFixture({ id: 'r', profileSet: 'work' });
     expect(run(memory, pointing, 16).lit(row)).toBe(true);
     expect(run(memory, cancelBloom(env(1200), pointing), 16).lit(row)).toBe(false);
   });

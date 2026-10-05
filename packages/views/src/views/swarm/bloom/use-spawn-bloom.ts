@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
-import type { MonitorActions, MonitorSpawnMenu, MonitorSpawnTarget } from '../../../monitor/types.js';
+import type { MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
 import { approximateBloomMeasure, canvasBloomMeasure } from './canvas-measure.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import type { BloomPoint, BloomRect, BloomSize } from './geometry.js';
@@ -34,12 +34,26 @@ import type { BloomMode } from './words.js';
 // the field draws. AgentSwarm owns the pointer's capture and hands each event
 // here first; a method that answers true took the event. Without a spawn menu
 // nothing here engages and a completed hold creates at once, exactly as before.
+//
+// On the SDK (MV-5) the bloom reads no document and binds no global key
+// (MV-W2, MV-D8). Where the keyboard's focus stands it learns from the view's
+// own focus events (`SpawnBloomHost.focus`); what had the focus when a bloom
+// took it, from the focus event that brought it (`focusEntered`); and a hold's
+// ⎋ it hears on the field, which is focusable for exactly that (`fieldKeyDown`).
+
+/**
+ * Where the keyboard's focus stands, as the swarm tracks it from its own focus
+ * events: in the bloom's menu, on the field itself, on one of the view's
+ * controls (a body's button, the keys door), outside the view, or nowhere the
+ * view has seen it go.
+ */
+export type BloomFocusPlace = 'menu' | 'field' | 'control' | 'outside' | 'none';
 
 /** What the bloom reads from the swarm it lives in. */
 export interface SpawnBloomHost {
   /** The field's element: its size, and the frame of every point handed in. */
   readonly container: RefObject<HTMLElement | null>;
-  /** The chrome over the field, measured now (the obstacles the physics already keeps off). */
+  /** The chrome over the field (the stage's obstacles, MV-D19: what the physics already keeps off). */
   readonly readChrome: () => readonly BloomRect[];
   /** The bodies drawn now, for where the words go. */
   readonly bodies: () => readonly BloomBody[];
@@ -47,7 +61,11 @@ export interface SpawnBloomHost {
   readonly idleRadius: () => number;
   /** Motion is on: no reduced-motion preference and the host's animations switch on. */
   readonly motion: () => boolean;
-  readonly createAt: MonitorActions['createAt'];
+  /** Where the focus stands now, from the view's own focus events. */
+  readonly focus: () => BloomFocusPlace;
+  /** The view's `create`: where, and the desktop and profile chosen. A host that answers with a promise is waited
+   * for (the birth's clock, SB §2.6); one that answers nothing counts as answered at once. */
+  readonly createAt: (at: BloomPoint, target?: MonitorSpawnTarget) => void | Promise<void>;
   /** A bloom's commit asked the host for a terminal (not an instant create): the swarm draws the
    * birth until its row arrives. `answer` settles as `createAt` did (a throw is a rejection). */
   readonly born?: ((choice: BloomChoice, answer: Promise<void>) => void) | undefined;
@@ -88,6 +106,10 @@ export interface SpawnBloomControl {
   field(): { readonly state: BloomState | null; readonly closedAt: number };
   onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void;
   onBlur(event: ReactFocusEvent<HTMLDivElement>): void;
+  /** A key on the field itself (MV-D8): ⎋ puts a hold's bloom away. True when the key was taken. */
+  fieldKeyDown(event: ReactKeyboardEvent<HTMLElement>): boolean;
+  /** The menu took the focus: what had it (the focus event's `relatedTarget`) is where it goes back to. */
+  focusEntered(related: EventTarget | null): void;
 }
 
 /** What a choice asks the host for; nothing when it names neither a desktop nor a profile (today's call). */
@@ -128,9 +150,10 @@ interface Memory {
   reduced: boolean;
   measure: BloomTextMeasure | undefined;
   closedAt: number;
-  exitTimer: number | undefined;
-  /** Where the keyboard goes back to when a held-open or keys bloom closes. */
-  returnFocus: HTMLElement | null;
+  exitTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Where the keyboard goes back to when a held-open or keys bloom closes; `pending`: whatever the menu takes it
+   * from, learned when it does (`focusEntered`). */
+  returnFocus: HTMLElement | null | 'pending';
   /** The focus already went somewhere of its own accord (Tab, a click elsewhere): leave it there. */
   keepFocus: boolean;
   /** A secondary press just put the bloom away: its contextmenu must not open another. */
@@ -170,7 +193,8 @@ export function createSpawnBloomEngine(
   };
 
   const env = (): BloomEnv => {
-    m.measure ??= canvasBloomMeasure() ?? approximateBloomMeasure;
+    const element = host.current.container.current;
+    m.measure ??= (element ? canvasBloomMeasure(element) : undefined) ?? approximateBloomMeasure;
     return {
       field: m.field,
       chrome: m.chrome,
@@ -186,19 +210,19 @@ export function createSpawnBloomEngine(
 
   /** The keyboard goes back where it came from, once the press that closed the bloom has moved it (or not). */
   const giveBackFocus = (): void => {
-    const target = m.returnFocus;
+    const target = m.returnFocus === 'pending' ? null : m.returnFocus;
     m.returnFocus = null;
     if (m.keepFocus) {
       m.keepFocus = false;
       return;
     }
-    window.setTimeout(() => {
-      const active = document.activeElement;
-      const menu = menuRef.current;
-      const adrift = !active || active === document.body || (!!menu && menu.contains(active));
+    setTimeout(() => {
+      // Adrift: still in the menu, on the field itself (a press on empty ground), or nowhere the view has seen.
+      const where = host.current.focus();
+      const adrift = where === 'menu' || where === 'field' || where === 'none';
       if (!adrift) return;
       if (target?.isConnected) target.focus({ preventScroll: true });
-      else menu?.blur();
+      else menuRef.current?.blur();
     }, 0);
   };
 
@@ -208,15 +232,15 @@ export function createSpawnBloomEngine(
     m.state = next;
     render(next, m.reduced);
     if (!next) {
-      window.clearTimeout(m.exitTimer);
+      clearTimeout(m.exitTimer);
       m.exitTimer = undefined;
       return;
     }
     if (!next.closed || (prev?.closed && prev.startedAt === next.startedAt)) return;
     // Closed: the hub shrinks from now, and the bloom is dropped once its exit has run.
     m.closedAt = performance.now();
-    window.clearTimeout(m.exitTimer);
-    m.exitTimer = window.setTimeout(() => {
+    clearTimeout(m.exitTimer);
+    m.exitTimer = setTimeout(() => {
       m.exitTimer = undefined;
       if (m.state === next) set(null);
     }, bloomExitMs(next));
@@ -325,9 +349,8 @@ export function createSpawnBloomEngine(
         return;
       }
       if (!point || onBody) return;
-      const active = document.activeElement;
-      m.returnFocus =
-        typeof HTMLElement !== 'undefined' && active instanceof HTMLElement && active !== document.body ? active : null;
+      // Whatever has the keyboard gets it back when this bloom closes: learned as the menu takes it.
+      m.returnFocus = 'pending';
       if (!bloomAt(point, 'sticky', menu)) m.returnFocus = null;
     },
     openKeys(returnTo) {
@@ -373,6 +396,20 @@ export function createSpawnBloomEngine(
       m.keepFocus = true;
       set(cancelBloom(env(), s));
     },
+    fieldKeyDown(event) {
+      // Esc during a hold: the pointer is down on the field and the keyboard is on the field with it.
+      if (event.key !== 'Escape') return false;
+      const s = open();
+      if (!s || s.mode !== 'hold') return false;
+      event.preventDefault();
+      event.stopPropagation();
+      cancel();
+      return true;
+    },
+    focusEntered(related) {
+      if (m.returnFocus !== 'pending') return;
+      m.returnFocus = typeof HTMLElement !== 'undefined' && related instanceof HTMLElement ? related : null;
+    },
     field: () => ({ state: m.state, closedAt: m.closedAt }),
     current: () => m.state,
     drop() {
@@ -380,7 +417,7 @@ export function createSpawnBloomEngine(
       set(null);
     },
     dispose() {
-      window.clearTimeout(m.exitTimer);
+      clearTimeout(m.exitTimer);
       m.exitTimer = undefined;
     },
   };
@@ -403,22 +440,8 @@ export function useSpawnBloom(spawnMenu: MonitorSpawnMenu | undefined, host: Spa
   useLayoutEffect(() => {
     if (!state || state.closed || state.mode === 'hold') return;
     const menu = menuRef.current;
-    if (menu && document.activeElement !== menu) menu.focus({ preventScroll: true });
+    if (menu && hostRef.current.focus() !== 'menu') menu.focus({ preventScroll: true });
   }, [state]);
-
-  // Esc during a hold: the pointer is down on the field and the keyboard is wherever it was.
-  const holding = !!state && !state.closed && state.mode === 'hold';
-  useEffect(() => {
-    if (!holding) return;
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || !engine.current?.isOpen()) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      engine.current.cancel();
-    };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [holding]);
 
   // A host that stops offering a menu takes the bloom with it.
   useEffect(() => {

@@ -50,9 +50,9 @@ import {
  * model (a snapshot, then the changes, on one ordered channel: M23) and joins
  * only what the window knows: its panes, the pane it works in, the terminals it
  * holds, the theme's colours. The list and the rain are SDK views the view host
- * mounts directly (MV-4): they read the model and word the line under a name by
- * the toolkit's one rule (reply-first, M4). The swarm and the timeline still
- * mount through the view host's legacy bridge with props built by the legacy
+ * mounts directly (MV-4), and so is the swarm (MV-5): they read the model and
+ * word the line under a name by the toolkit's one rule (reply-first, M4). The
+ * timeline still mounts through the view host's legacy bridge with props built by the legacy
  * shim (L9) in Godview's words (`headline-cost`). The counts and the status
  * shortcuts read the model.
  *
@@ -79,7 +79,7 @@ export interface MonitorAgentsResult {
   /** This window's replica of the backend's model; the view host mounts the view on it. */
   replica: MonitorReplica;
   model: MonitorModel;
-  /** The four views by id: list and rain as themselves (MV-4), the swarm and the timeline through the legacy bridge. */
+  /** The four views by id: list, rain (MV-4) and the swarm (MV-5) as themselves, the timeline through the legacy bridge. */
   views: ReadonlyMap<string, MonitorView>;
   /** The view host's commands: select and create stay this window's own. */
   commands: ViewSlotCommands;

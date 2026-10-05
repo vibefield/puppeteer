@@ -2,12 +2,14 @@ import type { BloomTextMeasure } from './constants.js';
 
 /** The bloom's text measure in a document: a 2D canvas's advance widths in the
  * fonts `BLOOM_FONT` names (the fonts the overlay's CSS draws in), cached per
- * font and text — a bloom seats every label on every retarget. Undefined where
- * there is no canvas (a worker, a test without a DOM): the caller falls back. */
-export function canvasBloomMeasure(): BloomTextMeasure | undefined {
+ * font and text — a bloom seats every label on every retarget. The canvas is
+ * made detached, from the document of the element the bloom lives in (the view
+ * reaches no document of its own, MV-W2). Undefined where there is no canvas
+ * that draws (a test without one): the caller falls back. */
+export function canvasBloomMeasure(within: Element): BloomTextMeasure | undefined {
   let context: CanvasRenderingContext2D | null = null;
   try {
-    context = document.createElement('canvas').getContext('2d');
+    context = within.ownerDocument.createElement('canvas').getContext('2d');
   } catch {
     // no document, or none that draws
   }

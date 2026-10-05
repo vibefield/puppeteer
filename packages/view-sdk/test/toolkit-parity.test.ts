@@ -19,7 +19,7 @@ import * as originalRemoteWrite from '../../views/src/monitor/remote-write.js';
 import {
   formatRatePerHour as originalRatePerMinute,
   formatTokens as originalFormatTokens,
-} from '../../views/src/views/swarm/bubble-model.js';
+} from '../../views/src/legacy/frozen/swarm/bubble-model.js';
 import * as originalTimelineWords from '../../views/src/views/timeline/timeline-words.js';
 import type { AgentView } from '../src/model.js';
 import { agentViewFixture, type AgentViewFixturePartial } from '../src/testing/fixtures.js';
