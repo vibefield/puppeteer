@@ -1,42 +1,26 @@
 #!/usr/bin/env node
 
 // The timeline lab: one self-contained HTML page that mounts the shipping timeline view over the
-// example afternoon (packages/views/src/views/timeline/lab). Like the swarm lab it bundles the
-// entry and inlines the Godview tokens and stylesheet, so the palette resolves as in the app, and
-// writes dist/timeline-lab.html.
+// example afternoon (packages/views/src/views/timeline/lab), through the view host as Godview mounts
+// it. It bundles the entry with the view's own stylesheet and inlines the Godview tokens and skin,
+// so the palette resolves as in the app, and writes dist/timeline-lab.html; `?capture=1` is the
+// golden tool's page (goldens/README.md).
 
-import { build } from 'esbuild';
-import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { labBundle, labEntry, views } from './lab-page.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, 'dist');
 const renderer = join(root, 'src/renderer');
-// The package exports its swarm lab entry; the views' source root is walked up from it, and the
-// timeline lab sits beside the swarm's (`.ts` in-repo, `.js` once published).
-const swarmLab = createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/lab');
-const views = join(dirname(swarmLab), '../../..');
-const entry = ['ts', 'js'].map((ext) => join(views, `views/timeline/lab/main.${ext}`)).find((path) => existsSync(path));
-if (!entry) throw new Error(`no timeline lab entry under ${views}`);
-
-const bundle = await build({
-  entryPoints: [entry],
-  bundle: true,
-  write: false,
-  platform: 'browser',
-  format: 'iife',
-  target: 'es2022',
-  define: { 'process.env.NODE_ENV': '"production"' },
-  logLevel: 'info',
-});
-const script = bundle.outputFiles[0].text.replaceAll('</script', '<\\/script');
+// The view brings its own stylesheet from its entry module (L18): the bundle emits it beside the script.
+const bundle = await labBundle(labEntry('timeline'));
+const script = bundle.script;
 const css = [
   await readFile(join(renderer, 'styles/tokens.css'), 'utf8'),
   await readFile(join(renderer, 'styles/godview.css'), 'utf8'),
-  await readFile(join(views, 'views/timeline/timeline.css'), 'utf8'),
+  bundle.css,
   // The seeded world's stages (`?n=`, `?capture=1`), as the other view labs lay them out.
   await readFile(join(views, 'lab/view-lab.css'), 'utf8'),
 ].join('\n');
@@ -65,7 +49,7 @@ ${lab}
 <div id="timeline-lab" class="lab-root timeline-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
   <header>
     <h1>Timeline Lab</h1>
-    <p>The shipping timeline view over the example afternoon, at Godview's sizes. Drag to pan, ⌘-scroll to zoom, point at a lane to light it, press the map to put the head there.</p>
+    <p>The shipping timeline view over the example afternoon, at Godview's sizes, runtime only: each lane its birth and its current state. Drag to pan, ⌘-scroll to zoom, point at a lane to light it, press the map to put the head there.</p>
     <button type="button" class="timeline-lab-theme">Theme</button>
   </header>
   <div class="timeline-lab-mount"></div>

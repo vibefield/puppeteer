@@ -1,4 +1,4 @@
-// What the view labs' build scripts share (list-lab.mjs, rain-lab.mjs): find a lab entry in
+// What the view labs' build scripts share (list-lab.mjs, rain-lab.mjs, timeline-lab.mjs): find a lab entry in
 // @vibecook/puppeteer-views, bundle it, inline the Godview skin and the views' whole stylesheet so
 // every token resolves as in the app, and write one self-contained page under dist/.
 

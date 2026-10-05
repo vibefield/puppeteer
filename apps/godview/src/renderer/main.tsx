@@ -797,8 +797,8 @@ function Godview() {
       />
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-        {/* One view, drawn from this window's replica (MV-2): list and rain as themselves (MV-4), the swarm and the
-            timeline through the view host's legacy bridge (L6). */}
+        {/* One view, drawn from this window's replica (MV-2): list, rain and timeline as themselves (MV-4, MV-6), the
+            swarm through the view host's legacy bridge (L6). */}
         <MonitorViewHost
           replica={monitor.replica}
           view={monitor.views.get(view.id)!}

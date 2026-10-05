@@ -3,8 +3,7 @@ import { DEFAULT_PROJECT_TINT, projectTint } from '../colour/project-tint.js';
 import type { MonitorAgent } from '../monitor/types.js';
 import { LAB_AGENT_COUNTS, LAB_NOW_MS, labWorld, seededRandom } from './lab-world.js';
 
-const serialise = (world: ReturnType<typeof labWorld>): string =>
-  JSON.stringify({ ...world, history: { ...world.history, lanes: [...world.history.lanes] } });
+const serialise = (world: ReturnType<typeof labWorld>): string => JSON.stringify(world);
 
 describe('labWorld', () => {
   it('is the same world for the same n and seed, at the fixed clock', () => {
@@ -74,24 +73,6 @@ describe('labWorld', () => {
       byProject.set(agent.project, agent.color);
     }
   });
-
-  it('books every lane to its current state, contiguous back to its birth', () => {
-    const { agents, history } = labWorld({ n: 60 });
-    for (const agent of agents) {
-      const lane = history.lanes.get(agent.id);
-      expect(lane, agent.id).toBeDefined();
-      const spans = lane!.spans;
-      const open = spans[spans.length - 1]!;
-      expect(open.toMs).toBeUndefined();
-      expect(open.status).toBe(agent.status === 'idle' && agent.unread ? 'unseen' : agent.status);
-      expect(spans[0]!.fromMs).toBe(agent.createdAtMs);
-      for (let index = 1; index < spans.length; index += 1) expect(spans[index]!.fromMs).toBe(spans[index - 1]!.toMs);
-      expect(lane!.recordedFromMs).toBeGreaterThanOrEqual(agent.createdAtMs);
-    }
-    expect(history.ended.map((agent) => agent.id)).toEqual(['ended']);
-    expect(history.lanes.get('ended')?.endedAtMs).toBeLessThan(LAB_NOW_MS);
-    expect(labWorld({ n: 1 }).history.ended).toEqual([]);
-  });
 });
 
 describe('labWorld churn', () => {
@@ -111,8 +92,7 @@ describe('labWorld churn', () => {
       if (['working-full', 'blocked-question', 'late-arrival'].includes(id)) continue;
       expect(agent, id).toEqual(was.get(id));
     }
-    const open = after.history.lanes.get('working-full')!.spans.at(-1)!;
-    expect(open).toMatchObject({ status: 'blocked', fromMs: LAB_NOW_MS, blocker: { kind: 'permission' } });
+    expect(now.get('working-full')?.agent?.monitor?.statusSince).toBe(new Date(LAB_NOW_MS).toISOString());
   });
 });
 

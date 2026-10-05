@@ -23,7 +23,7 @@ import { LAB_NOW_MS, LAB_SEED, labWorld } from './lab-world.js';
 // tool can clip it at the page's origin.
 //
 // URL: `theme=light|dark` · `size=compact|default|wide` (all three when absent) ·
-// `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1` · `book=0|1` (views that read the book).
+// `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1`.
 
 export type LabSize = 'compact' | 'default' | 'wide';
 
@@ -52,7 +52,6 @@ export interface LabParams {
   readonly animations: boolean;
   readonly capture: boolean;
   readonly seed: string;
-  readonly book: boolean;
 }
 
 export function readLabParams(search: string, defaults: { n?: number } = {}): LabParams {
@@ -66,7 +65,6 @@ export function readLabParams(search: string, defaults: { n?: number } = {}): La
     animations: params.get('animations') !== '0',
     capture: params.get('capture') === '1',
     seed: params.get('seed') || LAB_SEED,
-    book: params.get('book') !== '0',
   };
 }
 
@@ -98,8 +96,6 @@ export interface ViewLabOptions {
    * the model (`lab-model.ts`), in the same order. One of `Component` and `view`. */
   readonly view?: MonitorView | undefined;
   readonly parameters: MonitorParameters;
-  /** Hand the view the world's book (`history`), unless `book=0` says otherwise. */
-  readonly book?: boolean;
   /** Put around each stage's view: the swarm's physics provider. */
   readonly wrap?: (view: ReactElement) => ReactElement;
   readonly defaults?: { n?: number };
@@ -213,13 +209,7 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
           parameters,
           commands,
         })
-      : createElement(options.Component!, {
-          agents: world!.agents,
-          parameters,
-          actions,
-          palette,
-          ...(options.book && params.book ? { history: world!.history } : {}),
-        });
+      : createElement(options.Component!, { agents: world!.agents, parameters, actions, palette });
   return createElement(
     'figure',
     { className: 'view-lab-stage', 'data-lab-stage': size },

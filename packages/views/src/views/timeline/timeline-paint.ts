@@ -1,97 +1,15 @@
-import { luminance, resolveCssColor, type Rgba } from '../swarm/gpu/color.js';
-import type { MonitorPalette } from '../../monitor/palette.js';
-import type { MonitorHistoryStatus } from '../../monitor/status-history.js';
-import { resolveSwarmTheme } from '../swarm/swarm-theme.js';
-import { laneAlpha, type TimelineLane } from './timeline-lanes.js';
+import { laneAlpha, type LaneStatus, type TimelineLane } from './timeline-lanes.js';
+import { css, type TimelineInks } from './timeline-inks.js';
 import type { PulseBand, PulseMap } from './pulse-map.js';
 import { ticksBetween, tickStep } from './timeline-scale.js';
-import {
-  capsStart,
-  toPath2D,
-  wakeGradient,
-  wakeLabels,
-  wakeOutline,
-  wakeSegments,
-  wakeSheens,
-  type WakeSegment,
-} from './wake-geometry.js';
-import { formatShort } from './timeline-words.js';
+import { capsStart, toPath2D, wakeGradient, wakeOutline, wakeSegments, wakeSheens } from './wake-geometry.js';
 
 // The timeline's two canvases: the wakes behind the lanes, and the map of the
 // day. Every colour here comes from the palette the host hands the view (the
-// swarm's own resolved orange and blue, the instrument ramp) or from a row's
-// project colour; the only other values are alphas of those.
+// swarm's own resolved orange and blue, the instrument ramp, `timeline-inks.ts`)
+// or from a row's project colour; the only other values are alphas of those.
 
 const HOUR = 3_600_000;
-
-/** The palette resolved to the numbers a 2D context wants, once per theme. */
-export interface TimelineInks {
-  readonly dark: boolean;
-  readonly ground: Rgba;
-  readonly ink: Rgba;
-  readonly muted: Rgba;
-  readonly faint: Rgba;
-  readonly border: Rgba;
-  readonly grid: Rgba;
-  /** The swarm's state lights, as the swarm resolves them (`swarm-theme.ts`). */
-  readonly orange: Rgba;
-  readonly blue: Rgba;
-  /** The same two, fit to be read as words on this theme's ground. */
-  readonly orangeInk: Rgba;
-  readonly blueInk: Rgba;
-  /** The ground a lit body's light falls on (its outer ring). */
-  readonly orangeGround: Rgba;
-  readonly blueGround: Rgba;
-  /** A project colour, resolved in the view's own cascade (a host may hand `var()`). */
-  project(color: string): Rgba;
-}
-
-export function css(colour: Rgba, alpha = 1): string {
-  const channel = (value: number): number => Math.round(Math.max(0, Math.min(1, value)) * 255);
-  return `rgba(${channel(colour[0])}, ${channel(colour[1])}, ${channel(colour[2])}, ${+(colour[3] * alpha).toFixed(4)})`;
-}
-
-export function resolveTimelineInks(palette: MonitorPalette, context: Element | undefined): TimelineInks {
-  const resolve = (value: string): Rgba => resolveCssColor(value, context);
-  const swarm = resolveSwarmTheme(palette.swarm, context);
-  const ink = swarm.ink;
-  const projects = new Map<string, Rgba>();
-  return {
-    dark: luminance(ink) >= 0.5,
-    ground: resolve(palette.timeline.ground),
-    ink,
-    muted: resolve(palette.timeline.muted),
-    faint: resolve(palette.neutral),
-    border: resolve(palette.timeline.border),
-    grid: swarm.grid,
-    orange: swarm.orange,
-    blue: swarm.blue,
-    orangeInk: swarm.stateInk.orange,
-    blueInk: swarm.stateInk.blue,
-    orangeGround: swarm.stateGround.orange,
-    blueGround: swarm.stateGround.blue,
-    project(color) {
-      let resolved = projects.get(color);
-      if (!resolved) {
-        resolved = resolve(color);
-        projects.set(color, resolved);
-      }
-      return resolved;
-    },
-  };
-}
-
-/** A canvas sized to `width`×`height` CSS px at the device's ratio, capped at 2. */
-export function sizeCanvas(canvas: HTMLCanvasElement, width: number, height: number): number {
-  const ratio = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.max(1, Math.round(width));
-  const h = Math.max(1, Math.round(height));
-  if (canvas.width !== Math.round(w * ratio)) canvas.width = Math.round(w * ratio);
-  if (canvas.height !== Math.round(h * ratio)) canvas.height = Math.round(h * ratio);
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
-  return ratio;
-}
 
 export interface PlacedLane {
   readonly lane: TimelineLane;
@@ -110,21 +28,18 @@ export interface WakePaint {
   readonly nowMs: number;
   /** The lit lane, or -1 when all are lit. */
   readonly lit: number;
-  /** Where the floating names end: the lit lane prints no length under them. */
-  readonly namesRight: number;
   readonly glow: number;
-  readonly font: string;
 }
 
-function wakeColour(inks: TimelineInks, lane: TimelineLane, status: MonitorHistoryStatus): string {
+function wakeColour(inks: TimelineInks, lane: TimelineLane, status: LaneStatus): string {
   if (lane.kind === 'terminal') return css(status === 'working' ? inks.muted : inks.border);
-  if (status === 'working') return css(inks.project(lane.agent.color));
+  if (status === 'working') return css(inks.project(lane.row.colour));
   if (status === 'blocked') return css(inks.orange);
   if (status === 'unseen') return css(inks.blue);
   return css(inks.faint);
 }
 
-/** The wakes: the grid, then each lane's outline with its light, its sheen and (when lit) its lengths. */
+/** The wakes: the grid, then each lane's dotted unrecorded thread and its outline, with its light and its sheen. */
 export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks: TimelineInks): void {
   const { width, height, ratio, t0, t1, nowMs, lit } = paint;
   const k = width / Math.max(1, t1 - t0);
@@ -145,10 +60,10 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
     const cy = y + h / 2;
     const fade = laneAlpha(lane, index, lit);
     ctx.globalAlpha = fade;
-    // Time the record does not hold: a dotted thread, never a state.
-    if (lane.recordedFromMs > lane.bornMs) {
+    // From its birth to its current state the lane claims nothing (runtime only): a dotted thread, never a state.
+    if (lane.sinceMs > lane.bornMs) {
       const a = Math.max(lane.bornMs, t0);
-      const b = Math.min(lane.recordedFromMs, t1, lane.endedAtMs ?? nowMs);
+      const b = Math.min(lane.sinceMs, t1, nowMs);
       if (b > a) {
         ctx.save();
         ctx.setLineDash([1.2, 3.4]);
@@ -194,11 +109,6 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
         ctx.stroke();
       }
     }
-    if (lane.endedAtMs !== undefined && lane.endedAtMs <= t1 && lane.endedAtMs >= t0) {
-      ctx.fillStyle = css(inks.muted);
-      ctx.fillRect(X(lane.endedAtMs) - 1, cy - 6, 2, 12);
-    }
-    if (index === lit) paintLabels(ctx, segments, cy, paint, inks);
   });
   ctx.globalAlpha = 1;
   // The head's light: a soft column the bodies sit in.
@@ -207,45 +117,6 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
   light.addColorStop(1, css(inks.ink, inks.dark ? 0.09 : 0.06));
   ctx.fillStyle = light;
   ctx.fillRect(width - 44, 0, 44, height);
-}
-
-/** The lit lane speaks: each closed span's length, inside the work, or above a wait haloed in the ground. */
-function paintLabels(
-  ctx: CanvasRenderingContext2D,
-  segments: readonly WakeSegment[],
-  cy: number,
-  paint: WakePaint,
-  inks: TimelineInks,
-): void {
-  ctx.save();
-  ctx.globalAlpha = 1;
-  ctx.font = `700 9px ${paint.font}`;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-  ctx.lineJoin = 'round';
-  const labels = wakeLabels(
-    segments,
-    cy,
-    paint.namesRight,
-    paint.width - 8,
-    (text) => ctx.measureText(text).width,
-    formatShort,
-  );
-  for (const label of labels) {
-    if (label.inside) {
-      ctx.fillStyle = css(inks.ground);
-      ctx.fillText(label.text, label.x, label.y);
-      continue;
-    }
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = css(inks.ground);
-    ctx.strokeText(label.text, label.x, label.y);
-    ctx.fillStyle = css(
-      label.status === 'blocked' ? inks.orangeInk : label.status === 'unseen' ? inks.blueInk : inks.muted,
-    );
-    ctx.fillText(label.text, label.x, label.y);
-  }
-  ctx.restore();
 }
 
 export interface MapPaint {

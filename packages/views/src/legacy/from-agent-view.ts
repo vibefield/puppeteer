@@ -6,11 +6,13 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
 /**
  * THE LEGACY SHIM (L9): the contract's `AgentView` as the legacy `MonitorAgent`,
  * so a view that is not ported yet draws the new model unchanged through the
- * view host's bridge. It also feeds the status ledger (L10) until the timeline
- * slice. MV-8 deletes it.
+ * view host's bridge. It fed the status ledger too (L10), until the timeline
+ * slice removed the ledger (MV-6). MV-8 deletes it.
  *
  * THE AUDIT (puppeteer `mv/land` 35887cf): every `MonitorAgent` field the four
- * shipping views read, plus the status ledger, with who reads it.
+ * shipping views read, plus the status ledger, with who reads it. Since MV-4
+ * and MV-6 the list, the rain and the timeline read `AgentView` themselves and
+ * the ledger is gone: only their frozen copies read these rows now.
  *
  *   id                                   every view: keys, select, lanes, columns; the swarm's working shares
  *   visualId, read as `visualId ?? id`   swarm: bodies, physics, births (bloom/birth.ts)
@@ -240,7 +242,7 @@ function legacyFacet(view: AgentView, options: LegacyShimOptions) {
   // M9: what VibeField's peers carry today, and no more.
   const coreFacts = view.device.self || options.peerMonitor === 'map';
   // A run the runtime has not spoken for (starting, or pending) has no mirror today, so no monitor and no usage
-  // history: a monitor dated at the birth would start the status ledger's lane there instead of at first sight.
+  // history (the legacy timeline and its ledger started such a lane at first sight, never at the birth).
   const mirrored = view.observed;
   const statusSince = isoTime(view.statusSince);
   const replyAt = isoTime(reply?.at);

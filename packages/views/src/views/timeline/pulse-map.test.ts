@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { TimelineLane } from './timeline-lanes.js';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import { laneFor } from './timeline-lanes.js';
 import {
   PULSE_GEOMETRY,
   addCoverage,
@@ -42,29 +43,29 @@ describe('pulseScales', () => {
   });
 });
 
-describe('pulseMap', () => {
+describe('pulseMap (runtime only: each agent’s current state, from when it began to now)', () => {
   const rows: PulseRow[] = [
-    {
-      color: 'violet',
-      recordedFromMs: 0,
-      endMs: NOW,
-      spans: [
-        { status: 'working', fromMs: 0, toMs: 60 * MIN },
-        { status: 'blocked', fromMs: 60 * MIN },
-      ],
-    },
-    { color: 'green', recordedFromMs: 0, endMs: NOW, spans: [{ status: 'working', fromMs: 40 * MIN, toMs: 50 * MIN }] },
-    { color: 'violet', recordedFromMs: 0, endMs: NOW, spans: [{ status: 'unseen', fromMs: 20 * MIN }] },
+    { color: 'violet', status: 'working', fromMs: 10 * MIN, endMs: NOW },
+    { color: 'green', status: 'working', fromMs: 60 * MIN, endMs: NOW },
+    { color: 'violet', status: 'blocked', fromMs: 70 * MIN, endMs: NOW },
+    { color: 'amber', status: 'unseen', fromMs: 80 * MIN, endMs: NOW },
+    { color: 'slate', status: 'idle', fromMs: 0, endMs: NOW },
   ];
   const map = pulseMap(rows, START, NOW, { ...PULSE_GEOMETRY, width: 200 });
 
-  it('stacks one band per project colour, the one that worked most on the line', () => {
-    expect(map.work.map((band) => band.color)).toEqual(['violet', 'green']);
-    const i = map.xs.findIndex((x) => x > 10);
+  it('stacks one band per project colour, the one that worked most on the line; a resting project’s is empty', () => {
+    expect(map.work.map((band) => band.color)).toEqual(['violet', 'green', 'amber', 'slate']);
+    const i = map.xs.findIndex((x) => x > 190);
     // The lowest band sits on the line and rises above it (y grows downward).
     expect(map.work[0]!.bottom[i]).toBeCloseTo(map.base);
     expect(map.work[0]!.top[i]).toBeLessThan(map.base);
     expect(map.work[1]!.bottom[i]).toBeCloseTo(map.work[0]!.top[i]!);
+    expect(map.work[3]!.top[i]).toBeCloseTo(map.work[3]!.bottom[i]!);
+  });
+
+  it('claims nothing before a state began: the ridge rises only where the current stretches are', () => {
+    const rise = (index: number): number => map.base - map.work[map.work.length - 1]!.top[index]!;
+    expect(rise(0)).toBeLessThan(0.05 * rise(map.xs.length - 1));
   });
 
   it('hangs the waits below the line, orange then blue', () => {
@@ -85,19 +86,19 @@ describe('pulseMap', () => {
 });
 
 describe('pulseRowsFor', () => {
-  const lane = (id: string, receded: boolean, kind: TimelineLane['kind'] = 'agent'): TimelineLane => ({
-    id,
-    agent: { id, createdAtMs: 0, status: 'working', project: id, detail: '', color: id, active: false },
-    kind,
-    receded,
-    bornMs: 0,
-    recordedFromMs: 0,
-    spans: [{ status: 'working', fromMs: 0 }],
-  });
+  const lane = (id: string, overrides: AgentViewFixturePartial = {}) =>
+    laneFor(
+      agentViewFixture({ id, colour: id, status: 'working', createdAt: 0, statusSince: 5 * MIN, ...overrides }),
+      NOW,
+    );
 
   it('counts what the stage counts: no receded lane, no bare terminal', () => {
-    const rows = pulseRowsFor([lane('a', false), lane('b', true), lane('t', false, 'terminal')], NOW);
-    expect(rows.map((row) => row.color)).toEqual(['a']);
-    expect(rows[0]!.endMs).toBe(NOW);
+    const rows = pulseRowsFor([lane('a'), lane('b', { receded: true }), lane('t', { kind: 'terminal' })], NOW);
+    expect(rows).toEqual([{ color: 'a', status: 'working', fromMs: 5 * MIN, endMs: NOW }]);
+  });
+
+  it('gives each agent its current state from when it began', () => {
+    const rows = pulseRowsFor([lane('u', { status: 'idle', unread: true, statusSince: 30 * MIN })], NOW);
+    expect(rows).toEqual([{ color: 'u', status: 'unseen', fromMs: 30 * MIN, endMs: NOW }]);
   });
 });
