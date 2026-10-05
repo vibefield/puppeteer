@@ -328,12 +328,21 @@ describe('the view on its root', () => {
     expect(view.root.classList.contains(TIMELINE_ROOT_CLASS)).toBe(true);
     const style = view.view.style;
     expect(style.getPropertyValue('--mv-timeline-inset-left')).toBe(`${stage.insets.left}px`);
+    expect(style.getPropertyValue('--mv-timeline-inset-top')).toBe('0px');
     expect(style.getPropertyValue('--mv-timeline-ground')).toBe(fixtureTheme('dark').tokens.timeline.ground);
     expect(style.getPropertyValue('--mv-timeline-x1')).toBe('894px');
     expect(style.getPropertyValue('--mv-timeline-orange')).toMatch(/^rgba\(/);
     expect(view.view.dataset.ground).toBe('dark');
     const name = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-name')!;
     expect(name.style.getPropertyValue('--mv-timeline-colour')).toBe(afternoon()[7]!.colour);
+  });
+
+  it('starts below the stage’s top inset, where a host keeps chrome over the stage (M58)', async () => {
+    // VibeField's claims strip sits over the stage's top, and its stage says so as `insets.top`; the timeline's box
+    // starts below it, so its lanes are sized to what is left. Puppeteer's Godview passes 0.
+    const compact = fixtureStage('compact');
+    const view = await mount({ agents: afternoon(), stage: { ...compact, insets: { ...compact.insets, top: 40 } } });
+    expect(view.view.style.getPropertyValue('--mv-timeline-inset-top')).toBe('40px');
   });
 
   it('declares what it is to the bar and the audit: its mark, its keys, a clock at rest', () => {

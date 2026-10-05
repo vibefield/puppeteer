@@ -814,9 +814,11 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   };
   const presetIndex = ZOOM_PRESETS.findIndex((preset) => Math.abs(preset.spanMs - bar.spanMs) < 1000);
   const nextPreset = ZOOM_PRESETS[(presetIndex + 1) % ZOOM_PRESETS.length]!;
-  // The view's own properties (L18): its geometry from the stage and its columns, the ground from the palette.
+  // The view's own properties (L18): its geometry from the stage (the chrome it clears on the left and, M58, above)
+  // and its columns, the ground from the palette.
   const rootStyle = {
     '--mv-timeline-inset-left': `${stage.insets.left}px`,
+    '--mv-timeline-inset-top': `${stage.insets.top}px`,
     '--mv-timeline-ground': theme.tokens.timeline.ground,
     '--mv-timeline-x1': `${columns.x1}px`,
     '--mv-timeline-head': `${columns.head}px`,

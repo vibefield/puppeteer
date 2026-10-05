@@ -5,18 +5,21 @@
    the bodies at the head and their readouts.
 
    It reads two kinds of custom property only: the skin (`MONITOR_SKIN`: --text-main, --text-muted, --text-faint,
-   --panel-bg, --panel-border, --control-hover-bg, --control-hover-border, --idle-bg), which every host defines on its
-   stage, and its own `--mv-timeline-*`, which the view sets from its input: the stage's left inset, the palette's
-   ground (`--mv-timeline-ground`, `tokens.timeline.ground`), its columns, the swarm's resolved state lights
-   (`--mv-timeline-orange` and kin), a row's colour (`--mv-timeline-colour`) and a lane's height. Its type is the
-   stage's: it sets sizes and weights, and inherits the family. */
+   --panel-bg, --panel-border, --control-hover-bg, --control-hover-border, --idle-bg, and the island easing
+   --vf-ease-island), which every host defines on its stage, and its own `--mv-timeline-*`, which the view sets from
+   its input: the stage's left and top insets, the palette's ground (`--mv-timeline-ground`,
+   `tokens.timeline.ground`), its columns, the swarm's resolved state lights (`--mv-timeline-orange` and kin), a row's
+   colour (`--mv-timeline-colour`) and a lane's height. Its type is the stage's: it sets sizes and weights, and
+   inherits the family. */
 
 /* Transparent: in Godview the STAGE paints the ground (its glass, scanlines and vignette). Inset from
-   the left past the usage column when it shows tiles, as the list is (`styles/list.css`) — the whole
-   view, map included, so the map's lens stays over the lanes. */
+   the left past the usage column when it shows tiles, as the list is (`views/list/list.css`) — the whole
+   view, map included, so the map's lens stays over the lanes — and from the top below a host's chrome
+   over the stage (`insets.top`, M58: VibeField's claims strip; 0 in puppeteer's Godview), so the lanes
+   are sized to what is left. */
 .mv-timeline .vf-monitor-timeline {
   position: absolute;
-  inset: 0 0 0 var(--mv-timeline-inset-left, 0px);
+  inset: var(--mv-timeline-inset-top, 0px) 0 0 var(--mv-timeline-inset-left, 0px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -607,7 +610,7 @@
   inset: -1px;
   border-radius: 50%;
   box-shadow: 0 0 0 1.5px var(--mv-timeline-orange);
-  animation: mv-timeline-ring 1.1s cubic-bezier(0.25, 1, 0.3, 1) infinite;
+  animation: mv-timeline-ring 1.1s var(--vf-ease-island) infinite;
 }
 
 .mv-timeline .vf-monitor-timeline-head[data-owed='true'][data-tone='unseen'] .vf-monitor-timeline-body-mark::after {

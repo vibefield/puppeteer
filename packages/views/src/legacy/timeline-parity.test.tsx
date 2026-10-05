@@ -59,7 +59,8 @@ import { toMonitorAgents, type LegacyShimOptions } from './index.js';
 //   - M9 (VibeField's options): a peer's blocked lane says what it waits on
 //     (its kind and words); the legacy peer carried no blocker ("failed").
 //   - L18: the view's own custom properties under their `--mv-timeline-*`
-//     names, two of them new: the stage's inset and the palette's ground.
+//     names, three of them new: the stage's left and top insets (M58) and
+//     the palette's ground.
 //   - M4 moves nothing here: the timeline never drew the line under a name.
 //
 // OVER A MODEL WITH HISTORY (rows that changed while the window watched, one
@@ -353,8 +354,10 @@ function foldProperties(legacy: HTMLElement, ported: HTMLElement): void {
   }
   const root = ported.querySelector<HTMLElement>('.vf-monitor-timeline')!;
   expect(root.style.getPropertyValue('--mv-timeline-inset-left')).toBe(`${stage.insets.left}px`);
+  expect(root.style.getPropertyValue('--mv-timeline-inset-top')).toBe(`${stage.insets.top}px`);
   expect(root.style.getPropertyValue('--mv-timeline-ground')).toBe(palette.timeline.ground);
   root.style.removeProperty('--mv-timeline-inset-left');
+  root.style.removeProperty('--mv-timeline-inset-top');
   root.style.removeProperty('--mv-timeline-ground');
   // The mount element wears the root class (L18); the legacy root had none.
   expect(ported.classList.contains('mv-timeline')).toBe(true);
