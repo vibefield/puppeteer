@@ -6,6 +6,7 @@ import {
   agentSessionsByRow,
   mergeMonitorTerminals,
   rowIdForSession,
+  sameVisualIds,
   sessionIdForRow,
   terminalReport,
   visualIdsForRows,
@@ -179,6 +180,42 @@ describe('the local join', () => {
     expect(second.visualIds?.get('run-1')).toBe('sh-f');
     // Nothing carried and nothing worn: the row's session, else its id.
     expect(windowLocal(input, everyRow).visualIds?.get('run-1')).toBe('ag-1');
+  });
+
+  it('takes a ready visual-id map as the join (M59, perf): the host computes it once and the join does no visual-id work', () => {
+    const ready = new Map([['run-1', 'kept']]);
+    const input = {
+      model: model([{ id: 'run-1', kind: 'agent' }]),
+      agentSessions: new Map([['run-1', 'ag-1']]),
+      attachments: new Map(),
+      terminals: [],
+    } as const;
+    // Given ready, the join forwards THAT exact map; it does not recompute from the row's session.
+    const local = windowLocal({ ...input, readyVisualIds: ready, visualIds: new Map([['ag-1', 'other']]) }, everyRow);
+    expect(local.visualIds).toBe(ready);
+    expect(local.visualIds?.get('run-1')).toBe('kept');
+  });
+
+  it('keeps a window visual-id map identity across a state-only publish (M59, perf: the per-tick churn the gate caught)', () => {
+    const rows = [
+      { id: 'run-1', kind: 'agent' as const },
+      { id: 'run-2', kind: 'agent' as const },
+    ];
+    const sessions = new Map([
+      ['run-1', 'ag-1'],
+      ['run-2', 'ag-2'],
+    ]);
+    const resolve = (row: { id: string; kind: 'agent' | 'terminal' }) => sessions.get(row.id);
+    const first = visualIdsForRows(rows, resolve, new Map(), new Map());
+    // A later publish, same row set and no transfer: content-equal, so the host keeps the first map object.
+    const next = visualIdsForRows(rows, resolve, new Map(), first);
+    expect(sameVisualIds(first, next)).toBe(true);
+    const stable = sameVisualIds(first, next) ? first : next;
+    expect(stable).toBe(first);
+    // A real transfer moves one entry, so the map is a new identity.
+    const moved = visualIdsForRows(rows, resolve, new Map([['ag-1', 'shell-9']]), first);
+    expect(sameVisualIds(first, moved)).toBe(false);
+    expect(moved.get('run-1')).toBe('shell-9');
   });
 });
 

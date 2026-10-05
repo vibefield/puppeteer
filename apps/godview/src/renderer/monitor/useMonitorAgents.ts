@@ -36,8 +36,10 @@ import type { MonitorAgent } from './types.js';
 import {
   agentSessionsByRow,
   mergeMonitorTerminals,
+  sameVisualIds,
   sessionIdForRow,
   terminalReport,
+  visualIdsForRows,
   windowLocal,
   windowTerminalIds,
   type MonitorTerminalRecord,
@@ -320,12 +322,30 @@ export function useMonitorAgents({
   const modelRef = useRef(model);
   modelRef.current = model;
   const activeSessionId = workspace?.activeSession?.id;
-  /** What each row wore last time (M59): the previous join's visual ids, so a body keeps its identity. */
-  const previousVisualIds = useRef<ReadonlyMap<string, string>>(new Map());
-  const rowIdsKey = useMemo(() => model.agents.map((row) => row.id).join('\n'), [model]);
+
+  // The swarm's spatial identity per row (M59): computed ONCE per published model and kept at the SAME identity across
+  // a state-only publish, so the host's render rebuilds nothing and the replica's local join does no per-tick visual-id
+  // work. The row->session resolver reads the churning maps through a ref, so only the model/transfer/identities key it.
+  const visualIdsInputs = useRef({ agentSessions, terminals, terminalIdentities });
+  visualIdsInputs.current = { agentSessions, terminals, terminalIdentities };
+  const visualIdsRef = useRef<ReadonlyMap<string, string>>(new Map());
+  const visualIds = useMemo(() => {
+    const { agentSessions: sessions, terminals: terms, terminalIdentities: ids } = visualIdsInputs.current;
+    const next = visualIdsForRows(
+      model.agents,
+      (row) => sessionIdForRow(row, sessions, terms, ids),
+      terminalVisualIds,
+      visualIdsRef.current,
+    );
+    const stable = sameVisualIds(visualIdsRef.current, next) ? visualIdsRef.current : next;
+    visualIdsRef.current = stable;
+    return stable;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the resolver's maps are read through the ref; the model, a transfer, or an identity change are what move a visual id
+  }, [model, terminalVisualIds, terminalIdentities]);
+
   const local = useMemo(
-    () => {
-      const next = windowLocal(
+    () =>
+      windowLocal(
         {
           model: modelRef.current,
           agentSessions,
@@ -333,28 +353,14 @@ export function useMonitorAgents({
           activeSessionId,
           terminals,
           identities: terminalIdentities,
-          visualIds: terminalVisualIds,
-          previousVisualIds: previousVisualIds.current,
+          readyVisualIds: visualIds,
         },
         visible,
-      );
-      if (next.visualIds) previousVisualIds.current = next.visualIds;
-      return next;
-    },
-    // The model's row ids stand for its rows (`rowIdsKey`, `agentIdsKey` its kinds); the model itself is read
-    // through the ref.
+      ),
+    // The model's agent ids stand for its kinds (`agentIdsKey`); the model itself is read through the ref, and the
+    // spatial identity rides as `visualIds` (its own stable identity).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeSessionId,
-      agentIdsKey,
-      agentSessions,
-      attachments,
-      rowIdsKey,
-      terminalIdentities,
-      terminalVisualIds,
-      terminals,
-      visible,
-    ],
+    [activeSessionId, agentIdsKey, agentSessions, attachments, terminalIdentities, terminals, visible, visualIds],
   );
   useLayoutEffect(() => replica.setLocal(local), [local, replica]);
 
