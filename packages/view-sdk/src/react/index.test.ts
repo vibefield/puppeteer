@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
 import { act, createElement, useId } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createViewSlot } from '../host/slot.js';
 import { duringHostCommit } from '../internal/react-root.js';
-import { agentViewsFixture, fixtureInput, fixtureModel, fixtureTheme } from '../testing/fixtures.js';
+import { agentViewsFixture, fixtureInput, fixtureModel, fixtureStage, fixtureTheme } from '../testing/fixtures.js';
+import { createFrameDriver } from '../testing/frames.js';
+import { createFixtureReplica } from '../testing/replica.js';
 import type { MonitorViewCommands, MonitorViewManifest } from '../view.js';
 import { reactMonitorView, type ReactMonitorViewProps } from './index.js';
 
@@ -162,6 +165,54 @@ describe('reactMonitorView', () => {
         expect(root.textContent).toBe('here');
       });
       expect(root.childNodes).toHaveLength(0);
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it("commits an update inside the slot's frame that brought it, beside the host's root (M62)", async () => {
+    function Probe({ input }: ReactMonitorViewProps) {
+      return createElement('p', null, `${input.model.agents.length} agents`);
+    }
+    const root = element();
+    const replica = createFixtureReplica(agentViewsFixture(3));
+    const frames = createFrameDriver();
+    await act(async () => {
+      createViewSlot(root, {
+        view: reactMonitorView(MANIFEST, Probe),
+        replica,
+        input: { stage: fixtureStage(), theme: fixtureTheme(), parameters: {} },
+        commands: { select: vi.fn(), create: vi.fn() },
+        scheduler: frames.scheduler,
+      });
+    });
+    expect(root.textContent).toBe('3 agents');
+    await act(async () => {
+      replica.apply({ remove: ['agent-01'] });
+      frames.step();
+      // act has flushed nothing yet: the view's root committed within the frame callback.
+      expect(root.textContent).toBe('2 agents');
+    });
+  });
+
+  it("keeps an update scheduled inside a React host's commit, without React's warning (M62)", async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const root = element();
+      const input = fixtureInput();
+      const view = reactMonitorView(MANIFEST, ({ input: { theme } }: ReactMonitorViewProps) =>
+        createElement('p', null, theme.scheme),
+      );
+      let instance!: ReturnType<typeof view.mount>;
+      await act(async () => {
+        instance = view.mount(root, input, COMMANDS);
+      });
+      await act(async () => {
+        duringHostCommit(() => instance.update({ ...input, theme: fixtureTheme('light') }));
+        expect(root.textContent).toBe('dark');
+      });
+      expect(root.textContent).toBe('light');
       expect(errors).not.toHaveBeenCalled();
     } finally {
       errors.mockRestore();

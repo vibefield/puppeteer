@@ -143,6 +143,19 @@ describe('legacyView', () => {
     expect(element.querySelector('section')!.dataset['history']).toBe('h2');
   });
 
+  it('commits an update inside the frame that brought it, not a task later (M62)', async () => {
+    const { element, frames, replica, start } = mountInSlot();
+    await act(async () => {
+      start();
+    });
+    await act(async () => {
+      replica.apply({ remove: ['agent-01'] });
+      frames.step();
+      // act has flushed nothing yet: the root committed within the frame callback, beside the host's.
+      expect(element.querySelectorAll('button')).toHaveLength(2);
+    });
+  });
+
   it('lets go of its root on unmount, after which refresh draws nothing', async () => {
     const { element, view, start } = mountInSlot();
     let slot!: ReturnType<typeof start>;

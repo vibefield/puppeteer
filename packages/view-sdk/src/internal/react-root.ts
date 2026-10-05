@@ -8,6 +8,8 @@
  * prefix, so a view's ids can never collide with the host's or another view's.
  */
 
+import type { ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 
 let mounts = 0;
@@ -32,6 +34,21 @@ export function duringHostCommit<T>(work: () => T): T {
   } finally {
     hostCommits -= 1;
   }
+}
+
+/**
+ * Renders a view's update as part of the frame that asked for it (M62). The
+ * slot updates a view from its frame callback, and a plain `root.render` is a
+ * default-lane render React processes in a LATER task: the view's root then
+ * committed after the host's own root (re-rendered within that frame), and the
+ * page restyled twice. Rendered synchronously, both roots commit in the frame
+ * a change arrived in, before its one style pass (M7's frame rule, literally).
+ * Inside a React host's commit React cannot flush, so the render stays
+ * scheduled there, as a mount's does.
+ */
+export function renderViewRoot(root: Root, element: ReactNode): void {
+  if (hostCommits > 0) root.render(element);
+  else flushSync(() => root.render(element));
 }
 
 export function releaseViewRoot(root: Root): void {

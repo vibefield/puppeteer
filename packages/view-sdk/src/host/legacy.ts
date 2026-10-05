@@ -11,7 +11,7 @@
 
 import { createElement, type Attributes, type ComponentType, type ReactElement } from 'react';
 import { sameInputParts } from '../internal/input.js';
-import { createViewRoot, releaseViewRoot } from '../internal/react-root.js';
+import { createViewRoot, releaseViewRoot, renderViewRoot } from '../internal/react-root.js';
 import {
   defineMonitorView,
   MONITOR_VIEW_SDK_MAJOR,
@@ -85,26 +85,30 @@ export function legacyView<P extends object>(
       const root = createViewRoot(element, manifest.id);
       let current = input;
       let live = true;
-      const render = (): void => {
+      const render = (inFrame = false): void => {
         const old = createElement(
           Component as ComponentType<P & Attributes>,
           toProps(current, commands) as P & Attributes,
         );
-        root.render(wrap === undefined ? old : wrap(old));
+        const element = wrap === undefined ? old : wrap(old);
+        // An update comes from the slot's frame and commits in it (M62); a mount or a refresh renders as React schedules.
+        if (inFrame) renderViewRoot(root, element);
+        else root.render(element);
       };
-      renders.add(render);
+      const refresh = (): void => render();
+      renders.add(refresh);
       render();
       return {
         update(next) {
           if (!live) return;
           const changed = !sameInputParts(current, next);
           current = next;
-          if (changed) render();
+          if (changed) render(true);
         },
         unmount() {
           if (!live) return;
           live = false;
-          renders.delete(render);
+          renders.delete(refresh);
           releaseViewRoot(root);
         },
       };

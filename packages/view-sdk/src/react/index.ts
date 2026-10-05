@@ -15,7 +15,7 @@
 
 import { createElement, type ComponentType } from 'react';
 import { sameInputParts } from '../internal/input.js';
-import { createViewRoot, releaseViewRoot } from '../internal/react-root.js';
+import { createViewRoot, releaseViewRoot, renderViewRoot } from '../internal/react-root.js';
 import {
   defineMonitorView,
   type MonitorView,
@@ -67,7 +67,8 @@ export function reactMonitorView(
           if (!live) return;
           const changed = !sameInputParts(current, next);
           current = next;
-          if (changed) root.render(createElement(Component, { input: next, commands }));
+          // In the slot's frame: the view's root commits in it, beside the host's (M62).
+          if (changed) renderViewRoot(root, createElement(Component, { input: next, commands }));
         },
         unmount() {
           if (!live) return;
