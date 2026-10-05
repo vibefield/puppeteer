@@ -73,6 +73,27 @@ describe('countCommits', () => {
     expect(counted.commits).toBe(0);
     await act(async () => instance.unmount());
   });
+
+  it('keeps the view’s root class, so a lab counts the view as it is styled (M67)', async () => {
+    const styled = reactMonitorView(MANIFEST, Themed, { rootClass: 'mv-counted' });
+    const counted = countCommits(styled);
+    expect(counted.view.rootClass).toBe('mv-counted');
+    const element = root();
+    let instance!: ReturnType<typeof counted.view.mount>;
+    await act(async () => {
+      instance = counted.view.mount(
+        element,
+        fixtureInput({ agents: agentViewsFixture(1) }),
+        countingCommands().commands,
+      );
+    });
+    expect(element.classList.contains('mv-counted')).toBe(true);
+    expect(counted.commits).toBe(1);
+    await act(async () => instance.unmount());
+    expect(element.classList.contains('mv-counted')).toBe(false);
+    // A view built with no root class is counted with none.
+    expect(countCommits(reactMonitorView(MANIFEST, Themed)).view.rootClass).toBeUndefined();
+  });
 });
 
 describe('countReactEffects', () => {

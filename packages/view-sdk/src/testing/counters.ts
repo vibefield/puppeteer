@@ -65,7 +65,8 @@ export interface CommitCounter {
 /**
  * Counts a React view's commits through a `Profiler` around its component.
  * Profilers report in React's development and profiling builds, which is
- * what tests run.
+ * what tests run. The counted copy keeps the view's root class (M67), so its
+ * stylesheet applies and a lab counts the view as it draws, not unstyled.
  */
 export function countCommits(view: ReactMonitorView): CommitCounter {
   if (view.Component === undefined) throw new TypeError(`countCommits counts a view built by reactMonitorView`);
@@ -78,7 +79,7 @@ export function countCommits(view: ReactMonitorView): CommitCounter {
     return createElement(Profiler, { id: view.manifest.id, onRender }, createElement(Component, props));
   }
   return {
-    view: reactMonitorView(view.manifest, Counted),
+    view: reactMonitorView(view.manifest, Counted, { rootClass: view.rootClass }),
     get commits() {
       return commits;
     },

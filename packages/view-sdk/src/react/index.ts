@@ -36,6 +36,8 @@ export interface ReactMonitorViewProps {
 export interface ReactMonitorView extends MonitorView {
   /** The component the view renders. A test wraps it (`/testing`'s commit counter); a host never needs it. */
   readonly Component: ComponentType<ReactMonitorViewProps>;
+  /** The root class it was built with (`ReactMonitorViewOptions`), so a wrapped copy keeps the view's styles. */
+  readonly rootClass?: string | undefined;
 }
 
 export interface ReactMonitorViewOptions {
@@ -56,6 +58,7 @@ export function reactMonitorView(
   const view: ReactMonitorView = {
     manifest,
     Component,
+    ...(rootClass ? { rootClass } : {}),
     mount(element, input, commands): MonitorViewInstance {
       if (rootClass) element.classList.add(rootClass);
       const root = createViewRoot(element, manifest.id);
