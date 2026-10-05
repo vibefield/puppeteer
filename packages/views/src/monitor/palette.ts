@@ -46,6 +46,10 @@ export interface MonitorPalette {
     activeHead: string;
     hoverTailRgb: string;
     status: Readonly<Record<AgentVisualStatus, { head: string; tailRgb: string; speed?: number }>>;
+    /** The words of the rain's tooltip by status, and a focused control's ring (M46): its DOM's colours, passed
+     * like the canvas's so the view reads no host variable. */
+    ink: Readonly<Record<AgentVisualStatus, string>>;
+    focus: string;
   };
   /** What the timeline's canvases need beyond the swarm's colours, resolved
    * from the same theme-scoped instrument palette (§2.7): the stage's own ground
@@ -185,6 +189,12 @@ export function readMonitorPalette(root?: Element | null): MonitorPalette {
           speed: 0.1,
         },
       },
+      ink: {
+        working: readToken('--vf-godview-rain-green', '#000000'),
+        blocked: readToken('--vf-godview-rain-waiting', '#000000'),
+        idle: readToken('--vf-godview-rain-idle', '#000000'),
+      },
+      focus: readToken('--vf-godview-rain-green-focus', '#000000'),
     },
   };
 }

@@ -13,14 +13,18 @@ import * as originalTint from '../../views/src/colour/project-tint.js';
 import * as originalMarks from '../../views/src/icons/AgentIcon.js';
 import { MARKS_ATLAS_URL as originalAtlas } from '../../views/src/icons/marks-atlas.js';
 import * as originalGlyphs from '../../views/src/icons/ProfileGlyph.js';
+import { toMonitorAgent, type LegacyShimOptions } from '../../views/src/legacy/from-agent-view.js';
 import { formatUsd as originalFormatUsd } from '../../views/src/monitor/cost-format.js';
 import { hexToRgb255 as originalHexToRgb255 } from '../../views/src/monitor/palette.js';
 import * as originalRecede from '../../views/src/monitor/recede.js';
+import * as originalRemoteWrite from '../../views/src/monitor/remote-write.js';
 import {
   formatRatePerHour as originalRatePerMinute,
   formatTokens as originalFormatTokens,
 } from '../../views/src/views/swarm/bubble-model.js';
 import * as originalTimelineWords from '../../views/src/views/timeline/timeline-words.js';
+import type { AgentView } from '../src/model.js';
+import { agentViewFixture, type AgentViewFixturePartial } from '../src/testing/fixtures.js';
 import * as toolkit from '../src/toolkit/index.js';
 
 const MONEY = [0, 0.0004, 0.001, 0.0042, 0.009, 0.01, 0.5, 1, 7.034, 12.5, 999.999, 1234.5, -1];
@@ -84,6 +88,97 @@ describe('state words match the views', () => {
       for (const every of [true, false]) {
         expect(toolkit.recedeTarget(receded, every)).toBe(originalRecede.recedeTarget(receded, every));
       }
+    }
+  });
+});
+
+/** VibeField's shim options, whose line ported views compose by (M4); and puppeteer Godview's, for the fallbacks. */
+const REPLY_FIRST: LegacyShimOptions = { detail: 'reply-first', peerMonitor: 'omit' };
+const GODVIEW: LegacyShimOptions = { detail: 'headline-cost', peerMonitor: 'map' };
+const LAPTOP = { id: 'desk-2', name: 'Laptop', os: 'linux', self: false } as const;
+const SINCE = Date.UTC(2026, 0, 1, 12);
+
+/** Every branch of the line under the name, named: each one is a case below. */
+const LINE_CASES: readonly (readonly [string, AgentViewFixturePartial])[] = [
+  [
+    'headline and cost, working',
+    { status: 'working', detail: 'Reading src/app.ts', cost: { usd: 1.2, coverage: 'complete', burnPerHour: 6 } },
+  ],
+  ['partial cost, idle', { status: 'idle', detail: 'Idle', cost: { usd: 0.004, coverage: 'partial' } }],
+  ['unpriced', { status: 'working', detail: 'Thinking', cost: { usd: 0, coverage: 'unavailable' } }],
+  ['reply, working', { status: 'working', reply: { text: 'On it.', final: false } }],
+  ['reply, idle, trimmed', { status: 'idle', reply: { text: '  Done. The suite passes.  ', final: true } }],
+  ['blank reply', { status: 'idle', reply: { text: '   ' } }],
+  ['wait: permission with its tool', { status: 'blocked', wait: { kind: 'permission', since: SINCE, tool: 'Bash' } }],
+  ['wait: permission alone', { status: 'blocked', wait: { kind: 'permission', since: SINCE } }],
+  [
+    'wait: question, more behind it',
+    { status: 'blocked', wait: { kind: 'question', since: SINCE, count: 3, header: 'Branch?', question: 'Merge it?' } },
+  ],
+  ['wait: failure', { status: 'blocked', wait: { kind: 'failure', since: SINCE, code: 'E_RATE', detail: 'retrying' } }],
+  ['wait: a new kind', { status: 'blocked', wait: { kind: 'sandbox', since: SINCE } }],
+  ['blocked with no wait', { status: 'blocked' }],
+  ['starting', { observed: false, detail: 'starting' }],
+  ['pending', { observed: false, pending: true, detail: 'unobserved · resumes when idle' }],
+  ['peer: reply', { device: LAPTOP, status: 'working', reply: { text: 'On it.' } }],
+  ['peer: status', { device: LAPTOP, status: 'idle', cost: { usd: 2, coverage: 'complete' } }],
+  [
+    'peer: question asked',
+    { device: LAPTOP, status: 'blocked', wait: { kind: 'question', since: SINCE, question: ' Ship it? ' } },
+  ],
+  [
+    'peer: question, no prompt',
+    { device: LAPTOP, status: 'blocked', wait: { kind: 'question', since: SINCE, header: 'Deploy' } },
+  ],
+  ['peer: permission', { device: LAPTOP, status: 'blocked', wait: { kind: 'permission', since: SINCE, tool: 'Edit' } }],
+  ['peer: blocked with no wait', { device: LAPTOP, status: 'blocked' }],
+  ['peer: pending', { device: LAPTOP, observed: false, pending: true }],
+  ['peer: starting', { device: LAPTOP, observed: false }],
+  ['terminal', { kind: 'terminal', detail: '/Users/me/notes', status: 'working', project: { name: 'notes' } }],
+  ['terminal, peer', { kind: 'terminal', detail: 'Unassigned terminal', device: LAPTOP, project: { name: '' } }],
+  ['no folder', { project: { name: '' }, provider: { id: 'codex', label: 'Codex' }, model: 'GPT-5' }],
+  ['no folder, no provider', { project: { name: '' } }],
+  ['no model', { provider: { id: 'claude', label: 'Claude' } }],
+];
+const lineViews: readonly AgentView[] = LINE_CASES.map(([, partial], index) =>
+  agentViewFixture({ id: `case-${index}`, ...partial }),
+);
+
+describe('row words match the shim', () => {
+  it('covers every branch of the line: starting, pending, reply, wait, headline, cost, peers, terminals', () => {
+    const names = LINE_CASES.map(([name]) => name).join(' | ');
+    for (const branch of ['starting', 'pending', 'reply', 'wait', 'headline', 'cost', 'peer', 'terminal']) {
+      expect(names).toContain(branch);
+    }
+  });
+
+  it('detailLine is the shim’s reply-first line, for every case (M4)', () => {
+    for (const [index, view] of lineViews.entries()) {
+      const name = LINE_CASES[index]![0];
+      expect(`${name}: ${toolkit.detailLine(view)}`).toBe(`${name}: ${toMonitorAgent(view, REPLY_FIRST).detail}`);
+      // The peer cut changes no word of the line.
+      expect(toolkit.detailLine(view)).toBe(toMonitorAgent(view, { ...REPLY_FIRST, peerMonitor: 'map' }).detail);
+    }
+  });
+
+  it('names a row and what runs it as the shim does, under either host’s options', () => {
+    for (const view of lineViews) {
+      for (const options of [REPLY_FIRST, GODVIEW]) {
+        const legacy = toMonitorAgent(view, options);
+        expect(toolkit.projectName(view)).toBe(legacy.project);
+        if (legacy.agent) expect(toolkit.modelWord(view)).toBe(legacy.agent.model ?? legacy.agent.provider.label);
+      }
+    }
+  });
+
+  it('says a host’s write policy as the views say it', () => {
+    for (const writable of [true, false]) {
+      expect(toolkit.hostWriteWord({ writable })).toBe(
+        originalRemoteWrite.remoteWriteLabel({ hostWritable: writable }),
+      );
+      expect(toolkit.hostWriteTitle({ writable })).toBe(
+        originalRemoteWrite.remoteWriteTitle({ hostWritable: writable }),
+      );
     }
   });
 });

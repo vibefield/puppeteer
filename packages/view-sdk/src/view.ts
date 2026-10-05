@@ -93,6 +93,10 @@ export interface MonitorPalette {
     readonly status: Readonly<
       Record<AgentStatus, { readonly head: string; readonly tailRgb: string; readonly speed?: number }>
     >;
+    /** The words of the rain's own DOM (its tooltip), by the status they describe (M46). */
+    readonly ink: Readonly<Record<AgentStatus, string>>;
+    /** A focused control's ring on the rain's dark ground (M46). */
+    readonly focus: string;
   };
   readonly timeline: TimelinePalette;
 }
