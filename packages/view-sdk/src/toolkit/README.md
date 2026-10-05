@@ -19,7 +19,7 @@ Two rules hold for everything here:
 |---|---|
 | `format.ts` | `formatUsd`, `formatEstimate` (`~$7.03`, `~$7.03+` while partly priced, `—` with no price lane), `formatRatePerHour`, `formatElapsed` (`4:39`, `2h 05m`, `1d 03h`), `formatShort` (`11m`), `formatWords`, `formatClock`, `formatCount`, `formatTokens`, `formatPercent` |
 | `state-words.ts` | MV-D11's one table: `STATE_WORDS` (status, terminal, wait, unread, kind), `statusWord`, `waitWord`, `waitMark`, `openingWord`, `unreadSpoken`, `stateTone`, `stateWord`; the recede steps `RECEDED_OPACITY`, `RECEDED_EMPTY_OPACITY`, `RECEDE_MS`, `everyReceded`, `recedeTarget`, `approachRecede` |
-| `words.ts` | The words a row goes by: `detailLine` (the line under the name, M4's one rule: VibeField's reply-first), `deviceWord` (`This desktop` for `self`, never keyed on an id, M34), `projectName`, `modelWord`, and a peer's write policy `hostWriteWord` / `hostWriteTitle` (from the row's `writable`, M41) |
+| `words.ts` | The words a row goes by: `detailLine` (the line under the name, M4's one rule: VibeField's reply-first), `deviceWord` (`This desktop` for `self`, never keyed on an id, M34), `projectName`, `modelWord`, a peer's write policy `hostWriteWord` / `hostWriteTitle` (from the row's `writable`, M41), and `waitBodyLine` — what a blocked body says it waits on, the swarm's chain in its own order: a question's header or text, the wait's detail, a permission's tool, a failure's code, then the reply or the wait word (M14) |
 | `spawn-menu.ts` | The spawn menu's tree as a view offers it (capability `spawn`): `menuOf`, `selfDevice`, `defaultProfile`, `ready`, `blooms`, `initials`, `profileWord`, `hereWord`, `budSub`, `glyphName`, and `spawnTargetFor`, which names the desktop you sit at by leaving it out (M34). The swarm's bloom and the list's two-step menu share it |
 | `colour.ts` | `projectColour(seq, tint)`, `paneColour`, `projectHue`, `paneHue`, `oklchToHex`, `DEFAULT_PROJECT_TINT`, and `projectColourFor(palette)`, which hosts use to build the replica's theme colour function (L7); `hexToRgb255` for canvas `rgba()` |
 | `marks.ts` | Agent marks (`agentMark`, `agentMarkSvg`, `agentMarkTile`, `AGENT_MARK_ATLAS`, the candidates) and profile glyphs (`PROFILE_GLYPHS`, `PROFILE_GLYPH_SHAPES`, `profileMarkName`, `profileGlyphMarkup`, `profileGlyphSvg`) |
@@ -31,7 +31,9 @@ Two rules hold for everything here:
 
 Every helper is ported from the views package, which keeps its own copies until the views move onto the SDK in
 wave 3. `test/toolkit-parity.test.ts` runs each original beside its port over the same inputs, so an edit to
-either copy fails there. Delete that suite together with the views' copies.
+either copy fails there. Delete that suite together with the views' copies. The swarm's two (`formatRatePerHour`,
+`formatTokens`) are read from the frozen legacy swarm (`views/src/legacy/frozen/swarm`) since MV-5: the shipping
+swarm has no copies left.
 
 The ports keep a few differences in their signatures, so a ported view prints exactly what it printed before:
 
@@ -80,7 +82,7 @@ A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver se
 - **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
 
 ```ts
-// views/swarm/physics/driver.ts: the view's own code
+// views/swarm/physics/driver.ts: the view's own code (the swarm's since MV-5; sketched here)
 const driver = createWorkerDriver<Command, Message>({
   createWorker: () =>
     new Worker(new URL('./swarm-physics.worker.js', import.meta.url), { type: 'module', name: 'swarm-physics' }),
@@ -115,8 +117,8 @@ workspace) and Vite 8.1.5 (VibeField's) gave identical results; esbuild was 0.24
 |---|---|---|---|
 | Vite build (VibeField's renderer, standard secure scheme, production CSP) | worker | Vite resolves the entry and emits a same-origin worker chunk | nothing |
 | Vite dev server (VibeField's `pnpm dev`) | worker | the same, served | nothing |
-| esbuild ESM (apps/godview/build.mjs, `loadFile`, Godview's CSP) | inline, demoted ("unknown worker error") | esbuild leaves `new URL(…)` untouched and emits no worker; the fetch fails and the `error` event demotes at once | see the next row |
-| esbuild ESM, with the host also building the entry | worker | `build({ entryPoints: { 'swarm-physics.worker': <the view's entry> }, outdir })` puts it beside the chunks, where `import.meta.url` resolves (build.mjs already copies ghosttea's `terminal-render.worker.js` the same way) | one more entry point per view worker |
+| esbuild ESM without the entry built (apps/godview/build.mjs before MV-5, `loadFile`, Godview's CSP) | inline, demoted ("unknown worker error") | esbuild leaves `new URL(…)` untouched and emits no worker; the fetch fails and the `error` event demotes at once | see the next row |
+| esbuild ESM, with the host also building the entry | worker | `build({ entryPoints: { 'swarm-physics.worker': <the view's entry> }, outdir })` puts it beside the chunks, where `import.meta.url` resolves (build.mjs already copies ghosttea's `terminal-render.worker.js` the same way) | one more entry point per view worker — build.mjs builds the swarm's `swarm-physics.worker` since MV-5 |
 | esbuild IIFE (the labs' single page) | inline from the start ("Failed to construct 'URL'") | IIFE empties `import.meta`, so `new URL(…, undefined)` throws inside `createWorker` | nothing can fix this from inside the view |
 | esbuild IIFE, with a URL the page provides | worker | the page builds the entry as IIFE text and hands over a blob URL (labs have no CSP) | needs a way to hand the URL to the view (below) |
 
@@ -139,4 +141,7 @@ pnpm --filter @vibecook/puppeteer-view-sdk verify:worker-bundling -- --vite <pat
 
 It is not part of `pnpm test`, because it starts Electron (hidden windows only, no input). It runs one Electron
 process per page. In a single session, Electron 43's main process died with SIGTRAP when the next window opened
-after a window whose page ran a dedicated worker had been destroyed. Each page on its own was reliable.
+after a window whose page ran a dedicated worker had been destroyed. Each page on its own was reliable. Godview
+itself did not reproduce it (MV-5, `apps/godview/worker-windows-probe.mjs`, Electron 43.1.0, 2026-10-05): four
+offscreen windows opened through its own door, two destroyed while their swarm's physics worker ran, another opened
+after each, the main process alive throughout.

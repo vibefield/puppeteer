@@ -19,6 +19,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "restore-smoke": "pnpm bundle && node restore-smoke.mjs",
+    "worker-windows-probe": "pnpm bundle && node worker-windows-probe.mjs",
     "swarm-lab": "node swarm-lab.mjs",
     "timeline-lab": "node timeline-lab.mjs",
     "list-lab": "node list-lab.mjs",

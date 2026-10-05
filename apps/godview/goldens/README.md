@@ -6,29 +6,32 @@ either goes away or is named and shown to James as an intentional change.
 
 ## What is captured
 
-`views/<view>/<theme>-<size>-n<n>[-bare].png`, 48 images (4.2 MB), with `views/manifest.json` listing each one's
+`views/<view>/<theme>-<size>-n<n>[-bare].png`, 60 images (7.2 MB), with `views/manifest.json` listing each one's
 parameters and sha256 and the environment that recorded them.
 
 |        |                                                                                                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| views  | list, rain, timeline (the timeline twice: with the book Godview keeps today, and `-bare`, without one: what it draws once MV-6 retires the ledger, L10) |
+| views  | list, rain, swarm (since MV-5: twelve images recorded from the legacy swarm's lab at base `d91c7b7`, which the ported view is held to; animations on, it is motion), timeline (the timeline twice: with the book Godview keeps today, and `-bare`, without one: what it draws once MV-6 retires the ledger, L10) |
 | themes | light, dark                                                                                                                                             |
 | sizes  | Godview's stage (35 % of the window, floor 170 px): compact 680×170 · default 1180×252 · wide 1728×378                                                  |
 | rows   | n = 1 and n = 20 from the seeded world (`packages/views/src/lab/lab-world.ts`)                                                                          |
 | motion | 60 frames stepped on the capture clock; animations off (`data-godview-animations="off"`), but the rain on: it ran its loop regardless until MV-4, and since it honours the switch it is asked for motion |
 
-The swarm's goldens are its frame sequences, in `swarm/` (below): what matters there is the physics and the models it
-hands its renderer over time, not one frame of pixels.
+The swarm's truer goldens are its frame sequences, in `swarm/` (below): what matters there is the physics and the
+models it hands its renderer over time, not one frame of pixels. Its twelve pixel images came with the port (MV-5) as
+the coarse gate beside them: a port that moved a colour, a glyph or the empty words would fail them.
 
 ## The swarm's frame goldens
 
-`swarm/<scenario>.json`: the frames the shipping `AgentSwarm` hands its renderer, recorded by `swarm-frames.mjs`
-through a paint spy. At bundle time the spy replaces `createSwarmRenderer`, for AgentSwarm alone, with a renderer that
-records. Everything else runs as shipped:
+`swarm/<scenario>.json`: the frames the shipping `AgentSwarm` (the SDK view since MV-5, mounted through the lab's
+`/host` slot) hands its renderer, recorded by `swarm-frames.mjs` through a paint spy. At bundle time the spy replaces
+`createSwarmRenderer`, for AgentSwarm alone, with a renderer that records. Everything else runs as shipped:
 
 - the view and its bubble models;
-- the inline physics, stepped by the capture clock's exact 60 Hz frames, so a fixed timestep;
-- real layout and the usage column as an obstacle, in the same offscreen window as the pixel goldens.
+- the physics inline — a single-file page has no `import.meta.url`, so the view's driver runs the same host in this
+  thread and reports `physics: 'inline'` — pumped from the view's frame loop on the capture clock's exact 60 Hz
+  frames, so a fixed timestep;
+- real layout and the usage column as a stage obstacle (MV-D19), in the same offscreen window as the pixel goldens.
 
 | scenario            | stage    | rows | theme |
 | ------------------- | -------- | ---- | ----- |
@@ -53,12 +56,14 @@ node goldens/swarm-frames.mjs --update   # re-record (an intentional change, nam
 ```
 
 The same three sequences also run under vitest with happy-dom (build-mv M1), in every `pnpm test`:
-`packages/views/src/views/swarm/AgentSwarm.frames.test.tsx`, with its goldens beside it in `goldens/`.
+`packages/views/test/swarm-frames.test.tsx`, with its goldens in `test/goldens/swarm/`. It lives outside the view's
+folder since MV-5 because it needs the lab's world, and a view's folder may import only the SDK (MV-W1).
 
-- The same paint spy (`vi.mock` of the renderer module), inline physics on fake rAF, fake time from `LAB_NOW_MS`, and
-  a seeded `Math.random`.
-- happy-dom lays nothing out, so the stage's box and the usage column's rect are Godview's geometry, given by hand.
-- Re-record with `pnpm exec vitest run src/views/swarm/AgentSwarm.frames.test.tsx -u`.
+- The same paint spy (`vi.mock` of the renderer module), the driver's inline physics (happy-dom has no `Worker`; the
+  test asserts the `physics: 'inline'` report) on fake rAF, fake time from `LAB_NOW_MS`, and a seeded `Math.random`.
+- happy-dom lays nothing out, so the stage's box and the usage column's obstacle are Godview's geometry, given by
+  hand through the view's `stage` input.
+- Re-record with `pnpm exec vitest run test/swarm-frames.test.tsx -u` (from `packages/views`).
 
 The two are kept on purpose. The vitest one is the every-commit gate. The Electron one is the witness with real layout,
 real colours and real chrome.
@@ -124,6 +129,9 @@ environment, and re-record (`--update`) when the environment changes, saying so 
 - Offscreen `capturePage` does capture the WebGPU swarm. The blank-readback limit is `drawImage` from a live WebGPU
   canvas, not the window's own capture. Swarm pixel goldens are therefore possible later, at about 0.5 MB an image.
 - Electron 43 crashed (SIGTRAP) when an offscreen window was destroyed and another opened, so the capture reuses one
-  window for every page.
+  window for every page. Godview itself did not reproduce it (MV-5, Electron 43.1.0, 2026-10-05):
+  `node worker-windows-probe.mjs` runs the real app offscreen, opens four windows through Godview's own door and
+  destroys two whose swarm ran its physics worker, and the main process lives; every window's slot reported
+  `physics: worker`. The crash's shape remains the capture's, and the capture keeps its one window.
 - The main is ESM and must not await `app.whenReady()` at top level: Electron emits `ready` only after the entry
   module finishes evaluating.
