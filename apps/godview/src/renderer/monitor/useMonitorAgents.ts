@@ -5,28 +5,14 @@ import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore, type MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
 import { createMonitorReplica, type MonitorReplica } from '@vibecook/puppeteer-monitor/replica';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
-import type { MonitorView, MonitorViewCommands } from '@vibecook/puppeteer-view-sdk';
-import {
-  frameScheduler,
-  isLegacyMonitorView,
-  legacyView,
-  type ViewSlotCommands,
-} from '@vibecook/puppeteer-view-sdk/host';
+import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
+import { frameScheduler, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
 import type { AgentStatus, MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
 import { projectColourFor } from '@vibecook/puppeteer-view-sdk/toolkit';
-import {
-  isPortedMonitorView,
-  MONITOR_VIEWS,
-  type AgentMonitorProps,
-  type MonitorActions as ViewsMonitorActions,
-  type MonitorAgent as ViewsMonitorAgent,
-  type MonitorPalette,
-  type MonitorParameters,
-} from '@vibecook/puppeteer-views';
+import { MONITOR_VIEWS, type MonitorAgent as ViewsMonitorAgent, type MonitorPalette } from '@vibecook/puppeteer-views';
 import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import { chromeRows, type ChromeAgentRecord } from './chrome-rows.js';
-import { createLegacyRows, type LegacyRowsFacts } from './legacy-rows.js';
 import type { MonitorAgent } from './types.js';
 import {
   agentSessionsByRow,
@@ -49,8 +35,8 @@ import {
  * holds, the theme's colours. All four views are SDK views the view host
  * mounts directly — the list and the rain (MV-4), the swarm (MV-5) and the
  * timeline (MV-6): they read the model and word the line under a name by the
- * toolkit's one rule (reply-first, M4). No view mounts through the legacy
- * bridge any more (the shim retires in MV-8). The counts and the status
+ * toolkit's one rule (reply-first, M4). The view host mounts SDK views only
+ * (the legacy bridge and its shim went with MV-8). The counts and the status
  * shortcuts read the model. Nothing here records what a row did: the timeline
  * draws births and current states (runtime only, MV-D13).
  *
@@ -98,6 +84,9 @@ export interface MonitorAgentsResult {
   notifications: readonly MonitorNotification[];
   dismissNotification(runtimeRunId: string, notificationId: string): void;
 }
+
+/** The four views by id, each mounted by the view host as itself. */
+const VIEWS: ReadonlyMap<string, MonitorView> = new Map(MONITOR_VIEWS.map((entry) => [entry.id, entry.view] as const));
 
 /** The replica's theme key (L7): the same tint and ramp are the same colours. */
 function themeKey(palette: Pick<MonitorPalette, 'tint' | 'neutral'>): string {
@@ -366,22 +355,6 @@ export function useMonitorAgents({
     window.puppeteer.reportMonitorShown(shownKey ? shownKey.split('\n') : []);
   }, [shownKey]);
 
-  // The legacy rows (L9, legacy-rows.ts): the shim's, with the swarm's spatial identity this window carried. One list
-  // per model and window facts.
-  const windowFacts = useMemo<LegacyRowsFacts>(
-    () => ({ agentSessions, terminals, identities: terminalIdentities, visualIds: terminalVisualIds }),
-    [agentSessions, terminalIdentities, terminalVisualIds, terminals],
-  );
-  const facts = useRef(windowFacts);
-  facts.current = windowFacts;
-  /** The rows the views were last given, so a change of window facts alone can draw them again. */
-  const given = useRef<readonly ViewsMonitorAgent[] | undefined>(undefined);
-  const [legacy] = useState(createLegacyRows);
-  const legacyRowsFor = useCallback(
-    (current: MonitorModel): readonly ViewsMonitorAgent[] => legacy.rowsFor(current, facts.current),
-    [legacy],
-  );
-
   const select = useCallback(
     (session: SessionSummary | undefined): void => {
       if (session) workspace?.mountSession(session);
@@ -443,52 +416,6 @@ export function useMonitorAgents({
     [],
   );
 
-  // The views, built once per window: a ported one is mounted as it is; a legacy one through the bridge (L6), whose
-  // `toProps` reads the shim's rows.
-  const views = useMemo(() => {
-    const actions = new WeakMap<object, ViewsMonitorActions>();
-    // The bridge hands the view's own commands: `create` answers (M59), and the legacy actions expect no value.
-    const actionsFor = (bridge: Pick<MonitorViewCommands, 'select' | 'create'>): ViewsMonitorActions => {
-      const held = actions.get(bridge);
-      if (held) return held;
-      const made: ViewsMonitorActions = {
-        select: (agent) => bridge.select(agent.id),
-        createAt: (position, target) => bridge.create(position, target).then(() => undefined),
-      };
-      actions.set(bridge, made);
-      return made;
-    };
-    return new Map<string, MonitorView>(
-      MONITOR_VIEWS.map(
-        (view) =>
-          [
-            view.id,
-            isPortedMonitorView(view)
-              ? view.view
-              : legacyView<AgentMonitorProps>(view, view.Component, (input, bridge) => {
-                  const agents = legacyRowsFor(input.model);
-                  given.current = agents;
-                  return {
-                    agents,
-                    parameters: input.parameters as MonitorParameters,
-                    actions: actionsFor(bridge),
-                    palette: input.theme.tokens as MonitorPalette,
-                  };
-                }),
-          ] as const,
-      ),
-    );
-  }, [legacyRowsFor]);
-
-  // The window facts the legacy rows read moved (a handoff carried a body, a record arrived): a view whose rows
-  // changed without the model changing draws again (the bridge's `refresh`, for host state beside the input).
-  useLayoutEffect(() => {
-    if (given.current === undefined) return;
-    if (legacyRowsFor(replica.getSnapshot().model) !== given.current) {
-      for (const view of views.values()) if (isLegacyMonitorView(view)) view.refresh();
-    }
-  }, [legacyRowsFor, replica, views, windowFacts]);
-
   // M19: the counts and the status shortcuts read the model, never the chrome's feed.
   const counts = useMemo(() => {
     const result: Record<AgentStatus, number> = { idle: 0, working: 0, blocked: 0 };
@@ -509,7 +436,6 @@ export function useMonitorAgents({
     () =>
       chromeRows({
         model,
-        legacy: legacyRowsFor(model),
         agentSessions,
         records,
         terminals,
@@ -517,7 +443,7 @@ export function useMonitorAgents({
         attachments,
         identities: terminalIdentities,
       }),
-    [agentSessions, attachments, legacyRowsFor, model, records, sessions, terminalIdentities, terminals],
+    [agentSessions, attachments, model, records, sessions, terminalIdentities, terminals],
   );
 
   const actions = useMemo(
@@ -543,7 +469,7 @@ export function useMonitorAgents({
   return {
     replica,
     model,
-    views,
+    views: VIEWS,
     commands,
     counts,
     selectNextStatus,

@@ -4,8 +4,9 @@ import { STATE_WORDS, statusWord, waitWord } from './state-words.js';
 // THE WORDS A ROW GOES BY (MV-D11): its name, what runs it, the line under its
 // name, the desktop it lives on and what that desktop lets a viewer do.
 //
-// Each is ported verbatim from what the hosts and the legacy shim say today, so
-// a view moved onto the SDK reads exactly as it did. The facts are the row's,
+// Each is ported verbatim from what the hosts and the legacy shim said (the
+// shim went with MV-8; `test/toolkit-parity.test.ts` keeps its words), so a
+// view moved onto the SDK reads exactly as it did. The facts are the row's,
 // computed once by its home backend (`detail`, `writable`); these only say them.
 
 /** What a view calls the desktop it is read on (M34). */

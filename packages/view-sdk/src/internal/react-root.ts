@@ -1,11 +1,11 @@
 /**
- * The React root a React-drawn view lives in: the adapter's and the legacy
- * bridge's, one per mount, on the element the host hands the view.
+ * The React root a React-drawn view lives in: the adapter's, one per mount, on
+ * the element the host hands the view.
  *
  * A view's root is its own, never a branch of the host's tree. It shares no
- * context with the host (the bridge's `wrap` re-provides what a legacy view
- * still needs) and no `useId` space: every mount gets its own identifier
- * prefix, so a view's ids can never collide with the host's or another view's.
+ * context with the host and no `useId` space: every mount gets its own
+ * identifier prefix, so a view's ids can never collide with the host's or
+ * another view's.
  */
 
 import type { ReactNode } from 'react';

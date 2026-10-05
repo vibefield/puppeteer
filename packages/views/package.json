@@ -17,7 +17,6 @@
     "./physics": "./src/views/swarm/physics/index.ts",
     "./deck": "./src/deck/index.ts",
     "./launcher": "./src/launcher/index.ts",
-    "./legacy": "./src/legacy/index.ts",
     "./lab": "./src/views/swarm/lab/main.ts",
     "./styles/views.css": "./src/styles/views.css",
     "./styles/lab.css": "./src/views/swarm/lab/lab.css",
@@ -50,10 +49,6 @@
       "./launcher": {
         "types": "./dist/launcher/index.d.ts",
         "import": "./dist/launcher/index.js"
-      },
-      "./legacy": {
-        "types": "./dist/legacy/index.d.ts",
-        "import": "./dist/legacy/index.js"
       },
       "./lab": {
         "types": "./dist/views/swarm/lab/main.d.ts",

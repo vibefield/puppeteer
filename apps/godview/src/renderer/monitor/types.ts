@@ -6,17 +6,11 @@ import type {
 } from '@vibecook/puppeteer-views';
 import type { AgentSessionInfo } from '../../protocol.js';
 
-// Godview's rows are the views package's rows with two facts the app keeps
-// beside them: a Ghosttea session (which is a `MonitorSession` already, with
-// more) and the runtime identity behind an agent facet. Views see the package
-// type; the app reads the extension through these.
-export type {
-  AgentMonitorProps,
-  AgentMonitorView,
-  MonitorActions,
-  MonitorTheme,
-  PaneAttachment,
-} from '@vibecook/puppeteer-views';
+// The chrome's rows (M19) are the views package's chrome shape with two facts
+// the app keeps beside it: a Ghosttea session (which is a `MonitorSession`
+// already, with more) and the runtime identity behind an agent facet. The
+// views read the model's `AgentView`; the chrome reads these.
+export type { MonitorTheme, PaneAttachment } from '@vibecook/puppeteer-views';
 
 export interface MonitorAgentFacet extends ViewsMonitorAgentFacet {
   /** Always present here: a row is assembled only once its first state arrived. */

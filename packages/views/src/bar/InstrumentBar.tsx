@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
-import type { AgentMonitorView, MonitorTheme } from '../monitor/types.js';
+import type { MonitorTheme, MonitorViewEntry } from '../monitor/types.js';
 
 // The instrument bar (record §04): 40px, no words. Counters on the left where
 // the title was, tools on the right, drag space between. Every control is one
@@ -179,7 +179,7 @@ export interface InstrumentBarProps {
   counts: Record<AgentVisualStatus, number>;
   onSelectStatus(status: AgentVisualStatus): void;
   /** Every view the bar switches between: it reads each one's id and label (MV-8 adds the manifest's mark). */
-  views: readonly Pick<AgentMonitorView, 'id' | 'label'>[];
+  views: readonly Pick<MonitorViewEntry, 'id' | 'label'>[];
   viewId: string;
   onSelectView(viewId: string): void;
   theme: MonitorTheme;

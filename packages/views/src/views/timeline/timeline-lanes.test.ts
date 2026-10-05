@@ -99,6 +99,18 @@ describe('a lane is its row alone (TL-D9, MV-6)', () => {
     expect(shell.current.status).toBe('working');
   });
 
+  it('starts every row’s current state where its row says: the rows the old book dated by first sight too (RT5)', () => {
+    // A run the runtime has not reported yet, and a peer's run: the legacy rows carried no time for either, so the old
+    // book began their lane when the window first saw them. Every row carries its own `statusSince` now.
+    const starting = laneFor(agentRow('starting', 20 * MIN, { observed: false }, 20 * MIN), NOW);
+    expect(starting.sinceMs).toBe(NOW - 20 * MIN);
+    const peer = laneFor(
+      agentRow('peer', 40 * MIN, { device: { id: 'd', name: 'studio', self: false }, status: 'idle' }, 7 * MIN),
+      NOW,
+    );
+    expect([peer.sinceMs, peer.current.fromMs, peer.current.status]).toEqual([NOW - 7 * MIN, NOW - 7 * MIN, 'idle']);
+  });
+
   it('clips at the horizon, and never claims a state before its birth or after now', () => {
     const old = laneFor(agentRow('old', TIMELINE_HORIZON_MS + 60 * MIN), NOW);
     expect(old.sinceMs).toBe(NOW - TIMELINE_HORIZON_MS);

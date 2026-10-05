@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from 'react';
+import { createElement, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type {
   FrameScheduler,
@@ -12,16 +12,17 @@ import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from 
 import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
 import { useMonitorPalette } from '../monitor/palette.js';
 import type { MonitorParameters } from '../monitor/parameters.js';
-import type { AgentMonitorProps, MonitorActions, MonitorAgent, MonitorTheme } from '../monitor/types.js';
+import type { MonitorTheme } from '../monitor/types.js';
 import { installLabClock, type LabClock } from './lab-clock.js';
 import { labModel } from './lab-model.js';
-import { LAB_NOW_MS, LAB_SEED, labWorld } from './lab-world.js';
+import { LAB_NOW_MS, LAB_SEED } from './lab-world.js';
 
 // One view in Godview's stage, over the seeded world (MV-0). Every view lab
-// mounts its SHIPPING component through this, at the sizes Godview gives the
-// stage, in either theme, with the host's animations switch — and with
-// `capture=1` on the capture clock, stripped to the stage alone, so the golden
-// tool can clip it at the page's origin.
+// mounts its SHIPPING view through this, through the view host as Godview
+// mounts it, at the sizes Godview gives the stage, in either theme, with the
+// host's animations switch — and with `capture=1` on the capture clock,
+// stripped to the stage alone, so the golden tool can clip it at the page's
+// origin.
 //
 // URL: `theme=light|dark` · `size=compact|default|wide` (all three when absent) ·
 // `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1`.
@@ -91,14 +92,10 @@ export interface ViewLabOptions {
   readonly root: HTMLElement;
   /** Where the stages go. */
   readonly mount: Element;
-  /** A legacy view's component, handed the world's legacy rows. */
-  readonly Component?: ComponentType<AgentMonitorProps> | undefined;
-  /** A view on the SDK (MV-4 on): mounted through the view host, as Godview mounts it, over the same world said as
-   * the model (`lab-model.ts`), in the same order. One of `Component` and `view`. */
-  readonly view?: MonitorView | undefined;
+  /** The view, mounted through the view host as Godview mounts it, over the seeded world said as the model
+   * (`lab-model.ts`). */
+  readonly view: MonitorView;
   readonly parameters: MonitorParameters;
-  /** Put around each stage's view: the swarm's physics provider. */
-  readonly wrap?: (view: ReactElement) => ReactElement;
   readonly defaults?: { n?: number };
 }
 
@@ -155,33 +152,18 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(stageRef);
-  const sdkView = options.view;
-  const world = useMemo(
-    () =>
-      sdkView
-        ? undefined
-        : labWorld({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
-    [sdkView, params.n, params.seed, palette.tint, palette.neutral, churn],
-  );
   const replica = useMemo(
-    () =>
-      sdkView
-        ? labReplica(labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }))
-        : undefined,
-    [sdkView, params.n, params.seed, palette.tint, palette.neutral, churn],
+    () => labReplica(labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn })),
+    [params.n, params.seed, palette.tint, palette.neutral, churn],
   );
   const [selected, setSelected] = useState<string>();
-  const actions = useMemo<MonitorActions>(
-    () => ({ select: (agent: MonitorAgent) => setSelected(agent.id), createAt: () => undefined }),
-    [],
-  );
   const commands = useMemo<ViewSlotCommands>(() => ({ select: setSelected, create: () => undefined }), []);
   const theme = useMemo<SdkTheme>(
     () => ({ scheme: params.theme, tokens: palette, reducedMotion: false, animations: params.animations }),
     [palette, params.animations, params.theme],
   );
-  // As Godview publishes them: flowing legacy views clear the chrome with these, the swarm reads its rect, and a
-  // view on the SDK is handed the same measurement as its stage (MV-D19): the chrome's right edge as the left inset.
+  // As Godview publishes them: the view is handed the chrome's measurement as its stage (MV-D19), the chrome's right
+  // edge as the left inset; the two properties are the host's own, as Godview sets them on its stage.
   const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
@@ -193,8 +175,6 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
       const chromeRight = Math.round(rect.right - stageRect.left);
       stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
       stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
-      // A legacy view reads only the two properties above: its lab renders exactly as it always did.
-      if (!sdkView) return;
       setStageGeometry({
         width: Math.round(stageRect.width),
         height: Math.round(stageRect.height),
@@ -211,40 +191,35 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
-    if (sdkView) observer.observe(stage);
+    observer.observe(stage);
     publish();
     return () => observer.disconnect();
-    // the view a stage mounts is fixed for the page's life
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // An SDK view mounts once the stage is measured (MV-D19): its first input then carries the chrome's rectangles,
-  // as Godview's does within a frame of mounting, so a view that places bodies clear of the chrome (the swarm)
-  // places its first world right. A legacy view renders as it always did. The stage counts as committed once its
-  // view is on it.
-  const ready = !sdkView || stageGeometry !== EMPTY_STAGE;
+  // The view mounts once the stage is measured (MV-D19): its first input then carries the chrome's rectangles, as
+  // Godview's does within a frame of mounting, so a view that places bodies clear of the chrome (the swarm) places
+  // its first world right. The stage counts as committed once its view is on it.
+  const ready = stageGeometry !== EMPTY_STAGE;
   useEffect(() => {
     if (ready) onCommit();
   }, [ready, onCommit]);
-  const view = !sdkView
-    ? createElement(options.Component!, { agents: world!.agents, parameters, actions, palette })
-    : replica && ready
-      ? createElement(MonitorViewHost, {
-          replica,
-          view: sdkView,
-          stage: stageGeometry,
-          theme,
-          parameters,
-          commands,
-          scheduler: params.capture ? CAPTURE_SCHEDULER : undefined,
-        })
-      : null;
+  const view = ready
+    ? createElement(MonitorViewHost, {
+        replica,
+        view: options.view,
+        stage: stageGeometry,
+        theme,
+        parameters,
+        commands,
+        scheduler: params.capture ? CAPTURE_SCHEDULER : undefined,
+      })
+    : null;
   return createElement(
     'figure',
     { className: 'view-lab-stage', 'data-lab-stage': size },
     createElement(
       'section',
       { ref: stageRef, className: MONITOR_STAGE_CLASS, style: { width, height }, 'aria-label': 'Agent monitor' },
-      view === null ? null : options.wrap ? options.wrap(view) : view,
+      view,
       createElement('div', { ref: chromeRef, className: 'vf-monitor-chrome', [MONITOR_CHROME_ATTRIBUTE]: '' }),
     ),
     params.capture

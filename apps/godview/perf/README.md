@@ -56,8 +56,8 @@ node perf/harness.mjs --b /path/to/slice/apps/godview      # A/B/A′ rounds; A 
   - its `actualDuration` is the view's render time, as a `<Profiler>` around it would report (Godview's renderer
     bundle is React's development build, which times every render);
   - all commits are counted too, every root's.
-- **Every React root's render time** (build-mv M33). A view that `/host`'s legacy bridge mounts in its OWN root is no
-  fiber of the host's tree, so the view row above cannot see it. The same hook therefore records, for every committed
+- **Every React root's render time** (build-mv M33). A view `/host` mounts in its OWN root (every view, through
+  `reactMonitorView`; the legacy bridge did the same until MV-8) is no fiber of the host's tree, so the view row above cannot see it. The same hook therefore records, for every committed
   root of every renderer, the root fiber's `actualDuration`: the time React spent rendering that commit, the whole
   tree's. `all roots render` is their sum. Each root also carries its container's name, its first named components and
   its place: `host` (it holds the monitor stage), `stage` (below the stage: a view's own root) or `other`.

@@ -126,6 +126,10 @@ const retiredRepositoryPaths = [
   'apps/godview/src/main/spawn-through.test.ts',
   'apps/godview/src/main/spawn-through.ts',
   'apps/godview/src/renderer/legacy-agent-state.ts',
+  // The monitor-view migration's scaffolding (MV-8, L9): the legacy shim and its frozen views, the view host's bridge,
+  // Godview's legacy rows and the MV-2 differential that compared the pre-MV seam through the shim.
+  'apps/godview/src/renderer/monitor/differential',
+  'apps/godview/src/renderer/monitor/legacy-rows.ts',
   'apps/godview/src/renderer/ScenarioRecordingControl.tsx',
   'apps/godview/src/shim',
   'apps/emulator',
@@ -189,6 +193,9 @@ const retiredRepositoryPaths = [
   'packages/runtime/src/monitor-ipc.ts',
   'packages/runtime/src/monitor-shadow.ts',
   'packages/testing/src/session-projection.ts',
+  'packages/view-sdk/src/host/legacy.ts',
+  'packages/views/src/legacy',
+  'packages/views/src/views/swarm/physics/context.tsx',
 ];
 
 const requiredArchitectureDocuments = [

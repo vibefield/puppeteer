@@ -1,13 +1,7 @@
-import type { ComponentType } from 'react';
 import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
-import type {
-  AgentMonitorViewDefinition,
-  AgentMonitorViewProps as PortableAgentMonitorViewProps,
-} from '@vibecook/puppeteer-react';
 import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibecook/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
-import type { MonitorPalette } from './palette.js';
-import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
+import type { MonitorParameterGroup } from './parameters.js';
 import type { UsageHistory } from './usage-ledger.js';
 
 /** The two looks the instrument skin ships; a host keeps the chosen one. */
@@ -96,9 +90,11 @@ export interface MonitorRemoteFacet {
 export type MonitorTier = 'managed' | 'ingested' | 'remote';
 
 /**
- * One monitored session in the only shape a view ever sees.
+ * One monitored session as a host's chrome reads it: the find sheet, the deck's
+ * pane frames, the inspector (M19). The monitor views read the SDK's `AgentView`
+ * instead (MV-D17); this shape fed them through the legacy shim until MV-8.
  *
- * Agent-ness is a facet rather than a separate variant, so a view reads
+ * Agent-ness is a facet rather than a separate variant, so a reader reads
  * `agent?.model` instead of re-deriving which kind of thing it is holding.
  */
 export interface MonitorAgent {
@@ -203,62 +199,16 @@ export interface MonitorSpawnTarget {
   readonly profileSet?: string | undefined;
 }
 
-export interface MonitorActions {
-  /** Mount this session in the active pane. */
-  select(agent: MonitorAgent): void;
-  /** Open a terminal; spatial views pass where the gesture happened, and the
-   * spawn bloom (or the list's menu) the desktop and profile the person chose. */
-  createAt(position?: { x: number; y: number }, target?: MonitorSpawnTarget): void | Promise<void>;
-}
-
-export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters> & {
-  /** The live tokens (`palette.ts`). Passed rather than read because two of
-   * the three views paint into a canvas, which cannot inherit a custom
-   * property — and a view that resolved its own would be a second reader of
-   * the design system with its own idea of when to re-read it. */
-  readonly palette: MonitorPalette;
-  /** The desktops and Agent Profiles a new terminal can be born under (the
-   * spawn bloom, SB). Absent: a hold creates at once, exactly as before it. */
-  readonly spawnMenu?: MonitorSpawnMenu | undefined;
-};
-
 /**
- * A way of looking at the running agents. Adding one is a file plus a line in
- * the registry — deliberately the same shape as adding a built-in provider in
- * `packages/builtin-providers`.
- *
- * A view is a pure function of these props. It never reaches the runtime, the
- * workspace, a terminal or a daemon, which is what keeps it structurally
- * unable to break the invariant that semantics never come from terminal text
- * (DESIGN ADR-003) and what lets two hosts mount the same view.
+ * A way of looking at the running agents, as the registry lists it: an SDK view (`view`), mounted by the view host
+ * (`@vibecook/puppeteer-view-sdk/host`), with the face the host's chrome reads read from its manifest: the id, the
+ * label, the mark the bar draws (MV-D6), the keys it prints (MV-D8), the parameter groups the tweak panel offers and
+ * the revision they are stored under. Adding one is a folder under `views/` and a line in the registry.
  */
-export interface AgentMonitorView extends Omit<
-  AgentMonitorViewDefinition<MonitorAgent, MonitorActions, MonitorParameters>,
-  'Component'
-> {
-  readonly parameterGroups: readonly MonitorParameterGroup[];
-  /** Set when a view's defaults were re-decided: the tunables are stored under
-   * the revision, so every installation lands on the new defaults instead of
-   * keeping the values the old design had saved. Later tunes persist as before. */
-  readonly parametersRevision?: string;
-  /** The portable contract's component, plus the palette the shell resolves for it. */
-  readonly Component: ComponentType<AgentMonitorProps>;
-}
-
-/**
- * A view moved onto the SDK (MV-4 on): the host mounts `view` through the view
- * host (`@vibecook/puppeteer-view-sdk/host`), with no legacy bridge. Its
- * registry face is a legacy entry's (the id, the label, the parameter groups
- * and their revision, read from its manifest), so the bar, the tweak panel and
- * the stored parameters read every view alike until MV-8 retires the legacy ones.
- */
-export interface PortedMonitorView {
+export interface MonitorViewEntry {
   readonly id: string;
   readonly label: string;
   readonly parameterGroups: readonly MonitorParameterGroup[];
   readonly parametersRevision?: string;
   readonly view: MonitorView;
 }
-
-/** A registry entry: a ported view, or a legacy one the host mounts through the bridge until it ports. */
-export type MonitorViewEntry = AgentMonitorView | PortedMonitorView;

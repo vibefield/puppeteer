@@ -32,11 +32,10 @@ Two rules hold for everything here:
 
 ## Ported, with identical output
 
-Every helper is ported from the views package, which keeps its own copies until the views move onto the SDK in
-wave 3. `test/toolkit-parity.test.ts` runs each original beside its port over the same inputs, so an edit to
-either copy fails there. Delete that suite together with the views' copies. The swarm's two (`formatRatePerHour`,
-`formatTokens`) are read from the frozen legacy swarm (`views/src/legacy/frozen/swarm`) since MV-5: the shipping
-swarm has no copies left.
+Every helper is ported from the views package. Where the views still keep their own copy, `test/toolkit-parity.test.ts`
+runs each original beside its port over the same inputs, so an edit to either copy fails there. Where the original was
+a frozen legacy view or the legacy shim (the swarm's and the timeline's words, the status ledger's wait words, the line
+under the name), the copy went with MV-8, and the suite keeps the values the parity pinned.
 
 The ports keep a few differences in their signatures, so a ported view prints exactly what it printed before:
 

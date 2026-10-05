@@ -170,8 +170,10 @@ and the row goes through the ordinary removal; an unresolvable command returns f
   its seam. The model carries the row with `alive: false`, as the desk row already does; visibility is the replica's host
   policy (`setLocal({ visible })`, vf passes `row => row.alive`); pu's flow is the `acknowledge` command above.
 - **M4** pu's detail appends `+N blockers` and `~$x estimated API cost · $y/min`; vf's prefers the reply line and
-  `kind · tool`. The row's `detail` is the headline; `reply`, `wait` (with `count`), `cost` carry the rest; the legacy
-  shim composes each host's line (`detail: 'reply-first' | 'headline-cost'`), ported views use vf's reply-first rule.
+  `kind · tool`. The row's `detail` is the headline; `reply`, `wait` (with `count`), `cost` carry the rest; every view
+  composes vf's reply-first rule through the toolkit (`detailLine`). *Corrected 2026-10-05 (MV-8): the legacy shim that
+  composed each host's line (`detail: 'reply-first' | 'headline-cost'`) is deleted; pu's chrome keeps its own
+  headline-cost words for Find (`apps/godview/src/renderer/monitor/chrome-rows.ts` `chromeDetail`).*
 - **M17** an agent before its first state is a host option, `unobservedAgents: 'row' | 'terminal'`. `row` (the
   default, vf's): the run is a "starting" row (`observed: false`) that speaks for its terminal at once. `terminal`
   (pu's): the run is no row and claims nothing until the runtime reports a state, so its terminal stands in, not

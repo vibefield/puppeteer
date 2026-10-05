@@ -48,6 +48,9 @@ describe('rainDataString', () => {
     expect(rainDataString(row({ device: PEER, model: 'Opus', context: { usedPercent: 12 } }))).toBe(
       ' vibe field Opus CTX 12% ',
     );
+    // …and its tail runs by that context too, where the legacy peer (no Core facts) fell at mid-scale.
+    expect(rainTailLength(row({ device: PEER, context: { usedPercent: 100 } }), 40, 1, 10)).toBe(36);
+    expect(rainTailLength(row({ device: PEER }), 40, 1, 10)).toBe(18);
   });
 });
 

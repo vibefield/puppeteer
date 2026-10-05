@@ -3,10 +3,10 @@ import { listMonitorView } from '../views/list/index.js';
 import { rainMonitorView } from '../views/rain/index.js';
 import { swarmMonitorView } from '../views/swarm/index.js';
 import { timelineMonitorView } from '../views/timeline/index.js';
-import type { MonitorViewEntry, PortedMonitorView } from './types.js';
+import type { MonitorViewEntry } from './types.js';
 
-/** A ported view's registry face, read from its manifest. */
-export function portedMonitorView(view: MonitorView): PortedMonitorView {
+/** A view's registry face, read from its manifest. */
+export function monitorViewEntry(view: MonitorView): MonitorViewEntry {
   const { id, label, parameters, parametersRevision } = view.manifest;
   return {
     id,
@@ -17,22 +17,16 @@ export function portedMonitorView(view: MonitorView): PortedMonitorView {
   };
 }
 
-/** Whether a host mounts the entry's own SDK view (true) or its legacy component through the bridge. */
-export function isPortedMonitorView(entry: MonitorViewEntry): entry is PortedMonitorView {
-  return 'view' in entry;
-}
-
 /**
  * Every way of looking at the running agents. A new view is one directory under
  * `views/` and one entry here — the same shape `createBuiltinProviders` gives
- * agent providers in packages/runtime. List and rain (MV-4), the swarm (MV-5) and the
- * timeline (MV-6) are SDK views; none mounts through the legacy bridge any more.
+ * agent providers in packages/runtime. Every one is an SDK view (MV-4, MV-5, MV-6).
  */
 export const MONITOR_VIEWS: readonly MonitorViewEntry[] = [
-  portedMonitorView(swarmMonitorView),
-  portedMonitorView(listMonitorView),
-  portedMonitorView(rainMonitorView),
-  portedMonitorView(timelineMonitorView),
+  monitorViewEntry(swarmMonitorView),
+  monitorViewEntry(listMonitorView),
+  monitorViewEntry(rainMonitorView),
+  monitorViewEntry(timelineMonitorView),
 ];
 
 export const DEFAULT_MONITOR_VIEW_ID = swarmMonitorView.manifest.id;

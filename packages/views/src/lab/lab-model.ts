@@ -3,11 +3,12 @@ import type { AgentView, MonitorCost, MonitorDeviceRef, MonitorModel, MonitorWai
 import type { MonitorAgent } from '../monitor/types.js';
 import { labWorld, type LabWorldOptions } from './lab-world.js';
 
-// The seeded world as the SDK's model (MV-4): the same rows `labWorld` draws
-// for the legacy views, said as `AgentView`, so a ported view's lab and goldens
-// draw exactly the world its legacy lab drew. `lab-model.test.ts` proves it:
-// through the legacy shim under Godview's options, every row gives back every
-// fact a view reads of the world's own row.
+// The seeded world as the SDK's model (MV-4): the same rows `labWorld` draws,
+// said as `AgentView`, so a ported view's lab and goldens draw exactly the
+// world its legacy lab drew. It was proved fact for fact against the world
+// through the legacy shim until MV-8 deleted the shim; `lab-model.test.ts` now
+// pins the model byte for byte, and the goldens recorded on it witness what it
+// draws.
 //
 // Each fact is the backend's word for what the world's row says: the line
 // under the name is Core's headline (M4), the cost is the ledger's total with

@@ -1,38 +1,29 @@
-// THE TOOLKIT SAYS WHAT THE VIEWS SAY (MV-D11: identical wording, identical numbers).
+// THE TOOLKIT SAYS WHAT THE VIEWS SAID (MV-D11: identical wording, identical numbers).
 //
-// The toolkit ports helpers the views package still carries: the views keep
-// their own copies until they are moved onto the SDK (wave 3). Until then this
-// suite runs each original beside its port over the same inputs, so an edit to
-// either copy — a reworded wait, a recoloured project — fails here instead of
-// quietly forking what two views draw. It reads the originals by path, as a
-// test only: the SDK itself imports nothing from puppeteer (L3). Delete each
-// part with the views' copy it guards: the marks went with MV-4, when the views'
-// AgentIcon and ProfileGlyph moved into `/react` (M6) and left one copy.
+// The toolkit ported helpers the views carried. Where the views package still
+// keeps its own copy (a project's colour, money, receding, a host's write
+// policy), this suite runs the original beside the port over the same inputs,
+// so an edit to either copy fails here instead of quietly forking what two
+// readers draw. It reads those originals by path, as a test only: the SDK itself
+// imports nothing from puppeteer (L3).
+//
+// Where the original was a FROZEN legacy view or the legacy shim (the swarm's
+// and the timeline's words, the status ledger's wait words, the line under the
+// name), the copy went with MV-8 and the suite keeps the values the parity
+// pinned, read from the toolkit while it still equalled them (`8bf0276`, green).
+// An edit that moves one of these words is a visible change, named and shown.
 
 import { describe, expect, it } from 'vitest';
 import * as originalTint from '../../views/src/colour/project-tint.js';
-import { toMonitorAgent, type LegacyShimOptions } from '../../views/src/legacy/from-agent-view.js';
 import { formatUsd as originalFormatUsd } from '../../views/src/monitor/cost-format.js';
 import { hexToRgb255 as originalHexToRgb255 } from '../../views/src/monitor/palette.js';
 import * as originalRecede from '../../views/src/monitor/recede.js';
 import * as originalRemoteWrite from '../../views/src/monitor/remote-write.js';
-import {
-  formatRatePerHour as originalRatePerMinute,
-  formatTokens as originalFormatTokens,
-} from '../../views/src/legacy/frozen/swarm/bubble-model.js';
-// The timeline moved onto the SDK in MV-6: its words as it shipped are the frozen copy's, and its wait words were
-// its status ledger's (frozen beside it).
-import { EMPTY_STATUS_LEDGER, observeStatuses } from '../../views/src/legacy/frozen/timeline/status-ledger.js';
-import * as originalTimelineWords from '../../views/src/legacy/frozen/timeline/timeline-words.js';
 import type { AgentView } from '../src/model.js';
 import { agentViewFixture, type AgentViewFixturePartial } from '../src/testing/fixtures.js';
 import * as toolkit from '../src/toolkit/index.js';
 
 const MONEY = [0, 0.0004, 0.001, 0.0042, 0.009, 0.01, 0.5, 1, 7.034, 12.5, 999.999, 1234.5, -1];
-const LENGTHS = [
-  0, 999, 1000, 59_000, 60_000, 61_000, 659_000, 3_599_000, 3_600_000, 8_040_000, 86_399_000, 90_000_000,
-];
-const COUNTS = [0, 1, 999, 999.6, 1000, 8100, 9999, 10_000, 384_400, 999_999, 1_200_000, 9_999_999, 24_000_000];
 const SEQS = Array.from({ length: 64 }, (_, index) => index);
 const TINTS = [originalTint.DEFAULT_PROJECT_TINT.light, originalTint.DEFAULT_PROJECT_TINT.dark, { l: 0.5, c: 0.3 }];
 
@@ -41,79 +32,119 @@ describe('formats match the views', () => {
     for (const value of [...MONEY, undefined]) expect(toolkit.formatUsd(value)).toBe(originalFormatUsd(value));
   });
 
-  it('a burn by the hour: the swarm took USD a minute, the toolkit takes USD an hour', () => {
-    for (const perMinute of [...MONEY, undefined]) {
-      const perHour = perMinute === undefined ? undefined : perMinute * 60;
-      expect(toolkit.formatRatePerHour(perHour)).toBe(originalRatePerMinute(perMinute));
+  it('a burn by the hour, as the swarm said it a minute times 60 (pinned from the frozen swarm)', () => {
+    const said: readonly (readonly [number | undefined, string])[] = [
+      [0, '$0.00/hr'],
+      [1, '$60/hr'],
+      [0.0004, '$0.02/hr'],
+      [0.001, '$0.06/hr'],
+      [0.0042, '$0.25/hr'],
+      [0.009, '$0.54/hr'],
+      [0.01, '$0.60/hr'],
+      [0.5, '$30/hr'],
+      [7.034, '$422/hr'],
+      [12.5, '$750/hr'],
+      [999.999, '$60000/hr'],
+      [1234.5, '$74070/hr'],
+      [-1, '$-60.00/hr'],
+      [undefined, '—/hr'],
+    ];
+    for (const [perMinute, words] of said) {
+      expect(toolkit.formatRatePerHour(perMinute === undefined ? undefined : perMinute * 60)).toBe(words);
     }
   });
 
-  it('lengths of time', () => {
-    for (const ms of LENGTHS) {
-      expect(toolkit.formatElapsed(ms)).toBe(originalTimelineWords.formatElapsed(ms));
-      expect(toolkit.formatShort(ms)).toBe(originalTimelineWords.formatShort(ms));
-      expect(toolkit.formatWords(ms)).toBe(originalTimelineWords.formatWords(ms));
-      expect(toolkit.formatClock(ms)).toBe(originalTimelineWords.formatClock(ms));
-      expect(toolkit.formatClock(ms, true)).toBe(originalTimelineWords.formatClock(ms, true));
+  it('lengths of time, as the timeline said them (pinned from the frozen timeline); the clock from local midnight', () => {
+    // [ms, [elapsed, short, words], [clock, clock with seconds]]
+    const said: readonly (readonly [number, readonly string[], readonly string[]])[] = [
+      [0, ['0:00', '0s', 'under a minute'], ['00:00', '00:00:00']],
+      [999, ['0:00', '1s', 'under a minute'], ['00:00', '00:00:00']],
+      [1000, ['0:01', '1s', 'under a minute'], ['00:00', '00:00:01']],
+      [59000, ['0:59', '59s', '1 minute'], ['00:00', '00:00:59']],
+      [60000, ['1:00', '1m', '1 minute'], ['00:01', '00:01:00']],
+      [61000, ['1:01', '1m', '1 minute'], ['00:01', '00:01:01']],
+      [659000, ['10:59', '10m', '11 minutes'], ['00:10', '00:10:59']],
+      [3599000, ['59:59', '59m', '1 hour'], ['00:59', '00:59:59']],
+      [3600000, ['1h 00m', '1h', '1 hour'], ['01:00', '01:00:00']],
+      [8040000, ['2h 14m', '2h 14m', '2 hours 14 minutes'], ['02:14', '02:14:00']],
+      [86399000, ['23h 59m', '23h 59m', '24 hours'], ['23:59', '23:59:59']],
+      [90000000, ['1d 01h', '25h', '25 hours'], ['01:00', '01:00:00']],
+    ];
+    const midnight = new Date(2026, 0, 1).getTime();
+    for (const [ms, [elapsed, short, words], [clock, seconds]] of said) {
+      expect([ms, toolkit.formatElapsed(ms), toolkit.formatShort(ms), toolkit.formatWords(ms)]).toEqual([
+        ms,
+        elapsed,
+        short,
+        words,
+      ]);
+      expect([ms, toolkit.formatClock(midnight + ms), toolkit.formatClock(midnight + ms, true)]).toEqual([
+        ms,
+        clock,
+        seconds,
+      ]);
     }
   });
 
-  it('token counts', () => {
-    for (const count of COUNTS) expect(toolkit.formatTokens(count)).toBe(originalFormatTokens(count));
+  it('token counts, as the swarm said them (pinned from the frozen swarm)', () => {
+    const said: readonly (readonly [number, string])[] = [
+      [0, '0'],
+      [1, '1'],
+      [999, '999'],
+      [1000, '1.0k'],
+      [8100, '8.1k'],
+      [9999, '10.0k'],
+      [10000, '10k'],
+      [384400, '384k'],
+      [999999, '1000k'],
+      [1200000, '1.2M'],
+      [9999999, '10.0M'],
+      [24000000, '24M'],
+      [999.6, '1000'],
+    ];
+    for (const [count, words] of said) expect([count, toolkit.formatTokens(count)]).toEqual([count, words]);
   });
 });
 
 describe('state words match the views', () => {
-  it('a wait is said as the timeline says it', () => {
-    for (const kind of ['permission', 'question', 'failure', 'sandbox', '', undefined]) {
-      expect(toolkit.waitWord(kind)).toBe(originalTimelineWords.blockerWord(kind));
-    }
+  it('a wait is said as the timeline said it (pinned from the frozen timeline)', () => {
+    const said: readonly (readonly [string | undefined, string])[] = [
+      ['permission', 'permission'],
+      ['question', 'question'],
+      ['failure', 'failed'],
+      ['sandbox', 'sandbox'],
+      ['', ''],
+      [undefined, 'failed'],
+    ];
+    for (const [kind, words] of said) expect([kind, toolkit.waitWord(kind)]).toEqual([kind, words]);
   });
 
-  it('a timeline lane says what a wait is about as its status ledger did: detail, then prompt (M2, M14)', () => {
-    // What the ledger kept of a blocked row, through the shim exactly as Godview's host fed it; the ported timeline
-    // says `laneWaitWords(row.wait)` where the frozen one said the book's blocker words.
-    const ledgerWords = (view: AgentView, options: LegacyShimOptions): string | undefined =>
-      observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(view, options)], SINCE).lanes.get(view.id)?.changes[0]
-        ?.blocker?.detail;
+  it('a timeline lane says what a wait is about as its status ledger did: detail, then prompt (M2, M14; pinned)', () => {
     const long = `${'a'.repeat(158)} the tail`;
-    const waits: readonly AgentView['wait'][] = [
-      { kind: 'permission', since: SINCE, tool: 'Bash' },
-      { kind: 'permission', since: SINCE, tool: 'Bash', detail: 'Bash · git push origin main' },
-      { kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?', detail: 'the detail' },
-      { kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?' },
-      { kind: 'question', since: SINCE, question: '  Keep the flag?  ' },
-      { kind: 'question', since: SINCE, header: 'Deploy' },
-      { kind: 'question', since: SINCE, detail: '', question: 'Ship it?' },
-      { kind: 'question', since: SINCE, detail: '   ', question: 'Ship it?' },
-      { kind: 'failure', since: SINCE, code: 'E_RATE', detail: 'rate limited · retrying' },
-      { kind: 'failure', since: SINCE, detail: long },
-      { kind: 'question', since: SINCE, question: long },
-      undefined,
+    const cut = `${'a'.repeat(158)} …`;
+    const waits: readonly (readonly [AgentView['wait'], string | undefined])[] = [
+      [{ kind: 'permission', since: SINCE, tool: 'Bash' }, undefined],
+      [
+        { kind: 'permission', since: SINCE, tool: 'Bash', detail: 'Bash · git push origin main' },
+        'Bash · git push origin main',
+      ],
+      [{ kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?', detail: 'the detail' }, 'the detail'],
+      [{ kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?' }, 'Ship it?'],
+      [{ kind: 'question', since: SINCE, question: '  Keep the flag?  ' }, 'Keep the flag?'],
+      [{ kind: 'question', since: SINCE, header: 'Deploy' }, undefined],
+      [{ kind: 'question', since: SINCE, detail: '', question: 'Ship it?' }, undefined],
+      [{ kind: 'question', since: SINCE, detail: '   ', question: 'Ship it?' }, undefined],
+      [{ kind: 'failure', since: SINCE, code: 'E_RATE', detail: 'rate limited · retrying' }, 'rate limited · retrying'],
+      [{ kind: 'failure', since: SINCE, detail: long }, cut],
+      [{ kind: 'question', since: SINCE, question: long }, cut],
+      [undefined, undefined],
     ];
-    for (const [index, wait] of waits.entries()) {
-      for (const options of [GODVIEW, REPLY_FIRST]) {
-        for (const device of [undefined, LAPTOP]) {
-          const view = agentViewFixture({ id: `w${index}`, status: 'blocked', ...(device ? { device } : {}), wait });
-          const legacy = ledgerWords(view, options);
-          // M9: VibeField's peers carried no Core facts (`omit`), so their lanes had no words; the model's do now.
-          if (device && options.peerMonitor === 'omit') {
-            expect(legacy).toBeUndefined();
-            continue;
-          }
-          expect(`${index}: ${toolkit.laneWaitWords(wait)}`).toBe(`${index}: ${legacy}`);
-        }
-      }
+    for (const [index, [wait, words]] of waits.entries()) {
+      expect(`${index}: ${toolkit.laneWaitWords(wait)}`).toBe(`${index}: ${words}`);
     }
-    expect(toolkit.laneWaitWords(waits[9])).toHaveLength(160);
-    // A kind Core does not name (it names three today) was no blocker to the legacy rows, so the lane said nothing.
-    const unnamed = agentViewFixture({
-      id: 'w-unnamed',
-      status: 'blocked',
-      wait: { kind: 'sandbox', since: SINCE, detail: 'sandbox denied' },
-    });
-    expect(ledgerWords(unnamed, GODVIEW)).toBeUndefined();
-    expect(toolkit.laneWaitWords(unnamed.wait)).toBe('sandbox denied');
+    expect(cut).toHaveLength(160);
+    // A kind Core does not name was no blocker to the ledger, so its lane said nothing; the model's lane says it.
+    expect(toolkit.laneWaitWords({ kind: 'sandbox', since: SINCE, detail: 'sandbox denied' })).toBe('sandbox denied');
   });
 
   it('receding steps by the same numbers', () => {
@@ -139,9 +170,6 @@ describe('state words match the views', () => {
   });
 });
 
-/** VibeField's shim options, whose line ported views compose by (M4); and puppeteer Godview's, for the fallbacks. */
-const REPLY_FIRST: LegacyShimOptions = { detail: 'reply-first', peerMonitor: 'omit' };
-const GODVIEW: LegacyShimOptions = { detail: 'headline-cost', peerMonitor: 'map' };
 const LAPTOP = { id: 'desk-2', name: 'Laptop', os: 'linux', self: false } as const;
 const SINCE = Date.UTC(2026, 0, 1, 12);
 
@@ -191,30 +219,60 @@ const lineViews: readonly AgentView[] = LINE_CASES.map(([, partial], index) =>
   agentViewFixture({ id: `case-${index}`, ...partial }),
 );
 
-describe('row words match the shim', () => {
+/** What the legacy shim said for each case (reply-first, VibeField's line, M4), pinned when it went (MV-8): the line,
+ * the name and what runs it (`null` for a terminal, which has no agent facet). */
+const SAID: readonly (readonly [string, string, string, string | null])[] = [
+  ['headline and cost, working', 'working', 'project', ''],
+  ['partial cost, idle', 'idle', 'project', ''],
+  ['unpriced', 'working', 'project', ''],
+  ['reply, working', 'On it.', 'project', ''],
+  ['reply, idle, trimmed', 'Done. The suite passes.', 'project', ''],
+  ['blank reply', 'idle', 'project', ''],
+  ['wait: permission with its tool', 'permission · Bash', 'project', ''],
+  ['wait: permission alone', 'permission', 'project', ''],
+  ['wait: question, more behind it', 'question', 'project', ''],
+  ['wait: failure', 'failure', 'project', ''],
+  ['wait: a new kind', 'sandbox', 'project', ''],
+  ['blocked with no wait', 'blocked', 'project', ''],
+  ['starting', 'starting', 'project', ''],
+  ['pending', 'unobserved · resumes when idle', 'project', ''],
+  ['peer: reply', 'Laptop · On it.', 'project', ''],
+  ['peer: status', 'Laptop · idle', 'project', ''],
+  ['peer: question asked', 'Laptop · Ship it?', 'project', ''],
+  ['peer: question, no prompt', 'Laptop · question', 'project', ''],
+  ['peer: permission', 'Laptop · permission · Edit', 'project', ''],
+  ['peer: blocked with no wait', 'Laptop · blocked', 'project', ''],
+  ['peer: pending', 'Laptop · unobserved · resumes when idle', 'project', ''],
+  ['peer: starting', 'Laptop · idle', 'project', ''],
+  ['terminal', '/Users/me/notes', 'notes', null],
+  ['terminal, peer', 'Unassigned terminal', 'terminal', null],
+  ['no folder', 'idle', 'Codex', 'GPT-5'],
+  ['no folder, no provider', 'idle', '', ''],
+  ['no model', 'idle', 'project', 'Claude'],
+];
+
+describe('row words say what the shim said', () => {
   it('covers every branch of the line: starting, pending, reply, wait, headline, cost, peers, terminals', () => {
     const names = LINE_CASES.map(([name]) => name).join(' | ');
     for (const branch of ['starting', 'pending', 'reply', 'wait', 'headline', 'cost', 'peer', 'terminal']) {
       expect(names).toContain(branch);
     }
+    expect(SAID.map(([name]) => name)).toEqual(LINE_CASES.map(([name]) => name));
   });
 
   it('detailLine is the shim’s reply-first line, for every case (M4)', () => {
     for (const [index, view] of lineViews.entries()) {
-      const name = LINE_CASES[index]![0];
-      expect(`${name}: ${toolkit.detailLine(view)}`).toBe(`${name}: ${toMonitorAgent(view, REPLY_FIRST).detail}`);
-      // The peer cut changes no word of the line.
-      expect(toolkit.detailLine(view)).toBe(toMonitorAgent(view, { ...REPLY_FIRST, peerMonitor: 'map' }).detail);
+      const [name, line] = SAID[index]!;
+      expect(`${name}: ${toolkit.detailLine(view)}`).toBe(`${name}: ${line}`);
     }
   });
 
-  it('names a row and what runs it as the shim does, under either host’s options', () => {
-    for (const view of lineViews) {
-      for (const options of [REPLY_FIRST, GODVIEW]) {
-        const legacy = toMonitorAgent(view, options);
-        expect(toolkit.projectName(view)).toBe(legacy.project);
-        if (legacy.agent) expect(toolkit.modelWord(view)).toBe(legacy.agent.model ?? legacy.agent.provider.label);
-      }
+  it('names a row and what runs it as the shim did', () => {
+    for (const [index, view] of lineViews.entries()) {
+      const [name, , project, model] = SAID[index]!;
+      expect([name, toolkit.projectName(view)]).toEqual([name, project]);
+      if (model !== null) expect([name, toolkit.modelWord(view)]).toEqual([name, model]);
+      else expect(view.kind).toBe('terminal');
     }
   });
 
