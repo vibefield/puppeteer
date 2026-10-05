@@ -1,4 +1,4 @@
-import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
 import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibecook/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorParameterGroup } from './parameters.js';
@@ -208,6 +208,10 @@ export interface MonitorSpawnTarget {
 export interface MonitorViewEntry {
   readonly id: string;
   readonly label: string;
+  /** The manifest's mark, which the host's bar draws (MV-D6). */
+  readonly mark: MonitorViewMark;
+  /** The keys the view takes while focused, which the bar prints (MV-D8). */
+  readonly keys?: readonly MonitorViewKey[];
   readonly parameterGroups: readonly MonitorParameterGroup[];
   readonly parametersRevision?: string;
   readonly view: MonitorView;

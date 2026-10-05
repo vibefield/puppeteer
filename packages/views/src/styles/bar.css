@@ -174,6 +174,12 @@
   stroke-linejoin: round;
 }
 
+/* A view's mark is its manifest's (MV-D6): filled paths in currentColor, never stroked. */
+.vf-godview-bar-mark.is-filled {
+  fill: currentColor;
+  stroke: none;
+}
+
 /* The tooltip, in the skin's material, hung under its control. */
 .vf-godview-bar-tip-host {
   position: relative;
@@ -212,6 +218,11 @@
   font: inherit;
   font-weight: 400;
   letter-spacing: 0;
+}
+
+/* The keys a view takes while focused (MV-D8), printed as legends in readable ink. */
+.vf-godview-bar-tip .vf-godview-bar-keys {
+  color: var(--text-muted);
 }
 
 /* The theme switch: unchanged from the skin. */

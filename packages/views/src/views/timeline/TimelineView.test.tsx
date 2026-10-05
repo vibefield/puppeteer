@@ -347,7 +347,16 @@ describe('the view on its root', () => {
 
   it('declares what it is to the bar and the audit: its mark, its keys, a clock at rest', () => {
     expect(TIMELINE_MANIFEST).toMatchObject({ id: 'timeline', label: 'TIMELINE', motion: { loops: true } });
-    expect(TIMELINE_MANIFEST.mark.paths).toEqual(['M4.5 7.5h8M8 12h8.5M4.5 16.5h5', 'M19.5 4.5v15']);
+    // Three spans and the now line: the filled outlines of the 1.6 strokes the bar drew (MV-D6, ruled fill at MV-8).
+    expect(TIMELINE_MANIFEST.mark).toEqual({
+      viewBox: '0 0 24 24',
+      paths: [
+        'M4.5 8.3L12.5 8.3A0.8 0.8 0 0 0 12.5 6.7L4.5 6.7A0.8 0.8 0 0 0 4.5 8.3Z' +
+          'M8 12.8L16.5 12.8A0.8 0.8 0 0 0 16.5 11.2L8 11.2A0.8 0.8 0 0 0 8 12.8Z' +
+          'M4.5 17.3L9.5 17.3A0.8 0.8 0 0 0 9.5 15.7L4.5 15.7A0.8 0.8 0 0 0 4.5 17.3Z',
+        'M18.7 4.5L18.7 19.5A0.8 0.8 0 0 0 20.3 19.5L20.3 4.5A0.8 0.8 0 0 0 18.7 4.5Z',
+      ],
+    });
     expect(TIMELINE_MANIFEST.keys?.map((key) => key.key)).toEqual([
       'ArrowUp',
       'ArrowDown',

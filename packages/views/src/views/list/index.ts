@@ -1,5 +1,6 @@
 import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
 import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { AgentList } from './AgentList.js';
 import { LIST_PARAMETER_GROUPS } from './list-parameters.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.
@@ -12,8 +13,26 @@ export const LIST_MANIFEST: MonitorViewManifest = {
   sdk: MONITOR_VIEW_SDK_MAJOR,
   id: 'list',
   label: 'LIST',
-  // The bar's own path (it keeps its copy until MV-8 draws marks from manifests, M12).
-  mark: { viewBox: '0 0 24 24', paths: ['M5 7h14M5 12h14M5 17h14'] },
+  // Three rules, as the filled outlines of the bar's 1.6 strokes: the bar fills a mark, never strokes it (MV-D6).
+  mark: {
+    viewBox: MARK_VIEW_BOX,
+    paths: [
+      strokesOutline([
+        [
+          [5, 7],
+          [19, 7],
+        ],
+        [
+          [5, 12],
+          [19, 12],
+        ],
+        [
+          [5, 17],
+          [19, 17],
+        ],
+      ]),
+    ],
+  },
   // The ids, keys, ranges and defaults stored values were saved under: no revision, so they stay valid.
   parameters: LIST_PARAMETER_GROUPS,
   // `＋ TERMINAL` offers the spawn menu's two steps when there is one; without it, a press creates at once.

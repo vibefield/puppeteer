@@ -7,10 +7,12 @@ import type { MonitorViewEntry } from './types.js';
 
 /** A view's registry face, read from its manifest. */
 export function monitorViewEntry(view: MonitorView): MonitorViewEntry {
-  const { id, label, parameters, parametersRevision } = view.manifest;
+  const { id, label, mark, keys, parameters, parametersRevision } = view.manifest;
   return {
     id,
     label,
+    mark,
+    ...(keys === undefined ? {} : { keys }),
     parameterGroups: parameters,
     ...(parametersRevision === undefined ? {} : { parametersRevision }),
     view,

@@ -1,5 +1,6 @@
 import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
 import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, ringOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { AgentSwarm } from './AgentSwarm.js';
 import { SWARM_PARAMETER_GROUPS } from './swarm-parameters.js';
 // The view's own stylesheets (L18): the entry module brings them, and no host imports them.
@@ -9,16 +10,15 @@ import './bloom/spawn-bloom.css';
 /** The class the view puts on the element it is mounted in: every rule of swarm.css and spawn-bloom.css sits under it (L18). */
 export const SWARM_ROOT_CLASS = 'mv-swarm';
 
-/** A circle as a filled path, for a mark the bar draws in currentColor (MV-D6). */
-const circle = (cx: number, cy: number, r: number): string =>
-  `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
-
 export const SWARM_MANIFEST: MonitorViewManifest = {
   sdk: MONITOR_VIEW_SDK_MAJOR,
   id: 'swarm',
   label: 'SWARM',
-  // The bar's three bodies (it keeps its own copy until MV-8 draws marks from manifests, M12).
-  mark: { viewBox: '0 0 24 24', paths: [circle(7.5, 8, 3), circle(16, 6.5, 2.2), circle(13, 16, 4.2)] },
+  // Three bodies: the rings the bar's 1.6 strokes drew, as filled outlines, since the bar fills a mark (MV-D6).
+  mark: {
+    viewBox: MARK_VIEW_BOX,
+    paths: [ringOutline(7.5, 8, 3), ringOutline(16, 6.5, 2.2), ringOutline(13, 16, 4.2)],
+  },
   parameters: SWARM_PARAMETER_GROUPS,
   // The design was locked on this date (RFC 005, record §10) with new sizes and lights; installations tuned under
   // the proposals start from the lock, and every stored value since stays valid under it.

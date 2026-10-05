@@ -12,6 +12,7 @@ export * from './spawn-menu.js';
 export * from './colour.js';
 export * from './light.js';
 export * from './marks.js';
+export * from './mark-outline.js';
 export * from './marks-atlas.js';
 export * from './canvas.js';
 export * from './motion.js';

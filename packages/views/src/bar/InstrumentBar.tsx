@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
+import type { MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
-import type { MonitorTheme, MonitorViewEntry } from '../monitor/types.js';
+import type { MonitorTheme } from '../monitor/types.js';
 
 // The instrument bar (record §04): 40px, no words. Counters on the left where
 // the title was, tools on the right, drag space between. Every control is one
@@ -9,27 +10,11 @@ import type { MonitorTheme, MonitorViewEntry } from '../monitor/types.js';
 // window; the controls do not. The one exception to "no words" is the profile
 // tabs a host may centre in it (`ProfileTabs`, amended for the tabs 2026-09-22).
 
-/** The marks: a 24-unit grid, monoline 1.6, round caps and joins, currentColor. */
+/**
+ * The host's tools' marks: a 24-unit grid, monoline 1.6, round caps and joins, currentColor. A view's mark is never
+ * here: it is the view's own, in its manifest, and the bar draws it filled (`ViewMark`, MV-D6).
+ */
 const MARKS: Record<string, ReactNode> = {
-  // Three bodies.
-  swarm: (
-    <>
-      <circle cx="7.5" cy="8" r="3" />
-      <circle cx="16" cy="6.5" r="2.2" />
-      <circle cx="13" cy="16" r="4.2" />
-    </>
-  ),
-  // Three rules.
-  list: <path d="M5 7h14M5 12h14M5 17h14" />,
-  // Three broken columns.
-  rain: <path d="M7 4v5M7 12.5v2.5M12 3v2.5M12 8.5v8M17 5v3.5M17 12v6" />,
-  // Three spans of different lengths, stopping short of the now line.
-  timeline: (
-    <>
-      <path d="M4.5 7.5h8M8 12h8.5M4.5 16.5h5" />
-      <path d="M19.5 4.5v15" />
-    </>
-  ),
   // Two sliders.
   tune: (
     <>
@@ -68,18 +53,57 @@ export function Mark({ id, fallback }: { id: string; fallback: string }) {
   );
 }
 
+/**
+ * A view's mark, from its manifest (MV-D6): filled paths in currentColor, never stroked (a stroked outline draws both
+ * of its edges). A view with no paths shows its label's initial, as an unknown tool does.
+ */
+export function ViewMark({ mark, fallback }: { mark: MonitorViewMark; fallback: string }) {
+  if (mark.paths.length === 0) return <span aria-hidden="true">{fallback.slice(0, 1).toUpperCase()}</span>;
+  return (
+    <svg className="vf-godview-bar-mark is-filled" viewBox={mark.viewBox} aria-hidden="true">
+      {mark.paths.map((path, index) => (
+        <path key={index} d={path} />
+      ))}
+    </svg>
+  );
+}
+
+/** How a key is printed on a control: the keyboard's own legend where it has one, the key's character otherwise. */
+const KEY_LEGENDS: Readonly<Record<string, string>> = {
+  Escape: '⎋',
+  Enter: '↵',
+  Tab: '⇥',
+  ' ': '␣',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+  Home: '↖',
+  End: '↘',
+  PageUp: '⇞',
+  PageDown: '⇟',
+  Backspace: '⌫',
+  '-': '−',
+};
+
+export function keyLegend(key: string): string {
+  return KEY_LEGENDS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
+}
+
 const TOOLTIP_DELAY_MS = 600;
 
 export interface TipProps {
   label: string;
   shortcut?: string;
+  /** The keys a view takes while it is focused (its manifest's, MV-D8), printed after its name. */
+  keys?: readonly MonitorViewKey[];
   /** Hang the tip from the control's right edge, for controls at the bar's end. */
   end?: boolean;
   children: ReactElement;
 }
 
 /** The words and the shortcut, raised after 600ms of hover, or at once on keyboard focus. */
-export function Tip({ label, shortcut, end, children }: TipProps) {
+export function Tip({ label, shortcut, keys, end, children }: TipProps) {
   const [shown, setShown] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   const clear = (): void => {
@@ -112,6 +136,14 @@ export function Tip({ label, shortcut, end, children }: TipProps) {
         <span className={`vf-godview-bar-tip${end ? ' is-end' : ''}`} role="tooltip">
           {label}
           {shortcut ? <kbd>{shortcut}</kbd> : null}
+          {keys && keys.length > 0 ? (
+            <kbd
+              className="vf-godview-bar-keys"
+              aria-label={`while focused: ${keys.map((key) => `${key.key}, ${key.label}`).join('; ')}`}
+            >
+              {keys.map((key) => keyLegend(key.key)).join(' ')}
+            </kbd>
+          ) : null}
         </span>
       ) : null}
     </span>
@@ -175,11 +207,19 @@ export function BarControl({
   );
 }
 
+/** A view as the bar switches to it: its manifest's id, label, mark (MV-D6) and declared keys (MV-D8). */
+export interface InstrumentBarView {
+  readonly id: string;
+  readonly label: string;
+  readonly mark: MonitorViewMark;
+  readonly keys?: readonly MonitorViewKey[] | undefined;
+}
+
 export interface InstrumentBarProps {
   counts: Record<AgentVisualStatus, number>;
   onSelectStatus(status: AgentVisualStatus): void;
-  /** Every view the bar switches between: it reads each one's id and label (MV-8 adds the manifest's mark). */
-  views: readonly Pick<MonitorViewEntry, 'id' | 'label'>[];
+  /** Every view the bar switches between: its control draws the manifest's mark and its tip prints the keys. */
+  views: readonly InstrumentBarView[];
   viewId: string;
   onSelectView(viewId: string): void;
   theme: MonitorTheme;
@@ -245,7 +285,7 @@ export function InstrumentBar({
         {views.map((view) => {
           const on = view.id === viewId;
           return (
-            <Tip key={view.id} label={view.label}>
+            <Tip key={view.id} label={view.label} {...(view.keys ? { keys: view.keys } : {})}>
               <button
                 type="button"
                 className={`vf-godview-bar-control is-square${on ? ' is-on' : ''}`}
@@ -253,7 +293,7 @@ export function InstrumentBar({
                 aria-pressed={on}
                 onClick={() => onSelectView(view.id)}
               >
-                <Mark id={view.id} fallback={view.label} />
+                <ViewMark mark={view.mark} fallback={view.label} />
               </button>
             </Tip>
           );

@@ -1,5 +1,6 @@
 import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
 import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, strokeOutline, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { TIMELINE_PARAMETER_GROUPS } from './timeline-parameters.js';
 import { TimelineView } from './TimelineView.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.
@@ -12,9 +13,28 @@ export const TIMELINE_MANIFEST: MonitorViewManifest = {
   sdk: MONITOR_VIEW_SDK_MAJOR,
   id: 'timeline',
   label: 'TIMELINE',
-  // The bar's own paths (it keeps its copy until MV-8 draws marks from manifests, M12): three spans of different
-  // lengths, stopping short of the now line.
-  mark: { viewBox: '0 0 24 24', paths: ['M4.5 7.5h8M8 12h8.5M4.5 16.5h5', 'M19.5 4.5v15'] },
+  // Three spans of different lengths, stopping short of the now line: the filled outlines of the bar's 1.6 strokes,
+  // since the bar fills a mark (MV-D6).
+  mark: {
+    viewBox: MARK_VIEW_BOX,
+    paths: [
+      strokesOutline([
+        [
+          [4.5, 7.5],
+          [12.5, 7.5],
+        ],
+        [
+          [8, 12],
+          [16.5, 12],
+        ],
+        [
+          [4.5, 16.5],
+          [9.5, 16.5],
+        ],
+      ]),
+      strokeOutline([19.5, 4.5], [19.5, 19.5]),
+    ],
+  },
   // The ids, keys, ranges and defaults stored values were saved under: no revision, so they stay valid.
   parameters: TIMELINE_PARAMETER_GROUPS,
   // Bound on the lanes and the map only while one of them holds focus (MV-D8; TL: none new on the frame).
