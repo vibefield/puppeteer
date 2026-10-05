@@ -30,6 +30,7 @@ function row(id: string, overrides: Partial<MonitorAgentRow> = {}): MonitorAgent
     unread: false,
     device: { id: 'desk-1', name: 'Studio', os: 'mac', self: true },
     attachable: true,
+    writable: true,
     ...overrides,
   };
 }

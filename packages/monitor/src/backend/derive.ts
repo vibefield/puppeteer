@@ -237,6 +237,7 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
   const wait = agentWait(state, statusSince, input.replyMaxLength);
   const reply = agentReply(state, input.replyMaxLength);
   const tokens = agentTokens(state);
+  const attachable = host.terminalSessionId !== undefined;
   return {
     id: input.id,
     kind: 'agent',
@@ -267,7 +268,9 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
     device: input.device,
     ...(host.tier === undefined ? {} : { tier: host.tier }),
     profileSet: input.profileSet,
-    attachable: host.terminalSessionId !== undefined,
+    attachable,
+    // M41: the home desktop's write policy, computed once. Today it is the rule `attachable` says: a PTY is named.
+    writable: attachable,
   };
 }
 
@@ -299,5 +302,6 @@ export function deriveTerminalRow(input: DeriveTerminalRowInput): MonitorAgentRo
     device: input.device,
     ...(host.profileSet === undefined ? {} : { profileSet: host.profileSet }),
     attachable: true,
+    writable: true,
   };
 }

@@ -302,7 +302,7 @@ describe('tokens and recency', () => {
   });
 });
 
-describe('profile set, tier, device, attachable', () => {
+describe('profile set, tier, device, attachable, writable', () => {
   it("takes the host's set, then the persona's, then native", () => {
     const personas = personaSets([
       { id: 'work', label: 'Work', kind: 'managed', personas: [{ profileId: 'p-1', providerLabel: 'Claude Code' }] },
@@ -321,6 +321,14 @@ describe('profile set, tier, device, attachable', () => {
     expect(derive(hostRun({ terminalSessionId: undefined })).attachable).toBe(false);
     expect(derive().tier).toBeUndefined();
   });
+  it('computes the write policy once, beside attachable: today a pane elsewhere may type into a run whose PTY is named (M41)', () => {
+    expect(derive(hostRun()).writable).toBe(true);
+    expect(derive(hostRun({ terminalSessionId: undefined })).writable).toBe(false);
+    for (const host of [hostRun(), hostRun({ terminalSessionId: undefined }), hostRun({ tier: 'ingested' })]) {
+      const row = derive(host, monitorState());
+      expect(row.writable).toBe(row.attachable);
+    }
+  });
   it('builds the whole agent row in the contract shape', () => {
     const row = derive(hostRun({ createdAt: 10 }), monitorState());
     expect(row).toMatchObject({
@@ -338,6 +346,7 @@ describe('profile set, tier, device, attachable', () => {
       unread: false,
       profileSet: 'native',
       attachable: true,
+      writable: true,
     });
   });
 });
@@ -371,6 +380,7 @@ describe('terminal rows', () => {
       device: DEVICE,
       profileSet: 'work',
       attachable: true,
+      writable: true,
     });
   });
   it('falls back to its title, then to "terminal", with no directory', () => {

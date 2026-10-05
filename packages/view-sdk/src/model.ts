@@ -163,6 +163,12 @@ export interface MonitorAgentRow {
   readonly profileSet?: string | undefined;
   /** A pane on the reading desktop can show it now. */
   readonly attachable: boolean;
+  /**
+   * Whether a pane on another desktop may type into this run, by its home desktop's policy (M41). The home backend
+   * computes it once; today it equals `attachable`. A view reads it only for a row from another desktop
+   * (`device.self` false): the list's host chip and the swarm's host line. No view derives write policy itself.
+   */
+  readonly writable: boolean;
 }
 
 /** An Agent Profile the spawn bloom offers under a desktop. */

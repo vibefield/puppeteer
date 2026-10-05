@@ -18,6 +18,7 @@ function view(id: string, kind: 'agent' | 'terminal', createdAt: number): AgentV
     unread: false,
     device: { id: 'mac', name: 'Mac', self: true },
     attachable: true,
+    writable: true,
     colour: '#888',
     active: false,
     receded: false,

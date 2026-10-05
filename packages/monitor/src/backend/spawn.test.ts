@@ -41,6 +41,7 @@ const row = (overrides: Partial<MonitorAgentRow>): MonitorAgentRow => ({
   unread: false,
   device: DEVICE,
   attachable: true,
+  writable: true,
   ...overrides,
 });
 

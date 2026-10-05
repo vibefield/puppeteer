@@ -58,10 +58,11 @@ import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
  *   - attachment: the contract carries a pane COUNT, so the pane ids are opaque
  *     placeholders (`<id>:pane:<n>`). Their number and the colour are true;
  *     nothing may look a pane up by them.
- *   - remote is present for a row on another desktop. The contract carries no
- *     write policy, so `hostWritable` follows `attachable`. That is VibeField's
- *     rule (field-app godview/monitor/agents.ts:377-378, where both mean "the
- *     owner names its PTY"), ruled M2. Puppeteer's Godview has no peers.
+ *   - remote is present for a row on another desktop. `hostWritable` is the
+ *     row's `writable`, the write policy its home backend computes (M41; today
+ *     VibeField's rule, field-app godview/monitor/agents.ts:377-378, where both
+ *     it and `attachable` mean "the owner names its PTY"). Puppeteer's Godview
+ *     has no peers.
  *   - agent.usage comes from `cost`: no total where nothing was priced; no steps
  *     where no series crosses. agent.monitor.usage.costRatePerMin is
  *     `cost.burnPerHour / 60`, restored to the per-minute rate it was multiplied from
@@ -314,7 +315,7 @@ function legacyAgent(view: AgentView, options: LegacyShimOptions): MonitorAgent 
             deviceId: view.device.id,
             deviceName: view.device.name,
             attachable: view.attachable,
-            hostWritable: view.attachable,
+            hostWritable: view.writable,
             cwdLabel: view.project.name || null,
           }),
         }),

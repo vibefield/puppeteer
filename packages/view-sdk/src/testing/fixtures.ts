@@ -200,6 +200,7 @@ export function agentViewFixture(partial: AgentViewFixturePartial = {}): AgentVi
     unread: false,
     device,
     attachable: true,
+    writable: true,
     colour: fixtureColour(project),
     active: false,
     receded: false,
@@ -280,6 +281,7 @@ export function agentViewsFixture(count: number, options: AgentViewsFixtureOptio
           project: { name: '', seq: undefined },
           activity: { kind: busy ? 'foreground-job' : 'idle' },
           attachable: true,
+          writable: true,
         }),
       );
       continue;

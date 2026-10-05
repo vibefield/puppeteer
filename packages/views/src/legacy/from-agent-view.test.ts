@@ -51,6 +51,7 @@ function agentView(overrides: Partial<AgentView> = {}): AgentView {
     tier: 'managed',
     profileSet: 'native',
     attachable: true,
+    writable: true,
     colour: 'oklch(70% 0.1 200)',
     active: true,
     receded: false,
@@ -87,6 +88,7 @@ function terminalView(overrides: Partial<AgentView> = {}): AgentView {
     unread: false,
     device: { id: 'desk-1', name: 'Studio', os: 'mac', self: true },
     attachable: true,
+    writable: true,
     colour: 'ramp',
     active: false,
     receded: false,
@@ -230,7 +232,7 @@ describe('toMonitorAgent', () => {
     expect(toMonitorAgent(agentView({ id: 'run-f', project: { name: '' } }), GODVIEW).project).toBe('Imposter');
   });
 
-  it('says a row on another desktop as the remote facet, its write policy following attachable', () => {
+  it('says a row on another desktop as the remote facet, its write policy the row’s own (M41)', () => {
     const peer = toMonitorAgent(peerView(), GODVIEW);
     expect(peer.remote).toEqual({
       deviceId: 'desk-2',
@@ -240,9 +242,16 @@ describe('toMonitorAgent', () => {
       cwdLabel: 'puppeteer',
     });
     expect(remoteWriteLabel(peer.remote!)).toBe('writable host');
-    const shut = toMonitorAgent(peerView({ id: 'run-q', attachable: false }), GODVIEW);
+    const shut = toMonitorAgent(peerView({ id: 'run-q', attachable: false, writable: false }), GODVIEW);
     expect(shut.remote).toMatchObject({ attachable: false, hostWritable: false });
     expect(remoteWriteLabel(shut.remote!)).toBe('read-only host');
+    // The policy is `writable`, never re-derived from `attachable`: the two can part once a home desktop's rule does.
+    const readOnly = toMonitorAgent(peerView({ id: 'run-r', attachable: true, writable: false }), VIBEFIELD);
+    expect(readOnly.remote).toMatchObject({ attachable: true, hostWritable: false });
+    expect(remoteWriteLabel(readOnly.remote!)).toBe('read-only host');
+    const unshown = toMonitorAgent(peerView({ id: 'run-s', attachable: false, writable: true }), GODVIEW);
+    expect(unshown.remote).toMatchObject({ attachable: false, hostWritable: true });
+    expect(remoteWriteLabel(unshown.remote!)).toBe('writable host');
   });
 
   it('says the three waits the views draw, and no blocker for any other word', () => {
