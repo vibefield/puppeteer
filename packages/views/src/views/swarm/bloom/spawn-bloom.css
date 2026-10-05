@@ -13,7 +13,7 @@
    (`is-dark`, `is-still`), never a host's. */
 
 .mv-swarm .vf-bloom {
-  --mv-swarm-bloom-ground: var(--mv-swarm-ground, #f7f7f7);
+  --mv-swarm-bloom-ground: var(--monitor-bg);
   --mv-swarm-bloom-ink: var(--text-main, #111111);
   --mv-swarm-bloom-muted: var(--text-muted, #888888);
   --mv-swarm-bloom-bud-bg: #ffffff;
@@ -67,7 +67,7 @@
   transform: translate(var(--mv-swarm-bloom-hx), var(--mv-swarm-bloom-hy)) scale(0.2);
   opacity: 0;
   transition:
-    transform var(--mv-swarm-bloom-pop, 280ms) var(--mv-swarm-ease-pop, cubic-bezier(0.34, 1.45, 0.64, 1))
+    transform var(--mv-swarm-bloom-pop, 280ms) var(--vf-ease-pop)
       var(--mv-swarm-bloom-delay, 0ms),
     opacity 140ms ease var(--mv-swarm-bloom-delay, 0ms);
   will-change: transform, opacity;
@@ -102,7 +102,7 @@
     var(--mv-swarm-bloom-shadow-bud);
   transform: scale(calc(1 + var(--mv-swarm-bloom-lean, 0) * 0.06));
   transition:
-    transform var(--mv-swarm-bloom-lift, 180ms) var(--mv-swarm-ease-lift, cubic-bezier(0.2, 0.9, 0.3, 1.2)),
+    transform var(--mv-swarm-bloom-lift, 180ms) var(--vf-ease-lift),
     background-color 120ms ease,
     color 120ms ease,
     box-shadow 120ms ease;
@@ -177,7 +177,7 @@
   transform: scale(var(--mv-swarm-bloom-grow, 2.4));
   opacity: 0;
   transition:
-    transform 320ms var(--mv-swarm-ease-pop, cubic-bezier(0.34, 1.45, 0.64, 1)),
+    transform 320ms var(--vf-ease-pop),
     opacity 220ms ease 70ms;
 }
 
@@ -279,7 +279,7 @@
   white-space: nowrap;
   transition:
     opacity 150ms ease,
-    transform 200ms var(--mv-swarm-ease-island, cubic-bezier(0.25, 1, 0.3, 1));
+    transform 200ms var(--vf-ease-island);
 }
 
 .mv-swarm .vf-bloom-say[data-align='left'] {

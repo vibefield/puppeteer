@@ -456,7 +456,6 @@ function serialize(node: Node, depth = 0): string[] {
 function foldLegacyField(field: HTMLElement): void {
   field.removeAttribute('data-swarm-renderer');
   field.setAttribute('tabindex', '-1');
-  field.style.setProperty('--mv-swarm-ground', palette.timeline.ground);
   field.style.setProperty('--mv-swarm-orange', palette.swarm.orange);
   for (const empty of field.querySelectorAll('.vf-monitor-empty')) empty.className = 'vf-monitor-swarm-empty';
   for (const empty of field.querySelectorAll('[data-swarm-renderer]')) empty.removeAttribute('data-swarm-renderer');
@@ -480,7 +479,8 @@ describe('the swarm: legacy and ported, as markup', () => {
     await frames(3);
     // The port's own properties replace what the legacy read from the host: asserted, then folded.
     const field = ported.field();
-    expect(field.style.getPropertyValue('--mv-swarm-ground')).toBe(palette.timeline.ground);
+    // M59.4: the ground is the skin's `--monitor-bg`, read by the view's CSS; the root carries none of its own
+    expect(field.style.getPropertyValue('--mv-swarm-ground')).toBe('');
     expect(field.style.getPropertyValue('--mv-swarm-orange')).toBe(palette.swarm.orange);
     expect(field.getAttribute('tabindex')).toBe('-1');
     expect(legacy.field().getAttribute('data-swarm-renderer')).toBe('webgpu');

@@ -151,7 +151,7 @@ describe('the list’s ＋ TERMINAL', () => {
           parameters: parameterDefaults(LIST_MANIFEST),
           ...(spawn ? { capabilities: { spawn } } : {}),
         })}
-        commands={{ select: () => undefined, create: () => undefined, report: () => undefined }}
+        commands={{ select: () => undefined, create: () => Promise.resolve({ opened: true }), report: () => undefined }}
       />,
     );
 

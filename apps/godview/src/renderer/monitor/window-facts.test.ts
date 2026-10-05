@@ -157,6 +157,29 @@ describe('the local join', () => {
     expect([...local.spawnHints]).toEqual([['sh-1', { x: 1, y: 2 }]]);
     expect(local.visible).toBe(visible);
   });
+
+  it("carries every row's spatial identity (M59): a launcher's agent wears the shell's body, and keeps it across joins", () => {
+    const input = {
+      model: model([
+        { id: 'run-1', kind: 'agent' },
+        { id: 'sh-9', kind: 'terminal' },
+      ]),
+      agentSessions: new Map([['run-1', 'ag-1']]),
+      attachments: new Map(),
+      terminals: [{ session: session('sh-9') }],
+    } as const;
+    // The window transferred the shell's body (sh-f) to the agent's session (ag-1).
+    const first = windowLocal({ ...input, visualIds: new Map([['ag-1', 'sh-f']]) }, everyRow);
+    expect([...(first.visualIds ?? [])]).toEqual([
+      ['run-1', 'sh-f'],
+      ['sh-9', 'sh-9'],
+    ]);
+    // The transfer forgotten by the window: the row keeps what it wore last time.
+    const second = windowLocal({ ...input, visualIds: new Map(), previousVisualIds: first.visualIds }, everyRow);
+    expect(second.visualIds?.get('run-1')).toBe('sh-f');
+    // Nothing carried and nothing worn: the row's session, else its id.
+    expect(windowLocal(input, everyRow).visualIds?.get('run-1')).toBe('ag-1');
+  });
 });
 
 describe('rows and sessions', () => {

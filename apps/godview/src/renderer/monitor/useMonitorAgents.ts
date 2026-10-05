@@ -5,7 +5,7 @@ import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore, type MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
 import { createMonitorReplica, type MonitorReplica } from '@vibecook/puppeteer-monitor/replica';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
-import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorView, MonitorViewCommands } from '@vibecook/puppeteer-view-sdk';
 import {
   frameScheduler,
   isLegacyMonitorView,
@@ -92,7 +92,8 @@ export interface MonitorAgentsResult {
   /** The chrome's verbs: mount a row's session in the active pane; open a terminal there. */
   actions: {
     select(agent: Pick<ViewsMonitorAgent, 'id'>): void;
-    createAt(position?: { x: number; y: number }): Promise<void>;
+    /** True when a terminal opened (M59: nothing opened is a refusal to the view's create). */
+    createAt(position?: { x: number; y: number }): Promise<boolean>;
   };
   /** Acknowledges a crashed row's failure through the backend, so the row leaves the model and the chrome alike. */
   acknowledge(id: string): void;
@@ -319,9 +320,12 @@ export function useMonitorAgents({
   const modelRef = useRef(model);
   modelRef.current = model;
   const activeSessionId = workspace?.activeSession?.id;
+  /** What each row wore last time (M59): the previous join's visual ids, so a body keeps its identity. */
+  const previousVisualIds = useRef<ReadonlyMap<string, string>>(new Map());
+  const rowIdsKey = useMemo(() => model.agents.map((row) => row.id).join('\n'), [model]);
   const local = useMemo(
-    () =>
-      windowLocal(
+    () => {
+      const next = windowLocal(
         {
           model: modelRef.current,
           agentSessions,
@@ -329,12 +333,28 @@ export function useMonitorAgents({
           activeSessionId,
           terminals,
           identities: terminalIdentities,
+          visualIds: terminalVisualIds,
+          previousVisualIds: previousVisualIds.current,
         },
         visible,
-      ),
-    // The model's agent ids stand for its kinds (`agentIdsKey`); the model itself is read through the ref.
+      );
+      if (next.visualIds) previousVisualIds.current = next.visualIds;
+      return next;
+    },
+    // The model's row ids stand for its rows (`rowIdsKey`, `agentIdsKey` its kinds); the model itself is read
+    // through the ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeSessionId, agentIdsKey, agentSessions, attachments, terminalIdentities, terminals, visible],
+    [
+      activeSessionId,
+      agentIdsKey,
+      agentSessions,
+      attachments,
+      rowIdsKey,
+      terminalIdentities,
+      terminalVisualIds,
+      terminals,
+      visible,
+    ],
   );
   useLayoutEffect(() => replica.setLocal(local), [local, replica]);
 
@@ -392,12 +412,13 @@ export function useMonitorAgents({
     [agentSessions, records, sessions, terminalIdentities, terminals],
   );
 
+  /** Opens a terminal in the active pane: true when one opened (M59: the slot reads nothing opened as a refusal). */
   const createAt = useCallback(
-    async (position?: { x: number; y: number }): Promise<void> => {
-      if (!workspace?.activeSession) return;
+    async (position?: { x: number; y: number }): Promise<boolean> => {
+      if (!workspace?.activeSession) return false;
       const sourceCwd = workspace.activeSession.cwd;
       const session = await workspace.createSessionInActivePane();
-      if (!session) return;
+      if (!session) return false;
       setExitedTerminalIds((current) => {
         if (!current.has(session.id)) return current;
         const next = new Set(current);
@@ -409,6 +430,7 @@ export function useMonitorAgents({
         ...current.filter((terminal) => terminal.session.id !== session.id),
         { session, ...(cwd ? { cwd } : {}), ...(position ? { spawnHint: position } : {}) },
       ]);
+      return true;
     },
     [workspace],
   );
@@ -424,7 +446,10 @@ export function useMonitorAgents({
         if (row) mount(resolve(row));
       },
       create(at) {
-        void latest.current.createAt(at);
+        // M59: the slot reads a fulfilled return as opened and a rejection as a refusal.
+        return latest.current.createAt(at).then((opened) => {
+          if (!opened) throw new Error('no terminal opened');
+        });
       },
     }),
     [],
@@ -434,12 +459,13 @@ export function useMonitorAgents({
   // `toProps` reads the shim's rows.
   const views = useMemo(() => {
     const actions = new WeakMap<object, ViewsMonitorActions>();
-    const actionsFor = (bridge: Pick<ViewSlotCommands, 'select' | 'create'>): ViewsMonitorActions => {
+    // The bridge hands the view's own commands: `create` answers (M59), and the legacy actions expect no value.
+    const actionsFor = (bridge: Pick<MonitorViewCommands, 'select' | 'create'>): ViewsMonitorActions => {
       const held = actions.get(bridge);
       if (held) return held;
       const made: ViewsMonitorActions = {
         select: (agent) => bridge.select(agent.id),
-        createAt: (position, target) => bridge.create(position, target),
+        createAt: (position, target) => bridge.create(position, target).then(() => undefined),
       };
       actions.set(bridge, made);
       return made;

@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
 import { BLOOM } from './constants.js';
 import type { BloomPoint } from './geometry.js';
 import type { BloomChoice, BloomState } from './model.js';
@@ -31,7 +31,7 @@ interface Harness {
   engine: ReturnType<typeof createSpawnBloomEngine>;
   created: Array<[BloomPoint | undefined, MonitorSpawnTarget | undefined, number]>;
   renders: Array<BloomState | null>;
-  births: Array<{ choice: BloomChoice; answer: Promise<void> }>;
+  births: Array<{ choice: BloomChoice; answer: Promise<MonitorCreateAnswer> }>;
   /** Where the focus stands, as the swarm would tell the bloom. */
   focus(place: BloomFocusPlace): void;
 }
@@ -377,12 +377,16 @@ describe('a host that cannot open a terminal', () => {
     h.engine.pointerMove(pointer(1), work);
     h.engine.pointerUp(pointer(1), work);
     expect(h.births).toHaveLength(1);
-    await expect(h.births[0]?.answer).rejects.toThrow('refused');
+    // M59: the answer never rejects; a refusal (or a host that throws) is `opened: false`, and the birth is given up
+    await expect(h.births[0]?.answer).resolves.toEqual({ opened: false });
   });
 
-  it('turns a throw into a rejection, and a plain return into a resolution', async () => {
-    await expect(createQuietly(explode)).rejects.toThrow('thrown');
-    await expect(createQuietly(() => undefined)).resolves.toBeUndefined();
+  it('answers and never rejects (M59): a throw or a rejection is a refusal, nothing is opened at once', async () => {
+    await expect(createQuietly(explode)).resolves.toEqual({ opened: false });
+    await expect(createQuietly(refuse)).resolves.toEqual({ opened: false });
+    await expect(createQuietly(() => undefined)).resolves.toEqual({ opened: true });
+    await expect(createQuietly(() => Promise.resolve({ opened: false }))).resolves.toEqual({ opened: false });
+    await expect(createQuietly(() => ({ opened: true }))).resolves.toEqual({ opened: true });
   });
 });
 

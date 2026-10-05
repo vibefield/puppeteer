@@ -325,8 +325,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       const settle = (patch: { answeredAt?: number; failedAt?: number }): void => {
         if (birthsRef.current.includes(record)) record.birth = { ...record.birth, ...patch };
       };
-      Promise.resolve(answer).then(
-        () => settle({ answeredAt: performance.now() }),
+      answer.then(
+        ({ opened }) => settle(opened ? { answeredAt: performance.now() } : { failedAt: performance.now() }),
         () => settle({ failedAt: performance.now() }),
       );
     },
@@ -1052,7 +1052,6 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   // behind the bloom's words and the signifier's halo, and the orange of the bloom's waiting dot.
   const style = {
     cursor,
-    '--mv-swarm-ground': palette.timeline.ground,
     '--mv-swarm-orange': palette.swarm.orange,
   } as CSSProperties;
   const className = [

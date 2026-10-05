@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
-import type { MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
 import { approximateBloomMeasure, canvasBloomMeasure } from './canvas-measure.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import type { BloomPoint, BloomRect, BloomSize } from './geometry.js';
@@ -63,12 +63,15 @@ export interface SpawnBloomHost {
   readonly motion: () => boolean;
   /** Where the focus stands now, from the view's own focus events. */
   readonly focus: () => BloomFocusPlace;
-  /** The view's `create`: where, and the desktop and profile chosen. A host that answers with a promise is waited
-   * for (the birth's clock, SB §2.6); one that answers nothing counts as answered at once. */
-  readonly createAt: (at: BloomPoint, target?: MonitorSpawnTarget) => void | Promise<void>;
+  /** The view's `create`: where, and the desktop and profile chosen. Its answer is the birth's clock (SB §2.6,
+   * M59): opened, or refused. One that answers nothing counts as opened at once. */
+  readonly createAt: (
+    at: BloomPoint,
+    target?: MonitorSpawnTarget,
+  ) => void | MonitorCreateAnswer | Promise<void | MonitorCreateAnswer>;
   /** A bloom's commit asked the host for a terminal (not an instant create): the swarm draws the
-   * birth until its row arrives. `answer` settles as `createAt` did (a throw is a rejection). */
-  readonly born?: ((choice: BloomChoice, answer: Promise<void>) => void) | undefined;
+   * birth until its row arrives. `answer` never rejects: a refusal, a throw or a rejection is `opened: false`. */
+  readonly born?: ((choice: BloomChoice, answer: Promise<MonitorCreateAnswer>) => void) | undefined;
 }
 
 /** The frame's hub: the hold ring frozen at full size while the bloom is open, fading once it closes. */
@@ -118,19 +121,25 @@ export function spawnTarget(choice: Pick<BloomChoice, 'deviceId' | 'profileSet'>
   return { deviceId: choice.deviceId, profileSet: choice.profileSet };
 }
 
-/** Ask the host for a terminal and never leave its failure unhandled: a host that cannot open one
- * says why itself (VibeField announces, then rejects), so a rejection — or a throw, which becomes
- * one — is caught here. The answer is returned for whoever still wants to know how it ended. */
-export function createQuietly(run: () => void | Promise<void>): Promise<void> {
-  let answer: void | Promise<void>;
+const OPENED: MonitorCreateAnswer = Object.freeze({ opened: true });
+const REFUSED: MonitorCreateAnswer = Object.freeze({ opened: false });
+
+/** Ask the host for a terminal and never leave its failure unhandled (M59): the view's `create` answers and never
+ * rejects, and a host that still throws or rejects here (a host that cannot open one says why itself) is read as a
+ * refusal. Nothing answered is opened at once. The answer is returned for whoever wants to know how it ended. */
+export function createQuietly(
+  run: () => void | MonitorCreateAnswer | Promise<void | MonitorCreateAnswer>,
+): Promise<MonitorCreateAnswer> {
+  let answer: void | MonitorCreateAnswer | Promise<void | MonitorCreateAnswer>;
   try {
     answer = run();
-  } catch (error) {
-    answer = Promise.reject(error);
+  } catch {
+    return Promise.resolve(REFUSED);
   }
-  const settled = Promise.resolve(answer);
-  settled.catch(() => undefined);
-  return settled;
+  return Promise.resolve(answer).then(
+    (value) => (value && value.opened === false ? REFUSED : OPENED),
+    () => REFUSED,
+  );
 }
 
 /** How long a closed bloom stays for its exit: the buds home, the words' hold and their step out. */
@@ -247,7 +256,7 @@ export function createSpawnBloomEngine(
     if (next.mode !== 'hold') giveBackFocus();
   };
 
-  const create = (choice: BloomChoice): Promise<void> => {
+  const create = (choice: BloomChoice): Promise<MonitorCreateAnswer> => {
     const at = { x: choice.at.x, y: choice.at.y };
     const target = spawnTarget(choice);
     return createQuietly(() => (target ? host.current.createAt(at, target) : host.current.createAt(at)));

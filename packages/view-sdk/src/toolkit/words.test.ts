@@ -121,7 +121,9 @@ describe('waitBodyLine: what a blocked body says in the name’s place, in the s
     expect(waitBodyLine({ kind: 'question', since, header: 'Which branch?', question: 'Merge or keep?' })).toBe(
       'Which branch?',
     );
-    expect(waitBodyLine({ kind: 'question', since, header: '  ', question: ' Merge or keep? ' })).toBe('Merge or keep?');
+    expect(waitBodyLine({ kind: 'question', since, header: '  ', question: ' Merge or keep? ' })).toBe(
+      'Merge or keep?',
+    );
     expect(waitBodyLine({ kind: 'question', since, question: '', detail: 'the adapter’s line' })).toBe(
       'the adapter’s line',
     );

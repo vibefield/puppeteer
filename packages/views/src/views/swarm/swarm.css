@@ -22,9 +22,6 @@
     color 240ms ease,
     border-color 240ms ease,
     background-color 240ms ease;
-  --mv-swarm-ease-pop: cubic-bezier(0.34, 1.45, 0.64, 1);
-  --mv-swarm-ease-lift: cubic-bezier(0.2, 0.9, 0.3, 1.2);
-  --mv-swarm-ease-island: cubic-bezier(0.25, 1, 0.3, 1);
 }
 
 .mv-swarm .vf-monitor-swarm-canvas {
@@ -88,8 +85,8 @@
   text-transform: uppercase;
   white-space: nowrap;
   text-shadow:
-    0 0 3px var(--mv-swarm-ground, #f7f7f7),
-    0 0 8px var(--mv-swarm-ground, #f7f7f7);
+    0 0 3px var(--monitor-bg),
+    0 0 8px var(--monitor-bg);
   pointer-events: none;
 }
 

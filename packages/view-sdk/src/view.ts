@@ -160,12 +160,21 @@ export interface ViewReport {
   readonly keysHeld?: boolean | undefined;
 }
 
+/** The host's answer to `create` (M59): whether a terminal opened. A refusal is an answer, never a rejection. */
+export interface MonitorCreateAnswer {
+  readonly opened: boolean;
+}
+
 /** The three commands a view may call (MV-D5). */
 export interface MonitorViewCommands {
   /** Show this agent in the active pane. */
   select(agentId: string): void;
-  /** Open a terminal: where the gesture happened, and the desktop and profile chosen. */
-  create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): void;
+  /**
+   * Open a terminal: where the gesture happened, and the desktop and profile chosen. Resolves with the host's answer
+   * and never rejects (M59): the slot maps a host's fulfilled, rejected or void return to opened, refused, or opened
+   * at once. A view that draws a birth waits from the answer and gives up at once on a refusal.
+   */
+  create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): Promise<MonitorCreateAnswer>;
   report(report: ViewReport): void;
 }
 
