@@ -301,6 +301,7 @@ test('the skin is the SDK’s own list, read from its source', () => {
     '--control-hover-bg',
     '--control-hover-border',
     '--idle-bg',
+    '--vf-ease-island',
   ]);
   assert.deepEqual(readMonitorSkin(fixture({})), []);
 });
