@@ -40,6 +40,9 @@ const DPR = 2;
 const VIEWS = [
   { view: 'list', page: 'list-lab.html', script: 'list-lab.mjs', books: [undefined], animations: '0' },
   { view: 'rain', page: 'rain-lab.html', script: 'rain-lab.mjs', books: [undefined], animations: '1' },
+  // The swarm (MV-5, M32): offscreen capturePage draws WebGPU. In motion, as the rain: its physics step on the capture
+  // clock, so the field is the same settled field on every run.
+  { view: 'swarm', page: 'swarm-lab.html', script: 'swarm-lab.mjs', books: [undefined], animations: '1' },
   // The timeline with the book Godview keeps today, and bare — what it draws without one (L10, MV-6).
   {
     view: 'timeline',

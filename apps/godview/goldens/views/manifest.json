@@ -269,6 +269,138 @@
       "sha256": "17b7d0c2602b62da45653c3a92c4dcc3b7db51d151775adde1375c3e9cabe74a"
     },
     {
+      "file": "swarm/dark-compact-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "2cac1565b2974fb97b6740fa4e58675ee40b843b1bb55d9623ddb8c8a5cab389"
+    },
+    {
+      "file": "swarm/dark-compact-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "495ee001d8f48190a4f70523374362269c106c3131dc13eeab8246ed68b8d0f6"
+    },
+    {
+      "file": "swarm/dark-default-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "ed51869304ef9b698850481b9dc2a5646b6114cb3266186a6bcafb3a156480f8"
+    },
+    {
+      "file": "swarm/dark-default-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "52aceffe9615a3b5239aa225106376875dfd1e05f0dcc59a959e33e5f7a2cbea"
+    },
+    {
+      "file": "swarm/dark-wide-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "95db95caebf1cb44113ed946c81f4c081825832b1785aa59e2a5d6fe984b387f"
+    },
+    {
+      "file": "swarm/dark-wide-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "274ddb58abfa318f37517a7c1b0aa83080d5378c42c8211c42aeec168711b1e2"
+    },
+    {
+      "file": "swarm/light-compact-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "fe94adde6126ca6e6155a0c3e790a66dff5c0dee7db286c148691246b653a80d"
+    },
+    {
+      "file": "swarm/light-compact-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "fcf5001fce9574435f9b2298618d82c2880a91172928ab9a9acd1cdfb6acd093"
+    },
+    {
+      "file": "swarm/light-default-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "7a4be342853b54b4bb6331cd7cecc075b7a5a632fcd9f48742b502958ab140eb"
+    },
+    {
+      "file": "swarm/light-default-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "4a7859d65bb3c127a01ed603274319192c5692f9efd8c00b82a1965ff429cbe7"
+    },
+    {
+      "file": "swarm/light-wide-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "book": null,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "8c6ef26a9cbd70d9289cc93bbb97120976be4cbd82a2ac6a17a46d4a5e2f0ca6"
+    },
+    {
+      "file": "swarm/light-wide-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "book": null,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "fef79c92b19b0412d201f1e1bcf8971f1d7281fe28c20a261c3a71a7bf192f70"
+    },
+    {
       "file": "timeline/dark-compact-n1-bare.png",
       "view": "timeline",
       "theme": "dark",
