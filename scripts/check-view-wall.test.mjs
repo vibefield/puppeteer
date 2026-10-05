@@ -384,8 +384,7 @@ test('a dependency a view bundles into itself is allowed only for the view that 
   assert.deepEqual(found(report, 'swarm'), []);
   assert.deepEqual(found(report, 'other'), ['MV-W1 imports matter-js, which is not the SDK']);
   // W3 is unmoved: the swarm may bundle matter, not reach out
-  assert.deepEqual(
-    found(wall({ 'views/swarm/reach.ts': "export const data = fetch('https://x');\n" }), 'swarm'),
-    ['MV-W3 reaches out through fetch'],
-  );
+  assert.deepEqual(found(wall({ 'views/swarm/reach.ts': "export const data = fetch('https://x');\n" }), 'swarm'), [
+    'MV-W3 reaches out through fetch',
+  ]);
 });
