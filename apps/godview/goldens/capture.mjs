@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
-// Capture the view goldens (README.md): every lab view (list, rain, timeline — the timeline's ids
-// with its old book and bare, one drawing since MV-6) in both themes at Godview's three stage
-// sizes, for n = 1 and n = 20, on the
-// capture clock, still (the rain in motion, below). One offscreen Electron window does all of it
+// Capture the view goldens (README.md): every lab view (list, rain, swarm, timeline) in both themes
+// at Godview's three stage sizes, for n = 1 and n = 20, on the capture clock, still (the rain and
+// the swarm in motion, below). One offscreen Electron window does all of it
 // (capture-main.mjs). The wall clock's time zone and the locale are pinned, because the timeline
 // prints local times.
 //
@@ -39,20 +38,14 @@ const DPR = 2;
 // always taken with its loop running, the capture clock stepping it; since it honours the switch (MV-W4) it is
 // asked for motion outright, which draws exactly what it drew. Every other view is captured still.
 const VIEWS = [
-  { view: 'list', page: 'list-lab.html', script: 'list-lab.mjs', books: [undefined], animations: '0' },
-  { view: 'rain', page: 'rain-lab.html', script: 'rain-lab.mjs', books: [undefined], animations: '1' },
+  { view: 'list', page: 'list-lab.html', script: 'list-lab.mjs', animations: '0' },
+  { view: 'rain', page: 'rain-lab.html', script: 'rain-lab.mjs', animations: '1' },
   // The swarm (MV-5, M32): offscreen capturePage draws WebGPU. In motion, as the rain: its physics step on the capture
   // clock, so the field is the same settled field on every run.
-  { view: 'swarm', page: 'swarm-lab.html', script: 'swarm-lab.mjs', books: [undefined], animations: '1' },
-  // The timeline as captured with the book Godview kept, and bare. MV-6 retired the book (runtime only, L10): the lab
-  // reads no `book` now, so the two ids draw the same image until MV-8 folds them.
-  {
-    view: 'timeline',
-    page: 'timeline-lab.html',
-    script: 'timeline-lab.mjs',
-    books: [true, false],
-    animations: '0',
-  },
+  { view: 'swarm', page: 'swarm-lab.html', script: 'swarm-lab.mjs', animations: '1' },
+  // One set of ids since MV-8: the timeline was captured twice, with the book Godview kept and bare (`-bare`), until
+  // MV-6 retired the book (runtime only, L10) and both drew byte-identical images; MV-8 folded them (M60, M63).
+  { view: 'timeline', page: 'timeline-lab.html', script: 'timeline-lab.mjs', animations: '0' },
 ];
 
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -74,28 +67,24 @@ if (!flag('no-build')) {
 const out = flag('update') ? GOLDENS : (option('out') ?? mkdtempSync(join(tmpdir(), 'godview-goldens-')));
 const only = option('only');
 const images = [];
-for (const { view, page, books, animations } of VIEWS) {
+for (const { view, page, animations } of VIEWS) {
   for (const theme of THEMES) {
     for (const [size, [width, height]] of Object.entries(SIZES)) {
       for (const n of COUNTS) {
-        for (const book of books) {
-          const file = `${view}/${theme}-${size}-n${n}${book === false ? '-bare' : ''}.png`;
-          if (only && !file.includes(only)) continue;
-          const query = new URLSearchParams({ capture: '1', theme, size, n: String(n), animations });
-          if (book === false) query.set('book', '0');
-          images.push({
-            file,
-            view,
-            theme,
-            size,
-            n,
-            book: book ?? null,
-            animations: animations === '1' ? 'on' : 'off',
-            width,
-            height,
-            url: `${pathToFileURL(join(dist, page)).href}?${query}`,
-          });
-        }
+        const file = `${view}/${theme}-${size}-n${n}.png`;
+        if (only && !file.includes(only)) continue;
+        const query = new URLSearchParams({ capture: '1', theme, size, n: String(n), animations });
+        images.push({
+          file,
+          view,
+          theme,
+          size,
+          n,
+          animations: animations === '1' ? 'on' : 'off',
+          width,
+          height,
+          url: `${pathToFileURL(join(dist, page)).href}?${query}`,
+        });
       }
     }
   }

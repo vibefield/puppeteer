@@ -6,12 +6,12 @@ either goes away or is named and shown to James as an intentional change.
 
 ## What is captured
 
-`views/<view>/<theme>-<size>-n<n>[-bare].png`, 60 images (7.2 MB), with `views/manifest.json` listing each one's
+`views/<view>/<theme>-<size>-n<n>.png`, 48 images (5.6 MB), with `views/manifest.json` listing each one's
 parameters and sha256 and the environment that recorded them.
 
 |        |                                                                                                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| views  | list, rain, swarm (since MV-5: twelve images recorded from the legacy swarm's lab at base `d91c7b7`, which the ported view is held to; animations on, it is motion), timeline (the timeline twice: ids without a suffix were taken with the book Godview kept until MV-6, and `-bare` without one; MV-6 retired the book (runtime only), so both draw the same images now, the book's ids re-recorded as named in its commit; MV-8 can fold them) |
+| views  | list, rain, swarm (since MV-5: twelve images recorded from the legacy swarm's lab at base `d91c7b7`, which the ported view is held to; animations on, it is motion), timeline (one set of ids since MV-8: it was captured twice, with the book Godview kept and `-bare` without it, until MV-6 retired the book (runtime only) and the two drew byte-identical images; MV-8 folded them, keeping the unsuffixed ids) |
 | themes | light, dark                                                                                                                                             |
 | sizes  | Godview's stage (35 % of the window, floor 170 px): compact 680×170 · default 1180×252 · wide 1728×378                                                  |
 | rows   | n = 1 and n = 20 from the seeded world (`packages/views/src/lab/lab-world.ts`)                                                                          |
@@ -82,8 +82,7 @@ node goldens/capture.mjs --update       # re-record goldens/views (an intentiona
 `--only <text>` captures the ids containing it (`--only rain/`, `--only dark-wide`); `--no-build` reuses
 `dist/*-lab.html` instead of rebuilding the labs first. Run with `TMPDIR=/tmp`.
 
-The capture opens each lab page (`dist/<view>-lab.html?capture=1&theme=…&size=…&n=…&animations=0[&book=0]`, where no lab
-has read `book` since MV-6) in
+The capture opens each lab page (`dist/<view>-lab.html?capture=1&theme=…&size=…&n=…&animations=0|1`) in
 one offscreen Electron window: it is never shown, the Dock icon is hidden, and nothing takes focus. To look at any
 golden's page by hand, open the same URL without `capture=1`.
 
