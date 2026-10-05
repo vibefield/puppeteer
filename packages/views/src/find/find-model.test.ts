@@ -8,6 +8,7 @@ import {
   factsScore,
   fieldMatch,
   footSentence,
+  lastActiveMs,
   liveScope,
   moveCursor,
   nativeSessionIdOf,
@@ -134,6 +135,19 @@ describe('liveScope and nativeSessionIdOf', () => {
     expect(scope.afterMs).toBe(NOW - 7_200_000 - 5 * 60_000);
     expect(nativeSessionIdOf(agents[2]!)).toBeUndefined();
     expect(liveScope([agent({ id: 'x', project: 'p', terminal: true })])).toEqual({ nativeSessionIds: [] });
+  });
+
+  it('reads a mirror with no session or freshness, as a host may hand one (M47)', () => {
+    // Core's mirror rides the wire as passthrough, so neither part is promised. VibeField once handed the sheet
+    // the legacy shim's sketch, which has neither, and the throw in render blanked its window (build-mv M47).
+    const sketch = { statusSince: new Date(NOW - 60_000).toISOString(), blockers: [] } as unknown as AgentMonitorState;
+    const base = agent({ id: 's', project: 'p' });
+    const row: MonitorAgent = { ...base, agent: { ...base.agent!, monitor: sketch } };
+    expect(nativeSessionIdOf(row)).toBeUndefined();
+    expect(liveScope([row])).toEqual({ nativeSessionIds: [] });
+    const named: MonitorAgent = { ...row, agent: { ...row.agent!, nativeSessionId: 'n-s' } };
+    expect(liveScope([named]).nativeSessionIds).toEqual(['n-s']);
+    expect(lastActiveMs(named, NOW)).toBe(NOW - 60_000);
   });
 });
 

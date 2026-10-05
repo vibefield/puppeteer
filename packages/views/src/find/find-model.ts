@@ -21,7 +21,8 @@ const SCOPE_SLACK_MS = 5 * 60_000;
 export function nativeSessionIdOf(agent: MonitorAgent): string | undefined {
   const facet = agent.agent;
   if (!facet) return undefined;
-  return facet.nativeSessionId || facet.monitor?.session.nativeSessionId || undefined;
+  // A host's mirror is Core's passthrough: `session` is not promised (build-mv M47).
+  return facet.nativeSessionId || facet.monitor?.session?.nativeSessionId || undefined;
 }
 
 export interface FindScope {
@@ -37,7 +38,7 @@ export function liveScope(agents: readonly MonitorAgent[]): FindScope {
     const id = nativeSessionIdOf(agent);
     if (!id || nativeSessionIds.includes(id)) continue;
     nativeSessionIds.push(id);
-    const started = agent.agent?.monitor?.session.startedAt ?? agent.agent?.monitor?.statusSince;
+    const started = agent.agent?.monitor?.session?.startedAt ?? agent.agent?.monitor?.statusSince;
     const startedMs = started ? Date.parse(started) : Number.NaN;
     const createdMs = agent.createdAtMs;
     const candidate = Number.isFinite(startedMs) ? Math.min(startedMs, createdMs) : createdMs;
@@ -161,7 +162,7 @@ export interface FindRow {
 
 export function lastActiveMs(agent: MonitorAgent, nowMs: number): number {
   const facet = agent.agent;
-  const stamps = [facet?.monitor?.freshness.lastEvidenceAt, facet?.monitor?.statusSince]
+  const stamps = [facet?.monitor?.freshness?.lastEvidenceAt, facet?.monitor?.statusSince]
     .map((value) => (value ? Date.parse(value) : Number.NaN))
     .filter((value) => Number.isFinite(value) && value <= nowMs + 60_000);
   return stamps.length > 0 ? Math.max(...stamps) : agent.createdAtMs;
