@@ -30,7 +30,13 @@ import { paneRecoveryMetadata } from '../restore-snapshot.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
 import { AgentsDrawer } from './AgentsDrawer.js';
-import { BarControl, InstrumentBar, type AccountUsagePort, type HistoryPort } from '@vibecook/puppeteer-views';
+import {
+  BarControl,
+  ChromeBoundary,
+  InstrumentBar,
+  type AccountUsagePort,
+  type HistoryPort,
+} from '@vibecook/puppeteer-views';
 import { UsageColumn } from '@vibecook/puppeteer-views';
 import { useAgentProfiles } from './agent-profiles.js';
 import {
@@ -183,6 +189,14 @@ const usagePort: AccountUsagePort = {
   snapshot: () => window.puppeteer.accountUsage(),
   subscribe: (listener) => window.puppeteer.onAccountUsage(listener),
 };
+
+/**
+ * A chrome piece that failed to render (M49): it alone goes, behind its `ChromeBoundary`, and the monitor, its view
+ * and the rest of the chrome stay. The piece is tried again on the window's next render.
+ */
+function reportChromeError(error: unknown, name: string): void {
+  console.error(`[chrome] ${name} failed to render`, error);
+}
 
 /** The stage before its first measurement: nothing to steer around yet. */
 const EMPTY_STAGE: StageGeometry = Object.freeze({
@@ -691,110 +705,120 @@ function Godview() {
     >
       <div className="vf-godview-scanlines" aria-hidden="true" />
       <div className="vf-godview-vignette" aria-hidden="true" />
-      <InstrumentBar
-        counts={counts}
-        onSelectStatus={selectNextStatus}
-        views={MONITOR_VIEWS}
-        viewId={view.id}
-        onSelectView={selectView}
-        theme={theme}
-        onThemeChange={changeTheme}
-        leading={
-          <div className="vf-godview-window-controls" aria-hidden="true">
-            <i className="is-close" />
-            <i className="is-minimize" />
-            <i className="is-expand" />
-          </div>
-        }
-        trailing={
-          <>
-            <BarControl
-              mark="find"
-              label="FIND"
-              shortcut="⌘F"
-              ariaLabel="Find an agent by what was said"
-              controls="vf-find-sheet"
-              on={findOpen}
-              onClick={() => setFindOpen((current) => !current)}
-            />
-            <BarControl
-              mark="agents"
-              label="AGENTS"
-              ariaLabel="Installed agents and accounts"
-              controls="vf-agents-drawer"
-              on={agentsDrawerOpen}
-              onClick={() => setAgentsDrawerOpen((current) => !current)}
-            />
-            <BarControl
-              mark="tune"
-              label="SYSTEM CONTROL"
-              ariaLabel="System control"
-              controls="vf-godview-tweak-panel"
-              on={tweakPanelOpen}
-              onClick={() => setTweakPanelOpen((current) => !current)}
-            />
-            {settings ? (
-              <BarControl
-                mark="settings"
-                label="SETTINGS"
-                ariaLabel="Open settings"
-                haspopup="dialog"
-                end
-                disabled={!settings.enabled}
-                onClick={settings.open}
-              />
-            ) : null}
-          </>
-        }
-      />
-
-      {notifications.length ? (
-        <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
-          {notifications.map((message) => (
-            <div className="vf-godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
-              <span>{message.summary ?? message.type}</span>
-              <button
-                type="button"
-                aria-label="Dismiss notification"
-                onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
-              >
-                ×
-              </button>
+      <ChromeBoundary name="bar" onError={reportChromeError}>
+        <InstrumentBar
+          counts={counts}
+          onSelectStatus={selectNextStatus}
+          views={MONITOR_VIEWS}
+          viewId={view.id}
+          onSelectView={selectView}
+          theme={theme}
+          onThemeChange={changeTheme}
+          leading={
+            <div className="vf-godview-window-controls" aria-hidden="true">
+              <i className="is-close" />
+              <i className="is-minimize" />
+              <i className="is-expand" />
             </div>
-          ))}
-        </div>
-      ) : null}
+          }
+          trailing={
+            <>
+              <BarControl
+                mark="find"
+                label="FIND"
+                shortcut="⌘F"
+                ariaLabel="Find an agent by what was said"
+                controls="vf-find-sheet"
+                on={findOpen}
+                onClick={() => setFindOpen((current) => !current)}
+              />
+              <BarControl
+                mark="agents"
+                label="AGENTS"
+                ariaLabel="Installed agents and accounts"
+                controls="vf-agents-drawer"
+                on={agentsDrawerOpen}
+                onClick={() => setAgentsDrawerOpen((current) => !current)}
+              />
+              <BarControl
+                mark="tune"
+                label="SYSTEM CONTROL"
+                ariaLabel="System control"
+                controls="vf-godview-tweak-panel"
+                on={tweakPanelOpen}
+                onClick={() => setTweakPanelOpen((current) => !current)}
+              />
+              {settings ? (
+                <BarControl
+                  mark="settings"
+                  label="SETTINGS"
+                  ariaLabel="Open settings"
+                  haspopup="dialog"
+                  end
+                  disabled={!settings.enabled}
+                  onClick={settings.open}
+                />
+              ) : null}
+            </>
+          }
+        />
+      </ChromeBoundary>
 
-      <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
+      <ChromeBoundary name="notifications" onError={reportChromeError}>
+        {notifications.length ? (
+          <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
+            {notifications.map((message) => (
+              <div className="vf-godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
+                <span>{message.summary ?? message.type}</span>
+                <button
+                  type="button"
+                  aria-label="Dismiss notification"
+                  onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </ChromeBoundary>
 
-      <FindSheet
-        open={findOpen}
-        agents={agents}
-        history={historyPort}
-        onClose={() => setFindOpen(false)}
-        onSelect={(agent) => {
-          actions.select(agent);
-          setFindOpen(false);
-        }}
-      />
+      <ChromeBoundary name="agents drawer" onError={reportChromeError}>
+        <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
+      </ChromeBoundary>
 
-      <TweakPanel
-        open={tweakPanelOpen}
-        theme={theme}
-        value={tuning}
-        sections={tweakSections}
-        onClose={() => setTweakPanelOpen(false)}
-        onThemeChange={changeTheme}
-        onChange={changeTuning}
-        onReset={() => {
-          setTuning(defaultGodviewTuning(theme));
-          setStageParameters(monitorParameterDefaults(STAGE_PARAMETER_GROUPS));
-          setParametersByView((current) => ({
-            ...current,
-            [view.id]: monitorParameterDefaults(view.parameterGroups),
-          }));
-        }}
-      />
+      <ChromeBoundary name="find" onError={reportChromeError}>
+        <FindSheet
+          open={findOpen}
+          agents={agents}
+          history={historyPort}
+          onClose={() => setFindOpen(false)}
+          onSelect={(agent) => {
+            actions.select(agent);
+            setFindOpen(false);
+          }}
+        />
+      </ChromeBoundary>
+
+      <ChromeBoundary name="tweak panel" onError={reportChromeError}>
+        <TweakPanel
+          open={tweakPanelOpen}
+          theme={theme}
+          value={tuning}
+          sections={tweakSections}
+          onClose={() => setTweakPanelOpen(false)}
+          onThemeChange={changeTheme}
+          onChange={changeTuning}
+          onReset={() => {
+            setTuning(defaultGodviewTuning(theme));
+            setStageParameters(monitorParameterDefaults(STAGE_PARAMETER_GROUPS));
+            setParametersByView((current) => ({
+              ...current,
+              [view.id]: monitorParameterDefaults(view.parameterGroups),
+            }));
+          }}
+        />
+      </ChromeBoundary>
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
         {/* One view, drawn from this window's replica (MV-2), each an SDK view the view host mounts as itself. */}
@@ -808,17 +832,21 @@ function Godview() {
           scheduler={frameScheduler}
         />
         <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
-          <UsageColumn port={usagePort} />
+          <ChromeBoundary name="usage" onError={reportChromeError}>
+            <UsageColumn port={usagePort} />
+          </ChromeBoundary>
         </div>
-        {activeAgent?.agent?.monitor ? (
-          <AgentMonitorInspector
-            key={activeAgent.agent.monitor.runtimeRunId}
-            state={activeAgent.agent.monitor}
-            nowMs={Date.now()}
-            onAcknowledge={() => monitor.acknowledge(activeAgent.id)}
-            {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
-          />
-        ) : null}
+        <ChromeBoundary name="inspector" onError={reportChromeError}>
+          {activeAgent?.agent?.monitor ? (
+            <AgentMonitorInspector
+              key={activeAgent.agent.monitor.runtimeRunId}
+              state={activeAgent.agent.monitor}
+              nowMs={Date.now()}
+              onAcknowledge={() => monitor.acknowledge(activeAgent.id)}
+              {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
+            />
+          ) : null}
+        </ChromeBoundary>
       </section>
 
       <section
@@ -856,26 +884,30 @@ function Godview() {
             {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
           />
         </WorkspaceReporterContext.Provider>
-        <DeckFrames
-          deckRef={deckRef}
-          panes={workspace?.panes ?? []}
-          agentsBySession={frameAgentsBySession}
-          paneColors={paneColors}
-          fallbackCwdBySession={frameFallbackCwds}
-          verbs={frameVerbs}
-          frame={AppPaneFrame}
-          zoomedPaneId={zoomedPaneId}
-        />
-        <AppDeckLaunchers
-          deckRef={deckRef}
-          workspace={workspace}
-          used={paneSessionUsed}
-          gate={launcherGate}
-          onReplaced={onLauncherReplaced}
-          prepareReplacement={prepareLauncherReplacement}
-          fallbackCwds={frameFallbackCwds}
-          paneColors={paneColors}
-        />
+        <ChromeBoundary name="deck frames" onError={reportChromeError}>
+          <DeckFrames
+            deckRef={deckRef}
+            panes={workspace?.panes ?? []}
+            agentsBySession={frameAgentsBySession}
+            paneColors={paneColors}
+            fallbackCwdBySession={frameFallbackCwds}
+            verbs={frameVerbs}
+            frame={AppPaneFrame}
+            zoomedPaneId={zoomedPaneId}
+          />
+        </ChromeBoundary>
+        <ChromeBoundary name="deck launchers" onError={reportChromeError}>
+          <AppDeckLaunchers
+            deckRef={deckRef}
+            workspace={workspace}
+            used={paneSessionUsed}
+            gate={launcherGate}
+            onReplaced={onLauncherReplaced}
+            prepareReplacement={prepareLauncherReplacement}
+            fallbackCwds={frameFallbackCwds}
+            paneColors={paneColors}
+          />
+        </ChromeBoundary>
       </section>
     </div>
   );

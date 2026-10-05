@@ -31,6 +31,8 @@ export * from './colour/pane-colours.js';
 export * from './icons/profile-glyph-suggest.js';
 export * from './icons/ServiceMark.js';
 export * from './bar/InstrumentBar.js';
+// Each host chrome piece behind its own error boundary (M49), so one bad read cannot blank the monitor.
+export * from './chrome/ChromeBoundary.js';
 export * from './bar/ProfileTabs.js';
 export * from './usage/UsageColumn.js';
 export * from './usage/account-usage.js';
