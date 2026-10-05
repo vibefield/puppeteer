@@ -273,7 +273,8 @@ it is the registry's.
   holds at most one account per provider. `AgentProfile` gains `set` (the native set, `native`, for a native
   default) and `retiredAt`. The glyph is an open token the views resolve (`ProfileGlyph` in `packages/views`: eleven
   monoline symbols and the laptop for the native set, filled for the default) — open, so a glyph a newer build draws
-  never makes an older build's registry unreadable.
+  never makes an older build's registry unreadable. *(2026-10-05, MV-4: `ProfileGlyph` is the view SDK's now,
+  `@vibecook/puppeteer-view-sdk/react`, drawing the toolkit's `PROFILE_GLYPH_SHAPES`; the views package forwards it.)*
 - **The native set is synthetic**: the providers' own roots, never stored, renamed or removed. Every host sees it,
   whatever it named its own sets.
 - **Folders.** A managed set owns one directory, `<rootsDirectory>/<id>/`, the id made once from its first name
@@ -598,7 +599,8 @@ Added 2026-09-23 for VibeField's Agent Profiles (see "Profile sets"): `ProfileSe
 with version 1 adoption, set folders and per-account roots in `roots.ts`, and `AgentRuntime.profileSets`,
 `profileSet`, `createProfileSet`, `updateProfileSet`, `setDefaultProfileSet`, `removeProfileSet`, `retireProfile`,
 `signOutProfile`, `createProfile({ set })`, `spawn({ profileSet })` with the default set applied to spawns only, and
-`AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views. Godview's drawer is
+`AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views (since MV-4 the glyph is the
+view SDK's, `suggestProfileGlyph` still the views'). Godview's drawer is
 unchanged: its per-provider calls land in sets named as its user named them. After review the same day:
 `ProfileSupport.credential`, the retire-first and live-run rules on `signOutProfile`, serialized commit-after-save
 registry writes, the unreadable-registry fallback for plain spawns, and every profile service built with the

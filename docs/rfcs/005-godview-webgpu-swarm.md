@@ -165,8 +165,9 @@ Agent marks are signed-distance tiles (`gpu/marks/marks.png`, twenty 64-texel ti
 SVGs by `research/svg-sdf`'s generator: spread 8, pxRange 16, the edge at 0.5; each agent's own mark plus the
 neighbours it could be confused with, so the lab can show the choice) and are reconstructed in the text pass at
 any size from the field, so a mark that breathes with the working body (0.92–1.08, 8–24 %, every 1.5 s, the DOM's
-ignition glyph) stays crisp. The tile table lives with the other branding in `AgentIcon.tsx`; a provider without a
-tile falls back to its letter.
+ignition glyph) stays crisp. The tile table lives with the other branding in `AgentIcon.tsx` (since MV-4,
+2026-10-05: the view SDK toolkit's `marks.ts`, beside the atlas and its png); a provider without a tile falls back to
+its letter.
 
 Glyphs are rasterised by Canvas2D at the device pixel ratio into an `r8unorm` atlas, one entry per size, weight,
 style, and character, in the same monospace stack the shell uses, and drawn as instanced quads snapped to device

@@ -41,8 +41,9 @@ The ports keep a few differences in their signatures, so a ported view prints ex
   (`27h 03m`), so it passes `{ days: false }`. Unifying the two would be a visible change, to be named and shown.
 - `formatPercent` floors, as the list and the swarm print context. The rain's tooltip rounds (`CTX 43%`), so it
   keeps its own `Math.round`.
-- `profileGlyphSvg` writes the same element the views' React `ProfileGlyph` renders, as markup. The React
-  components themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free.
+- `profileGlyphSvg` writes the same element `/react`'s `ProfileGlyph` renders, as markup. The React components
+  themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free: since MV-4 they are
+  `@vibecook/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
 - `sizeCanvas` follows the timeline: it rounds the CSS size and the backing size, and writes the backing size only
   when it changes. The rain floored its backing size and wrote it on every resize. Pass `{ pixels: 'floor' }` to
   keep the rain's pixels; with integer `clientWidth` and an integer ratio the two agree anyway.

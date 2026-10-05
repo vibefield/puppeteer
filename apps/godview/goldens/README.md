@@ -113,7 +113,7 @@ environment, and re-record (`--update`) when the environment changes, saying so 
 ## Proved
 
 - A/A: three captures in a row, 48 of 48 identical.
-- Mutation probe: moving the list's top padding by 1 px (`styles/list.css`) failed all 12 list goldens (1.4–4.3 % of
+- Mutation probe: moving the list's top padding by 1 px (`styles/list.css`, `views/list/list.css` since MV-4) failed all 12 list goldens (1.4–4.3 % of
   pixels each) with the shifted edges in the diff panels; reverted.
 - Swarm frames: two recordings after the golden matched it exactly (3 of 3). A probe softening the radius spring
   (`RADIUS_SPRING_OMEGA` 16 → 15) failed on exactly the bodies the churn changed, from the first frame after it
