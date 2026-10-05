@@ -1,5 +1,5 @@
 import type { MonitorBlocker } from '@vibecook/puppeteer-core';
-import { profileMarkName } from '../../icons/ProfileGlyph.js';
+import { profileMarkName } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { formatUsd } from '../../monitor/cost-format.js';

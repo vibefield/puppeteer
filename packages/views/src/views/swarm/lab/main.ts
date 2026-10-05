@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { AGENT_MARK_CANDIDATES } from '../../../icons/AgentIcon.js';
+import { AGENT_MARK_CANDIDATES } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults, type MonitorParameters } from '../../../monitor/parameters.js';

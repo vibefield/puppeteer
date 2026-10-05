@@ -1,4 +1,4 @@
-import { PROFILE_GLYPH_SHAPES, profileGlyphMarkup, type ProfileMarkName } from '../../../icons/ProfileGlyph.js';
+import { PROFILE_GLYPH_SHAPES, profileGlyphMarkup, type ProfileMarkName } from '@vibecook/puppeteer-view-sdk/toolkit';
 
 // A profile's mark in the swarm's atlas (`profile:<mark>[:filled]`, named by
 // `bubble-model.ts` `profileIcon`), from ProfileGlyph's own shapes: the 20-unit

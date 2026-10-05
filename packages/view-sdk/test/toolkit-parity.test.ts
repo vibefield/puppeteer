@@ -3,16 +3,14 @@
 // The toolkit ports helpers the views package still carries: the views keep
 // their own copies until they are moved onto the SDK (wave 3). Until then this
 // suite runs each original beside its port over the same inputs, so an edit to
-// either copy — a re-baked atlas, a reworded wait — fails here instead of
+// either copy — a reworded wait, a recoloured project — fails here instead of
 // quietly forking what two views draw. It reads the originals by path, as a
-// test only: the SDK itself imports nothing from puppeteer (L3). Delete it with
-// the views' copies.
+// test only: the SDK itself imports nothing from puppeteer (L3). Delete each
+// part with the views' copy it guards: the marks went with MV-4, when the views'
+// AgentIcon and ProfileGlyph moved into `/react` (M6) and left one copy.
 
 import { describe, expect, it } from 'vitest';
 import * as originalTint from '../../views/src/colour/project-tint.js';
-import * as originalMarks from '../../views/src/icons/AgentIcon.js';
-import { MARKS_ATLAS_URL as originalAtlas } from '../../views/src/icons/marks-atlas.js';
-import * as originalGlyphs from '../../views/src/icons/ProfileGlyph.js';
 import { toMonitorAgent, type LegacyShimOptions } from '../../views/src/legacy/from-agent-view.js';
 import { formatUsd as originalFormatUsd } from '../../views/src/monitor/cost-format.js';
 import { hexToRgb255 as originalHexToRgb255 } from '../../views/src/monitor/palette.js';
@@ -199,50 +197,6 @@ describe('colour matches the views', () => {
   it('splits a hex into canvas channels the same way', () => {
     for (const hex of ['#ff8800', '#f80', ' #0a0B0c ', 'f80', '#12', 'rgb(1,2,3)', '']) {
       expect(toolkit.hexToRgb255(hex)).toBe(originalHexToRgb255(hex));
-    }
-  });
-});
-
-describe('marks match the views', () => {
-  const providers = [
-    'claude',
-    'codex',
-    'grok',
-    'kimi',
-    'opencode',
-    'hermes',
-    'antigravity',
-    'copilot',
-    'pi',
-    'acp',
-    'x',
-  ];
-
-  it('carries the same atlas, byte for byte', () => {
-    expect(toolkit.MARKS_ATLAS_URL).toBe(originalAtlas);
-    expect(toolkit.AGENT_MARK_ATLAS).toEqual(originalMarks.AGENT_MARK_ATLAS);
-    expect(toolkit.AGENT_MARK_CANDIDATES).toEqual(originalMarks.AGENT_MARK_CANDIDATES);
-    expect(toolkit.AGENT_MARK_PROVIDERS).toEqual(originalMarks.AGENT_MARK_PROVIDERS);
-  });
-
-  it('draws every provider the same', () => {
-    for (const id of providers) {
-      expect(toolkit.agentMark(id)).toEqual(originalMarks.agentMark(id));
-      expect(toolkit.agentMarkSvg(id)).toBe(originalMarks.agentMarkSvg(id));
-      expect(toolkit.agentMarkTile(id)).toEqual(originalMarks.agentMarkTile(id));
-    }
-  });
-
-  it('draws every profile glyph the same', () => {
-    expect(toolkit.PROFILE_GLYPHS).toEqual(originalGlyphs.PROFILE_GLYPHS);
-    expect(toolkit.PROFILE_GLYPH_SHAPES).toEqual(originalGlyphs.PROFILE_GLYPH_SHAPES);
-    for (const glyph of [...originalGlyphs.PROFILE_GLYPHS, 'unknown', undefined]) {
-      expect(toolkit.profileGlyphName(glyph)).toBe(originalGlyphs.profileGlyphName(glyph));
-      for (const kind of ['native', 'managed', undefined] as const) {
-        const name = toolkit.profileMarkName(glyph, kind);
-        expect(name).toBe(originalGlyphs.profileMarkName(glyph, kind));
-        expect(toolkit.profileGlyphMarkup(name)).toBe(originalGlyphs.profileGlyphMarkup(name));
-      }
     }
   });
 });

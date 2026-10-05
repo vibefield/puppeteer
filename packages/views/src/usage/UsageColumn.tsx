@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { createPortal } from 'react-dom';
 import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
 import type { AccountUsagePort } from './account-usage-port.js';
-import { AgentIcon } from '../icons/AgentIcon.js';
+import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
 import { MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
 import { usageTiles, type UsageTile, type UsageWindowView } from './account-usage.js';
 

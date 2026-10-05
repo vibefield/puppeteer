@@ -4,7 +4,7 @@ import {
   type MonitorActivityKind,
   type MonitorBlocker,
 } from '@vibecook/puppeteer-core';
-import { AGENT_MARK_PROVIDERS } from '../../../icons/AgentIcon.js';
+import { AGENT_MARK_PROVIDERS } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../../monitor/types.js';
 import type { BubbleModelInput, SwarmBubbleModel } from '../bubble-model.js';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';

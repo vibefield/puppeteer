@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { AgentIcon } from '../../icons/AgentIcon.js';
+import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
 import type { AgentVisualStatus } from '../../monitor/agent-status.js';
 import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
 import { everyReceded } from '../../monitor/recede.js';

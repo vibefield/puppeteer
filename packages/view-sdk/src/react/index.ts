@@ -7,6 +7,10 @@
  * three commands as props, and re-renders only when a part of the input
  * changed identity (MV-D21): an update that moved nothing the view can see
  * costs no render.
+ *
+ * It also carries the presentation components React-drawn views share (M6):
+ * `AgentIcon` (a provider's mark) and `ProfileGlyph` (a profile set's mark),
+ * drawn from the toolkit's marks.
  */
 
 import { createElement, type ComponentType } from 'react';
@@ -20,6 +24,9 @@ import {
   type MonitorViewInstance,
   type MonitorViewManifest,
 } from '../view.js';
+
+export { AgentIcon, type AgentIconProps } from './AgentIcon.js';
+export { ProfileGlyph, type ProfileGlyphProps } from './ProfileGlyph.js';
 
 export interface ReactMonitorViewProps {
   readonly input: MonitorViewInput;

@@ -7,8 +7,7 @@ import type {
   RefObject,
 } from 'react';
 import type { SnippetSegment } from '../find/find-model.js';
-import { AgentIcon } from '../icons/AgentIcon.js';
-import { ProfileGlyph } from '../icons/ProfileGlyph.js';
+import { AgentIcon, ProfileGlyph } from '@vibecook/puppeteer-view-sdk/react';
 import { launchSource } from './launch-model.js';
 import {
   agentKeyLabel,

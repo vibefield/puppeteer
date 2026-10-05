@@ -6,7 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactElement,
 } from 'react';
-import { ProfileGlyph } from '../../icons/ProfileGlyph.js';
+import { ProfileGlyph } from '@vibecook/puppeteer-view-sdk/react';
 import type { MonitorSpawnDevice, MonitorSpawnProfile, MonitorSpawnTarget } from '../../monitor/types.js';
 import {
   blooms,

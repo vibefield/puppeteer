@@ -307,10 +307,10 @@ const forbiddenPrivateLaunchTokens = [
   'agentOptions',
 ];
 
-// The views' visual-branding maps: the agents' own marks, and the services' —
-// the company marks, and the names their plans are sold under (RFC 006, "Plans").
+// The views' visual-branding maps: the services' — the company marks, and the
+// names their plans are sold under (RFC 006, "Plans"). The agents' own marks are
+// the SDK toolkit's (`marks.ts`) since MV-4 moved AgentIcon into `/react` (M6).
 const godviewBrandingPaths = new Set([
-  'packages/views/src/icons/AgentIcon.tsx',
   'packages/views/src/icons/ServiceMark.tsx',
   'packages/views/src/icons/service-marks.ts',
 ]);

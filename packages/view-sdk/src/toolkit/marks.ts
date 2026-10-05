@@ -5,7 +5,9 @@ import { MARKS_ATLAS_URL } from './marks-atlas.js';
 // each Agent Profile set's glyph. Ported verbatim from the views package's
 // `icons/AgentIcon.tsx` and `icons/ProfileGlyph.tsx`, without their React
 // components: the toolkit is framework-free, so a view renders these shapes in
-// whatever it draws with (`profileGlyphSvg`, `agentMarkSvg` for markup).
+// whatever it draws with (`profileGlyphSvg`, `agentMarkSvg` for markup; the
+// React components are `/react`'s `AgentIcon` and `ProfileGlyph` since MV-4,
+// and the views' copies are gone).
 
 /**
  * The marks as signed-distance tiles for the swarm's GPU text pass, baked from

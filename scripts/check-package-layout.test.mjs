@@ -116,7 +116,7 @@ test('the full Godview boundary isolates branding and rejects provider-native be
     godviewConsumerBoundaryIssues(
       new Map([
         ['apps/godview/src/main/main.ts', "import { create } from '@vibecook/puppeteer-builtin-providers';"],
-        ['packages/views/src/icons/AgentIcon.tsx', "if (providerId === 'codex') return <svg />;"],
+        ['packages/views/src/icons/service-marks.ts', "if (providerId === 'codex') return <svg />;"],
         ['apps/godview/src/renderer/view.tsx', "if (agent === 'claude') send('/compact');"],
         ['apps/godview/src/main/transport.ts', 'const hook_event_name = nativeEvent;'],
         ['apps/godview/src/main/adapter.ts', "import { driver } from '@vibecook/puppeteer-adapter-codex';"],

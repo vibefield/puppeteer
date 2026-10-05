@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { AgentIcon } from '../icons/AgentIcon.js';
+import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
 import {
   NARROW_PANE_WIDTH,
   paneFrameModel,
