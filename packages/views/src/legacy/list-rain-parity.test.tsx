@@ -237,12 +237,15 @@ describe('the list: legacy and ported, over one model', () => {
     const legacy = await mountLegacy(LegacyList, model, options, parameters);
     const ported = await mountPorted(listMonitorView, model, parameters);
     renameLegacyProperties(legacy);
-    // The port's two new properties replace what the legacy read from the host: the stage's inset (once
-    // --vf-monitor-chrome-right) and the palette's blocked (once --vf-orange). Asserted, then folded.
+    // The port's new properties replace what the legacy read from the host: the stage's insets (once
+    // --vf-monitor-chrome-right, and a host rule over the top band, M58) and the palette's blocked (once
+    // --vf-orange). Asserted, then folded.
     const section = ported.querySelector<HTMLElement>('.vf-monitor-list')!;
     expect(section.style.getPropertyValue('--mv-list-inset-left')).toBe(`${stage.insets.left}px`);
+    expect(section.style.getPropertyValue('--mv-list-inset-top')).toBe(`${stage.insets.top}px`);
     expect(section.style.getPropertyValue('--mv-list-blocked')).toBe(palette.status.blocked);
     section.style.removeProperty('--mv-list-inset-left');
+    section.style.removeProperty('--mv-list-inset-top');
     section.style.removeProperty('--mv-list-blocked');
     const rowsOf = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>('.vf-monitor-list-row')];
     expect(rowsOf(ported)).toHaveLength(model.agents.length);
