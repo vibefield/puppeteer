@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
-import type { AgentStatus, AgentView, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
+import type { AgentStatus, AgentView, MonitorSpawnTarget, MonitorViewCommands } from '@vibecook/puppeteer-view-sdk';
 import { AgentIcon, type ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
 import {
   detailLine,
@@ -121,78 +121,88 @@ export function AgentList({ input, commands }: ReactMonitorViewProps): ReactElem
         </div>
       ) : (
         <ul className="vf-monitor-list-rows">
-          {ordered.map((agent) => {
-            const isAgent = agent.kind === 'agent';
-            const remote = !agent.device.self;
-            const project = projectName(agent);
-            const model = modelWord(agent);
-            const detail = detailLine(agent);
-            const branch = isAgent ? agent.project.branch : undefined;
-            const rowStyle = { '--mv-list-colour': agent.colour } as CSSProperties;
-            const name = isAgent
-              ? [model, agent.account].filter(Boolean).join(', ')
-              : remote
-                ? 'remote session'
-                : 'terminal';
-            return (
-              <li key={agent.id}>
-                <button
-                  type="button"
-                  className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
-                    agent.stale ? ' is-stale' : ''
-                  }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}${
-                    agent.receded ? ' is-receded' : ''
-                  }`}
-                  style={rowStyle}
-                  aria-current={agent.active ? 'true' : undefined}
-                  // The status belongs to the ROW's name, not to the dot: a
-                  // labelled dot reads out as a bare "blocked" with nothing
-                  // attached, while the row is the thing being described.
-                  // A remote row names its peer FIRST: the machine is the fact
-                  // that changes what the row means, and a screen reader must not
-                  // reach the end of the line to learn it. Its write policy is the
-                  // HOST's, said in both directions (the row's `writable`, M41).
-                  aria-label={`${remote ? `on ${deviceWord(agent.device)}, ` : ''}${project}, ${name}, ${agent.status}${
-                    remote ? `, ${hostWriteWord(agent)}` : ''
-                  }: ${detail}`}
-                  onClick={() => commands.select(agent.id)}
-                >
-                  <span className="vf-monitor-list-status" aria-hidden="true" />
-                  <span className="vf-monitor-list-project">
-                    <strong>{project}</strong>
-                    {branch ? <small>{branch}</small> : null}
-                  </span>
-                  <span className="vf-monitor-list-agent">
-                    {isAgent ? (
-                      <>
-                        <i aria-hidden="true">
-                          <AgentIcon providerId={agent.provider?.id ?? ''} />
-                        </i>
-                        {model}
-                        {agent.account ? <small>{agent.account}</small> : null}
-                      </>
-                    ) : remote ? (
-                      // THE HOST CHIP. It stands where the model name stands because
-                      // it answers the same question — what is running this row —
-                      // and no local row has one, which is the distinction.
-                      <span className="vf-monitor-list-host">
-                        {deviceWord(agent.device)}
-                        <em title={hostWriteTitle(agent)}>{hostWriteWord(agent)}</em>
-                      </span>
-                    ) : (
-                      <span className="vf-monitor-list-terminal">terminal</span>
-                    )}
-                  </span>
-                  <span className="vf-monitor-list-detail">{detail}</span>
-                  <span className="vf-monitor-list-context">
-                    {formatPercent(isAgent ? agent.context?.usedPercent : undefined)}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+          {ordered.map((agent) => (
+            <ListRow key={agent.id} agent={agent} commands={commands} />
+          ))}
         </ul>
       )}
     </section>
   );
 }
+
+/**
+ * One row, drawn from its `AgentView` alone (MV-D21): a row whose view kept its
+ * identity costs no render when another row moves, so a change re-renders the
+ * rows it touched and nothing else. Its words are the toolkit's, computed here
+ * once per change of the row.
+ */
+const ListRow = memo(function ListRow({
+  agent,
+  commands,
+}: {
+  readonly agent: AgentView;
+  readonly commands: MonitorViewCommands;
+}): ReactElement {
+  const isAgent = agent.kind === 'agent';
+  const remote = !agent.device.self;
+  const project = projectName(agent);
+  const model = modelWord(agent);
+  const detail = detailLine(agent);
+  const branch = isAgent ? agent.project.branch : undefined;
+  const rowStyle = { '--mv-list-colour': agent.colour } as CSSProperties;
+  const name = isAgent ? [model, agent.account].filter(Boolean).join(', ') : remote ? 'remote session' : 'terminal';
+  return (
+    <li>
+      <button
+        type="button"
+        className={`vf-monitor-list-row is-${agent.status}${agent.active ? ' is-active' : ''}${
+          agent.stale ? ' is-stale' : ''
+        }${agent.attachment ? ' is-linked' : ''}${remote ? ' is-remote' : ''}${agent.receded ? ' is-receded' : ''}`}
+        style={rowStyle}
+        aria-current={agent.active ? 'true' : undefined}
+        // The status belongs to the ROW's name, not to the dot: a
+        // labelled dot reads out as a bare "blocked" with nothing
+        // attached, while the row is the thing being described.
+        // A remote row names its peer FIRST: the machine is the fact
+        // that changes what the row means, and a screen reader must not
+        // reach the end of the line to learn it. Its write policy is the
+        // HOST's, said in both directions (the row's `writable`, M41).
+        aria-label={`${remote ? `on ${deviceWord(agent.device)}, ` : ''}${project}, ${name}, ${agent.status}${
+          remote ? `, ${hostWriteWord(agent)}` : ''
+        }: ${detail}`}
+        onClick={() => commands.select(agent.id)}
+      >
+        <span className="vf-monitor-list-status" aria-hidden="true" />
+        <span className="vf-monitor-list-project">
+          <strong>{project}</strong>
+          {branch ? <small>{branch}</small> : null}
+        </span>
+        <span className="vf-monitor-list-agent">
+          {isAgent ? (
+            <>
+              <i aria-hidden="true">
+                <AgentIcon providerId={agent.provider?.id ?? ''} />
+              </i>
+              {model}
+              {agent.account ? <small>{agent.account}</small> : null}
+            </>
+          ) : remote ? (
+            // THE HOST CHIP. It stands where the model name stands because
+            // it answers the same question — what is running this row —
+            // and no local row has one, which is the distinction.
+            <span className="vf-monitor-list-host">
+              {deviceWord(agent.device)}
+              <em title={hostWriteTitle(agent)}>{hostWriteWord(agent)}</em>
+            </span>
+          ) : (
+            <span className="vf-monitor-list-terminal">terminal</span>
+          )}
+        </span>
+        <span className="vf-monitor-list-detail">{detail}</span>
+        <span className="vf-monitor-list-context">
+          {formatPercent(isAgent ? agent.context?.usedPercent : undefined)}
+        </span>
+      </button>
+    </li>
+  );
+});
