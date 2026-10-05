@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // Capture the view goldens (README.md): every lab view (list, rain, timeline — the timeline with
-// its book and bare) in both themes at Godview's three stage sizes, for n = 1 and n = 20, with
-// animations off, on the capture clock. One offscreen Electron window does all of it
+// its book and bare) in both themes at Godview's three stage sizes, for n = 1 and n = 20, on the
+// capture clock, still (the rain in motion, below). One offscreen Electron window does all of it
 // (capture-main.mjs). The wall clock's time zone and the locale are pinned, because the timeline
 // prints local times.
 //
@@ -34,11 +34,20 @@ const THEMES = ['light', 'dark'];
 const COUNTS = [1, 20];
 const FRAMES = 60;
 const DPR = 2;
+// `animations`: what each view is captured with. The rain had no switch of its own until MV-4, so its goldens were
+// always taken with its loop running, the capture clock stepping it; since it honours the switch (MV-W4) it is
+// asked for motion outright, which draws exactly what it drew. Every other view is captured still.
 const VIEWS = [
-  { view: 'list', page: 'list-lab.html', script: 'list-lab.mjs', books: [undefined] },
-  { view: 'rain', page: 'rain-lab.html', script: 'rain-lab.mjs', books: [undefined] },
+  { view: 'list', page: 'list-lab.html', script: 'list-lab.mjs', books: [undefined], animations: '0' },
+  { view: 'rain', page: 'rain-lab.html', script: 'rain-lab.mjs', books: [undefined], animations: '1' },
   // The timeline with the book Godview keeps today, and bare — what it draws without one (L10, MV-6).
-  { view: 'timeline', page: 'timeline-lab.html', script: 'timeline-lab.mjs', books: [true, false] },
+  {
+    view: 'timeline',
+    page: 'timeline-lab.html',
+    script: 'timeline-lab.mjs',
+    books: [true, false],
+    animations: '0',
+  },
 ];
 
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -60,14 +69,14 @@ if (!flag('no-build')) {
 const out = flag('update') ? GOLDENS : (option('out') ?? mkdtempSync(join(tmpdir(), 'godview-goldens-')));
 const only = option('only');
 const images = [];
-for (const { view, page, books } of VIEWS) {
+for (const { view, page, books, animations } of VIEWS) {
   for (const theme of THEMES) {
     for (const [size, [width, height]] of Object.entries(SIZES)) {
       for (const n of COUNTS) {
         for (const book of books) {
           const file = `${view}/${theme}-${size}-n${n}${book === false ? '-bare' : ''}.png`;
           if (only && !file.includes(only)) continue;
-          const query = new URLSearchParams({ capture: '1', theme, size, n: String(n), animations: '0' });
+          const query = new URLSearchParams({ capture: '1', theme, size, n: String(n), animations });
           if (book === false) query.set('book', '0');
           images.push({
             file,
@@ -76,6 +85,7 @@ for (const { view, page, books } of VIEWS) {
             size,
             n,
             book: book ?? null,
+            animations: animations === '1' ? 'on' : 'off',
             width,
             height,
             url: `${pathToFileURL(join(dist, page)).href}?${query}`,
@@ -141,7 +151,8 @@ const manifest = {
   dpr: DPR,
   timeZone: 'UTC',
   locale: 'en-US',
-  animations: 'off',
+  // Per image since MV-4 (`images[].animations`): the rain is captured in motion, every other view still.
+  animations: 'per image',
   environment: { ...versions, platform: process.platform, arch: process.arch, os: release() },
   images: [...kept, ...recorded].sort((left, right) => left.file.localeCompare(right.file)),
 };

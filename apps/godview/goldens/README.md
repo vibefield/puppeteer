@@ -15,7 +15,7 @@ parameters and sha256 and the environment that recorded them.
 | themes | light, dark                                                                                                                                             |
 | sizes  | Godview's stage (35 % of the window, floor 170 px): compact 680×170 · default 1180×252 · wide 1728×378                                                  |
 | rows   | n = 1 and n = 20 from the seeded world (`packages/views/src/lab/lab-world.ts`)                                                                          |
-| motion | animations off (`data-godview-animations="off"`), 60 frames stepped on the capture clock                                                                |
+| motion | 60 frames stepped on the capture clock; animations off (`data-godview-animations="off"`), but the rain on: it ran its loop regardless until MV-4, and since it honours the switch it is asked for motion |
 
 The swarm's goldens are its frame sequences, in `swarm/` (below): what matters there is the physics and the models it
 hands its renderer over time, not one frame of pixels.

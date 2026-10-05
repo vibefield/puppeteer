@@ -1,71 +1,53 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorAgent } from '../../monitor/types.js';
+import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
 
-function row(overrides: Partial<MonitorAgent>): MonitorAgent {
-  return {
-    id: 'row',
-    session: { id: 'row', createdAtMs: 0 },
-    createdAtMs: 0,
-    status: 'idle',
-    project: 'vibe-field',
-    detail: '',
-    color: '#6366f1',
-    active: false,
-    ...overrides,
-  };
-}
+const row = (overrides: AgentViewFixturePartial): AgentView =>
+  agentViewFixture({ id: 'row', project: { name: 'vibe-field' }, ...overrides });
+const terminal = (overrides: AgentViewFixturePartial = {}): AgentView => row({ kind: 'terminal', ...overrides });
+const PEER = { id: 'mini', name: 'studio-mini', self: false } as const;
 
 describe('rainDataString', () => {
   it('reads an agent row as its project, branch, model and context', () => {
     const text = rainDataString(
       row({
-        agent: {
-          provider: { id: 'claude', label: 'Claude' },
-          model: 'Opus',
-          branch: 'main',
-          contextWindow: { usedPercent: 42, percentageSource: 'provider', asOf: '2026-09-02T00:00:00.000Z' },
-          monitor: {} as never,
-          recency: 'fresh',
-        },
+        project: { name: 'vibe-field', branch: 'main' },
+        provider: { id: 'claude', label: 'Claude' },
+        model: 'Opus',
+        context: { usedPercent: 42 },
       }),
     );
-    expect(text).toContain('vibe field');
-    expect(text).toContain('main');
-    expect(text).toContain('Opus');
-    expect(text).toContain('CTX 42%');
+    expect(text).toBe(' vibe field main Opus CTX 42% ');
+  });
+
+  it('names an agent with no model by its provider, and pads a context under ten', () => {
+    expect(rainDataString(row({ provider: { id: 'claude', label: 'Claude' }, context: { usedPercent: 4.6 } }))).toBe(
+      ' vibe field Claude CTX 05% ',
+    );
   });
 
   it('reads an unclaimed terminal as its project and the word terminal', () => {
     // Hyphens flatten to spaces with every other symbol: one grid-width glyph
     // per cell is what keeps a stream a column rather than a ragged edge.
-    expect(rainDataString(row({}))).toBe(' vibe field terminal ');
+    expect(rainDataString(terminal())).toBe(' vibe field terminal ');
   });
 
-  it('names the PEER on a remote row, first, so the column cannot be misread', () => {
-    const remote = row({
-      remote: {
-        deviceId: 'mini',
-        deviceName: 'studio-mini',
-        remoteSessionId: 's1',
-        attachable: true,
-        hostWritable: true,
-        cwdLabel: null,
-      },
-    });
-    expect(rainDataString(remote)).toBe(' studio mini vibe field ');
+  it('names the PEER on a remote terminal, first, so the column cannot be misread', () => {
+    expect(rainDataString(terminal({ device: PEER, writable: true }))).toBe(' studio mini vibe field ');
   });
 
-  it('says a read-only host in the stream, and claims nothing when the host permits writes', () => {
-    const facet = {
-      deviceId: 'mini',
-      deviceName: 'studio-mini',
-      remoteSessionId: 's1',
-      attachable: true,
-      cwdLabel: null,
-    };
-    expect(rainDataString(row({ remote: { ...facet, hostWritable: false } }))).toContain('read only host');
-    expect(rainDataString(row({ remote: { ...facet, hostWritable: true } }))).not.toContain('host');
+  it('says a read-only host in the stream from the row’s own policy (M41), and nothing when it permits writes', () => {
+    expect(rainDataString(terminal({ device: PEER, writable: false }))).toContain('read only host');
+    expect(rainDataString(terminal({ device: PEER, writable: true }))).not.toContain('host');
+    // `attachable` says nothing about writing.
+    expect(rainDataString(terminal({ device: PEER, writable: true, attachable: false }))).not.toContain('host');
+  });
+
+  it('reads a peer’s agent like a local one, its context included (M9)', () => {
+    expect(rainDataString(row({ device: PEER, model: 'Opus', context: { usedPercent: 12 } }))).toBe(
+      ' vibe field Opus CTX 12% ',
+    );
   });
 });
 
@@ -73,6 +55,9 @@ describe('rainTailLength', () => {
   it('reads an unmeasured context window as mid-scale and floors every tail at its text', () => {
     expect(rainTailLength(row({}), 40, 1, 10)).toBe(18);
     expect(rainTailLength(row({}), 4, 1, 10)).toBe(16);
+    expect(rainTailLength(row({ context: { usedPercent: 100 } }), 40, 1, 10)).toBe(36);
+    // A terminal has no context window to read.
+    expect(rainTailLength(terminal({ context: { usedPercent: 100 } }), 40, 1, 10)).toBe(18);
   });
 });
 

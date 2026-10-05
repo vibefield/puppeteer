@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MonitorPalette } from '../../monitor/palette.js';
-import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
-import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
+import type { AgentStatus, AgentView, MonitorPalette } from '@vibecook/puppeteer-view-sdk';
+import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import {
+  approachRecede,
+  createMotionLoop,
+  detailLine,
+  everyReceded,
+  modelWord,
+  projectName,
+  recedeTarget,
+  type MotionLoop,
+} from '@vibecook/puppeteer-view-sdk/toolkit';
 import { normalizeRainParameters, type RainParameters } from './rain-parameters.js';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
 
@@ -16,6 +25,10 @@ import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } f
 // state). Hover deliberately gains NO color of its own: it brightens the head
 // and doubles the glow, because §2.5 hands out no hue for "the pointer is here"
 // and inventing one would put a fourth meaning on a three-meaning scale.
+//
+// On the SDK (MV-4) it reads only its input. Its loop is the toolkit's, which
+// asks for no frame while the host's animations are off or motion is reduced
+// (MV-W4); the field then stands still, drawn once per change.
 
 interface Geometry {
   columns: number;
@@ -52,7 +65,7 @@ function measureCanvas(canvas: HTMLCanvasElement, container: HTMLElement, fontSi
  * everything else moves), idle drifts, working runs at its own drop speed. */
 function statusPresentation(
   palette: MonitorPalette,
-): Record<MonitorAgent['status'], { head: string; tail: string; speed?: number }> {
+): Record<AgentStatus, { head: string; tail: string; speed?: number }> {
   return {
     working: { head: palette.rain.status.working.head, tail: palette.rain.status.working.tailRgb },
     blocked: { head: palette.rain.status.blocked.head, tail: palette.rain.status.blocked.tailRgb, speed: 0.02 },
@@ -60,15 +73,18 @@ function statusPresentation(
   };
 }
 
-function agentName(agent: MonitorAgent): string {
-  return agent.agent ? (agent.agent.model ?? agent.agent.provider.label) : 'terminal';
+function agentName(agent: AgentView): string {
+  return agent.kind === 'agent' ? modelWord(agent) : 'terminal';
 }
 
-export function RainView({ agents, parameters, actions, palette }: AgentMonitorProps) {
-  const rain = useMemo<RainParameters>(() => normalizeRainParameters(parameters), [parameters]);
+export function RainView({ input, commands }: ReactMonitorViewProps): ReactElement {
+  const { theme } = input;
+  const agents = input.model.agents;
+  const palette = theme.tokens;
+  const rain = useMemo<RainParameters>(() => normalizeRainParameters(input.parameters), [input.parameters]);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const agentsRef = useRef<ReadonlyMap<string, MonitorAgent>>(new Map());
+  const agentsRef = useRef<ReadonlyMap<string, AgentView>>(new Map());
   const orderRef = useRef<readonly string[]>([]);
   const parametersRef = useRef(rain);
   const paletteRef = useRef(palette);
@@ -77,7 +93,11 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
   const hoveredRef = useRef<string | undefined>(undefined);
   const tooltipRef = useRef<HTMLElement>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
-  const [hovered, setHovered] = useState<MonitorAgent>();
+  const motionRef = useRef({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+  const loopRef = useRef<MotionLoop | null>(null);
+  /** Draws the field once where it stands: what a stopped loop shows. Set by the loop's effect. */
+  const stillRef = useRef<(() => void) | null>(null);
+  const [hovered, setHovered] = useState<AgentView>();
 
   const sync = useCallback((): void => {
     const canvas = canvasRef.current;
@@ -91,6 +111,8 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       previous: dropsRef.current,
       createDrop: (agentId) => ({ agentId, y: Math.random() * geometry.rows, speed: 0.3 + Math.random() * 0.4 }),
     });
+    // Measuring cleared the canvas: a running loop repaints it next frame; a stopped one repaints it now.
+    if (loopRef.current && !loopRef.current.running) stillRef.current?.();
   }, []);
 
   useEffect(() => {
@@ -102,6 +124,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
   useEffect(() => {
     const previousFont = parametersRef.current.fontSize;
     parametersRef.current = rain;
+    loopRef.current?.update({ fps: rain.refreshRate });
     if (previousFont !== rain.fontSize) sync();
   }, [rain, sync]);
 
@@ -121,27 +144,13 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
     observer?.observe(container);
     sync();
 
-    let frame = 0;
-    let previousTime = performance.now();
-    let accumulated = 0;
-    /** Each column's recede weight as last drawn, stepped toward its target per draw (`monitor/recede.ts`). */
+    /** Each column's recede weight as last drawn, stepped toward its target per draw (the toolkit's steps). */
     const recedes = new Map<string, number>();
-    let drawnAt = previousTime;
-    // Driven from rAF rather than setInterval so the loop stops with the window
-    // instead of repainting behind other applications; the accumulator is what
-    // keeps the deliberately chunky sub-60 cadence.
-    const render = (time: number): void => {
-      frame = requestAnimationFrame(render);
-      const settings = parametersRef.current;
-      accumulated += time - previousTime;
-      previousTime = time;
-      const interval = 1000 / settings.refreshRate;
-      if (accumulated < interval) return;
-      accumulated = Math.min(accumulated - interval, interval);
-      draw(context, settings, time);
-    };
 
-    const draw = (context2d: CanvasRenderingContext2D, settings: RainParameters, time: number): void => {
+    // A still draw (`elapsed` undefined) shows the field where it stands: no drop falls, no glyph scrambles, and a
+    // receded column sits at its weight; nothing in it moves until the loop runs again.
+    const draw = (context2d: CanvasRenderingContext2D, settings: RainParameters, elapsed?: number): void => {
+      const still = elapsed === undefined;
       const { columns, rows, cell, width, height } = geometryRef.current;
       const drops = dropsRef.current;
       const byId = agentsRef.current;
@@ -151,13 +160,11 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       context2d.fillRect(0, 0, width, height);
 
       // A receded column keeps falling, faint: the host is showing another group.
-      const elapsed = time - drawnAt;
-      drawnAt = time;
       const every = everyReceded(byId.values());
       for (const id of [...recedes.keys()]) if (!byId.has(id)) recedes.delete(id);
       for (const agent of byId.values()) {
-        const target = recedeTarget(agent.receded === true, every);
-        recedes.set(agent.id, approachRecede(recedes.get(agent.id) ?? target, target, elapsed));
+        const target = recedeTarget(agent.receded, every);
+        recedes.set(agent.id, still ? target : approachRecede(recedes.get(agent.id) ?? target, target, elapsed));
       }
 
       // Pane linkage rides its own channel — a wash behind the column in the
@@ -170,10 +177,10 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
           if (!agent || !attachment) continue;
           const weight = recedes.get(agent.id) ?? 1;
           context2d.globalAlpha = settings.paneTint * weight;
-          context2d.fillStyle = agent.color;
+          context2d.fillStyle = agent.colour;
           context2d.fillRect(column * cell, 0, cell, height);
           context2d.globalAlpha = Math.min(0.6, settings.paneTint * 2.2) * weight;
-          for (let mirror = 1; mirror < attachment.paneIds.length; mirror += 1) {
+          for (let mirror = 1; mirror < attachment.panes; mirror += 1) {
             context2d.fillRect(column * cell + (mirror - 1) * 2, 0, 2, height);
           }
         }
@@ -200,7 +207,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
         const headColor = hoveredHere || agent.active ? colors.rain.activeHead : presentation.head;
         const tailColor = hoveredHere ? colors.rain.hoverTailRgb : presentation.tail;
 
-        drop.y += presentation.speed ?? drop.speed * settings.speedMultiplier;
+        if (!still) drop.y += presentation.speed ?? drop.speed * settings.speedMultiplier;
         if (drop.y - tailLength > rows) drop.y = 0;
 
         const headRow = Math.floor(drop.y);
@@ -208,6 +215,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
         const x = column * cell + cell / 2;
 
         const glyphAt = (row: number, distance: number): string => {
+          if (still) return data[row % data.length] as string;
           let scramble = settings.scrambleWorking;
           if (agent.status === 'blocked') {
             // The text block stays clear while everything past it glitches, so
@@ -244,15 +252,36 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
       context2d.globalAlpha = 1;
     };
 
-    frame = requestAnimationFrame(render);
+    // Driven from rAF rather than setInterval so the loop stops with the window
+    // instead of repainting behind other applications; the refresh rate is the
+    // loop's cap, which keeps the deliberately chunky sub-60 cadence.
+    const loop = createMotionLoop((_time, elapsed) => draw(context, parametersRef.current, elapsed), {
+      ...motionRef.current,
+      fps: parametersRef.current.refreshRate,
+    });
+    loopRef.current = loop;
+    stillRef.current = () => draw(context, parametersRef.current);
+    if (!loop.running) stillRef.current();
     return () => {
-      cancelAnimationFrame(frame);
+      loop.dispose();
+      loopRef.current = null;
+      stillRef.current = null;
       observer?.disconnect();
     };
   }, [sync]);
 
+  // The host's animations switch and the reduced-motion preference start or stop the loop; stopped, every change
+  // the field shows (its agents, their words, the palette, the parameters) is drawn once where it stands.
+  useEffect(() => {
+    motionRef.current = { animations: theme.animations, reducedMotion: theme.reducedMotion };
+    loopRef.current?.update(motionRef.current);
+  }, [theme.animations, theme.reducedMotion]);
+  useEffect(() => {
+    if (loopRef.current && !loopRef.current.running) stillRef.current?.();
+  }, [agents, palette, rain, theme.animations, theme.reducedMotion]);
+
   /** Columns run the full height, so the pointer's row never matters. */
-  const agentAt = useCallback((clientX: number): MonitorAgent | undefined => {
+  const agentAt = useCallback((clientX: number): AgentView | undefined => {
     const container = containerRef.current;
     if (!container) return undefined;
     const bounds = container.getBoundingClientRect();
@@ -261,15 +290,27 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
     return drop ? agentsRef.current.get(drop.agentId) : undefined;
   }, []);
 
+  // The view's own properties (L18): the palette's rain colours for the DOM it draws over the canvas (M46).
+  const style = {
+    '--mv-rain-stage': palette.rain.stage,
+    '--mv-rain-title': palette.text.primary,
+    '--mv-rain-ink-working': palette.rain.ink.working,
+    '--mv-rain-ink-blocked': palette.rain.ink.blocked,
+    '--mv-rain-ink-idle': palette.rain.ink.idle,
+    '--mv-rain-focus': palette.rain.focus,
+  } as CSSProperties;
+  const hoveredContext = hovered?.kind === 'agent' ? hovered.context?.usedPercent : undefined;
+  const hoveredBranch = hovered?.kind === 'agent' ? hovered.project.branch : undefined;
+
   return (
-    <div ref={containerRef} className="vf-monitor-rain">
+    <div ref={containerRef} className="vf-monitor-rain" style={style}>
       {/* No `aria-hidden` and no role: a canvas exposes its FALLBACK content to
           the accessible tree and this one has none, so it is already silent.
           The agents it draws are offered as real controls at the bottom of this
           view instead. */}
       <canvas ref={canvasRef} />
       {agents.length === 0 ? (
-        <div className="vf-monitor-empty">
+        <div className="vf-monitor-rain-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
         </div>
@@ -300,7 +341,7 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
         }}
         onClick={(event) => {
           const agent = agentAt(event.clientX);
-          if (agent) actions.select(agent);
+          if (agent) commands.select(agent.id);
         }}
       />
       {hovered ? (
@@ -311,27 +352,27 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
           aria-hidden="true"
         >
           <header className="vf-monitor-rain-tooltip-head">
-            <strong>{hovered.project}</strong>
+            <strong>{projectName(hovered)}</strong>
             <span>{hovered.status}</span>
           </header>
           <dl>
-            {hovered.agent?.branch ? (
+            {hoveredBranch ? (
               <>
                 <dt>BRN</dt>
-                <dd>{hovered.agent.branch}</dd>
+                <dd>{hoveredBranch}</dd>
               </>
             ) : null}
             <dt>MOD</dt>
             <dd>{agentName(hovered)}</dd>
             <dt>ACT</dt>
-            <dd>{hovered.detail}</dd>
+            <dd>{detailLine(hovered)}</dd>
           </dl>
-          {hovered.agent?.contextWindow?.usedPercent === undefined ? null : (
+          {hoveredContext === undefined ? null : (
             <p className="vf-monitor-rain-context">
               <span className="vf-monitor-rain-context-track">
-                <i style={{ width: `${hovered.agent.contextWindow.usedPercent}%` }} />
+                <i style={{ width: `${hoveredContext}%` }} />
               </span>
-              CTX {Math.round(hovered.agent.contextWindow.usedPercent)}%
+              CTX {Math.round(hoveredContext)}%
             </p>
           )}
         </aside>
@@ -342,10 +383,10 @@ export function RainView({ agents, parameters, actions, palette }: AgentMonitorP
           <li key={agent.id}>
             <button
               type="button"
-              onClick={() => actions.select(agent)}
+              onClick={() => commands.select(agent.id)}
               aria-current={agent.active ? 'true' : undefined}
             >
-              {`${agent.project}, ${agentName(agent)}, ${agent.status}: ${agent.detail}`}
+              {`${projectName(agent)}, ${agentName(agent)}, ${agent.status}: ${detailLine(agent)}`}
             </button>
           </li>
         ))}

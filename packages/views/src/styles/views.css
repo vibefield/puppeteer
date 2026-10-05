@@ -8,7 +8,6 @@
    (L18), so the list's and the rain's are not here: views/list/list.css, views/rain/rain.css. */
 @import './bar.css';
 @import './usage.css';
-@import './rain.css';
 @import './find-sheet.css';
 @import '../views/swarm/swarm.css';
 @import '../views/swarm/bloom/spawn-bloom.css';

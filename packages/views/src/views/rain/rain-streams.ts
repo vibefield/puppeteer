@@ -1,4 +1,5 @@
-import type { MonitorAgent } from '../../monitor/types.js';
+import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import { modelWord, projectName } from '@vibecook/puppeteer-view-sdk/toolkit';
 
 // The rain's column bookkeeping, ported from vibe-field's views/rain/rain-streams.ts.
 
@@ -78,34 +79,34 @@ export function reconcileRainColumns(input: ReconcileRainColumnsInput): Map<numb
  * column rather than a ragged edge.
  */
 /**
- * THE HOST IS IN THE STREAM. A remote row carries no agent facet, and without
- * this branch it fell into the `<project> terminal` text an unclaimed LOCAL
- * terminal takes — byte-identical on the canvas. The peer's name comes
- * FIRST, so the column cannot be misread; the read-only mark is a HOST
- * property and reads as one (nobody types into that peer's sessions). A host
- * that does permit writes says nothing here: whether this viewer gets them
- * is decided at the attach, and a stream has no room for the long form.
+ * THE HOST IS IN THE STREAM. A terminal on another desktop has no agent to
+ * name, and without this branch it fell into the `<project> terminal` text an
+ * unclaimed LOCAL terminal takes — byte-identical on the canvas. The peer's
+ * name comes FIRST, so the column cannot be misread; the read-only mark is a
+ * HOST property and reads as one (nobody types into that peer's sessions, the
+ * row's `writable`, M41). A host that does permit writes says nothing here:
+ * whether this viewer gets them is decided at the attach, and a stream has no
+ * room for the long form.
  */
-export function rainDataString(agent: MonitorAgent): string {
-  const facet = agent.agent;
-  const remote = agent.remote;
-  const usedPercent = facet?.contextWindow?.usedPercent;
-  const parts = facet
-    ? [
-        agent.project,
-        facet.branch,
-        facet.model ?? facet.provider.label,
-        usedPercent === undefined ? undefined : `CTX:${Math.round(usedPercent).toString().padStart(2, '0')}%`,
-      ]
-    : remote
-      ? [remote.deviceName, agent.project, remote.hostWritable ? undefined : 'read only host']
-      : [agent.project, 'terminal'];
+export function rainDataString(agent: AgentView): string {
+  const usedPercent = agent.kind === 'agent' ? agent.context?.usedPercent : undefined;
+  const parts =
+    agent.kind === 'agent'
+      ? [
+          projectName(agent),
+          agent.project.branch,
+          modelWord(agent),
+          usedPercent === undefined ? undefined : `CTX:${Math.round(usedPercent).toString().padStart(2, '0')}%`,
+        ]
+      : !agent.device.self
+        ? [agent.device.name, projectName(agent), agent.writable ? undefined : 'read only host']
+        : [projectName(agent), 'terminal'];
   return ` ${parts.filter(Boolean).join(' ')} `.replace(/[^a-zA-Z0-9\s%.]/g, ' ');
 }
 
 /** Context usage sets the tail, floored so that a stream always reads as one. */
-export function rainTailLength(agent: MonitorAgent, rows: number, tailMultiplier: number, dataLength: number): number {
-  const usedPercent = agent.agent?.contextWindow?.usedPercent;
+export function rainTailLength(agent: AgentView, rows: number, tailMultiplier: number, dataLength: number): number {
+  const usedPercent = agent.kind === 'agent' ? agent.context?.usedPercent : undefined;
   // An unmeasured window is the common case — it only appears once the agent
   // reports one — so it sits mid-scale. Reading it as almost-nothing left a
   // working stream as a head and two fading glyphs with no lit body between.

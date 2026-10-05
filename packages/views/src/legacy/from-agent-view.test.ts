@@ -6,6 +6,7 @@ import { EMPTY_STATUS_LEDGER, observeStatuses } from '../monitor/status-ledger.j
 import type { MonitorAgent } from '../monitor/types.js';
 import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
 import { rainDataString } from '../views/rain/rain-streams.js';
+import { rainDataString as frozenRainDataString } from './frozen/rain-streams.js';
 import { bubbleModel } from '../views/swarm/bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from '../views/swarm/swarm-parameters.js';
 import { laneFromRow } from '../views/timeline/timeline-lanes.js';
@@ -592,7 +593,9 @@ describe('the shipping views draw the shim', () => {
   });
 
   it('the rain and the timeline', () => {
-    expect(rainDataString(toMonitorAgent(agentView(), GODVIEW))).toBe(' puppeteer mv land Opus 5.5 CTX 43% ');
+    // The legacy rain read the shim's rows; the ported one reads the AgentView itself (MV-4), and says the same.
+    expect(frozenRainDataString(toMonitorAgent(agentView(), GODVIEW))).toBe(' puppeteer mv land Opus 5.5 CTX 43% ');
+    expect(rainDataString(agentView())).toBe(' puppeteer mv land Opus 5.5 CTX 43% ');
     const lane = laneFromRow(
       toMonitorAgent(
         agentView({ id: 't1', status: 'blocked', wait: { kind: 'failure', since: NOW - 5_000 } }),
