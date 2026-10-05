@@ -26,32 +26,8 @@ export * from './monitor/remote-write.js';
 export * from './monitor/folder-name.js';
 export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';
-// The marks moved into the SDK (M6): AgentIcon and ProfileGlyph are `/react`'s, the shapes the toolkit's. A host keeps
-// reaching every name it reached here; a ported view imports them from the SDK.
-export {
-  AgentIcon,
-  ProfileGlyph,
-  type AgentIconProps,
-  type ProfileGlyphProps,
-} from '@vibecook/puppeteer-view-sdk/react';
-export {
-  AGENT_MARK_ATLAS,
-  AGENT_MARK_CANDIDATES,
-  AGENT_MARK_PROVIDERS,
-  agentMark,
-  agentMarkSvg,
-  agentMarkTile,
-  PROFILE_GLYPH_SHAPES,
-  PROFILE_GLYPHS,
-  profileGlyphMarkup,
-  profileGlyphName,
-  profileMarkName,
-  type AgentMark,
-  type AgentMarkCandidate,
-  type ProfileGlyphName,
-  type ProfileGlyphShape,
-  type ProfileMarkName,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+// The marks are the SDK's (M6): AgentIcon and ProfileGlyph are `@vibecook/puppeteer-view-sdk/react`'s and the
+// shapes `/toolkit`'s. This index forwards none of them (M54, MV-8): a host imports them from the SDK.
 export * from './icons/profile-glyph-suggest.js';
 export * from './icons/ServiceMark.js';
 export * from './bar/InstrumentBar.js';
