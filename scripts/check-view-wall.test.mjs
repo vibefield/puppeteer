@@ -302,6 +302,11 @@ test('the skin is the SDK’s own list, read from its source', () => {
     '--control-hover-bg',
     '--control-hover-border',
     '--idle-bg',
+    // M59.4 (with M57): the monitor's ground and the named easings
+    '--monitor-bg',
+    '--vf-ease-pop',
+    '--vf-ease-lift',
+    '--vf-ease-island',
   ]);
   assert.deepEqual(readMonitorSkin(fixture({})), []);
 });
