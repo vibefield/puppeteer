@@ -319,50 +319,61 @@ test('a lab builds its own page, so the wall reads it only when asked', () => {
   ]);
 });
 
-test('report mode exits 0 whatever it finds; --fail exits 1 only for a listed view that breaches', () => {
-  const root = fixture({
-    ...CLEAN_VIEW,
-    'views/leaky/index.ts': `import '../../outside.js';\n`,
-  });
-  const run = (...extra) =>
+test('every view fails on a breach with no list of views, a new one included; --report exits 0 whatever it finds', () => {
+  const run = (root, ...extra) =>
     spawnSync(process.execPath, [script, '--root', root, '--views', 'views', '--host-css', 'host', ...extra], {
       encoding: 'utf8',
     });
+  const summaryOf = (result) => JSON.parse(result.stdout.split('view-wall summary: ')[1]);
 
-  const report = run();
-  assert.equal(report.status, 0, report.stderr);
-  const summary = JSON.parse(report.stdout.split('view-wall summary: ')[1]);
-  assert.equal(summary.mode, 'report');
+  // A wall of clean views passes.
+  const clean = run(fixture(CLEAN_VIEW));
+  assert.equal(clean.status, 0, clean.stderr);
+  assert.equal(summaryOf(clean).mode, 'fail');
+  assert.deepEqual(summaryOf(clean).failing, []);
+
+  // A view folder no one has named anywhere enters failing: there is no list to add it to.
+  const root = fixture({ ...CLEAN_VIEW, 'views/leaky/index.ts': `import '../../outside.js';\n` });
+  const failed = run(root);
+  assert.equal(failed.status, 1);
+  assert.match(failed.stderr, /FAIL leaky \(1\)/);
+  assert.doesNotMatch(failed.stderr, /clean/);
+  const summary = summaryOf(failed);
+  assert.equal(summary.mode, 'fail');
+  assert.deepEqual(summary.failing, ['leaky']);
   assert.deepEqual(summary.views.leaky, { files: 1, 'MV-W1': 1, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 0, total: 1 });
   assert.equal(summary.views.clean.total, 0);
 
-  assert.equal(run('--fail', 'clean').status, 0);
-  const failed = run('--fail', 'clean', 'leaky');
-  assert.equal(failed.status, 1);
-  assert.match(failed.stderr, /FAIL leaky \(1\)/);
-  const unknown = run('--fail', 'nosuch');
-  assert.equal(unknown.status, 1);
-  assert.match(unknown.stderr, /no view named nosuch/);
+  // The opt-in: the same table, exit 0.
+  const report = run(root, '--report');
+  assert.equal(report.status, 0, report.stderr);
+  assert.equal(summaryOf(report).mode, 'report');
+  assert.deepEqual(summaryOf(report).views.leaky, summary.views.leaky);
+
+  // The old per-view list is gone, not quietly ignored.
+  const old = run(root, '--fail', 'clean');
+  assert.equal(old.status, 1);
+  assert.match(old.stderr, /unknown argument --fail/);
 });
 
-test('the summary counts each rule per view and in total', () => {
+test('the summary counts each rule per view and in total, and names the views that fail', () => {
   const report = {
     root: '/r',
     hostStylesheets: [],
     views: [
       { name: 'a', files: 2, breaches: [{ rule: 'MV-W1' }, { rule: 'MV-W5' }] },
       { name: 'b', files: 1, breaches: [{ rule: 'MV-W1' }] },
+      { name: 'c', files: 4, breaches: [] },
     ],
   };
-  assert.deepEqual(summarizeViewWall(report, ['a']), {
-    mode: 'fail',
-    views: {
-      a: { files: 2, 'MV-W1': 1, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 1, total: 2 },
-      b: { files: 1, 'MV-W1': 1, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 0, total: 1 },
-    },
-    total: { files: 3, total: 3, 'MV-W1': 2, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 1 },
-    failing: ['a'],
-  });
+  const views = {
+    a: { files: 2, 'MV-W1': 1, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 1, total: 2 },
+    b: { files: 1, 'MV-W1': 1, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 0, total: 1 },
+    c: { files: 4, 'MV-W1': 0, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 0, total: 0 },
+  };
+  const total = { files: 7, total: 3, 'MV-W1': 2, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 1 };
+  assert.deepEqual(summarizeViewWall(report), { mode: 'fail', views, total, failing: ['a', 'b'] });
+  assert.deepEqual(summarizeViewWall(report, 'report'), { mode: 'report', views, total, failing: [] });
 });
 
 test('stylesheet preludes skip comments and at-rules and keep their lines', () => {
@@ -372,11 +383,13 @@ test('stylesheet preludes skip comments and at-rules and keep their lines', () =
   ]);
 });
 
-test("it reads the repository's own views", () => {
+test("it reads the repository's own views, and every one of them holds the wall (MV-8)", () => {
   const report = checkViewWall();
   const summary = summarizeViewWall(report);
-  assert.equal(summary.mode, 'report');
-  assert.equal(Object.keys(summary.views).length, report.views.length);
+  assert.equal(summary.mode, 'fail');
+  for (const name of ['list', 'rain', 'swarm', 'timeline']) assert.ok(name in summary.views, name);
+  assert.deepEqual(summary.failing, []);
+  assert.equal(summary.total.total, 0);
 });
 
 test('a dependency a view bundles into itself is allowed only for the view that names it (MV-5)', () => {

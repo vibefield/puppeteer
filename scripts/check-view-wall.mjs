@@ -18,11 +18,12 @@
 //   MV-W5 host CSS   no host stylesheet names a class a view draws
 //
 // MV-W4 (conformance) is a test suite in `@vibecook/puppeteer-view-sdk/testing`,
-// not a reading of source. Report mode exits 0 whatever it finds (MV-D9: report,
-// then fail per view); `--fail <view…>` exits 1 when a listed view breaches,
-// which is how each view is closed as it moves onto the SDK, and MV-8 lists them
-// all. Sources are parsed with TypeScript, so comments, strings and JSX text
-// never count.
+// not a reading of source. The checker FAILS: it exits 1 when any view folder
+// breaches, so a new view enters failing and no list of views is kept (MV-8; MV-D9
+// reported first, then closed each view as it moved onto the SDK). `--report`
+// is the opt-in that prints the same table and exits 0 whatever it finds.
+// Sources are parsed with TypeScript, so comments, strings and JSX text never
+// count.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
@@ -566,7 +567,8 @@ export function checkViewWall({
 
 export const RULES = ['MV-W1', 'MV-W2', 'MV-W3', 'MV-W5'];
 
-export function summarizeViewWall(report, failing = []) {
+/** `mode` is `fail` (every view fails on a breach: the default) or `report` (exit 0 whatever is found). */
+export function summarizeViewWall(report, mode = 'fail') {
   const views = {};
   const total = { files: 0, total: 0 };
   for (const rule of RULES) total[rule] = 0;
@@ -579,15 +581,17 @@ export function summarizeViewWall(report, failing = []) {
     total.total += view.breaches.length;
     for (const rule of RULES) total[rule] += counts[rule];
   }
-  return { mode: failing.length > 0 ? 'fail' : 'report', views, total, failing };
+  const failing =
+    mode === 'fail' ? report.views.filter((view) => view.breaches.length > 0).map((view) => view.name) : [];
+  return { mode, views, total, failing };
 }
 
-export function formatViewWall(report, { verbose = false, failing = [] } = {}) {
-  const summary = summarizeViewWall(report, failing);
+export function formatViewWall(report, { verbose = false, mode = 'fail' } = {}) {
+  const summary = summarizeViewWall(report, mode);
   const lines = [];
   const where = (file) => relative(report.root, file);
   lines.push(
-    `view wall (${summary.mode === 'fail' ? `failing ${failing.join(', ')}` : 'report mode, MV-D9'}): ${report.views.length} views under ${where(
+    `view wall (${summary.mode === 'fail' ? 'every view fails on a breach' : 'report mode (--report)'}): ${report.views.length} views under ${where(
       report.views[0] ? dirname(report.views[0].directory) : report.root,
     )}; host CSS: ${report.hostStylesheets.map(where).join(', ') || 'none'}`,
   );
@@ -636,7 +640,7 @@ export function formatViewWall(report, { verbose = false, failing = [] } = {}) {
 }
 
 function parseArguments(argv) {
-  const options = { hostStylesheets: [], fail: [], verbose: false, includeLabs: false };
+  const options = { hostStylesheets: [], mode: 'fail', verbose: false, includeLabs: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === '--views') options.views = argv[++index];
@@ -644,9 +648,8 @@ function parseArguments(argv) {
     else if (argument === '--verbose') options.verbose = true;
     else if (argument === '--include-labs') options.includeLabs = true;
     else if (argument === '--root') options.root = argv[++index];
-    else if (argument === '--fail') {
-      while (index + 1 < argv.length && !argv[index + 1].startsWith('--')) options.fail.push(argv[++index]);
-    } else if (argument !== '--') throw new Error(`unknown argument ${argument}`);
+    else if (argument === '--report') options.mode = 'report';
+    else if (argument !== '--') throw new Error(`unknown argument ${argument}`);
   }
   return options;
 }
@@ -666,15 +669,9 @@ if (invokedDirectly) {
     ...(options.hostStylesheets.length > 0 ? { hostStylesheets: options.hostStylesheets } : {}),
     includeLabs: options.includeLabs,
   });
-  console.log(formatViewWall(report, { verbose: options.verbose, failing: options.fail }));
-  const known = new Set(report.views.map((view) => view.name));
-  const unknown = options.fail.filter((name) => !known.has(name));
-  if (unknown.length > 0) {
-    console.error(`view wall: no view named ${unknown.join(', ')}`);
-    process.exit(1);
-  }
-  const breached = report.views.filter((view) => options.fail.includes(view.name) && view.breaches.length > 0);
-  if (breached.length > 0) {
+  console.log(formatViewWall(report, { verbose: options.verbose, mode: options.mode }));
+  const breached = report.views.filter((view) => view.breaches.length > 0);
+  if (options.mode === 'fail' && breached.length > 0) {
     console.error(`view wall: FAIL ${breached.map((view) => `${view.name} (${view.breaches.length})`).join(', ')}`);
     process.exit(1);
   }
