@@ -69,6 +69,7 @@ export function AgentList({ input, commands }: ReactMonitorViewProps): ReactElem
   // colour its stylesheet draws. Its CSS reads these and the skin, nothing else of the host's.
   const style = {
     '--mv-list-inset-left': `${stage.insets.left}px`,
+    '--mv-list-inset-top': `${stage.insets.top}px`,
     '--mv-list-row-height': `${rowHeight}px`,
     '--mv-list-project-width': `${projectWidth}px`,
     '--mv-list-blocked': theme.tokens.status.blocked,

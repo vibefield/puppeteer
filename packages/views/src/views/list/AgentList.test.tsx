@@ -228,6 +228,15 @@ describe('a row', () => {
 });
 
 describe('the view on its root', () => {
+  it('starts its top band below the stage’s top inset, where a host keeps chrome over the stage (M58)', async () => {
+    // VibeField's claims strip sits over the stage's top, and its stage says so as `insets.top`; the band starts
+    // below it. Puppeteer's Godview passes 0, so its list starts where it always did.
+    const compact = fixtureStage('compact');
+    const view = await mount({ stage: { ...compact, insets: { ...compact.insets, top: 40 } } });
+    const section = view.root.querySelector<HTMLElement>('.vf-monitor-list')!;
+    expect(section.style.getPropertyValue('--mv-list-inset-top')).toBe('40px');
+  });
+
   it('scopes its stylesheet under its root class while mounted, and clears the chrome by the stage’s inset', async () => {
     const view = await mount({ stage: fixtureStage('compact') });
     expect(view.root.classList.contains(LIST_ROOT_CLASS)).toBe(true);

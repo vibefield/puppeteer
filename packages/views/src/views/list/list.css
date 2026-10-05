@@ -11,7 +11,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 11px 0 0 var(--mv-list-inset-left, 0px);
+  /* the band starts below a host's chrome over the stage's top (`insets.top`, M58): 0 in puppeteer's Godview */
+  padding: calc(11px + var(--mv-list-inset-top, 0px)) 0 0 var(--mv-list-inset-left, 0px);
   color: var(--text-main);
 }
 
