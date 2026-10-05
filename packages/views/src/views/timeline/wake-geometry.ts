@@ -1,13 +1,16 @@
-import type { MonitorHistorySpan, MonitorHistoryStatus } from '../../monitor/status-history.js';
-import { spanIndexAt, type TimelineLane, type TimelineLaneKind } from './timeline-lanes.js';
+import type { LaneStatus, TimelineLane, TimelineLaneKind } from './timeline-lanes.js';
 
 // A lane's wake: one closed, variable-width outline that swells into work and
 // narrows through a short S-curve into a wait (DESIGN §8, "Godview's timeline
 // is the swarm through time"). Produced as plain path commands so the shape is
 // testable without a canvas; `toPath2D` is the thin adapter the painter uses.
+//
+// Runtime only (MV-6), a lane's wake is its current state alone, one segment;
+// the outline, its light and its sheen are drawn for any run of segments, so a
+// wake read from history (rosettad, later) takes the same shape.
 
 /** Half the wake's thickness: work is wide, a wait you owe is a thread, rest is a hair. */
-export function wakeRadius(kind: TimelineLaneKind, status: MonitorHistoryStatus, laneHeight: number): number {
+export function wakeRadius(kind: TimelineLaneKind, status: LaneStatus, laneHeight: number): number {
   if (kind === 'terminal') return status === 'working' ? 1.8 : 0.6;
   if (status === 'working') return Math.min(7.5, Math.max(4, laneHeight * 0.22));
   if (status === 'blocked' || status === 'unseen') return Math.min(3.8, Math.max(2.2, laneHeight * 0.115));
@@ -21,17 +24,14 @@ export interface WakeSegment {
   /** The same in the canvas's x, the window's left edge at 0. */
   readonly x0: number;
   readonly x1: number;
-  readonly span: MonitorHistorySpan;
-  readonly status: MonitorHistoryStatus;
+  readonly status: LaneStatus;
   readonly r: number;
-  /** Still going: the head says its length, so the lit lane prints none for it. */
-  readonly open: boolean;
 }
 
 /**
- * The lane's spans between `t0` and `t1` (the head), in px from `t0`. A span
- * starts no earlier than the record and a little before the window, so the
- * wake enters from off-canvas rather than starting at the edge.
+ * The lane's current state between `t0` and `t1` (the head), in px from `t0`.
+ * It starts no earlier than the state does and a little before the window, so
+ * the wake enters from off-canvas rather than starting at the edge.
  */
 export function wakeSegments(
   lane: TimelineLane,
@@ -41,33 +41,21 @@ export function wakeSegments(
   laneHeight: number,
   nowMs: number,
 ): WakeSegment[] {
-  const end = Math.min(lane.endedAtMs ?? nowMs, t1);
-  const lo = t0 - 30 / pxPerMs;
-  const out: WakeSegment[] = [];
-  // Only the spans that reach the window: a lane may carry a day of them.
-  const spans = lane.spans;
-  for (
-    let index = Math.max(0, spanIndexAt(spans, Math.max(lo, lane.recordedFromMs)));
-    index < spans.length;
-    index += 1
-  ) {
-    const span = spans[index]!;
-    if (span.fromMs >= end) break;
-    const a = Math.max(span.fromMs, lane.recordedFromMs, lo);
-    const b = Math.min(span.toMs ?? end, end);
-    if (b <= a) continue;
-    out.push({
+  const end = Math.min(nowMs, t1);
+  const span = lane.current;
+  if (span.fromMs >= end) return [];
+  const a = Math.max(span.fromMs, lane.sinceMs, t0 - 30 / pxPerMs);
+  if (end <= a) return [];
+  return [
+    {
       a,
-      b,
+      b: end,
       x0: (a - t0) * pxPerMs,
-      x1: (b - t0) * pxPerMs,
-      span,
+      x1: (end - t0) * pxPerMs,
       status: span.status,
       r: wakeRadius(lane.kind, span.status, laneHeight),
-      open: span.toMs === undefined && lane.endedAtMs === undefined,
-    });
-  }
-  return out;
+    },
+  ];
 }
 
 /** How far either side of a change the S-curve runs: never more than 5 px, never more than 40% of either span. */
@@ -98,9 +86,9 @@ export type PathCommand =
     }
   | { readonly op: 'Z' };
 
-/** Whether the wake begins with a round cap: it starts where the lane's record does, inside the window. */
+/** Whether the wake begins with a round cap: it starts where the lane's current state does, inside the window. */
 export function capsStart(lane: TimelineLane, first: WakeSegment): boolean {
-  return first.a <= Math.max(lane.bornMs, lane.recordedFromMs) + 1000 && first.x0 > -20;
+  return first.a <= Math.max(lane.bornMs, lane.sinceMs) + 1000 && first.x0 > -20;
 }
 
 /** The outline: the top edge left to right, the bottom edge back, each change of thickness a short S-curve. */
@@ -188,41 +176,6 @@ export function wakeSheens(segments: readonly WakeSegment[], cy: number): { x0: 
     const x1 = segment.x1 - right - 2;
     if (x1 > x0) out.push({ x0, x1, y: cy - segment.r * 0.45 });
   });
-  return out;
-}
-
-export interface WakeLabel {
-  readonly text: string;
-  readonly x: number;
-  readonly y: number;
-  /** Inside the work (ground-coloured), or above a wait (in the state's ink, haloed). */
-  readonly inside: boolean;
-  readonly status: MonitorHistoryStatus;
-}
-
-/**
- * The lit lane speaks: each closed span's length, inside the work when the
- * tube is tall enough, above a wait otherwise, wherever it fits between `left`
- * (past the floating name) and `right` (short of the head).
- */
-export function wakeLabels(
-  segments: readonly WakeSegment[],
-  cy: number,
-  left: number,
-  right: number,
-  measure: (text: string) => number,
-  format: (ms: number) => string,
-): WakeLabel[] {
-  const out: WakeLabel[] = [];
-  for (const segment of segments) {
-    if (segment.open) continue;
-    const vx0 = Math.max(segment.x0, left);
-    const vx1 = Math.min(segment.x1, right);
-    const text = format((segment.span.toMs ?? segment.b) - segment.span.fromMs);
-    if (vx1 - vx0 < measure(text) + 10) continue;
-    const inside = segment.status === 'working' && segment.r * 2 >= 9;
-    out.push({ text, x: (vx0 + vx1) / 2, y: inside ? cy + 0.5 : cy - segment.r - 6.5, inside, status: segment.status });
-  }
   return out;
 }
 

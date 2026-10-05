@@ -1,4 +1,10 @@
-import type { AgentVisualStatus } from './agent-status.js';
+// FROZEN (MV-6): the status ledger (monitor/status-ledger.ts) as it shipped before the timeline moved onto the SDK,
+// runtime only, kept only as the "before" that `legacy/timeline-parity.test.tsx` renders beside the ported view over
+// the same model. Only its imports changed (it moved folders). Never edit it to match the port; MV-8 deletes it with
+// the shim. The package lost it in MV-6 (L10, MV-D13: runtime only); it lives on here only so the parity test can feed
+// the frozen view the book its host fed it.
+
+import type { AgentVisualStatus } from '../../../monitor/agent-status.js';
 import {
   STATUS_HISTORY_HORIZON_MS,
   STATUS_HISTORY_MAX_CHANGES,
@@ -9,7 +15,7 @@ import {
   type MonitorHistoryStatus,
   type MonitorLaneHistory,
 } from './status-history.js';
-import type { MonitorAgent } from './types.js';
+import type { MonitorAgent } from '../../../monitor/types.js';
 
 /**
  * A host's record of what each lane did, built from the rows it already

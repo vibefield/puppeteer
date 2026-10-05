@@ -1,4 +1,4 @@
-import type { MonitorParameterGroup } from '../../monitor/parameters.js';
+import type { MonitorParameterGroup } from '@vibecook/puppeteer-view-sdk';
 
 // The timeline's tunables: few on purpose. The wake's widths, the colours and
 // the motion are DESIGN §8's and are not offered; what is left is how strongly

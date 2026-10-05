@@ -7,7 +7,6 @@ import {
 import { DEFAULT_PROJECT_TINT, paneTint, projectTint, type ProjectTint } from '../colour/project-tint.js';
 import { formatUsd } from '../monitor/cost-format.js';
 import { folderName } from '../monitor/folder-name.js';
-import type { MonitorHistoryBook, MonitorHistorySpan, MonitorLaneHistory } from '../monitor/status-history.js';
 import type { MonitorAgent, MonitorRemoteFacet } from '../monitor/types.js';
 import { agentFixture, terminalFixture, type BurnShape } from '../views/swarm/lab/fixtures.js';
 
@@ -144,19 +143,13 @@ export interface LabWorld {
   readonly nowMs: number;
   /** Agents first, then peers' rows, then bare terminals — the order a host assembles them in. */
   readonly agents: readonly MonitorAgent[];
-  /** What each lane did since it was born, and one agent that ended (TL-D6), for the views that draw the past. */
-  readonly history: MonitorHistoryBook;
 }
 
 interface Row {
   readonly agent: MonitorAgent;
   readonly group: 0 | 1 | 2;
-  /** The lane's current state as a book records it (`unseen` for an unread idle). */
-  readonly state: MonitorHistorySpan['status'];
+  /** When the row's current state began. */
   readonly since: number;
-  readonly born: number;
-  readonly blocker?: MonitorHistorySpan['blocker'];
-  readonly did?: string;
 }
 
 const pick = <T>(items: readonly T[], random: () => number): T =>
@@ -220,7 +213,6 @@ export function labWorld(options: LabWorldOptions): LabWorld {
           detail: words,
           permission: { requestId: 'r', tool: 'Bash' },
         },
-        words,
       });
     }
     const answered = at('blocked-question');
@@ -247,34 +239,7 @@ export function labWorld(options: LabWorldOptions): LabWorld {
     );
   }
   rows.sort((left, right) => left.group - right.group);
-
-  const lanes = new Map<string, MonitorLaneHistory>();
-  for (const row of rows) lanes.set(row.agent.id, laneOf(row, nowMs, seed));
-  const ended: MonitorAgent[] = [];
-  if (n >= ARCHETYPES.length) {
-    // One agent that finished an hour ago: the timeline keeps its lane (TL-D6).
-    const born = nowMs - 3 * HOUR;
-    const endedAt = nowMs - 52 * MIN;
-    const base = agentFixture({ id: 'ended', project: 'changelog', status: 'idle', model: 'Sonnet 4.5' }, nowMs);
-    const { session, ...rest } = base;
-    ended.push({
-      ...rest,
-      session: { ...session!, createdAtMs: born, cwd: '/Users/james/Projects/changelog' },
-      createdAtMs: born,
-      color: projectColour('changelog'),
-      tier: 'managed',
-      detail: detailOf(rest.agent!.monitor!, rest.agent!.usage?.total),
-    });
-    lanes.set('ended', {
-      recordedFromMs: born,
-      spans: [
-        { status: 'working', fromMs: born, toMs: born + 40 * MIN, did: 'Edit CHANGELOG.md +41 −0' },
-        { status: 'idle', fromMs: born + 40 * MIN, toMs: endedAt },
-      ],
-      endedAtMs: endedAt,
-    });
-  }
-  return { nowMs, agents: rows.map((row) => row.agent), history: { lanes, ended } };
+  return { nowMs, agents: rows.map((row) => row.agent) };
 }
 
 interface BuildInput {
@@ -392,15 +357,7 @@ function buildRow(input: BuildInput): Row {
       agent: { ...facet, monitor },
       ...extra,
     };
-    return {
-      agent: row,
-      group: row.remote ? 1 : 0,
-      state: shape.status === 'idle' && row.unread ? 'unseen' : shape.status,
-      since,
-      born,
-      ...(shape.blocker ? { blocker: { kind: shape.blocker, detail: shape.blockerDetail } } : {}),
-      ...(shape.activity ? { did: shape.activity.line } : {}),
-    };
+    return { agent: row, group: row.remote ? 1 : 0, since };
   };
   const peer = (shape: AgentShape, since: number, overrides: Partial<MonitorRemoteFacet> = {}): Row => {
     const device = PEERS[(cycle + id.length) % PEERS.length]!;
@@ -432,9 +389,7 @@ function buildRow(input: BuildInput): Row {
         color: input.neutral,
       },
       group: 2,
-      state: running ? 'working' : 'idle',
       since,
-      born,
     };
   };
   const ago = (low: number, high: number): number => nowMs - Math.round(between(low, high, random));
@@ -474,7 +429,6 @@ function buildRow(input: BuildInput): Row {
       const session = { ...built.agent.session!, createdAtMs: built.since };
       return {
         ...built,
-        born: built.since,
         agent: { ...built.agent, session, createdAtMs: built.since, detail: 'starting', agent: facet },
       };
     }
@@ -531,7 +485,7 @@ function moved(
   row: Row,
   nowMs: number,
   status: 'working' | 'blocked',
-  change: { blocker?: MonitorBlocker; words?: string; activity?: NonNullable<AgentMonitorState['activity']> },
+  change: { blocker?: MonitorBlocker; activity?: NonNullable<AgentMonitorState['activity']> },
 ): Row {
   const facet = row.agent.agent!;
   const { activity: _activity, ...rest } = facet.monitor!;
@@ -545,10 +499,7 @@ function moved(
   return {
     ...row,
     agent: { ...row.agent, status, detail: detailOf(monitor, facet.usage?.total), agent: { ...facet, monitor } },
-    state: status,
     since: nowMs,
-    ...(change.blocker ? { blocker: { kind: change.blocker.kind, detail: change.words } } : { blocker: undefined }),
-    ...(change.activity ? { did: change.activity.line } : {}),
   };
 }
 
@@ -568,41 +519,4 @@ function detailOf(monitor: AgentMonitorState, total?: number): string {
   ]
     .filter((value): value is string => Boolean(value))
     .join(' · ');
-}
-
-/** A lane's past, walked back from its current state to its birth: work, then a wait or a rest, then work again. */
-function laneOf(row: Row, nowMs: number, seed: string): MonitorLaneHistory {
-  const random = seededRandom(`${seed}:lane:${row.agent.id}`);
-  const terminal = !row.agent.agent;
-  const spans: MonitorHistorySpan[] = [
-    {
-      status: row.state,
-      fromMs: row.since,
-      ...(row.blocker ? { blocker: row.blocker } : {}),
-      ...(row.did ? { did: row.did } : {}),
-    },
-  ];
-  let state = row.state;
-  let end = row.since;
-  while (end > row.born) {
-    state =
-      state === 'working'
-        ? terminal
-          ? 'idle'
-          : pick(['idle', 'blocked', 'unseen', 'idle'] as const, random)
-        : 'working';
-    const mean = state === 'working' ? (terminal ? 3 * MIN : 16 * MIN) : state === 'blocked' ? 3 * MIN : 8 * MIN;
-    const from = Math.max(row.born, end - Math.round(between(0.4, 1.8, random) * mean));
-    spans.unshift({
-      status: state,
-      fromMs: from,
-      toMs: end,
-      ...(state === 'working' && !terminal ? { did: pick(TOOL_LINES, random) } : {}),
-      ...(state === 'blocked' ? { blocker: { kind: 'permission', detail: pick(PERMISSIONS, random) } } : {}),
-    });
-    end = from;
-  }
-  // A local lane is kept from when the host started; a peer's from when it was first heard.
-  const horizon = row.agent.remote ? 2 * HOUR + 20 * MIN : 5 * HOUR + 40 * MIN;
-  return { recordedFromMs: Math.max(row.born, nowMs - horizon), spans };
 }

@@ -2774,8 +2774,9 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                   The swarm through time, painted into a canvas: one wake per lane in birth order, wide in the project's
                   colour for work, an orange or blue thread for a wait, a hairline for rest, dotted where unrecorded;
                   the bodies sit at the head with their readouts. Drag pans, pinch zooms, looking back relights the
-                  bodies, and the map of the day above is a slider that scrubs it. Draws the host's
-                  <code>history</code> book when handed one, and each row's birth and current state when not.
+                  bodies, and the map of the day above is a slider that scrubs it. Runtime only (MV-6): it draws each
+                  row's birth and its current state and remembers nothing a row did; history, when it comes, is read
+                  from rosettad.
                 </p>
               </article>
               <article class="card">

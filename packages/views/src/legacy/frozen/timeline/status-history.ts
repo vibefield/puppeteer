@@ -1,4 +1,10 @@
-import type { MonitorAgent } from './types.js';
+// FROZEN (MV-6): the status history's types (monitor/status-history.ts) as it shipped before the timeline moved onto
+// the SDK, runtime only, kept only as the "before" that `legacy/timeline-parity.test.tsx` renders beside the ported
+// view over the same model. Only its imports changed (it moved folders). Never edit it to match the port; MV-8 deletes
+// it with the shim. The package lost it in MV-6 (L10, MV-D13: runtime only); it lives on here only so the parity test
+// can feed the frozen view the book its host fed it.
+
+import type { MonitorAgent } from '../../../monitor/types.js';
 
 /**
  * What a lane was doing over time — the record the timeline view draws

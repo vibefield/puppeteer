@@ -1,42 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import type { TimelineLane } from './timeline-lanes.js';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import { laneFor, type TimelineLane } from './timeline-lanes.js';
 import {
   capsStart,
   neck,
   wakeGradient,
-  wakeLabels,
   wakeOutline,
   wakeRadius,
   wakeSegments,
   wakeSheens,
+  type WakeSegment,
 } from './wake-geometry.js';
 
 const MIN = 60_000;
 const NOW = 10_000 * MIN;
 
-function lane(overrides: Partial<TimelineLane> = {}): TimelineLane {
-  return {
-    id: 'a',
-    agent: {
+/** A lane born an hour ago, working for the last 20 minutes, unless told otherwise. */
+function lane(overrides: AgentViewFixturePartial = {}): TimelineLane {
+  return laneFor(
+    agentViewFixture({
       id: 'a',
-      createdAtMs: NOW - 60 * MIN,
-      status: 'blocked',
-      project: 'p',
-      detail: '',
-      color: '#123456',
-      active: false,
-    },
-    kind: 'agent',
-    receded: false,
-    bornMs: NOW - 60 * MIN,
-    recordedFromMs: NOW - 60 * MIN,
-    spans: [
-      { status: 'working', fromMs: NOW - 60 * MIN, toMs: NOW - 30 * MIN },
-      { status: 'idle', fromMs: NOW - 30 * MIN, toMs: NOW - 20 * MIN },
-      { status: 'blocked', fromMs: NOW - 20 * MIN, blocker: { kind: 'question' } },
-    ],
-    ...overrides,
-  };
+      createdAt: NOW - 60 * MIN,
+      status: 'working',
+      statusSince: NOW - 20 * MIN,
+      ...overrides,
+    }),
+    NOW,
+  );
+}
+
+/** A run of segments as history would give them (rosettad, later): the shape functions take any run. */
+function run(k: number, t0: number, parts: readonly [WakeSegment['status'], number, number][]): WakeSegment[] {
+  return parts.map(([status, a, b]) => ({
+    a,
+    b,
+    x0: (a - t0) * k,
+    x1: (b - t0) * k,
+    status,
+    r: wakeRadius('agent', status, 30),
+  }));
 }
 
 describe('wakeRadius', () => {
@@ -48,56 +50,59 @@ describe('wakeRadius', () => {
     expect(wakeRadius('agent', 'unseen', 100) * 2).toBeCloseTo(7.6);
     expect(wakeRadius('agent', 'idle', 30) * 2).toBeCloseTo(1.7);
     expect(wakeRadius('terminal', 'working', 18)).toBe(1.8);
+    expect(wakeRadius('terminal', 'idle', 18)).toBe(0.6);
   });
 });
 
-describe('wakeSegments', () => {
-  it('cuts the spans to the window and marks the open one', () => {
-    const k = 600 / (60 * MIN);
-    const segments = wakeSegments(lane(), NOW - 40 * MIN, NOW, k, 30, NOW);
-    expect(segments.map((segment) => segment.status)).toEqual(['working', 'idle', 'blocked']);
-    // The first starts 30 px before the window, so the wake enters from off-canvas.
-    expect(segments[0]!.x0).toBeCloseTo(-30);
-    expect(segments[2]!.x1).toBeCloseTo(400);
-    expect(segments.map((segment) => segment.open)).toEqual([false, false, true]);
-  });
-
-  it('starts no earlier than the record and stops at the end', () => {
-    const k = 1 / MIN;
-    const segments = wakeSegments(
-      lane({ recordedFromMs: NOW - 25 * MIN, endedAtMs: NOW - 5 * MIN }),
-      NOW - 60 * MIN,
-      NOW,
-      k,
-      30,
-      NOW,
-    );
-    expect(segments[0]!.a).toBe(NOW - 25 * MIN);
-    expect(segments[segments.length - 1]!.b).toBe(NOW - 5 * MIN);
-    expect(segments.every((segment) => !segment.open)).toBe(true);
-  });
-});
-
-describe('wakeSegments over a long record', () => {
-  it('reads only the spans that reach the window', () => {
-    const spans = Array.from({ length: 2000 }, (_, index) => ({
-      status: (index % 2 ? 'idle' : 'working') as 'idle' | 'working',
-      fromMs: NOW - (2000 - index) * MIN,
-      ...(index < 1999 ? { toMs: NOW - (1999 - index) * MIN } : {}),
-    }));
-    const long = lane({ spans, bornMs: NOW - 2000 * MIN, recordedFromMs: NOW - 2000 * MIN });
-    const k = 600 / (10 * MIN);
-    const segments = wakeSegments(long, NOW - 10 * MIN, NOW, k, 30, NOW);
-    // Ten minutes in view, plus the one reaching in from the 30 px lead.
-    expect(segments).toHaveLength(11);
-    expect(segments[0]!.x0).toBeCloseTo(-30);
-    expect(segments[segments.length - 1]!.open).toBe(true);
-  });
-});
-
-describe('wakeOutline', () => {
+describe('wakeSegments (runtime only: the current state alone)', () => {
   const k = 600 / (60 * MIN);
-  const segments = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);
+
+  it('draws the current state from where it began to the head', () => {
+    const segments = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({ a: NOW - 20 * MIN, b: NOW, status: 'working' });
+    expect(segments[0]!.x0).toBeCloseTo(400);
+    expect(segments[0]!.x1).toBeCloseTo(600);
+  });
+
+  it('enters from 30 px off-canvas when the state began before the window', () => {
+    const segments = wakeSegments(lane(), NOW - 10 * MIN, NOW, k, 30, NOW);
+    expect(segments[0]!.x0).toBeCloseTo(-30);
+  });
+
+  it('stops at the head when it is held back, and draws nothing before the state began', () => {
+    const held = wakeSegments(lane(), NOW - 70 * MIN, NOW - 10 * MIN, k, 30, NOW);
+    expect(held[0]!.b).toBe(NOW - 10 * MIN);
+    expect(wakeSegments(lane(), NOW - 90 * MIN, NOW - 30 * MIN, k, 30, NOW)).toEqual([]);
+  });
+
+  it('caps the start where the state begins inside the window, and not where it enters from off-canvas', () => {
+    const inside = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);
+    expect(capsStart(lane(), inside[0]!)).toBe(true);
+    const entering = wakeSegments(lane(), NOW - 10 * MIN, NOW, k, 30, NOW);
+    expect(capsStart(lane(), entering[0]!)).toBe(false);
+  });
+
+  it('is one closed outline with a round cap, one colour and one sheen', () => {
+    const segments = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);
+    const commands = wakeOutline(segments, 15, true);
+    expect(commands.map((command) => command.op)).toEqual(['M', 'A', 'L', 'L', 'Z']);
+    expect(wakeGradient(segments, (segment) => segment.status)).toEqual([
+      { offset: 0, color: 'working' },
+      { offset: 1, color: 'working' },
+    ]);
+    expect(wakeSheens(segments, 15)).toHaveLength(1);
+  });
+});
+
+describe('the wake’s shape over a run of states', () => {
+  const k = 600 / (60 * MIN);
+  const t0 = NOW - 60 * MIN;
+  const segments = run(k, t0, [
+    ['working', NOW - 60 * MIN, NOW - 30 * MIN],
+    ['idle', NOW - 30 * MIN, NOW - 20 * MIN],
+    ['blocked', NOW - 20 * MIN, NOW],
+  ]);
 
   it('is one closed outline, an S-curve at each change of thickness', () => {
     const commands = wakeOutline(segments, 15, true);
@@ -116,26 +121,11 @@ describe('wakeOutline', () => {
 
   it('necks never more than 5 px nor 40% of either span', () => {
     expect(neck(segments, 0)).toBe(5);
-    const tight = wakeSegments(
-      lane({
-        spans: [
-          { status: 'working', fromMs: NOW - 60 * MIN, toMs: NOW - 59.9 * MIN },
-          { status: 'idle', fromMs: NOW - 59.9 * MIN },
-        ],
-      }),
-      NOW - 60 * MIN,
-      NOW,
-      k,
-      30,
-      NOW,
-    );
+    const tight = run(k, t0, [
+      ['working', NOW - 60 * MIN, NOW - 59.9 * MIN],
+      ['idle', NOW - 59.9 * MIN, NOW],
+    ]);
     expect(neck(tight, 0)).toBeCloseTo(0.5);
-  });
-
-  it('caps the start only where the record begins inside the window', () => {
-    expect(capsStart(lane(), segments[0]!)).toBe(true);
-    const late = wakeSegments(lane(), NOW - 20 * MIN, NOW, k, 30, NOW);
-    expect(capsStart(lane(), late[0]!)).toBe(false);
   });
 
   it('turns colour where the shape turns', () => {
@@ -151,25 +141,5 @@ describe('wakeOutline', () => {
     const sheens = wakeSheens(segments, 15);
     expect(sheens).toHaveLength(1);
     expect(sheens[0]!.y).toBeLessThan(15);
-  });
-});
-
-describe('wakeLabels', () => {
-  it('prints each closed span that fits, inside the work or above a wait', () => {
-    const k = 600 / (60 * MIN);
-    const segments = wakeSegments(lane(), NOW - 60 * MIN, NOW, k, 30, NOW);
-    const labels = wakeLabels(
-      segments,
-      15,
-      0,
-      592,
-      (text) => text.length * 5,
-      (ms) => `${Math.round(ms / MIN)}m`,
-    );
-    expect(labels.map((label) => [label.text, label.inside])).toEqual([
-      ['30m', true],
-      ['10m', false],
-    ]);
-    expect(labels[1]!.y).toBeLessThan(15);
   });
 });

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-// Capture the view goldens (README.md): every lab view (list, rain, timeline — the timeline with
-// its book and bare) in both themes at Godview's three stage sizes, for n = 1 and n = 20, on the
+// Capture the view goldens (README.md): every lab view (list, rain, timeline — the timeline's ids
+// with its old book and bare, one drawing since MV-6) in both themes at Godview's three stage
+// sizes, for n = 1 and n = 20, on the
 // capture clock, still (the rain in motion, below). One offscreen Electron window does all of it
 // (capture-main.mjs). The wall clock's time zone and the locale are pinned, because the timeline
 // prints local times.
@@ -43,7 +44,8 @@ const VIEWS = [
   // The swarm (MV-5, M32): offscreen capturePage draws WebGPU. In motion, as the rain: its physics step on the capture
   // clock, so the field is the same settled field on every run.
   { view: 'swarm', page: 'swarm-lab.html', script: 'swarm-lab.mjs', books: [undefined], animations: '1' },
-  // The timeline with the book Godview keeps today, and bare — what it draws without one (L10, MV-6).
+  // The timeline as captured with the book Godview kept, and bare. MV-6 retired the book (runtime only, L10): the lab
+  // reads no `book` now, so the two ids draw the same image until MV-8 folds them.
   {
     view: 'timeline',
     page: 'timeline-lab.html',

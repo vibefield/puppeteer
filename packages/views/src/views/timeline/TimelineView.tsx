@@ -8,32 +8,30 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactElement,
 } from 'react';
-import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
-import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
-import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
+import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
 import {
-  createLaneCache,
+  canvasRatio,
+  createMotionLoop,
+  formatClock,
+  formatWords,
+  projectName,
+  sizeCanvas,
+  type MotionLoop,
+} from '@vibecook/puppeteer-view-sdk/toolkit';
+import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
+import { css, resolveTimelineInks, type TimelineInks } from './timeline-inks.js';
+import {
   dayStart,
   earliestHead,
   laneContentKey,
-  noteFirstSeen,
-  scrolledOutIds,
   stateAt,
   stepLight,
   timelineLanes,
-  type TimelineLane,
   type TimelineLaneSet,
 } from './timeline-lanes.js';
-import {
-  css,
-  paintPulse,
-  paintWakes,
-  resolveTimelineInks,
-  sizeCanvas,
-  type PlacedLane,
-  type TimelineInks,
-} from './timeline-paint.js';
+import { paintPulse, paintWakes, type PlacedLane } from './timeline-paint.js';
 import { normalizeTimelineParameters } from './timeline-parameters.js';
 import {
   clampSpan,
@@ -52,17 +50,24 @@ import {
   type ScaleTween,
   type TimelineScale,
 } from './timeline-scale.js';
-import { formatClock, formatWords, laneLabel, readoutAt } from './timeline-words.js';
+import { laneLabel, laneSubLine, readoutAt } from './timeline-words.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is
 // one wake painted into a canvas, the swarm's bodies sit at the head, and the
 // map above is a scrubber over the whole day.
 //
+// An SDK view (MV-6): it reads its input alone (the model's rows, the theme,
+// the stage, its parameters) and calls `commands.select`. Runtime only: each
+// lane is its row's birth and its current state (`timeline-lanes.ts`), and the
+// view remembers nothing a row did.
+//
 // React lays the lanes out (names, heads, the offscreen buttons); everything
 // that moves with time — the wakes, the map, the ticks, the clock chip and the
-// readouts — is drawn from a rAF loop that repaints only what changed, the way
-// the rain keeps a render out of every frame.
+// readouts — is drawn by one draw that repaints only what changed. With motion
+// it runs every frame (the toolkit's loop); still (animations off, or motion
+// reduced) no frame loop runs (MV-W4): the clock is information, so the view
+// draws once a second on a timer, and once when anything changes.
 
 const MAP_STRIP = 46;
 const AXIS = 22;
@@ -129,13 +134,6 @@ function focusVisible(element: Element): boolean {
   }
 }
 
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-
-function motionAllowed(root: Element | null): boolean {
-  const reduced = typeof window.matchMedia === 'function' && window.matchMedia(REDUCED_MOTION).matches;
-  return !reduced && root?.closest('.vf-godview')?.getAttribute('data-godview-animations') !== 'off';
-}
-
 function dayLabel(t: number): string {
   return new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }).toUpperCase();
 }
@@ -156,7 +154,7 @@ function FolderMark({ terminal }: { terminal: boolean }) {
   );
 }
 
-/** A peer's lane: a desktop's line mark, its name in the title (the facet carries no OS to draw). */
+/** A peer's lane: a desktop's line mark, its name in the title (the row carries no OS to draw by yet). */
 function PeerMark({ name }: { name: string }) {
   return (
     <svg className="vf-monitor-timeline-mark is-peer" viewBox="0 0 24 24" role="img" aria-label={`on ${name}`}>
@@ -174,12 +172,12 @@ function NowMark() {
   );
 }
 
-function subLine(agent: MonitorAgent): string {
-  return [agent.agent?.model ?? agent.agent?.provider.label, agent.agent?.branch].filter(Boolean).join(' · ');
-}
-
-export function TimelineView({ agents, parameters, actions, palette, history }: AgentMonitorProps) {
+export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactElement {
+  const { model, parameters, theme, stage } = input;
+  const rows = model.agents;
   const settings = useMemo(() => normalizeTimelineParameters(parameters), [parameters]);
+  // The host's animations switch and the person's reduced-motion preference: either one stills the view.
+  const motion = theme.animations && !theme.reducedMotion;
   const rootRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<HTMLDivElement>(null);
@@ -197,39 +195,22 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const headEls = useRef<(HTMLDivElement | null)[]>([]);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [firstSeen, setFirstSeen] = useState<ReadonlyMap<string, number>>(() => new Map());
-  /** Ended lanes that have scrolled out of the window, as a sorted id list (changes rarely). */
-  const [scrolledOut, setScrolledOut] = useState('');
   const [bar, setBar] = useState<{ spanMs: number; live: boolean }>({ spanMs: initialScale(0).spanMs, live: true });
 
-  useEffect(() => {
-    setFirstSeen((previous) => noteFirstSeen(previous, agents, Date.now()));
-  }, [agents]);
-
-  const laneCache = useRef(createLaneCache());
-  const laneSet = useMemo(
-    () => timelineLanes({ agents, history, nowMs: Date.now(), firstSeen, cache: laneCache.current }),
-    [agents, history, firstSeen],
-  );
-  const visible = useMemo(() => {
-    if (!scrolledOut) return laneSet;
-    const out = new Set(scrolledOut.split('\n'));
-    const keep = (lane: TimelineLane): boolean => !out.has(lane.id);
-    return { agents: laneSet.agents.filter(keep), terminals: laneSet.terminals.filter(keep) };
-  }, [laneSet, scrolledOut]);
+  const laneSet = useMemo(() => timelineLanes(rows, Date.now()), [rows]);
   const columns = columnsFor(size.width);
   const bodyHeight = Math.max(0, size.height - MAP_STRIP - AXIS);
   const layout = useMemo(
-    () => layoutLanes(visible, bodyHeight, settings.laneMax),
-    [visible, bodyHeight, settings.laneMax],
+    () => layoutLanes(laneSet, bodyHeight, settings.laneMax),
+    [laneSet, bodyHeight, settings.laneMax],
   );
-  // What the canvases draw of the layout: a projection that changes none of it repaints nothing.
+  // What the canvases draw of the layout: a model that changes none of it repaints nothing.
   const layoutKey = useMemo(
     () => `${laneContentKey(layout.placed.map((placed) => placed.lane))}#${bodyHeight}#${settings.laneMax}`,
     [layout, bodyHeight, settings.laneMax],
   );
 
-  // What the loop reads: the latest of everything, through refs, so a new row
+  // What the draw reads: the latest of everything, through refs, so a new row
   // or a theme change repaints the next frame without tearing the loop down.
   const scaleRef = useRef<TimelineScale>(initialScale(Date.now()));
   const tweenRef = useRef<ScaleTween | null>(null);
@@ -238,41 +219,51 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   const columnsRef = useRef(columns);
   const bodyHeightRef = useRef(bodyHeight);
   const settingsRef = useRef(settings);
-  const actionsRef = useRef(actions);
+  const commandsRef = useRef(commands);
   const inksRef = useRef<TimelineInks | null>(null);
   const fontRef = useRef('ui-monospace, monospace');
-  /** The lit lane and the keyboard's lane, by id: indices go stale when a lane is added or scrolls out. */
+  /** The lit lane and the keyboard's lane, by id: indices go stale when a lane is added or leaves. */
   const litRef = useRef<string | null>(null);
   const focusRef = useRef<string | null>(null);
   const revRef = useRef(0);
   /** The wakes want a repaint (the light moved, the scale was put); the map has its own, since its lens is DOM. */
   const dirtyRef = useRef(true);
   const mapDirtyRef = useRef(true);
-  const scrolledOutRef = useRef(scrolledOut);
   const wakeKeyRef = useRef('');
   const mapKeyRef = useRef('');
   const tickKeyRef = useRef('');
   const headKeysRef = useRef<string[]>([]);
   const mapRangeRef = useRef<[number, number]>([0, 1]);
-  /** Motion is allowed: read from the media query and the host's attribute when they change, not per frame. */
-  const motionRef = useRef(true);
+  /** Motion is allowed: tweens play and the owed body rings. */
+  const motionRef = useRef(motion);
   const readoutKeyRef = useRef('');
   const barRef = useRef(bar);
+  const drawRef = useRef<(time: number) => void>(() => undefined);
+  const loopRef = useRef<MotionLoop | null>(null);
+  const frameRef = useRef(0);
 
   laneSetRef.current = laneSet;
   layoutRef.current = layout;
   columnsRef.current = columns;
   bodyHeightRef.current = bodyHeight;
   settingsRef.current = settings;
-  actionsRef.current = actions;
-  scrolledOutRef.current = scrolledOut;
+  commandsRef.current = commands;
+  motionRef.current = motion;
 
-  useEffect(() => {
-    revRef.current += 1;
-    headKeysRef.current = [];
+  /** One frame for a still view; with motion the loop's next frame draws anyway. */
+  const requestDraw = useCallback((): void => {
+    if (loopRef.current?.running || frameRef.current !== 0) return;
+    frameRef.current = requestAnimationFrame((time) => {
+      frameRef.current = 0;
+      drawRef.current(time);
+    });
+  }, []);
+
+  /** The wakes repaint: the light moved, the scale was put. */
+  const invalidate = useCallback((): void => {
     dirtyRef.current = true;
-    mapDirtyRef.current = true;
-  }, [layoutKey, columns.width, settings]);
+    requestDraw();
+  }, [requestDraw]);
 
   // The palette, resolved once per theme into the numbers the canvases want;
   // the state lights also reach the DOM bodies as custom properties, so the
@@ -280,21 +271,22 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const inks = resolveTimelineInks(palette, root);
+    const inks = resolveTimelineInks(theme.tokens, root);
     inksRef.current = inks;
     fontRef.current = getComputedStyle(root).fontFamily || fontRef.current;
     root.dataset.ground = inks.dark ? 'dark' : 'light';
-    set(root, '--vf-monitor-timeline-orange', css(inks.orange));
-    set(root, '--vf-monitor-timeline-blue', css(inks.blue));
-    set(root, '--vf-monitor-timeline-orange-ink', css(inks.orangeInk));
-    set(root, '--vf-monitor-timeline-blue-ink', css(inks.blueInk));
-    set(root, '--vf-monitor-timeline-orange-ground', css(inks.orangeGround));
-    set(root, '--vf-monitor-timeline-blue-ground', css(inks.blueGround));
+    set(root, '--mv-timeline-orange', css(inks.orange));
+    set(root, '--mv-timeline-blue', css(inks.blue));
+    set(root, '--mv-timeline-orange-ink', css(inks.orangeInk));
+    set(root, '--mv-timeline-blue-ink', css(inks.blueInk));
+    set(root, '--mv-timeline-orange-ground', css(inks.orangeGround));
+    set(root, '--mv-timeline-blue-ground', css(inks.blueGround));
     revRef.current += 1;
     headKeysRef.current = [];
     dirtyRef.current = true;
     mapDirtyRef.current = true;
-  }, [palette]);
+    requestDraw();
+  }, [theme.tokens, requestDraw]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -323,11 +315,14 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   );
 
   /** Put a new scale in place now: a drag, a key, the map. Any tween stops. */
-  const place = useCallback((next: TimelineScale): void => {
-    tweenRef.current = null;
-    scaleRef.current = next;
-    dirtyRef.current = true;
-  }, []);
+  const place = useCallback(
+    (next: TimelineScale): void => {
+      tweenRef.current = null;
+      scaleRef.current = next;
+      invalidate();
+    },
+    [invalidate],
+  );
 
   /** The scale as the loop last drew it, mid-tween included. */
   const current = useCallback((): TimelineScale => {
@@ -349,9 +344,9 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const from = current();
       scaleRef.current = from;
       tweenRef.current = tweenBetween(from, target, performance.now());
-      dirtyRef.current = true;
+      invalidate();
     },
-    [clampHead, current, place],
+    [clampHead, current, invalidate, place],
   );
 
   /** Pinch or ⌘-scroll: zoom about the pointer, easing toward a target that each event moves on. */
@@ -370,9 +365,9 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const from = current();
       scaleRef.current = from;
       tweenRef.current = tweenBetween(from, target, performance.now());
-      dirtyRef.current = true;
+      invalidate();
     },
-    [clampHead, current, place],
+    [clampHead, current, invalidate, place],
   );
 
   const toNow = useCallback((): void => {
@@ -380,8 +375,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     if (from.live && !tweenRef.current) return;
     scaleRef.current = from;
     tweenRef.current = glideTween(from, performance.now());
-    dirtyRef.current = true;
-  }, [current]);
+    invalidate();
+  }, [current, invalidate]);
 
   const pan = useCallback(
     (deltaMs: number): void => {
@@ -397,16 +392,17 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
 
   const choose = useCallback((id: string | null): void => {
     const placed = placedOf(id);
-    // An ended agent has nothing left to open.
-    if (!placed || placed.lane.endedAtMs !== undefined) return;
-    actionsRef.current.select(placed.lane.agent);
+    if (placed) commandsRef.current.select(placed.lane.id);
   }, []);
 
-  const light = useCallback((id: string | null): void => {
-    if (litRef.current === id) return;
-    litRef.current = id;
-    dirtyRef.current = true;
-  }, []);
+  const light = useCallback(
+    (id: string | null): void => {
+      if (litRef.current === id) return;
+      litRef.current = id;
+      invalidate();
+    },
+    [invalidate],
+  );
 
   /** The keyboard's ring on its lane (CSS shows it only for keyboard focus); `reveal` scrolls it into view. */
   const paintFocusRing = useCallback((reveal = false): void => {
@@ -430,29 +426,8 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     paintFocusRing();
   }, [layout, paintFocusRing]);
 
+  // ───────────────────────────── the draw
   useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const read = (): void => {
-      const motion = motionAllowed(root);
-      motionRef.current = motion;
-      root.dataset.motion = motion ? 'on' : 'off';
-    };
-    read();
-    const query = typeof window.matchMedia === 'function' ? window.matchMedia(REDUCED_MOTION) : undefined;
-    query?.addEventListener('change', read);
-    const host = root.closest('.vf-godview');
-    const observer = host && typeof MutationObserver !== 'undefined' ? new MutationObserver(read) : undefined;
-    if (host) observer?.observe(host, { attributes: true, attributeFilter: ['data-godview-animations'] });
-    return () => {
-      query?.removeEventListener('change', read);
-      observer?.disconnect();
-    };
-  }, []);
-
-  // ───────────────────────────── the loop
-  useEffect(() => {
-    let frame = 0;
     let lastSecond = -1;
 
     const draw = (time: number): void => {
@@ -461,11 +436,11 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const cols = columnsRef.current;
       if (!root || !inks || cols.width <= 0) return;
       const now = Date.now();
-      const motion = motionRef.current;
+      const moving = motionRef.current;
       let scale = scaleRef.current;
       const tween = tweenRef.current;
       if (tween) {
-        const step = tweenAt(tween, time, now, !motion);
+        const step = tweenAt(tween, time, now, !moving);
         scale = step.scale;
         if (step.done) tweenRef.current = null;
         scaleRef.current = scale;
@@ -478,18 +453,11 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       const t0 = t1 - scale.spanMs;
       const k = cols.x1 / scale.spanMs;
 
-      // An ended lane stays until it has scrolled out (TL-D6).
       const all = laneSetRef.current;
-      const out = scrolledOutIds(all, t0);
-      if (out !== scrolledOutRef.current) {
-        scrolledOutRef.current = out;
-        setScrolledOut(out);
-      }
-
       const lay = layoutRef.current;
       // A move between displays changes the ratio: both canvases repaint at the new one.
-      const ratio = Math.min(2, window.devicePixelRatio || 1);
-      const rows = Math.max(lay.height, bodyHeightRef.current);
+      const ratio = canvasRatio(2);
+      const rowsHeight = Math.max(lay.height, bodyHeightRef.current);
       const second = Math.floor(now / 1000);
       const tick = second !== lastSecond;
       lastSecond = second;
@@ -497,26 +465,24 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       // The wakes: repainted when the head has moved a third of a pixel, or anything else changed.
       const wake = wakeRef.current;
       const lit = litRef.current === null ? -1 : lay.placed.findIndex((placed) => placed.lane.id === litRef.current);
-      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rows}@${ratio}`;
+      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rowsHeight}@${ratio}`;
       if (wake && (wakeKey !== wakeKeyRef.current || dirtyRef.current)) {
         wakeKeyRef.current = wakeKey;
-        sizeCanvas(wake, cols.x1, rows);
+        sizeCanvas(wake, cols.x1, rowsHeight, { maxRatio: 2 });
         const ctx = wake.getContext('2d');
         if (ctx) {
           paintWakes(
             ctx,
             {
               width: cols.x1,
-              height: rows,
+              height: rowsHeight,
               ratio,
               lanes: lay.placed,
               t0,
               t1,
               nowMs: now,
               lit,
-              namesRight: cols.names - 24,
               glow: settingsRef.current.glow,
-              font: fontRef.current,
             },
             inks,
           );
@@ -561,11 +527,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         if (tick || mapKey !== mapKeyRef.current || mapDirtyRef.current) {
           mapKeyRef.current = mapKey;
           mapDirtyRef.current = false;
-          sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height);
+          sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height, { maxRatio: 2 });
           const ctx = mapCanvas.getContext('2d');
-          const pulseRows = pulseRowsFor(all.agents, now);
           if (ctx) {
-            const map = pulseMap(pulseRows, start, now, { ...PULSE_GEOMETRY, width });
+            const map = pulseMap(pulseRowsFor(all.agents, now), start, now, { ...PULSE_GEOMETRY, width });
             paintPulse(
               ctx,
               mapCanvas,
@@ -624,27 +589,55 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         barRef.current = { spanMs: preset, live: following };
         setBar(barRef.current);
       }
+      // A tween still landing wants its next frame; a still view lands it at once.
+      if (tweenRef.current) requestDraw();
     };
-
-    const loop = (time: number): void => {
-      frame = requestAnimationFrame(loop);
-      draw(time);
-    };
-    const start = (): void => {
-      if (frame === 0 && document.visibilityState !== 'hidden') frame = requestAnimationFrame(loop);
-    };
-    const stop = (): void => {
-      cancelAnimationFrame(frame);
-      frame = 0;
-    };
-    const visibility = (): void => (document.visibilityState === 'hidden' ? stop() : start());
-    document.addEventListener('visibilitychange', visibility);
-    start();
+    drawRef.current = draw;
     return () => {
-      stop();
-      document.removeEventListener('visibilitychange', visibility);
+      drawRef.current = () => undefined;
     };
+  }, [requestDraw]);
+
+  // ───────────────────────────── when it draws
+  // With motion, every frame: the toolkit's loop asks for none while animations are off or motion is reduced.
+  useEffect(() => {
+    const loop = createMotionLoop((time) => drawRef.current(time), {
+      animations: theme.animations,
+      reducedMotion: theme.reducedMotion,
+    });
+    loopRef.current = loop;
+    return () => {
+      loop.dispose();
+      loopRef.current = null;
+      if (frameRef.current !== 0) cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+    };
+    // the loop lives as long as the view; the switches reach it below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Still, the clock keeps time once a second, on the second, from a timer rather than a frame loop.
+  useEffect(() => {
+    loopRef.current?.update({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+    requestDraw();
+    if (motion) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const second = (): void => {
+      timer = setTimeout(second, 1000 - (Date.now() % 1000));
+      drawRef.current(performance.now());
+    };
+    timer = setTimeout(second, 1000 - (Date.now() % 1000));
+    return () => clearTimeout(timer);
+  }, [motion, theme.animations, theme.reducedMotion, requestDraw]);
+
+  // A new layout, width or tuning: every canvas and readout draws again.
+  useEffect(() => {
+    revRef.current += 1;
+    headKeysRef.current = [];
+    dirtyRef.current = true;
+    mapDirtyRef.current = true;
+    requestDraw();
+  }, [layoutKey, columns.width, settings, requestDraw]);
 
   // ───────────────────────────── pointing
   const pointer = useRef<{ x: number; id: number; moved: boolean; inTrack: boolean } | null>(null);
@@ -808,7 +801,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
     }
   };
 
-  // The slider's values from the first render (the loop keeps them current between renders).
+  // The slider's values from the first render (the draw keeps them current between renders).
   const renderNow = Date.now();
   const renderScale = followNow(scaleRef.current, renderNow);
   const slider = {
@@ -821,15 +814,25 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
   };
   const presetIndex = ZOOM_PRESETS.findIndex((preset) => Math.abs(preset.spanMs - bar.spanMs) < 1000);
   const nextPreset = ZOOM_PRESETS[(presetIndex + 1) % ZOOM_PRESETS.length]!;
+  // The view's own properties (L18): its geometry from the stage (the chrome it clears on the left and, M58, above)
+  // and its columns, the ground from the palette.
   const rootStyle = {
-    '--vf-monitor-timeline-x1': `${columns.x1}px`,
-    '--vf-monitor-timeline-head': `${columns.head}px`,
-    '--vf-monitor-timeline-names': `${columns.names}px`,
+    '--mv-timeline-inset-left': `${stage.insets.left}px`,
+    '--mv-timeline-inset-top': `${stage.insets.top}px`,
+    '--mv-timeline-ground': theme.tokens.timeline.ground,
+    '--mv-timeline-x1': `${columns.x1}px`,
+    '--mv-timeline-head': `${columns.head}px`,
+    '--mv-timeline-names': `${columns.names}px`,
   } as CSSProperties;
   const empty = layout.placed.length === 0;
 
   return (
-    <div ref={rootRef} className={`vf-monitor-timeline${columns.narrow ? ' is-narrow' : ''}`} style={rootStyle}>
+    <div
+      ref={rootRef}
+      className={`vf-monitor-timeline${columns.narrow ? ' is-narrow' : ''}`}
+      style={rootStyle}
+      data-motion={motion ? 'on' : 'off'}
+    >
       <div className="vf-monitor-timeline-map">
         <div
           ref={mapBoxRef}
@@ -913,9 +916,10 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
-        onPointerLeave={() => {
+        onPointerLeave={(event) => {
           dropDrag();
-          light(bodyRef.current === document.activeElement ? focusRef.current : null);
+          // The keyboard's lane keeps the light while the body holds focus.
+          light(event.currentTarget.matches(':focus') ? focusRef.current : null);
         }}
         onLostPointerCapture={dropDrag}
         onKeyDown={onBodyKey}
@@ -941,27 +945,28 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
           )}
           <div className="vf-monitor-timeline-names" aria-hidden="true">
             {layout.placed.map(({ lane, y, h }) => {
-              const agent = lane.agent;
-              const two = h >= 30 && lane.kind === 'agent' && subLine(agent) !== '';
-              const pane = agent.attachment;
+              const row = lane.row;
+              const sub = laneSubLine(lane);
+              const two = h >= 30 && lane.kind === 'agent' && sub !== '';
+              const pane = row.attachment;
               return (
                 <div
                   key={lane.id}
-                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.endedAtMs !== undefined ? ' is-ended' : ''}${lane.receded ? ' is-receded' : ''}${agent.active ? ' is-active' : ''}`}
-                  style={{ top: y, height: h, '--pc': agent.color } as CSSProperties}
+                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.receded ? ' is-receded' : ''}${row.active ? ' is-active' : ''}`}
+                  style={{ top: y, height: h, '--mv-timeline-colour': row.colour } as CSSProperties}
                 >
                   {pane ? (
                     <i
-                      className={`vf-monitor-timeline-band${agent.active ? ' is-active' : ''}`}
-                      style={pane.color ? { background: pane.color } : undefined}
+                      className={`vf-monitor-timeline-band${row.active ? ' is-active' : ''}`}
+                      style={pane.colour ? { background: pane.colour } : undefined}
                     />
                   ) : null}
                   <span className="vf-monitor-timeline-who">
-                    {agent.remote ? <PeerMark name={agent.remote.deviceName} /> : null}
+                    {row.device.self ? null : <PeerMark name={row.device.name} />}
                     <FolderMark terminal={lane.kind === 'terminal'} />
-                    <b>{agent.project}</b>
+                    <b>{projectName(row)}</b>
                   </span>
-                  {two ? <small>{subLine(agent)}</small> : null}
+                  {two ? <small>{sub}</small> : null}
                 </div>
               );
             })}
@@ -974,7 +979,14 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
                   headEls.current[index] = element;
                 }}
                 className={`vf-monitor-timeline-head${lane.kind === 'terminal' ? ' is-terminal' : ''}${h < 30 ? ' is-one' : ''}${lane.receded ? ' is-receded' : ''}`}
-                style={{ top: y, height: h, '--h': `${h}px`, '--pc': lane.agent.color } as CSSProperties}
+                style={
+                  {
+                    top: y,
+                    height: h,
+                    '--mv-timeline-lane-height': `${h}px`,
+                    '--mv-timeline-colour': lane.row.colour,
+                  } as CSSProperties
+                }
               >
                 <i className="vf-monitor-timeline-body-mark" />
                 <span className="vf-monitor-timeline-readout">
@@ -988,7 +1000,7 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
         </div>
       </div>
       {empty ? (
-        <div className="vf-monitor-empty">
+        <div className="vf-monitor-timeline-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
         </div>
@@ -997,17 +1009,13 @@ export function TimelineView({ agents, parameters, actions, palette, history }: 
       <ul className="vf-monitor-timeline-agents">
         {layout.placed.map(({ lane }) => (
           <li key={lane.id}>
-            {lane.endedAtMs === undefined ? (
-              <button
-                type="button"
-                onClick={() => actions.select(lane.agent)}
-                aria-current={lane.agent.active ? 'true' : undefined}
-              >
-                {laneLabel(lane, Date.now())}
-              </button>
-            ) : (
-              <span>{laneLabel(lane, Date.now())}</span>
-            )}
+            <button
+              type="button"
+              onClick={() => commands.select(lane.id)}
+              aria-current={lane.row.active ? 'true' : undefined}
+            >
+              {laneLabel(lane, Date.now())}
+            </button>
           </li>
         ))}
       </ul>

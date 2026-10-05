@@ -20,7 +20,10 @@ import {
   formatRatePerHour as originalRatePerMinute,
   formatTokens as originalFormatTokens,
 } from '../../views/src/legacy/frozen/swarm/bubble-model.js';
-import * as originalTimelineWords from '../../views/src/views/timeline/timeline-words.js';
+// The timeline moved onto the SDK in MV-6: its words as it shipped are the frozen copy's, and its wait words were
+// its status ledger's (frozen beside it).
+import { EMPTY_STATUS_LEDGER, observeStatuses } from '../../views/src/legacy/frozen/timeline/status-ledger.js';
+import * as originalTimelineWords from '../../views/src/legacy/frozen/timeline/timeline-words.js';
 import type { AgentView } from '../src/model.js';
 import { agentViewFixture, type AgentViewFixturePartial } from '../src/testing/fixtures.js';
 import * as toolkit from '../src/toolkit/index.js';
@@ -65,6 +68,52 @@ describe('state words match the views', () => {
     for (const kind of ['permission', 'question', 'failure', 'sandbox', '', undefined]) {
       expect(toolkit.waitWord(kind)).toBe(originalTimelineWords.blockerWord(kind));
     }
+  });
+
+  it('a timeline lane says what a wait is about as its status ledger did: detail, then prompt (M2, M14)', () => {
+    // What the ledger kept of a blocked row, through the shim exactly as Godview's host fed it; the ported timeline
+    // says `laneWaitWords(row.wait)` where the frozen one said the book's blocker words.
+    const ledgerWords = (view: AgentView, options: LegacyShimOptions): string | undefined =>
+      observeStatuses(EMPTY_STATUS_LEDGER, [toMonitorAgent(view, options)], SINCE).lanes.get(view.id)?.changes[0]
+        ?.blocker?.detail;
+    const long = `${'a'.repeat(158)} the tail`;
+    const waits: readonly AgentView['wait'][] = [
+      { kind: 'permission', since: SINCE, tool: 'Bash' },
+      { kind: 'permission', since: SINCE, tool: 'Bash', detail: 'Bash · git push origin main' },
+      { kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?', detail: 'the detail' },
+      { kind: 'question', since: SINCE, header: 'Deploy', question: 'Ship it?' },
+      { kind: 'question', since: SINCE, question: '  Keep the flag?  ' },
+      { kind: 'question', since: SINCE, header: 'Deploy' },
+      { kind: 'question', since: SINCE, detail: '', question: 'Ship it?' },
+      { kind: 'question', since: SINCE, detail: '   ', question: 'Ship it?' },
+      { kind: 'failure', since: SINCE, code: 'E_RATE', detail: 'rate limited · retrying' },
+      { kind: 'failure', since: SINCE, detail: long },
+      { kind: 'question', since: SINCE, question: long },
+      undefined,
+    ];
+    for (const [index, wait] of waits.entries()) {
+      for (const options of [GODVIEW, REPLY_FIRST]) {
+        for (const device of [undefined, LAPTOP]) {
+          const view = agentViewFixture({ id: `w${index}`, status: 'blocked', ...(device ? { device } : {}), wait });
+          const legacy = ledgerWords(view, options);
+          // M9: VibeField's peers carried no Core facts (`omit`), so their lanes had no words; the model's do now.
+          if (device && options.peerMonitor === 'omit') {
+            expect(legacy).toBeUndefined();
+            continue;
+          }
+          expect(`${index}: ${toolkit.laneWaitWords(wait)}`).toBe(`${index}: ${legacy}`);
+        }
+      }
+    }
+    expect(toolkit.laneWaitWords(waits[9])).toHaveLength(160);
+    // A kind Core does not name (it names three today) was no blocker to the legacy rows, so the lane said nothing.
+    const unnamed = agentViewFixture({
+      id: 'w-unnamed',
+      status: 'blocked',
+      wait: { kind: 'sandbox', since: SINCE, detail: 'sandbox denied' },
+    });
+    expect(ledgerWords(unnamed, GODVIEW)).toBeUndefined();
+    expect(toolkit.laneWaitWords(unnamed.wait)).toBe('sandbox denied');
   });
 
   it('receding steps by the same numbers', () => {

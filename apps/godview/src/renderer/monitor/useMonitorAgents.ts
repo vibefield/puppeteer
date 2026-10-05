@@ -15,18 +15,13 @@ import {
 import type { AgentStatus, MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
 import { projectColourFor } from '@vibecook/puppeteer-view-sdk/toolkit';
 import {
-  EMPTY_STATUS_LEDGER,
   isPortedMonitorView,
   MONITOR_VIEWS,
-  observeStatuses,
-  statusHistoryBook,
   type AgentMonitorProps,
   type MonitorActions as ViewsMonitorActions,
   type MonitorAgent as ViewsMonitorAgent,
-  type MonitorHistoryBook,
   type MonitorPalette,
   type MonitorParameters,
-  type StatusLedger,
 } from '@vibecook/puppeteer-views';
 import type { AgentMonitorRemovedMessage, AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
@@ -51,12 +46,13 @@ import {
  * The backend in main computes every row; this window holds a REPLICA of its
  * model (a snapshot, then the changes, on one ordered channel: M23) and joins
  * only what the window knows: its panes, the pane it works in, the terminals it
- * holds, the theme's colours. The list and the rain are SDK views the view host
- * mounts directly (MV-4), and so is the swarm (MV-5): they read the model and
- * word the line under a name by the toolkit's one rule (reply-first, M4). The
- * timeline still mounts through the view host's legacy bridge with props built by the legacy
- * shim (L9) in Godview's words (`headline-cost`). The counts and the status
- * shortcuts read the model.
+ * holds, the theme's colours. All four views are SDK views the view host
+ * mounts directly — the list and the rain (MV-4), the swarm (MV-5) and the
+ * timeline (MV-6): they read the model and word the line under a name by the
+ * toolkit's one rule (reply-first, M4). No view mounts through the legacy
+ * bridge any more (the shim retires in MV-8). The counts and the status
+ * shortcuts read the model. Nothing here records what a row did: the timeline
+ * draws births and current states (runtime only, MV-D13).
  *
  * The chrome outside the views (the inspector, the find sheet, the deck's pane
  * frames, split sessions, pane recovery) reads rows joined with the chrome's own
@@ -81,7 +77,7 @@ export interface MonitorAgentsResult {
   /** This window's replica of the backend's model; the view host mounts the view on it. */
   replica: MonitorReplica;
   model: MonitorModel;
-  /** The four views by id: list, rain (MV-4) and the swarm (MV-5) as themselves, the timeline through the legacy bridge. */
+  /** The four views by id, each as itself: list and rain (MV-4), the swarm (MV-5), the timeline (MV-6). */
   views: ReadonlyMap<string, MonitorView>;
   /** The view host's commands: select and create stay this window's own. */
   commands: ViewSlotCommands;
@@ -386,20 +382,6 @@ export function useMonitorAgents({
     [legacy],
   );
 
-  // L10: the status ledger stays fed through the shim until MV-6, folded once per published model, before the view
-  // host's update in the same frame reads it.
-  const statusLedger = useRef<StatusLedger>(EMPTY_STATUS_LEDGER);
-  const history = useRef<MonitorHistoryBook>(statusHistoryBook(EMPTY_STATUS_LEDGER));
-  useEffect(
-    () =>
-      replica.subscribe(() => {
-        const rows = legacyRowsFor(replica.getSnapshot().model);
-        statusLedger.current = observeStatuses(statusLedger.current, rows, Date.now());
-        history.current = statusHistoryBook(statusLedger.current);
-      }),
-    [legacyRowsFor, replica],
-  );
-
   const select = useCallback(
     (session: SessionSummary | undefined): void => {
       if (session) workspace?.mountSession(session);
@@ -491,7 +473,6 @@ export function useMonitorAgents({
                     parameters: input.parameters as MonitorParameters,
                     actions: actionsFor(bridge),
                     palette: input.theme.tokens as MonitorPalette,
-                    history: history.current,
                   };
                 }),
           ] as const,

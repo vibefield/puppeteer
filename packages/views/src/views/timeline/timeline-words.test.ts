@@ -1,60 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import type { TimelineLane } from './timeline-lanes.js';
-import { stateAt } from './timeline-lanes.js';
-import { blockerWord, formatElapsed, formatShort, formatWords, laneLabel, readoutAt } from './timeline-words.js';
+import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import { laneFor, stateAt, type TimelineLane } from './timeline-lanes.js';
+import { laneLabel, laneSubLine, readoutAt } from './timeline-words.js';
 
 const SEC = 1000;
 const MIN = 60 * SEC;
 const NOW = 1_000_000 * MIN;
 
-describe('the formats', () => {
-  it('speaks the swarm’s elapsed, the short lengths and words', () => {
-    expect(formatElapsed(4 * MIN + 39 * SEC)).toBe('4:39');
-    expect(formatElapsed(62 * MIN)).toBe('1h 02m');
-    expect(formatElapsed(26 * 60 * MIN)).toBe('1d 02h');
-    expect(formatShort(45 * SEC)).toBe('45s');
-    expect(formatShort(7 * MIN)).toBe('7m');
-    expect(formatShort(134 * MIN)).toBe('2h 14m');
-    expect(formatShort(120 * MIN)).toBe('2h');
-    expect(formatWords(20 * SEC)).toBe('under a minute');
-    expect(formatWords(61 * MIN)).toBe('1 hour 1 minute');
-  });
-
-  it('says each blocker kind, and an unknown kind as itself', () => {
-    expect(blockerWord('permission')).toBe('permission');
-    expect(blockerWord('question')).toBe('question');
-    expect(blockerWord('failure')).toBe('failed');
-    expect(blockerWord('rate-limit')).toBe('rate-limit');
-  });
-});
-
-function lane(overrides: Partial<TimelineLane> = {}): TimelineLane {
-  return {
+/** A lane born an hour ago, blocked on a permission for the last five minutes, unless told otherwise. */
+function lane(overrides: AgentViewFixturePartial = {}): TimelineLane {
+  const row: AgentView = agentViewFixture({
     id: 'a',
-    agent: {
-      id: 'a',
-      createdAtMs: NOW - 60 * MIN,
-      status: 'idle',
-      project: 'notes',
-      detail: '',
-      color: '#123',
-      active: false,
-    },
-    kind: 'agent',
-    receded: false,
-    bornMs: NOW - 60 * MIN,
-    recordedFromMs: NOW - 40 * MIN,
-    spans: [
-      { status: 'working', fromMs: NOW - 40 * MIN, toMs: NOW - 12 * MIN },
-      { status: 'idle', fromMs: NOW - 12 * MIN, toMs: NOW - 5 * MIN },
-      { status: 'blocked', fromMs: NOW - 5 * MIN, blocker: { kind: 'permission' } },
-    ],
+    createdAt: NOW - 60 * MIN,
+    status: 'blocked',
+    statusSince: NOW - 5 * MIN,
+    wait: { kind: 'permission', since: NOW - 5 * MIN },
+    project: { name: 'notes', seq: 1 },
     ...overrides,
-  };
+  });
+  return laneFor(row, NOW);
 }
 
 describe('readoutAt', () => {
-  it('following now: the open state’s length and word, and a wait you owe rings', () => {
+  it('following now: the current state’s length and word, and a wait you owe rings', () => {
     const subject = lane();
     expect(readoutAt(subject, stateAt(subject, NOW), NOW, true, NOW)).toEqual({
       tone: 'blocked',
@@ -64,67 +33,126 @@ describe('readoutAt', () => {
     });
   });
 
-  it('looking back: how far into that state it was, of how long', () => {
+  it('looking back into the current state: how far in, and that it has lasted until now', () => {
     const subject = lane();
-    const at = NOW - 12 * MIN + 4 * MIN + 39 * SEC;
+    const at = NOW - 2 * MIN;
     expect(readoutAt(subject, stateAt(subject, at), at, false, NOW)).toEqual({
-      tone: 'idle',
-      big: '4:39',
-      small: 'idle · of 7m',
+      tone: 'blocked',
+      big: '3:00',
+      small: 'blocked · permission · of 5m+',
       owed: false,
     });
-    const atOpen = NOW - 2 * MIN;
-    expect(readoutAt(subject, stateAt(subject, atOpen), atOpen, false, NOW).small).toBe(
-      'blocked · permission · of 5m+',
-    );
   });
 
-  it('says ended, not recorded and not started', () => {
-    const ended = lane({ endedAtMs: NOW - 3 * MIN });
-    expect(readoutAt(ended, stateAt(ended, NOW), NOW, true, NOW).small).toBe('ended 3m ago');
+  it('before the current state it claims nothing, and before the birth it was not started', () => {
     const subject = lane();
-    expect(readoutAt(subject, stateAt(subject, NOW - 50 * MIN), NOW - 50 * MIN, false, NOW)).toMatchObject({
+    expect(readoutAt(subject, stateAt(subject, NOW - 50 * MIN), NOW - 50 * MIN, false, NOW)).toEqual({
       tone: 'unrecorded',
       big: '–',
       small: 'not recorded',
+      owed: false,
     });
-    expect(readoutAt(subject, stateAt(subject, NOW - 70 * MIN), NOW - 70 * MIN, false, NOW).small).toBe(
-      'not started yet',
-    );
+    expect(readoutAt(subject, stateAt(subject, NOW - 70 * MIN), NOW - 70 * MIN, false, NOW)).toEqual({
+      tone: 'none',
+      big: '',
+      small: 'not started yet',
+      owed: false,
+    });
   });
 
-  it('says a reply not yet opened as unseen, and a terminal as running or quiet', () => {
-    const unseen = lane({ spans: [{ status: 'unseen', fromMs: NOW - 38 * MIN }] });
+  it('says a reply not yet opened as unseen, owed; days from a day (M14)', () => {
+    const unseen = lane({ status: 'idle', unread: true, wait: undefined, statusSince: NOW - 38 * MIN });
     expect(readoutAt(unseen, stateAt(unseen, NOW), NOW, true, NOW)).toMatchObject({
+      tone: 'unseen',
+      big: '38:00',
       small: 'reply unseen',
       owed: true,
     });
-    const shell = lane({ kind: 'terminal', spans: [{ status: 'idle', fromMs: NOW - 31 * MIN }] });
+    const long = lane({
+      status: 'working',
+      wait: undefined,
+      createdAt: NOW - 30 * 60 * MIN,
+      statusSince: NOW - 26 * 60 * MIN,
+    });
+    // A stretch older than the horizon reads from it: a day, at most (as the lane is clipped).
+    expect(readoutAt(long, stateAt(long, NOW), NOW, true, NOW).big).toBe('1d 00h');
+    const day = lane({
+      status: 'working',
+      wait: undefined,
+      createdAt: NOW - 30 * 60 * MIN,
+      statusSince: NOW - 1450 * MIN,
+    });
+    expect(readoutAt(day, stateAt(day, NOW), NOW, true, NOW).big).toBe('1d 00h');
+    const hours = lane({
+      status: 'working',
+      wait: undefined,
+      createdAt: NOW - 30 * 60 * MIN,
+      statusSince: NOW - 1430 * MIN,
+    });
+    expect(readoutAt(hours, stateAt(hours, NOW), NOW, true, NOW).big).toBe('23h 50m');
+  });
+
+  it('says a wait the toolkit does not know as itself, and a wait with no kind as a failure', () => {
+    const odd = lane({ wait: { kind: 'sandbox', since: NOW } });
+    expect(readoutAt(odd, stateAt(odd, NOW), NOW, true, NOW).small).toBe('blocked · sandbox');
+    const bare = lane({ wait: undefined });
+    expect(readoutAt(bare, stateAt(bare, NOW), NOW, true, NOW).small).toBe('blocked · failed');
+  });
+
+  it('says a terminal as running or quiet, never owed', () => {
+    const shell = lane({ kind: 'terminal', status: 'idle', wait: undefined, statusSince: NOW - 31 * MIN });
     expect(readoutAt(shell, stateAt(shell, NOW), NOW, true, NOW)).toEqual({
       tone: 'idle',
       big: '',
       small: 'quiet',
       owed: false,
     });
+    const busy = lane({ kind: 'terminal', status: 'working', wait: undefined, statusSince: NOW - 2 * MIN });
+    expect(readoutAt(busy, stateAt(busy, NOW), NOW, true, NOW)).toEqual({
+      tone: 'working',
+      big: '2:00',
+      small: 'running',
+      owed: false,
+    });
   });
 });
 
 describe('laneLabel', () => {
-  it('names the lane, its peer and its present for a screen reader', () => {
+  it('names the lane, its peer and its present for a screen reader, with the wait’s own words', () => {
     const subject = lane({
-      agent: {
-        ...lane().agent,
-        remote: {
-          deviceId: 'd',
-          deviceName: 'studio',
-          remoteSessionId: 'r',
-          attachable: true,
-          hostWritable: true,
-          cwdLabel: null,
-        },
-        agent: { provider: { id: 'imposter', label: 'Imposter' }, model: 'opus', recency: 'fresh' },
-      },
+      device: { id: 'd', name: 'studio', self: false },
+      provider: { id: 'imposter', label: 'Imposter' },
+      model: 'opus',
+      wait: { kind: 'question', since: NOW - 5 * MIN, header: 'Grants', question: 'Expire with the session?' },
     });
-    expect(laneLabel(subject, NOW)).toBe('on studio, notes, opus, blocked on a permission for 5 minutes');
+    expect(laneLabel(subject, NOW)).toBe(
+      'on studio, notes, opus, blocked on a question for 5 minutes: Expire with the session?',
+    );
+  });
+
+  it('says what runs it as the model, else the provider, and a terminal as a terminal', () => {
+    const working = lane({ status: 'working', wait: undefined, provider: { id: 'codex', label: 'Codex' } });
+    expect(laneLabel(working, NOW)).toBe('notes, Codex, working for 5 minutes');
+    const shell = lane({
+      kind: 'terminal',
+      status: 'working',
+      wait: undefined,
+      createdAt: NOW - 90 * MIN,
+      statusSince: NOW - 61 * MIN,
+    });
+    expect(laneLabel(shell, NOW)).toBe('notes, terminal, running for 1 hour 1 minute');
+    const quiet = lane({ kind: 'terminal', status: 'idle', wait: undefined });
+    expect(laneLabel(quiet, NOW)).toBe('notes, terminal, quiet');
+  });
+});
+
+describe('laneSubLine', () => {
+  it('is what runs an agent and its branch, when there is any; a terminal has none', () => {
+    expect(laneSubLine(lane({ model: 'opus', project: { name: 'notes', branch: 'main' } }))).toBe('opus · main');
+    expect(laneSubLine(lane({ provider: { id: 'codex', label: 'Codex' }, project: { name: 'n', branch: null } }))).toBe(
+      'Codex',
+    );
+    expect(laneSubLine(lane({ provider: undefined, model: undefined }))).toBe('');
+    expect(laneSubLine(lane({ kind: 'terminal', model: 'opus' }))).toBe('');
   });
 });

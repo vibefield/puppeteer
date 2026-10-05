@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState, type MonitorBlocker } from '@vibecook/puppeteer-core';
 import type { AgentView, MonitorModel } from '@vibecook/puppeteer-view-sdk';
 import { remoteWriteLabel } from '../monitor/remote-write.js';
-import { EMPTY_STATUS_LEDGER, observeStatuses } from '../monitor/status-ledger.js';
 import type { MonitorAgent } from '../monitor/types.js';
 import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
 import { rainDataString } from '../views/rain/rain-streams.js';
 import { rainDataString as frozenRainDataString } from './frozen/rain-streams.js';
 import { bubbleModel } from './frozen/swarm/bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from '../views/swarm/swarm-parameters.js';
-import { laneFromRow } from '../views/timeline/timeline-lanes.js';
+// The timeline moved onto the SDK and runtime only in MV-6: what the legacy timeline and its status ledger read of the
+// shim's rows is read through their frozen copies, which the parity test renders.
+import { EMPTY_STATUS_LEDGER, observeStatuses } from './frozen/timeline/status-ledger.js';
+import { laneFromRow } from './frozen/timeline/timeline-lanes.js';
 import { toMonitorAgent, toMonitorAgents, viewReadProjection, type LegacyShimOptions } from './index.js';
 
 const NOW = Date.parse('2026-10-03T22:00:00.000Z');
@@ -451,8 +453,8 @@ describe('peers (M9)', () => {
 
 describe('a row the runtime has not spoken for (observed: false; mv-review)', () => {
   // Today such a run has no mirror, so neither host's row carries `agent.monitor` or a usage history. The backend
-  // dates a starting row's statusSince at the host's createdAt; a monitor carrying it would start the status
-  // ledger's lane at the birth (status-ledger.ts:146-152) instead of at first sight.
+  // dates a starting row's statusSince at the host's createdAt; a monitor carrying it would have started the status
+  // ledger's lane at the birth (frozen/timeline/status-ledger.ts) instead of at first sight.
   const starting = (overrides: Partial<AgentView> = {}): AgentView =>
     agentView({
       id: 'run-s',

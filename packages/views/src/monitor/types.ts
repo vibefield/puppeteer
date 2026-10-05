@@ -8,7 +8,6 @@ import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vi
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorPalette } from './palette.js';
 import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
-import type { MonitorHistoryBook } from './status-history.js';
 import type { UsageHistory } from './usage-ledger.js';
 
 /** The two looks the instrument skin ships; a host keeps the chosen one. */
@@ -221,10 +220,6 @@ export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, Moni
   /** The desktops and Agent Profiles a new terminal can be born under (the
    * spawn bloom, SB). Absent: a hold creates at once, exactly as before it. */
   readonly spawnMenu?: MonitorSpawnMenu | undefined;
-  /** What each lane did over time (`status-history.ts`), for views that draw the
-   * past. Absent: the host keeps no record, and such a view draws only what the
-   * rows say — each agent's birth and how long its current state has lasted. */
-  readonly history?: MonitorHistoryBook | undefined;
 };
 
 /**

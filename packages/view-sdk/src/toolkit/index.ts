@@ -7,6 +7,7 @@
 export * from './format.js';
 export * from './state-words.js';
 export * from './words.js';
+export * from './lane-words.js';
 export * from './spawn-menu.js';
 export * from './colour.js';
 export * from './marks.js';

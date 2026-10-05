@@ -1,5 +1,3 @@
-import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
-
 // The timeline's clock face: how much time the window spans, where its right
 // edge (the head) stands, and whether it follows now. Pure, so the view keeps
 // one of these in a ref and the tests drive it without a frame.
@@ -10,6 +8,9 @@ import { STATUS_HISTORY_HORIZON_MS } from '../../monitor/status-history.js';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
+
+/** A day: the widest the window opens, and the furthest back the map of the day reaches. */
+export const TIMELINE_HORIZON_MS = 24 * HOUR;
 
 export interface ZoomPreset {
   readonly id: string;
@@ -28,7 +29,7 @@ export const ZOOM_PRESETS: readonly ZoomPreset[] = [
 /** The window opens on the last hour (TL-D5). */
 export const DEFAULT_SPAN_MS = HOUR;
 export const SPAN_MIN_MS = 5 * MINUTE;
-export const SPAN_MAX_MS = STATUS_HISTORY_HORIZON_MS;
+export const SPAN_MAX_MS = TIMELINE_HORIZON_MS;
 export const ZOOM_TWEEN_MS = 240;
 export const GLIDE_TWEEN_MS = 600;
 /** A head this close to now is following it. */

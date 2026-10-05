@@ -1,34 +1,37 @@
-import type { MonitorHistorySpan } from '../../monitor/status-history.js';
-import type { TimelineLane } from './timeline-lanes.js';
+import type { LaneStatus, TimelineLane } from './timeline-lanes.js';
 
 // The map of the day, drawn as Pulse (TL-D15): the whole field summed into one
 // ridge. Work stacks above a line in each project's colour, its height the
 // number of agents working; what waited on you hangs below it, orange then
 // blue. Counts are drawn as a shape, never printed (FC-D18). Pure: buckets in,
 // band outlines out, so the painter only fills what this hands it.
+//
+// Runtime only (MV-6), each agent gives the map its current state alone, from
+// when it began to now: the ridge is what births and current states support,
+// and before a state began the map claims nothing for it.
 
 export interface PulseRow {
   /** The project's colour; rows that share it share a band. */
   readonly color: string;
-  readonly recordedFromMs: number;
-  /** Where the row's record stops: its end, or now. */
+  readonly status: LaneStatus;
+  /** The current state's start, and now. */
+  readonly fromMs: number;
   readonly endMs: number;
-  readonly spans: readonly MonitorHistorySpan[];
 }
 
 /**
- * The map's rows: every agent lane on the record (not only those in view),
- * except a receded one — the host is showing another group, and the map
- * counts what the stage counts.
+ * The map's rows: every agent lane (not only those in view), except a receded
+ * one — the host is showing another group, and the map counts what the stage
+ * counts.
  */
 export function pulseRowsFor(lanes: readonly TimelineLane[], nowMs: number): PulseRow[] {
   return lanes
     .filter((lane) => lane.kind === 'agent' && !lane.receded)
     .map((lane) => ({
-      color: lane.agent.color,
-      recordedFromMs: lane.recordedFromMs,
-      endMs: lane.endedAtMs ?? nowMs,
-      spans: lane.spans,
+      color: lane.row.colour,
+      status: lane.current.status,
+      fromMs: lane.current.fromMs,
+      endMs: nowMs,
     }));
 }
 
@@ -119,19 +122,15 @@ export function pulseMap(rows: readonly PulseRow[], startMs: number, nowMs: numb
       colors.push(row.color);
       work.push(new Float32Array(count));
     }
-    for (const span of row.spans) {
-      const a = Math.max(span.fromMs, row.recordedFromMs, startMs);
-      const b = Math.min(span.toMs ?? row.endMs, row.endMs);
-      const into =
-        span.status === 'working'
-          ? work[band]!
-          : span.status === 'blocked'
-            ? blocked
-            : span.status === 'unseen'
-              ? unseen
-              : undefined;
-      if (into) addCoverage(into, startMs, dt, a, b);
-    }
+    const into =
+      row.status === 'working'
+        ? work[band]!
+        : row.status === 'blocked'
+          ? blocked
+          : row.status === 'unseen'
+            ? unseen
+            : undefined;
+    if (into) addCoverage(into, startMs, dt, Math.max(row.fromMs, startMs), row.endMs);
   }
   // The project that worked most lies on the line, the least at the crest.
   const sums = work.map((values) => values.reduce((sum, value) => sum + value, 0));
