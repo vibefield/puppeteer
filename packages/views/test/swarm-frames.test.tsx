@@ -1,5 +1,4 @@
 // @vitest-environment happy-dom
-import { createHash } from 'node:crypto';
 import { act } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MonitorModel, MonitorViewInput, MonitorViewInstance, StageGeometry } from '@vibecook/puppeteer-view-sdk';
@@ -82,32 +81,43 @@ const rounded = (value: unknown): unknown =>
         ? round(value, 4)
         : value;
 
-/** A frame as the golden keeps it; models go by hash, stored once. */
-function project(frame: SwarmFrame, index: number, models: Record<string, unknown>) {
+/** A model's key, as the Electron golden hashes it (sha256, 12 hex): the platform's digest, no `node:` import (M59). */
+async function hash12(json: string): Promise<string> {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(json));
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 12);
+}
+
+/** A frame as the golden keeps it; models go by hash, stored once, in the order the bodies were met. */
+async function project(frame: SwarmFrame, index: number, models: Record<string, unknown>) {
+  const bodies = [];
+  for (const body of frame.bodies) {
+    const json = JSON.stringify(rounded(body.model));
+    const hash = await hash12(json);
+    models[hash] ??= JSON.parse(json);
+    bodies.push({
+      id: body.model.id,
+      x: round(body.x, 2),
+      y: round(body.y, 2),
+      radius: round(body.radius, 2),
+      scale: round(body.scale, 3),
+      opacity: round(body.opacity, 3),
+      focus: body.focus,
+      seed: round(body.seed, 4),
+      accent: body.accent.map((channel) => round(channel, 3)),
+      ...(body.link ? { link: body.link.map((channel) => round(channel, 3)) } : {}),
+      model: hash,
+    });
+  }
   return {
     index,
     time: round(frame.time, 4),
     motion: frame.motion,
     ...(frame.veil ? { veil: round(frame.veil, 3) } : {}),
     ...(frame.hold ? { hold: rounded(frame.hold) } : {}),
-    bodies: frame.bodies.map((body) => {
-      const json = JSON.stringify(rounded(body.model));
-      const hash = createHash('sha256').update(json).digest('hex').slice(0, 12);
-      models[hash] ??= JSON.parse(json);
-      return {
-        id: body.model.id,
-        x: round(body.x, 2),
-        y: round(body.y, 2),
-        radius: round(body.radius, 2),
-        scale: round(body.scale, 3),
-        opacity: round(body.opacity, 3),
-        focus: body.focus,
-        seed: round(body.seed, 4),
-        accent: body.accent.map((channel) => round(channel, 3)),
-        ...(body.link ? { link: body.link.map((channel) => round(channel, 3)) } : {}),
-        model: hash,
-      };
-    }),
+    bodies,
   };
 }
 
@@ -158,13 +168,14 @@ describe('the swarm’s frames', () => {
     // One frame per animation frame once the renderer answered, and the change landed between them.
     expect(recorded.length).toBeGreaterThanOrEqual(BEFORE + AFTER - 2);
     const models: Record<string, unknown> = {};
-    const kept = recorded
+    const sampled = recorded
       .map((frame, index) => ({ frame, index }))
       .filter(
         ({ index }) =>
           index % KEEP_EVERY === 0 || index === before - 1 || index === before || index === recorded.length - 1,
-      )
-      .map(({ frame, index }) => project(frame, index, models));
+      );
+    const kept = [];
+    for (const { frame, index } of sampled) kept.push(await project(frame, index, models));
     const ids = (frame: SwarmFrame | undefined) => new Set(frame?.bodies.map((body) => body.model.id));
     expect(ids(recorded[before - 1]).has('late-arrival')).toBe(false);
     expect(ids(recorded.at(-1)).has('late-arrival')).toBe(true);

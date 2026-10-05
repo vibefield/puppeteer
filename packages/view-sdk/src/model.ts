@@ -278,9 +278,9 @@ export interface AgentView extends MonitorAgentRow {
   /** Where the person asked for it, for views that place new arrivals spatially. */
   readonly spawnHint?: { readonly x: number; readonly y: number } | undefined;
   /**
-   * The row's spatial identity, window-local (M59): a launcher's agent takes the shell's place, so a spatial view
-   * keeps one body across the handoff. A view keys spatial identity by `visualId ?? id`. The replica's local join
-   * supplies it (`setLocal({ visualIds })`, M28's identity rules); absent, the row's own id.
+   * The body this row continues, when its window knows it (window-local: the replica's `setLocal({ visualIds })`).
+   * A launcher's agent takes the shell's place in its pane, so a spatial view keeps ONE body across the handoff
+   * instead of a removal and an arrival. Absent: the row's own id. A view keys spatial identity by `visualId ?? id`.
    */
   readonly visualId?: string | undefined;
 }
