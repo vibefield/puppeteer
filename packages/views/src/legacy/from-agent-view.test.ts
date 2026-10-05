@@ -7,7 +7,7 @@ import type { MonitorAgent } from '../monitor/types.js';
 import { USAGE_STEP_MS } from '../monitor/usage-ledger.js';
 import { rainDataString } from '../views/rain/rain-streams.js';
 import { rainDataString as frozenRainDataString } from './frozen/rain-streams.js';
-import { bubbleModel } from '../views/swarm/bubble-model.js';
+import { bubbleModel } from './frozen/swarm/bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from '../views/swarm/swarm-parameters.js';
 import { laneFromRow } from '../views/timeline/timeline-lanes.js';
 import { toMonitorAgent, toMonitorAgents, viewReadProjection, type LegacyShimOptions } from './index.js';
@@ -494,7 +494,7 @@ describe('a row the runtime has not spoken for (observed: false; mv-review)', ()
   });
 });
 
-describe('the shipping views draw the shim', () => {
+describe('the legacy views draw the shim (the swarm as it shipped, frozen; the ported one reads the model)', () => {
   const draw = (view: AgentView, unread = false) =>
     bubbleModel({ agent: toMonitorAgent(view, GODVIEW), parameters: DEFAULT_SWARM_PARAMETERS, nowMs: NOW, unread });
 

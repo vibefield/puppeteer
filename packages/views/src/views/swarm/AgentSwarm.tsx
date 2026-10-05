@@ -3,12 +3,22 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactElement,
 } from 'react';
-import { monitorChromeElements } from '../../monitor/chrome.js';
-import { approachRecede, everyReceded, recedeTarget } from '../../monitor/recede.js';
-import type { AgentMonitorProps, MonitorAgent } from '../../monitor/types.js';
+import type { AgentView, StageGeometry } from '@vibecook/puppeteer-view-sdk';
+import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import {
+  approachRecede,
+  createMotionLoop,
+  everyReceded,
+  recedeTarget,
+  type MotionLoop,
+} from '@vibecook/puppeteer-view-sdk/toolkit';
 import { birthAgent, birthOf, birthOverdue, birthRow, profileLineFor, type BloomBirth } from './bloom/birth.js';
 import { BLOOM } from './bloom/constants.js';
 import {
@@ -21,7 +31,8 @@ import {
 } from './bloom/field-frame.js';
 import type { BloomBody } from './bloom/model.js';
 import { SpawnBloom } from './bloom/SpawnBloom.js';
-import { useSpawnBloom } from './bloom/use-spawn-bloom.js';
+import { useSpawnBloom, type BloomFocusPlace } from './bloom/use-spawn-bloom.js';
+import { bodyIdOf } from './body-id.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
 import { resolveCssColor, type Rgba } from './gpu/color.js';
 import {
@@ -31,16 +42,10 @@ import {
   type SwarmRenderer,
   type SwarmTheme,
 } from './gpu/swarm-renderer.js';
-import { useSwarmPhysicsDriverFactory } from './physics/context.js';
+import { createSwarmPhysicsDriver, type SwarmPhysicsDriver } from './physics/driver.js';
 import { readSwarmFrame, type BubbleState } from './physics/frame.js';
-import type { SwarmPhysicsDriver } from './physics/inline-driver.js';
 import type { SwarmPhysicsEvent } from './physics/protocol.js';
-import {
-  PHYSICS_HZ_FLOOR,
-  type SwarmAgentSpec,
-  type SwarmObstacleRect,
-  type SwarmPhysicsParameters,
-} from './physics/world.js';
+import { PHYSICS_HZ_FLOOR, type SwarmAgentSpec, type SwarmPhysicsParameters } from './physics/world.js';
 import { normalizeSwarmParameters, type SwarmParameters } from './swarm-parameters.js';
 import { resolveSwarmTheme } from './swarm-theme.js';
 
@@ -48,22 +53,31 @@ import { resolveSwarmTheme } from './swarm-theme.js';
 //
 // Status is size and treatment, never a decorative hue: the per-bubble color is
 // the project's (record §02, stable per session, groups and labels), and the
-// state reading comes from the theme the stage hands down.
+// state reading comes from the theme the input hands down.
 //
 // THE SIMULATION IS NOT HERE. matter, the accumulator, the springs and the
-// spawn search live in `physics/world.ts`, behind a driver the host chooses
-// (`physics/context.tsx`): in this thread by default, in a worker where the
-// host runs one. What is left in this file is everything that genuinely needs
-// a document or a GPU: measuring chrome, mapping pointers into world
-// coordinates, the WebGPU renderer, the models the bodies draw, the hidden
-// button per body for keyboard and assistive access, and the hover tooltip.
-// `bubble-model.ts` owns what a body says; `gpu/swarm-renderer.ts` owns how it
-// is painted.
+// spawn search live in `physics/world.ts`, behind the view's own driver
+// (`physics/driver.ts`, MV-D7): in a worker the view brings, or in this thread
+// where no worker can load — the mode reported, never assumed. What is left in
+// this file is everything that genuinely needs a document or a GPU: mapping
+// pointers into world coordinates, the WebGPU renderer, the models the bodies
+// draw, the hidden button per body for keyboard and assistive access, and the
+// hover tooltip. `bubble-model.ts` owns what a body says; `gpu/swarm-renderer.ts`
+// owns how it is painted.
+//
+// On the SDK (MV-5) the view reads its input and nothing of a host's: the rows
+// as `AgentView`, the palette and the motion switches in `theme`, the chrome's
+// rectangles in `stage.obstacles` (MV-D19) where it once measured the host's
+// elements, and the spawn menu in `capabilities`. What a host used to read off
+// its DOM it now reports (`commands.report`): the renderer, where the physics
+// run, and the keys the bloom holds.
 //
 // The render loop draws at the display's rate by interpolating between the
 // last two states the physics published, and the visual radius follows the
 // physics radius on a critically damped spring — so the field looks the same
-// whether the physics steps at 15Hz or 120.
+// whether the physics steps at 15Hz or 120. Told to hold still (the host's
+// animations switch off, or motion reduced: MV-W4), the loop stops, the physics
+// pause with it, and the field is drawn once per change where it stands.
 
 /** What this thread keeps about one body beyond the physics' own frame. */
 interface BodyVisual {
@@ -74,7 +88,7 @@ interface BodyVisual {
   seed: number;
   /** Arrival order, for a stable draw order within one status. */
   arrival: number;
-  /** The weight it is drawn at while the host shows another group: 1 when shown (`monitor/recede.ts`). */
+  /** The weight it is drawn at while the host shows another group: 1 when shown (the toolkit's recede steps). */
   recede: number;
   /** Born from a bloom's bud: its arrival starts from the bud's size over its own (the spawn bloom, SB). */
   from?: number;
@@ -131,10 +145,6 @@ function focusVisible(element: Element): boolean {
   }
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 /** The physics' half of the panel's parameters. The rest describe how a body LOOKS. */
 function physicsParameters(swarm: SwarmParameters): SwarmPhysicsParameters {
   return {
@@ -162,15 +172,48 @@ function arrival(elapsedMs: number): { scale: number; opacity: number } {
   return { scale: 1.035 + (1 - 1.035) * inOut((t - 0.88) / 0.12), opacity: 1 };
 }
 
+/**
+ * One body per spatial identity, the seam's rule: when two rows wear the same
+ * one (a launched agent's first state can arrive while the fresh shell it takes
+ * over is still in its pane), the earlier row in the model's order (agents
+ * first) speaks for it and the other is not drawn. The same list when nothing
+ * is dropped, so an unchanged model costs nothing.
+ */
+function drawnRows(rows: readonly AgentView[]): readonly AgentView[] {
+  const bodies = new Set<string>();
+  let dropped = false;
+  const kept: AgentView[] = [];
+  for (const row of rows) {
+    const id = bodyIdOf(row);
+    if (bodies.has(id)) {
+      dropped = true;
+      continue;
+    }
+    bodies.add(id);
+    kept.push(row);
+  }
+  return dropped ? kept : rows;
+}
+
+/** The host has measured its chrome: a stage with no size is one not measured yet. */
+function measured(stage: StageGeometry): boolean {
+  return stage.width > 0 && stage.height > 0;
+}
+
 interface Models {
   byId: Map<string, SwarmBubbleModel>;
   at: number;
-  agents: readonly MonitorAgent[];
+  agents: readonly AgentView[];
 }
 
-export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: AgentMonitorProps) {
+export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactElement {
+  const { model, theme, stage, parameters, capabilities } = input;
+  const palette = theme.tokens;
+  const spawnMenu = capabilities.spawn;
+  /** Motion is the host's switch and the person's preference together (MV-W4): off, the field holds still. */
+  const motionOn = theme.animations && !theme.reducedMotion;
   const swarm = useMemo<SwarmParameters>(() => normalizeSwarmParameters(parameters), [parameters]);
-  const createDriver = useSwarmPhysicsDriverFactory();
+  const agents = useMemo(() => drawnRows(model.agents), [model.agents]);
   const containerRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const driverRef = useRef<SwarmPhysicsDriver | undefined>(undefined);
@@ -179,14 +222,14 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   /** The last two solved positions per body: the two ends of the blend. */
   const statesRef = useRef(new Map<string, BubbleState>());
   const visualsRef = useRef(new Map<string, BodyVisual>());
-  /** When this terminal's foreground job was first seen, per row. */
+  /** When this terminal's foreground job was first seen, per body. */
   const runningSinceRef = useRef(new Map<string, number>());
   /** When the newest frame landed, in this thread's clock. */
   const frameAtRef = useRef<number | null>(null);
   const rendererRef = useRef<SwarmRenderer | undefined>(undefined);
   const parametersRef = useRef(swarm);
-  const agentsRef = useRef<readonly MonitorAgent[]>(agents);
-  /** Which rows the host has receded, and whether that is all of them; read by the render loop. */
+  const agentsRef = useRef<readonly AgentView[]>(agents);
+  /** Which bodies the host has receded, and whether that is all of them; read by the render loop. */
   const recedeRef = useRef<{ ids: ReadonlySet<string>; every: boolean }>({ ids: new Set(), every: false });
   const modelsRef = useRef<Models>({ byId: new Map(), at: 0, agents: [] });
   const themeRef = useRef<SwarmTheme | undefined>(undefined);
@@ -195,22 +238,20 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   const arrivalCounterRef = useRef(0);
   const dragRef = useRef<Drag | undefined>(undefined);
   const holdRef = useRef<Hold | undefined>(undefined);
-  const holdTimerRef = useRef<number | undefined>(undefined);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const focusedIdRef = useRef<string | undefined>(undefined);
   const hoveredIdRef = useRef<string | undefined>(undefined);
-  const [hovered, setHovered] = useState<{ agent: MonitorAgent; x: number; y: number } | undefined>(undefined);
+  const [hovered, setHovered] = useState<{ agent: AgentView; x: number; y: number } | undefined>(undefined);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'grabbing'>('default');
   const [failure, setFailure] = useState<string | undefined>(undefined);
-  /** What is painting: `starting` until the device answers, then `webgpu` or `unavailable`. */
-  const [rendererState, setRendererState] = useState<'starting' | 'webgpu' | 'unavailable'>('starting');
-  /** The chrome over the field as rectangles, read by the render effect's own measure. */
-  const readChromeRef = useRef<() => readonly SwarmObstacleRect[]>(() => []);
   const newTerminalRef = useRef<HTMLButtonElement>(null);
   /** The keys door is focused from the keyboard: its echo shows where the bloom will open. */
   const [newTerminalFocus, setNewTerminalFocus] = useState(false);
   /** The signifier under a still pointer, and the stillness it waits on. */
   const [signifier, setSignifier] = useState<{ x: number; y: number } | undefined>(undefined);
-  const stillRef = useRef<{ timer: number; x: number; y: number } | undefined>(undefined);
+  const signifierStillRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | undefined>(
+    undefined,
+  );
   /** The field under a bloom — the veil, what it lights, its clearings — eased across frames. */
   const fieldMemoryRef = useRef(bloomFieldMemory());
   /** Births on their way: drawn where the person let go until the host's row takes over. */
@@ -218,12 +259,36 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   const birthSeqRef = useRef(0);
   const spawnMenuRef = useRef(spawnMenu);
   spawnMenuRef.current = spawnMenu;
+  /** The stage as the host measured it last (MV-D19): the chrome's rectangles the physics keeps bodies off. */
+  const stageRef = useRef(stage);
+  stageRef.current = stage;
+  const motionRef = useRef(motionOn);
+  motionRef.current = motionOn;
+  const switchesRef = useRef({ animations: theme.animations, reducedMotion: theme.reducedMotion });
+  switchesRef.current = { animations: theme.animations, reducedMotion: theme.reducedMotion };
+  /** The ramp a bare terminal wears, for a birth's body. */
+  const neutralRef = useRef(palette.neutral);
+  neutralRef.current = palette.neutral;
+  const commandsRef = useRef(commands);
+  commandsRef.current = commands;
+  /** Where the keyboard's focus stands, from the view's own focus events (MV-W2); the bloom asks. */
+  const focusRef = useRef<BloomFocusPlace>('none');
+  const loopRef = useRef<MotionLoop | null>(null);
+  /** Draws the field once where it stands: what a stopped loop shows. Set by the render effect. */
+  const stillDrawRef = useRef<(() => void) | null>(null);
+  /** Re-reads the motion switches into the loop and the physics. Set by the render effect. */
+  const motionSyncRef = useRef<(() => void) | null>(null);
+  /** Posts the physics' first world once the stage is measured. Set by the render effect. */
+  const initRef = useRef<(() => void) | null>(null);
+  const initialisedRef = useRef(false);
+  /** The stage whose obstacles the physics holds. */
+  const stageSentRef = useRef<StageGeometry | undefined>(undefined);
 
   // The spawn bloom (SB): with a spawn menu, a completed hold opens it instead of
   // creating at once; without one, the hold creates at once as it always has.
   const bloom = useSpawnBloom(spawnMenu, {
     container: containerRef,
-    readChrome: () => readChromeRef.current(),
+    readChrome: () => stageRef.current.obstacles,
     bodies: () =>
       orderRef.current.map((body): BloomBody => ({
         x: body.x,
@@ -233,10 +298,10 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         agent: agentById(body.model.id),
       })),
     idleRadius: () => parametersRef.current.radiusIdle,
-    motion: () =>
-      !prefersReducedMotion() &&
-      containerRef.current?.closest('.vf-godview')?.getAttribute('data-godview-animations') !== 'off',
-    createAt: (position, target) => (target ? actions.createAt(position, target) : actions.createAt(position)),
+    motion: () => motionRef.current,
+    focus: () => focusRef.current,
+    createAt: (position, target) =>
+      target ? commandsRef.current.create(position, target) : commandsRef.current.create(position),
     born: (choice, answer) => {
       birthSeqRef.current += 1;
       const record: Birthing = {
@@ -260,8 +325,8 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       const settle = (patch: { answeredAt?: number; failedAt?: number }): void => {
         if (birthsRef.current.includes(record)) record.birth = { ...record.birth, ...patch };
       };
-      Promise.resolve(answer).then(
-        () => settle({ answeredAt: performance.now() }),
+      answer.then(
+        ({ opened }) => settle(opened ? { answeredAt: performance.now() } : { failedAt: performance.now() }),
         () => settle({ failedAt: performance.now() }),
       );
     },
@@ -269,11 +334,14 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   const bloomRef = useRef(bloom);
   bloomRef.current = bloom;
   const blooming = bloom.state !== null && bloom.state.closed === null;
+  /** A bloom held open, or the keys door's, has the keyboard: the host's own keys stand aside (`report`). */
+  const holdsKeys = blooming && (bloom.state?.mode === 'keys' || bloom.state?.mode === 'sticky');
+  const keysHeldRef = useRef(false);
 
   useEffect(() => {
     agentsRef.current = agents;
     recedeRef.current = {
-      ids: new Set(agents.filter((agent) => agent.receded === true).map((agent) => agent.visualId ?? agent.id)),
+      ids: new Set(agents.filter((agent) => agent.receded).map(bodyIdOf)),
       every: everyReceded(agents),
     };
   }, [agents]);
@@ -295,16 +363,22 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     // keeps a slider drag from clearing the colour cache every frame.
   }, [palette, swarm.stateChroma, swarm.stateGroundDark, swarm.stateGroundLight]);
 
+  useEffect(() => {
+    if (keysHeldRef.current === holdsKeys) return;
+    keysHeldRef.current = holdsKeys;
+    commands.report({ keysHeld: holdsKeys });
+  }, [commands, holdsKeys]);
+
   const cancelHold = (): void => {
-    if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+    if (holdTimerRef.current !== undefined) clearTimeout(holdTimerRef.current);
     holdTimerRef.current = undefined;
     holdRef.current = undefined;
   };
 
   useEffect(
     () => () => {
-      if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
-      if (stillRef.current) window.clearTimeout(stillRef.current.timer);
+      if (holdTimerRef.current !== undefined) clearTimeout(holdTimerRef.current);
+      if (signifierStillRef.current) clearTimeout(signifierStillRef.current.timer);
     },
     [],
   );
@@ -312,21 +386,22 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   /** The signifier: a pointer still over empty ground (`at`) learns what a hold does, the first
    * few times per page load; any other place, or none, puts it away. Only with a spawn menu. */
   const watchStill = (at: { x: number; y: number } | undefined): void => {
-    const still = stillRef.current;
+    const still = signifierStillRef.current;
     if (still && at && Math.hypot(at.x - still.x, at.y - still.y) <= SIGNIFIER_SLOP) return;
-    if (still) window.clearTimeout(still.timer);
-    stillRef.current = undefined;
+    if (still) clearTimeout(still.timer);
+    signifierStillRef.current = undefined;
     setSignifier(undefined);
     if (!at || !spawnMenu || signifiersShown >= SIGNIFIER_TIMES) return;
-    const timer = window.setTimeout(() => {
+    const timer = setTimeout(() => {
       if (signifiersShown >= SIGNIFIER_TIMES || holdRef.current || dragRef.current || bloomRef.current.isOpen()) return;
       signifiersShown += 1;
       setSignifier(at);
     }, SIGNIFIER_STILL_MS);
-    stillRef.current = { timer, x: at.x, y: at.y };
+    signifierStillRef.current = { timer, x: at.x, y: at.y };
   };
 
-  // The renderer: created once the canvas exists, rebuilt if the device is lost.
+  // The renderer: created once the canvas exists, rebuilt if the device is lost. What is
+  // drawing is reported, never written on the DOM for a host to read (W5).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -340,13 +415,13 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       }
       if (!result.ok) {
         setFailure(result.reason);
-        setRendererState('unavailable');
+        commandsRef.current.report({ renderer: 'unavailable' });
         return;
       }
       current = result.renderer;
       rendererRef.current = current;
       setFailure(undefined);
-      setRendererState('webgpu');
+      commandsRef.current.report({ renderer: 'webgpu' });
       const container = containerRef.current;
       if (container) current.resize(container.clientWidth, container.clientHeight, window.devicePixelRatio || 1);
       void current.lost.then((info) => {
@@ -365,8 +440,8 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   }, []);
 
   /** A terminal born under a profile of the desktop you sit at names it, when there is more than one (SB §2.10). */
-  const terminalProfile = (agent: MonitorAgent) =>
-    agent.agent || agent.remote ? undefined : profileLineFor(spawnMenuRef.current, agent.profileSet);
+  const terminalProfile = (agent: AgentView) =>
+    agent.kind === 'agent' || !agent.device.self ? undefined : profileLineFor(spawnMenuRef.current, agent.profileSet);
 
   // A new tree can change which terminals name their profile.
   useEffect(() => {
@@ -380,15 +455,15 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     const byId = new Map<string, SwarmBubbleModel>();
     const shares = workingShares(agentsRef.current);
     for (const agent of agentsRef.current) {
-      const runningSince = runningSinceRef.current.get(agent.visualId ?? agent.id);
+      const runningSince = runningSinceRef.current.get(bodyIdOf(agent));
       const profile = terminalProfile(agent);
       byId.set(
-        agent.visualId ?? agent.id,
+        bodyIdOf(agent),
         bubbleModel({
           agent,
           parameters: parametersRef.current,
           nowMs,
-          unread: agent.unread === true,
+          unread: agent.unread,
           workingShare: shares.get(agent.id) ?? 0,
           ...(runningSince === undefined ? {} : { runningSinceMs: runningSince }),
           ...(profile ? { profile } : {}),
@@ -400,14 +475,12 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     models.agents = agentsRef.current;
   };
 
-  /** The agents as the physics needs them: an id, the size to grow toward, where a creation gesture happened. */
+  /** The agents as the physics needs them: a body, the size to grow toward, where a creation gesture happened. */
   const agentSpecs = (): readonly SwarmAgentSpec[] =>
     agentsRef.current.map((agent) => {
-      const model = modelsRef.current.byId.get(agent.visualId ?? agent.id);
-      const spec: SwarmAgentSpec = {
-        id: agent.visualId ?? agent.id,
-        radius: model?.radius ?? parametersRef.current.radiusIdle,
-      };
+      const id = bodyIdOf(agent);
+      const model = modelsRef.current.byId.get(id);
+      const spec: SwarmAgentSpec = { id, radius: model?.radius ?? parametersRef.current.radiusIdle };
       if (agent.spawnHint) spec.spawnHint = agent.spawnHint;
       return spec;
     });
@@ -415,26 +488,6 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // Shell chrome is solid: bubbles settle around the usage column rather than
-    // drifting under it. Which elements those are is the shell's business, and
-    // OBSERVING them stays here — a worker has no getBoundingClientRect. What
-    // crosses the wire is rectangles.
-    const chrome = monitorChromeElements(container);
-    const readObstacles = (): SwarmObstacleRect[] => {
-      if (chrome.length === 0) return [];
-      const containerRect = container.getBoundingClientRect();
-      return chrome.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return {
-          x: rect.left - containerRect.left,
-          y: rect.top - containerRect.top,
-          width: rect.width,
-          height: rect.height,
-        };
-      });
-    };
-    readChromeRef.current = readObstacles;
 
     const applyTable = (event: Extract<SwarmPhysicsEvent, { type: 'idTable' }>): void => {
       tableRef.current = { generation: event.generation, ids: event.ids };
@@ -447,7 +500,8 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       }
     };
 
-    const driver = createDriver({
+    // The view's own physics (MV-D7): in the worker it brings, or in this thread where none can load.
+    const driver = createSwarmPhysicsDriver({
       onEvent: (event) => {
         if (event.type === 'idTable') applyTable(event);
       },
@@ -458,19 +512,34 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         if (readSwarmFrame(frame, tableRef.current, statesRef.current)) frameAtRef.current = performance.now();
         driver.post({ type: 'releaseFrame', buffer: frame }, [frame.buffer]);
       },
+      onDemote: (reason) => console.warn('[swarm] the physics run in this thread:', reason),
+      onError: (detail) => console.warn('[swarm] the physics worker failed:', detail),
     });
     driverRef.current = driver;
+    // Where the simulation runs, to the host: `worker` or `inline`, and a demotion as it happens.
+    const stopMode = driver.observeMode((physics) => commandsRef.current.report({ physics }));
     refreshModels(performance.now());
-    driver.post({
-      type: 'init',
-      agents: agentSpecs(),
-      parameters: physicsParameters(parametersRef.current),
-      bounds: { width: container.clientWidth, height: container.clientHeight },
-      obstacles: readObstacles(),
-      reducedMotion: prefersReducedMotion(),
-    });
 
-    const root = container.closest<HTMLElement>('.vf-godview');
+    // The first world waits for a measured stage: a spawn keeps clear of the
+    // chrome (MV-D19), so the chrome's rectangles must be known when bodies are
+    // placed. The host measures within a frame of mounting the view; the stage
+    // effect below posts the world the moment they arrive.
+    const init = (): void => {
+      if (initialisedRef.current || !measured(stageRef.current)) return;
+      initialisedRef.current = true;
+      stageSentRef.current = stageRef.current;
+      driver.post({
+        type: 'init',
+        agents: agentSpecs(),
+        parameters: physicsParameters(parametersRef.current),
+        bounds: { width: container.clientWidth, height: container.clientHeight },
+        obstacles: stageRef.current.obstacles,
+        reducedMotion: switchesRef.current.reducedMotion,
+      });
+    };
+    initRef.current = init;
+    init();
+
     let width = container.clientWidth;
     let height = container.clientHeight;
     const updateBounds = (): void => {
@@ -478,11 +547,9 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       height = container.clientHeight;
       rendererRef.current?.resize(width, height, window.devicePixelRatio || 1);
       driver.post({ type: 'updateBounds', bounds: { width, height } });
-      if (chrome.length > 0) driver.post({ type: 'updateObstacles', obstacles: readObstacles() });
     };
     const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateBounds);
     resizeObserver?.observe(container);
-    for (const element of chrome) resizeObserver?.observe(element);
 
     const accentOf = (value: string): Rgba => {
       const cached = colourCacheRef.current.get(value);
@@ -492,14 +559,12 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       return resolved;
     };
 
-    let frame = 0;
-    let previousTime = performance.now();
     let dpr = window.devicePixelRatio || 1;
     const started = performance.now();
-    const render = (time: number): void => {
-      frame = requestAnimationFrame(render);
-      const delta = Math.min(1000 / 30, Math.max(1000 / 120, time - previousTime));
-      previousTime = time;
+    const render = (time: number, deltaMs: number): void => {
+      // The inline physics advance in the frame they are drawn in; a worker keeps its own clock.
+      driver.pump(time);
+      const delta = Math.min(1000 / 30, Math.max(1000 / 120, deltaMs));
       const currentParameters = parametersRef.current;
       const nextDpr = window.devicePixelRatio || 1;
       if (nextDpr !== dpr) {
@@ -519,7 +584,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
 
       const renderer = rendererRef.current;
       const theme = themeRef.current;
-      const motion = !prefersReducedMotion() && root?.getAttribute('data-godview-animations') !== 'off';
+      const motion = motionRef.current;
       const focused = focusedIdRef.current;
       const recede = recedeRef.current;
       // The field under a bloom (SB §2.8): the veil, what the bloom lights above it, the clearings.
@@ -533,13 +598,13 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       });
       const rows =
         field.veil > 0 || fieldMemoryRef.current.lit.size > 0
-          ? new Map(agentsRef.current.map((agent) => [agent.visualId ?? agent.id, agent] as const))
+          ? new Map(agentsRef.current.map((agent) => [bodyIdOf(agent), agent] as const))
           : undefined;
       // A birth whose row has arrived: the row takes over where the birth stood.
       const takeovers = new Map<string, Birthing>();
       for (const record of birthsRef.current) {
         const row = birthRow(record.birth, agentsRef.current);
-        if (row) takeovers.set(row.visualId ?? row.id, record);
+        if (row) takeovers.set(bodyIdOf(row), record);
       }
       const bodies: RenderBody[] = [];
       for (const [id, state] of statesRef.current) {
@@ -566,15 +631,21 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
           if (born) birthsRef.current = birthsRef.current.filter((record) => record !== born);
         }
         visual.recede = motion ? approachRecede(visual.recede, recedeTo, delta) : recedeTo;
-        // The visual radius follows the model's on a critically damped spring;
-        // the physics body already jumped (the frame carries its radius).
-        const displacement = visual.visualRadius - model.radius;
-        visual.visualVelocity +=
-          (-RADIUS_SPRING_OMEGA * RADIUS_SPRING_OMEGA * displacement -
-            2 * RADIUS_SPRING_OMEGA * visual.visualVelocity) *
-          dt;
-        visual.visualRadius += visual.visualVelocity * dt;
-        if (Math.abs(visual.visualRadius - model.radius) < 0.01 && Math.abs(visual.visualVelocity) < 0.01) {
+        if (motion) {
+          // The visual radius follows the model's on a critically damped spring;
+          // the physics body already jumped (the frame carries its radius).
+          const displacement = visual.visualRadius - model.radius;
+          visual.visualVelocity +=
+            (-RADIUS_SPRING_OMEGA * RADIUS_SPRING_OMEGA * displacement -
+              2 * RADIUS_SPRING_OMEGA * visual.visualVelocity) *
+            dt;
+          visual.visualRadius += visual.visualVelocity * dt;
+          if (Math.abs(visual.visualRadius - model.radius) < 0.01 && Math.abs(visual.visualVelocity) < 0.01) {
+            visual.visualRadius = model.radius;
+            visual.visualVelocity = 0;
+          }
+        } else {
+          // Still: a body is drawn at its size, with no spring to run.
           visual.visualRadius = model.radius;
           visual.visualVelocity = 0;
         }
@@ -622,7 +693,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         const birth = record.birth;
         if (birth.failedAt !== null && time - birth.failedAt >= BLOOM.retract) return false;
         const model = bubbleModel({
-          agent: birthAgent(birth),
+          agent: birthAgent(birth, neutralRef.current),
           parameters: currentParameters,
           nowMs: Date.now(),
           unread: false,
@@ -693,11 +764,34 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
             : {}),
       });
     };
-    frame = requestAnimationFrame(render);
+
+    // The toolkit's loop: the display's frames while motion is on, no frame at all while it is off (MV-W4). The
+    // physics pause with it and start again fresh, so the time held still is never stepped through.
+    const loop = createMotionLoop(render, switchesRef.current);
+    loopRef.current = loop;
+    let running = loop.running;
+    if (!running) driver.post({ type: 'pause' });
+    const syncMotion = (): void => {
+      loop.update(switchesRef.current);
+      if (loop.running === running) return;
+      running = loop.running;
+      driver.post({ type: running ? 'resume' : 'pause' });
+    };
+    const still = (): void => {
+      if (!loop.running) render(performance.now(), 0);
+    };
+    motionSyncRef.current = () => {
+      syncMotion();
+      still();
+    };
+    stillDrawRef.current = still;
 
     return () => {
-      cancelAnimationFrame(frame);
-      readChromeRef.current = () => [];
+      loop.dispose();
+      loopRef.current = null;
+      stillDrawRef.current = null;
+      motionSyncRef.current = null;
+      initRef.current = null;
       resizeObserver?.disconnect();
       statesRef.current.clear();
       visualsRef.current.clear();
@@ -705,41 +799,67 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       // Both halves, in order: the host tears its engine down and stops its
       // timer, then the thread (if any) goes. A closed stage runs no physics.
       driver.post({ type: 'dispose' });
+      stopMode();
       driver.dispose();
       driverRef.current = undefined;
       frameAtRef.current = null;
       tableRef.current = { generation: -1, ids: [] };
+      initialisedRef.current = false;
+      stageSentRef.current = undefined;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the driver factory is the host's, fixed for the stage's life
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the driver, the loop and the renderer live for the stage's life
   }, []);
 
   useEffect(() => {
     const nowMs = Date.now();
-    const ids = new Set(agents.map((agent) => agent.visualId ?? agent.id));
+    const ids = new Set(agents.map(bodyIdOf));
     for (const id of [...runningSinceRef.current.keys()]) if (!ids.has(id)) runningSinceRef.current.delete(id);
     const shares = workingShares(agents);
     for (const agent of agents) {
+      const id = bodyIdOf(agent);
       const model = bubbleModel({
         agent,
         parameters: swarm,
         nowMs,
-        unread: agent.unread === true,
+        unread: agent.unread,
         workingShare: shares.get(agent.id) ?? 0,
       });
       // The clock starts at the first sight of a foreground job and survives
       // an `unknown` observation; only the shell's idle prompt, or an agent
       // claiming the terminal, stops it.
       if (model.state === 'terminal-running') {
-        if (!runningSinceRef.current.has(agent.visualId ?? agent.id))
-          runningSinceRef.current.set(agent.visualId ?? agent.id, nowMs);
-      } else if (agent.agent || agent.session?.activity?.kind !== 'unknown') {
-        runningSinceRef.current.delete(agent.visualId ?? agent.id);
+        if (!runningSinceRef.current.has(id)) runningSinceRef.current.set(id, nowMs);
+      } else if (agent.kind === 'agent' || agent.activity?.kind !== 'unknown') {
+        runningSinceRef.current.delete(id);
       }
     }
     modelsRef.current.at = 0;
     refreshModels(performance.now());
     driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });
   }, [agents, swarm]);
+
+  // The host's chrome moved (MV-D19): the physics keep bodies off its new rectangles. Until the stage is
+  // measured, this is where the first world waits.
+  useEffect(() => {
+    const driver = driverRef.current;
+    if (!driver) return;
+    if (!initialisedRef.current) {
+      initRef.current?.();
+      return;
+    }
+    if (stageSentRef.current === stage) return;
+    stageSentRef.current = stage;
+    driver.post({ type: 'updateObstacles', obstacles: stage.obstacles });
+  }, [stage]);
+
+  // The host's animations switch and the reduced-motion preference start or stop the loop (and the physics with
+  // it); stopped, every change the field shows is drawn once where it stands.
+  useEffect(() => {
+    motionSyncRef.current?.();
+  }, [theme.animations, theme.reducedMotion]);
+  useEffect(() => {
+    if (loopRef.current && !loopRef.current.running) stillDrawRef.current?.();
+  }, [agents, palette, swarm, stage, spawnMenu]);
 
   const localPoint = (event: { clientX: number; clientY: number }): { x: number; y: number } | undefined => {
     const bounds = containerRef.current?.getBoundingClientRect();
@@ -757,8 +877,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     return undefined;
   };
 
-  const agentById = (id: string): MonitorAgent | undefined =>
-    agentsRef.current.find((agent) => (agent.visualId ?? agent.id) === id);
+  const agentById = (id: string): AgentView | undefined => agentsRef.current.find((agent) => bodyIdOf(agent) === id);
 
   const endDrag = (): void => {
     const drag = dragRef.current;
@@ -814,7 +933,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     };
     holdRef.current = hold;
     event.currentTarget.setPointerCapture(event.pointerId);
-    holdTimerRef.current = window.setTimeout(() => {
+    holdTimerRef.current = setTimeout(() => {
       if (holdRef.current !== hold) return;
       holdTimerRef.current = undefined;
       holdRef.current = undefined;
@@ -860,7 +979,7 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
       endDrag();
       if (!wasDragged) {
         const agent = agentById(id);
-        if (agent) actions.select(agent);
+        if (agent) commands.select(agent.id);
         driverRef.current?.post({ type: 'nudge', id });
       }
       setCursor(point && hitTest(point.x, point.y) ? 'grab' : 'default');
@@ -893,27 +1012,67 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     bloom.contextMenu(event, point, blocked);
   };
 
-  const modelFor = (agent: MonitorAgent): SwarmBubbleModel => {
-    const known = modelsRef.current.byId.get(agent.visualId ?? agent.id);
+  // Where the keyboard's focus stands, from the view's own focus events (MV-W2): the bloom's menu, the field
+  // itself, one of the view's controls, or beyond the view (somewhere, or nowhere the view can see).
+  const onFocus = (event: ReactFocusEvent<HTMLElement>): void => {
+    const target = event.target;
+    const menu = bloom.menuRef.current;
+    if (menu && (target === menu || menu.contains(target))) {
+      focusRef.current = 'menu';
+      bloom.focusEntered(event.relatedTarget);
+    } else {
+      focusRef.current = target === event.currentTarget ? 'field' : 'control';
+    }
+  };
+  const onBlur = (event: ReactFocusEvent<HTMLElement>): void => {
+    const next = event.relatedTarget;
+    if (next instanceof Node && event.currentTarget.contains(next)) return;
+    focusRef.current = next ? 'outside' : 'none';
+  };
+  /** The field is focusable (MV-D8) so a hold's ⎋ is heard here, on the view, never on the window. */
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>): void => {
+    bloom.fieldKeyDown(event);
+  };
+
+  const modelFor = (agent: AgentView): SwarmBubbleModel => {
+    const known = modelsRef.current.byId.get(bodyIdOf(agent));
     if (known) return known;
     const profile = terminalProfile(agent);
     return bubbleModel({
       agent,
       parameters: swarm,
       nowMs: Date.now(),
-      unread: agent.unread === true,
+      unread: agent.unread,
       workingShare: workingShares(agentsRef.current).get(agent.id) ?? 0,
       ...(profile ? { profile } : {}),
     });
   };
 
+  // The view's own properties (L18): the two palette colours its stylesheets draw with — the monitor's ground
+  // behind the bloom's words and the signifier's halo, and the orange of the bloom's waiting dot.
+  const style = {
+    cursor,
+    '--mv-swarm-orange': palette.swarm.orange,
+  } as CSSProperties;
+  const className = [
+    'vf-monitor-swarm',
+    blooming ? 'is-blooming' : '',
+    theme.scheme === 'dark' ? 'is-dark' : '',
+    motionOn ? '' : 'is-still',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <section
       ref={containerRef}
-      className={blooming ? 'vf-monitor-swarm is-blooming' : 'vf-monitor-swarm'}
-      style={{ cursor }}
+      className={className}
+      style={style}
+      tabIndex={-1}
       aria-label="Running agent status field"
-      data-swarm-renderer={rendererState}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -924,12 +1083,12 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
     >
       <canvas ref={canvasRef} className="vf-monitor-swarm-canvas" aria-hidden="true" />
       {failure ? (
-        <div className="vf-monitor-empty" role="status" data-swarm-renderer="unavailable">
+        <div className="vf-monitor-swarm-empty" role="status">
           <span>WEBGPU UNAVAILABLE</span>
           <small>{failure}</small>
         </div>
       ) : agents.length === 0 ? (
-        <div className="vf-monitor-empty">
+        <div className="vf-monitor-swarm-empty">
           <span>NO ACTIVE AGENTS</span>
           <small>Launch an agent from a terminal pane.</small>
           {spawnMenu ? <small>Hold empty ground for a terminal.</small> : null}
@@ -986,24 +1145,25 @@ export function AgentSwarm({ agents, parameters, actions, palette, spawnMenu }: 
         ) : null}
         {agents.map((agent) => {
           const model = modelFor(agent);
+          const bodyId = bodyIdOf(agent);
           return (
-            <li key={agent.visualId ?? agent.id}>
+            <li key={bodyId}>
               <button
                 type="button"
                 aria-label={model.ariaLabel}
                 aria-current={agent.active ? 'true' : undefined}
-                data-agent-bubble-id={agent.visualId ?? agent.id}
+                data-agent-bubble-id={bodyId}
                 data-agent-bubble-status={agent.status}
                 data-agent-bubble-visual={model.state}
-                data-agent-bubble-source={agent.remote ? 'remote' : agent.agent ? 'agent' : 'terminal'}
-                data-agent-bubble-receded={agent.receded === true ? 'true' : undefined}
+                data-agent-bubble-source={!agent.device.self ? 'remote' : agent.kind === 'agent' ? 'agent' : 'terminal'}
+                data-agent-bubble-receded={agent.receded ? 'true' : undefined}
                 onFocus={() => {
-                  focusedIdRef.current = agent.visualId ?? agent.id;
+                  focusedIdRef.current = bodyId;
                 }}
                 onBlur={() => {
-                  if (focusedIdRef.current === (agent.visualId ?? agent.id)) focusedIdRef.current = undefined;
+                  if (focusedIdRef.current === bodyId) focusedIdRef.current = undefined;
                 }}
-                onClick={() => actions.select(agent)}
+                onClick={() => commands.select(agent.id)}
               >
                 {model.title}
               </button>

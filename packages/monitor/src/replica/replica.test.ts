@@ -533,6 +533,33 @@ describe('createMonitorReplica', () => {
     expect(replica.getSnapshot().model.agents.map((view) => view.id)).toEqual(['a']);
   });
 
+  it('joins each row’s spatial identity from the window (M59): only the rows it touches move, and a gone entry is the row’s own id again', () => {
+    const { frames, replica } = setup();
+    replica.apply(snapshot(1, [row('a'), row('b', { createdAt: 2_000 })]));
+    frames.frame();
+    const first = replica.getSnapshot();
+    expect(first.model.agents.map((view) => view.visualId)).toEqual([undefined, undefined]);
+
+    replica.setLocal(local({ visualIds: new Map([['a', 'shell-9']]) }));
+    frames.frame();
+    const second = replica.getSnapshot();
+    expect(second.changes).toEqual({ added: [], updated: ['a'], removed: [] });
+    expect(second.model.byId.get('a')?.visualId).toBe('shell-9');
+    expect(second.model.byId.get('b')).toBe(first.model.byId.get('b'));
+
+    // The same identity in a new map: nothing moved, nothing is published.
+    replica.setLocal(local({ visualIds: new Map([['a', 'shell-9']]) }));
+    frames.frame();
+    expect(replica.getSnapshot()).toBe(second);
+
+    // The entry goes: the row reads `visualId ?? id` as its own id again.
+    replica.setLocal(local({}));
+    frames.frame();
+    const third = replica.getSnapshot();
+    expect(third.changes).toEqual({ added: [], updated: ['a'], removed: [] });
+    expect(third.model.byId.get('a')?.visualId).toBeUndefined();
+  });
+
   it('a row that arrives later is joined with the facts already set', () => {
     const { frames, replica } = setup();
     replica.setLocal(local({ activeIds: new Set(['late']), spawnHints: new Map([['late', { x: 1, y: 2 }]]) }));

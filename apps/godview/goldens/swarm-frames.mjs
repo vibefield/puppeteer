@@ -21,7 +21,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { dist, labEntry, labScript, labStyles, views } from '../lab-page.mjs';
+import { dist, labBundle, labEntry, labStyles, views } from '../lab-page.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const app = join(here, '..');
@@ -95,12 +95,14 @@ async function buildPage() {
       );
     },
   };
-  const script = await labScript(labEntry('swarm'), [plugin]);
+  // The view's own stylesheets ride in the bundle (L18): the field's size is theirs.
+  const { script, css } = await labBundle(labEntry('swarm'), [plugin]);
   rmSync(scratch, { recursive: true, force: true });
   const page = `<!doctype html>
 <html lang="en">
 <head><meta charset="utf-8" /><title>Swarm frames</title><style>
 ${await labStyles()}
+${css}
 </style></head>
 <body>
 <div id="lab" class="lab-root swarm-lab vf-godview theme-light platform-darwin" data-godview-animations="on">

@@ -1,95 +1,59 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
-import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../monitor/types.js';
-import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../monitor/usage-ledger.js';
-import { OPENING_QUIET_MS, bubbleModel, formatTokens, workingShares } from './bubble-model.js';
+import type { AgentView, MonitorCost } from '@vibecook/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import { OPENING_QUIET_MS, bubbleModel, workingShares } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { SWARM_WEIGHT } from './weight.js';
 
-/** A ledger history with the given corrected total, its newest step the tallest. */
-function usageHistory(total: number): UsageHistory {
-  const steps = Array.from({ length: USAGE_STEP_COUNT }, (_, index) => (index + 1) * 100);
-  return { total, steps, stepMs: USAGE_STEP_MS };
-}
+// What a body says, from an `AgentView` alone (MV-5): the backend's facts as the
+// row carries them, worded by the toolkit. The cases are the legacy suite's,
+// said over the model; where M4 changed a line it is named.
 
 const NOW = Date.parse('2026-09-06T10:00:00.000Z');
-const AT = new Date(NOW - 5_000).toISOString();
-
-function monitorState(overrides: Partial<AgentMonitorState> = {}): AgentMonitorState {
-  return {
-    schemaVersion: AGENT_MONITOR_SCHEMA_VERSION,
-    runtimeRunId: 'run-1',
-    runtimeEpoch: 1,
-    revision: 1,
-    status: 'idle',
-    statusSince: AT,
-    blockers: [],
-    usage: { samples: [] },
-    modes: { execution: 'native-tui' },
-    subagentCount: 0,
-    subagents: [],
-
-    compaction: { active: false, count: 0 },
-    environment: { worktrees: [] },
-    session: {},
-    freshness: { lastEvidenceAt: AT, level: 'native-hooks', families: {} },
-    alive: true,
-    ...overrides,
-  };
-}
-
-function session(id: string, activityKind: 'shell-idle' | 'foreground-job' = 'shell-idle'): MonitorSession {
-  return {
-    id,
-    cwd: '/Users/james/Projects/puppeteer',
-    title: null,
-    activity: { kind: activityKind },
-    createdAtMs: NOW,
-  };
-}
-
-function agent(overrides: Partial<MonitorAgent> = {}, facet?: Partial<MonitorAgentFacet>): MonitorAgent {
-  const monitor = facet?.monitor ?? monitorState();
-  return {
-    id: 'a',
-    session: session('a'),
-    createdAtMs: NOW,
-    status: monitor.status,
-    project: 'puppeteer',
-    detail: 'Editing tokens.css',
-    color: '#6366f1',
-    active: false,
-    ...(facet
-      ? {
-          agent: {
-            provider: { id: 'imposter', label: 'Imposter' },
-            monitor,
-            recency: 'fresh',
-            model: 'Fable 5.1',
-            ...facet,
-          } as MonitorAgentFacet,
-        }
-      : {}),
-    ...overrides,
-  };
-}
-
+const AT = NOW - 5_000;
 const parameters = DEFAULT_SWARM_PARAMETERS;
+const MINI = { id: 'mini', name: 'studio-mini', self: false } as const;
 
-describe('formatBurn', () => {
-  it('formats token counts compactly', () => {
-    expect(formatTokens(820)).toBe('820');
-    expect(formatTokens(8_100)).toBe('8.1k');
-    expect(formatTokens(24_000)).toBe('24k');
-    expect(formatTokens(384_000)).toBe('384k');
-    expect(formatTokens(1_240_000)).toBe('1.2M');
-    expect(formatTokens(24_000_000)).toBe('24M');
+/** A bare terminal on this desktop, in `puppeteer`, at its prompt. */
+function terminal(partial: AgentViewFixturePartial = {}): AgentView {
+  return agentViewFixture({
+    id: 'a',
+    kind: 'terminal',
+    createdAt: NOW,
+    statusSince: AT,
+    project: { name: 'puppeteer', seq: undefined },
+    detail: 'Editing tokens.css',
+    colour: '#6366f1',
+    activity: { kind: 'shell-idle' },
+    ...partial,
   });
+}
+
+/** An observed agent (Imposter, Fable 5.1) in `puppeteer`. */
+function agent(partial: AgentViewFixturePartial = {}): AgentView {
+  return agentViewFixture({
+    id: 'a',
+    createdAt: NOW,
+    statusSince: AT,
+    project: { name: 'puppeteer', seq: 0 },
+    detail: 'Editing tokens.css',
+    colour: '#6366f1',
+    provider: { id: 'imposter', label: 'Imposter' },
+    model: 'Fable 5.1',
+    ...partial,
+  });
+}
+
+/** A burn as the backend carries it: USD an hour, from Core's per-minute rate. */
+const burning = (perMinute: number, coverage: MonitorCost['coverage'] = 'complete', usd = 0): MonitorCost => ({
+  usd,
+  coverage,
+  burnPerHour: perMinute * 60,
 });
 
 describe('bubbleModel', () => {
   it('addresses the physical body while retaining the row identity for actions and usage', () => {
-    const row = agent({ id: 'run', visualId: 'shell', status: 'working' }, {});
+    const row = Object.assign(agent({ id: 'run', status: 'working' }), { visualId: 'shell' });
     const model = bubbleModel({ agent: row, parameters, nowMs: NOW, unread: false });
     expect(model.id).toBe('shell');
     expect(row.id).toBe('run');
@@ -101,7 +65,7 @@ describe('bubbleModel', () => {
   });
 
   it('draws an unclaimed idle terminal as a hollow with the folder and "empty"', () => {
-    const model = bubbleModel({ agent: agent({ status: 'idle' }), parameters, nowMs: NOW, unread: false });
+    const model = bubbleModel({ agent: terminal({ status: 'idle' }), parameters, nowMs: NOW, unread: false });
     expect(model.state).toBe('terminal-empty');
     expect(model.hollow).toBe(true);
     expect(model.running).toBe(false);
@@ -114,11 +78,13 @@ describe('bubbleModel', () => {
     expect(model.copy[1]!.text).toBe('empty');
     expect(model.ring).toBeUndefined();
     expect(model.watermark).toBeUndefined();
+    // a terminal's line is the backend's own (M4 changes nothing of it)
+    expect(model.title).toBe('Editing tokens.css');
   });
 
   it('draws a terminal running a job with the comet, "running", and the elapsed time', () => {
     const model = bubbleModel({
-      agent: agent({ status: 'working', session: session('a', 'foreground-job') }),
+      agent: terminal({ status: 'working', activity: { kind: 'foreground-job' } }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -129,17 +95,27 @@ describe('bubbleModel', () => {
     expect(model.copy.map((line) => line.text)).toEqual(['puppeteer', 'running', '1:23']);
   });
 
+  it('a terminal in no folder is called `terminal`, as both hosts call it', () => {
+    const model = bubbleModel({ agent: terminal({ project: { name: '' } }), parameters, nowMs: NOW, unread: false });
+    expect(model.copy[0]!.text).toBe('terminal');
+    expect(model.ariaLabel).toBe('terminal, unassigned terminal, idle');
+  });
+
   it('never marks a terminal unread', () => {
-    const model = bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: true });
+    const model = bubbleModel({ agent: terminal(), parameters, nowMs: NOW, unread: true });
     expect(model.unread).toBe(false);
   });
 
   it('puts an unread reply itself in the name’s place, and fills the body blue behind it', () => {
-    const monitor = monitorState({
-      effort: { value: 'high', configured: 'high', intent: 'configured' },
-      lastAssistantMessage: { text: 'Done: two tests fixed.\nDetails below.', at: AT, final: true },
+    const model = bubbleModel({
+      agent: agent({
+        effort: { value: 'high', intent: 'configured' },
+        reply: { text: 'Done: two tests fixed.\nDetails below.', at: AT, final: true },
+      }),
+      parameters,
+      nowMs: NOW,
+      unread: true,
     });
-    const model = bubbleModel({ agent: agent({}, { monitor }), parameters, nowMs: NOW, unread: true });
     expect(model.state).toBe('idle');
     expect(model.radius).toBe(50);
     // Three lines: the project above, what arrived, the model. Nothing after it.
@@ -172,10 +148,10 @@ describe('bubbleModel', () => {
   });
 
   it('falls back to the words “new message” with no reply to show, and says nothing once read', () => {
-    const model = bubbleModel({ agent: agent({}, {}), parameters, nowMs: NOW, unread: true });
+    const model = bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: true });
     expect(model.copy.map((line) => line.key)).toEqual(['name', 'state', 'model']);
     expect(model.copy[1]!.text).toBe('new message');
-    const read = bubbleModel({ agent: agent({}, {}), parameters, nowMs: NOW, unread: false });
+    const read = bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: false });
     expect(read.copy.map((line) => line.key)).toEqual(['name', 'model']);
     // Read and idle: the name keeps the full size, the outlined folder, and no light.
     expect(read.copy[0]!.style.size).toBe(12);
@@ -185,28 +161,15 @@ describe('bubbleModel', () => {
   });
 
   it('gives a working agent the larger body, branch, name, model · effort, the burn, the ring, and both figures', () => {
-    const monitor = monitorState({
-      status: 'working',
-      activity: { kind: 'tool', line: 'Editing tokens.css', since: AT },
-      context: { usedPercent: 62.7, percentageSource: 'provider', asOf: AT },
-      usage: {
-        samples: [],
-        burnRatePerMin: 20_000,
-        cumulativeTokens: 999,
-        costRatePerMin: 0.52,
-        costCoverage: 'complete',
-      },
-      effort: { value: 'high', intent: 'observed' },
-      environment: {
-        worktrees: [],
-        git: { root: '/Users/james/Projects/puppeteer', branch: 'swarm', headSha: null, detached: false },
-      },
-    });
     const model = bubbleModel({
-      agent: agent(
-        { status: 'working' },
-        { monitor, branch: 'swarm', contextWindow: monitor.context, usage: usageHistory(1.24) },
-      ),
+      agent: agent({
+        status: 'working',
+        activity: { kind: 'tool', line: 'Editing tokens.css', since: AT },
+        context: { usedPercent: 62.7 },
+        cost: burning(0.52, 'complete', 1.24),
+        effort: { value: 'high', intent: 'observed' },
+        project: { name: 'puppeteer', seq: 0, branch: 'swarm' },
+      }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -214,15 +177,17 @@ describe('bubbleModel', () => {
     expect(model.state).toBe('working');
     expect(model.radius).toBe(60);
     expect(model.copy.map((line) => line.key)).toEqual(['branch', 'name', 'model']);
+    expect(model.copy[0]!.text).toBe('swarm');
     expect(model.copy[0]!.lead?.tone).toBe('green');
     expect(model.copy[1]!.tone).toBe('ink');
     expect(model.copy[2]!.text).toBe('Fable 5.1 · high');
+    expect(model.copy[2]!.style.italic).toBeUndefined();
     expect(model.ring).toEqual({ percent: 62, hot: false });
     expect(model.figures).toEqual({
       top: { text: '62%', hot: false, none: false },
       bottom: { text: '~$1.24', hot: false, none: false },
     });
-    // The bottom figure is the ledger's corrected total; the burn is Core's own
+    // The bottom figure is the backend's corrected total; the burn is Core's own
     // live rate on the fixed ladder — $0.52/min is the third step.
     expect(model.burn).toEqual({ lit: 3, priced: true });
     expect(model.title.endsWith('· $31/hr')).toBe(true);
@@ -231,68 +196,67 @@ describe('bubbleModel', () => {
   });
 
   it('lights the burn ladder by the rate, and leaves it unread where nothing prices the work', () => {
-    const working = (usage: Record<string, unknown>) =>
-      bubbleModel({
-        agent: agent(
-          { status: 'working' },
-          { monitor: monitorState({ status: 'working', usage: { samples: [], ...usage } }) },
-        ),
-        parameters,
-        nowMs: NOW,
-        unread: false,
-      });
+    const working = (cost: MonitorCost) =>
+      bubbleModel({ agent: agent({ status: 'working', cost }), parameters, nowMs: NOW, unread: false });
     // The steps: under 5c calm, then 5c, 15c, 40c and a dollar a minute.
-    expect(working({ costCoverage: 'complete', costRatePerMin: 0.04 }).burn).toEqual({ lit: 0, priced: true });
-    expect(working({ costCoverage: 'complete', costRatePerMin: 0.05 }).burn).toEqual({ lit: 1, priced: true });
-    expect(working({ costCoverage: 'complete', costRatePerMin: 0.39 }).burn).toEqual({ lit: 2, priced: true });
-    expect(working({ costCoverage: 'complete', costRatePerMin: 0.4 }).burn).toEqual({ lit: 3, priced: true });
-    expect(working({ costCoverage: 'complete', costRatePerMin: 12 }).burn).toEqual({ lit: 4, priced: true });
+    expect(working(burning(0.04)).burn).toEqual({ lit: 0, priced: true });
+    expect(working(burning(0.05)).burn).toEqual({ lit: 1, priced: true });
+    expect(working(burning(0.39)).burn).toEqual({ lit: 2, priced: true });
+    expect(working(burning(0.4)).burn).toEqual({ lit: 3, priced: true });
+    expect(working(burning(12)).burn).toEqual({ lit: 4, priced: true });
     // A priced session that has not spent lately is calm; one with no pricing
     // lane at all is unread, and never reads as calm.
-    expect(working({ costCoverage: 'complete' }).burn).toEqual({ lit: 0, priced: true });
-    const unpriced = working({ costCoverage: 'unavailable', costRatePerMin: 9 });
+    expect(working({ usd: 0, coverage: 'complete' }).burn).toEqual({ lit: 0, priced: true });
+    const unpriced = working(burning(9, 'unavailable'));
     expect(unpriced.burn).toEqual({ lit: 0, priced: false });
     expect(unpriced.title.endsWith('· —/hr')).toBe(true);
-    // Partial coverage still prices what it saw.
-    expect(working({ costCoverage: 'partial', costRatePerMin: 0.2 }).burn).toEqual({ lit: 2, priced: true });
+    expect(unpriced.figures?.bottom).toEqual({ text: '—', hot: false, none: true });
+    // Partial coverage still prices what it saw, and says so on the figure.
+    const partial = working(burning(0.2, 'partial', 3.5));
+    expect(partial.burn).toEqual({ lit: 2, priced: true });
+    expect(partial.figures?.bottom?.text).toBe('~$3.50+');
   });
 
   it('grows a working body from the working size to the largest by its share of the working sessions', () => {
-    const monitor = monitorState({ status: 'working', usage: { samples: [], cumulativeTokens: 500 } });
-    const input = { agent: agent({ status: 'working' }, { monitor }), parameters, nowMs: NOW, unread: false };
+    const input = { agent: agent({ status: 'working' }), parameters, nowMs: NOW, unread: false };
     expect(bubbleModel(input).radius).toBe(60);
     expect(bubbleModel({ ...input, workingShare: 0.5 }).radius).toBe(70);
     expect(bubbleModel({ ...input, workingShare: 1 }).radius).toBe(80);
   });
 
-  it('places working sessions by total tokens, least 0 and most 1, and leaves a lone session at 0', () => {
-    const working = (id: string, total: number): MonitorAgent => ({
-      ...agent({ status: 'working' }, { monitor: monitorState({ status: 'working' }), usage: usageHistory(total) }),
-      id,
-    });
+  it('places working sessions by estimated USD, least 0 and most 1, and leaves a lone session at 0', () => {
+    const working = (id: string, usd: number): AgentView =>
+      agent({ id, status: 'working', cost: { usd, coverage: 'complete' } });
     const shares = workingShares([
       working('a', 100),
       working('b', 400),
       working('c', 1300),
       { ...working('d', 9000), status: 'idle' },
+      // a terminal never counts
+      terminal({ id: 't', status: 'working' }),
     ]);
     expect([...shares.entries()]).toEqual([
       ['a', 0],
       ['b', 0.25],
       ['c', 1],
     ]);
+    // an unpriced total counts as nothing spent, as the legacy ledger's missing total did: the least of the sessions
+    const unpriced = { ...working('u', 5000), cost: { usd: 5000, coverage: 'unavailable' as const } };
+    expect([...workingShares([working('a', 100), unpriced]).entries()]).toEqual([
+      ['a', 1],
+      ['u', 0],
+    ]);
     expect([...workingShares([working('a', 100)]).values()]).toEqual([0]);
   });
 
   it('holds a blocked agent at the idle size, lights it orange, and says what it waits on', () => {
-    const monitor = monitorState({
-      status: 'blocked',
-      blockers: [{ id: 'b', kind: 'permission', since: AT, permission: { requestId: 'r', tool: 'Bash' } }],
-      context: { usedPercent: 88, percentageSource: 'derived', asOf: AT },
-      lastAssistantMessage: { text: 'May I run pnpm test?', at: AT, final: true },
-    });
     const model = bubbleModel({
-      agent: agent({ status: 'blocked' }, { monitor, contextWindow: monitor.context }),
+      agent: agent({
+        status: 'blocked',
+        wait: { kind: 'permission', since: AT, tool: 'Bash' },
+        context: { usedPercent: 88 },
+        reply: { text: 'May I run pnpm test?', at: AT, final: true },
+      }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -302,7 +266,7 @@ describe('bubbleModel', () => {
     expect(model.light).toBe('orange');
     expect(model.blockerKind).toBe('permission');
     expect(model.copy.map((line) => line.key)).toEqual(['name', 'state', 'model']);
-    // The permission's own evidence — the tool it wants — before the reply's words.
+    // The permission's own evidence — the tool it wants — before the reply's words (M14's chain).
     expect(model.copy[1]!.text).toBe('Bash');
     expect(model.copy[1]!.tone).toBe('ink');
     expect(model.copy[1]!.lead).toMatchObject({ kind: 'icon', icon: 'permission' });
@@ -313,12 +277,11 @@ describe('bubbleModel', () => {
   });
 
   it('asks the question as it was asked, and names the blocker when there is nothing to quote', () => {
-    const asked = monitorState({
-      status: 'blocked',
-      blockers: [{ id: 'b', kind: 'question', since: AT, questions: [{ prompt: 'Which key should the export use?' }] }],
-    });
     const model = bubbleModel({
-      agent: agent({ status: 'blocked' }, { monitor: asked }),
+      agent: agent({
+        status: 'blocked',
+        wait: { kind: 'question', since: AT, question: 'Which key should the export use?' },
+      }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -329,25 +292,31 @@ describe('bubbleModel', () => {
     expect(state?.tone).toBe('ink');
     expect(state?.lead).toMatchObject({ kind: 'icon', icon: 'question' });
 
-    const bare = monitorState({
-      status: 'blocked',
-      blockers: [{ id: 'b', kind: 'question', since: AT, questions: [] }],
-    });
     const unnamed = bubbleModel({
-      agent: agent({ status: 'blocked' }, { monitor: bare }),
+      agent: agent({ status: 'blocked', wait: { kind: 'question', since: AT } }),
       parameters,
       nowMs: NOW,
       unread: false,
     });
     expect(unnamed.copy.find((line) => line.key === 'state')?.text).toBe('question');
+    // a wait the views do not draw, or none at all: the body is blocked with no words of its own
+    const other = bubbleModel({
+      agent: agent({ status: 'blocked', wait: { kind: 'sandbox', since: AT } }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(other.blockerKind).toBeUndefined();
+    expect(other.copy.find((line) => line.key === 'state')).toMatchObject({
+      text: 'blocked',
+      lead: { kind: 'icon', icon: 'failure' },
+    });
+    expect(other.light).toBe('orange');
   });
 
   it('carries the pane link, the stale flag, and the accessible copy', () => {
     const model = bubbleModel({
-      agent: agent(
-        { stale: true, color: '#ec4899', attachment: { primaryPaneId: 'pane', paneIds: ['pane'], color: '#22cc88' } },
-        {},
-      ),
+      agent: agent({ stale: true, colour: '#ec4899', attachment: { panes: 1, colour: '#22cc88' } }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -364,41 +333,73 @@ describe('bubbleModel', () => {
     });
     expect(model.copy.flatMap((line) => (line.lead?.tone === 'accent' ? [line.key] : []))).toEqual(['name']);
     expect(
-      bubbleModel({ agent: agent({ color: '#ec4899' }, {}), parameters, nowMs: NOW, unread: false }).linked,
+      bubbleModel({ agent: agent({ colour: '#ec4899' }), parameters, nowMs: NOW, unread: false }).linked,
     ).toBeUndefined();
-    expect(model.ariaLabel).toBe('puppeteer, Fable 5.1, idle: Editing tokens.css, CTX:--%');
-    expect(model.title).toBe('puppeteer · Fable 5.1 · Editing tokens.css');
+    // M4: the line under the name is the toolkit's one rule (reply-first): an idle agent with no reply says its
+    // status, where the legacy body repeated the host's composed line.
+    expect(model.ariaLabel).toBe('puppeteer, Fable 5.1, idle: idle, CTX:--%');
+    expect(model.title).toBe('puppeteer · Fable 5.1 · idle');
+    const replied = bubbleModel({
+      agent: agent({ reply: { text: 'Shipped.', at: AT } }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(replied.title).toBe('puppeteer · Fable 5.1 · Shipped.');
+  });
+
+  it('draws no live fact for a run not heard from yet: its line says so, the rest waits', () => {
+    const starting = bubbleModel({
+      agent: agent({
+        observed: false,
+        detail: 'starting',
+        effort: { value: 'high', intent: 'configured' },
+        reply: { text: 'never' },
+        cost: burning(1, 'complete', 9),
+      }),
+      parameters,
+      nowMs: NOW,
+      unread: true,
+    });
+    expect(starting.title).toBe('puppeteer · Fable 5.1 · starting');
+    expect(starting.copy.map((line) => line.key)).toEqual(['name', 'state', 'model']);
+    expect(starting.copy[1]!.text).toBe('new message');
+    expect(starting.copy[2]!.text).toBe('Fable 5.1');
+    const pending = bubbleModel({
+      agent: agent({ observed: false, pending: true, status: 'working', detail: 'unobserved · resumes when idle' }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(pending.figures?.bottom).toEqual({ text: '—', hot: false, none: true });
+    expect(pending.burn).toEqual({ lit: 0, priced: false });
+    expect(pending.title).toBe('puppeteer · Fable 5.1 · unobserved · resumes when idle · —/hr');
   });
 });
 
-describe("a peer's session (the remote facet)", () => {
-  const remoteRow = (hostWritable: boolean): MonitorAgent => ({
-    id: 'r1',
-    createdAtMs: 0,
-    status: 'idle',
-    project: 'mesh-console',
-    detail: 'studio-mini · /Projects/mesh-console',
-    color: '#6366f1',
-    active: false,
-    remote: {
-      deviceId: 'mini',
-      deviceName: 'studio-mini',
-      remoteSessionId: 's1',
-      attachable: true,
-      hostWritable,
-      cwdLabel: '/Projects/mesh-console',
-    },
-  });
-  const model = (hostWritable: boolean) =>
+describe("a peer's session (a row from another desktop)", () => {
+  const remoteRow = (writable: boolean): AgentView =>
+    agentViewFixture({
+      id: 'r1',
+      kind: 'terminal',
+      createdAt: 0,
+      status: 'idle',
+      project: { name: 'mesh-console' },
+      detail: 'studio-mini · /Projects/mesh-console',
+      colour: '#6366f1',
+      device: MINI,
+      writable,
+    });
+  const model = (writable: boolean) =>
     bubbleModel({
-      agent: remoteRow(hostWritable),
+      agent: remoteRow(writable),
       parameters: DEFAULT_SWARM_PARAMETERS,
       nowMs: NOW,
       unread: false,
       workingShare: 0,
     });
 
-  it('names the peer FIRST in the accessible name, then the host write policy', () => {
+  it('names the peer FIRST in the accessible name, then the host write policy (M41)', () => {
     expect(model(false).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, read-only host');
     expect(model(true).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, writable host');
   });
@@ -412,12 +413,33 @@ describe("a peer's session (the remote facet)", () => {
     expect(permitting?.text).not.toContain('you');
     expect(model(true).title).toContain('decided when you attach');
   });
+
+  it('draws a peer’s agent from the facts its row carries, as it draws this desktop’s (M9)', () => {
+    const peer = bubbleModel({
+      agent: agent({
+        device: MINI,
+        status: 'working',
+        context: { usedPercent: 42 },
+        cost: burning(0.2, 'complete', 2),
+        effort: { value: 'medium', intent: 'observed' },
+      }),
+      parameters,
+      nowMs: NOW,
+      unread: false,
+    });
+    expect(peer.ring).toEqual({ percent: 42, hot: false });
+    expect(peer.figures?.top?.text).toBe('42%');
+    expect(peer.burn).toEqual({ lit: 2, priced: true });
+    expect(peer.copy.at(-1)?.text).toBe('Fable 5.1 · medium');
+    // the line under the name leads with the desktop's name (the toolkit's rule for a peer)
+    expect(peer.title).toBe('puppeteer · Fable 5.1 · studio-mini · working · $12/hr');
+  });
 });
 
 describe('a birth on its way (the spawn bloom’s pending body)', () => {
-  const opening = (agoMs: number, on?: string, row: Partial<MonitorAgent> = {}) =>
+  const opening = (agoMs: number, on?: string, row: AgentViewFixturePartial = {}) =>
     bubbleModel({
-      agent: agent({ project: '~', status: 'idle', ...row }),
+      agent: terminal({ project: { name: '~' }, status: 'idle', ...row }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -457,16 +479,16 @@ describe('a birth on its way (the spawn bloom’s pending body)', () => {
   });
 
   it('has no job yet, whatever its row says', () => {
-    const model = opening(900, undefined, { status: 'working', session: session('a', 'foreground-job') });
+    const model = opening(900, undefined, { status: 'working', activity: { kind: 'foreground-job' } });
     expect(model.running).toBe(false);
     expect(model.state).toBe('terminal-empty');
     expect(model.copy.map((line) => line.key)).toEqual(['name', 'sub']);
   });
 
   it('is no birth without `opening`, and an agent’s row ignores it', () => {
-    expect(bubbleModel({ agent: agent(), parameters, nowMs: NOW, unread: false }).pending).toBeUndefined();
+    expect(bubbleModel({ agent: terminal(), parameters, nowMs: NOW, unread: false }).pending).toBeUndefined();
     const withAgent = bubbleModel({
-      agent: agent({}, {}),
+      agent: agent(),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -478,9 +500,9 @@ describe('a birth on its way (the spawn bloom’s pending body)', () => {
 });
 
 describe('the profile line (a terminal born under an Agent Profile)', () => {
-  const terminal = (profile: Parameters<typeof bubbleModel>[0]['profile'], row: Partial<MonitorAgent> = {}) =>
+  const profiled = (profile: Parameters<typeof bubbleModel>[0]['profile'], row: AgentViewFixturePartial = {}) =>
     bubbleModel({
-      agent: agent({ project: '~', status: 'idle', ...row }),
+      agent: terminal({ project: { name: '~' }, status: 'idle', ...row }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -489,7 +511,7 @@ describe('the profile line (a terminal born under an Agent Profile)', () => {
   const lineOf = (model: ReturnType<typeof bubbleModel>) => model.copy.find((line) => line.key === 'profile');
 
   it('names the default profile under its glyph, drawn filled, in the terminal’s label style', () => {
-    const model = terminal({ label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true });
+    const model = profiled({ label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true });
     expect(model.copy.map((line) => line.key)).toEqual(['name', 'sub', 'profile']);
     const line = lineOf(model)!;
     expect(line.text).toBe('Work');
@@ -503,29 +525,29 @@ describe('the profile line (a terminal born under an Agent Profile)', () => {
   });
 
   it('outlines a managed profile that is not the default', () => {
-    expect(lineOf(terminal({ label: 'Personal', glyph: 'house', kind: 'managed' }))?.lead?.icon).toBe('profile:house');
+    expect(lineOf(profiled({ label: 'Personal', glyph: 'house', kind: 'managed' }))?.lead?.icon).toBe('profile:house');
   });
 
   it('draws the laptop for the native set, whatever glyph it carries', () => {
-    const line = lineOf(terminal({ label: 'This Mac', glyph: 'rocket', kind: 'native', isDefault: true }));
+    const line = lineOf(profiled({ label: 'This Mac', glyph: 'rocket', kind: 'native', isDefault: true }));
     expect(line?.text).toBe('This Mac');
     expect(line?.lead?.icon).toBe('profile:laptop:filled');
-    expect(lineOf(terminal({ label: 'Default', kind: 'native' }))?.lead?.icon).toBe('profile:laptop');
+    expect(lineOf(profiled({ label: 'Default', kind: 'native' }))?.lead?.icon).toBe('profile:laptop');
   });
 
   it('falls back to the star for a token this build does not draw', () => {
-    expect(lineOf(terminal({ label: 'Odd', glyph: 'telescope' }))?.lead?.icon).toBe('profile:star');
+    expect(lineOf(profiled({ label: 'Odd', glyph: 'telescope' }))?.lead?.icon).toBe('profile:star');
   });
 
   it('draws no profile line without a profile', () => {
-    const model = terminal(undefined);
+    const model = profiled(undefined);
     expect(lineOf(model)).toBeUndefined();
     expect(model.ariaLabel).toBe('~, unassigned terminal, idle');
   });
 
   it('sits after the running line and its clock, and before a peer’s host line', () => {
     const running = bubbleModel({
-      agent: agent({ status: 'working', session: session('a', 'foreground-job') }),
+      agent: terminal({ status: 'working', activity: { kind: 'foreground-job' } }),
       parameters,
       nowMs: NOW,
       unread: false,
@@ -533,25 +555,13 @@ describe('the profile line (a terminal born under an Agent Profile)', () => {
       profile: { label: 'Work', glyph: 'briefcase' },
     });
     expect(running.copy.map((line) => line.key)).toEqual(['name', 'command', 'elapsed', 'profile']);
-    const peer = terminal(
-      { label: 'Personal', glyph: 'house' },
-      {
-        remote: {
-          deviceId: 'mini',
-          deviceName: 'studio-mini',
-          remoteSessionId: 's1',
-          attachable: true,
-          hostWritable: true,
-          cwdLabel: '~',
-        },
-      },
-    );
+    const peer = profiled({ label: 'Personal', glyph: 'house' }, { device: MINI });
     expect(peer.copy.map((line) => line.key)).toEqual(['name', 'sub', 'profile', 'host']);
   });
 
   it('names the profile a birth on its way is opening under', () => {
     const model = bubbleModel({
-      agent: agent({ project: '~', status: 'idle' }),
+      agent: terminal({ project: { name: '~' }, status: 'idle' }),
       parameters,
       nowMs: NOW,
       unread: false,

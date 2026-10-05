@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorSpawnDevice, MonitorSpawnProfile } from '../../../monitor/types.js';
+import type { MonitorSpawnDevice, MonitorSpawnProfile } from '@vibecook/puppeteer-view-sdk';
 import {
   blooms,
   budSub,

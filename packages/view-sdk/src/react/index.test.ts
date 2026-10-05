@@ -15,7 +15,11 @@ const MANIFEST: MonitorViewManifest = {
   motion: { loops: false },
 };
 
-const COMMANDS: MonitorViewCommands = { select: () => undefined, create: () => undefined, report: () => undefined };
+const COMMANDS: MonitorViewCommands = {
+  select: () => undefined,
+  create: () => Promise.resolve({ opened: true }),
+  report: () => undefined,
+};
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

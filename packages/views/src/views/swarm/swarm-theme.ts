@@ -1,4 +1,4 @@
-import type { SwarmPalette } from '../../monitor/palette.js';
+import type { SwarmPalette } from '@vibecook/puppeteer-view-sdk';
 import { DEFAULT_SWARM_PARAMETERS, type SwarmParameters } from './swarm-parameters.js';
 import { luminance, resolveCssColor, type Rgba } from './gpu/color.js';
 import type { SwarmTheme } from './gpu/swarm-renderer.js';

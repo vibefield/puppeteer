@@ -21,6 +21,11 @@ export const MONITOR_SKIN = Object.freeze([
   '--control-hover-bg',
   '--control-hover-border',
   '--idle-bg',
+  // M59.4 (with M57): the monitor's ground and the named easings, shared design tokens a view reads and never copies.
+  '--monitor-bg',
+  '--vf-ease-pop',
+  '--vf-ease-lift',
+  '--vf-ease-island',
 ] as const);
 
 export type MonitorSkinName = (typeof MONITOR_SKIN)[number];

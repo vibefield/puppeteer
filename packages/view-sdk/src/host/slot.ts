@@ -14,6 +14,7 @@ import type { FrameScheduler, ModelChanges, MonitorModel, MonitorSpawnMenu, Moni
 import {
   defineMonitorView,
   type MonitorCapabilities,
+  type MonitorCreateAnswer,
   type MonitorParameterValues,
   type MonitorTheme,
   type MonitorView,
@@ -51,8 +52,34 @@ export interface ViewSlotInput {
   readonly capabilities?: MonitorCapabilities | undefined;
 }
 
-/** The host's side of two of the three commands; `report` is the slot's own. */
-export type ViewSlotCommands = Pick<MonitorViewCommands, 'select' | 'create'>;
+/**
+ * The host's side of two of the three commands; `report` is the slot's own. A host's `create` may answer with a
+ * promise, waited for (a rejection is a refusal), or with nothing: opened at once (M59).
+ */
+export interface ViewSlotCommands {
+  select(agentId: string): void;
+  create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): void | Promise<unknown>;
+}
+
+const OPENED: MonitorCreateAnswer = Object.freeze({ opened: true });
+const REFUSED: MonitorCreateAnswer = Object.freeze({ opened: false });
+
+/** The host's fulfilled, rejected or void return as the view's answer (M59): it never rejects. */
+function answerOf(run: () => void | Promise<unknown>): Promise<MonitorCreateAnswer> {
+  let answer: void | Promise<unknown>;
+  try {
+    answer = run();
+  } catch {
+    return Promise.resolve(REFUSED);
+  }
+  if (answer && typeof (answer as Promise<unknown>).then === 'function') {
+    return (answer as Promise<unknown>).then(
+      () => OPENED,
+      () => REFUSED,
+    );
+  }
+  return Promise.resolve(OPENED);
+}
 
 export type ViewSlotPhase = 'mount' | 'update' | 'unmount';
 
@@ -196,7 +223,8 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
         if (mounted === entry) options.commands.select(agentId);
       },
       create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget) {
-        if (mounted === entry) options.commands.create(at, target);
+        if (mounted !== entry) return Promise.resolve(REFUSED);
+        return answerOf(() => options.commands.create(at, target));
       },
       report(delta: ViewReport) {
         if (mounted === entry) applyReport(delta);

@@ -9,6 +9,7 @@ import {
   modelWord,
   projectName,
   THIS_DESKTOP,
+  waitBodyLine,
 } from './words.js';
 
 const PEER: MonitorDeviceRef = { id: 'desk-2', name: 'Laptop', os: 'linux', self: false };
@@ -111,5 +112,39 @@ describe('the line under the name (M4: reply-first, one rule)', () => {
 
   it('a terminal says the backend’s own line', () => {
     expect(detailLine(row({ kind: 'terminal', detail: '/Users/me/notes', status: 'working' }))).toBe('/Users/me/notes');
+  });
+});
+
+describe('waitBodyLine: what a blocked body says in the name’s place, in the swarm’s order (M14)', () => {
+  const since = 1;
+  it('a question as it was asked: its header, else its prompt, blank ones passed over', () => {
+    expect(waitBodyLine({ kind: 'question', since, header: 'Which branch?', question: 'Merge or keep?' })).toBe(
+      'Which branch?',
+    );
+    expect(waitBodyLine({ kind: 'question', since, header: '  ', question: ' Merge or keep? ' })).toBe(
+      'Merge or keep?',
+    );
+    expect(waitBodyLine({ kind: 'question', since, question: '', detail: 'the adapter’s line' })).toBe(
+      'the adapter’s line',
+    );
+  });
+
+  it('the detail an adapter gave, before a permission’s tool or a failure’s code', () => {
+    expect(waitBodyLine({ kind: 'permission', since, detail: ' pnpm test --run ', tool: 'Bash' })).toBe(
+      'pnpm test --run',
+    );
+    expect(waitBodyLine({ kind: 'permission', since, detail: '   ', tool: 'Bash' })).toBe('Bash');
+    expect(waitBodyLine({ kind: 'failure', since, code: 'E_RATE_LIMIT' })).toBe('E_RATE_LIMIT');
+    // a tool or a code on the wrong kind is no evidence
+    expect(waitBodyLine({ kind: 'failure', since, tool: 'Bash' })).toBe('failed');
+    expect(waitBodyLine({ kind: 'permission', since, code: 'E' })).toBe('permission');
+  });
+
+  it('then the latest reply, then the bare word for the wait, a kind the toolkit does not know said as itself', () => {
+    expect(waitBodyLine({ kind: 'permission', since }, 'Done with the refactor.')).toBe('Done with the refactor.');
+    expect(waitBodyLine({ kind: 'permission', since })).toBe('permission');
+    expect(waitBodyLine({ kind: 'question', since })).toBe('question');
+    expect(waitBodyLine({ kind: 'failure', since })).toBe('failed');
+    expect(waitBodyLine({ kind: 'sandbox', since })).toBe('sandbox');
   });
 });

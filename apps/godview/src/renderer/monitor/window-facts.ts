@@ -111,6 +111,16 @@ export interface WindowLocalInput {
   /** This window's terminals (merged), whose rows this window shows. */
   readonly terminals: readonly MonitorTerminalRecord[];
   readonly identities?: ReadonlyMap<string, string> | undefined;
+  /** The visual ids this window's handoffs carried, by session (a launcher's agent takes the shell's body), M59. */
+  readonly visualIds?: ReadonlyMap<string, string> | undefined;
+  /** What each row wore last time (the previous join's `visualIds`), so a body keeps its identity. */
+  readonly previousVisualIds?: ReadonlyMap<string, string> | undefined;
+  /**
+   * The per-row spatial identity already computed and stabilized (M59, perf): when the product hero computes it once
+   * per publish and keeps its identity across state ticks, it hands the ready map here so the join does no per-tick
+   * visual-id work. Absent: the join computes it from `visualIds`/`previousVisualIds` (the differential harness).
+   */
+  readonly readyVisualIds?: ReadonlyMap<string, string> | undefined;
 }
 
 /**
@@ -135,7 +145,9 @@ export function windowTerminalIds(
 /**
  * The replica's local join for this window. `visible` keeps every agent (a
  * crashed one until it is acknowledged, M3) and only this window's terminals;
- * the predicate is passed in so it keeps its identity while the set does.
+ * the predicate is passed in so it keeps its identity while the set does. Its
+ * `visualIds` is every row's spatial identity (M59, `visualIdsForRows`): the
+ * next call's `previousVisualIds`.
  */
 export function windowLocal(input: WindowLocalInput, visible: (row: MonitorAgentRow) => boolean): MonitorReplicaLocal {
   const attachments = new Map<string, MonitorReplicaAttachment>();
@@ -162,7 +174,15 @@ export function windowLocal(input: WindowLocalInput, visible: (row: MonitorAgent
     if (input.model.byId.get(rowId)?.kind === 'agent') continue;
     spawnHints.set(rowId, terminal.spawnHint);
   }
-  return { attachments, activeIds, spawnHints, visible };
+  const visualIds =
+    input.readyVisualIds ??
+    visualIdsForRows(
+      input.model.agents,
+      (row) => sessionIdForRow(row, input.agentSessions, input.terminals, input.identities),
+      input.visualIds,
+      input.previousVisualIds ?? new Map(),
+    );
+  return { attachments, activeIds, spawnHints, visible, visualIds };
 }
 
 /** Each agent row's terminal session, in main's record order: the first record to carry a row's id is its session. */
@@ -196,6 +216,17 @@ export function sessionIdForRow(
  * wore last time, else its session. Every row is in the result, so it can be
  * the next call's `previous`; `visualId ?? id` is how every view reads it.
  */
+/**
+ * The same entries? (M59, perf) Used to keep a window's visual-id map identity STABLE across a state-only publish, so
+ * the replica's local join skips its per-row visual-id work and the host's render does not rebuild it.
+ */
+export function sameVisualIds(a: ReadonlyMap<string, string> | undefined, b: ReadonlyMap<string, string>): boolean {
+  if (a === b) return true;
+  if (a === undefined || a.size !== b.size) return false;
+  for (const [id, visualId] of b) if (a.get(id) !== visualId) return false;
+  return true;
+}
+
 export function visualIdsForRows(
   rows: readonly Pick<MonitorAgentRow, 'id' | 'kind'>[],
   sessionOf: (row: Pick<MonitorAgentRow, 'id' | 'kind'>) => string | undefined,

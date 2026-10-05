@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monitorParameterDefaults } from '../../monitor/parameters.js';
+import { parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
 import {
   DEFAULT_SWARM_PARAMETERS,
   SWARM_PARAMETER_GROUPS,
@@ -36,7 +36,7 @@ describe('swarm parameters', () => {
   });
 
   it('declares the same defaults to the shell that it applies itself', () => {
-    expect(monitorParameterDefaults(SWARM_PARAMETER_GROUPS)).toEqual({ ...DEFAULT_SWARM_PARAMETERS });
+    expect(parameterDefaults(SWARM_PARAMETER_GROUPS)).toEqual({ ...DEFAULT_SWARM_PARAMETERS });
   });
 
   it('restores finite values and clamps them to the tweak panel ranges', () => {

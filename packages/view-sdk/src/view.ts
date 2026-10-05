@@ -160,12 +160,21 @@ export interface ViewReport {
   readonly keysHeld?: boolean | undefined;
 }
 
+/** The host's answer to a create (SB §2.6): a refusal is an answer, not an error, so the promise never rejects. */
+export interface MonitorCreateAnswer {
+  readonly opened: boolean;
+}
+
 /** The three commands a view may call (MV-D5). */
 export interface MonitorViewCommands {
   /** Show this agent in the active pane. */
   select(agentId: string): void;
-  /** Open a terminal: where the gesture happened, and the desktop and profile chosen. */
-  create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): void;
+  /**
+   * Open a terminal: where the gesture happened, and the desktop and profile chosen. Resolves with the host's answer
+   * once it has acted — opened, or refused — so a view can wait for the new row and give up at once on a refusal
+   * (SB §2.6). It never rejects; a host that cannot tell answers `{ opened: true }` at once.
+   */
+  create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): Promise<MonitorCreateAnswer>;
   report(report: ViewReport): void;
 }
 

@@ -63,11 +63,15 @@ export class GlyphAtlas {
     private readonly device: GPUDevice,
     dpr: number,
     size = 2048,
+    /** Where there is no `OffscreenCanvas`: a detached canvas from the owner's own document (the view reaches no
+     * document of its own, MV-W2). Without one, the atlas needs `OffscreenCanvas`. */
+    createCanvas?: () => HTMLCanvasElement,
   ) {
     this.size = size;
     this.dpr = dpr;
-    this.canvas =
-      typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(size, size) : document.createElement('canvas');
+    if (typeof OffscreenCanvas === 'function') this.canvas = new OffscreenCanvas(size, size);
+    else if (createCanvas) this.canvas = createCanvas();
+    else throw new Error('glyph atlas: no OffscreenCanvas and no canvas to draw in');
     if (!(this.canvas instanceof OffscreenCanvas)) {
       this.canvas.width = size;
       this.canvas.height = size;

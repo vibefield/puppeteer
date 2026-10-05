@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MonitorSpawnMenu, MonitorSpawnTarget } from '../../../monitor/types.js';
+import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
 import { BLOOM } from './constants.js';
 import type { BloomPoint } from './geometry.js';
 import type { BloomChoice, BloomState } from './model.js';
@@ -15,11 +15,13 @@ import {
   createQuietly,
   createSpawnBloomEngine,
   spawnTarget,
+  type BloomFocusPlace,
   type SpawnBloomHost,
 } from './use-spawn-bloom.js';
 
-// AgentSwarm's routing into the bloom, driven without a document: the events
-// are the least each method reads, and the clock is vitest's. What this cannot
+// AgentSwarm's routing into the bloom, driven without a document (the engine
+// reads none, MV-W2): the events are the least each method reads, where the
+// focus stands is what the swarm tells it, and the clock is vitest's. What this cannot
 // see — pointer capture, focus moving, the transitions — is VibeField's
 // happy-dom lane and the live witness.
 
@@ -29,7 +31,9 @@ interface Harness {
   engine: ReturnType<typeof createSpawnBloomEngine>;
   created: Array<[BloomPoint | undefined, MonitorSpawnTarget | undefined, number]>;
   renders: Array<BloomState | null>;
-  births: Array<{ choice: BloomChoice; answer: Promise<void> }>;
+  births: Array<{ choice: BloomChoice; answer: Promise<MonitorCreateAnswer> }>;
+  /** Where the focus stands, as the swarm would tell the bloom. */
+  focus(place: BloomFocusPlace): void;
 }
 
 type CreateAt = (...args: [BloomPoint?, MonitorSpawnTarget?]) => void | Promise<void>;
@@ -38,12 +42,14 @@ function harness(menu: MonitorSpawnMenu | undefined, answer?: CreateAt): Harness
   const created: Harness['created'] = [];
   const renders: Harness['renders'] = [];
   const births: Harness['births'] = [];
+  let focusPlace: BloomFocusPlace = 'none';
   const host: SpawnBloomHost = {
     container: { current: { clientWidth: 1000, clientHeight: 600 } as HTMLElement },
     readChrome: () => [],
     bodies: () => [],
     idleRadius: () => 50,
     motion: () => true,
+    focus: () => focusPlace,
     createAt: (...args: [BloomPoint?, MonitorSpawnTarget?]) => {
       created.push([args[0], args[1], args.length]);
       return answer ? answer(...args) : Promise.resolve();
@@ -53,7 +59,7 @@ function harness(menu: MonitorSpawnMenu | undefined, answer?: CreateAt): Harness
   const engine = createSpawnBloomEngine({ current: host }, { current: menu }, { current: null }, (state) =>
     renders.push(state),
   );
-  return { engine, created, renders, births };
+  return { engine, created, renders, births, focus: (place: BloomFocusPlace) => void (focusPlace = place) };
 }
 
 const pointer = (pointerId = 1, button = 0) =>
@@ -88,8 +94,6 @@ function budAt(state: BloomState | null, device: string, profile?: string): Bloo
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance', 'Date'] });
-  vi.stubGlobal('window', { setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout });
-  vi.stubGlobal('document', { activeElement: null, body: null });
 });
 
 afterEach(() => {
@@ -373,11 +377,92 @@ describe('a host that cannot open a terminal', () => {
     h.engine.pointerMove(pointer(1), work);
     h.engine.pointerUp(pointer(1), work);
     expect(h.births).toHaveLength(1);
-    await expect(h.births[0]?.answer).rejects.toThrow('refused');
+    // M59: the answer never rejects; a refusal (or a host that throws) is `opened: false`, and the birth is given up
+    await expect(h.births[0]?.answer).resolves.toEqual({ opened: false });
   });
 
-  it('turns a throw into a rejection, and a plain return into a resolution', async () => {
-    await expect(createQuietly(explode)).rejects.toThrow('thrown');
-    await expect(createQuietly(() => undefined)).resolves.toBeUndefined();
+  it('answers and never rejects (M59): a throw or a rejection is a refusal, nothing is opened at once', async () => {
+    await expect(createQuietly(explode)).resolves.toEqual({ opened: false });
+    await expect(createQuietly(refuse)).resolves.toEqual({ opened: false });
+    await expect(createQuietly(() => undefined)).resolves.toEqual({ opened: true });
+    await expect(createQuietly(() => Promise.resolve({ opened: false }))).resolves.toEqual({ opened: false });
+    await expect(createQuietly(() => ({ opened: true }))).resolves.toEqual({ opened: true });
+  });
+});
+
+describe('the keyboard, with no document to read (MV-W2, MV-D8)', () => {
+  it('⎋ on the field puts a hold’s bloom away, and the field hears nothing else', () => {
+    const h = harness(BLOOM_SCENARIOS.two);
+    // nothing open: not taken
+    expect(h.engine.fieldKeyDown(key('Escape'))).toBe(false);
+    h.engine.held(P, 1);
+    const letter = key('a');
+    expect(h.engine.fieldKeyDown(letter)).toBe(false);
+    expect(letter.preventDefault).not.toHaveBeenCalled();
+    expect(h.engine.isOpen()).toBe(true);
+    const escape = key('Escape');
+    expect(h.engine.fieldKeyDown(escape)).toBe(true);
+    expect(escape.preventDefault).toHaveBeenCalled();
+    expect(escape.stopPropagation).toHaveBeenCalled();
+    expect(h.engine.current()?.closed?.reason).toBe('cancel');
+    // held open or from the keys door, the MENU has the keys: the field takes none
+    const g = harness(BLOOM_SCENARIOS.two);
+    g.engine.openKeys(null);
+    expect(g.engine.fieldKeyDown(key('Escape'))).toBe(false);
+    expect(g.engine.isOpen()).toBe(true);
+  });
+
+  it('gives the keyboard back to the keys door once its bloom closes with the focus adrift', () => {
+    for (const place of ['menu', 'field', 'none'] as const) {
+      const door = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+      const h = harness(BLOOM_SCENARIOS.two);
+      h.engine.openKeys(door);
+      h.focus(place);
+      h.engine.onKeyDown(key('Escape'));
+      expect(h.engine.current()?.closed?.reason).toBe('cancel');
+      vi.advanceTimersByTime(0);
+      expect(door.focus).toHaveBeenCalledWith({ preventScroll: true });
+    }
+  });
+
+  it('leaves the keyboard where it went of its own accord: a control in the view, or beyond it', () => {
+    for (const place of ['control', 'outside'] as const) {
+      const door = { isConnected: true, focus: vi.fn() } as unknown as HTMLElement;
+      const h = harness(BLOOM_SCENARIOS.two);
+      h.engine.openKeys(door);
+      h.engine.onKeyDown(key('Escape'));
+      h.focus(place);
+      vi.advanceTimersByTime(0);
+      expect(door.focus).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a bloom held open gives the keyboard back to what had it when the menu took it (the focus event’s relatedTarget)', () => {
+    vi.stubGlobal('HTMLElement', class FakeElement {});
+    const Element = (globalThis as unknown as { HTMLElement: new () => object }).HTMLElement;
+    const pane = Object.assign(new Element(), { isConnected: true, focus: vi.fn() });
+    const h = harness(BLOOM_SCENARIOS.two);
+    h.engine.contextMenu(mouse(), P, false);
+    expect(h.engine.current()?.mode).toBe('sticky');
+    // the menu takes the focus from the pane: that is where it goes back to
+    h.engine.focusEntered(pane as unknown as EventTarget);
+    h.focus('menu');
+    h.engine.onKeyDown(key('Escape'));
+    vi.advanceTimersByTime(0);
+    expect(pane.focus).toHaveBeenCalledWith({ preventScroll: true });
+    // taken from nothing (the body had it): nothing to give it back to, the menu lets go
+    const g = harness(BLOOM_SCENARIOS.two);
+    g.engine.contextMenu(mouse(), P, false);
+    g.engine.focusEntered(null);
+    g.focus('menu');
+    g.engine.onKeyDown(key('Escape'));
+    vi.advanceTimersByTime(0);
+    expect(pane.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('measures its words without a document: a container with no canvas falls back to the approximate measure', () => {
+    const h = harness(BLOOM_SCENARIOS['one-three']);
+    h.engine.held(P, 1);
+    expect(h.engine.current()?.say?.m.w).toBeGreaterThan(0);
   });
 });

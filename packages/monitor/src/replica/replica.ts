@@ -65,6 +65,12 @@ export interface MonitorReplicaLocal {
    * backend's own rule (`classifyTerminalStatus`): a foreground job works.
    */
   readonly activity?: ReadonlyMap<string, MonitorActivity> | undefined;
+  /**
+   * Each row's spatial identity, as only this window knows it (M59): a launcher's agent takes the shell's place, so a
+   * spatial view keeps one body across the handoff. Keyed by row id; an absent entry leaves the row without one, and a
+   * view reads `visualId ?? id`. Puppeteer's Godview computes it with `visualIdsForRows`.
+   */
+  readonly visualIds?: ReadonlyMap<string, string> | undefined;
 }
 
 /** The theme's colour function (L7). The same `key` promises the same colours, so only a new key re-colours. */
@@ -337,6 +343,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
     const spawnHint = spawnHintOf(row.id, previous?.spawnHint);
     const activity = activityOf(row, previous?.activity);
     const { status, statusSince } = statusOf(row, activity);
+    const visualId = local.visualIds?.get(row.id);
     if (
       previous !== undefined &&
       held?.row === row &&
@@ -347,7 +354,8 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       previous.spawnHint === spawnHint &&
       previous.activity === activity &&
       previous.status === status &&
-      previous.statusSince === statusSince
+      previous.statusSince === statusSince &&
+      previous.visualId === visualId
     ) {
       return previous;
     }
@@ -361,6 +369,7 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
       ...(attachment ? { attachment } : {}),
       ...(spawnHint ? { spawnHint } : {}),
       ...(activity ? { activity } : {}),
+      ...(visualId === undefined ? {} : { visualId }),
     });
   };
 
@@ -561,6 +570,12 @@ export function createMonitorReplica(options: CreateMonitorReplicaOptions = {}):
             if (!held || held.kind !== entry.kind || held.line !== entry.line || held.since !== entry.since) touch(id);
           }
         }
+        if (before) for (const id of before.keys()) if (!after?.has(id)) touch(id);
+      }
+      if (next.visualIds !== previous.visualIds) {
+        const before = previous.visualIds;
+        const after = next.visualIds;
+        if (after) for (const [id, visualId] of after) if (before?.get(id) !== visualId) touch(id);
         if (before) for (const id of before.keys()) if (!after?.has(id)) touch(id);
       }
       if (next.receded !== previous.receded || next.visible !== previous.visible) {

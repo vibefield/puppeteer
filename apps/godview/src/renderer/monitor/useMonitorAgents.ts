@@ -5,7 +5,7 @@ import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore, type MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
 import { createMonitorReplica, type MonitorReplica } from '@vibecook/puppeteer-monitor/replica';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
-import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorView, MonitorViewCommands } from '@vibecook/puppeteer-view-sdk';
 import {
   frameScheduler,
   isLegacyMonitorView,
@@ -36,8 +36,10 @@ import type { MonitorAgent } from './types.js';
 import {
   agentSessionsByRow,
   mergeMonitorTerminals,
+  sameVisualIds,
   sessionIdForRow,
   terminalReport,
+  visualIdsForRows,
   windowLocal,
   windowTerminalIds,
   type MonitorTerminalRecord,
@@ -50,9 +52,9 @@ import {
  * model (a snapshot, then the changes, on one ordered channel: M23) and joins
  * only what the window knows: its panes, the pane it works in, the terminals it
  * holds, the theme's colours. The list and the rain are SDK views the view host
- * mounts directly (MV-4): they read the model and word the line under a name by
- * the toolkit's one rule (reply-first, M4). The swarm and the timeline still
- * mount through the view host's legacy bridge with props built by the legacy
+ * mounts directly (MV-4), and so is the swarm (MV-5): they read the model and
+ * word the line under a name by the toolkit's one rule (reply-first, M4). The
+ * timeline still mounts through the view host's legacy bridge with props built by the legacy
  * shim (L9) in Godview's words (`headline-cost`). The counts and the status
  * shortcuts read the model.
  *
@@ -79,7 +81,7 @@ export interface MonitorAgentsResult {
   /** This window's replica of the backend's model; the view host mounts the view on it. */
   replica: MonitorReplica;
   model: MonitorModel;
-  /** The four views by id: list and rain as themselves (MV-4), the swarm and the timeline through the legacy bridge. */
+  /** The four views by id: list, rain (MV-4) and the swarm (MV-5) as themselves, the timeline through the legacy bridge. */
   views: ReadonlyMap<string, MonitorView>;
   /** The view host's commands: select and create stay this window's own. */
   commands: ViewSlotCommands;
@@ -92,7 +94,8 @@ export interface MonitorAgentsResult {
   /** The chrome's verbs: mount a row's session in the active pane; open a terminal there. */
   actions: {
     select(agent: Pick<ViewsMonitorAgent, 'id'>): void;
-    createAt(position?: { x: number; y: number }): Promise<void>;
+    /** True when a terminal opened (M59: nothing opened is a refusal to the view's create). */
+    createAt(position?: { x: number; y: number }): Promise<boolean>;
   };
   /** Acknowledges a crashed row's failure through the backend, so the row leaves the model and the chrome alike. */
   acknowledge(id: string): void;
@@ -319,6 +322,27 @@ export function useMonitorAgents({
   const modelRef = useRef(model);
   modelRef.current = model;
   const activeSessionId = workspace?.activeSession?.id;
+
+  // The swarm's spatial identity per row (M59): computed ONCE per published model and kept at the SAME identity across
+  // a state-only publish, so the host's render rebuilds nothing and the replica's local join does no per-tick visual-id
+  // work. The row->session resolver reads the churning maps through a ref, so only the model/transfer/identities key it.
+  const visualIdsInputs = useRef({ agentSessions, terminals, terminalIdentities });
+  visualIdsInputs.current = { agentSessions, terminals, terminalIdentities };
+  const visualIdsRef = useRef<ReadonlyMap<string, string>>(new Map());
+  const visualIds = useMemo(() => {
+    const { agentSessions: sessions, terminals: terms, terminalIdentities: ids } = visualIdsInputs.current;
+    const next = visualIdsForRows(
+      model.agents,
+      (row) => sessionIdForRow(row, sessions, terms, ids),
+      terminalVisualIds,
+      visualIdsRef.current,
+    );
+    const stable = sameVisualIds(visualIdsRef.current, next) ? visualIdsRef.current : next;
+    visualIdsRef.current = stable;
+    return stable;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the resolver's maps are read through the ref; the model, a transfer, or an identity change are what move a visual id
+  }, [model, terminalVisualIds, terminalIdentities]);
+
   const local = useMemo(
     () =>
       windowLocal(
@@ -329,12 +353,14 @@ export function useMonitorAgents({
           activeSessionId,
           terminals,
           identities: terminalIdentities,
+          readyVisualIds: visualIds,
         },
         visible,
       ),
-    // The model's agent ids stand for its kinds (`agentIdsKey`); the model itself is read through the ref.
+    // The model's agent ids stand for its kinds (`agentIdsKey`); the model itself is read through the ref, and the
+    // spatial identity rides as `visualIds` (its own stable identity).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeSessionId, agentIdsKey, agentSessions, attachments, terminalIdentities, terminals, visible],
+    [activeSessionId, agentIdsKey, agentSessions, attachments, terminalIdentities, terminals, visible, visualIds],
   );
   useLayoutEffect(() => replica.setLocal(local), [local, replica]);
 
@@ -392,12 +418,13 @@ export function useMonitorAgents({
     [agentSessions, records, sessions, terminalIdentities, terminals],
   );
 
+  /** Opens a terminal in the active pane: true when one opened (M59: the slot reads nothing opened as a refusal). */
   const createAt = useCallback(
-    async (position?: { x: number; y: number }): Promise<void> => {
-      if (!workspace?.activeSession) return;
+    async (position?: { x: number; y: number }): Promise<boolean> => {
+      if (!workspace?.activeSession) return false;
       const sourceCwd = workspace.activeSession.cwd;
       const session = await workspace.createSessionInActivePane();
-      if (!session) return;
+      if (!session) return false;
       setExitedTerminalIds((current) => {
         if (!current.has(session.id)) return current;
         const next = new Set(current);
@@ -409,6 +436,7 @@ export function useMonitorAgents({
         ...current.filter((terminal) => terminal.session.id !== session.id),
         { session, ...(cwd ? { cwd } : {}), ...(position ? { spawnHint: position } : {}) },
       ]);
+      return true;
     },
     [workspace],
   );
@@ -424,7 +452,10 @@ export function useMonitorAgents({
         if (row) mount(resolve(row));
       },
       create(at) {
-        void latest.current.createAt(at);
+        // M59: the slot reads a fulfilled return as opened and a rejection as a refusal.
+        return latest.current.createAt(at).then((opened) => {
+          if (!opened) throw new Error('no terminal opened');
+        });
       },
     }),
     [],
@@ -434,12 +465,13 @@ export function useMonitorAgents({
   // `toProps` reads the shim's rows.
   const views = useMemo(() => {
     const actions = new WeakMap<object, ViewsMonitorActions>();
-    const actionsFor = (bridge: Pick<ViewSlotCommands, 'select' | 'create'>): ViewsMonitorActions => {
+    // The bridge hands the view's own commands: `create` answers (M59), and the legacy actions expect no value.
+    const actionsFor = (bridge: Pick<MonitorViewCommands, 'select' | 'create'>): ViewsMonitorActions => {
       const held = actions.get(bridge);
       if (held) return held;
       const made: ViewsMonitorActions = {
         select: (agent) => bridge.select(agent.id),
-        createAt: (position, target) => bridge.create(position, target),
+        createAt: (position, target) => bridge.create(position, target).then(() => undefined),
       };
       actions.set(bridge, made);
       return made;

@@ -1,5 +1,5 @@
-import { createElement } from 'react';
 import { AGENT_MARK_CANDIDATES } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { labAgentView } from '../../../lab/lab-model.js';
 import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults, type MonitorParameters } from '../../../monitor/parameters.js';
@@ -19,9 +19,7 @@ import {
   normalizeSwarmParameters,
   type SwarmParameters,
 } from '../swarm-parameters.js';
-import { swarmMonitorView } from '../index.js';
-import { SwarmPhysicsProvider } from '../physics/context.js';
-import { createInlineSwarmPhysicsDriver } from '../physics/inline-driver.js';
+import { SWARM_MANIFEST, swarmMonitorView } from '../index.js';
 import { resolveSwarmTheme } from '../swarm-theme.js';
 import {
   bloomStages,
@@ -34,6 +32,8 @@ import {
   type LabFieldStage,
   type LabStage,
 } from './fixtures.js';
+// The lab's own layout, bundled beside the view's stylesheets (the page inlines what the bundle emits).
+import './lab.css';
 
 // The swarm design lab: one page, the production renderer, fixture agents in
 // every state and setting, and the view's own tunables as live controls. It
@@ -44,8 +44,8 @@ import {
 // DOM cell whose rectangle is measured and handed to the renderer as a body's
 // position, so captions and layout stay ordinary HTML.
 //
-// Above the parts, the SHIPPING view: `AgentSwarm` itself on the inline physics,
-// over the seeded world in Godview's stage (`lab/lab-stage.ts`), so what ships —
+// Above the parts, the SHIPPING view: the swarm as the SDK view it is, over the
+// seeded world in Godview's stage (`lab/lab-stage.ts`), so what ships —
 // its models, its physics, its chrome avoidance — is under review too, not only
 // the renderer. The theme, the motion box and the sliders drive both. Its URL is
 // the other view labs': `?n=`, `?size=`, `?theme=dark`, `?animations=0`, and
@@ -129,13 +129,14 @@ function settle(radii: readonly number[], width: number, height: number, seed = 
 async function main(): Promise<void> {
   const root = document.getElementById('lab');
   if (!root) return;
-  let viewParameters: MonitorParameters = monitorParameterDefaults(swarmMonitorView.parameterGroups);
+  let viewParameters: MonitorParameters = monitorParameterDefaults(SWARM_MANIFEST.parameters);
+  // The shipping view through the view host, as Godview mounts it (MV-5). The lab page is one IIFE, so the
+  // view's physics run inline (`import.meta.url` is empty there) and it reports `physics: 'inline'`, honestly.
   const view = mountViewLab({
     root,
     mount: root.querySelector('.lab-view')!,
-    Component: swarmMonitorView.Component,
+    view: swarmMonitorView,
     parameters: viewParameters,
-    wrap: (swarm) => createElement(SwarmPhysicsProvider, { factory: createInlineSwarmPhysicsDriver }, swarm),
   });
   // The golden page is the view alone: the renderer-direct parts would only draw under it.
   if (view.params.capture) return;
@@ -306,7 +307,8 @@ async function main(): Promise<void> {
   function modelOf(stage: LabStage): SwarmBubbleModel {
     const built = Date.now();
     const model = bubbleModel({
-      agent: stage.agent,
+      // The fixtures are legacy rows (a host's catalog still mounts them); the body reads the row as the model says it.
+      agent: labAgentView(stage.agent, built),
       parameters,
       nowMs: built,
       unread: stage.unread === true,

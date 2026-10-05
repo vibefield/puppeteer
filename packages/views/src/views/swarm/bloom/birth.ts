@@ -5,7 +5,8 @@
 // row in time, shrinks away (M4). Pure: AgentSwarm keeps the birth and its
 // clock; this decides what it is and when it is done.
 
-import type { MonitorAgent, MonitorSpawnMenu } from '../../../monitor/types.js';
+import type { AgentView, MonitorSpawnMenu } from '@vibecook/puppeteer-view-sdk';
+import { bodyIdOf } from '../body-id.js';
 import { clampSpawnPosition } from '../physics/spawn-clamp.js';
 import { selfDevice } from './menu.js';
 import type { BloomChoice } from './model.js';
@@ -74,7 +75,7 @@ export function birthOf(input: {
   readonly field: { readonly width: number; readonly height: number };
   readonly now: number;
   readonly nowMs: number;
-  readonly rows: readonly MonitorAgent[];
+  readonly rows: readonly AgentView[];
 }): BloomBirth {
   const { choice } = input;
   const peer = choice.device && !choice.device.self ? choice.device : null;
@@ -91,17 +92,17 @@ export function birthOf(input: {
     on: peer ? peer.label : undefined,
     // a peer's body keeps its host line; the one you sit at names its profile
     profile: peer ? undefined : profileLineFor(input.menu, choice.profileSet),
-    before: new Set(input.rows.map((row) => row.visualId ?? row.id)),
+    before: new Set(input.rows.map(bodyIdOf)),
     answeredAt: null,
     failedAt: null,
   };
 }
 
 /** The row that takes a birth over: new since it was asked for, spawned at the point it was born at. */
-export function birthRow(birth: BloomBirth, rows: readonly MonitorAgent[]): MonitorAgent | undefined {
+export function birthRow(birth: BloomBirth, rows: readonly AgentView[]): AgentView | undefined {
   return rows.find(
     (row) =>
-      !birth.before.has(row.visualId ?? row.id) &&
+      !birth.before.has(bodyIdOf(row)) &&
       !!row.spawnHint &&
       Math.abs(row.spawnHint.x - birth.at.x) <= HINT_SLOP &&
       Math.abs(row.spawnHint.y - birth.at.y) <= HINT_SLOP,
@@ -115,15 +116,29 @@ export function birthOverdue(birth: BloomBirth, now: number): boolean {
   return birth.answeredAt !== null ? now - birth.answeredAt >= BIRTH_WAIT_MS : now - birth.bornAt >= BIRTH_GIVE_UP_MS;
 }
 
-/** The pending body's row, for its model: a terminal with no job and no folder yet. */
-export function birthAgent(birth: BloomBirth): MonitorAgent {
+/** The desktop a birth is born on: the one you sit at, which no line of its body names. */
+const BIRTH_DEVICE: AgentView['device'] = Object.freeze({ id: '', name: '', self: true });
+
+/** The pending body's row, for its model: a terminal with no job and no folder yet, wearing the ramp (`neutral`, the
+ * palette's: a bare terminal belongs to no project). */
+export function birthAgent(birth: BloomBirth, neutral: string): AgentView {
   return {
     id: birth.id,
-    createdAtMs: birth.sinceMs,
+    kind: 'terminal',
+    createdAt: birth.sinceMs,
     status: 'idle',
-    project: '~',
+    statusSince: birth.sinceMs,
+    stale: false,
+    alive: true,
+    observed: true,
     detail: '',
-    color: 'var(--text-faint)',
+    project: { name: '~' },
+    unread: false,
+    device: BIRTH_DEVICE,
+    attachable: true,
+    writable: true,
+    colour: neutral,
     active: false,
+    receded: false,
   };
 }

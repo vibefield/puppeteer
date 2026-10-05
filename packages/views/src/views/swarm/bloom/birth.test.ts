@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorAgent } from '../../../monitor/types.js';
+import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import { agentViewFixture } from '@vibecook/puppeteer-view-sdk/testing';
 import { FRAME_HEADER_FLOATS, frameFloatsFor, SwarmPhysics } from '../physics/world.js';
 import {
   BIRTH_GIVE_UP_MS,
@@ -28,16 +29,15 @@ const choice = (patch: Partial<BloomChoice> = {}): BloomChoice => ({
   from: { d: 48 * BLOOM.hot, fill: 'ink' },
   ...patch,
 });
-const row = (id: string, spawnHint?: { x: number; y: number }): MonitorAgent => ({
-  id,
-  createdAtMs: 0,
-  status: 'idle',
-  project: 'p',
-  detail: '',
-  color: '#888',
-  active: false,
-  ...(spawnHint ? { spawnHint } : {}),
-});
+const row = (id: string, spawnHint?: { x: number; y: number }): AgentView =>
+  agentViewFixture({
+    id,
+    kind: 'terminal',
+    createdAt: 0,
+    project: { name: 'p', seq: undefined },
+    colour: '#888',
+    ...(spawnHint ? { spawnHint } : {}),
+  });
 
 describe('a birth', () => {
   const birth = birthOf({
@@ -57,7 +57,16 @@ describe('a birth', () => {
     expect(birth.drawAt).toEqual(birth.at);
     expect(birth.on).toBeUndefined();
     expect(birth.profile).toEqual({ label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true });
-    expect(birthAgent(birth)).toMatchObject({ id: 'b1', status: 'idle', createdAtMs: 5_000 });
+    // its body: a terminal on this desktop, in no folder, wearing the ramp it is handed
+    expect(birthAgent(birth, 'rgba(0, 0, 0, 0.4)')).toMatchObject({
+      id: 'b1',
+      kind: 'terminal',
+      status: 'idle',
+      createdAt: 5_000,
+      project: { name: '~' },
+      colour: 'rgba(0, 0, 0, 0.4)',
+      device: { self: true },
+    });
   });
 
   it('on a peer says where, and keeps no profile line (its body has its host line)', () => {

@@ -1,9 +1,22 @@
-import type { MonitorBlocker } from '@vibecook/puppeteer-core';
-import { profileMarkName } from '@vibecook/puppeteer-view-sdk/toolkit';
-import type { AgentVisualStatus } from '../../monitor/agent-status.js';
-import { remoteWriteLabel, remoteWriteTitle } from '../../monitor/remote-write.js';
-import { formatUsd } from '../../monitor/cost-format.js';
-import type { MonitorAgent } from '../../monitor/types.js';
+import type { AgentStatus, AgentView, MonitorWait } from '@vibecook/puppeteer-view-sdk';
+import {
+  detailLine,
+  formatElapsed,
+  formatEstimate,
+  formatRatePerHour,
+  hostWriteTitle,
+  hostWriteWord,
+  modelWord,
+  openingWord,
+  profileMarkName,
+  projectName,
+  STATE_WORDS,
+  unreadSpoken,
+  waitBodyLine,
+  waitMark,
+  waitWord,
+} from '@vibecook/puppeteer-view-sdk/toolkit';
+import { bodyIdOf } from './body-id.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
 import type { CopyLead, CopyLine, CopyTone, TextStyle } from './text-layout.js';
 import { SWARM_WEIGHT } from './weight.js';
@@ -17,6 +30,12 @@ import { SWARM_WEIGHT } from './weight.js';
 // status, the unread dot before the name, model and effort always shown, the
 // burn ladder and the context ring on a working body, the outer light on a
 // blocked one, and a hollow for a terminal no agent has claimed.
+//
+// On the SDK (MV-5) a body reads `AgentView` and nothing else: the backend's
+// facts as the row carries them, and the toolkit's words for them — the line
+// under the name by its one rule (M4, reply-first), a wait in the swarm body's
+// own order (M14), a peer's host and write policy (M41). Every row's facts are
+// drawn alike, a peer's included (M9).
 
 export type SwarmBodyState = 'terminal-empty' | 'terminal-running' | 'idle' | 'working' | 'blocked';
 
@@ -57,15 +76,6 @@ export interface SwarmBurn {
   priced: boolean;
 }
 
-/** The burn rate as people price work: by the hour. */
-export function formatRatePerHour(costPerMin: number | undefined): string {
-  if (costPerMin === undefined) return '—/hr';
-  const perHour = costPerMin * 60;
-  if (perHour >= 10) return `$${Math.round(perHour)}/hr`;
-  if (perHour >= 1) return `$${perHour.toFixed(1)}/hr`;
-  return `${formatUsd(perHour)}/hr`;
-}
-
 export interface SwarmFigure {
   text: string;
   hot: boolean;
@@ -78,7 +88,7 @@ export interface SwarmBubbleModel {
   id: string;
   state: SwarmBodyState;
   /** The three-way reading that picks the body's colours and size. */
-  appearance: AgentVisualStatus;
+  appearance: AgentStatus;
   radius: number;
   /** The project's colour (record §02). It shows in ONE place: the folder before
    * the project's name. Nothing else on the body wears it (2026-09-16). */
@@ -115,7 +125,7 @@ export interface SwarmBubbleModel {
 }
 
 export interface BubbleModelInput {
-  agent: MonitorAgent;
+  agent: AgentView;
   parameters: SwarmParameters;
   nowMs: number;
   unread: boolean;
@@ -208,49 +218,47 @@ function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLin
   };
 }
 
-/** The mark a blocker asks with, and the word it falls back to unnamed. */
-const BLOCKER_MARK: Record<SwarmBlockerKind, { icon: string; word: string }> = {
-  permission: { icon: 'permission', word: 'permission' },
-  question: { icon: 'question', word: 'question' },
-  failure: { icon: 'failure', word: 'failed' },
-};
+/** The views draw these waits; another word in the row's wait is none to them (the shim's rule, kept). */
+const DRAWN_WAITS: ReadonlySet<string> = new Set<SwarmBlockerKind>(['permission', 'question', 'failure']);
 
 /**
- * What a blocked body says in the name's place: what it is actually waiting on,
- * in the blocker's OWN evidence before the reply's — the question as asked, the
- * detail an adapter gave, the tool a permission names, the failure's code — and
- * only then the latest reply, and only then the bare word.
+ * A fact the runtime has reported. Before a run's first state (starting, or
+ * pending) it has no live facts to draw — the seam drew such a run from its
+ * host record alone — so its reply, effort, wait and cost are read only once
+ * the backend says it is observed.
  */
-function blockerText(blocker: MonitorBlocker, message: string | undefined): string {
-  if (blocker.kind === 'question') {
-    const question = blocker.questions[0];
-    const asked = question?.header?.trim() || question?.prompt.trim();
-    if (asked) return asked;
-  }
-  const detail = blocker.detail?.trim();
-  if (detail) return detail;
-  if (blocker.kind === 'permission' && blocker.permission?.tool) return blocker.permission.tool;
-  if (blocker.kind === 'failure' && blocker.failure?.code) return blocker.failure.code;
-  return message ?? BLOCKER_MARK[blocker.kind].word;
+function observed<T>(agent: AgentView, fact: T | undefined): T | undefined {
+  return agent.observed ? fact : undefined;
 }
 
-/** Compact token counts: 820, 8.1k, 24k, 384k, 1.2M, 24M. */
-export function formatTokens(count: number): string {
-  if (count < 1000) return `${Math.round(count)}`;
-  if (count < 10_000) return `${(count / 1000).toFixed(1)}k`;
-  if (count < 1_000_000) return `${Math.round(count / 1000)}k`;
-  if (count < 10_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
-  return `${Math.round(count / 1_000_000)}M`;
+function drawnWait(agent: AgentView): (MonitorWait & { readonly kind: SwarmBlockerKind }) | undefined {
+  const wait = observed(agent, agent.wait);
+  return wait && DRAWN_WAITS.has(wait.kind) ? (wait as MonitorWait & { readonly kind: SwarmBlockerKind }) : undefined;
+}
+
+/** Observed, priced USD: none where nothing was priced (RFC 008: a missing lane is unavailable, never zero). */
+function costTotal(agent: AgentView): number | undefined {
+  const cost = observed(agent, agent.cost);
+  return cost && cost.coverage !== 'unavailable' ? cost.usd : undefined;
+}
+
+/**
+ * The per-minute rate the backend's per-hour burn was multiplied from, for the
+ * ladder: dividing back can land an ulp away, and fifteen significant digits
+ * restore it (M27), so the flames light exactly where they lit.
+ */
+function perMinute(burnPerHour: number): number {
+  return Number((burnPerHour / 60).toPrecision(15));
 }
 
 /** Each working session's place among the working sessions by estimated USD:
  * 0 for the least, 1 for the most, everything else in between; all 0 when
  * they tie or there is only one. Terminals without an agent do not count. */
-export function workingShares(agents: readonly MonitorAgent[]): Map<string, number> {
+export function workingShares(agents: readonly AgentView[]): Map<string, number> {
   const totals: [string, number][] = [];
   for (const agent of agents) {
-    if (agent.status !== 'working' || !agent.agent) continue;
-    totals.push([agent.id, agent.agent.usage?.total ?? 0]);
+    if (agent.status !== 'working' || agent.kind !== 'agent') continue;
+    totals.push([agent.id, costTotal(agent) ?? 0]);
   }
   const shares = new Map<string, number>();
   if (totals.length === 0) return shares;
@@ -262,8 +270,8 @@ export function workingShares(agents: readonly MonitorAgent[]): Map<string, numb
 }
 
 /** The first line of the root agent's latest reply, whitespace collapsed. */
-function latestMessage(agent: MonitorAgent): string | undefined {
-  const text = agent.agent?.monitor?.lastAssistantMessage?.text;
+function latestMessage(agent: AgentView): string | undefined {
+  const text = observed(agent, agent.reply)?.text;
   if (!text) return undefined;
   return text
     .split(/\r?\n/u)
@@ -271,62 +279,52 @@ function latestMessage(agent: MonitorAgent): string | undefined {
     .find((part) => part.length > 0);
 }
 
-function formatElapsed(sinceMs: number | undefined, nowMs: number): string | undefined {
-  if (sinceMs === undefined) return undefined;
-  const seconds = Math.max(0, Math.floor((nowMs - sinceMs) / 1000));
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) return `${hours}h ${(minutes % 60).toString().padStart(2, '0')}m`;
-  return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
-}
-
-function effortLines(agent: MonitorAgent): { text: string; configured: boolean } | undefined {
-  const effort = agent.agent?.monitor?.effort;
+function effortLines(agent: AgentView): { text: string; configured: boolean } | undefined {
+  const effort = observed(agent, agent.effort);
   if (!effort?.value) return undefined;
   // Launch intent is set in italics so a reading never mistakes it for
   // provider evidence; an older producer that omits the intent is read as observed.
   return { text: effort.value, configured: effort.intent === 'configured' };
 }
 
-function contextPercent(agent: MonitorAgent): number | undefined {
-  const usedPercent = agent.agent?.contextWindow?.usedPercent;
+function contextPercent(agent: AgentView): number | undefined {
+  const usedPercent = agent.kind === 'agent' ? agent.context?.usedPercent : undefined;
   return usedPercent === undefined || !Number.isFinite(usedPercent) ? undefined : Math.floor(usedPercent);
-}
-
-function modelName(agent: MonitorAgent): string | undefined {
-  const facet = agent.agent;
-  return facet ? (facet.model ?? facet.provider.label) : undefined;
 }
 
 export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const { agent, parameters, nowMs } = input;
-  const facet = agent.agent;
+  const project = projectName(agent);
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
   const base = {
-    id: agent.visualId ?? agent.id,
-    accent: agent.color,
-    stale: agent.stale === true,
+    id: bodyIdOf(agent),
+    accent: agent.colour,
+    stale: agent.stale,
     active: agent.active,
-    ...(agent.attachment?.color ? { linked: agent.attachment.color } : {}),
+    ...(agent.attachment?.colour ? { linked: agent.attachment.colour } : {}),
   };
 
-  if (!facet) {
-    const remote = agent.remote;
+  if (agent.kind !== 'agent') {
+    // A row from another desktop wears its host on the body (M41's write policy, said in both directions).
+    const remote = agent.device.self ? undefined : agent.device;
     // A birth on its way is a terminal with no job yet, whatever its row says.
     const opening = input.opening;
     const running = !opening && agent.status === 'working';
-    const elapsed = running ? formatElapsed(input.runningSinceMs, nowMs) : undefined;
+    const elapsed =
+      running && input.runningSinceMs !== undefined
+        ? formatElapsed(nowMs - input.runningSinceMs, { days: false })
+        : undefined;
     // It reads `empty` and holds still at first; past the quiet it says it is
     // opening, and where (a peer's name), and its dashes turn.
     const turning = opening !== undefined && nowMs - opening.sinceMs >= OPENING_QUIET_MS;
-    const sub = opening && turning ? (opening.on ? `opening on ${opening.on}` : 'opening') : 'empty';
+    const sub = opening && turning ? openingWord(opening.on) : STATE_WORDS.terminal.empty;
     const copy: CopyLine[] = [
       // One line, the folder then the name, as every other body reads. A terminal
       // belongs to no project, so its folder wears the ink rather than a colour.
       {
         key: 'name',
-        text: agent.project,
+        text: project,
         style: TERMINAL_NAME,
         opacity: SWARM_WEIGHT.title,
         tone: 'ink',
@@ -335,7 +333,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       running
         ? {
             key: 'command',
-            text: 'running',
+            text: STATE_WORDS.terminal.running,
             style: COMMAND,
             opacity: SWARM_WEIGHT.supporting,
             tone: 'ink',
@@ -364,12 +362,12 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       ...(input.profile ? [profileLine(input.profile)] : []),
       // A peer's session wears its host on the body — the name and the
       // host's write policy, in both directions — so it cannot be read as
-      // one of this machine's terminals (`remote-write.ts`).
+      // one of this machine's terminals (the toolkit's `hostWriteWord`).
       ...(remote
         ? [
             {
               key: 'host',
-              text: `${remote.deviceName} · ${remoteWriteLabel(remote)}`,
+              text: `${remote.name} · ${hostWriteWord(agent)}`,
               style: LABEL_STACKED,
               opacity: SWARM_WEIGHT.supporting,
               tone: 'ink' as const,
@@ -391,16 +389,16 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       ...(opening ? { pending: { turning } } : {}),
       ariaLabel:
         (opening
-          ? `${agent.project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
+          ? `${project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
           : remote
-            ? `on ${remote.deviceName}, ${agent.project}, remote session, ${agent.status}, ${remoteWriteLabel(remote)}`
-            : `${agent.project}, unassigned terminal, ${agent.status}`) +
+            ? `on ${remote.name}, ${project}, remote session, ${agent.status}, ${hostWriteWord(agent)}`
+            : `${project}, unassigned terminal, ${agent.status}`) +
         (input.profile ? `, under ${input.profile.label}` : ''),
-      title: remote ? `${remote.deviceName} · ${remoteWriteTitle(remote)} · ${agent.detail}` : agent.detail,
+      title: remote ? `${remote.name} · ${hostWriteTitle(agent)} · ${agent.detail}` : agent.detail,
     };
   }
 
-  const appearance: AgentVisualStatus = agent.status;
+  const appearance: AgentStatus = agent.status;
   // A working body grows with its share of the working sessions' estimated USD, from
   // the working size for the least to the largest size for the most.
   const share = Math.max(0, Math.min(1, input.workingShare ?? 0));
@@ -408,11 +406,13 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     appearance === 'working'
       ? parameters.radiusWorking + (parameters.radiusWorkingMax - parameters.radiusWorking) * share
       : radiusForStatus(parameters, appearance);
-  const model = modelName(agent) ?? facet.provider.label;
+  const model = modelWord(agent);
   const effort = effortLines(agent);
   const ring = percent === undefined ? undefined : { percent: Math.max(0, Math.min(100, percent)), hot: percent >= 80 };
-  const ariaLabel = `${agent.project}, ${model}, ${agent.status}: ${agent.detail}, ${contextLabel}`;
-  const title = `${agent.project} · ${model} · ${agent.detail}`;
+  // The line under the name, by the toolkit's one rule (M4).
+  const detail = detailLine(agent);
+  const ariaLabel = `${project}, ${model}, ${agent.status}: ${detail}, ${contextLabel}`;
+  const title = `${project} · ${model} · ${detail}`;
   const modelLine: CopyLine = {
     key: 'model',
     text: effort ? `${model} · ${effort.text}` : model,
@@ -422,23 +422,23 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     gapBefore: 3,
   };
   const message = latestMessage(agent);
+  const branch = agent.project.branch;
 
   if (appearance === 'working') {
-    // The held total is the UI's ledger: corrected USD across a bubble's runs,
+    // The total is the backend's ledger: corrected USD across a bubble's runs,
     // cached ones included. The RATE is Core's own live projection over its
-    // rate-eligible window — never a difference of UI snapshots, which a
+    // rate-eligible window — never a difference of snapshots, which a
     // correction could otherwise turn into new spend.
-    const total = facet.usage?.total;
-    const liveUsage = facet.monitor?.usage;
-    const coverage = liveUsage?.costCoverage;
-    const priced = coverage === 'complete' || coverage === 'partial';
-    const ratePerMin = priced ? (liveUsage?.costRatePerMin ?? 0) : undefined;
+    const cost = observed(agent, agent.cost);
+    const total = costTotal(agent);
+    const priced = cost?.coverage === 'complete' || cost?.coverage === 'partial';
+    const perHour = priced ? (cost.burnPerHour ?? 0) : undefined;
     const copy: CopyLine[] = [
-      ...(facet.branch
+      ...(branch
         ? [
             {
               key: 'branch',
-              text: facet.branch,
+              text: branch,
               style: BRANCH,
               opacity: SWARM_WEIGHT.supporting,
               tone: 'ink' as const,
@@ -448,12 +448,12 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         : []),
       {
         key: 'name',
-        text: agent.project,
+        text: project,
         style: WORKING_NAME,
         opacity: SWARM_WEIGHT.title,
         tone: 'ink',
         lead: projectFolder(WORKING_NAME),
-        ...(facet.branch ? { gapBefore: 1 } : {}),
+        ...(branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
     ];
@@ -471,52 +471,56 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           none: percent === undefined,
         },
         bottom: {
-          text: total === undefined ? '—' : `~${formatUsd(total)}${facet.usage?.coverage === 'partial' ? '+' : ''}`,
+          text: formatEstimate(cost),
           hot: false,
           none: total === undefined,
         },
       },
       ...(ring ? { ring } : {}),
-      burn: { lit: ratePerMin === undefined ? 0 : burnFlames(ratePerMin), priced },
+      burn: { lit: perHour === undefined ? 0 : burnFlames(perMinute(perHour)), priced },
       light: 'ink',
       hollow: false,
       running: false,
       unread: input.unread,
-      watermark: { sprite: facet.provider.id, opacity: SWARM_WEIGHT.watermark },
+      watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
       // The flames are the glance; the exact rate is a word away, for a pointer
       // and for a screen reader.
-      ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(ratePerMin)}`,
-      title: `${title} · ${formatRatePerHour(ratePerMin)}`,
+      ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(perHour)}`,
+      title: `${title} · ${formatRatePerHour(perHour)}`,
     };
   }
 
-  const blocker = appearance === 'blocked' ? agent.agent?.monitor?.blockers[0] : undefined;
-  const kind = blocker?.kind;
+  const wait = appearance === 'blocked' ? drawnWait(agent) : undefined;
   // What the body needs from the user takes the name's place, in its own words
-  // behind its own mark: what a blocker is waiting on, or the reply that arrived
-  // unseen. The project's name moves above it, and nothing follows the model line
-  // (2026-09-16). The state's COLOUR is the body's ground rather than its words,
-  // so those words stay the theme's ink like every other body's (2026-09-18).
-  const state: { text: string; icon: string; spoken: string } | undefined = blocker
+  // behind its own mark: what a blocker is waiting on (the swarm body's order,
+  // M14), or the reply that arrived unseen. The project's name moves above it,
+  // and nothing follows the model line (2026-09-16). The state's COLOUR is the
+  // body's ground rather than its words, so those words stay the theme's ink
+  // like every other body's (2026-09-18).
+  const state: { text: string; icon: string; spoken: string } | undefined = wait
     ? {
-        text: blockerText(blocker, message),
-        icon: BLOCKER_MARK[blocker.kind].icon,
-        spoken: `${BLOCKER_MARK[blocker.kind].word}: ${blockerText(blocker, message)}`,
+        text: waitBodyLine(wait, message),
+        icon: waitMark(wait.kind),
+        spoken: `${waitWord(wait.kind)}: ${waitBodyLine(wait, message)}`,
       }
     : appearance === 'blocked'
-      ? { text: message ?? 'blocked', icon: 'failure', spoken: message ?? 'blocked' }
+      ? {
+          text: message ?? STATE_WORDS.status.blocked,
+          icon: 'failure',
+          spoken: message ?? STATE_WORDS.status.blocked,
+        }
       : input.unread
         ? {
-            text: message ?? 'new message',
+            text: message ?? STATE_WORDS.unread.line,
             icon: 'message',
-            spoken: message ? `new message: ${message}` : 'new message',
+            spoken: unreadSpoken(message),
           }
         : undefined;
   const nameStyle = state ? PROJECT_ABOVE : SMALL_NAME;
   const copy: CopyLine[] = [
     {
       key: 'name',
-      text: agent.project,
+      text: project,
       style: nameStyle,
       opacity: state ? SWARM_WEIGHT.supporting : SWARM_WEIGHT.title,
       tone: 'ink',
@@ -554,8 +558,8 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     hollow: false,
     running: false,
     unread: input.unread,
-    watermark: { sprite: facet.provider.id, opacity: SWARM_WEIGHT.watermark },
-    ...(kind ? { blockerKind: kind } : {}),
+    watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
+    ...(wait ? { blockerKind: wait.kind } : {}),
     ariaLabel: state ? `${ariaLabel}, ${state.spoken}` : ariaLabel,
     title,
   };

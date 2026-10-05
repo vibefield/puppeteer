@@ -441,7 +441,10 @@ describe('the list’s spawn menu: legacy and ported, step for step', () => {
       let instance!: MonitorViewInstance;
       const commands = {
         select: () => undefined,
-        create: (_at?: unknown, target?: unknown) => void created.push(target),
+        create: (_at?: unknown, target?: unknown) => {
+          created.push(target);
+          return Promise.resolve({ opened: true });
+        },
         report: () => undefined,
       };
       await act(async () => {

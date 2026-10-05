@@ -1,17 +1,30 @@
 /* Swarm field composition. The field, every body, and all of its type are drawn by WebGPU
    (RFC 005); the DOM here is the canvas, the empty and failure notices, the hover tooltip, and a
-   visually hidden button per body so the field stays reachable without a pointer. */
+   visually hidden button per body so the field stays reachable without a pointer.
 
-.vf-monitor-swarm {
+   The view's own stylesheet (L18): every rule sits under the view's root class `.mv-swarm`, and
+   the only custom properties it reads are the skin's (`MONITOR_SKIN`) and its own `--mv-swarm-*`,
+   which the view sets from its input (the palette's ground and orange) or declares here (the
+   design's named easings, DESIGN §6, as tokens.css carries them). */
+
+.mv-swarm .vf-monitor-swarm {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   isolation: isolate;
   touch-action: none;
+  /* Focusable so a hold's ⎋ is heard on the field (MV-D8); a pointer's focus draws no ring. */
+  outline: none;
+  /* The theme crossfade, once the host's: the field's colours change with the theme over the
+     instrument skin's 240 ms (design-mv §5). */
+  transition:
+    color 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease;
 }
 
-.vf-monitor-swarm-canvas {
+.mv-swarm .vf-monitor-swarm-canvas {
   position: absolute;
   display: block;
   width: 100%;
@@ -20,7 +33,7 @@
   pointer-events: none;
 }
 
-.vf-monitor-swarm-tooltip {
+.mv-swarm .vf-monitor-swarm-tooltip {
   position: absolute;
   z-index: 8;
   max-width: 320px;
@@ -42,7 +55,7 @@
 
 /* The accessible mirror of the field: present for the accessibility tree and the keyboard,
    absent from the stage. */
-.vf-monitor-swarm-list {
+.mv-swarm .vf-monitor-swarm-list {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -60,8 +73,8 @@
    empty ground, the first few times, a quiet line saying what a hold does. The keys door's echo:
    the hidden `＋ New terminal…` button has the keyboard, and this says so where its bloom will
    open (the field's middle, 62% down). While a bloom is open the empty notice steps aside. */
-.vf-monitor-swarm-signifier,
-.vf-monitor-swarm-new-echo {
+.mv-swarm .vf-monitor-swarm-signifier,
+.mv-swarm .vf-monitor-swarm-new-echo {
   position: absolute;
   z-index: 4;
   color: var(--text-muted, #888888);
@@ -72,16 +85,16 @@
   text-transform: uppercase;
   white-space: nowrap;
   text-shadow:
-    0 0 3px var(--monitor-bg, #f7f7f7),
-    0 0 8px var(--monitor-bg, #f7f7f7);
+    0 0 3px var(--monitor-bg),
+    0 0 8px var(--monitor-bg);
   pointer-events: none;
 }
 
-.vf-monitor-swarm-signifier {
+.mv-swarm .vf-monitor-swarm-signifier {
   transform: translate(14px, 16px);
 }
 
-.vf-monitor-swarm-new-echo {
+.mv-swarm .vf-monitor-swarm-new-echo {
   left: 50%;
   top: 62%;
   padding: 5px 8px;
@@ -93,7 +106,30 @@
   transform: translate(-50%, -50%);
 }
 
-.vf-monitor-swarm.is-blooming .vf-monitor-empty {
+/* The empty stage and the failure notice: the hosts' `.vf-monitor-empty`, in the view's own class (W5). */
+.mv-swarm .vf-monitor-swarm-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 7px;
+  color: var(--text-muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.mv-swarm .vf-monitor-swarm-empty span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.mv-swarm .vf-monitor-swarm-empty small {
+  color: var(--text-faint);
+  font-size: 9px;
+}
+
+.mv-swarm .vf-monitor-swarm.is-blooming .vf-monitor-swarm-empty {
   opacity: 0;
   transition: opacity 120ms ease;
 }

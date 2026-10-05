@@ -25,17 +25,17 @@ export function isPortedMonitorView(entry: MonitorViewEntry): entry is PortedMon
 /**
  * Every way of looking at the running agents. A new view is one directory under
  * `views/` and one entry here — the same shape `createBuiltinProviders` gives
- * agent providers in packages/runtime. List and rain are SDK views (MV-4); the
- * swarm and the timeline still mount through the legacy bridge.
+ * agent providers in packages/runtime. List, rain (MV-4) and the swarm (MV-5) are SDK views;
+ * the timeline still mounts through the legacy bridge.
  */
 export const MONITOR_VIEWS: readonly MonitorViewEntry[] = [
-  swarmMonitorView,
+  portedMonitorView(swarmMonitorView),
   portedMonitorView(listMonitorView),
   portedMonitorView(rainMonitorView),
   timelineMonitorView,
 ];
 
-export const DEFAULT_MONITOR_VIEW_ID = swarmMonitorView.id;
+export const DEFAULT_MONITOR_VIEW_ID = swarmMonitorView.manifest.id;
 
 /** Falls back to the default, so a stored id from a removed view cannot strand the window. */
 export function monitorViewFor(id: string | null | undefined): MonitorViewEntry {

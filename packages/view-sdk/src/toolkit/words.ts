@@ -1,5 +1,5 @@
 import type { MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice, MonitorWait } from '../model.js';
-import { STATE_WORDS, statusWord } from './state-words.js';
+import { STATE_WORDS, statusWord, waitWord } from './state-words.js';
 
 // THE WORDS A ROW GOES BY (MV-D11): its name, what runs it, the line under its
 // name, the desktop it lives on and what that desktop lets a viewer do.
@@ -93,4 +93,24 @@ export function detailLine(
   if (!row.observed) return STARTING_LINE;
   if (row.status === 'blocked') return row.wait ? waitLine(row.wait) : STATE_WORDS.status.blocked;
   return reply ?? statusWord(row.status);
+}
+
+/**
+ * What a blocked body says in the name's place, in the swarm's order (M2, M14):
+ * what it waits on, in the blocker's own evidence before the reply's — a
+ * question as asked (its header, else its prompt), the detail an adapter gave,
+ * a permission's tool, a failure's code — then the latest reply, then the bare
+ * word for the wait. The timeline's lane words the same wait in another order
+ * (its detail, then the prompt); only a design event unifies the two.
+ */
+export function waitBodyLine(wait: MonitorWait, reply?: string): string {
+  if (wait.kind === 'question') {
+    const asked = wait.header?.trim() || wait.question?.trim();
+    if (asked) return asked;
+  }
+  const detail = wait.detail?.trim();
+  if (detail) return detail;
+  if (wait.kind === 'permission' && wait.tool) return wait.tool;
+  if (wait.kind === 'failure' && wait.code) return wait.code;
+  return reply ?? waitWord(wait.kind);
 }

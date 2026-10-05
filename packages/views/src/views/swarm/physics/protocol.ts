@@ -50,6 +50,15 @@ export type SwarmPhysicsCommand =
   | { type: 'updateParameters'; parameters: SwarmPhysicsParameters }
   | { type: 'updateBounds'; bounds: SwarmBounds }
   | { type: 'updateObstacles'; obstacles: readonly SwarmObstacleRect[] }
+  /**
+   * The view is told to hold still (MV-W4: the host's animations switch off, or
+   * motion reduced): nothing solves and no frame is published until `resume`,
+   * which seeds the clock afresh so the pause is never caught up on. Membership
+   * changes still publish at once, so a body that arrives while still is drawn
+   * where it stands.
+   */
+  | { type: 'pause' }
+  | { type: 'resume' }
   | { type: 'dragStart'; id: string; point: SwarmPoint }
   /** Keyed by id rather than ambient, so two fingers may drag two bubbles —
    * which the DOM view already allowed, each bubble owning its own pointer. */

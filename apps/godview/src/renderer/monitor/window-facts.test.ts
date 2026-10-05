@@ -6,6 +6,7 @@ import {
   agentSessionsByRow,
   mergeMonitorTerminals,
   rowIdForSession,
+  sameVisualIds,
   sessionIdForRow,
   terminalReport,
   visualIdsForRows,
@@ -156,6 +157,65 @@ describe('the local join', () => {
     );
     expect([...local.spawnHints]).toEqual([['sh-1', { x: 1, y: 2 }]]);
     expect(local.visible).toBe(visible);
+  });
+
+  it("carries every row's spatial identity (M59): a launcher's agent wears the shell's body, and keeps it across joins", () => {
+    const input = {
+      model: model([
+        { id: 'run-1', kind: 'agent' },
+        { id: 'sh-9', kind: 'terminal' },
+      ]),
+      agentSessions: new Map([['run-1', 'ag-1']]),
+      attachments: new Map(),
+      terminals: [{ session: session('sh-9') }],
+    } as const;
+    // The window transferred the shell's body (sh-f) to the agent's session (ag-1).
+    const first = windowLocal({ ...input, visualIds: new Map([['ag-1', 'sh-f']]) }, everyRow);
+    expect([...(first.visualIds ?? [])]).toEqual([
+      ['run-1', 'sh-f'],
+      ['sh-9', 'sh-9'],
+    ]);
+    // The transfer forgotten by the window: the row keeps what it wore last time.
+    const second = windowLocal({ ...input, visualIds: new Map(), previousVisualIds: first.visualIds }, everyRow);
+    expect(second.visualIds?.get('run-1')).toBe('sh-f');
+    // Nothing carried and nothing worn: the row's session, else its id.
+    expect(windowLocal(input, everyRow).visualIds?.get('run-1')).toBe('ag-1');
+  });
+
+  it('takes a ready visual-id map as the join (M59, perf): the host computes it once and the join does no visual-id work', () => {
+    const ready = new Map([['run-1', 'kept']]);
+    const input = {
+      model: model([{ id: 'run-1', kind: 'agent' }]),
+      agentSessions: new Map([['run-1', 'ag-1']]),
+      attachments: new Map(),
+      terminals: [],
+    } as const;
+    // Given ready, the join forwards THAT exact map; it does not recompute from the row's session.
+    const local = windowLocal({ ...input, readyVisualIds: ready, visualIds: new Map([['ag-1', 'other']]) }, everyRow);
+    expect(local.visualIds).toBe(ready);
+    expect(local.visualIds?.get('run-1')).toBe('kept');
+  });
+
+  it('keeps a window visual-id map identity across a state-only publish (M59, perf: the per-tick churn the gate caught)', () => {
+    const rows = [
+      { id: 'run-1', kind: 'agent' as const },
+      { id: 'run-2', kind: 'agent' as const },
+    ];
+    const sessions = new Map([
+      ['run-1', 'ag-1'],
+      ['run-2', 'ag-2'],
+    ]);
+    const resolve = (row: { id: string; kind: 'agent' | 'terminal' }) => sessions.get(row.id);
+    const first = visualIdsForRows(rows, resolve, new Map(), new Map());
+    // A later publish, same row set and no transfer: content-equal, so the host keeps the first map object.
+    const next = visualIdsForRows(rows, resolve, new Map(), first);
+    expect(sameVisualIds(first, next)).toBe(true);
+    const stable = sameVisualIds(first, next) ? first : next;
+    expect(stable).toBe(first);
+    // A real transfer moves one entry, so the map is a new identity.
+    const moved = visualIdsForRows(rows, resolve, new Map([['ag-1', 'shell-9']]), first);
+    expect(sameVisualIds(first, moved)).toBe(false);
+    expect(moved.get('run-1')).toBe('shell-9');
   });
 });
 

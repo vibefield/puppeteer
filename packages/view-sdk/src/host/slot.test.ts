@@ -151,6 +151,27 @@ describe('createViewSlot', () => {
     expect(commands.select).toHaveBeenCalledWith('agent-01');
   });
 
+  it("answers the view's create from the host's return (M59): opened on a value or nothing, refused on a rejection or a throw, never rejecting", async () => {
+    const { recording, commands, slot } = setup();
+    const view = recording.commands[0]!;
+    commands.create.mockReturnValueOnce(undefined);
+    await expect(view.create({ x: 1, y: 2 })).resolves.toEqual({ opened: true });
+    expect(commands.create).toHaveBeenLastCalledWith({ x: 1, y: 2 }, undefined);
+    commands.create.mockReturnValueOnce(Promise.resolve('a session'));
+    await expect(view.create(undefined, { deviceId: 'peer' })).resolves.toEqual({ opened: true });
+    commands.create.mockReturnValueOnce(Promise.reject(new Error('no pane')));
+    await expect(view.create()).resolves.toEqual({ opened: false });
+    commands.create.mockImplementationOnce(() => {
+      throw new Error('thrown');
+    });
+    await expect(view.create()).resolves.toEqual({ opened: false });
+    expect(commands.create).toHaveBeenCalledTimes(4);
+    // A view switched away is answered refused, and the host is not asked.
+    slot.switchView(createRecordingView('second').view);
+    await expect(view.create()).resolves.toEqual({ opened: false });
+    expect(commands.create).toHaveBeenCalledTimes(4);
+  });
+
   it('hands report to the host merged, and mirrors it on the slot element, never inside the view', () => {
     const { element, recording, onReport, slot } = setup();
     const commands = recording.commands[0]!;

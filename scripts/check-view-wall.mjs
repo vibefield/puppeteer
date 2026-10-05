@@ -39,6 +39,12 @@ export const VIEW_SDK_IMPORTS = [
 ];
 /** L16: what a view's tests may import besides. */
 export const VIEW_TEST_IMPORTS = ['@vibecook/puppeteer-view-sdk/testing', 'vitest'];
+/**
+ * A dependency a view bundles into itself, per view (MV-5, the swarm's physics engine): a pure library the views
+ * package declares, which the view carries into its own worker and reaches nothing with. W3 still bans network and
+ * storage in the view's own code; the list is finite and named so an isolated realm later knows what to carry.
+ */
+export const VIEW_RUNTIME_IMPORTS = Object.freeze({ swarm: Object.freeze(['matter-js']) });
 const FRAMEWORK_IMPORT = /^react(?:-dom)?(?:\/.*)?$/;
 
 /**
@@ -95,7 +101,8 @@ function inside(directory, path) {
 }
 
 /** Why `specifier` crosses the wall from a view's file, or undefined when it does not. */
-export function importBreach(specifier, file, viewDirectory, test) {
+export function importBreach(specifier, file, viewDirectory, test, runtime = []) {
+  if (runtime.includes(specifier)) return undefined;
   if (specifier.startsWith('.') || specifier.startsWith('/')) {
     return inside(viewDirectory, resolve(dirname(file), specifier))
       ? undefined
@@ -211,7 +218,7 @@ function scriptKind(file) {
 }
 
 /** Reads one source file of a view: its breaches of W1–W3, and the classes it draws (for W5). */
-export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file) } = {}) {
+export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file), runtime = [] } = {}) {
   const text = readFileSync(file, 'utf8');
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKind(file));
   const breaches = [];
@@ -221,7 +228,7 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
   const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
   const breach = (rule, node, message) => breaches.push({ rule, file, line: lineOf(node), message });
   const checkImport = (node, specifier) => {
-    const why = importBreach(specifier, file, viewDirectory, test);
+    const why = importBreach(specifier, file, viewDirectory, test, runtime);
     if (why) breach('MV-W1', node, why);
   };
 
@@ -522,7 +529,7 @@ export function checkViewWall({
     for (const file of files) {
       if (SOURCE.test(file) && !file.endsWith('.d.ts')) {
         view.files += 1;
-        const read = readViewSource(file, directory);
+        const read = readViewSource(file, directory, { runtime: VIEW_RUNTIME_IMPORTS[name] ?? [] });
         view.breaches.push(...read.breaches);
         if (!TEST_FILE.test(file)) for (const name of read.classes) view.classes.add(name);
       } else if (file.endsWith('.css')) {

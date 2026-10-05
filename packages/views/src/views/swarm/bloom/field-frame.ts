@@ -3,7 +3,7 @@
 // birth's arrival from the bud it grew from. The render loop owns the clock and
 // keeps the memory; nothing here reads the DOM or a GPU.
 
-import type { MonitorAgent } from '../../../monitor/types.js';
+import type { AgentView } from '@vibecook/puppeteer-view-sdk';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 import { BLOOM } from './constants.js';
 import { bloomView, litOf, type BloomState } from './model.js';
@@ -62,7 +62,7 @@ export interface BloomFieldFrame {
   readonly veil: number;
   readonly clearings: readonly BloomFieldClearing[];
   /** Which rows the bloom lights now (SB-D8); none once it has closed. */
-  readonly lit: (agent: MonitorAgent) => boolean;
+  readonly lit: (agent: AgentView) => boolean;
 }
 
 /** Which of the view's clearings this is: ring one's circle stands at the hub, ring two's elsewhere, the words' is a rect. */

@@ -45,6 +45,15 @@ try {
 } catch (error) {
   console.warn(`truffle sidecar not staged: ${error.message}`);
 }
+// The swarm's physics worker (MV-D7, M5): the view names it `new URL('./swarm-physics.worker.js', import.meta.url)`,
+// which esbuild leaves as written and never emits, so the host builds the entry beside its chunks — as it copies
+// ghosttea's terminal-render worker below. The views' source root is walked up from the lab entry the package
+// exports (`.ts` in-repo, `.js` once published).
+const viewsRoot = resolve(dirname(requireFromGodview.resolve('@vibecook/puppeteer-views/lab')), '../../..');
+const swarmWorkerEntry = ['ts', 'js']
+  .map((extension) => join(viewsRoot, `views/swarm/physics/swarm-physics.worker.${extension}`))
+  .find((path) => existsSync(path));
+if (!swarmWorkerEntry) throw new Error(`no swarm physics worker entry under ${viewsRoot}`);
 const reactSingletonPlugin = {
   name: 'godview-react-singleton',
   setup(buildApi) {
@@ -111,6 +120,15 @@ await Promise.all([
     jsx: 'automatic',
     splitting: true,
     plugins: [reactSingletonPlugin],
+  }),
+  // The swarm's physics worker, a module worker of its own: no React, no splitting, one file the view's URL names.
+  build({
+    ...shared,
+    entryPoints: { 'swarm-physics.worker': swarmWorkerEntry },
+    outdir: dist,
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
   }),
 ]);
 

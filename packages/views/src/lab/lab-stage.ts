@@ -1,6 +1,7 @@
 import { createElement, useEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type {
+  FrameScheduler,
   ModelChanges,
   MonitorModel,
   MonitorTheme as SdkTheme,
@@ -130,6 +131,24 @@ const EMPTY_STAGE: StageGeometry = Object.freeze({
 });
 const NO_CHANGES: ModelChanges = Object.freeze({ added: [], updated: [], removed: [] });
 
+/**
+ * Capture mode drives the slot's frame work in a microtask: a change the golden tool makes between stepped frames
+ * (`churn`) then reaches the view before the next frame, as a legacy component took its props. On the display's
+ * frames the slot's own callback would follow the view's, registered a frame earlier, and the view would draw the
+ * change one frame later than the legacy drew it. That frame rule is the host's (M7); a view's goldens are the view's.
+ */
+const CAPTURE_SCHEDULER: FrameScheduler = {
+  request(work) {
+    let live = true;
+    queueMicrotask(() => {
+      if (live) work();
+    });
+    return () => {
+      live = false;
+    };
+  },
+};
+
 /** One world as a replica: the model it is, never changing; a new world is a new replica. */
 function labReplica(model: MonitorModel): MonitorReplicaLike {
   return { getSnapshot: () => ({ model, changes: NO_CHANGES }), subscribe: () => () => undefined };
@@ -202,9 +221,23 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
     // the view a stage mounts is fixed for the page's life
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(onCommit, [onCommit]);
-  const view =
-    sdkView && replica
+  // An SDK view mounts once the stage is measured (MV-D19): its first input then carries the chrome's rectangles,
+  // as Godview's does within a frame of mounting, so a view that places bodies clear of the chrome (the swarm)
+  // places its first world right. A legacy view renders as it always did. The stage counts as committed once its
+  // view is on it.
+  const ready = !sdkView || stageGeometry !== EMPTY_STAGE;
+  useEffect(() => {
+    if (ready) onCommit();
+  }, [ready, onCommit]);
+  const view = !sdkView
+    ? createElement(options.Component!, {
+        agents: world!.agents,
+        parameters,
+        actions,
+        palette,
+        ...(options.book && params.book ? { history: world!.history } : {}),
+      })
+    : replica && ready
       ? createElement(MonitorViewHost, {
           replica,
           view: sdkView,
@@ -212,21 +245,16 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
           theme,
           parameters,
           commands,
+          scheduler: params.capture ? CAPTURE_SCHEDULER : undefined,
         })
-      : createElement(options.Component!, {
-          agents: world!.agents,
-          parameters,
-          actions,
-          palette,
-          ...(options.book && params.book ? { history: world!.history } : {}),
-        });
+      : null;
   return createElement(
     'figure',
     { className: 'view-lab-stage', 'data-lab-stage': size },
     createElement(
       'section',
       { ref: stageRef, className: MONITOR_STAGE_CLASS, style: { width, height }, 'aria-label': 'Agent monitor' },
-      options.wrap ? options.wrap(view) : view,
+      view === null ? null : options.wrap ? options.wrap(view) : view,
       createElement('div', { ref: chromeRef, className: 'vf-monitor-chrome', [MONITOR_CHROME_ATTRIBUTE]: '' }),
     ),
     params.capture

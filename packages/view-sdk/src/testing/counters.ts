@@ -7,7 +7,7 @@
 import React, { createElement, Profiler, type ProfilerOnRenderCallback } from 'react';
 import type { MonitorSpawnTarget } from '../model.js';
 import { reactMonitorView, type ReactMonitorView, type ReactMonitorViewProps } from '../react/index.js';
-import type { MonitorViewCommands, ViewReport } from '../view.js';
+import type { MonitorCreateAnswer, MonitorViewCommands, ViewReport } from '../view.js';
 
 export interface CountingCommands {
   readonly commands: MonitorViewCommands;
@@ -34,6 +34,7 @@ export function countingCommands(): CountingCommands {
       },
       create: (at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget) => {
         creates.push({ ...(at !== undefined ? { at } : {}), ...(target !== undefined ? { target } : {}) });
+        return Promise.resolve<MonitorCreateAnswer>({ opened: true });
       },
       report: (report: ViewReport) => {
         reports.push(report);
