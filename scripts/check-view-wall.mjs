@@ -9,7 +9,10 @@
 //                    references included)
 //   MV-W2 own root   no `document.*`, no `window.*` beyond the allow-list, no
 //                    `closest()`, no reaching the root's document or root node,
-//                    no global listeners (so no global keys)
+//                    no global listeners (so no global keys); and in its CSS
+//                    (L18) no rule outside its root class `.mv-<view>`, and no
+//                    custom property read but the skin's (`MONITOR_SKIN`) and
+//                    its own `--mv-<view>-*`
 //   MV-W3 no reach   no network or storage, no dynamic `import()`; a worker the
 //                    view bundles is allowed
 //   MV-W5 host CSS   no host stylesheet names a class a view draws
@@ -68,6 +71,9 @@ export const REACH_GLOBALS = new Set([
 const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self']);
 /** What a view may do with its root's document: make detached nodes, nothing else. */
 const DOCUMENT_CREATE = new Set(['createElement', 'createElementNS', 'createTextNode', 'createDocumentFragment']);
+
+/** L18: where the SDK lists the skin, the only host custom properties a view's stylesheet may read. */
+export const SKIN_SOURCE = 'packages/view-sdk/src/skin.ts';
 
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -373,14 +379,90 @@ function cssClasses(selector) {
   return [...selector.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((match) => match[1]);
 }
 
+/** The names `MONITOR_SKIN` lists in the SDK's skin.ts under `root`, read from its source; none when it is absent. */
+export function readMonitorSkin(root = scriptRoot) {
+  const file = resolve(root, SKIN_SOURCE);
+  if (!existsSync(file)) return [];
+  const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const names = [];
+  const collect = (node) => {
+    if (ts.isStringLiteralLike(node)) names.push(node.text);
+    ts.forEachChild(node, collect);
+  };
+  const visit = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'MONITOR_SKIN') {
+      if (node.initializer) collect(node.initializer);
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return names;
+}
+
+/** A selector list split at its top-level commas (a comma inside `:is(…)` or `[…]` is not a separator). */
+function splitSelectors(list) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < list.length; index += 1) {
+    const character = list[index];
+    if (character === '(' || character === '[') depth += 1;
+    else if (character === ')' || character === ']') depth -= 1;
+    else if (character === ',' && depth === 0) {
+      parts.push(list.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  parts.push(list.slice(start).trim());
+  return parts.filter((part) => part !== '');
+}
+
+const KEYFRAME_SELECTOR = /^(?:from|to|\d+(?:\.\d+)?%)(?:\s*,\s*(?:from|to|\d+(?:\.\d+)?%))*$/;
+
 /**
- * Reads one of a view's own stylesheets for references outside its folder. Its
- * selectors are not the view's vocabulary: they may name the host's classes as
- * ancestors, so W5 takes only the classes the view's code draws.
+ * L18 in a view's own stylesheet (MV-W2: no global selectors, no host reads):
+ * every rule sits under the view's root class `.mv-<view>`, and every custom
+ * property it reads is the skin's or its own `--mv-<view>-*`.
  */
-function readViewStylesheet(file, viewDirectory) {
-  const text = stripCssComments(readFileSync(file, 'utf8'));
+export function viewStylesheetBreaches(css, file, viewName, skin) {
+  const text = stripCssComments(css);
+  const root = `.mv-${viewName}`;
+  const own = `--mv-${viewName}-`;
+  const skinNames = new Set(skin);
   const breaches = [];
+  for (const { selector, line } of cssPreludes(text)) {
+    if (KEYFRAME_SELECTOR.test(selector)) continue;
+    for (const part of splitSelectors(selector)) {
+      const scoped = part.startsWith(root) && !/[\w-]/.test(part.charAt(root.length));
+      if (!scoped) {
+        breaches.push({ rule: 'MV-W2', file, line, message: `styles outside its root class ${root} (${part})` });
+      }
+    }
+  }
+  for (const match of text.matchAll(/var\(\s*(--[\w-]+)/g)) {
+    const name = match[1];
+    if (skinNames.has(name) || name.startsWith(own)) continue;
+    const line = text.slice(0, match.index).split('\n').length;
+    breaches.push({
+      rule: 'MV-W2',
+      file,
+      line,
+      message: `reads ${name}, neither the skin (MONITOR_SKIN) nor its own ${own}*`,
+    });
+  }
+  return breaches;
+}
+
+/**
+ * Reads one of a view's own stylesheets for references outside its folder and
+ * for L18. Its selectors are not the view's vocabulary: W5 takes only the
+ * classes the view's code draws, and its root class.
+ */
+function readViewStylesheet(file, viewDirectory, viewName, skin) {
+  const raw = readFileSync(file, 'utf8');
+  const text = stripCssComments(raw);
+  const breaches = viewStylesheetBreaches(raw, file, viewName, skin);
   const references = [
     ...text.matchAll(/@import\s+(?:url\()?\s*['"]?([^'")\s;]+)/g),
     ...text.matchAll(/url\(\s*['"]?([^'")\s]+)/g),
@@ -419,6 +501,8 @@ export function checkViewWall({
   // M14: views.css is loaded globally by every host, so a monitor-view selector there is the host's side naming a view.
   hostStylesheets = ['apps/godview/src/renderer', 'packages/views/src/styles'],
   includeLabs = false,
+  // L18: the skin a view's CSS may read, from the root's own SDK (a fixture without one reads this repository's).
+  skin = readMonitorSkin(existsSync(resolve(root, SKIN_SOURCE)) ? root : scriptRoot),
 } = {}) {
   const viewsRoot = resolve(root, views);
   const folders = existsSync(viewsRoot)
@@ -433,7 +517,8 @@ export function checkViewWall({
     const files = walk(directory).filter(
       (file) => includeLabs || !relative(directory, file).split(sep).includes('lab'),
     );
-    const view = { name, directory, files: 0, breaches: [], classes: new Set() };
+    // Its root class is its vocabulary too: a host stylesheet naming `.mv-<view>` names the view (W5).
+    const view = { name, directory, files: 0, breaches: [], classes: new Set([`mv-${name}`]) };
     for (const file of files) {
       if (SOURCE.test(file) && !file.endsWith('.d.ts')) {
         view.files += 1;
@@ -442,7 +527,7 @@ export function checkViewWall({
         if (!TEST_FILE.test(file)) for (const name of read.classes) view.classes.add(name);
       } else if (file.endsWith('.css')) {
         view.files += 1;
-        view.breaches.push(...readViewStylesheet(file, directory));
+        view.breaches.push(...readViewStylesheet(file, directory, name, skin));
       }
     }
     report.views.push(view);

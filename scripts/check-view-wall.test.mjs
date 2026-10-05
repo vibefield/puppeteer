@@ -5,7 +5,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { checkViewWall, cssPreludes, importBreach, summarizeViewWall } from './check-view-wall.mjs';
+import {
+  checkViewWall,
+  cssPreludes,
+  importBreach,
+  readMonitorSkin,
+  summarizeViewWall,
+  viewStylesheetBreaches,
+} from './check-view-wall.mjs';
 
 const script = join(dirname(fileURLToPath(import.meta.url)), 'check-view-wall.mjs');
 const fixtures = [];
@@ -62,7 +69,11 @@ export type Used = MonitorView;
 `,
   'views/clean/row.tsx': `export const Row = () => <span className="clean-row" />;\n`,
   'views/clean/clean.worker.ts': `postMessage({ type: 'ready' });\n`,
-  'views/clean/clean.css': `.clean-root { background: url(./ground.png); }\n`,
+  'views/clean/clean.css': `.mv-clean .clean-root { color: var(--text-main); background: url(./ground.png); }
+.mv-clean > .clean-row:is(.a, .b) { width: var(--mv-clean-width, 1px); }
+@keyframes clean-fade { from { opacity: 0; } 50% { opacity: 0.5; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mv-clean .clean-root { transition: none; } }
+`,
   'views/clean/clean.test.tsx': `
 import { describe } from 'vitest';
 import { fixtureReplica } from '@vibecook/puppeteer-view-sdk/testing';
@@ -92,7 +103,7 @@ export const worker = new URL('../other/x.worker.js', import.meta.url);
 export const used: unknown[] = [agents, mountView, fixtureReplica];
 export type Used = Core | MonitorAgentRow;
 `,
-    'views/leaky/leaky.css': `@import '../../styles/base.css';\n.leaky { color: red; }\n`,
+    'views/leaky/leaky.css': `@import '../../styles/base.css';\n.mv-leaky .leaky { color: red; }\n`,
     'views/leaky/leaky.test.ts': `import { vi } from 'vitest';\nimport { y } from '../../monitor/y.js';\nvi.fn(y);\n`,
   });
   assert.deepEqual(
@@ -199,7 +210,7 @@ export const V = () => (
   </section>
 );
 `,
-    'views/styled/styled.css': `.vf-godview .styled-root { color: red; }\n`,
+    'views/styled/styled.css': `.mv-styled .styled-root { color: red; }\n`,
     'host/godview.css': `/* .styled-root in a comment */
 .styled-root { padding: 0; }
 @media (min-width: 10px) { .chrome > .styled-dot.is-on { color: blue; } }
@@ -215,6 +226,83 @@ export const V = () => (
       ['MV-W5', 3, 'the host styles .styled-dot (.chrome > .styled-dot.is-on)'],
     ],
   );
+});
+
+test('L18: every rule of a view’s own stylesheet sits under its root class, MV-W2 otherwise', () => {
+  const css = `button { font: inherit; }
+:root { --x: 1; }
+body .mv-scoped .a { color: red; }
+.vf-godview .mv-scoped .a { color: red; }
+.mv-scopedish .a { color: red; }
+.mv-other .a { color: red; }
+.mv-scoped .a, .b { color: red; }
+.mv-scoped .a:is(.b, .c), .mv-scoped { color: red; }
+@media (min-width: 10px) { .loose { color: red; } }
+@keyframes spin { from { rotate: 0; } to { rotate: 1turn; } }
+`;
+  assert.deepEqual(
+    viewStylesheetBreaches(css, 'scoped.css', 'scoped', []).map((breach) => [breach.line, breach.message]),
+    [
+      [1, 'styles outside its root class .mv-scoped (button)'],
+      [2, 'styles outside its root class .mv-scoped (:root)'],
+      [3, 'styles outside its root class .mv-scoped (body .mv-scoped .a)'],
+      [4, 'styles outside its root class .mv-scoped (.vf-godview .mv-scoped .a)'],
+      [5, 'styles outside its root class .mv-scoped (.mv-scopedish .a)'],
+      [6, 'styles outside its root class .mv-scoped (.mv-other .a)'],
+      [7, 'styles outside its root class .mv-scoped (.b)'],
+      [9, 'styles outside its root class .mv-scoped (.loose)'],
+    ],
+  );
+});
+
+test('L18: a view’s stylesheet reads only the skin and its own --mv-<view>- properties, MV-W2 otherwise', () => {
+  const css = `/* var(--vf-orange) in a comment is not read */
+.mv-read .a { color: var(--text-main); }
+.mv-read .b { width: var(--mv-read-width, 10px); padding: var(--mv-read-inset); }
+.mv-read .c { color: var(--vf-orange, #ff9f0a); }
+.mv-read .d { left: var(--vf-monitor-chrome-right, 0px); top: var( --mv-other-top ); }
+.mv-read .e { color: var(--panel-bg); background: var(--mv-reading-x); }
+`;
+  assert.deepEqual(
+    viewStylesheetBreaches(css, 'read.css', 'read', ['--text-main']).map((breach) => [breach.line, breach.message]),
+    [
+      [4, 'reads --vf-orange, neither the skin (MONITOR_SKIN) nor its own --mv-read-*'],
+      [5, 'reads --vf-monitor-chrome-right, neither the skin (MONITOR_SKIN) nor its own --mv-read-*'],
+      [5, 'reads --mv-other-top, neither the skin (MONITOR_SKIN) nor its own --mv-read-*'],
+      [6, 'reads --panel-bg, neither the skin (MONITOR_SKIN) nor its own --mv-read-*'],
+      [6, 'reads --mv-reading-x, neither the skin (MONITOR_SKIN) nor its own --mv-read-*'],
+    ],
+  );
+});
+
+test('L18 runs on every view folder’s CSS, and a host naming a view’s root class names the view (W5)', () => {
+  const report = wall(
+    {
+      'views/plain/index.tsx': `import './plain.css';\nexport const V = () => <p className="plain-text" />;\n`,
+      'views/plain/plain.css': `.plain-text { color: var(--vf-orange); }\n`,
+      'host/host.css': `.mv-plain { padding: 0; }\n`,
+    },
+    { skin: ['--text-main'] },
+  );
+  assert.deepEqual(found(report, 'plain'), [
+    'MV-W2 reads --vf-orange, neither the skin (MONITOR_SKIN) nor its own --mv-plain-*',
+    'MV-W2 styles outside its root class .mv-plain (.plain-text)',
+    'MV-W5 the host styles .mv-plain (.mv-plain)',
+  ]);
+});
+
+test('the skin is the SDK’s own list, read from its source', () => {
+  assert.deepEqual(readMonitorSkin(), [
+    '--text-main',
+    '--text-muted',
+    '--text-faint',
+    '--panel-bg',
+    '--panel-border',
+    '--control-hover-bg',
+    '--control-hover-border',
+    '--idle-bg',
+  ]);
+  assert.deepEqual(readMonitorSkin(fixture({})), []);
 });
 
 test('a lab builds its own page, so the wall reads it only when asked', () => {

@@ -40,7 +40,7 @@
     "groundtruth:mapping:write": "node scripts/check-adapter-groundtruth-maps.mjs --write",
     "packages:check": "node scripts/check-package-layout.mjs",
     "packages:clean": "node scripts/clean-packages.mjs",
-    "view-wall:check": "node scripts/check-view-wall.mjs",
+    "view-wall:check": "node scripts/check-view-wall.mjs --fail list rain",
     "support:check": "node scripts/render-agent-support.mjs --check",
     "support:write": "node scripts/render-agent-support.mjs --write",
     "upstream:check": "node scripts/detect-upstream-agents.mjs --check-config",
