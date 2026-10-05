@@ -7,6 +7,7 @@ import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   checkViewWall,
+  VIEW_RUNTIME_IMPORTS,
   cssPreludes,
   importBreach,
   readMonitorSkin,
@@ -371,4 +372,20 @@ test("it reads the repository's own views", () => {
   const summary = summarizeViewWall(report);
   assert.equal(summary.mode, 'report');
   assert.equal(Object.keys(summary.views).length, report.views.length);
+});
+
+test('a dependency a view bundles into itself is allowed only for the view that names it (MV-5)', () => {
+  const files = {
+    'views/swarm/world.ts': "import Matter from 'matter-js';\nexport const engine = Matter;\n",
+    'views/other/world.ts': "import Matter from 'matter-js';\nexport const engine = Matter;\n",
+  };
+  const report = wall(files);
+  assert.deepEqual(VIEW_RUNTIME_IMPORTS.swarm, ['matter-js']);
+  assert.deepEqual(found(report, 'swarm'), []);
+  assert.deepEqual(found(report, 'other'), ['MV-W1 imports matter-js, which is not the SDK']);
+  // W3 is unmoved: the swarm may bundle matter, not reach out
+  assert.deepEqual(
+    found(wall({ 'views/swarm/reach.ts': "export const data = fetch('https://x');\n" }), 'swarm'),
+    ['MV-W3 reaches out through fetch'],
+  );
 });
