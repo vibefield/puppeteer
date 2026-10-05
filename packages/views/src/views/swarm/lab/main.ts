@@ -1,11 +1,10 @@
-import { AGENT_MARK_CANDIDATES } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { AGENT_MARK_CANDIDATES, resolveCssColor, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { labAgentView } from '../../../lab/lab-model.js';
 import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults, type MonitorParameters } from '../../../monitor/parameters.js';
 import { paneTint, projectTint } from '../../../colour/project-tint.js';
 import { bubbleModel, type SwarmBubbleModel } from '../bubble-model.js';
-import { resolveCssColor, type Rgba } from '../gpu/color.js';
 import {
   createSwarmRenderer,
   type RenderBody,

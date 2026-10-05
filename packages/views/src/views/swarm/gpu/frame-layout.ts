@@ -1,5 +1,5 @@
 import { SWARM_WEIGHT } from '../weight.js';
-import type { Rgba } from './color.js';
+import type { Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { SwarmClearing, SwarmFrame } from './swarm-renderer.js';
 
 // The frame uniform, float for float: what `common.wgsl`'s `Frame` struct

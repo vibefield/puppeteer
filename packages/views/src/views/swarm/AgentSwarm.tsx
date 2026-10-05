@@ -17,7 +17,9 @@ import {
   createMotionLoop,
   everyReceded,
   recedeTarget,
+  resolveCssColor,
   type MotionLoop,
+  type Rgba,
 } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { birthAgent, birthOf, birthOverdue, birthRow, profileLineFor, type BloomBirth } from './bloom/birth.js';
 import { BLOOM } from './bloom/constants.js';
@@ -34,7 +36,6 @@ import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom, type BloomFocusPlace } from './bloom/use-spawn-bloom.js';
 import { bodyIdOf } from './body-id.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
-import { resolveCssColor, type Rgba } from './gpu/color.js';
 import {
   createSwarmRenderer,
   MAX_CLEARINGS,

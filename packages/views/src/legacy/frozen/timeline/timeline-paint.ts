@@ -2,7 +2,7 @@
 // as the "before" that `legacy/timeline-parity.test.tsx` renders beside the ported view over the same model. Only its
 // imports changed (it moved folders). Never edit it to match the port; MV-8 deletes it with the shim.
 
-import { luminance, resolveCssColor, type Rgba } from '../../../views/swarm/gpu/color.js';
+import { luminance, resolveCssColor, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { MonitorPalette } from '../../../monitor/palette.js';
 import type { MonitorHistoryStatus } from './status-history.js';
 import { resolveSwarmTheme } from '../../../views/swarm/swarm-theme.js';

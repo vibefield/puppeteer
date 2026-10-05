@@ -73,7 +73,6 @@ export * from './views/swarm/bloom/index.js';
 // …and its overlay (the DOM over the field), which a host's catalog may mount posed.
 export * from './views/swarm/bloom/SpawnBloom.js';
 export * from './views/swarm/bloom/canvas-measure.js';
-export * from './views/swarm/gpu/color.js';
 export * from './views/swarm/gpu/swarm-renderer.js';
 // The lab's fixture rows: every drawn state, for a host's own catalog.
 export * from './views/swarm/lab/fixtures.js';

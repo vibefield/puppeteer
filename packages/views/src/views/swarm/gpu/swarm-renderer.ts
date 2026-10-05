@@ -1,5 +1,5 @@
 /// <reference types="@webgpu/types" />
-import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { SwarmBubbleModel } from '../bubble-model.js';
 import {
   layoutCopy,
@@ -9,7 +9,6 @@ import {
   type CopyTone,
   type TextStyle,
 } from '../text-layout.js';
-import type { Rgba } from './color.js';
 import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';

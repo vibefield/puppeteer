@@ -11,7 +11,8 @@ Two rules hold for everything here:
   and the row's own line (`detail`) are the backend's, delivered in the row. The toolkit only says them.
 - **Framework-free.** It has no React and no host. A view drawn with React, a canvas or plain DOM uses the same
   words, numbers, colours and marks. The only browser globals it touches are `devicePixelRatio`, `matchMedia`,
-  `requestAnimationFrame` and `performance`, and only when a view calls the helper that needs them.
+  `requestAnimationFrame`, `performance` and `getComputedStyle` (resolving a colour in the view's own root), and only
+  when a view calls the helper that needs them.
 
 ## What is here
 
@@ -23,6 +24,7 @@ Two rules hold for everything here:
 | `lane-words.ts` | A timeline lane's wait in the lane's own order (M2, M14): `laneWaitWords` says the blocker's detail, else a question's prompt, trimmed and cut at `LANE_WAIT_WORDS_MAX` (160), as the status ledger worded it until MV-6 removed it. The swarm's body words a wait in its own order |
 | `spawn-menu.ts` | The spawn menu's tree as a view offers it (capability `spawn`): `menuOf`, `selfDevice`, `defaultProfile`, `ready`, `blooms`, `initials`, `profileWord`, `hereWord`, `budSub`, `glyphName`, and `spawnTargetFor`, which names the desktop you sit at by leaving it out (M34). The swarm's bloom and the list's two-step menu share it |
 | `colour.ts` | `projectColour(seq, tint)`, `paneColour`, `projectHue`, `paneHue`, `oklchToHex`, `DEFAULT_PROJECT_TINT`, and `projectColourFor(palette)`, which hosts use to build the replica's theme colour function (L7); `hexToRgb255` for canvas `rgba()` |
+| `light.ts` | The light a canvas view paints state with (DESIGN §8), the swarm's rules, which the timeline lights by since MV-8 folded its copy here (M57): `parseCssColor` / `resolveCssColor` (CSS into straight-alpha `Rgba`, resolved in the view's own root), `withAlpha`, `luminance`, `isLightTheme`, `rgbaCss`; a state colour as words (`readableColour`), as its light (`vividColour`, `stateGlow`) and as the ground a lit body sits on (`stateGround`), tuned by `StateLightTuning` (`DEFAULT_STATE_LIGHT` is the swarm's default tuning) |
 | `marks.ts` | Agent marks (`agentMark`, `agentMarkSvg`, `agentMarkTile`, `AGENT_MARK_ATLAS`, the candidates) and profile glyphs (`PROFILE_GLYPHS`, `PROFILE_GLYPH_SHAPES`, `profileMarkName`, `profileGlyphMarkup`, `profileGlyphSvg`) |
 | `marks-atlas.ts` | `MARKS_ATLAS_URL`, the swarm's SDF atlas as a data URL |
 | `canvas.ts` | `sizeCanvas` (device-pixel backing store, CSS-pixel element, writes only on change), `canvasRatio`, `watchDevicePixelRatio` |

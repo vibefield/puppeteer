@@ -23,7 +23,7 @@ import type { BloomBody } from './bloom/model.js';
 import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom } from './bloom/use-spawn-bloom.js';
 import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
-import { resolveCssColor, type Rgba } from '../../../views/swarm/gpu/color.js';
+import { resolveCssColor, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
 import {
   createSwarmRenderer,
   MAX_CLEARINGS,
