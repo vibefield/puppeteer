@@ -38,15 +38,26 @@ export interface ReactMonitorView extends MonitorView {
   readonly Component: ComponentType<ReactMonitorViewProps>;
 }
 
+export interface ReactMonitorViewOptions {
+  /**
+   * The class the view puts on the element `mount` is given, for as long as it is mounted there: its stylesheet's
+   * scope (L18), conventionally `mv-<view id>`. Every rule of the view's CSS sits under it.
+   */
+  readonly rootClass?: string | undefined;
+}
+
 /** Declares a React-drawn view, refusing a manifest the contract cannot serve (`defineMonitorView`). */
 export function reactMonitorView(
   manifest: MonitorViewManifest,
   Component: ComponentType<ReactMonitorViewProps>,
+  options: ReactMonitorViewOptions = {},
 ): ReactMonitorView {
+  const { rootClass } = options;
   const view: ReactMonitorView = {
     manifest,
     Component,
     mount(element, input, commands): MonitorViewInstance {
+      if (rootClass) element.classList.add(rootClass);
       const root = createViewRoot(element, manifest.id);
       let current = input;
       let live = true;
@@ -62,6 +73,7 @@ export function reactMonitorView(
           if (!live) return;
           live = false;
           releaseViewRoot(root);
+          if (rootClass) element.classList.remove(rootClass);
         },
       };
     },

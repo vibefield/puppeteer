@@ -5,16 +5,18 @@ import type { MonitorNotification } from '@vibecook/puppeteer-core';
 import { createAgentMonitorStore, type MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
 import { createMonitorReplica, type MonitorReplica } from '@vibecook/puppeteer-monitor/replica';
 import { useAgentMonitorStore } from '@vibecook/puppeteer-react';
+import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
 import {
   frameScheduler,
+  isLegacyMonitorView,
   legacyView,
-  type LegacyMonitorView,
   type ViewSlotCommands,
 } from '@vibecook/puppeteer-view-sdk/host';
 import type { AgentStatus, MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
 import { projectColourFor } from '@vibecook/puppeteer-view-sdk/toolkit';
 import {
   EMPTY_STATUS_LEDGER,
+  isPortedMonitorView,
   MONITOR_VIEWS,
   observeStatuses,
   statusHistoryBook,
@@ -47,9 +49,12 @@ import {
  * The backend in main computes every row; this window holds a REPLICA of its
  * model (a snapshot, then the changes, on one ordered channel: M23) and joins
  * only what the window knows: its panes, the pane it works in, the terminals it
- * holds, the theme's colours. The four views mount through the view host's
- * legacy bridge with props built by the legacy shim (L9) in Godview's words
- * (`headline-cost`, M4). The counts and the status shortcuts read the model.
+ * holds, the theme's colours. The list is an SDK view the view host mounts
+ * directly (MV-4): it reads the model and words the line under a name by the
+ * toolkit's one rule (reply-first, M4). The other views still mount through the
+ * view host's legacy bridge with props built by the legacy shim (L9) in
+ * Godview's words (`headline-cost`). The counts and the status shortcuts read
+ * the model.
  *
  * The chrome outside the views (the inspector, the find sheet, the deck's pane
  * frames, split sessions, pane recovery) reads rows joined with the chrome's own
@@ -74,8 +79,8 @@ export interface MonitorAgentsResult {
   /** This window's replica of the backend's model; the view host mounts the view on it. */
   replica: MonitorReplica;
   model: MonitorModel;
-  /** The four views, each through the legacy bridge, by view id. */
-  views: ReadonlyMap<string, LegacyMonitorView>;
+  /** The four views by id: the list as itself (MV-4), the others through the legacy bridge. */
+  views: ReadonlyMap<string, MonitorView>;
   /** The view host's commands: select and create stay this window's own. */
   commands: ViewSlotCommands;
   /** Agent rows by status, from the model. */
@@ -425,7 +430,8 @@ export function useMonitorAgents({
     [],
   );
 
-  // The four views through the legacy bridge (L6), built once per window: `toProps` reads the shim's rows.
+  // The views, built once per window: a ported one is mounted as it is; a legacy one through the bridge (L6), whose
+  // `toProps` reads the shim's rows.
   const views = useMemo(() => {
     const actions = new WeakMap<object, ViewsMonitorActions>();
     const actionsFor = (bridge: Pick<ViewSlotCommands, 'select' | 'create'>): ViewsMonitorActions => {
@@ -438,22 +444,24 @@ export function useMonitorAgents({
       actions.set(bridge, made);
       return made;
     };
-    return new Map(
+    return new Map<string, MonitorView>(
       MONITOR_VIEWS.map(
         (view) =>
           [
             view.id,
-            legacyView<AgentMonitorProps>(view, view.Component, (input, bridge) => {
-              const agents = legacyRowsFor(input.model);
-              given.current = agents;
-              return {
-                agents,
-                parameters: input.parameters as MonitorParameters,
-                actions: actionsFor(bridge),
-                palette: input.theme.tokens as MonitorPalette,
-                history: history.current,
-              };
-            }),
+            isPortedMonitorView(view)
+              ? view.view
+              : legacyView<AgentMonitorProps>(view, view.Component, (input, bridge) => {
+                  const agents = legacyRowsFor(input.model);
+                  given.current = agents;
+                  return {
+                    agents,
+                    parameters: input.parameters as MonitorParameters,
+                    actions: actionsFor(bridge),
+                    palette: input.theme.tokens as MonitorPalette,
+                    history: history.current,
+                  };
+                }),
           ] as const,
       ),
     );
@@ -463,7 +471,9 @@ export function useMonitorAgents({
   // changed without the model changing draws again (the bridge's `refresh`, for host state beside the input).
   useLayoutEffect(() => {
     if (given.current === undefined) return;
-    if (legacyRowsFor(replica.getSnapshot().model) !== given.current) for (const view of views.values()) view.refresh();
+    if (legacyRowsFor(replica.getSnapshot().model) !== given.current) {
+      for (const view of views.values()) if (isLegacyMonitorView(view)) view.refresh();
+    }
   }, [legacyRowsFor, replica, views, windowFacts]);
 
   // M19: the counts and the status shortcuts read the model, never the chrome's feed.

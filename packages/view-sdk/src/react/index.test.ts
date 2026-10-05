@@ -117,6 +117,27 @@ describe('reactMonitorView', () => {
     ).toBe(true);
   });
 
+  it('puts its root class on the element it is given while mounted, and takes it off at unmount (L18)', async () => {
+    const root = element();
+    root.className = 'host-own';
+    const view = reactMonitorView(MANIFEST, () => createElement('p', null, 'styled'), { rootClass: 'mv-probe' });
+    let instance!: ReturnType<typeof view.mount>;
+    await act(async () => {
+      instance = view.mount(root, fixtureInput(), COMMANDS);
+    });
+    expect(root.className).toBe('host-own mv-probe');
+    await act(async () => instance.unmount());
+    expect(root.className).toBe('host-own');
+
+    // Without one, the element keeps exactly the classes it came with.
+    const bare = element();
+    const plain = reactMonitorView(MANIFEST, () => null);
+    await act(async () => {
+      plain.mount(bare, fixtureInput(), COMMANDS).unmount();
+    });
+    expect(bare.hasAttribute('class')).toBe(false);
+  });
+
   it('refuses a manifest the contract cannot serve', () => {
     const newer = { ...MANIFEST, sdk: 2 } as unknown as MonitorViewManifest;
     expect(() => reactMonitorView(newer, () => null)).toThrow(RangeError);

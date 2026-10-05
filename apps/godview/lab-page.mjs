@@ -26,13 +26,19 @@ export function labEntry(name) {
   return entry;
 }
 
-/** The entry as one IIFE, safe to inline in a script tag; `plugins` let a golden tool swap one module (the paint spy). */
-export async function labScript(entry, plugins = []) {
+/**
+ * The entry as one IIFE, safe to inline in a script tag, and the stylesheets its modules import: a view on the SDK
+ * brings its own from its entry module (L18), which esbuild emits beside the script. `plugins` let a golden tool
+ * swap one module (the paint spy).
+ */
+export async function labBundle(entry, plugins = []) {
   const bundle = await build({
     entryPoints: [entry],
     plugins,
     bundle: true,
     write: false,
+    // Where a view's stylesheet lands beside the script; nothing is written there.
+    outdir: join(dist, 'lab-bundle'),
     platform: 'browser',
     format: 'iife',
     target: 'es2022',
@@ -40,7 +46,17 @@ export async function labScript(entry, plugins = []) {
     define: { 'process.env.NODE_ENV': '"production"' },
     logLevel: 'info',
   });
-  return bundle.outputFiles[0].text.replaceAll('</script', '<\\/script');
+  const script = bundle.outputFiles.find((file) => file.path.endsWith('.js'));
+  const css = bundle.outputFiles.filter((file) => file.path.endsWith('.css'));
+  return {
+    script: script.text.replaceAll('</script', '<\\/script'),
+    css: css.map((file) => file.text).join('\n'),
+  };
+}
+
+/** The entry's script alone, for a page that inlines no view stylesheet of its own. */
+export async function labScript(entry, plugins = []) {
+  return (await labBundle(entry, plugins)).script;
 }
 
 /** The skin (tokens, godview.css), the views' stylesheet with its imports resolved, and the lab's own layout. */
@@ -61,9 +77,11 @@ export async function labStyles() {
 
 /** Write `dist/<file>`: a view lab page whose root is `#lab`, mounting into `.view-lab-mount`. */
 export async function writeViewLab({ file, title, lede, entry }) {
+  const { script, css } = await labBundle(entry);
   const page = `<title>${title}</title>
 <style>
 ${await labStyles()}
+${css}
 </style>
 <div id="lab" class="lab-root view-lab vf-godview theme-light platform-darwin" data-godview-animations="on">
   <header>
@@ -74,7 +92,7 @@ ${await labStyles()}
   <div class="view-lab-mount"></div>
 </div>
 <script>
-${await labScript(entry)}
+${script}
 </script>
 `;
   await mkdir(dist, { recursive: true });

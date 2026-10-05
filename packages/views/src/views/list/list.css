@@ -1,15 +1,21 @@
+/* The list view's own stylesheet (L18): imported by the view's entry module, every rule under the view's root
+   class `mv-list` (on the element the host mounts the view in). It reads two kinds of custom property only: the
+   skin (`MONITOR_SKIN`: --text-main, --text-muted, --text-faint, --panel-bg, --panel-border, --control-hover-bg,
+   --control-hover-border, --idle-bg), which every host defines on its stage, and its own `--mv-list-*`, which the
+   view sets from its input: the stage's left inset, its parameters, a row's colour, the palette's blocked. */
+
 /* List view — the same exact non-spatial reading as the reference. */
-.vf-monitor-list {
+.mv-list .vf-monitor-list {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 11px 0 0 var(--vf-monitor-chrome-right, 0px);
+  padding: 11px 0 0 var(--mv-list-inset-left, 0px);
   color: var(--text-main);
 }
 
-.vf-monitor-list-toolbar {
+.mv-list .vf-monitor-list-toolbar {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -22,7 +28,7 @@
   letter-spacing: 0.06em;
 }
 
-.vf-monitor-list-new {
+.mv-list .vf-monitor-list-new {
   padding: 3px 7px;
   border: 1px solid var(--panel-border);
   border-radius: 5px;
@@ -35,13 +41,13 @@
   transition: 120ms ease;
 }
 
-.vf-monitor-list-new:hover {
+.mv-list .vf-monitor-list-new:hover {
   border-color: var(--control-hover-border);
   color: var(--text-main);
   background: var(--control-hover-bg);
 }
 
-.vf-monitor-list-rows {
+.mv-list .vf-monitor-list-rows {
   flex: 1 1 auto;
   margin: 0;
   padding: 0 13px 13px;
@@ -49,12 +55,12 @@
   list-style: none;
 }
 
-.vf-monitor-list-row {
+.mv-list .vf-monitor-list-row {
   width: 100%;
-  min-height: var(--vf-monitor-row-height, 38px);
+  min-height: var(--mv-list-row-height, 38px);
   display: grid;
   grid-template-columns:
-    10px var(--vf-monitor-project-width, 150px) minmax(0, 0.9fr)
+    10px var(--mv-list-project-width, 150px) minmax(0, 0.9fr)
     minmax(0, 1.4fr) 44px;
   align-items: center;
   gap: 10px;
@@ -71,63 +77,63 @@
     opacity 240ms ease;
 }
 
-.vf-monitor-list-row:hover {
+.mv-list .vf-monitor-list-row:hover {
   border-color: var(--control-hover-border);
   background: var(--control-hover-bg);
 }
 
-.vf-monitor-list-row.is-linked {
-  border-left-color: var(--agent-color);
+.mv-list .vf-monitor-list-row.is-linked {
+  border-left-color: var(--mv-list-colour);
 }
 
-.vf-monitor-list-row.is-active {
-  border-color: var(--agent-color);
+.mv-list .vf-monitor-list-row.is-active {
+  border-color: var(--mv-list-colour);
   background: var(--control-hover-bg);
   outline: none;
 }
 
-.vf-monitor-list-row:focus-visible {
-  outline: 2px solid var(--agent-color);
+.mv-list .vf-monitor-list-row:focus-visible {
+  outline: 2px solid var(--mv-list-colour);
   outline-offset: -2px;
 }
 
-.vf-monitor-list-row.is-stale {
+.mv-list .vf-monitor-list-row.is-stale {
   opacity: 0.58;
 }
 
-/* Receded (monitor/recede.ts): the host is showing another group of sessions.
+/* Receded (the toolkit's recede steps): the host is showing another group of sessions.
    The row keeps its place below the shown ones, at the recede weights. */
-.vf-monitor-list-row.is-receded {
+.mv-list .vf-monitor-list-row.is-receded {
   opacity: 0.22;
 }
 
-.vf-monitor-list.is-all-receded .vf-monitor-list-row.is-receded {
+.mv-list .vf-monitor-list.is-all-receded .vf-monitor-list-row.is-receded {
   opacity: 0.07;
 }
 
-.vf-monitor-list-status {
+.mv-list .vf-monitor-list-status {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--agent-color);
+  background: var(--mv-list-colour);
 }
 
-.vf-monitor-list-row.is-idle .vf-monitor-list-status {
+.mv-list .vf-monitor-list-row.is-idle .vf-monitor-list-status {
   opacity: 0.4;
 }
 
-.vf-monitor-list-row.is-blocked .vf-monitor-list-status {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-color) 30%, transparent);
+.mv-list .vf-monitor-list-row.is-blocked .vf-monitor-list-status {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mv-list-colour) 30%, transparent);
 }
 
-.vf-monitor-list-project {
+.mv-list .vf-monitor-list-project {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.vf-monitor-list-project strong {
+.mv-list .vf-monitor-list-project strong {
   overflow: hidden;
   color: inherit;
   font-size: 11px;
@@ -136,12 +142,12 @@
   white-space: nowrap;
 }
 
-.vf-monitor-list-project small,
-.vf-monitor-list-agent,
-.vf-monitor-list-detail,
-.vf-monitor-list-context,
-.vf-monitor-list-terminal,
-.vf-monitor-list-host {
+.mv-list .vf-monitor-list-project small,
+.mv-list .vf-monitor-list-agent,
+.mv-list .vf-monitor-list-detail,
+.mv-list .vf-monitor-list-context,
+.mv-list .vf-monitor-list-terminal,
+.mv-list .vf-monitor-list-host {
   overflow: hidden;
   color: var(--text-muted);
   font-size: 9px;
@@ -149,13 +155,13 @@
   white-space: nowrap;
 }
 
-.vf-monitor-list-agent {
+.mv-list .vf-monitor-list-agent {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.vf-monitor-list-agent i {
+.mv-list .vf-monitor-list-agent i {
   display: flex;
   color: inherit;
   font-size: 11px;
@@ -164,14 +170,14 @@
 /* A peer's session: the host's name where a model name would stand, and the
    host's write policy beside it in both directions — a fact about the
    machine, said before the attach decides what this viewer gets. */
-.vf-monitor-list-host {
+.mv-list .vf-monitor-list-host {
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
   color: var(--text-main);
 }
 
-.vf-monitor-list-host em {
+.mv-list .vf-monitor-list-host em {
   color: var(--text-faint);
   font-size: 8px;
   font-style: normal;
@@ -181,7 +187,7 @@
 
 /* The account a run is bound to: an identity ground beside the agent's name,
    never a state. */
-.vf-monitor-list-agent small {
+.mv-list .vf-monitor-list-agent small {
   overflow: hidden;
   color: var(--text-faint);
   font-size: 8px;
@@ -189,40 +195,57 @@
   white-space: nowrap;
 }
 
-.vf-monitor-list-terminal {
+.mv-list .vf-monitor-list-terminal {
   color: var(--text-faint);
   font-style: italic;
 }
 
-.vf-monitor-list-context {
+.mv-list .vf-monitor-list-context {
   color: var(--text-faint);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.vf-monitor-list > .vf-monitor-empty {
+/* The empty stage. Its own class, so no host rule names it (MV-W5): the hosts' shared `.vf-monitor-empty` rules,
+   which it wore until MV-4, are folded in with the list's own (static in the column's flow, the faint ink). */
+.mv-list .vf-monitor-list > .vf-monitor-list-empty {
   position: static;
+  inset: 0;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  place-content: center;
   align-items: center;
   justify-content: center;
   gap: 6px;
   color: var(--text-faint);
   font-size: 10px;
   letter-spacing: 0.08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.mv-list .vf-monitor-list-empty span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.mv-list .vf-monitor-list-empty small {
+  color: var(--text-faint);
+  font-size: 9px;
 }
 
 /* The list's door to the spawn bloom's tree (SB-D11): the same two steps as a menu under
    `＋ TERMINAL` — desktops, then the chosen desktop's Agent Profiles, the default first. The
    prototype's list stage (draft/spawn-bloom/styles.css `.lm-*`). */
-.vf-monitor-list-new[aria-expanded='true'] {
+.mv-list .vf-monitor-list-new[aria-expanded='true'] {
   border-color: var(--control-hover-border, #777777);
   color: var(--text-main, #111111);
   background: var(--control-hover-bg, #f2f2f2);
 }
 
-.vf-monitor-list-spawn {
+.mv-list .vf-monitor-list-spawn {
   position: absolute;
   z-index: 5;
   top: 34px;
@@ -236,16 +259,16 @@
   box-shadow: 0 12px 30px rgb(0 0 0 / 14%);
 }
 
-.vf-monitor-list-spawn-col {
+.mv-list .vf-monitor-list-spawn-col {
   min-width: 158px;
   padding: 4px;
 }
 
-.vf-monitor-list-spawn-col + .vf-monitor-list-spawn-col {
+.mv-list .vf-monitor-list-spawn-col + .vf-monitor-list-spawn-col {
   border-left: 1px solid var(--panel-border, #e0e0e0);
 }
 
-.vf-monitor-list-spawn-h {
+.mv-list .vf-monitor-list-spawn-h {
   padding: 6px 8px 4px;
   color: var(--text-faint, #b8b8b8);
   font-size: 7.5px;
@@ -255,7 +278,7 @@
   text-transform: uppercase;
 }
 
-.vf-monitor-list-spawn-row {
+.mv-list .vf-monitor-list-spawn-row {
   width: 100%;
   min-height: 26px;
   display: flex;
@@ -276,35 +299,35 @@
   cursor: pointer;
 }
 
-.vf-monitor-list-spawn-row:hover,
-.vf-monitor-list-spawn-row:focus-visible,
-.vf-monitor-list-spawn-row.is-on {
+.mv-list .vf-monitor-list-spawn-row:hover,
+.mv-list .vf-monitor-list-spawn-row:focus-visible,
+.mv-list .vf-monitor-list-spawn-row.is-on {
   color: var(--text-main, #111111);
   background: var(--control-hover-bg, #f2f2f2);
   outline: none;
 }
 
-.vf-monitor-list-spawn-row:focus-visible {
+.mv-list .vf-monitor-list-spawn-row:focus-visible {
   box-shadow: inset 0 0 0 1px var(--text-main, #111111);
 }
 
-.vf-monitor-list-spawn-row[aria-disabled='true'] {
+.mv-list .vf-monitor-list-spawn-row[aria-disabled='true'] {
   opacity: 0.5;
   cursor: default;
 }
 
-.vf-monitor-list-spawn-row svg {
+.mv-list .vf-monitor-list-spawn-row svg {
   flex: none;
 }
 
-.vf-monitor-list-spawn-name {
+.mv-list .vf-monitor-list-spawn-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.vf-monitor-list-spawn-row small {
+.mv-list .vf-monitor-list-spawn-row small {
   margin-left: auto;
   padding-left: 6px;
   color: var(--text-faint, #b8b8b8);
@@ -313,7 +336,7 @@
   white-space: nowrap;
 }
 
-.vf-monitor-list-spawn-init {
+.mv-list .vf-monitor-list-spawn-init {
   width: 16px;
   height: 16px;
   flex: none;
@@ -332,22 +355,22 @@
   letter-spacing: 0;
 }
 
-.vf-monitor-list-spawn-chev {
+.mv-list .vf-monitor-list-spawn-chev {
   margin-left: 4px;
   color: var(--text-faint, #b8b8b8);
 }
 
 /* an agent under this profile waits on the person: the profile tabs' orange dot */
-.vf-monitor-list-spawn-dot {
+.mv-list .vf-monitor-list-spawn-dot {
   width: 5px;
   height: 5px;
   flex: none;
   border-radius: 50%;
-  background: var(--vf-orange, #ff9f0a);
+  background: var(--mv-list-blocked, #ff9f0a);
 }
 
-.vf-monitor-list-spawn-note,
-.vf-monitor-list-spawn-foot {
+.mv-list .vf-monitor-list-spawn-note,
+.mv-list .vf-monitor-list-spawn-foot {
   padding: 6px 8px 4px;
   color: var(--text-faint, #b8b8b8);
   font-size: 7.5px;
@@ -357,7 +380,7 @@
   text-transform: uppercase;
 }
 
-.vf-monitor-list-spawn-foot {
+.mv-list .vf-monitor-list-spawn-foot {
   margin-top: 4px;
   border-top: 1px solid var(--panel-border, #e0e0e0);
 }

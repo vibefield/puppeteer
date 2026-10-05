@@ -52,7 +52,7 @@ import {
 import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
 import type { MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
 import { frameScheduler, MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
-import type { AgentMonitorView } from '@vibecook/puppeteer-views';
+import type { MonitorViewEntry } from '@vibecook/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,
@@ -103,12 +103,12 @@ const STAGE_PARAMETERS_KEY = 'godview:screen-parameters:v1';
 const LEGACY_PARAMETERS_KEY = 'godview:swarm-parameters:v1';
 const WORKSPACE_STORAGE_KEY = `godview:ghosttea-workspace:v2:${window.desktop.tabId}`;
 
-function viewParametersKey(view: AgentMonitorView): string {
+function viewParametersKey(view: MonitorViewEntry): string {
   return `godview:monitor-parameters:v1:${view.id}${view.parametersRevision ? `:${view.parametersRevision}` : ''}`;
 }
 
 /** A revised view starts from its own defaults; the legacy seed is for views that never moved. */
-function loadViewParameters(view: AgentMonitorView): MonitorParameters {
+function loadViewParameters(view: MonitorViewEntry): MonitorParameters {
   return loadMonitorParameters(
     viewParametersKey(view),
     view.parameterGroups,
@@ -797,7 +797,8 @@ function Godview() {
       />
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-        {/* One view, through the view host's legacy bridge (L6), drawn from this window's replica (MV-2). */}
+        {/* One view, drawn from this window's replica (MV-2): the list as itself (MV-4), the others through the
+            view host's legacy bridge (L6). */}
         <MonitorViewHost
           replica={monitor.replica}
           view={monitor.views.get(view.id)!}

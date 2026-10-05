@@ -1,10 +1,19 @@
 import { createElement, useEffect, useMemo, useRef, useState, type ComponentType, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import type {
+  ModelChanges,
+  MonitorModel,
+  MonitorTheme as SdkTheme,
+  MonitorView,
+  StageGeometry,
+} from '@vibecook/puppeteer-view-sdk';
+import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
 import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
 import { useMonitorPalette } from '../monitor/palette.js';
 import type { MonitorParameters } from '../monitor/parameters.js';
 import type { AgentMonitorProps, MonitorActions, MonitorAgent, MonitorTheme } from '../monitor/types.js';
 import { installLabClock, type LabClock } from './lab-clock.js';
+import { labModel } from './lab-model.js';
 import { LAB_NOW_MS, LAB_SEED, labWorld } from './lab-world.js';
 
 // One view in Godview's stage, over the seeded world (MV-0). Every view lab
@@ -83,7 +92,11 @@ export interface ViewLabOptions {
   readonly root: HTMLElement;
   /** Where the stages go. */
   readonly mount: Element;
-  readonly Component: ComponentType<AgentMonitorProps>;
+  /** A legacy view's component, handed the world's legacy rows. */
+  readonly Component?: ComponentType<AgentMonitorProps> | undefined;
+  /** A view on the SDK (MV-4 on): mounted through the view host, as Godview mounts it, over the same world said as
+   * the model (`lab-model.ts`), in the same order. One of `Component` and `view`. */
+  readonly view?: MonitorView | undefined;
   readonly parameters: MonitorParameters;
   /** Hand the view the world's book (`history`), unless `book=0` says otherwise. */
   readonly book?: boolean;
@@ -108,21 +121,53 @@ interface StageProps {
   onCommit(): void;
 }
 
+/** The stage before its first measurement, as Godview starts it. */
+const EMPTY_STAGE: StageGeometry = Object.freeze({
+  width: 0,
+  height: 0,
+  insets: Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 }),
+  obstacles: Object.freeze([]),
+});
+const NO_CHANGES: ModelChanges = Object.freeze({ added: [], updated: [], removed: [] });
+
+/** One world as a replica: the model it is, never changing; a new world is a new replica. */
+function labReplica(model: MonitorModel): MonitorReplicaLike {
+  return { getSnapshot: () => ({ model, changes: NO_CHANGES }), subscribe: () => () => undefined };
+}
+
 function Stage({ size, params, options, parameters, churn, onCommit }: StageProps): ReactElement {
   const { width, height, note } = LAB_SIZES[size];
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(stageRef);
+  const sdkView = options.view;
   const world = useMemo(
-    () => labWorld({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
-    [params.n, params.seed, palette.tint, palette.neutral, churn],
+    () =>
+      sdkView
+        ? undefined
+        : labWorld({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
+    [sdkView, params.n, params.seed, palette.tint, palette.neutral, churn],
+  );
+  const replica = useMemo(
+    () =>
+      sdkView
+        ? labReplica(labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }))
+        : undefined,
+    [sdkView, params.n, params.seed, palette.tint, palette.neutral, churn],
   );
   const [selected, setSelected] = useState<string>();
   const actions = useMemo<MonitorActions>(
     () => ({ select: (agent: MonitorAgent) => setSelected(agent.id), createAt: () => undefined }),
     [],
   );
-  // As Godview publishes them: flowing views clear the chrome with these, the swarm reads its rect.
+  const commands = useMemo<ViewSlotCommands>(() => ({ select: setSelected, create: () => undefined }), []);
+  const theme = useMemo<SdkTheme>(
+    () => ({ scheme: params.theme, tokens: palette, reducedMotion: false, animations: params.animations }),
+    [palette, params.animations, params.theme],
+  );
+  // As Godview publishes them: flowing legacy views clear the chrome with these, the swarm reads its rect, and a
+  // view on the SDK is handed the same measurement as its stage (MV-D19): the chrome's right edge as the left inset.
+  const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
     const chrome = chromeRef.current;
@@ -130,22 +175,51 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
     const publish = (): void => {
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
+      const chromeRight = Math.round(rect.right - stageRect.left);
       stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${Math.round(rect.right - stageRect.left)}px`);
+      stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
+      // A legacy view reads only the two properties above: its lab renders exactly as it always did.
+      if (!sdkView) return;
+      setStageGeometry({
+        width: Math.round(stageRect.width),
+        height: Math.round(stageRect.height),
+        insets: { top: 0, right: 0, bottom: 0, left: chromeRight },
+        obstacles: [
+          {
+            x: Math.round(rect.left - stageRect.left),
+            y: Math.round(rect.top - stageRect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          },
+        ],
+      });
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
+    if (sdkView) observer.observe(stage);
     publish();
     return () => observer.disconnect();
+    // the view a stage mounts is fixed for the page's life
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(onCommit, [onCommit]);
-  const view = createElement(options.Component, {
-    agents: world.agents,
-    parameters,
-    actions,
-    palette,
-    ...(options.book && params.book ? { history: world.history } : {}),
-  });
+  const view =
+    sdkView && replica
+      ? createElement(MonitorViewHost, {
+          replica,
+          view: sdkView,
+          stage: stageGeometry,
+          theme,
+          parameters,
+          commands,
+        })
+      : createElement(options.Component!, {
+          agents: world!.agents,
+          parameters,
+          actions,
+          palette,
+          ...(options.book && params.book ? { history: world!.history } : {}),
+        });
   return createElement(
     'figure',
     { className: 'view-lab-stage', 'data-lab-stage': size },

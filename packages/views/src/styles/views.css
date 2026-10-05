@@ -4,10 +4,10 @@
    `.vf-godview.theme-light` / `.theme-dark`) and the app-level tokens
    (`--vf-orange`, `--vf-green`, `--vf-select`); a HOST ships those (Godview's
    `styles/godview.css` + `tokens.css`, VibeField's design kit), never this file.
-   Imported once by the host beside its skin. */
+   Imported once by the host beside its skin. A view on the SDK brings its own stylesheet from its entry module
+   (L18), so the list's and the rain's are not here: views/list/list.css, views/rain/rain.css. */
 @import './bar.css';
 @import './usage.css';
-@import './list.css';
 @import './rain.css';
 @import './find-sheet.css';
 @import '../views/swarm/swarm.css';

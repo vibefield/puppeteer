@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
 import type {
   AgentMonitorViewDefinition,
   AgentMonitorViewProps as PortableAgentMonitorViewProps,
@@ -248,3 +249,21 @@ export interface AgentMonitorView extends Omit<
   /** The portable contract's component, plus the palette the shell resolves for it. */
   readonly Component: ComponentType<AgentMonitorProps>;
 }
+
+/**
+ * A view moved onto the SDK (MV-4 on): the host mounts `view` through the view
+ * host (`@vibecook/puppeteer-view-sdk/host`), with no legacy bridge. Its
+ * registry face is a legacy entry's (the id, the label, the parameter groups
+ * and their revision, read from its manifest), so the bar, the tweak panel and
+ * the stored parameters read every view alike until MV-8 retires the legacy ones.
+ */
+export interface PortedMonitorView {
+  readonly id: string;
+  readonly label: string;
+  readonly parameterGroups: readonly MonitorParameterGroup[];
+  readonly parametersRevision?: string;
+  readonly view: MonitorView;
+}
+
+/** A registry entry: a ported view, or a legacy one the host mounts through the bridge until it ports. */
+export type MonitorViewEntry = AgentMonitorView | PortedMonitorView;

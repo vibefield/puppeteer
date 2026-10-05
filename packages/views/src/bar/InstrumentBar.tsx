@@ -178,7 +178,8 @@ export function BarControl({
 export interface InstrumentBarProps {
   counts: Record<AgentVisualStatus, number>;
   onSelectStatus(status: AgentVisualStatus): void;
-  views: readonly AgentMonitorView[];
+  /** Every view the bar switches between: it reads each one's id and label (MV-8 adds the manifest's mark). */
+  views: readonly Pick<AgentMonitorView, 'id' | 'label'>[];
   viewId: string;
   onSelectView(viewId: string): void;
   theme: MonitorTheme;
