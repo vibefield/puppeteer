@@ -8,11 +8,10 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
  * with it (M47's race did exactly that). Behind this boundary only the piece
  * that threw goes; the stage, the view host and every other piece stay.
  *
- * It renders nothing while its piece is failing and adds no element of its
- * own, so a healthy piece's DOM is unchanged. When the host renders it again
- * with new children (the next state, the next frame of facts), it tries the
- * piece again: a transient read heals itself, a persistent one keeps failing
- * quietly, reported once per distinct error.
+ * A failed piece says it is unavailable; a healthy piece's DOM is unchanged.
+ * When the host renders it with new children (the next state or frame of
+ * facts), it tries the piece again. A transient read heals itself; the host's
+ * reporter hears a persistent failure once per distinct error.
  */
 export interface ChromeBoundaryProps {
   /** Which piece this is, for the report. */
@@ -47,6 +46,6 @@ export class ChromeBoundary extends Component<ChromeBoundaryProps, ChromeBoundar
   }
 
   override render(): ReactNode {
-    return this.state.failed ? null : this.props.children;
+    return this.state.failed ? <span role="status">{this.props.name} unavailable</span> : this.props.children;
   }
 }

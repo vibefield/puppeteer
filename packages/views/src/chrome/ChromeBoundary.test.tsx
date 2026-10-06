@@ -118,6 +118,7 @@ describe('a chrome piece behind its own boundary (M49)', () => {
     await test.render([{ session: { id: 'a' } }, {}]);
     expect(errors).toEqual([['find', 'TypeError']]);
     expect(test.container.querySelector('.find')).toBeNull();
+    expect(test.container.querySelector('[role="status"]')?.textContent).toBe('find unavailable');
     expect(test.container.querySelector('.usage')?.textContent).toBe('usage');
     expect(test.container.querySelector('.stage')).not.toBeNull();
     expect(viewRoots(test.container)).toHaveLength(1);
@@ -140,8 +141,10 @@ describe('a chrome piece behind its own boundary (M49)', () => {
     await test.render([{}, {}]);
     expect(onError).toHaveBeenCalledTimes(1);
     expect(test.container.querySelector('.find')).toBeNull();
+    expect(test.container.querySelector('[role="status"]')?.textContent).toBe('find unavailable');
     await test.render([{ session: { id: 'b' } }]);
     expect(test.container.querySelector('.find')?.textContent).toBe('b');
+    expect(test.container.querySelector('[role="status"]')).toBeNull();
     expect(viewRoots(test.container)).toHaveLength(1);
   });
 
