@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
 import type { MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 import type { MonitorTheme } from '../monitor/types.js';
@@ -56,8 +56,9 @@ export function Mark({ id, fallback }: { id: string; fallback: string }) {
 /**
  * A view's mark, from its manifest (MV-D6): filled paths in currentColor, never stroked (a stroked outline draws both
  * of its edges). A view with no paths shows its label's initial, as an unknown tool does.
+ * A manifest is immutable: a host's live counters do not rebuild its mark's path elements.
  */
-export function ViewMark({ mark, fallback }: { mark: MonitorViewMark; fallback: string }) {
+export const ViewMark = memo(function ViewMark({ mark, fallback }: { mark: MonitorViewMark; fallback: string }) {
   if (mark.paths.length === 0) return <span aria-hidden="true">{fallback.slice(0, 1).toUpperCase()}</span>;
   return (
     <svg className="vf-godview-bar-mark is-filled" viewBox={mark.viewBox} aria-hidden="true">
@@ -66,7 +67,7 @@ export function ViewMark({ mark, fallback }: { mark: MonitorViewMark; fallback: 
       ))}
     </svg>
   );
-}
+});
 
 /** How a key is printed on a control: the keyboard's own legend where it has one, the key's character otherwise. */
 const KEY_LEGENDS: Readonly<Record<string, string>> = {

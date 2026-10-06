@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MONITOR_VIEWS } from '../monitor/registry.js';
-import { InstrumentBar, keyLegend, type InstrumentBarView } from './InstrumentBar.js';
+import { InstrumentBar, keyLegend, ViewMark, type InstrumentBarView } from './InstrumentBar.js';
 
 const NOOP = () => undefined;
 const base = {
@@ -58,6 +58,28 @@ describe('the bar draws each view’s mark from its manifest (MV-D6)', () => {
     expect(html).toContain('<span aria-hidden="true">P</span>');
     expect(html).not.toContain('is-filled');
   });
+});
+
+it('updates a replaced manifest mark and its label fallback', async () => {
+  const element = document.createElement('div');
+  document.body.append(element);
+  const root = createRoot(element);
+  cleanups.push(() => {
+    act(() => root.unmount());
+    element.remove();
+  });
+  const first = { viewBox: '0 0 16 16', paths: ['M0 0H8V8Z'] };
+  await act(async () => root.render(<ViewMark mark={first} fallback="FIRST" />));
+  expect(element.querySelector('path')?.getAttribute('d')).toBe(first.paths[0]);
+  const next = { viewBox: '0 0 24 24', paths: ['M1 1H9V9Z', 'M2 2H4V4Z'] };
+  await act(async () => root.render(<ViewMark mark={next} fallback="NEXT" />));
+  expect(element.querySelector('svg')?.getAttribute('viewBox')).toBe(next.viewBox);
+  expect([...element.querySelectorAll('path')].map((path) => path.getAttribute('d'))).toEqual(next.paths);
+  const empty = { viewBox: '0 0 24 24', paths: [] };
+  await act(async () => root.render(<ViewMark mark={empty} fallback="NEXT" />));
+  expect(element.textContent).toBe('N');
+  await act(async () => root.render(<ViewMark mark={empty} fallback="LAST" />));
+  expect(element.textContent).toBe('L');
 });
 
 describe('the bar prints a view’s declared keys on its control (MV-D8)', () => {
