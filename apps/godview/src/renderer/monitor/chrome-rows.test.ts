@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import type { AgentMonitorState } from '@vibecook/puppeteer-core';
 import type { AgentView, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
@@ -134,6 +134,66 @@ describe("the chrome's rows (M19)", () => {
       },
     });
     expect(row?.agent?.monitor).toBe(monitor);
+  });
+
+  it('does not reformat an unchanged model row when only the chrome state changes', () => {
+    const readCost = vi.fn(() => 1.5);
+    const agent = Object.freeze(
+      view('pty-1', {
+        cost: Object.freeze({
+          get usd() {
+            return readCost();
+          },
+          coverage: 'complete' as const,
+        }),
+      }),
+    );
+    const input = {
+      model: modelOf([agent]),
+      agentSessions: new Map([['pty-1', 'pty-1']]),
+      records: new Map([
+        [
+          'pty-1',
+          {
+            info: info('pty-1'),
+            monitor: {
+              runtimeRunId: 'run-pty-1',
+              terminalSessionId: 'pty-1',
+              state: state(),
+            },
+          },
+        ],
+      ]),
+      terminals: [],
+      sessions: new Map<string, SessionSummary>(),
+      attachments: panes,
+    };
+    expect(chromeRows(input)[0]?.detail).toBe('Edit · x · ~$1.50 estimated API cost');
+    const refreshed = state({ statusSince: '2026-10-03T10:01:00.000Z' });
+    const [next] = chromeRows({
+      ...input,
+      records: new Map([
+        [
+          'pty-1',
+          {
+            info: info('pty-1'),
+            monitor: {
+              runtimeRunId: 'run-pty-1',
+              terminalSessionId: 'pty-1',
+              state: refreshed,
+            },
+          },
+        ],
+      ]),
+    });
+    expect(next?.agent?.monitor).toBe(refreshed);
+    expect(next?.detail).toBe('Edit · x · ~$1.50 estimated API cost');
+    expect(readCost).toHaveBeenCalledTimes(1);
+    const changed = Object.freeze({
+      ...agent,
+      cost: { usd: 2, coverage: 'complete' as const },
+    });
+    expect(chromeRows({ ...input, model: modelOf([changed]) })[0]?.detail).toBe('Edit · x · ~$2.00 estimated API cost');
   });
 
   it("shows the run's terminal until the chrome's state arrives, and a terminal row with its live summary", () => {

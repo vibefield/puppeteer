@@ -58,7 +58,20 @@ function perMinute(burnPerHour: number): number {
  * blockers beyond the first, the cost, the burn. The chrome keeps it, so what
  * Find finds does not move; a terminal's line is the backend's own.
  */
+// Model rows are immutable and structurally shared (MV-D21). The old shim
+// formatted a row only when that object changed. Keep that property after its
+// removal: pane/terminal/chrome updates must not reformat every unchanged cost.
+const details = new WeakMap<AgentView, string>();
+
 export function chromeDetail(row: AgentView): string {
+  const held = details.get(row);
+  if (held !== undefined) return held;
+  const detail = formatChromeDetail(row);
+  details.set(row, detail);
+  return detail;
+}
+
+function formatChromeDetail(row: AgentView): string {
   if (row.kind !== 'agent') return row.detail;
   const { cost, wait } = row;
   const blockers = wait ? (wait.count ?? 1) : 0;
