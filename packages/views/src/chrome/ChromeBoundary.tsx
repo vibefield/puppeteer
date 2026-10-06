@@ -10,7 +10,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
  *
  * A failed piece says it is unavailable; a healthy piece's DOM is unchanged.
  * When the host renders it with new children (the next state or frame of
- * facts), it tries the piece again. A transient read heals itself; the host's
+ * facts), it tries the piece again, or waits for an explicit retryKey to change. A transient read heals itself; the host's
  * reporter hears a persistent failure once per distinct error.
  */
 export interface ChromeBoundaryProps {
@@ -18,6 +18,8 @@ export interface ChromeBoundaryProps {
   readonly name: string;
   /** Told each time the piece fails with an error unlike the last one it reported. */
   readonly onError?: ((error: unknown, name: string) => void) | undefined;
+  /** Retry only when these owning facts change; omitted, a new child still retries. */
+  readonly retryKey?: unknown;
   readonly children?: ReactNode;
 }
 
@@ -41,8 +43,13 @@ export class ChromeBoundary extends Component<ChromeBoundaryProps, ChromeBoundar
   }
 
   override componentDidUpdate(previous: ChromeBoundaryProps): void {
-    // New children are the host's next render of the piece: try it again.
-    if (this.state.failed && previous.children !== this.props.children) this.setState({ failed: false });
+    // A host observing this piece's DOM may render because the fallback replaced it.
+    // Its explicit fact key prevents that render from immediately retrying the same bad read.
+    const changed =
+      'retryKey' in this.props
+        ? !Object.is(previous.retryKey, this.props.retryKey)
+        : previous.children !== this.props.children;
+    if (this.state.failed && changed) this.setState({ failed: false });
   }
 
   override render(): ReactNode {

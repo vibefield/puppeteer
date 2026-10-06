@@ -45,7 +45,7 @@ interface Harness {
   readonly recording: RecordingView;
   readonly replica: FixtureReplica;
   readonly frames: ReturnType<typeof createFrameDriver>;
-  render(rows: readonly { session?: { id: string } }[], guarded?: boolean): Promise<void>;
+  render(rows: readonly { session?: { id: string } }[], guarded?: boolean, retryKey?: number): Promise<void>;
 }
 
 function harness(onError?: (error: unknown, name: string) => void): Harness {
@@ -68,7 +68,7 @@ function harness(onError?: (error: unknown, name: string) => void): Harness {
     recording,
     replica,
     frames,
-    render: (rows, guarded = true) =>
+    render: (rows, guarded = true, retryKey) =>
       act(async () => {
         const find = <FindRows rows={rows} />;
         const usage = <p className="usage">usage</p>;
@@ -85,7 +85,7 @@ function harness(onError?: (error: unknown, name: string) => void): Harness {
             />
             {guarded ? (
               <>
-                <ChromeBoundary name="find" onError={onError}>
+                <ChromeBoundary name="find" onError={onError} {...(retryKey === undefined ? {} : { retryKey })}>
                   {find}
                 </ChromeBoundary>
                 <ChromeBoundary name="usage" onError={onError}>
@@ -146,6 +146,20 @@ describe('a chrome piece behind its own boundary (M49)', () => {
     expect(test.container.querySelector('.find')?.textContent).toBe('b');
     expect(test.container.querySelector('[role="status"]')).toBeNull();
     expect(viewRoots(test.container)).toHaveLength(1);
+  });
+
+  it('retries on new owning facts, not the parent observing its fallback', async () => {
+    const test = harness();
+    await test.render([{}], true, 1);
+    expect(test.container.querySelector('[role="status"]')?.textContent).toBe('find unavailable');
+    // A DOM observer can republish the host while the source facts still stand.
+    // Even a new child must wait for the fact key, rather than remounting on that feedback.
+    await test.render([{ session: { id: 'ready' } }], true, 1);
+    expect(test.container.querySelector('.find')).toBeNull();
+    await test.render([{ session: { id: 'ready' } }], true, 2);
+    expect(test.container.querySelector('.find')?.textContent).toBe('ready');
+    expect(test.container.querySelector('[role="status"]')).toBeNull();
+    expect(test.recording.unmounts).toBe(0);
   });
 
   it('adds nothing to a healthy piece’s DOM', async () => {
