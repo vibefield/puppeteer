@@ -4,6 +4,7 @@ import type { FindAgent } from './find-agent.js';
 import type { HistorySearchHit, HistorySessionFacts } from './history-port.js';
 import {
   buildFindRows,
+  createFindRows,
   factsScore,
   fieldMatch,
   footSentence,
@@ -340,5 +341,116 @@ describe('moveCursor', () => {
     expect(moveCursor(1, 'End', 3)).toBe(2);
     expect(moveCursor(1, 'Home', 3)).toBe(0);
     expect(moveCursor(0, 'ArrowDown', 0)).toBe(-1);
+  });
+});
+
+describe('a sheet’s retained Find calculations', () => {
+  it('reuses unchanged rows, keeps stable ties in current input order and selects the current agent object', () => {
+    const first = { ...agent({ id: 'a', native: 'n-a', project: 'same' }), hostSessionId: 'old' };
+    const second = { ...agent({ id: 'b', native: 'n-b', project: 'same' }), hostSessionId: 'other' };
+    const compile = createFindRows<typeof first>();
+    const input = {
+      agents: [first, second],
+      facts: new Map<string, HistorySessionFacts>(),
+      hits: [],
+      query: '',
+      nowMs: NOW,
+    };
+    const initial = compile(input);
+    const repeated = compile({ ...input, agents: [...input.agents] });
+    expect(repeated.map((row) => row.agent.id)).toEqual(['a', 'b']);
+    expect(repeated[0]).toBe(initial[0]);
+    expect(repeated[1]).toBe(initial[1]);
+    expect(compile({ ...input, agents: [second, first] }).map((row) => row.agent.id)).toEqual(['b', 'a']);
+    const replacement = { ...first, hostSessionId: 'resumed', status: 'blocked' as const };
+    const changed = compile({ ...input, agents: [replacement, second] });
+    expect(changed[0]?.agent).toBe(replacement);
+    expectTypeOf(changed[0]!.agent.hostSessionId).toEqualTypeOf<string>();
+    expect(changed[0]?.score).toBe(initial[0]!.score + 1);
+    expect(changed[1]).toBe(initial[1]);
+    expect(compile({ ...input, agents: [] })).toEqual([]);
+    expect(compile({ ...input, agents: [second] })[0]).toBe(initial[1]);
+    expect(createFindRows<typeof first>()(input)[0]).not.toBe(initial[0]);
+  });
+
+  it('refreshes query, title/summary and hit changes, including mutable history answers', () => {
+    const a = agent({ id: 'a', native: 'n-a', project: 'alpha' });
+    const b = agent({ id: 'b', native: 'n-b', project: 'beta' });
+    const title = facts('n-a', 'first title');
+    const known = new Map([['n-a', title]]);
+    const hits: HistorySearchHit[] = [];
+    let input = { agents: [a, b], facts: known, hits, query: 'needle', nowMs: NOW };
+    const compile = createFindRows<FindAgent>();
+    expect(compile(input)).toEqual([]);
+    title.title = 'needle title';
+    expect(compile(input)[0]?.title).toBe('needle title');
+    title.title = '';
+    title.summary = 'a needle in this summary';
+    expect(compile(input)[0]?.matched).toEqual(['summary']);
+    expect(compile(input)[0]?.title).toBeUndefined();
+    known.delete('n-a');
+    expect(compile(input)).toEqual([]);
+    hits.push(hit('n-b', 'older', '[needle]', NOW - 2_000), hit('n-b', 'newer', '[needle]', NOW - 1_000));
+    expect(compile(input)[0]?.hits.map((row) => row.timelineId)).toEqual(['newer', 'older']);
+    hits[0]!.at = NOW;
+    expect(compile(input)[0]?.hits.map((row) => row.timelineId)).toEqual(['older', 'newer']);
+    hits[0]!.nativeSessionId = 'n-a';
+    expect(compile(input).find((row) => row.agent === a)?.hits[0]?.timelineId).toBe('older');
+    hits.length = 0;
+    expect(compile(input)).toEqual([]);
+    input = { ...input, query: 'beta' };
+    expect(compile(input).map((row) => row.agent.id)).toEqual(['b']);
+    expect(compile(input)).toEqual(buildFindRows(input));
+  });
+
+  it('recomputes replaced live fields, mirror clocks and clock-dependent future/recency bounds', () => {
+    const compile = createFindRows<FindAgent>();
+    const original = agent({
+      id: 'a',
+      native: 'old',
+      project: 'alpha',
+      lastEvidenceAt: new Date(NOW + 60_001).toISOString(),
+    });
+    let input = { agents: [original], facts: new Map<string, HistorySessionFacts>(), hits: [], query: '', nowMs: NOW };
+    const initial = compile(input)[0]!;
+    expect(initial.lastActiveMs).toBe(original.createdAtMs);
+    input = { ...input, nowMs: NOW + 1 };
+    expect(compile(input)[0]?.lastActiveMs).toBe(NOW + 60_001);
+    input = { ...input, nowMs: NOW + 3_600_000 };
+    expect(compile(input)[0]?.score).toBeLessThan(compile({ ...input, nowMs: NOW + 1 })[0]!.score);
+    for (const current of [
+      agent({ id: 'a', native: 'resumed', project: 'alpha', lastEvidenceAt: new Date(NOW - 1_000).toISOString() }),
+      agent({ id: 'a', project: 'alpha', model: 'needle' }),
+      agent({ id: 'a', project: 'alpha', branch: 'needle' }),
+      agent({ id: 'a', project: 'alpha', account: 'needle' }),
+      agent({ id: 'a', project: 'alpha', detail: 'needle' }),
+      agent({ id: 'a', project: 'needle', terminal: true }),
+    ]) {
+      input = { ...input, agents: [current], query: 'needle' };
+      expect(compile(input)).toEqual(buildFindRows(input));
+      const all = compile({ ...input, query: current.agent === undefined ? 'needle' : '' });
+      expect(all[0]?.agent).toBe(current);
+    }
+    const absent = { ...original, agent: { provider: original.agent!.provider } };
+    expect(compile({ ...input, agents: [absent], query: '' })[0]?.nativeSessionId).toBeUndefined();
+    expect(compile({ ...input, agents: [absent], query: '' })[0]?.lastActiveMs).toBe(absent.createdAtMs);
+  });
+
+  it('keeps the stateless builder’s outputs and each row’s hit array independently owned', () => {
+    const input = {
+      agents: [agent({ id: 'a', native: 'same', project: 'a' }), agent({ id: 'b', native: 'same', project: 'b' })],
+      facts: new Map<string, HistorySessionFacts>(),
+      hits: [hit('same', 'one', 'hello')],
+      query: '',
+      nowMs: NOW,
+    };
+    const first = buildFindRows(input);
+    const second = buildFindRows(input);
+    expect(first[0]).not.toBe(second[0]);
+    expect(first[0]!.hits).not.toBe(first[1]!.hits);
+    first[0]!.hits.length = 0;
+    expect(first[1]!.hits).toHaveLength(1);
+    expect(second[0]!.hits).toHaveLength(1);
+    expect(input.hits).toHaveLength(1);
   });
 });

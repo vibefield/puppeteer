@@ -12,7 +12,7 @@ import type { FindAgent } from './find-agent.js';
 import {
   FIND_DEBOUNCE_MS,
   FIND_MAX_SNIPPETS,
-  buildFindRows,
+  createFindRows,
   footSentence,
   isCursorKey,
   liveScope,
@@ -274,9 +274,10 @@ export function FindSheet<Agent extends FindAgent>({
     return () => window.removeEventListener('keydown', closeOnEscape, true);
   }, [open, onClose]);
 
+  const rowsFor = useMemo(() => createFindRows<Agent>(), []);
   const rows = useMemo(
-    () => buildFindRows({ agents, facts, hits, query, nowMs: clock }),
-    [agents, facts, hits, query, clock],
+    () => rowsFor({ agents, facts, hits, query, nowMs: clock }),
+    [agents, facts, hits, query, clock, rowsFor],
   );
   // New rows put the cursor on the first one, so Enter lands at once. Keyed on
   // the rows' identities, not the array, which is rebuilt on every clock tick.
