@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type FocusEvent } from 'react';
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FocusEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
 import type { AccountUsagePort } from './account-usage-port.js';
@@ -149,7 +158,8 @@ export interface UsageColumnProps {
   port: AccountUsagePort;
 }
 
-export function UsageColumn({ port }: UsageColumnProps) {
+/** The port owns updates: model ticks in the host do not redraw unchanged usage tiles. */
+export const UsageColumn = memo(function UsageColumn({ port }: UsageColumnProps) {
   const [batch, setBatch] = useState<AccountUsageBatch>();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement }>();
@@ -248,4 +258,4 @@ export function UsageColumn({ port }: UsageColumnProps) {
       {open && openTile ? <UsagePopup tile={openTile} anchor={open.anchor} id="vf-usage-popup" /> : null}
     </div>
   );
-}
+});
