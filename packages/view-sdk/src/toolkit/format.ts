@@ -14,14 +14,15 @@ const MINUTE = 60 * SECOND;
 
 const pad2 = (value: number): string => String(value).padStart(2, '0');
 
+// ICU's formatting rules are fixed. Reuse their formatters across rows and animation frames.
+const usdTwoPlaces = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usdThreePlaces = new Intl.NumberFormat('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
 /** USD, keeping small positive estimates visibly distinct from a known zero: `$7.03`, `$0.004`, `<$0.001`; `—` unknown. */
 export function formatUsd(value: number | undefined): string {
   if (value === undefined) return '—';
   if (value > 0 && value < 0.001) return '<$0.001';
-  return `$${value.toLocaleString('en-US', {
-    minimumFractionDigits: value > 0 && value < 0.01 ? 3 : 2,
-    maximumFractionDigits: value > 0 && value < 0.01 ? 3 : 2,
-  })}`;
+  return `$${(value > 0 && value < 0.01 ? usdThreePlaces : usdTwoPlaces).format(value)}`;
 }
 
 /**

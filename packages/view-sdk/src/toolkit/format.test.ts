@@ -22,6 +22,44 @@ describe('money', () => {
     expect(formatUsd(1234.5)).toBe('$1,234.50');
   });
 
+  it('preserves rounding, grouping and exceptional values across the precision boundaries', () => {
+    const values = [
+      -Infinity,
+      -1234.565,
+      -0.005,
+      -0,
+      0,
+      Number.MIN_VALUE,
+      0.000999,
+      0.001,
+      0.0015,
+      0.009499,
+      0.0095,
+      0.009999,
+      0.01,
+      0.014999,
+      0.015,
+      1.005,
+      1234.565,
+      Number.MAX_SAFE_INTEGER,
+      Number.MAX_VALUE,
+      Infinity,
+      NaN,
+    ];
+    // The words shipped before formatter reuse; compare at the same runtime's ICU boundary.
+    for (const value of values) {
+      const precision = value > 0 && value < 0.01 ? 3 : 2;
+      const expected =
+        value > 0 && value < 0.001
+          ? '<$0.001'
+          : `$${value.toLocaleString('en-US', {
+              minimumFractionDigits: precision,
+              maximumFractionDigits: precision,
+            })}`;
+      expect(formatUsd(value), String(value)).toBe(expected);
+    }
+  });
+
   it('prints an estimate with a tilde, a plus while partly priced, and a dash with no price lane', () => {
     expect(formatEstimate({ usd: 7.034, coverage: 'complete' })).toBe('~$7.03');
     expect(formatEstimate({ usd: 7.034, coverage: 'partial' })).toBe('~$7.03+');
