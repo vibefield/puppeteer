@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { HistoryPort, HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
 import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
-import type { MonitorAgent } from '../monitor/types.js';
+import type { FindAgent } from './find-agent.js';
 import {
   FIND_DEBOUNCE_MS,
   FIND_MAX_SNIPPETS,
@@ -35,11 +35,11 @@ import {
 /** The daemon port, as the host supplies it (`history-port.ts`). */
 export type FindHistoryBridge = HistoryPort;
 
-export interface FindSheetProps {
+export interface FindSheetProps<Agent extends FindAgent = FindAgent> {
   open: boolean;
-  agents: readonly MonitorAgent[];
+  agents: readonly Agent[];
   onClose(): void;
-  onSelect(agent: MonitorAgent): void;
+  onSelect(agent: Agent): void;
   /** The daemon port the host supplies; a sheet never reaches a window bridge itself. */
   history: FindHistoryBridge;
   nowMs?: number;
@@ -136,7 +136,14 @@ function FindRowView({
   );
 }
 
-export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: FindSheetProps) {
+export function FindSheet<Agent extends FindAgent>({
+  open,
+  agents,
+  onClose,
+  onSelect,
+  history,
+  nowMs,
+}: FindSheetProps<Agent>) {
   const bridge = history;
   const [query, setQuery] = useState('');
   const [facts, setFacts] = useState<ReadonlyMap<string, HistorySessionFacts>>(() => new Map());

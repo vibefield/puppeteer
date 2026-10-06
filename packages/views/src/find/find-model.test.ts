@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
-import type { MonitorAgent, MonitorSession } from '../monitor/types.js';
+import type { FindAgent } from './find-agent.js';
 import type { HistorySearchHit, HistorySessionFacts } from './history-port.js';
 import {
   buildFindRows,
@@ -33,32 +32,26 @@ function agent(input: {
   startedAt?: string;
   createdAtMs?: number;
   terminal?: boolean;
-}): MonitorAgent {
-  const session: MonitorSession = { id: input.id, createdAtMs: input.createdAtMs ?? NOW - 3_600_000 };
-  const base: MonitorAgent = {
+}): FindAgent {
+  const base: FindAgent = {
     id: input.id,
-    session,
-    createdAtMs: session.createdAtMs,
+    createdAtMs: input.createdAtMs ?? NOW - 3_600_000,
     status: input.status ?? 'idle',
     project: input.project,
     detail: input.detail ?? '',
     color: '#123456',
-    active: false,
   };
   if (input.terminal) return base;
   const monitor = {
-    status: input.status ?? 'idle',
     statusSince: input.lastEvidenceAt ?? new Date(NOW - 600_000).toISOString(),
     session: {
       ...(input.native ? { nativeSessionId: input.native } : {}),
       ...(input.startedAt ? { startedAt: input.startedAt } : {}),
     },
     freshness: {
-      level: 'native-hooks',
-      families: {},
       ...(input.lastEvidenceAt ? { lastEvidenceAt: input.lastEvidenceAt } : {}),
     },
-  } as unknown as AgentMonitorState;
+  };
   return {
     ...base,
     agent: {
@@ -67,9 +60,8 @@ function agent(input: {
       ...(input.account ? { account: input.account } : {}),
       ...(input.branch ? { branch: input.branch } : {}),
       monitor,
-      recency: 'live',
       ...(input.native ? { nativeSessionId: input.native } : {}),
-    } as unknown as MonitorAgent['agent'],
+    },
   };
 }
 
@@ -140,18 +132,25 @@ describe('liveScope and nativeSessionIdOf', () => {
   it('reads a mirror with no session or freshness, as a host may hand one (M47)', () => {
     // Core's mirror rides the wire as passthrough, so neither part is promised. VibeField once handed the sheet
     // the legacy shim's sketch, which has neither, and the throw in render blanked its window (build-mv M47).
-    const sketch = { statusSince: new Date(NOW - 60_000).toISOString(), blockers: [] } as unknown as AgentMonitorState;
+    const sketch = { statusSince: new Date(NOW - 60_000).toISOString() };
     const base = agent({ id: 's', project: 'p' });
-    const row: MonitorAgent = { ...base, agent: { ...base.agent!, monitor: sketch } };
+    const row: FindAgent = { ...base, agent: { ...base.agent!, monitor: sketch } };
     expect(nativeSessionIdOf(row)).toBeUndefined();
     expect(liveScope([row])).toEqual({ nativeSessionIds: [] });
-    const named: MonitorAgent = { ...row, agent: { ...row.agent!, nativeSessionId: 'n-s' } };
+    const named: FindAgent = { ...row, agent: { ...row.agent!, nativeSessionId: 'n-s' } };
     expect(liveScope([named]).nativeSessionIds).toEqual(['n-s']);
     expect(lastActiveMs(named, NOW)).toBe(NOW - 60_000);
   });
 });
 
 describe('buildFindRows', () => {
+  it('keeps the host row and its additional facts for selection', () => {
+    const hosted = { ...agent({ id: 'hosted', project: 'p' }), hostSessionId: 'pty-1' };
+    const [row] = buildFindRows({ agents: [hosted], facts: new Map(), hits: [], query: '', nowMs: NOW });
+    expect(row?.agent).toBe(hosted);
+    expectTypeOf(row!.agent.hostSessionId).toEqualTypeOf<string>();
+  });
+
   const a = agent({
     id: 'a',
     native: 'n-a',

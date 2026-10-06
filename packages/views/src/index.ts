@@ -38,6 +38,7 @@ export * from './usage/UsageColumn.js';
 export * from './usage/account-usage.js';
 export * from './usage/account-usage-port.js';
 export * from './find/history-port.js';
+export type { FindAgent } from './find/find-agent.js';
 export * from './find/find-model.js';
 export * from './find/FindSheet.js';
 export * from './views/swarm/index.js';

@@ -1,5 +1,5 @@
 import type { HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import type { MonitorAgent } from '../monitor/types.js';
+import type { FindAgent } from './find-agent.js';
 
 /**
  * The Find sheet's model: everything it decides without a DOM.
@@ -18,7 +18,7 @@ export const FIND_MAX_SNIPPETS = 3;
 const SCOPE_SLACK_MS = 5 * 60_000;
 
 /** The provider-native id a live row joins on, once its provider has said one. */
-export function nativeSessionIdOf(agent: MonitorAgent): string | undefined {
+export function nativeSessionIdOf(agent: FindAgent): string | undefined {
   const facet = agent.agent;
   if (!facet) return undefined;
   // A host's mirror is Core's passthrough: `session` is not promised (build-mv M47).
@@ -31,7 +31,7 @@ export interface FindScope {
 }
 
 /** What to ask the daemon about: the live runs' native ids and their earliest start. */
-export function liveScope(agents: readonly MonitorAgent[]): FindScope {
+export function liveScope(agents: readonly FindAgent[]): FindScope {
   const nativeSessionIds: string[] = [];
   let earliest = Number.POSITIVE_INFINITY;
   for (const agent of agents) {
@@ -94,7 +94,7 @@ interface FactsField {
   weight: number;
 }
 
-function factsFields(agent: MonitorAgent, facts: HistorySessionFacts | undefined): FactsField[] {
+function factsFields(agent: FindAgent, facts: HistorySessionFacts | undefined): FactsField[] {
   const facet = agent.agent;
   const fields: FactsField[] = [];
   const push = (name: string, value: string | undefined, weight: number): void => {
@@ -119,7 +119,7 @@ export interface FactsScore {
 
 /** Every term must land on some field; the score is the best field per term, weighted. */
 export function factsScore(
-  agent: MonitorAgent,
+  agent: FindAgent,
   facts: HistorySessionFacts | undefined,
   terms: readonly string[],
 ): FactsScore {
@@ -146,8 +146,8 @@ export function factsScore(
 
 /* ── rows ──────────────────────────────────────────────────────────────── */
 
-export interface FindRow {
-  agent: MonitorAgent;
+export interface FindRow<Agent extends FindAgent = FindAgent> {
+  agent: Agent;
   nativeSessionId?: string;
   facts?: HistorySessionFacts;
   /** The transcript's own title, when the daemon has one. */
@@ -160,7 +160,7 @@ export interface FindRow {
   lastActiveMs: number;
 }
 
-export function lastActiveMs(agent: MonitorAgent, nowMs: number): number {
+export function lastActiveMs(agent: FindAgent, nowMs: number): number {
   const facet = agent.agent;
   const stamps = [facet?.monitor?.freshness?.lastEvidenceAt, facet?.monitor?.statusSince]
     .map((value) => (value ? Date.parse(value) : Number.NaN))
@@ -176,15 +176,21 @@ function recencyBoost(lastActive: number, nowMs: number): number {
   return 0;
 }
 
-export interface BuildFindRowsInput {
-  agents: readonly MonitorAgent[];
+export interface BuildFindRowsInput<Agent extends FindAgent = FindAgent> {
+  agents: readonly Agent[];
   facts: ReadonlyMap<string, HistorySessionFacts>;
   hits: readonly HistorySearchHit[];
   query: string;
   nowMs: number;
 }
 
-export function buildFindRows({ agents, facts, hits, query, nowMs }: BuildFindRowsInput): FindRow[] {
+export function buildFindRows<Agent extends FindAgent>({
+  agents,
+  facts,
+  hits,
+  query,
+  nowMs,
+}: BuildFindRowsInput<Agent>): FindRow<Agent>[] {
   const terms = tokenize(query);
   const hitsByNative = new Map<string, HistorySearchHit[]>();
   for (const hit of hits) {
@@ -193,7 +199,7 @@ export function buildFindRows({ agents, facts, hits, query, nowMs }: BuildFindRo
     if (list) list.push(hit);
     else hitsByNative.set(hit.nativeSessionId, [hit]);
   }
-  const rows: FindRow[] = [];
+  const rows: FindRow<Agent>[] = [];
   for (const agent of agents) {
     const nativeSessionId = nativeSessionIdOf(agent);
     const known = nativeSessionId ? facts.get(nativeSessionId) : undefined;
