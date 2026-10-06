@@ -338,7 +338,7 @@ async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
           ...(board ? { board } : {}),
         });
         log(
-          `round ${round} ${label} n=${count} ${view}: p50 ${measurements.at(-1).frames.p50?.toFixed(1)} ms · p95 ${measurements.at(-1).frames.p95?.toFixed(1)} ms · LoAF ${loafs.length} · view commits ${sample.viewCommits} · roots render ${sample.rootRenderMs.toFixed(0)} ms (${sample.roots.map((root) => `${root.place} ${root.commits}`).join(', ')}) · tasks ${thread.TaskDuration?.toFixed(0) ?? '—'} ms`,
+          `round ${round} ${label} n=${count} ${view}: p50 ${measurements.at(-1).frames.p50?.toFixed(1)} ms · p95 ${measurements.at(-1).frames.p95?.toFixed(1)} ms · LoAF ${loafs.length} · view commits ${sample.viewCommits} · roots render ${sample.rootRenderMs.toFixed(0)} ms (${sample.roots.map((root) => `${root.place} ${root.commits} commits`).join(', ')}) · tasks ${thread.TaskDuration?.toFixed(0) ?? '—'} ms`,
         );
       }
     }

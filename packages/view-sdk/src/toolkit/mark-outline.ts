@@ -2,8 +2,9 @@
 // filled in currentColor and never strokes it: a stroked outline draws both of
 // its edges (the house practice, Phosphor's filled outlines). A monoline mark,
 // drawn on the bar's 24-unit grid with 1.6 strokes and round caps, is authored
-// here as the outline its stroke would paint, so the filled path paints the
-// same pixels the bar's stroked marks did until MV-8 ruled fill.
+// here as the geometry its stroke would cover. Chromium can rasterize a
+// filled path's edges differently from the old stroke; the bar capture
+// records that named MV-8 change.
 
 /** The bar's mark grid: a mark's `viewBox` is `0 0 24 24`. */
 export const MARK_VIEW_BOX = '0 0 24 24';
