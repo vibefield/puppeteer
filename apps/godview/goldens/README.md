@@ -6,12 +6,12 @@ either goes away or is named and shown to James as an intentional change.
 
 ## What is captured
 
-`views/<view>/<theme>-<size>-n<n>.png`, 48 images (5.6 MB), with `views/manifest.json` listing each one's
+`views/<view>/<theme>-<size>-n<n>.png`, 60 images (6.4 MB), with `views/manifest.json` listing each one's
 parameters and sha256 and the environment that recorded them.
 
 |        |                                                                                                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| views  | list, rain, swarm (since MV-5: twelve images recorded from the legacy swarm's lab at base `d91c7b7`, which the ported view is held to; animations on, it is motion), timeline (one set of ids since MV-8: it was captured twice, with the book Godview kept and `-bare` without it, until MV-6 retired the book (runtime only) and the two drew byte-identical images; MV-8 folded them, keeping the unsuffixed ids) |
+| views  | list, rain, swarm (since MV-5: twelve images recorded from the legacy swarm's lab at base `d91c7b7`, which the ported view is held to; animations on, it is motion), timeline (one set of ids since MV-8: it was captured twice, with the book Godview kept and `-bare` without it, until MV-6 retired the book (runtime only) and the two drew byte-identical images; MV-8 folded them, keeping the unsuffixed ids), spend (since MV-7: twelve images recorded on the port after its parity review against the held view, `feat/sv-live` `d1890e0`; animations off, which stills its one wave) |
 | themes | light, dark                                                                                                                                             |
 | sizes  | Godview's stage (35 % of the window, floor 170 px): compact 680×170 · default 1180×252 · wide 1728×378                                                  |
 | rows   | n = 1 and n = 20 from the seeded world (`packages/views/src/lab/lab-world.ts`)                                                                          |

@@ -245,6 +245,126 @@
       "sha256": "17b7d0c2602b62da45653c3a92c4dcc3b7db51d151775adde1375c3e9cabe74a"
     },
     {
+      "file": "spend/dark-compact-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "5dd3b6605c0caf60ebc639f65f7687647787a5a2a6ef26740e242bdfbb40ce90"
+    },
+    {
+      "file": "spend/dark-compact-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "1c9875e1f37fc2e82107d0c0bba597ba96f8cba9b85eaf7322903fb58677ec18"
+    },
+    {
+      "file": "spend/dark-default-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "ae875e58e0a19a12327130a71ad2549de375371656a9a467c69d6b170cf8806e"
+    },
+    {
+      "file": "spend/dark-default-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "b8a8a966271498a52eb90b90ffde4b95aa659b80cd6d64a5ea8617022f2c4e26"
+    },
+    {
+      "file": "spend/dark-wide-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "375161dce3cea7f6854da0527e76dc074ae0593d37588c09db1895698d9f8d9f"
+    },
+    {
+      "file": "spend/dark-wide-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "2eae83d3fd394cea5b7c01f5b09c4c1bd0e8900d449d24cfb91ad45dec71ef50"
+    },
+    {
+      "file": "spend/light-compact-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "5359a77255a22a491d8885349117cc8ed9b46d8050f43ee3371a207452e5af10"
+    },
+    {
+      "file": "spend/light-compact-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "16312276e623c393e84a7ff739446851fd6cf2814bba00ac08a1935d1b17baf0"
+    },
+    {
+      "file": "spend/light-default-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "3b032f6933da7675c1a3ae9e498571565ed3f03c4b87f1eaaa5feb79d99b5292"
+    },
+    {
+      "file": "spend/light-default-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "15e6b072b4212868d02f9fafca143265a446fd0645e35274cbae6c5e4af16067"
+    },
+    {
+      "file": "spend/light-wide-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "160d75ae03d4abfc6c5c47aa9c2c5732a64c70c9033ea450802e3d5d397b2d05"
+    },
+    {
+      "file": "spend/light-wide-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "96812f4764af88efac7a7a7cbfa4531976348e6c4f67a96baebf11e2eb455165"
+    },
+    {
       "file": "swarm/dark-compact-n1.png",
       "view": "swarm",
       "theme": "dark",
