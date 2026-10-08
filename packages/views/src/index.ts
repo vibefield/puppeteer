@@ -1,9 +1,12 @@
-// @vibecook/puppeteer-views — Godview's monitor views as a package (VibeField's
-// AR-5, PU-5). Every view is a pure function of `MonitorAgent[]`, the
-// parameters and the palette; every fact that needs a process comes through a
-// port the host injects (`HistoryPort`, `AccountUsagePort`, `UsageHistoryStore`,
-// the swarm's physics driver). Nothing here dials a daemon, reads a file or
-// names a provider except as data.
+// @vibecook/puppeteer-views — Godview's monitor views and the chrome around them,
+// as a package (VibeField's AR-5, PU-5). Every view is an SDK view
+// (`@vibecook/puppeteer-view-sdk`) over the backend's `AgentView` rows, the
+// parameters and the palette, behind the wall (`scripts/check-view-wall.mjs`).
+// The chrome (the bar, Find, the usage column, the deck's frames and launchers)
+// reaches what needs a process through a port the host injects (`HistoryPort`,
+// `AccountUsagePort`). Nothing here dials a daemon, reads a file or names a
+// provider except as data, and nothing here keeps a ledger: the backend
+// computes unread and cost once, beside the runtime (L5, L11).
 //
 // Consumers of the EMITTED declarations: the swarm's renderer types name WebGPU's
 // globals (`GPUDevice`, `GPUTexture`, `GPUDeviceLostInfo`), so `@webgpu/types` is a
@@ -15,13 +18,9 @@ export * from './monitor/agent-status.js';
 export * from './monitor/agents.js';
 export * from './monitor/parameters.js';
 export * from './monitor/registry.js';
-export * from './monitor/chrome.js';
 export * from './monitor/palette.js';
-export * from './monitor/unread.js';
 export * from './monitor/recede.js';
-export * from './monitor/usage-ledger.js';
 export * from './monitor/cost-format.js';
-export * from './monitor/usage-history.js';
 export * from './monitor/remote-write.js';
 export * from './monitor/folder-name.js';
 export * from './colour/project-tint.js';
@@ -33,6 +32,8 @@ export * from './icons/ServiceMark.js';
 export * from './bar/InstrumentBar.js';
 // Each host chrome piece behind its own error boundary (M49), so one bad read cannot blank the monitor.
 export * from './chrome/ChromeBoundary.js';
+// The host's stage, which its chrome reads and a view never does.
+export * from './chrome/stage.js';
 export * from './bar/ProfileTabs.js';
 export * from './usage/UsageColumn.js';
 export * from './usage/account-usage.js';

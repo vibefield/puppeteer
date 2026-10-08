@@ -306,6 +306,19 @@ describe("the worker's end", () => {
     end.post({ type: 'idTable' });
     expect(sent.slice(1)).toEqual([{ message: frame, transfer: [frame.buffer] }, { message: { type: 'idTable' } }]);
   });
+
+  it('closes its own thread when told, taking no more commands (the view never names the global, MV-W2)', () => {
+    let closed = 0;
+    const scope: WorkerScopeLike = { onmessage: null, postMessage: () => undefined, close: () => (closed += 1) };
+    const commands: unknown[] = [];
+    const end = serveWorker((command) => commands.push(command), scope);
+    end.close();
+    expect(closed).toBe(1);
+    expect(scope.onmessage).toBeNull();
+    // A scope that cannot close itself (a test's, an inline host's) is simply let go.
+    const quiet: WorkerScopeLike = { onmessage: null, postMessage: () => undefined };
+    expect(() => serveWorker(() => undefined, quiet).close()).not.toThrow();
+  });
 });
 
 // A DOM Worker is a WorkerLike, so a view writes `createWorker: () => new Worker(url, { type: 'module' })`.

@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom';
 import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
 import type { AccountUsagePort } from './account-usage-port.js';
 import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
-import { MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
+import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import { usageTiles, type UsageTile, type UsageWindowView } from './account-usage.js';
 
 // The usage column (record §05): each account is its mark inside its rings,

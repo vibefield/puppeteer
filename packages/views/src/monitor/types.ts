@@ -2,7 +2,6 @@ import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibecook/pup
 import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibecook/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorParameterGroup } from './parameters.js';
-import type { UsageHistory } from './usage-ledger.js';
 
 /** The two looks the instrument skin ships; a host keeps the chosen one. */
 export type MonitorTheme = 'light' | 'dark';
@@ -54,10 +53,6 @@ export interface MonitorAgentFacet {
    * arrived — a host that knows a run exists (it spawned it) but has not heard
    * from its monitor yet shows a starting row rather than inventing a state. */
   monitor?: AgentMonitorState | undefined;
-  /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
-   * and the burn per step. Views read this, never `monitor.usage`, which is
-   * Core's corrected estimate and moves with every source. */
-  usage?: UsageHistory | undefined;
   recency: MonitorRecency;
   /** The provider-native session id the host holds for this run, when the
    * monitor has not announced one yet; the find sheet joins on either. */
@@ -135,7 +130,7 @@ export interface MonitorAgent {
   cwd?: string | undefined;
   /** Where the user asked for it, for views that place new arrivals spatially. */
   spawnHint?: { x: number; y: number } | undefined;
-  /** Finished something while another pane was active (`monitor/unread.ts`). */
+  /** Finished something while no screen showed it: the backend's word (L5), which the views read from `AgentView`. */
   unread?: boolean | undefined;
   /** The host is showing another group of sessions (VibeField's profile tabs):
    * the row keeps its place — in the physics, in the list — and is drawn

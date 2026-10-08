@@ -14,8 +14,8 @@
 //   builds time every render; Godview's renderer bundle is the development build) is what a
 //   `<Profiler>` around the view would report;
 // - every React root's commits and render time (build-mv M33): a view the host mounts in its OWN
-//   root (view-sdk `/host`'s legacy bridge) never shows as a fiber in the host's tree, so the total
-//   is read per root — each committed root's `current.actualDuration` is the time React spent
+//   root (view-sdk `/host` mounts every React view so; the legacy bridge did until MV-8) never shows
+//   as a fiber in the host's tree, so the total is read per root — each committed root's `current.actualDuration` is the time React spent
 //   rendering that commit, every root of every renderer the hook sees.
 //
 // `window.__gvPerf.begin()` opens a window and `end()` closes it, returning that window's samples.

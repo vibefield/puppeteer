@@ -1,32 +1,43 @@
 #!/usr/bin/env node
 
 // THE VIEW WALL (design-mv §3): a monitor view is a plugged-in module that
-// touches nothing outside the root it is given. This checker reads every view
-// folder and reports what crosses the wall:
+// touches nothing outside the root it is given. This checker reads every
+// REGISTERED view, the entries of the registry the hosts mount (`MONITOR_VIEWS`,
+// which puppeteer's Godview and VibeField both mount), each in the folder its
+// module lives in, and reports what crosses the wall:
 //
 //   MV-W1 imports    only the SDK subpaths a view may import (L16), React, and
 //                    files inside the view's own folder (worker and CSS
-//                    references included)
-//   MV-W2 own root   no `document.*`, no `window.*` beyond the allow-list, no
-//                    `closest()`, no reaching the root's document or root node,
-//                    no global listeners (so no global keys); and in its CSS
-//                    (L18) no rule outside its root class `.mv-<view>`, and no
-//                    custom property read but the skin's (`MONITOR_SKIN`) and
-//                    its own `--mv-<view>-*`
-//   MV-W3 no reach   no network or storage, no dynamic `import()`; a worker the
-//                    view bundles is allowed
+//                    references included), never its lab or its fixtures
+//   MV-W2 own root   no `document.*`, no `window.*`/`globalThis.*`/`self.*`
+//                    beyond the allow-list, none of those handed around (an
+//                    alias reaches anything), no bare `location`/`navigator`,
+//                    no `closest()`, no climbing above the root
+//                    (`parentElement`, `parentNode`, `offsetParent`), no
+//                    reaching the root's document or root node, no global
+//                    listeners (so no global keys); and in its CSS (L18) no rule
+//                    outside its root class `.mv-<view>`, none that leaves it
+//                    for its siblings (`~`, `+`), and no custom property read
+//                    but the skin's (`MONITOR_SKIN`) and its own `--mv-<view>-*`
+//   MV-W3 no reach   no network or storage (`caches` and `open` among them), no
+//                    dynamic `import()` or `importScripts()`, no absolute
+//                    `url()` in its CSS; a worker the view bundles is allowed
 //   MV-W5 host CSS   no host stylesheet names a class a view draws
 //
+// What a view may do beyond that is named per view in `VIEW_RUNTIME_IMPORTS`,
+// the one allow-list (M59.2), never special-cased in a rule.
+//
 // MV-W4 (conformance) is a test suite in `@vibecook/puppeteer-view-sdk/testing`,
-// not a reading of source. The checker FAILS: it exits 1 when any view folder
-// breaches, so a new view enters failing and no list of views is kept (MV-8; MV-D9
-// reported first, then closed each view as it moved onto the SDK). `--report`
-// is the opt-in that prints the same table and exits 0 whatever it finds.
-// Sources are parsed with TypeScript, so comments, strings and JSX text never
-// count.
+// not a reading of source. The checker FAILS: it exits 1 when any registered
+// view breaches, when a folder under the views directory is no registered
+// view's, or when the registry cannot be read, so a new view enters failing and
+// no list of views is kept beside the registry (MV-8, MV-8b; MV-D9 reported
+// first, then closed each view as it moved onto the SDK). `--report` is the
+// opt-in that prints the same table and exits 0 whatever it finds. Sources are
+// parsed with TypeScript, so comments, strings and JSX text never count.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
@@ -41,11 +52,15 @@ export const VIEW_SDK_IMPORTS = [
 /** L16: what a view's tests may import besides. */
 export const VIEW_TEST_IMPORTS = ['@vibecook/puppeteer-view-sdk/testing', 'vitest'];
 /**
- * A dependency a view bundles into itself, per view (MV-5, the swarm's physics engine): a pure library the views
- * package declares, which the view carries into its own worker and reaches nothing with. W3 still bans network and
- * storage in the view's own code; the list is finite and named so an isolated realm later knows what to carry.
+ * THE ONE ALLOW-LIST (M59.2): what a view may reach beyond the wall, named per view, each entry a lead decision.
+ * - A module specifier: a dependency the view bundles into itself (MV-5, the swarm's physics engine), a pure library
+ *   the views package declares, which the view carries into its own worker and reaches nothing with.
+ * - A host global's member, `<global>.<member>`: the one member of a bare host global the view may read (MV-8b, the
+ *   swarm draws with WebGPU, which it reaches through `navigator.gpu`).
+ * W3 still bans network and storage in the view's own code; the list is finite and named so an isolated realm later
+ * knows what to carry.
  */
-export const VIEW_RUNTIME_IMPORTS = Object.freeze({ swarm: Object.freeze(['matter-js']) });
+export const VIEW_RUNTIME_IMPORTS = Object.freeze({ swarm: Object.freeze(['matter-js', 'navigator.gpu']) });
 const FRAMEWORK_IMPORT = /^react(?:-dom)?(?:\/.*)?$/;
 
 /**
@@ -64,7 +79,7 @@ export const WINDOW_ALLOWED = new Set([
   'setInterval',
   'clearInterval',
 ]);
-/** MV-W3: network and storage. */
+/** MV-W3: network and storage, a window opened, and code loaded by URL. */
 export const REACH_GLOBALS = new Set([
   'fetch',
   'WebSocket',
@@ -74,13 +89,26 @@ export const REACH_GLOBALS = new Set([
   'localStorage',
   'sessionStorage',
   'indexedDB',
+  'caches',
+  'open',
+  'importScripts',
 ]);
+/** MV-W2: host globals a view reaches bare, without `window.`: the host's address and its browser. */
+export const HOST_GLOBALS = new Set(['location', 'navigator']);
 const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self']);
+/** MV-W2: what a view may not hand around, since a value of one reaches everything it holds. */
+const HOST_OBJECTS = new Set([...GLOBAL_OBJECTS, 'document']);
+/** MV-W2: climbing above the view's root. */
+const CLIMBS = new Set(['parentElement', 'parentNode', 'offsetParent']);
 /** What a view may do with its root's document: make detached nodes, nothing else. */
 const DOCUMENT_CREATE = new Set(['createElement', 'createElementNS', 'createTextNode', 'createDocumentFragment']);
 
 /** L18: where the SDK lists the skin, the only host custom properties a view's stylesheet may read. */
 export const SKIN_SOURCE = 'packages/view-sdk/src/skin.ts';
+
+/** The registry the hosts mount, and the list in it: the views the wall reads (MV-8b, registration, not folders). */
+export const VIEW_REGISTRY = 'packages/views/src/monitor/registry.ts';
+export const VIEW_REGISTRY_LIST = 'MONITOR_VIEWS';
 
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -101,13 +129,23 @@ function inside(directory, path) {
   return offset === '' || (!offset.startsWith('..') && !offset.startsWith(sep) && !/^[A-Za-z]:/.test(offset));
 }
 
+/** A view's lab (its own page) or its fixtures: what shipping code never imports. */
+function labOrFixture(viewDirectory, path) {
+  return relative(viewDirectory, path).split(sep).includes('lab') || /fixture/i.test(basename(path));
+}
+
 /** Why `specifier` crosses the wall from a view's file, or undefined when it does not. */
 export function importBreach(specifier, file, viewDirectory, test, runtime = []) {
   if (runtime.includes(specifier)) return undefined;
   if (specifier.startsWith('.') || specifier.startsWith('/')) {
-    return inside(viewDirectory, resolve(dirname(file), specifier))
-      ? undefined
-      : `imports ${specifier}, outside the view's folder`;
+    const target = resolve(dirname(file), specifier);
+    if (!inside(viewDirectory, target)) return `imports ${specifier}, outside the view's folder`;
+    // Labs are not read unless asked (they build their own page), so a lab imported by shipping code would carry
+    // whatever it reaches into the view unread.
+    if (!test && labOrFixture(viewDirectory, target) && !labOrFixture(viewDirectory, file)) {
+      return `imports ${specifier}, a lab or fixtures (shipping code never imports them)`;
+    }
+    return undefined;
   }
   if (VIEW_SDK_IMPORTS.includes(specifier) || FRAMEWORK_IMPORT.test(specifier)) return undefined;
   if (test && VIEW_TEST_IMPORTS.includes(specifier)) return undefined;
@@ -210,6 +248,30 @@ function declaredNames(source) {
   return names;
 }
 
+/** Parentheses and type assertions: `(window as Host).x` is `window.x`. */
+function wraps(node) {
+  return (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isTypeAssertionExpression(node) ||
+    ts.isNonNullExpression(node) ||
+    ts.isSatisfiesExpression(node)
+  );
+}
+
+function unwrap(expression) {
+  let current = expression;
+  while (wraps(current)) current = current.expression;
+  return current;
+}
+
+/** The outermost of the wrappers around `node`, which is what its parent sees. */
+function outermost(node) {
+  let current = node;
+  while (current.parent && wraps(current.parent) && current.parent.expression === current) current = current.parent;
+  return current;
+}
+
 function scriptKind(file) {
   const extension = extname(file);
   if (extension === '.tsx') return ts.ScriptKind.TSX;
@@ -231,6 +293,11 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
   const checkImport = (node, specifier) => {
     const why = importBreach(specifier, file, viewDirectory, test, runtime);
     if (why) breach('MV-W1', node, why);
+  };
+  /** The global object an expression is, through wrappers (`window`, `(globalThis as T)`), else undefined. */
+  const globalObjectOf = (expression) => {
+    const bare = unwrap(expression);
+    return ts.isIdentifier(bare) && isGlobal(bare.text) ? bare.text : undefined;
   };
 
   const visit = (node) => {
@@ -254,10 +321,12 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
       ts.isStringLiteralLike(node.arguments[0]) &&
       node.arguments[1].getText(source) === 'import.meta.url'
     ) {
-      // A file the view refers to by URL (its worker, an asset) must be its own too.
+      // A file the view refers to by URL (its worker, an asset) must be its own too, and never its lab.
       const url = node.arguments[0].text;
       if (url.startsWith('.') && !inside(viewDirectory, resolve(dirname(file), url))) {
         breach('MV-W1', node, `refers to ${url}, outside the view's folder`);
+      } else if (url.startsWith('.') && !test && labOrFixture(viewDirectory, resolve(dirname(file), url))) {
+        if (!labOrFixture(viewDirectory, file)) breach('MV-W1', node, `refers to ${url}, a lab or fixtures`);
       }
     }
 
@@ -268,10 +337,13 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
       return;
     }
 
-    // MV-W2 and MV-W3 through a global object: `window.x`, `document.x`, `globalThis.x`, `self.x`.
+    // MV-W2 and MV-W3 through a global object: `window.x`, `document.x`, `globalThis.x`, `self.x`, wrapped or not.
     // A listener's removal is the cleanup of one already counted where it was added.
-    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && isGlobal(node.expression.text)) {
-      const object = node.expression.text;
+    const object =
+      ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)
+        ? globalObjectOf(node.expression)
+        : undefined;
+    if (object !== undefined && ts.isPropertyAccessExpression(node)) {
       const name = node.name.text;
       if (name === 'removeEventListener') {
         // counted at the add
@@ -281,16 +353,9 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
         if (REACH_GLOBALS.has(name)) breach('MV-W3', node, `reaches out through ${object}.${name}`);
         else if (name === 'addEventListener') breach('MV-W2', node, `listens globally (${object}.addEventListener)`);
         else if (!WINDOW_ALLOWED.has(name)) breach('MV-W2', node, `reaches ${object}.${name}, beyond the allow-list`);
-      } else if (object === 'navigator' && name === 'sendBeacon') {
-        breach('MV-W3', node, 'reaches out through navigator.sendBeacon');
       }
-    } else if (
-      ts.isElementAccessExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      isGlobal(node.expression.text) &&
-      (GLOBAL_OBJECTS.has(node.expression.text) || node.expression.text === 'document')
-    ) {
-      breach('MV-W2', node, `reaches ${node.expression.text}[…]`);
+    } else if (object !== undefined && HOST_OBJECTS.has(object)) {
+      breach('MV-W2', node, `reaches ${object}[…]`);
     }
 
     // MV-W2: climbing out of the root.
@@ -300,6 +365,8 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
         breach('MV-W2', node, 'climbs the tree with closest()');
       } else if (name === 'getRootNode' && ts.isCallExpression(node.parent) && node.parent.expression === node) {
         breach('MV-W2', node, 'reaches the root node with getRootNode()');
+      } else if (CLIMBS.has(name)) {
+        breach('MV-W2', node, `climbs above its root (${name})`);
       } else if (name === 'ownerDocument') {
         const parent = node.parent;
         const creates =
@@ -312,19 +379,42 @@ export function readViewSource(file, viewDirectory, { test = TEST_FILE.test(file
       }
     }
 
-    // Bare globals: a global listener, a global object handed around, network and storage.
+    if (
+      ts.isElementAccessExpression(node) &&
+      ts.isStringLiteralLike(node.argumentExpression) &&
+      CLIMBS.has(node.argumentExpression.text)
+    ) {
+      breach('MV-W2', node, `climbs above its root (${node.argumentExpression.text})`);
+    }
+
+    // Bare globals: a global listener, a global object handed around (an alias reaches anything), the host's
+    // address and browser, network and storage. Wrappers are seen through: `(globalThis as T).x` is a member.
     if (ts.isIdentifier(node) && isGlobal(node.text) && valueReference(node)) {
       const name = node.text;
-      const parent = node.parent;
-      const calledBare = ts.isCallExpression(parent) && parent.expression === node;
+      const top = outermost(node);
+      const parent = top.parent;
+      const calledBare = ts.isCallExpression(parent) && parent.expression === top;
       const asObject =
-        (ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node;
-      if (REACH_GLOBALS.has(name)) {
+        (ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === top;
+      const member = asObject && ts.isPropertyAccessExpression(parent) ? parent.name.text : undefined;
+      const typeOf = ts.isTypeOfExpression(parent);
+      if (name === 'importScripts') {
+        breach('MV-W3', node, 'loads code with importScripts()');
+      } else if (REACH_GLOBALS.has(name)) {
         breach('MV-W3', node, `reaches out through ${name}`);
       } else if (calledBare && name === 'addEventListener') {
         breach('MV-W2', node, `listens globally (${name})`);
-      } else if ((name === 'window' || name === 'document') && !asObject && !ts.isTypeOfExpression(parent)) {
+      } else if (HOST_OBJECTS.has(name) && !asObject && !typeOf) {
         breach('MV-W2', node, `hands the host's ${name} around`);
+      } else if (HOST_GLOBALS.has(name) && !typeOf) {
+        const reached = member === undefined ? name : `${name}.${member}`;
+        if (member !== undefined && runtime.includes(reached)) {
+          // named in VIEW_RUNTIME_IMPORTS
+        } else if (reached === 'navigator.sendBeacon') {
+          breach('MV-W3', node, 'reaches out through navigator.sendBeacon');
+        } else {
+          breach('MV-W2', node, `reaches ${reached}, beyond the allow-list`);
+        }
       }
     }
 
@@ -429,6 +519,23 @@ function splitSelectors(list) {
 const KEYFRAME_SELECTOR = /^(?:from|to|\d+(?:\.\d+)?%)(?:\s*,\s*(?:from|to|\d+(?:\.\d+)?%))*$/;
 
 /**
+ * Whether a selector that starts with the root's compound goes on to the root's siblings: `.mv-x ~ a`, `.mv-x + a`.
+ * A descendant or child of the root stays inside; a sibling of one of those is still inside the root.
+ */
+function leavesRoot(part, from) {
+  let depth = 0;
+  let index = from;
+  for (; index < part.length; index += 1) {
+    const character = part[index];
+    if (character === '(' || character === '[') depth += 1;
+    else if (character === ')' || character === ']') depth -= 1;
+    else if (depth === 0 && /[\s>~+]/.test(character)) break;
+  }
+  while (index < part.length && /\s/.test(part[index])) index += 1;
+  return part[index] === '~' || part[index] === '+';
+}
+
+/**
  * L18 in a view's own stylesheet (MV-W2: no global selectors, no host reads):
  * every rule sits under the view's root class `.mv-<view>`, and every custom
  * property it reads is the skin's or its own `--mv-<view>-*`.
@@ -445,6 +552,13 @@ export function viewStylesheetBreaches(css, file, viewName, skin) {
       const scoped = part.startsWith(root) && !/[\w-]/.test(part.charAt(root.length));
       if (!scoped) {
         breaches.push({ rule: 'MV-W2', file, line, message: `styles outside its root class ${root} (${part})` });
+      } else if (leavesRoot(part, root.length)) {
+        breaches.push({
+          rule: 'MV-W2',
+          file,
+          line,
+          message: `leaves its root class ${root} for its siblings (${part})`,
+        });
       }
     }
   }
@@ -475,11 +589,21 @@ function readViewStylesheet(file, viewDirectory, viewName, skin) {
     ...text.matchAll(/@import\s+(?:url\()?\s*['"]?([^'")\s;]+)/g),
     ...text.matchAll(/url\(\s*['"]?([^'")\s]+)/g),
   ];
+  // `@import url(x)` matches both patterns: one reference, counted once, at its own place.
+  const seen = new Set();
   for (const match of references) {
     const target = match[1];
+    const at = match.index + match[0].lastIndexOf(target);
+    if (seen.has(at)) continue;
+    seen.add(at);
+    const line = text.slice(0, at).split('\n').length;
+    // An absolute url, a scheme (`https:`, `data:` alike) or a root-absolute path, fetches from beyond the view.
+    if (/^[a-z][a-z\d+.-]*:/i.test(target) || target.startsWith('/')) {
+      breaches.push({ rule: 'MV-W3', file, line, message: `reaches out through ${target}, an absolute url` });
+      continue;
+    }
     if (!target.startsWith('.')) continue;
     if (!inside(viewDirectory, resolve(dirname(file), target))) {
-      const line = text.slice(0, match.index).split('\n').length;
       breaches.push({ rule: 'MV-W1', file, line, message: `refers to ${target}, outside the view's folder` });
     }
   }
@@ -497,31 +621,160 @@ function stylesheetsUnder(root, paths) {
   return [...new Set(files)].sort();
 }
 
+const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.js', '.jsx', '.mjs'];
+
+/** The file a relative module specifier names from `fromFile`, as TypeScript resolves it (`./x.js` is `./x.ts`). */
+function resolveModule(fromFile, specifier) {
+  if (!specifier.startsWith('.')) return undefined;
+  const base = resolve(dirname(fromFile), specifier);
+  const extension = extname(base);
+  const stem = ['.js', '.jsx', '.mjs'].includes(extension) ? base.slice(0, -extension.length) : undefined;
+  const candidates = [
+    base,
+    ...(stem ? [`${stem}.ts`, `${stem}.tsx`, `${stem}.mts`] : []),
+    ...MODULE_EXTENSIONS.map((ext) => `${base}${ext}`),
+    ...MODULE_EXTENSIONS.map((ext) => join(base, `index${ext}`)),
+  ];
+  return candidates.find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
+}
+
+function parseModule(file) {
+  return ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, scriptKind(file));
+}
+
+/** The initializer of the module-level variable `name`. */
+function initializerOf(source, name) {
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === name) return declaration.initializer;
+    }
+  }
+  return undefined;
+}
+
+/** A module's named imports, by local name: the specifier and the name the other module exports. */
+function namedImports(source) {
+  const imports = new Map();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      imports.set(element.name.text, {
+        specifier: statement.moduleSpecifier.text,
+        exported: (element.propertyName ?? element.name).text,
+      });
+    }
+  }
+  return imports;
+}
+
+/** An object literal's property `key`: its value, or the identifier a shorthand names. */
+function propertyOf(literal, key) {
+  for (const property of literal.properties) {
+    if (ts.isShorthandPropertyAssignment(property) && property.name.text === key) return property.name;
+    if (
+      ts.isPropertyAssignment(property) &&
+      (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+      property.name.text === key
+    ) {
+      return property.initializer;
+    }
+  }
+  return undefined;
+}
+
+/** What an expression is, followed through local variables and named imports to its literal (three hops at most). */
+function follow(expression, source, file, hops = 3) {
+  const bare = unwrap(expression);
+  if (!ts.isIdentifier(bare) || hops === 0) return { node: bare, source, file };
+  const local = initializerOf(source, bare.text);
+  if (local) return follow(local, source, file, hops - 1);
+  const imported = namedImports(source).get(bare.text);
+  const module = imported && resolveModule(file, imported.specifier);
+  if (!module) return { node: bare, source, file };
+  const other = parseModule(module);
+  const value = initializerOf(other, imported.exported);
+  return value ? follow(value, other, module, hops - 1) : { node: bare, source: other, file: module };
+}
+
 /**
- * Reads every view folder under `views` and the host stylesheets under
- * `hostStylesheets` (files or directories, relative to `root`). Labs — a
- * `lab/` directory inside a view — build their own page, so the wall does not
- * read them unless `includeLabs`.
+ * The manifest id of the view `exported` from `module`: `reactMonitorView(MANIFEST, …)`, or `defineMonitorView({
+ * manifest, … })`, followed to the manifest's literal and its `id`.
  */
-export function checkViewWall({
+function manifestIdOf(module, exported) {
+  const source = parseModule(module);
+  const value = initializerOf(source, exported);
+  if (!value) return undefined;
+  const view = unwrap(value);
+  if (!ts.isCallExpression(view) || view.arguments.length === 0) return undefined;
+  let manifest = follow(view.arguments[0], source, module);
+  if (ts.isObjectLiteralExpression(manifest.node) && !propertyOf(manifest.node, 'id')) {
+    const inner = propertyOf(manifest.node, 'manifest');
+    if (inner) manifest = follow(inner, manifest.source, manifest.file);
+  }
+  if (!ts.isObjectLiteralExpression(manifest.node)) return undefined;
+  const id = propertyOf(manifest.node, 'id');
+  return id && ts.isStringLiteralLike(unwrap(id)) ? unwrap(id).text : undefined;
+}
+
+/**
+ * The views the registry lists, which are what the hosts mount: each entry of `list` (`monitorViewEntry(view)` or the
+ * view itself) followed to the module it is imported from. A view's folder is that module's directory and its name is
+ * its manifest's id. Anything the wall cannot follow is a problem, never a view silently left out.
+ */
+export function readRegisteredViews(registryFile, { list = VIEW_REGISTRY_LIST, root = scriptRoot } = {}) {
+  const where = (path) => relative(root, path);
+  const views = [];
+  const problems = [];
+  if (!existsSync(registryFile)) {
+    return { views, problems: [`${where(registryFile)}: no registry to read the views from`] };
+  }
+  const source = parseModule(registryFile);
+  const listed = initializerOf(source, list);
+  const array = listed && unwrap(listed);
+  if (!array || !ts.isArrayLiteralExpression(array)) {
+    return { views, problems: [`${where(registryFile)}: ${list} is not an array the wall can read`] };
+  }
+  const imports = namedImports(source);
+  for (const element of array.elements) {
+    const entry = unwrap(element);
+    const named = ts.isCallExpression(entry) && entry.arguments.length > 0 ? unwrap(entry.arguments[0]) : entry;
+    if (!ts.isIdentifier(named)) {
+      problems.push(`${where(registryFile)}: an entry of ${list} the wall cannot follow (${element.getText(source)})`);
+      continue;
+    }
+    const imported = imports.get(named.text);
+    const module = imported && resolveModule(registryFile, imported.specifier);
+    if (!module) {
+      problems.push(`${named.text}: not imported from a view module the wall can find (${where(registryFile)})`);
+      continue;
+    }
+    const id = manifestIdOf(module, imported.exported);
+    if (id === undefined) problems.push(`${named.text}: the wall cannot read its manifest's id (${where(module)})`);
+    views.push({ binding: named.text, module, directory: dirname(module), name: id ?? basename(dirname(module)) });
+  }
+  return { views, problems };
+}
+
+/**
+ * Reads the given view folders (`views`: `{ name, directory }`, a directory absolute or relative to `root`) and the
+ * host stylesheets under `hostStylesheets` (files or directories, relative to `root`). Labs — a `lab/` directory
+ * inside a view — build their own page, so the wall does not read them unless `includeLabs`.
+ */
+export function checkViews({
   root = scriptRoot,
-  views = 'packages/views/src/views',
+  views = [],
   // M14: views.css is loaded globally by every host, so a monitor-view selector there is the host's side naming a view.
   hostStylesheets = ['apps/godview/src/renderer', 'packages/views/src/styles'],
   includeLabs = false,
   // L18: the skin a view's CSS may read, from the root's own SDK (a fixture without one reads this repository's).
   skin = readMonitorSkin(existsSync(resolve(root, SKIN_SOURCE)) ? root : scriptRoot),
 } = {}) {
-  const viewsRoot = resolve(root, views);
-  const folders = existsSync(viewsRoot)
-    ? readdirSync(viewsRoot, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name)
-        .sort()
-    : [];
-  const report = { root, views: [], hostStylesheets: [] };
-  for (const name of folders) {
-    const directory = join(viewsRoot, name);
+  const report = { root, views: [], hostStylesheets: [], registration: [] };
+  for (const { name, directory: given } of views) {
+    const directory = resolve(root, given);
     const files = walk(directory).filter(
       (file) => includeLabs || !relative(directory, file).split(sep).includes('lab'),
     );
@@ -565,6 +818,61 @@ export function checkViewWall({
   return report;
 }
 
+/**
+ * THE WALL: every registered view (`registry`'s `MONITOR_VIEWS`), each in its own folder, wherever that is. A folder
+ * under `views` that no entry registers is a registration problem: it is never counted as a view that holds.
+ */
+export function checkViewWall({
+  root = scriptRoot,
+  registry = VIEW_REGISTRY,
+  views = 'packages/views/src/views',
+  hostStylesheets,
+  includeLabs = false,
+  skin,
+} = {}) {
+  const where = (path) => relative(root, path);
+  const registryFile = resolve(root, registry);
+  const registered = readRegisteredViews(registryFile, { root });
+  const registration = [...registered.problems];
+  const byDirectory = new Map();
+  const byName = new Map();
+  for (const view of registered.views) {
+    if (byDirectory.has(view.directory)) {
+      registration.push(
+        `${where(view.directory)}: registered twice (${byDirectory.get(view.directory)}, ${view.binding})`,
+      );
+      continue;
+    }
+    if (byName.has(view.name)) {
+      registration.push(`${view.name}: the id of two registered views (${byName.get(view.name)}, ${view.binding})`);
+    }
+    byDirectory.set(view.directory, view.binding);
+    byName.set(view.name, view.binding);
+  }
+  const viewsRoot = resolve(root, views);
+  if (existsSync(viewsRoot)) {
+    for (const entry of readdirSync(viewsRoot, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const directory = join(viewsRoot, entry.name);
+      if (entry.isDirectory() && !byDirectory.has(directory)) {
+        registration.push(
+          `${where(directory)}: a view folder no host registers (${where(registryFile)} ${VIEW_REGISTRY_LIST})`,
+        );
+      }
+    }
+  }
+  const checked = registered.views.filter(
+    (view, index, all) => all.findIndex((other) => other.directory === view.directory) === index,
+  );
+  const report = checkViews({
+    root,
+    views: checked.map(({ name, directory }) => ({ name, directory })),
+    ...(hostStylesheets ? { hostStylesheets } : {}),
+    includeLabs,
+    ...(skin ? { skin } : {}),
+  });
+  return { ...report, registry: registryFile, registration };
+}
+
 export const RULES = ['MV-W1', 'MV-W2', 'MV-W3', 'MV-W5'];
 
 /** `mode` is `fail` (every view fails on a breach: the default) or `report` (exit 0 whatever is found). */
@@ -583,17 +891,16 @@ export function summarizeViewWall(report, mode = 'fail') {
   }
   const failing =
     mode === 'fail' ? report.views.filter((view) => view.breaches.length > 0).map((view) => view.name) : [];
-  return { mode, views, total, failing };
+  return { mode, views, total, failing, registration: [...(report.registration ?? [])] };
 }
 
 export function formatViewWall(report, { verbose = false, mode = 'fail' } = {}) {
   const summary = summarizeViewWall(report, mode);
   const lines = [];
   const where = (file) => relative(report.root, file);
+  const source = report.registry ? `registered in ${where(report.registry)} ${VIEW_REGISTRY_LIST}` : 'given';
   lines.push(
-    `view wall (${summary.mode === 'fail' ? 'every view fails on a breach' : 'report mode (--report)'}): ${report.views.length} views under ${where(
-      report.views[0] ? dirname(report.views[0].directory) : report.root,
-    )}; host CSS: ${report.hostStylesheets.map(where).join(', ') || 'none'}`,
+    `view wall (${summary.mode === 'fail' ? 'every view fails on a breach' : 'report mode (--report)'}): ${report.views.length} views ${source}; host CSS: ${report.hostStylesheets.map(where).join(', ') || 'none'}`,
   );
   const header = ['view', 'files', 'W1 imports', 'W2 own root', 'W3 no reach', 'W5 host CSS', 'total'];
   const rows = Object.entries(summary.views).map(([name, counts]) => [
@@ -635,6 +942,9 @@ export function formatViewWall(report, { verbose = false, mode = 'fail' } = {}) 
       if (breaches.length > shown) lines.push(`  ${rule} … and ${breaches.length - shown} more (--verbose)`);
     }
   }
+  if (summary.registration.length > 0) {
+    lines.push('', 'registration:', ...summary.registration.map((problem) => `  ${problem}`));
+  }
   lines.push('', `view-wall summary: ${JSON.stringify(summary)}`);
   return lines.join('\n');
 }
@@ -643,7 +953,8 @@ function parseArguments(argv) {
   const options = { hostStylesheets: [], mode: 'fail', verbose: false, includeLabs: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === '--views') options.views = argv[++index];
+    if (argument === '--registry') options.registry = argv[++index];
+    else if (argument === '--views') options.views = argv[++index];
     else if (argument === '--host-css') options.hostStylesheets.push(argv[++index]);
     else if (argument === '--verbose') options.verbose = true;
     else if (argument === '--include-labs') options.includeLabs = true;
@@ -665,14 +976,17 @@ if (invokedDirectly) {
   }
   const report = checkViewWall({
     ...(options.root ? { root: resolve(options.root) } : {}),
+    ...(options.registry ? { registry: options.registry } : {}),
     ...(options.views ? { views: options.views } : {}),
     ...(options.hostStylesheets.length > 0 ? { hostStylesheets: options.hostStylesheets } : {}),
     includeLabs: options.includeLabs,
   });
   console.log(formatViewWall(report, { verbose: options.verbose, mode: options.mode }));
   const breached = report.views.filter((view) => view.breaches.length > 0);
-  if (options.mode === 'fail' && breached.length > 0) {
-    console.error(`view wall: FAIL ${breached.map((view) => `${view.name} (${view.breaches.length})`).join(', ')}`);
+  const failures = breached.map((view) => `${view.name} (${view.breaches.length})`);
+  if (report.registration.length > 0) failures.push(`registration (${report.registration.length})`);
+  if (options.mode === 'fail' && failures.length > 0) {
+    console.error(`view wall: FAIL ${failures.join(', ')}`);
     process.exit(1);
   }
 }

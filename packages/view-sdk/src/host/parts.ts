@@ -25,6 +25,7 @@ function sameRects(a: readonly Rect[], b: readonly Rect[]): boolean {
   });
 }
 
+/** `current` when `next` measures the same (size, insets, obstacles), else `next`. */
 export function keepStage(current: StageGeometry, next: StageGeometry): StageGeometry {
   const same =
     current === next ||

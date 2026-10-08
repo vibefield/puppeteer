@@ -224,6 +224,25 @@
   border-color: var(--text-main);
 }
 
+/* The way home is a key (M177 ruling 4): End does what this button does, so the button reads as the key, its legend
+   printed under the mark in the main ink (the only skin ink past 4.5:1 on its ground and its pressed fill), the way
+   the views track prints ⌘1–⌘4 (DESIGN.md). It grows 2px above and below the spans' line to hold the legend, so
+   nothing beside it moves and the since line stays clear. */
+.mv-timeline .vf-monitor-timeline-tool.is-now {
+  height: 26px;
+  margin-top: -2px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mv-timeline .vf-monitor-timeline-key {
+  color: var(--text-main);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
 .mv-timeline .vf-monitor-timeline-now-mark {
   width: 12px;
   height: 12px;

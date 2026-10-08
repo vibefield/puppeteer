@@ -1,7 +1,8 @@
 import type { AgentStatus } from '@vibecook/puppeteer-view-sdk/model';
 
 /**
- * Which agents finished something the user has not looked at — `views/monitor/unread.ts`, verbatim.
+ * Which agents finished something the user has not looked at — the window's former `views/monitor/unread.ts`,
+ * verbatim (the window's copy was deleted at MV-8b: this is the one ledger, L5).
  *
  * An agent is unread while it is idle, it is not in front of the user, and
  * Core says its idle began after the user last had it in front of them. "Last

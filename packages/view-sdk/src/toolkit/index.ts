@@ -17,3 +17,4 @@ export * from './marks-atlas.js';
 export * from './canvas.js';
 export * from './motion.js';
 export * from './worker.js';
+export * from './keys.js';

@@ -7,8 +7,8 @@ import {
 import { DEFAULT_PROJECT_TINT, paneTint, projectTint, type ProjectTint } from '../colour/project-tint.js';
 import { formatUsd } from '../monitor/cost-format.js';
 import { folderName } from '../monitor/folder-name.js';
-import type { MonitorAgent, MonitorRemoteFacet } from '../monitor/types.js';
-import { agentFixture, terminalFixture, type BurnShape } from '../views/swarm/lab/fixtures.js';
+import type { MonitorRemoteFacet } from '../monitor/types.js';
+import { agentFixture, terminalFixture, type BurnShape, type LabAgent } from '../views/swarm/lab/fixtures.js';
 
 // The seeded world the labs and the goldens share (MV-0): a field of `n` rows
 // drawn from twenty archetypes that between them hold every state a view has to
@@ -142,11 +142,11 @@ export interface LabWorldOptions {
 export interface LabWorld {
   readonly nowMs: number;
   /** Agents first, then peers' rows, then bare terminals — the order a host assembles them in. */
-  readonly agents: readonly MonitorAgent[];
+  readonly agents: readonly LabAgent[];
 }
 
 interface Row {
-  readonly agent: MonitorAgent;
+  readonly agent: LabAgent;
   readonly group: 0 | 1 | 2;
   /** When the row's current state began. */
   readonly since: number;
@@ -175,7 +175,7 @@ export function labWorld(options: LabWorldOptions): LabWorld {
     return projectTint(sequences.get(project)!, tint);
   };
   let panes = 0;
-  const mountIn = (count: number, active: boolean): Partial<MonitorAgent> => {
+  const mountIn = (count: number, active: boolean): Partial<LabAgent> => {
     const ids = Array.from({ length: count }, () => `pane-${panes++}`);
     return { active, attachment: { primaryPaneId: ids[0]!, paneIds: ids, color: paneTint(panes - count, tint) } };
   };
@@ -251,7 +251,7 @@ interface BuildInput {
   nowMs: number;
   neutral: string;
   projectColour(project: string): string;
-  mountIn(count: number, active: boolean): Partial<MonitorAgent>;
+  mountIn(count: number, active: boolean): Partial<LabAgent>;
 }
 
 interface AgentShape {
@@ -312,7 +312,7 @@ function buildRow(input: BuildInput): Row {
   const agent = (
     shape: AgentShape,
     since: number,
-    extra: Partial<MonitorAgent> = {},
+    extra: Partial<LabAgent> = {},
     project = input.project,
     local = true,
   ): Row => {
@@ -346,7 +346,7 @@ function buildRow(input: BuildInput): Row {
       freshness: { ...facet.monitor!.freshness, lastEvidenceAt: iso(evidence) },
     };
     const cwd = `/Users/james/Projects/${project}`;
-    const row: MonitorAgent = {
+    const row: LabAgent = {
       ...base,
       session: { ...base.session!, createdAtMs: born, cwd },
       createdAtMs: born,

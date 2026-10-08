@@ -16,6 +16,7 @@ import {
   createMotionLoop,
   formatClock,
   formatWords,
+  keyLegend,
   projectName,
   sizeCanvas,
   type MotionLoop,
@@ -163,6 +164,12 @@ function PeerMark({ name }: { name: string }) {
     </svg>
   );
 }
+
+/**
+ * The key that brings the head back to now. The manifest declares it, the map hears it, and the now button, which does
+ * the same, prints its legend under the mark (M177 ruling 4).
+ */
+export const NOW_KEY = 'End';
 
 function NowMark() {
   return (
@@ -795,7 +802,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
     } else if (event.key === 'Home') {
       event.preventDefault();
       place(headAt(scale, earliest(scale, now), now, earliest(scale, now)));
-    } else if (event.key === 'End') {
+    } else if (event.key === NOW_KEY) {
       event.preventDefault();
       toNow();
     }
@@ -896,6 +903,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
             onClick={toNow}
           >
             <NowMark />
+            <span className="vf-monitor-timeline-key" aria-hidden="true">
+              {keyLegend(NOW_KEY)}
+            </span>
           </button>
         </div>
         <span ref={sinceRef} className="vf-monitor-timeline-since" aria-hidden="true" />

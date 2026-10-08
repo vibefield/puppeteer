@@ -46,7 +46,7 @@ import {
   type GodviewTuning,
   type TweakSection,
 } from './TweakPanel.js';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
+import { MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
 import { useMonitorPalette } from '@vibecook/puppeteer-views';
 import {
   loadMonitorParameters,
@@ -57,7 +57,7 @@ import {
 } from '@vibecook/puppeteer-views';
 import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
 import type { MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import { frameScheduler, MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
+import { frameScheduler, keepStage, MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
 import type { MonitorViewEntry } from '@vibecook/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
@@ -192,7 +192,9 @@ const usagePort: AccountUsagePort = {
 
 /**
  * A chrome piece that failed to render (M49): it alone goes, behind its `ChromeBoundary`, and the monitor, its view
- * and the rest of the chrome stay. The piece is tried again on the window's next render.
+ * and the rest of the chrome stay. Heard once per failure. A piece is tried again only when its retry key (the facts
+ * it renders) changes, within the boundary's backoff; a piece without one stays unavailable until the window reloads
+ * (M176 item 1).
  */
 function reportChromeError(error: unknown, name: string): void {
   console.error(`[chrome] ${name} failed to render`, error);
@@ -362,10 +364,10 @@ function Godview() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [tweakPanelOpen]);
 
-  // Views that lay out in flow clear the chrome with these; the swarm instead
-  // reads the chrome's rect directly and steers bodies around it. The same
-  // measurement is the view host's stage (MV-D19): its size, the chrome's right
-  // edge as the left inset, and the chrome's rect as an obstacle.
+  // The chrome's measurement is the view host's stage (MV-D19): its size, the
+  // chrome's right edge as the left inset, and the chrome's rect as an obstacle.
+  // A view reads it there and nowhere else: a flow view clears the inset, the
+  // swarm steers its bodies around the obstacle.
   const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
@@ -375,9 +377,7 @@ function Godview() {
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
       const chromeRight = Math.round(rect.right - stageRect.left);
-      stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
-      setStageGeometry({
+      const measured: StageGeometry = {
         width: Math.round(stageRect.width),
         height: Math.round(stageRect.height),
         insets: { top: 0, right: 0, bottom: 0, left: chromeRight },
@@ -389,7 +389,10 @@ function Godview() {
             height: Math.round(rect.height),
           },
         ],
-      });
+      };
+      // An equal tick keeps the stage Godview holds, so it renders nothing (M176 item 1): the observer fires for
+      // boxes that moved without resizing the stage, and a failed piece's fallback reflows the chrome it sits in.
+      setStageGeometry((current) => keepStage(current, measured));
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
@@ -473,6 +476,14 @@ function Godview() {
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
   const frameFallbackCwds = useMemo(() => paneFallbackCwds(agentsBySession), [agentsBySession]);
   const activeAgent = agents.find((agent) => agent.active);
+  // Retry keys (M176 item 1): the facts a chrome piece renders, held as one value, since the hooks that read them hand
+  // back a fresh object each render. The deck's two pieces: the panes Ghosttea lays out and the rows they show. The
+  // drawer: the accounts and the defaults main pushes.
+  const deckFacts = useMemo(() => ({ workspace, agentsBySession }), [workspace, agentsBySession]);
+  const drawerFacts = useMemo(
+    () => ({ profiles: profiles.profiles, defaults: profiles.defaults }),
+    [profiles.profiles, profiles.defaults],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -764,7 +775,7 @@ function Godview() {
         />
       </ChromeBoundary>
 
-      <ChromeBoundary name="notifications" onError={reportChromeError}>
+      <ChromeBoundary name="notifications" onError={reportChromeError} retryKey={notifications}>
         {notifications.length ? (
           <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
             {notifications.map((message) => (
@@ -783,11 +794,11 @@ function Godview() {
         ) : null}
       </ChromeBoundary>
 
-      <ChromeBoundary name="agents drawer" onError={reportChromeError}>
+      <ChromeBoundary name="agents drawer" onError={reportChromeError} retryKey={drawerFacts}>
         <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
       </ChromeBoundary>
 
-      <ChromeBoundary name="find" onError={reportChromeError}>
+      <ChromeBoundary name="find" onError={reportChromeError} retryKey={agents}>
         <FindSheet
           open={findOpen}
           agents={agents}
@@ -831,12 +842,12 @@ function Godview() {
           commands={monitor.commands}
           scheduler={frameScheduler}
         />
-        <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
-          <ChromeBoundary name="usage" onError={reportChromeError}>
+        <div ref={chromeRef} className="vf-monitor-chrome">
+          <ChromeBoundary name="usage" onError={reportChromeError} retryKey={usagePort}>
             <UsageColumn port={usagePort} />
           </ChromeBoundary>
         </div>
-        <ChromeBoundary name="inspector" onError={reportChromeError}>
+        <ChromeBoundary name="inspector" onError={reportChromeError} retryKey={activeAgent?.agent?.monitor}>
           {activeAgent?.agent?.monitor ? (
             <AgentMonitorInspector
               key={activeAgent.agent.monitor.runtimeRunId}
@@ -884,7 +895,7 @@ function Godview() {
             {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
           />
         </WorkspaceReporterContext.Provider>
-        <ChromeBoundary name="deck frames" onError={reportChromeError}>
+        <ChromeBoundary name="deck frames" onError={reportChromeError} retryKey={deckFacts}>
           <DeckFrames
             deckRef={deckRef}
             panes={workspace?.panes ?? []}
@@ -896,7 +907,7 @@ function Godview() {
             zoomedPaneId={zoomedPaneId}
           />
         </ChromeBoundary>
-        <ChromeBoundary name="deck launchers" onError={reportChromeError}>
+        <ChromeBoundary name="deck launchers" onError={reportChromeError} retryKey={deckFacts}>
           <AppDeckLaunchers
             deckRef={deckRef}
             workspace={workspace}

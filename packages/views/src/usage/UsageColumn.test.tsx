@@ -3,7 +3,7 @@ import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
+import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import type { AccountUsagePort } from './account-usage-port.js';
 import { UsageColumn } from './UsageColumn.js';
 

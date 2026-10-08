@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
 import type { MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
+import { keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 import type { MonitorTheme } from '../monitor/types.js';
 
@@ -68,28 +69,6 @@ export const ViewMark = memo(function ViewMark({ mark, fallback }: { mark: Monit
     </svg>
   );
 });
-
-/** How a key is printed on a control: the keyboard's own legend where it has one, the key's character otherwise. */
-const KEY_LEGENDS: Readonly<Record<string, string>> = {
-  Escape: '⎋',
-  Enter: '↵',
-  Tab: '⇥',
-  ' ': '␣',
-  ArrowUp: '↑',
-  ArrowDown: '↓',
-  ArrowLeft: '←',
-  ArrowRight: '→',
-  Home: '↖',
-  End: '↘',
-  PageUp: '⇞',
-  PageDown: '⇟',
-  Backspace: '⌫',
-  '-': '−',
-};
-
-export function keyLegend(key: string): string {
-  return KEY_LEGENDS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
-}
 
 const TOOLTIP_DELAY_MS = 600;
 

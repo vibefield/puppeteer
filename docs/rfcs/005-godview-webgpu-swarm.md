@@ -208,6 +208,9 @@ may draw it; the swarm draws the dot.
 > **Erratum (2026-10-04, MV-2):** the rule is now applied by the monitor backend in main (`packages/monitor`
 > `backend/unread.ts`, verbatim, plan decision L5), with "in front of the user" being what any window reports its
 > active pane shows; `useMonitorAgents` holds the window's replica and no longer folds it.
+>
+> **Erratum (2026-10-07, MV-8b):** the window's copy, `monitor/unread.ts` (the table above), was deleted with the
+> window's usage ledgers; the backend's is the only one.
 
 ### Failure and fallback
 

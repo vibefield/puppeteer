@@ -10,11 +10,15 @@
  *   bridge that mounted an old component went with MV-8 (L9).
  * - `frameScheduler` / `createFrameScheduler`: the contract's `FrameScheduler`
  *   (M7). Pass the same instance to the replica and the slot.
+ * - `keepStage`: the slot's own rule for an equal stage, for a host's state.
+ *   A host that measures its chrome on every resize tick keeps the stage it
+ *   holds when nothing moved, so an equal tick renders nothing (M176 item 1).
  */
 
 export type { FrameScheduler } from '../model.js';
 export { createFrameScheduler, frameScheduler, type RequestFrame } from './frame-scheduler.js';
 export { MonitorViewHost, type MonitorViewHostProps } from './MonitorViewHost.js';
+export { keepStage } from './parts.js';
 export {
   createViewSlot,
   VIEW_ROOT_ATTRIBUTE,
