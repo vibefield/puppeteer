@@ -27,11 +27,11 @@ export interface SpendWindow {
 export const spendWindow = (nowMs: number): SpendWindow => ({ ta: nowMs - SPEND_WINDOW_MS, tb: nowMs });
 
 /** A moment the pointer reads or a click sets: never outside the window. */
-export const momentIn = (t: number, window: SpendWindow): number => Math.min(window.tb, Math.max(window.ta, t));
+export const momentIn = (t: number, span: SpendWindow): number => Math.min(span.tb, Math.max(span.ta, t));
 
 /** A moment a click set, while the window holds it: once the window has slid past it, it lets go. */
-export const heldIn = (held: number | null, window: SpendWindow): number | null =>
-  held !== null && held >= window.ta && held <= window.tb ? held : null;
+export const heldIn = (held: number | null, span: SpendWindow): number | null =>
+  held !== null && held >= span.ta && held <= span.tb ? held : null;
 
 /** The step that puts about `count` round lines under `max`: 1, 2, 2.5 or 5 of a power of ten. */
 export function niceStep(max: number, count: number): number {
