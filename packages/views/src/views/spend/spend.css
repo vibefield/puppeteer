@@ -5,12 +5,13 @@
    and the watchlist.
 
    It reads two kinds of custom property only: the skin (`MONITOR_SKIN`: --text-main, --text-muted, --text-faint,
-   --panel-bg, --monitor-bg, the island easing --vf-ease-island and the sans --vf-font-sans), which every host defines
-   on its stage, and its own `--mv-spend-*`, which the view sets from its input: the stage's left and top insets, the
+   --panel-bg, --monitor-bg, the island easing --vf-ease-island and the sans --vf-font-sans, M178), which every host
+   defines on its stage, and its own `--mv-spend-*`, which the view sets from its input: the stage's left and top insets, the
    list's width, the swarm's resolved state inks (`--mv-spend-orange-ink` and kin), the focus ring's blue
    (`--mv-spend-select`, `tokens.swarm.blue`), the dark ground's ink (`--mv-spend-deep`, `tokens.stage`) and a row's
    line colour (`--mv-spend-key`). The ink's three weights are the text ramp the design page drew (88 / 68 / 52 %),
-   mixed from the skin's own ink. */
+   mixed from the skin's own ink. Its words are set in the skin's sans (the stage around them is monospace), with
+   only the generic family to fall back on, never a copied stack. */
 
 /* Transparent: in Godview the STAGE paints the ground. Inset from the left past the usage column when it shows
    tiles, as the list and the timeline are, and from the top below a host's chrome over the stage (`insets.top`, M58:
@@ -26,7 +27,7 @@
   overflow: hidden;
   outline: none;
   color: var(--mv-spend-t1);
-  font: 400 12px/1.2 var(--vf-font-sans, -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  font: 400 12px/1.2 var(--vf-font-sans, sans-serif);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -71,7 +72,7 @@
 }
 
 .mv-spend .vf-monitor-spend-big {
-  font: 300 34px/1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 300 34px/1 var(--vf-font-sans, sans-serif);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--mv-spend-t1);
@@ -84,13 +85,13 @@
 }
 
 .mv-spend .vf-monitor-spend-cap b {
-  font: 550 13px/1.1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 550 13px/1.1 var(--vf-font-sans, sans-serif);
   font-variant-numeric: tabular-nums;
   color: var(--mv-spend-t1);
 }
 
 .mv-spend .vf-monitor-spend-cap i {
-  font: 400 12px/1.1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 400 12px/1.1 var(--vf-font-sans, sans-serif);
   font-style: normal;
   color: var(--mv-spend-t3);
 }
@@ -122,7 +123,7 @@
    lines are what each agent spent in the window, never the totals the list prints. */
 .mv-spend .vf-monitor-spend-colcap {
   position: absolute;
-  font: 600 10px/1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 600 10px/1 var(--vf-font-sans, sans-serif);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--mv-spend-t3);
@@ -134,7 +135,7 @@
 .mv-spend .vf-monitor-spend-y span,
 .mv-spend .vf-monitor-spend-x span {
   position: absolute;
-  font: 450 11px/14px var(--vf-font-sans, system-ui, sans-serif);
+  font: 450 11px/14px var(--vf-font-sans, sans-serif);
   font-variant-numeric: tabular-nums;
   color: var(--mv-spend-t3);
   white-space: nowrap;
@@ -180,7 +181,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: 600 12px/1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 600 12px/1 var(--vf-font-sans, sans-serif);
   color: var(--mv-spend-t1);
   background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
   box-shadow:
@@ -207,7 +208,7 @@
 }
 
 .mv-spend .vf-monitor-spend-legend {
-  font: 600 9px/1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 600 9px/1 var(--vf-font-sans, sans-serif);
   letter-spacing: 0.02em;
   color: var(--mv-spend-t2);
 }
@@ -226,7 +227,7 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 6px;
-  font: 650 12px/22px var(--vf-font-sans, system-ui, sans-serif);
+  font: 650 12px/22px var(--vf-font-sans, sans-serif);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: color-mix(in srgb, var(--mv-spend-deep) 92%, transparent);
@@ -255,7 +256,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font: 600 10.5px/1 var(--vf-font-sans, system-ui, sans-serif);
+  font: 600 10.5px/1 var(--vf-font-sans, sans-serif);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mv-spend-t3);

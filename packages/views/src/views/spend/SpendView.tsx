@@ -261,7 +261,8 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
   const [listOffset, setListOffset] = useState(0);
   const [yShown, setYShown] = useState<number | null>(null);
   const [inks, setInks] = useState<SpendInks | null>(null);
-  const [font, setFont] = useState('-apple-system, BlinkMacSystemFont, system-ui, sans-serif');
+  /** The family the canvas measures words in: the root's own (the skin's sans, M178) once it is laid out. */
+  const [font, setFont] = useState('sans-serif');
   const [measure, setMeasure] = useState<TextMeasure>(() => averageGlyph);
   const motionRef = useRef(motion);
   motionRef.current = motion;

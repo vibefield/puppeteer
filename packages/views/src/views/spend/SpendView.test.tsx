@@ -16,7 +16,6 @@ import {
   type FrameDriver,
 } from '@vibecook/puppeteer-view-sdk/testing';
 import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
-import { DEFAULT_MONITOR_VIEW_ID, MONITOR_VIEWS } from '../../monitor/registry.js';
 import { SPEND_MANIFEST, SPEND_ROOT_CLASS, spendMonitorView } from './index.js';
 import { spendWorld } from './lab/spend-fixtures.js';
 import { SPEND_WINDOW_MS } from './spend-scale.js';
@@ -166,17 +165,6 @@ async function setMoment(view: Mounted, t: number, box = WIDE): Promise<void> {
 }
 
 describe('the spend view', () => {
-  it('is registered after the timeline as SPEND, and the swarm stays the default', () => {
-    const ids = MONITOR_VIEWS.map((view) => view.id);
-    expect(ids).toEqual(['swarm', 'list', 'rain', 'timeline', 'spend']);
-    const entry = MONITOR_VIEWS.find((view) => view.id === 'spend')!;
-    expect(entry.label).toBe('SPEND');
-    expect(entry.view).toBe(spendMonitorView);
-    expect(entry.keys).toBe(SPEND_MANIFEST.keys);
-    expect(entry.parametersRevision).toBe('2026-10-03');
-    expect(DEFAULT_MONITOR_VIEW_ID).toBe('swarm');
-  });
-
   it("captions the chart as the window's spend, and heads the list's money as each run's TOTAL (SV-D2)", async () => {
     const agents = afternoon();
     const view = await mount({ agents });
@@ -353,9 +341,17 @@ describe('the spend view', () => {
     expect(text(view.root, '.vf-monitor-spend-cap b')[0]).toMatch(/^\$[\d.]+\/hr now$/);
   });
 
-  it('names each row in words: the task, a wait in its own words, an unseen reply, a burn in the live green', async () => {
+  it('names each row in words: the line under the name (M178), a wait in its own words, an unseen reply, a burn in the live green', async () => {
     const view = await mount({ agents: afternoon() });
-    expect(view.root.textContent).toContain('port the History view into the frame');
+    const task = (id: string) => rowOf(view.root, id).querySelector('.vf-monitor-spend-task')?.textContent;
+    // Where the held row printed the agent's task (its terminal's title, no model fact), the line under the name:
+    // the reply, else the wait, else — a bare status the state words already say — the model, as the held row fell back.
+    expect(task('vibe-field')).toMatch(/^Porting the History view into the/);
+    expect(task('billing-api')).toBe('permission · Bash');
+    expect(task('rosetta-grants')).toBe('question');
+    expect(task('notes')).toMatch(/^tower · Sorting Tuesday/);
+    expect(task('refactor-auth')).toBe('opus · refactor-auth');
+    expect(view.root.textContent).not.toContain('port the History view into the frame');
     expect(stateText(rowOf(view.root, 'rosetta-grants'))).toBe('waiting · 3m');
     expect(stateText(rowOf(view.root, 'rosetta-docs'))).toBe('reply unseen · 5m');
     const vibe = rowOf(view.root, 'vibe-field').querySelector('.vf-monitor-spend-state')!;

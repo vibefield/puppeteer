@@ -307,6 +307,8 @@ test('the skin is the SDK’s own list, read from its source', () => {
     '--vf-ease-pop',
     '--vf-ease-lift',
     '--vf-ease-island',
+    // M178: the sans the spend view sets its words in
+    '--vf-font-sans',
   ]);
   assert.deepEqual(readMonitorSkin(fixture({})), []);
 });

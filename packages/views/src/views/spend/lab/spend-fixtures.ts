@@ -26,7 +26,9 @@ import {
 // ledger at every step boundary would. `crowd` adds ten more agents, for the
 // dock (SV-D19). Ported from the prototype's world (`draft/godview-spend/site/
 // sv-core.js`), as the held view's lab drew it (`feat/sv-live`), in the model's
-// words (MV-7): a row's line is its `detail`, the task each agent works on.
+// words (MV-7). The held rows named each agent's task; the model carries none,
+// so the line under a name is M4's (the wait, else the reply, else the
+// status, M178), and a few rows carry the latest reply the backend would.
 
 const SEC = 1000;
 const MIN = 60 * SEC;
@@ -60,6 +62,8 @@ interface AgentDef {
   gap: number;
   cover: 'complete' | 'partial' | 'none';
   task: string;
+  /** Its latest reply, as the runtime mirrors it, and whether it is still streaming. */
+  reply?: { text: string; final: boolean };
   /** The pane it is mounted in, and whether that is the pane you are in. */
   pane?: { seq: number; active: boolean };
 }
@@ -78,6 +82,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 24,
     cover: 'complete',
     task: 'port the History view into the frame',
+    reply: { text: 'Porting the History view into the frame: the room mounts, the search is next.', final: false },
     pane: { seq: 2, active: false },
   },
   {
@@ -124,6 +129,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 18,
     cover: 'complete',
     task: 'rebuild the session index',
+    reply: { text: "Rebuilding the session index from the store's segments.", final: false },
   },
   {
     id: 'rosetta-docs',
@@ -138,6 +144,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 12,
     cover: 'complete',
     task: 'tidy the timeline route docs',
+    reply: { text: 'Tidied the timeline route docs: every route now names its owner.', final: true },
   },
   {
     id: 'billing-api',
@@ -171,6 +178,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 10,
     cover: 'complete',
     task: 'zsh: stop the colon modifier eating revision paths',
+    reply: { text: 'Fixed: the colon modifier no longer eats revision paths.', final: true },
   },
   {
     id: 'notes',
@@ -185,6 +193,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 8,
     cover: 'complete',
     task: "sort Tuesday's notes by project",
+    reply: { text: "Sorting Tuesday's notes by project.", final: false },
   },
   {
     id: 'swarm-lab',
@@ -199,6 +208,7 @@ const AGENTS: readonly AgentDef[] = [
     gap: 20,
     cover: 'none',
     task: 'why do bodies jam top-left after release?',
+    reply: { text: 'Release clears the obstacle list before the step, so bodies pile into the corner.', final: true },
   },
   {
     id: 'changelog',
@@ -356,6 +366,16 @@ function rowOf(def: AgentDef, originMs: number, tint: ProjectTint): AgentView {
     provider: providerOf(def.mark),
     ...(def.model ? { model: def.model } : {}),
     ...(wait ? { wait } : {}),
+    // A working row's reply is from a moment ago; a resting one's from when it stopped.
+    ...(def.reply
+      ? {
+          reply: {
+            text: def.reply.text,
+            at: status === 'working' ? originMs - 20 * SEC : since,
+            final: def.reply.final,
+          },
+        }
+      : {}),
     unread: def.now.state === 'unseen',
     device,
     tier: def.peer ? 'remote' : 'managed',

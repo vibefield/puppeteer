@@ -1,9 +1,9 @@
 import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { formatClock, formatShort, formatUsd, projectName } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { detailLine, formatClock, formatShort, formatUsd, projectName } from '@vibecook/puppeteer-view-sdk/toolkit';
 
 // What the spend view says in words: money as the swarm prints it (`~$1.84`,
 // `+` when partial, `—` unpriced), the burn by the hour, each row's name and
-// task, and its state at a moment. Lengths are short (`11m`, `1h 02m`), never
+// the line under it, and its state at a moment. Lengths are short (`11m`, `1h 02m`), never
 // m:ss, which beside a time axis would read as a clock time (review must-fix 5).
 // Ported from the prototype's `SV.fmt`, `names()`, `fitWords()` and `stateOf()`;
 // the facts are the row's (MV-7), the formats the toolkit's.
@@ -42,13 +42,17 @@ export function axisMoney(value: number, step: number): string {
 const BURN_FLOOR_PER_MIN = 0.0005;
 
 /**
- * The agent's task: the first line of the row's own line (`detail`), unless it
- * only repeats the project or the status. The model carries no terminal
- * title (MV-7: the held view read the title first; the row's line was its
- * fallback, and is all the model has).
+ * What a row says where the held view printed its task: the line under its
+ * name, by the toolkit's one rule (M4's `detailLine`: the wait when blocked,
+ * else the reply, else the status; a peer leads with its desktop), its first
+ * line, unless it only repeats the project or the bare status the row's state
+ * words already print: then nothing, and the row falls back to its model, as
+ * the held view's did. The task itself is no model fact: the held view read
+ * the terminal's title, and a title crossing devices is a sync-plane change
+ * (M178).
  */
 export function taskOf(agent: AgentView): string {
-  const line = agent.detail
+  const line = detailLine(agent)
     .split('\n')[0]!
     .replace(/^[^\p{L}\p{N}~/.]+/u, '')
     .trim();

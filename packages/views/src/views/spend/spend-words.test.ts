@@ -49,25 +49,45 @@ describe('the spend words', () => {
     expect(axisMoney(0.4, 0.2)).toBe('$0.4');
   });
 
-  it('tells siblings apart by agent, or by the first words of their task (review must-fix 1)', () => {
-    const a = row('a', 'rosetta', { detail: 'direct-plane grants', provider: { id: 'codex', label: 'Codex' } });
-    const b = row('b', 'rosetta', { detail: 'rebuild the session index' });
-    const c = row('c', 'rosetta', { detail: 'tidy the timeline route docs' });
+  it('tells siblings apart by agent, or by the first words of the line under their names (review must-fix 1)', () => {
+    const said = (text: string) => ({ reply: { text, final: true } });
+    const a = row('a', 'rosetta', {
+      ...said('Grants expire with the session.'),
+      provider: { id: 'codex', label: 'Codex' },
+    });
+    const b = row('b', 'rosetta', said('Rebuilt the session index.'));
+    const c = row('c', 'rosetta', said('Tidied the timeline route docs.'));
     const d = row('d', 'notes');
     const names = spendNames([a, b, c, d]);
     expect(names.get('d')!.one).toBe('notes');
     expect(names.get('a')!.name).toBe('rosetta');
     expect(names.get('a')!.one).toBe('rosetta · codex');
-    expect(names.get('b')!.one).toBe('rosetta · rebuild the');
-    expect(names.get('c')!.task).toBe('tidy the timeline route docs');
+    expect(names.get('b')!.one).toBe('rosetta · Rebuilt the');
+    expect(names.get('c')!.task).toBe('Tidied the timeline route docs.');
   });
 
-  it("reads the task from the row's own line: its first line, never the project or a bare status word", () => {
-    expect(taskOf(row('a', 'p', { detail: 'tighten the ledger reader' }))).toBe('tighten the ledger reader');
-    expect(taskOf(row('a', 'p', { detail: '✳ port the History view\nmore' }))).toBe('port the History view');
-    // The model carries no terminal title (MV-7): a row whose line says only its state names no task.
-    expect(taskOf(row('a', 'p', { detail: 'idle' }))).toBe('');
-    expect(taskOf(row('a', 'p', { detail: 'p' }))).toBe('');
+  it('says the line under the name where the held row printed its task: M4’s rule, the wait, else the reply (M178)', () => {
+    // The model carries no task (the held view read the terminal's title): the toolkit's `detailLine` says the row.
+    expect(taskOf(row('a', 'p', { status: 'working', reply: { text: 'Tightened the ledger reader.' } }))).toBe(
+      'Tightened the ledger reader.',
+    );
+    expect(taskOf(row('a', 'p', { status: 'working', reply: { text: '✳ port the History view\nmore' } }))).toBe(
+      'port the History view',
+    );
+    const permission = { kind: 'permission', since: NOW, tool: 'Bash', detail: 'git push' };
+    expect(taskOf(row('a', 'p', { status: 'blocked', wait: permission, reply: { text: 'Pushing.' } }))).toBe(
+      'permission · Bash',
+    );
+    // Another desktop's row leads with its desktop.
+    const peer = { id: 'tower', name: 'tower', self: false };
+    expect(taskOf(row('a', 'p', { status: 'working', device: peer, reply: { text: 'Sorting.' } }))).toBe(
+      'tower · Sorting.',
+    );
+    // A line that only says the bare status (or the project) is none: the row falls back to its model, as held.
+    expect(taskOf(row('a', 'p', { status: 'idle' }))).toBe('');
+    expect(taskOf(row('a', 'p', { status: 'working' }))).toBe('');
+    // The row's own `detail` (core's headline) is not what it says here.
+    expect(taskOf(row('a', 'p', { status: 'idle', detail: 'tighten the ledger reader' }))).toBe('');
   });
 
   it('names the model the tooltip says: the run’s model, else its provider, then its branch', () => {
