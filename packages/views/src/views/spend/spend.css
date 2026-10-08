@@ -170,8 +170,9 @@
     0 0 0 3px var(--mv-spend-t1);
 }
 
-/* Now: shown while a moment is set, it lets go. The pill is the key: End is printed under its glyph like a keyboard's
-   legend, in the secondary ink (few keys, printed on the button; M177 ruling 4). */
+/* Now: shown while a moment is set, it lets go. The pill is the key: End's legend, ↘ from the toolkit's one table as
+   the timeline and the bar print it (M181), sits under its glyph like a keyboard's, in the secondary ink (few keys,
+   printed on the button; M177 ruling 4). */
 .mv-spend .vf-monitor-spend-back {
   position: absolute;
   z-index: 3;

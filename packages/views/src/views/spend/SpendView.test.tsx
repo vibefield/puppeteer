@@ -15,7 +15,7 @@ import {
   type FixtureClock,
   type FrameDriver,
 } from '@vibecook/puppeteer-view-sdk/testing';
-import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { formatClock, keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { SPEND_MANIFEST, SPEND_ROOT_CLASS, spendMonitorView } from './index.js';
 import { spendWorld } from './lab/spend-fixtures.js';
 import { SPEND_WINDOW_MS } from './spend-scale.js';
@@ -308,7 +308,7 @@ describe('the spend view', () => {
     expect(text(view.root, '.vf-monitor-spend-big')[0]).toMatch(/^~\$[\d,.]+\+$/);
   });
 
-  it('prints End under the Now pill’s glyph, in its secondary ink, the pill itself the key; the pill lets go (M177 ruling 4)', async () => {
+  it('prints End’s legend under the Now pill’s glyph from the toolkit’s one table, the pill itself the key; the pill lets go (M177 ruling 4, M181)', async () => {
     const view = await mount({ agents: afternoon() });
     expect(view.root.querySelector('.vf-monitor-spend-back')).toBeNull();
     await setMoment(view, NOW - 6 * MIN);
@@ -317,7 +317,9 @@ describe('the spend view', () => {
     const key = back.querySelector('.vf-monitor-spend-now-key')!;
     expect(key.querySelector('.vf-monitor-spend-now-mark')).not.toBeNull();
     expect(key.lastElementChild?.className).toBe('vf-monitor-spend-legend');
-    expect(key.lastElementChild?.textContent).toBe('End');
+    // ↘, as the timeline's now button and the bar's tooltip print End (M181).
+    expect(key.lastElementChild?.textContent).toBe(keyLegend('End'));
+    expect(keyLegend('End')).toBe('↘');
     expect(back.querySelector('.vf-monitor-spend-keycap')).toBeNull();
     expect(back.getAttribute('aria-keyshortcuts')).toBe('End');
     expect(back.getAttribute('aria-label')).toBe('Back to now');

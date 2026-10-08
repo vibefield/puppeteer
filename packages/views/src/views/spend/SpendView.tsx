@@ -12,7 +12,13 @@ import {
 } from 'react';
 import type { AgentView, StageGeometry } from '@vibecook/puppeteer-view-sdk';
 import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
-import { createMotionLoop, formatClock, sizeCanvas, type MotionLoop } from '@vibecook/puppeteer-view-sdk/toolkit';
+import {
+  createMotionLoop,
+  formatClock,
+  keyLegend,
+  sizeCanvas,
+  type MotionLoop,
+} from '@vibecook/puppeteer-view-sdk/toolkit';
 import { liftedFill, siblingIndex, siblingTone } from './spend-ink.js';
 import { fitList, listOrder, moreWords } from './spend-list.js';
 import {
@@ -207,6 +213,12 @@ function PeerMark({ name }: { name: string }) {
     </svg>
   );
 }
+
+/**
+ * The key that lets go of a set moment. The manifest declares it, the view's root hears it, and the Now pill, which
+ * does the same, prints its legend under the mark from the toolkit's one table (M177 ruling 4, M181).
+ */
+export const NOW_KEY = 'End';
 
 function NowMark() {
   return (
@@ -696,7 +708,7 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
     } else if (event.key === 'Enter' && focus !== null) {
       event.preventDefault();
       select(focus);
-    } else if (event.key === 'End') {
+    } else if (event.key === NOW_KEY) {
       event.preventDefault();
       release();
     }
@@ -883,19 +895,20 @@ export function SpendView({ input, commands }: ReactMonitorViewProps): ReactElem
         </span>
       </div>
       {pinned !== null ? (
-        // Now, with the key it answers to printed under its glyph (M177 ruling 4: the button is the key).
+        // Now, with the key it answers to printed under its glyph (M177 ruling 4: the button is the key), its legend
+        // from the toolkit's one table, as the timeline and the bar print it (M181).
         <button
           type="button"
           className="vf-monitor-spend-back"
           style={{ right: g.width - g.x1 + 4, top: g.y0 + 2 }}
-          title="Back to now (End)"
+          title={`Back to now (${NOW_KEY})`}
           aria-label="Back to now"
-          aria-keyshortcuts="End"
+          aria-keyshortcuts={NOW_KEY}
           onClick={release}
         >
           <span className="vf-monitor-spend-now-key" aria-hidden="true">
             <NowMark />
-            <b className="vf-monitor-spend-legend">End</b>
+            <b className="vf-monitor-spend-legend">{keyLegend(NOW_KEY)}</b>
           </span>
           <span>Now</span>
         </button>

@@ -2,7 +2,7 @@ import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/pupp
 import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
 import { MARK_VIEW_BOX, strokeOutline, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { SPEND_PARAMETER_GROUPS } from './spend-parameters.js';
-import { SpendView } from './SpendView.js';
+import { NOW_KEY, SpendView } from './SpendView.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.
 import './spend.css';
 
@@ -45,7 +45,7 @@ export const SPEND_MANIFEST: MonitorViewManifest = {
     { key: 'ArrowUp', label: 'the agent above' },
     { key: 'ArrowDown', label: 'the agent below' },
     { key: 'Enter', label: 'open the agent in your pane' },
-    { key: 'End', label: 'let go of a set moment (Now)' },
+    { key: NOW_KEY, label: 'let go of a set moment (Now)' },
   ],
   // A clock at rest: now moves along the axis, and a waiting head's wave runs on the toolkit's loop. Motion off, the
   // loop asks for no frame and nothing eases or glides; the clock still keeps the time.
