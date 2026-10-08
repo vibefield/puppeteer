@@ -497,9 +497,13 @@ test("it reads the repository's registered views, and every one of them holds th
   const report = checkViewWall();
   const summary = summarizeViewWall(report);
   assert.equal(summary.mode, 'fail');
-  // The registry's order, by manifest id: the views the hosts mount, each in its own folder.
-  assert.deepEqual(Object.keys(summary.views), ['swarm', 'list', 'rain', 'timeline']);
-  for (const view of report.views) assert.match(view.directory, new RegExp(`packages/views/src/views/${view.name}$`));
+  // The views the hosts mount, by manifest id, each in its own folder: the four ported ones among them, and no list
+  // here to keep beside the registry (a newly registered view joins without an edit to this test).
+  for (const name of ['swarm', 'list', 'rain', 'timeline']) {
+    const view = report.views.find((candidate) => candidate.name === name);
+    assert.ok(view, name);
+    assert.match(view.directory, new RegExp(`packages/views/src/views/${name}$`));
+  }
   assert.deepEqual(summary.failing, []);
   assert.deepEqual(summary.registration, []);
   assert.equal(summary.total.total, 0);
