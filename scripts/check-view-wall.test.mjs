@@ -7,10 +7,12 @@ import test, { after } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   checkViewWall,
+  checkViews,
   VIEW_RUNTIME_IMPORTS,
   cssPreludes,
   importBreach,
   readMonitorSkin,
+  readRegisteredViews,
   summarizeViewWall,
   viewStylesheetBreaches,
 } from './check-view-wall.mjs';
@@ -32,8 +34,33 @@ function fixture(files) {
   return root;
 }
 
+/** The rules on the fixture's view folders, each `views/<name>/` read as the view `<name>` (no registry). */
 function wall(files, options = {}) {
-  return checkViewWall({ root: fixture(files), views: 'views', hostStylesheets: ['host'], ...options });
+  const root = fixture(files);
+  const names = [...new Set(Object.keys(files).flatMap((path) => /^views\/([^/]+)\//.exec(path)?.[1] ?? []))].sort();
+  return checkViews({
+    root,
+    views: names.map((name) => ({ name, directory: join('views', name) })),
+    hostStylesheets: ['host'],
+    ...options,
+  });
+}
+
+/** A registry the hosts would mount: `monitorViewEntry(<view>)` per view module, as packages/views writes it. */
+function registry(entries) {
+  const imports = entries.map(({ binding, from }) => `import { ${binding} } from '${from}';`).join('\n');
+  const list = entries.map(({ binding }) => `  monitorViewEntry(${binding}),`).join('\n');
+  return `${imports}\nimport { monitorViewEntry } from './entry.js';\nexport const MONITOR_VIEWS = [\n${list}\n];\n`;
+}
+
+/** A view module with a manifest, the way the views write one. */
+function viewModule(id, extra = '') {
+  const name = `${id.replace(/-/g, '_').toUpperCase()}_MANIFEST`;
+  return `import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
+import './${id}.css';
+export const ${name} = { sdk: 1, id: '${id}', label: '${id.toUpperCase()}', mark: { viewBox: '0 0 24 24', paths: [] }, parameters: [] };
+export const ${id.replace(/-/g, '_')}MonitorView = reactMonitorView(${name}, () => null, { rootClass: 'mv-${id}' });
+${extra}`;
 }
 
 function found(report, name) {
@@ -319,21 +346,37 @@ test('a lab builds its own page, so the wall reads it only when asked', () => {
   ]);
 });
 
-test('every view fails on a breach with no list of views, a new one included; --report exits 0 whatever it finds', () => {
-  const run = (root, ...extra) =>
-    spawnSync(process.execPath, [script, '--root', root, '--views', 'views', '--host-css', 'host', ...extra], {
-      encoding: 'utf8',
-    });
-  const summaryOf = (result) => JSON.parse(result.stdout.split('view-wall summary: ')[1]);
+const run = (root, ...extra) =>
+  spawnSync(
+    process.execPath,
+    [script, '--root', root, '--registry', 'registry.ts', '--views', 'views', '--host-css', 'host', ...extra],
+    { encoding: 'utf8' },
+  );
+const summaryOf = (result) => JSON.parse(result.stdout.split('view-wall summary: ')[1]);
+/** The clean view, registered: its folder holds a view module with a manifest beside CLEAN_VIEW's files. */
+const REGISTERED_CLEAN = {
+  ...CLEAN_VIEW,
+  'views/clean/view.ts': viewModule('clean'),
+  'registry.ts': registry([{ binding: 'cleanMonitorView', from: './views/clean/view.js' }]),
+};
 
-  // A wall of clean views passes.
-  const clean = run(fixture(CLEAN_VIEW));
+test('every registered view fails on a breach, a new one included, with no list beside the registry; --report exits 0', () => {
+  // A wall of clean registered views passes.
+  const clean = run(fixture(REGISTERED_CLEAN));
   assert.equal(clean.status, 0, clean.stderr);
   assert.equal(summaryOf(clean).mode, 'fail');
   assert.deepEqual(summaryOf(clean).failing, []);
+  assert.deepEqual(summaryOf(clean).registration, []);
 
-  // A view folder no one has named anywhere enters failing: there is no list to add it to.
-  const root = fixture({ ...CLEAN_VIEW, 'views/leaky/index.ts': `import '../../outside.js';\n` });
+  // A view newly registered enters failing: the registry is the only list.
+  const root = fixture({
+    ...REGISTERED_CLEAN,
+    'views/leaky/view.ts': viewModule('leaky', "import '../../outside.js';\n"),
+    'registry.ts': registry([
+      { binding: 'cleanMonitorView', from: './views/clean/view.js' },
+      { binding: 'leakyMonitorView', from: './views/leaky/view.js' },
+    ]),
+  });
   const failed = run(root);
   assert.equal(failed.status, 1);
   assert.match(failed.stderr, /FAIL leaky \(1\)/);
@@ -356,6 +399,65 @@ test('every view fails on a breach with no list of views, a new one included; --
   assert.match(old.stderr, /unknown argument --fail/);
 });
 
+test('registration, not folders: a registered view outside views/ is read, and an unregistered folder is never counted (MV-8b)', () => {
+  // A view the hosts mount from another folder is read there, under its manifest's id.
+  const far = run(
+    fixture({
+      ...REGISTERED_CLEAN,
+      'elsewhere/far/view.ts': viewModule('far-view'),
+      'elsewhere/far/reach.ts': "export const data = fetch('https://x');\n",
+      'registry.ts': registry([
+        { binding: 'cleanMonitorView', from: './views/clean/view.js' },
+        { binding: 'far_viewMonitorView', from: './elsewhere/far/view.js' },
+      ]),
+    }),
+  );
+  assert.equal(far.status, 1);
+  assert.deepEqual(summaryOf(far).failing, ['far-view']);
+  assert.deepEqual(summaryOf(far).views['far-view'], {
+    files: 2,
+    'MV-W1': 0,
+    'MV-W2': 0,
+    'MV-W3': 1,
+    'MV-W5': 0,
+    total: 1,
+  });
+
+  // A folder under views/ that no entry registers fails as such, and is not a view that holds.
+  const orphan = run(fixture({ ...REGISTERED_CLEAN, 'views/orphan/index.ts': 'export const nothing = 0;\n' }));
+  assert.equal(orphan.status, 1);
+  assert.match(orphan.stderr, /FAIL registration \(1\)/);
+  assert.ok(!('orphan' in summaryOf(orphan).views));
+  assert.deepEqual(summaryOf(orphan).registration, [
+    'views/orphan: a view folder no host registers (registry.ts MONITOR_VIEWS)',
+  ]);
+
+  // What the wall cannot follow is a failure too, never a view left out in silence.
+  const unreadable = fixture({
+    ...REGISTERED_CLEAN,
+    'views/odd/view.ts': 'export const oddMonitorView = makeView();\ndeclare function makeView(): unknown;\n',
+    'registry.ts': registry([
+      { binding: 'cleanMonitorView', from: './views/clean/view.js' },
+      { binding: 'oddMonitorView', from: './views/odd/view.js' },
+      { binding: 'ghostMonitorView', from: './views/ghost/view.js' },
+    ]),
+  });
+  const odd = run(unreadable);
+  assert.equal(odd.status, 1);
+  assert.deepEqual(summaryOf(odd).registration, [
+    "oddMonitorView: the wall cannot read its manifest's id (views/odd/view.ts)",
+    'ghostMonitorView: not imported from a view module the wall can find (registry.ts)',
+  ]);
+  const { views } = readRegisteredViews(join(unreadable, 'registry.ts'), { root: unreadable });
+  assert.deepEqual(
+    views.map((view) => [view.binding, view.name]),
+    [
+      ['cleanMonitorView', 'clean'],
+      ['oddMonitorView', 'odd'],
+    ],
+  );
+});
+
 test('the summary counts each rule per view and in total, and names the views that fail', () => {
   const report = {
     root: '/r',
@@ -372,8 +474,16 @@ test('the summary counts each rule per view and in total, and names the views th
     c: { files: 4, 'MV-W1': 0, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 0, total: 0 },
   };
   const total = { files: 7, total: 3, 'MV-W1': 2, 'MV-W2': 0, 'MV-W3': 0, 'MV-W5': 1 };
-  assert.deepEqual(summarizeViewWall(report), { mode: 'fail', views, total, failing: ['a', 'b'] });
-  assert.deepEqual(summarizeViewWall(report, 'report'), { mode: 'report', views, total, failing: [] });
+  assert.deepEqual(summarizeViewWall(report), { mode: 'fail', views, total, failing: ['a', 'b'], registration: [] });
+  assert.deepEqual(summarizeViewWall(report, 'report'), {
+    mode: 'report',
+    views,
+    total,
+    failing: [],
+    registration: [],
+  });
+  const unregistered = { ...report, registration: ['views/d: a view folder no host registers'] };
+  assert.deepEqual(summarizeViewWall(unregistered).registration, ['views/d: a view folder no host registers']);
 });
 
 test('stylesheet preludes skip comments and at-rules and keep their lines', () => {
@@ -383,12 +493,15 @@ test('stylesheet preludes skip comments and at-rules and keep their lines', () =
   ]);
 });
 
-test("it reads the repository's own views, and every one of them holds the wall (MV-8)", () => {
+test("it reads the repository's registered views, and every one of them holds the wall (MV-8, MV-8b)", () => {
   const report = checkViewWall();
   const summary = summarizeViewWall(report);
   assert.equal(summary.mode, 'fail');
-  for (const name of ['list', 'rain', 'swarm', 'timeline']) assert.ok(name in summary.views, name);
+  // The registry's order, by manifest id: the views the hosts mount, each in its own folder.
+  assert.deepEqual(Object.keys(summary.views), ['swarm', 'list', 'rain', 'timeline']);
+  for (const view of report.views) assert.match(view.directory, new RegExp(`packages/views/src/views/${view.name}$`));
   assert.deepEqual(summary.failing, []);
+  assert.deepEqual(summary.registration, []);
   assert.equal(summary.total.total, 0);
 });
 
@@ -398,11 +511,217 @@ test('a dependency a view bundles into itself is allowed only for the view that 
     'views/other/world.ts': "import Matter from 'matter-js';\nexport const engine = Matter;\n",
   };
   const report = wall(files);
-  assert.deepEqual(VIEW_RUNTIME_IMPORTS.swarm, ['matter-js']);
+  assert.deepEqual(VIEW_RUNTIME_IMPORTS.swarm, ['matter-js', 'navigator.gpu']);
   assert.deepEqual(found(report, 'swarm'), []);
   assert.deepEqual(found(report, 'other'), ['MV-W1 imports matter-js, which is not the SDK']);
   // W3 is unmoved: the swarm may bundle matter, not reach out
   assert.deepEqual(found(wall({ 'views/swarm/reach.ts': "export const data = fetch('https://x');\n" }), 'swarm'), [
     'MV-W3 reaches out through fetch',
   ]);
+});
+
+// MV-8b: THE LOOPHOLES M176 ITEM 4 FOUND, each closed. Every probe below is a breach the wall read as clean at
+// c43268e; the last test drops each one into a registered view and watches the wall turn red in fail mode.
+
+test('MV-W2: a global object handed around is an alias that reaches anything, however it is wrapped', () => {
+  const report = wall({
+    'views/alias/index.ts': `
+export function mount(): unknown[] {
+  const g = globalThis;
+  const w = window as unknown as { document: Document };
+  const s = self;
+  const { localStorage: kept } = window;
+  const host = typeof globalThis !== 'undefined' ? globalThis : window;
+  (globalThis as unknown as { document: Document }).document.body;
+  (window as unknown as { open(url: string): void }).open('https://x');
+  return [g, w, s, kept, host];
+}
+`,
+  });
+  assert.deepEqual(
+    found(report, 'alias'),
+    [
+      "MV-W2 hands the host's globalThis around",
+      "MV-W2 hands the host's window around",
+      "MV-W2 hands the host's self around",
+      "MV-W2 hands the host's window around",
+      "MV-W2 hands the host's globalThis around",
+      "MV-W2 hands the host's window around",
+      'MV-W2 reaches globalThis.document, beyond the allow-list',
+      'MV-W3 reaches out through window.open',
+    ].sort(),
+  );
+});
+
+test('MV-W2/W3: bare location, navigator, caches, open and importScripts reach the host; typeof only asks', () => {
+  const report = wall({
+    'views/bare/index.ts': `
+export function mount(): unknown[] {
+  const here = location.href;
+  const agent = navigator.userAgent;
+  const browser = navigator;
+  navigator.sendBeacon('/x', '');
+  void caches.open('v');
+  open('https://x');
+  importScripts('https://x/lib.js');
+  const known = typeof navigator !== 'undefined' && typeof location !== 'undefined';
+  return [here, agent, browser, known];
+}
+`,
+    // Names a view declares itself are its own, not the host's.
+    'views/bare/local.ts': `export function pick(open: boolean, location: string): string | false {
+  const navigator = { open };
+  return navigator.open && location;
+}
+`,
+  });
+  assert.deepEqual(
+    found(report, 'bare'),
+    [
+      'MV-W2 reaches location.href, beyond the allow-list',
+      'MV-W2 reaches navigator.userAgent, beyond the allow-list',
+      'MV-W2 reaches navigator, beyond the allow-list',
+      'MV-W3 reaches out through navigator.sendBeacon',
+      'MV-W3 reaches out through caches',
+      'MV-W3 reaches out through open',
+      'MV-W3 loads code with importScripts()',
+    ].sort(),
+  );
+});
+
+test("the swarm's navigator.gpu is named in VIEW_RUNTIME_IMPORTS: that member, for that view, and nothing more", () => {
+  const report = wall({
+    'views/swarm/gpu.ts': `export const gpu = typeof navigator === 'undefined' ? undefined : navigator.gpu;
+export const agent = navigator.userAgent;
+`,
+    'views/other/gpu.ts': 'export const gpu = navigator.gpu;\n',
+  });
+  assert.deepEqual(found(report, 'swarm'), ['MV-W2 reaches navigator.userAgent, beyond the allow-list']);
+  assert.deepEqual(found(report, 'other'), ['MV-W2 reaches navigator.gpu, beyond the allow-list']);
+});
+
+test('MV-W2: climbing above the root by parentElement, parentNode or offsetParent', () => {
+  const report = wall({
+    'views/climb/index.ts': `
+export function mount(root: HTMLElement): unknown[] {
+  return [root.parentElement, root.parentNode, (root as HTMLElement).offsetParent, root['parentNode']];
+}
+`,
+  });
+  assert.deepEqual(
+    found(report, 'climb'),
+    [
+      'MV-W2 climbs above its root (parentElement)',
+      'MV-W2 climbs above its root (parentNode)',
+      'MV-W2 climbs above its root (offsetParent)',
+      'MV-W2 climbs above its root (parentNode)',
+    ].sort(),
+  );
+});
+
+test('L18: a sibling combinator on the root class leaves it (MV-W2); one inside the root stays', () => {
+  const css = `.mv-sib ~ .host { color: red; }
+.mv-sib + .host { color: red; }
+.mv-sib.is-on+.host { color: red; }
+.mv-sib:hover ~ a { color: red; }
+.mv-sib .a ~ .b { color: red; }
+.mv-sib > .a + .b { color: red; }
+.mv-sib .a:nth-child(2n+1) { color: red; }
+.mv-sib[data-x="a~b"] .c { color: red; }
+`;
+  assert.deepEqual(
+    viewStylesheetBreaches(css, 'sib.css', 'sib', []).map((breach) => [breach.rule, breach.line, breach.message]),
+    [
+      ['MV-W2', 1, 'leaves its root class .mv-sib for its siblings (.mv-sib ~ .host)'],
+      ['MV-W2', 2, 'leaves its root class .mv-sib for its siblings (.mv-sib + .host)'],
+      ['MV-W2', 3, 'leaves its root class .mv-sib for its siblings (.mv-sib.is-on+.host)'],
+      ['MV-W2', 4, 'leaves its root class .mv-sib for its siblings (.mv-sib:hover ~ a)'],
+    ],
+  );
+});
+
+test('MV-W3: an absolute url in a view’s stylesheet, a scheme or a root-absolute path, reaches out', () => {
+  const report = wall({
+    'views/urls/urls.css': `@import url('https://fonts.example/a.css');
+.mv-urls .a { background: url(https://cdn.example/x.png); }
+.mv-urls .b { background: url('/assets/x.png'); }
+.mv-urls .c { background: url("data:image/png;base64,AAAA"); }
+.mv-urls .d { background: url(//cdn.example/y.png); }
+.mv-urls .e { background: url(./ground.png); }
+.mv-urls .f { background: url(ground.png); }
+`,
+  });
+  assert.deepEqual(
+    found(report, 'urls'),
+    [
+      'MV-W3 reaches out through https://fonts.example/a.css, an absolute url',
+      'MV-W3 reaches out through https://cdn.example/x.png, an absolute url',
+      'MV-W3 reaches out through /assets/x.png, an absolute url',
+      'MV-W3 reaches out through data:image/png;base64,AAAA, an absolute url',
+      'MV-W3 reaches out through //cdn.example/y.png, an absolute url',
+    ].sort(),
+  );
+});
+
+test('MV-W1: shipping code never imports a lab or fixtures; a lab, a fixture and a test may', () => {
+  const report = wall(
+    {
+      'views/labbed/index.ts': `import { stages } from './lab/fixtures.js';
+import { world } from './world-fixtures.js';
+export const all = [stages, world];
+export const page = new URL('./lab/page.js', import.meta.url);
+`,
+      'views/labbed/world-fixtures.ts': "import { shared } from './shared.js';\nexport const world = shared;\n",
+      'views/labbed/shared.ts': 'export const shared = 1;\n',
+      'views/labbed/lab/fixtures.ts': "import { world } from '../world-fixtures.js';\nexport const stages = world;\n",
+      'views/labbed/lab/page.ts': "import { stages } from './fixtures.js';\nexport const shown = stages;\n",
+      'views/labbed/labbed.test.ts': "import { stages } from './lab/fixtures.js';\nexport const used = stages;\n",
+    },
+    { includeLabs: true },
+  );
+  assert.deepEqual(
+    found(report, 'labbed'),
+    [
+      'MV-W1 imports ./lab/fixtures.js, a lab or fixtures (shipping code never imports them)',
+      'MV-W1 imports ./world-fixtures.js, a lab or fixtures (shipping code never imports them)',
+      'MV-W1 refers to ./lab/page.js, a lab or fixtures',
+    ].sort(),
+  );
+});
+
+test('each loophole, dropped into a registered view, turns the wall red in fail mode (the mutation probes)', () => {
+  const probes = {
+    'globalThis aliased': 'const g = globalThis;\nexport const body = (g as unknown as Window).document.body;\n',
+    'window aliased': 'const w = window;\nexport const width = w.innerWidth;\n',
+    'self aliased': 'const s = self;\nexport const name = s.name;\n',
+    'bare location': 'export const here = location.href;\n',
+    'bare navigator': 'export const agent = navigator.userAgent;\n',
+    'bare caches': "export const cache = caches.open('v');\n",
+    'bare open': "export const opened = open('https://x');\n",
+    'bare importScripts': "importScripts('https://x/lib.js');\n",
+    parentElement: 'export const up = (root: HTMLElement) => root.parentElement;\n',
+    parentNode: 'export const up = (root: HTMLElement) => root.parentNode;\n',
+    offsetParent: 'export const up = (root: HTMLElement) => root.offsetParent;\n',
+    'lab import': "import { stage } from './lab/stage.js';\nexport const shown = stage;\n",
+    'fixtures import': "import { rows } from './rows-fixtures.js';\nexport const shown = rows;\n",
+  };
+  const stylesheetProbes = {
+    'sibling ~': '.mv-clean ~ .host { color: red; }\n',
+    'sibling +': '.mv-clean + .host { color: red; }\n',
+    'url with a scheme': '.mv-clean .x { background: url(https://cdn.example/x.png); }\n',
+    'root-absolute url': '.mv-clean .x { background: url(/assets/x.png); }\n',
+  };
+  const helpers = { 'views/clean/lab/stage.ts': 'export const stage = 1;\n', 'views/clean/rows-fixtures.ts': '' };
+  for (const [probe, text] of Object.entries(probes)) {
+    const result = run(fixture({ ...REGISTERED_CLEAN, ...helpers, 'views/clean/probe.ts': text }));
+    assert.equal(result.status, 1, `${probe}: ${result.stdout}`);
+    assert.match(result.stderr, /FAIL clean \(\d+\)/, probe);
+  }
+  for (const [probe, text] of Object.entries(stylesheetProbes)) {
+    const result = run(fixture({ ...REGISTERED_CLEAN, 'views/clean/probe.css': text }));
+    assert.equal(result.status, 1, `${probe}: ${result.stdout}`);
+    assert.match(result.stderr, /FAIL clean \(1\)/, probe);
+  }
+  // The same registered view without a probe holds.
+  assert.equal(run(fixture({ ...REGISTERED_CLEAN, ...helpers })).status, 0);
 });

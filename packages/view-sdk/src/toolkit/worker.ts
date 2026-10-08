@@ -200,23 +200,37 @@ export function createWorkerDriver<Command, Message = unknown>(
 export interface WorkerScopeLike {
   postMessage(message: unknown, transfer?: Transferable[]): void;
   onmessage: ((event: MessageEvent) => void) | null;
+  /** A dedicated worker's own end; absent from a scope that cannot close itself. */
+  close?(): void;
+}
+
+/** The worker's end of the wire, as `serveWorker` hands it to the worker module. */
+export interface ServedWorker {
+  post(message: unknown, transfer?: Transferable[]): void;
+  /** Ends this thread: it takes no more commands and closes its scope. The view never names the global for it. */
+  close(): void;
 }
 
 /**
  * The worker's end of the wire. Call it at the worker module's top level,
  * after its imports, so the proof of life it posts means everything above it
- * evaluated. Each command arrives at `onCommand`; `post` answers.
+ * evaluated. Each command arrives at `onCommand`; `post` answers, and `close`
+ * ends the thread when the view is done with it.
  */
 export function serveWorker<Command>(
   onCommand: (command: Command) => void,
   scope: WorkerScopeLike = globalThis as unknown as WorkerScopeLike,
-): { post(message: unknown, transfer?: Transferable[]): void } {
+): ServedWorker {
   scope.postMessage(WORKER_READY);
   scope.onmessage = (event) => onCommand(event.data as Command);
   return {
     post(message, transfer) {
       if (transfer && transfer.length > 0) scope.postMessage(message, transfer);
       else scope.postMessage(message);
+    },
+    close() {
+      scope.onmessage = null;
+      scope.close?.();
     },
   };
 }

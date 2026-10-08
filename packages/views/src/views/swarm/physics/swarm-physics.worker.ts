@@ -13,8 +13,6 @@ import type { SwarmPhysicsCommand } from './protocol.js';
 // steps on a timer and the accumulator absorbs the timer's jitter, which is the
 // same guard that already absorbed a stalled display.
 
-const scope = globalThis as unknown as { close(): void };
-
 /**
  * Wake this many times per physics step.
  *
@@ -61,8 +59,9 @@ const end = serveWorker<SwarmPhysicsCommand>((command) => {
     stop();
     // The stage is gone: this thread has nothing left to be. Closing is belt to
     // the terminate()'s braces — whichever lands first, no swarm physics
-    // outlives the swarm.
-    scope.close();
+    // outlives the swarm. The toolkit's end closes the thread, so the view
+    // never names the global object (MV-W2).
+    end.close();
     return;
   }
   if (command.type === 'init' || command.type === 'updateParameters') retimeIfNeeded();

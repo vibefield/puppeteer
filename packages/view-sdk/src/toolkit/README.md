@@ -83,6 +83,8 @@ A view owns its worker. `createWorkerDriver` carries VibeField's swarm driver se
 - **An honest mode.** `observeMode` reports `worker` or `inline`, and the view passes it to
   `commands.report({ physics })`.
 - **No rebuild.** A proven worker that dies later is reported through `onError`, never rebuilt.
+- **Its own end.** In the worker, `serveWorker` answers through `end.post` and ends the thread with `end.close()`,
+  so a view's worker never names the global object (MV-W2 reads an alias of it as a reach, MV-8b).
 
 ```ts
 // views/swarm/physics/driver.ts: the view's own code (the swarm's since MV-5; sketched here)
@@ -98,6 +100,7 @@ const stop = driver.observeMode((physics) => commands.report({ physics }));
 // views/swarm/physics/swarm-physics.worker.ts: the worker entry, beside it
 import { serveWorker } from '@vibecook/puppeteer-view-sdk/toolkit';
 const end = serveWorker<Command>((command) => host.handle(command)); // after every import: `ready` is honest
+// …and on `dispose`: end.close();
 ```
 
 Three rules make that one line work in every host:
