@@ -2,7 +2,7 @@ import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/pupp
 import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
 import { MARK_VIEW_BOX, strokeOutline, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { TIMELINE_PARAMETER_GROUPS } from './timeline-parameters.js';
-import { TimelineView } from './TimelineView.js';
+import { NOW_KEY, TimelineView } from './TimelineView.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.
 import './timeline.css';
 
@@ -47,7 +47,7 @@ export const TIMELINE_MANIFEST: MonitorViewManifest = {
     { key: '-', label: 'zoom out' },
     { key: '=', label: 'zoom in' },
     { key: 'Home', label: 'the start of the day (the map)' },
-    { key: 'End', label: 'now (the map)' },
+    { key: NOW_KEY, label: 'now (the map)' },
   ],
   // A clock at rest: the head follows now. The toolkit's loop stops while motion is off; a timer keeps the time.
   motion: { loops: true },

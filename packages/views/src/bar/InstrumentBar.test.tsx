@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MONITOR_VIEWS } from '../monitor/registry.js';
-import { InstrumentBar, keyLegend, ViewMark, type InstrumentBarView } from './InstrumentBar.js';
+import { keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { InstrumentBar, ViewMark, type InstrumentBarView } from './InstrumentBar.js';
 
 const NOOP = () => undefined;
 const base = {
@@ -82,15 +83,7 @@ it('updates a replaced manifest mark and its label fallback', async () => {
   expect(element.textContent).toBe('L');
 });
 
-describe('the bar prints a view’s declared keys on its control (MV-D8)', () => {
-  it('prints each key as the keyboard’s legend', () => {
-    expect(
-      ['Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', '-', '=', 'k', 'F5'].map(
-        keyLegend,
-      ),
-    ).toEqual(['⎋', '↵', '↑', '↓', '←', '→', '↖', '↘', '−', '=', 'K', 'F5']);
-  });
-
+describe('the bar prints a view’s declared keys in its control’s tip (MV-D8, M177 ruling 4)', () => {
   async function hovered(label: string): Promise<HTMLElement> {
     vi.useFakeTimers();
     const element = document.createElement('div');

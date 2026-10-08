@@ -319,6 +319,43 @@ describe('the timeline’s keys and pointer', () => {
     // dotfiles, then past the receded vibe-field to rosetta-grants, the next lane by birth.
     expect(view.commands.selects).toEqual(['rosetta-grants']);
   });
+
+  it('prints End on the now button, the one control a declared key does the work of (M177 ruling 4)', async () => {
+    const view = await mount({ agents: afternoon() });
+    const now = view.root.querySelector<HTMLButtonElement>('.vf-monitor-timeline-tool.is-now')!;
+    const legend = now.querySelector('.vf-monitor-timeline-key')!;
+    expect(legend.textContent).toBe('↘');
+    expect(legend.getAttribute('aria-hidden')).toBe('true');
+    // Under the mark, from the manifest's own key.
+    expect(legend.previousElementSibling?.classList.contains('vf-monitor-timeline-now-mark')).toBe(true);
+    expect(TIMELINE_MANIFEST.keys?.find((key) => key.label === 'now (the map)')?.key).toBe('End');
+    // Every other key does work no button does (lighting, opening the lit lane, panning, zooming by steps, the start
+    // of the day), so no other control prints one.
+    expect(view.root.querySelectorAll('.vf-monitor-timeline-key')).toHaveLength(1);
+  });
+
+  it('goes home on End in the map, as the now button does on a press', async () => {
+    const view = await mount({ agents: afternoon() });
+    const map = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-map-box')!;
+    const now = view.root.querySelector<HTMLButtonElement>('.vf-monitor-timeline-tool.is-now')!;
+    const press = (name: string) =>
+      act(async () => {
+        map.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+        frames.step(2);
+      });
+    expect(now.getAttribute('aria-pressed')).toBe('true');
+    await press('ArrowLeft');
+    expect(now.getAttribute('aria-pressed')).toBe('false');
+    await press('End');
+    expect(now.getAttribute('aria-pressed')).toBe('true');
+    await press('ArrowLeft');
+    expect(now.getAttribute('aria-pressed')).toBe('false');
+    await act(async () => {
+      now.click();
+      frames.step(2);
+    });
+    expect(now.getAttribute('aria-pressed')).toBe('true');
+  });
 });
 
 describe('the view on its root', () => {
