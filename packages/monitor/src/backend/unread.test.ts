@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadCandidate } from './unread.js';
 
-// `views/monitor/unread.test.ts`, verbatim: the single-window rule the backend must keep (L5).
+// The window's former `views/monitor/unread.test.ts` (deleted at MV-8b), verbatim: the single-window rule the backend
+// must keep (L5).
 
 const T0 = Date.parse('2026-09-06T10:00:00.000Z');
 const at = (seconds: number): number => T0 + seconds * 1000;

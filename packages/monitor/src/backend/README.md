@@ -104,7 +104,8 @@ host that breaks one.
 
 ## Unread (L5)
 
-`unread.ts` is `views/monitor/unread.ts` verbatim (`reconcileUnread`), run on every tick with `active =` "some screen
+`unread.ts` is the window's former `views/monitor/unread.ts` verbatim (`reconcileUnread`; the window's copy was deleted
+at MV-8b, so this is the only one), run on every tick with `active =` "some screen
 reports it shown". `reportShown(screenId, ids)` replaces that screen's set; the first report opens the screen, an empty
 one too (its pane shows nothing), and `forgetScreen(screenId)` closes it. One screen reporting its active pane's row is
 exactly today's fold — the parity tests prove it against the ported function. Terminals never earn the mark.
@@ -116,7 +117,8 @@ open stamps first sight for every row, and forgetting the last screen drops ever
 
 ## Cost
 
-`usage-ledger.ts` ports `reconcileUsage`'s semantics per run id: runs keyed `${runtimeRunId}:${epoch}` under one entry,
+`usage-ledger.ts` ports `reconcileUsage`'s semantics (the window's former `views/monitor/usage-ledger.ts`, deleted at
+MV-8b) per run id: runs keyed `${runtimeRunId}:${epoch}` under one entry,
 a session continuity rule (same provider + native session accumulates across epochs; a different conversation resets),
 `total`/`coverage`/20 × 30 s `steps` from core's `costHistory` buckets — which is what refills the ten-minute window after
 a daemon restart (L11; seed/export persistence is NOT ported). Histories are recomputed per run on its state change and

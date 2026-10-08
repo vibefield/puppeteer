@@ -46,7 +46,7 @@ import {
   type GodviewTuning,
   type TweakSection,
 } from './TweakPanel.js';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
+import { MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
 import { useMonitorPalette } from '@vibecook/puppeteer-views';
 import {
   loadMonitorParameters,
@@ -364,10 +364,10 @@ function Godview() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [tweakPanelOpen]);
 
-  // Views that lay out in flow clear the chrome with these; the swarm instead
-  // reads the chrome's rect directly and steers bodies around it. The same
-  // measurement is the view host's stage (MV-D19): its size, the chrome's right
-  // edge as the left inset, and the chrome's rect as an obstacle.
+  // The chrome's measurement is the view host's stage (MV-D19): its size, the
+  // chrome's right edge as the left inset, and the chrome's rect as an obstacle.
+  // A view reads it there and nowhere else: a flow view clears the inset, the
+  // swarm steers its bodies around the obstacle.
   const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
@@ -377,8 +377,6 @@ function Godview() {
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
       const chromeRight = Math.round(rect.right - stageRect.left);
-      stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
       const measured: StageGeometry = {
         width: Math.round(stageRect.width),
         height: Math.round(stageRect.height),
@@ -844,7 +842,7 @@ function Godview() {
           commands={monitor.commands}
           scheduler={frameScheduler}
         />
-        <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
+        <div ref={chromeRef} className="vf-monitor-chrome">
           <ChromeBoundary name="usage" onError={reportChromeError} retryKey={usagePort}>
             <UsageColumn port={usagePort} />
           </ChromeBoundary>

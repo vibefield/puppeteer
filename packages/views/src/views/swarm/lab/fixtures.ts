@@ -8,17 +8,45 @@ import { AGENT_MARK_PROVIDERS } from '@vibecook/puppeteer-view-sdk/toolkit';
 import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../../monitor/types.js';
 import type { BubbleModelInput, SwarmBubbleModel } from '../bubble-model.js';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';
-import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../../monitor/usage-ledger.js';
 
 // Fixture agents for the design lab: every drawn state and every setting worth
-// comparing, as the same `MonitorAgent` shape the view receives, so the lab
-// draws with the production model and renderer and never with a stand-in.
+// comparing, as a host's `MonitorAgent` rows plus the cost a backend would have
+// computed for each, so the lab draws with the production model and renderer
+// and never with a stand-in.
+
+/**
+ * The cost a backend would have computed for a fixture body (packages/monitor's usage ledger): the held total and
+ * the ten-minute window in twenty 30 s steps, oldest first. Fixture data: no window keeps a usage ledger (L11), so a
+ * host's own row has no such field, and the lab's model reads it from here.
+ */
+export interface LabUsage {
+  /** Estimated API-equivalent USD for the work observed. */
+  total?: number | undefined;
+  coverage?: 'complete' | 'partial' | 'unavailable' | undefined;
+  /** USD per step, oldest first. */
+  steps: readonly number[];
+  stepMs: number;
+}
+
+/** A fixture's agent half: a host's facet, with the cost the fixture carries. */
+export interface LabAgentFacet extends MonitorAgentFacet {
+  usage?: LabUsage | undefined;
+}
+
+/** A fixture row: a host's row, its agent half carrying the fixture's cost. */
+export interface LabAgent extends MonitorAgent {
+  agent?: LabAgentFacet | undefined;
+}
+
+/** The backend's window: twenty steps of 30 s. */
+const STEP_MS = 30_000;
+const STEP_COUNT = 20;
 
 export interface LabStage {
   id: string;
   title: string;
   note: string;
-  agent: MonitorAgent;
+  agent: LabAgent;
   runningSinceMs?: number;
   /** A working body's place among the working sessions by tokens, 0..1; the lab sets it by hand. */
   workingShare?: number;
@@ -75,17 +103,17 @@ function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowM
   };
 }
 
-/** The ledger's history for a rate curve over the last ten minutes: one step per bar. */
-function usageHistory(shape: BurnShape, total: number | undefined): UsageHistory {
+/** The cost of a rate curve over the last ten minutes: one step per bar. */
+function usageOf(shape: BurnShape, total: number | undefined): LabUsage {
   const steps = Array.from(
-    { length: USAGE_STEP_COUNT },
-    (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000 / 1_000_000,
+    { length: STEP_COUNT },
+    (_, index) => (BURN_SHAPES[shape](index * 2) * STEP_MS) / 60_000 / 1_000_000,
   );
   return {
     ...(total === undefined ? {} : { total: total / 1_000_000 }),
     coverage: 'complete',
     steps,
-    stepMs: USAGE_STEP_MS,
+    stepMs: STEP_MS,
   };
 }
 
@@ -188,29 +216,29 @@ function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
   };
 }
 
-export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
+export function agentFixture(spec: AgentSpec, nowMs: number): LabAgent {
   const monitor = monitorState(spec, nowMs);
   const providerId =
     AGENT_MARK_PROVIDERS[(spec.mark ?? (spec.accent ?? 1) - 1) % AGENT_MARK_PROVIDERS.length] ?? 'imposter';
-  const facet: MonitorAgentFacet = {
+  const facet: LabAgentFacet = {
     provider: { id: providerId, label: providerId.slice(0, 1).toUpperCase() + providerId.slice(1) },
     ...(spec.model ? { model: spec.model } : {}),
     ...(spec.branch ? { branch: spec.branch } : {}),
     ...(monitor.context ? { contextWindow: monitor.context } : {}),
     monitor,
-    // A provider with no pricing lane has no ledger either: no total, no rate.
+    // A provider with no pricing lane has no cost either: no total, no rate.
     ...(spec.unpriced
       ? {}
       : spec.burn
-        ? { usage: usageHistory(spec.burn, spec.tokens) }
+        ? { usage: usageOf(spec.burn, spec.tokens) }
         : spec.tokens === undefined
           ? {}
           : {
               usage: {
                 total: spec.tokens / 1_000_000,
                 coverage: 'complete',
-                steps: new Array<number>(USAGE_STEP_COUNT).fill(0),
-                stepMs: USAGE_STEP_MS,
+                steps: new Array<number>(STEP_COUNT).fill(0),
+                stepMs: STEP_MS,
               },
             }),
     recency: spec.stale ? 'stale' : 'fresh',
@@ -230,7 +258,7 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
   };
 }
 
-export function terminalFixture(id: string, project: string, running: boolean, nowMs: number): MonitorAgent {
+export function terminalFixture(id: string, project: string, running: boolean, nowMs: number): LabAgent {
   return {
     id,
     session: session(id, running ? 'foreground-job' : 'shell-idle', nowMs),

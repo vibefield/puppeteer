@@ -178,9 +178,10 @@ export interface TerminalSessionHandoff {
   session: SessionSummary;
 }
 
-/* Transcript history (RFC 007) and the UI's usage ledger records: the shapes
-   live with the views that read them (`@vibecook/puppeteer-views`) and are
-   re-exported here for the main process and the preload. */
+/* Transcript history (RFC 007): the shapes live with the views that read them
+   (`@vibecook/puppeteer-views`) and are re-exported here for the main process
+   and the preload. (The UI's usage ledger records went with L11; the backend
+   holds the cost window in memory.) */
 export type {
   HistoryOriginSource,
   HistorySearchHit,

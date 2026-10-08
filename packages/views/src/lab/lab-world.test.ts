@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROJECT_TINT, projectTint } from '../colour/project-tint.js';
 import type { MonitorAgent } from '../monitor/types.js';
+import type { LabAgent } from '../views/swarm/lab/fixtures.js';
 import { LAB_AGENT_COUNTS, LAB_NOW_MS, labWorld, seededRandom } from './lab-world.js';
 
 const serialise = (world: ReturnType<typeof labWorld>): string => JSON.stringify(world);
@@ -26,7 +27,7 @@ describe('labWorld', () => {
 
   it('covers every state a view draws once n reaches twenty', () => {
     const { agents } = labWorld({ n: 20 });
-    const has = (predicate: (agent: MonitorAgent) => boolean): boolean => agents.some(predicate);
+    const has = (predicate: (agent: LabAgent) => boolean): boolean => agents.some(predicate);
     expect(new Set(agents.map((agent) => agent.status))).toEqual(new Set(['working', 'blocked', 'idle']));
     const waits = new Set(agents.flatMap((agent) => agent.agent?.monitor?.blockers.map((b) => b.kind) ?? []));
     expect(waits).toEqual(new Set(['permission', 'question', 'failure']));

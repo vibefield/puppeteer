@@ -8,8 +8,13 @@ import type {
   MonitorView,
   StageGeometry,
 } from '@vibecook/puppeteer-view-sdk';
-import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '../monitor/chrome.js';
+import {
+  keepStage,
+  MonitorViewHost,
+  type MonitorReplicaLike,
+  type ViewSlotCommands,
+} from '@vibecook/puppeteer-view-sdk/host';
+import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import { useMonitorPalette } from '../monitor/palette.js';
 import type { MonitorParameters } from '../monitor/parameters.js';
 import type { MonitorTheme } from '../monitor/types.js';
@@ -162,8 +167,8 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
     () => ({ scheme: params.theme, tokens: palette, reducedMotion: false, animations: params.animations }),
     [palette, params.animations, params.theme],
   );
-  // As Godview publishes them: the view is handed the chrome's measurement as its stage (MV-D19), the chrome's right
-  // edge as the left inset; the two properties are the host's own, as Godview sets them on its stage.
+  // As Godview publishes it: the view is handed the chrome's measurement as its stage (MV-D19), the chrome's right
+  // edge as the left inset and its rect as an obstacle; an equal tick keeps the stage held (M176 item 1).
   const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
@@ -173,9 +178,7 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
       const chromeRight = Math.round(rect.right - stageRect.left);
-      stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${chromeRight}px`);
-      setStageGeometry({
+      const measured: StageGeometry = {
         width: Math.round(stageRect.width),
         height: Math.round(stageRect.height),
         insets: { top: 0, right: 0, bottom: 0, left: chromeRight },
@@ -187,7 +190,8 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
             height: Math.round(rect.height),
           },
         ],
-      });
+      };
+      setStageGeometry((current) => keepStage(current, measured));
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
@@ -220,7 +224,7 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
       'section',
       { ref: stageRef, className: MONITOR_STAGE_CLASS, style: { width, height }, 'aria-label': 'Agent monitor' },
       view,
-      createElement('div', { ref: chromeRef, className: 'vf-monitor-chrome', [MONITOR_CHROME_ATTRIBUTE]: '' }),
+      createElement('div', { ref: chromeRef, className: 'vf-monitor-chrome' }),
     ),
     params.capture
       ? null

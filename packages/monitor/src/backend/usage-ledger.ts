@@ -2,8 +2,9 @@ import type { MonitorCostBucket, MonitorUsageState } from '@vibecook/puppeteer-c
 import type { CostCoverage } from '@vibecook/puppeteer-view-sdk/model';
 import { deepEqual } from './equal.js';
 
-// The usage ledger, ported from `views/monitor/usage-ledger.ts` (`reconcileUsage`
-// + `historyOf`) as a per-run incremental table. Core owns the accounting: a
+// The usage ledger, ported from the window's former `views/monitor/usage-ledger.ts`
+// (`reconcileUsage` + `historyOf`; deleted at MV-8b, so this is the one ledger, L11)
+// as a per-run incremental table. Core owns the accounting: a
 // reading can neither mint spend nor suppress a correction; the ledger only
 // holds each run's corrected total and lays its 30 s buckets on a fixed grid.
 // Persistence (`seedUsage` / `exportUsage`) is not ported: the series lives in

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MonitorUsageState } from '@vibecook/puppeteer-core';
 import { USAGE_STEP_MS, UsageLedger } from './usage-ledger.js';
 
-// `views/monitor/usage-ledger.test.ts`, less the persistence it no longer has.
+// The window's former `views/monitor/usage-ledger.test.ts` (deleted at MV-8b), less the persistence it no longer has.
 
 const T0 = Date.parse('2026-09-16T12:00:00Z');
 const usage = (costUsd: number, at = T0): MonitorUsageState => ({

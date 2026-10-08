@@ -1,6 +1,7 @@
 import { presentAgentMonitorHeadline } from '@vibecook/puppeteer-core';
 import type { AgentView, MonitorCost, MonitorDeviceRef, MonitorModel, MonitorWait } from '@vibecook/puppeteer-view-sdk';
 import type { MonitorAgent } from '../monitor/types.js';
+import type { LabAgent } from '../views/swarm/lab/fixtures.js';
 import { labWorld, type LabWorldOptions } from './lab-world.js';
 
 // The seeded world as the SDK's model (MV-4): the same rows `labWorld` draws,
@@ -11,9 +12,10 @@ import { labWorld, type LabWorldOptions } from './lab-world.js';
 // draws.
 //
 // Each fact is the backend's word for what the world's row says: the line
-// under the name is Core's headline (M4), the cost is the ledger's total with
-// its burn by the hour, a wait is the first blocker's parts, and a peer's row
-// is on its own desktop with its host's write policy (M41). The order is the
+// under the name is Core's headline (M4), the cost is the fixture's total
+// (what the backend's ledger would hold) with its burn by the hour, a wait is
+// the first blocker's parts, and a peer's row is on its own desktop with its
+// host's write policy (M41). The order is the
 // world's own (agents, peers, bare terminals), because a view that places
 // columns by order (the rain) must meet the rows in the order its legacy lab
 // met them.
@@ -45,7 +47,7 @@ function labWait(agent: MonitorAgent): MonitorWait | undefined {
   };
 }
 
-function labCost(agent: MonitorAgent, nowMs: number): MonitorCost | undefined {
+function labCost(agent: LabAgent, nowMs: number): MonitorCost | undefined {
   const facet = agent.agent;
   const usage = facet?.monitor?.usage;
   if (!facet?.monitor || !usage) return undefined;
@@ -62,7 +64,7 @@ function labCost(agent: MonitorAgent, nowMs: number): MonitorCost | undefined {
 }
 
 /** One of the world's rows as the backend and this window's replica would hand it to a view. */
-export function labAgentView(agent: MonitorAgent, nowMs: number): AgentView {
+export function labAgentView(agent: LabAgent, nowMs: number): AgentView {
   const facet = agent.agent;
   const monitor = facet?.monitor;
   const remote = agent.remote;

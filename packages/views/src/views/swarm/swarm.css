@@ -106,7 +106,8 @@
   transform: translate(-50%, -50%);
 }
 
-/* The empty stage and the failure notice: the hosts' `.vf-monitor-empty`, in the view's own class (W5). */
+/* The empty stage and the failure notice: what the hosts' `.vf-monitor-empty` drew until MV-5, in the view's own
+   class (W5). */
 .mv-swarm .vf-monitor-swarm-empty {
   position: absolute;
   inset: 0;
