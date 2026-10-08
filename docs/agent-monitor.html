@@ -2780,6 +2780,20 @@ interface AgentMonitorViewDefinition&lt;Item, Actions, Parameters&gt; {
                 </p>
               </article>
               <article class="card">
+                <h3>spend</h3>
+                <p>
+                  Where the money went: what each priced agent spent in the last ten minutes Core holds (estimated, at
+                  API prices), a line in its project's colour from $0 that climbs as it spends, always ending at now,
+                  and a watchlist beside it, most spent first, printing each run's total. A line is drawn from the
+                  row's cost, its total and its twenty 30-second buckets, as the backend hands them over (MV-7);
+                  another desktop's row has a total and no line. Pointing at the chart reads that moment in the list
+                  and the total, rows not yet started fade and say when they start; a click on empty chart sets the
+                  moment, and the Now pill (End printed under its glyph) lets it go. Runtime only: it keeps no history
+                  and persists nothing. An agent with no price is named, never drawn. Tunes the line weight and the lit
+                  line's wash.
+                </p>
+              </article>
+              <article class="card">
                 <h3>inspector</h3>
                 <p>
                   Shell-owned detail for the active agent: metrics, blockers and structured questions, actors,

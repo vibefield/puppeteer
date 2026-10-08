@@ -73,6 +73,19 @@ export * from './views/timeline/pulse-map.js';
 export { TimelineView } from './views/timeline/TimelineView.js';
 // The timeline's example afternoon, for a host's catalog to mount the shipping view with.
 export * from './views/timeline/lab/timeline-fixtures.js';
+export * from './views/spend/index.js';
+export * from './views/spend/spend-parameters.js';
+export { SpendView } from './views/spend/SpendView.js';
+export {
+  spendSet,
+  spendMeters,
+  type SpendLine,
+  type SpendMeter,
+  type SpendSet,
+  type SpendUnpriced,
+} from './views/spend/spend-series.js';
+// The spend view's example afternoon, for a host's catalog to mount the shipping view with.
+export * from './views/spend/lab/spend-fixtures.js';
 // The seeded world every lab and golden draws (MV-0): n rows over every state, at a fixed clock.
 export * from './lab/lab-world.js';
 // The deck's pane frame (record §07) behind a verbs port — PU-14.

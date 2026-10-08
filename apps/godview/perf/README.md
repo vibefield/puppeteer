@@ -16,7 +16,7 @@ node perf/harness.mjs --b /path/to/slice/apps/godview      # A/B/A′ rounds; A 
 | `--a`, `--b`                  | this app, none           | the `apps/godview` directories to compare (each built)                                                                        |
 | `--rounds`                    | 7                        | each round runs every arm once, in an order rotated per round; seven before z is read (build-mv M24)                          |
 | `--counts`                    | 10,20,60                 | agents on the board, grown in one launch: 10, then 20, then 60                                                                |
-| `--views`                     | swarm,list,rain,timeline | measured at each count, in an order rotated per round                                                                         |
+| `--views`                     | swarm,list,rain,timeline | measured at each count, in an order rotated per round; `spend` too, where every arm has it (MV-7)                           |
 | `--warmup-ms` / `--window-ms` | 3000 / 10000             | after switching view, settle, then measure                                                                                    |
 | `--step-ms`                   | 3000                     | each agent changes state this often, its phase offset by its place                                                            |
 | `--fps`                       | 60                       | the offscreen frame rate (Electron allows up to 240)                                                                          |

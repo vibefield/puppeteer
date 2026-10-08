@@ -37,7 +37,9 @@ const thisApp = join(here, '..');
 const repo = join(thisApp, '../..');
 const electron = createRequire(import.meta.url)('electron');
 const imposter = join(repo, 'packages/imposter/bin/ai.mjs');
-const VIEW_LABELS = { swarm: 'SWARM', list: 'LIST', rain: 'RAIN', timeline: 'TIMELINE' };
+// Each view's bar button by its label. `spend` (MV-7) is measured when asked for: an arm built before it has no button,
+// so the default stays the four every arm has.
+const VIEW_LABELS = { swarm: 'SWARM', list: 'LIST', rain: 'RAIN', timeline: 'TIMELINE', spend: 'SPEND' };
 const PROJECTS = 6;
 
 function option(name, fallback) {

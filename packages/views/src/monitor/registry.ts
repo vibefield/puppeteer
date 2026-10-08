@@ -1,6 +1,7 @@
 import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
 import { listMonitorView } from '../views/list/index.js';
 import { rainMonitorView } from '../views/rain/index.js';
+import { spendMonitorView } from '../views/spend/index.js';
 import { swarmMonitorView } from '../views/swarm/index.js';
 import { timelineMonitorView } from '../views/timeline/index.js';
 import type { MonitorViewEntry } from './types.js';
@@ -22,13 +23,14 @@ export function monitorViewEntry(view: MonitorView): MonitorViewEntry {
 /**
  * Every way of looking at the running agents. A new view is one directory under
  * `views/` and one entry here — the same shape `createBuiltinProviders` gives
- * agent providers in packages/runtime. Every one is an SDK view (MV-4, MV-5, MV-6).
+ * agent providers in packages/runtime. Every one is an SDK view (MV-4, MV-5, MV-6, MV-7).
  */
 export const MONITOR_VIEWS: readonly MonitorViewEntry[] = [
   monitorViewEntry(swarmMonitorView),
   monitorViewEntry(listMonitorView),
   monitorViewEntry(rainMonitorView),
   monitorViewEntry(timelineMonitorView),
+  monitorViewEntry(spendMonitorView),
 ];
 
 export const DEFAULT_MONITOR_VIEW_ID = swarmMonitorView.manifest.id;
