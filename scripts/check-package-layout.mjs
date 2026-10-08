@@ -195,6 +195,12 @@ const retiredRepositoryPaths = [
   'packages/testing/src/session-projection.ts',
   'packages/view-sdk/src/host/legacy.ts',
   'packages/views/src/legacy',
+  // The window's own ledgers and a view's host-DOM helper (MV-8b, M176 item 5): the backend computes unread and cost
+  // once (L5, L11), and a view reads its stage from its input (MV-D19).
+  'packages/views/src/monitor/chrome.ts',
+  'packages/views/src/monitor/unread.ts',
+  'packages/views/src/monitor/usage-history.ts',
+  'packages/views/src/monitor/usage-ledger.ts',
   'packages/views/src/views/swarm/physics/context.tsx',
 ];
 
