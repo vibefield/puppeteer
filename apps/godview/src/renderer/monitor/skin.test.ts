@@ -4,8 +4,8 @@ import { MONITOR_SKIN } from '@vibecook/puppeteer-view-sdk';
 
 // L18: every host defines the skin on its stage, so a view's stylesheet can read it and nothing else of the host's.
 // Godview's stage sits inside `.vf-godview`, whose theme classes carry the instrument skin's colours (godview.css);
-// the skin's named easings are the same in every theme, defined once on `:root` (tokens.css), which the stage
-// inherits (M57).
+// the skin's named easings and its sans are the same in every theme, defined once on `:root` (tokens.css), which the
+// stage inherits (M57, M178).
 
 const sheet = (file: string): string =>
   readFileSync(new URL(`../styles/${file}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -39,5 +39,10 @@ describe("Godview's stage", () => {
 
   it('finds the island easing the timeline moves on where every theme reads it (M57)', () => {
     expect(everyTheme.get('--vf-ease-island')).toBe('cubic-bezier(0.25, 1, 0.3, 1)');
+  });
+
+  it('finds the sans the spend view sets its words in where every theme reads it, under a monospace stage (M178)', () => {
+    expect(everyTheme.get('--vf-font-sans')).toMatch(/sans-serif$/);
+    expect(godview).toMatch(/\.vf-godview \{[^}]*font-family: ui-monospace/);
   });
 });

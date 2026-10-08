@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Capture the view goldens (README.md): every lab view (list, rain, swarm, timeline) in both themes
+// Capture the view goldens (README.md): every lab view (list, rain, swarm, timeline, spend) in both themes
 // at Godview's three stage sizes, for n = 1 and n = 20, on the capture clock, still (the rain and
 // the swarm in motion, below). One offscreen Electron window does all of it
 // (capture-main.mjs). The wall clock's time zone and the locale are pinned, because the timeline
@@ -46,6 +46,8 @@ const VIEWS = [
   // One set of ids since MV-8: the timeline was captured twice, with the book Godview kept and bare (`-bare`), until
   // MV-6 retired the book (runtime only, L10) and both drew byte-identical images; MV-8 folded them (M60, M63).
   { view: 'timeline', page: 'timeline-lab.html', script: 'timeline-lab.mjs', animations: '0' },
+  // The spend view (MV-7), still: its only motion is a waiting head's wave, which the switch stops (MV-W4).
+  { view: 'spend', page: 'spend-lab.html', script: 'spend-lab.mjs', animations: '0' },
 ];
 
 const flag = (name) => process.argv.includes(`--${name}`);
