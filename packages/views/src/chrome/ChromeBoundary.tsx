@@ -9,19 +9,34 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
  * that threw goes; the stage, the view host and every other piece stay.
  *
  * A failed piece says it is unavailable; a healthy piece's DOM is unchanged.
- * When the host renders it with new children (the next state or frame of
- * facts), it tries the piece again, or waits for an explicit retryKey to change. A transient read heals itself; the host's
- * reporter hears a persistent failure once per distinct error.
+ * It is tried again only when a fact that can fix it changes (M176 item 1),
+ * never because its host rendered: a host that observes the piece's own box
+ * renders again when the fallback replaces it, and retrying on that render
+ * remounted a persistent failure in a loop.
+ *
+ * - **No `retryKey`:** the piece stays unavailable until the host remounts it.
+ * - **A `retryKey`:** a change of it tries the piece again, at most once per
+ *   window. The first window is {@link CHROME_RETRY_FIRST_MS}; each retry that
+ *   fails again doubles it, up to {@link CHROME_RETRY_CAP_MS}. A change inside
+ *   the window waits for its end and retries once with the facts standing
+ *   then, so a key that changes on every publish cannot hot-loop.
+ * - **The report:** `onError` hears a failure once per episode, from the first
+ *   throw until the piece renders again, never once per retry.
  */
 export interface ChromeBoundaryProps {
   /** Which piece this is, for the report. */
   readonly name: string;
-  /** Told each time the piece fails with an error unlike the last one it reported. */
+  /** Told once per failure episode: when the piece first fails, not on each retry that fails again. */
   readonly onError?: ((error: unknown, name: string) => void) | undefined;
-  /** Retry only when these owning facts change; omitted, a new child still retries. */
+  /** The owning facts that can fix a failure: a change retries, within the backoff. Omitted, nothing retries. */
   readonly retryKey?: unknown;
   readonly children?: ReactNode;
 }
+
+/** The first backoff window after a failure, in ms. */
+export const CHROME_RETRY_FIRST_MS = 1_000;
+/** The longest window the doubling reaches, in ms. */
+export const CHROME_RETRY_CAP_MS = 30_000;
 
 interface ChromeBoundaryState {
   readonly failed: boolean;
@@ -29,27 +44,61 @@ interface ChromeBoundaryState {
 
 export class ChromeBoundary extends Component<ChromeBoundaryProps, ChromeBoundaryState> {
   override state: ChromeBoundaryState = { failed: false };
-  private reported: string | undefined;
+  /** Inside a failure episode: from the first throw until the piece renders again. */
+  private failing = false;
+  /** The retry key the last attempt rendered with; only a different one is worth a retry. */
+  private attemptKey: unknown;
+  /** The current window's length, and when it ends. */
+  private windowMs = 0;
+  private retryAt = 0;
+  private timer: ReturnType<typeof setTimeout> | undefined;
 
   static getDerivedStateFromError(): ChromeBoundaryState {
     return { failed: true };
   }
 
   override componentDidCatch(error: unknown, _info: ErrorInfo): void {
-    const said = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    if (said === this.reported) return;
-    this.reported = said;
-    this.props.onError?.(error, this.props.name);
+    this.attemptKey = this.props.retryKey;
+    if (this.failing) {
+      // A retry that failed again: the same episode, a window twice as long.
+      this.windowMs = Math.min(this.windowMs * 2, CHROME_RETRY_CAP_MS);
+    } else {
+      this.failing = true;
+      this.windowMs = CHROME_RETRY_FIRST_MS;
+      this.props.onError?.(error, this.props.name);
+    }
+    this.retryAt = Date.now() + this.windowMs;
   }
 
-  override componentDidUpdate(previous: ChromeBoundaryProps): void {
-    // A host observing this piece's DOM may render because the fallback replaced it.
-    // Its explicit fact key prevents that render from immediately retrying the same bad read.
-    const changed =
-      'retryKey' in this.props
-        ? !Object.is(previous.retryKey, this.props.retryKey)
-        : previous.children !== this.props.children;
-    if (this.state.failed && changed) this.setState({ failed: false });
+  override componentDidUpdate(_previous: ChromeBoundaryProps, previousState: ChromeBoundaryState): void {
+    if (previousState.failed && !this.state.failed) {
+      // The retry rendered: the episode is over, and the next failure starts a new one.
+      this.failing = false;
+      this.windowMs = 0;
+      return;
+    }
+    if (this.state.failed) this.consider();
+  }
+
+  override componentWillUnmount(): void {
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+
+  /** Tries the piece again if its owning facts changed since the failed attempt: now, or when the window ends. */
+  private consider(): void {
+    if (!this.failing || this.timer !== undefined) return;
+    if (!('retryKey' in this.props) || Object.is(this.props.retryKey, this.attemptKey)) return;
+    const wait = this.retryAt - Date.now();
+    if (wait > 0) {
+      this.timer = setTimeout(() => {
+        this.timer = undefined;
+        if (this.state.failed) this.consider();
+      }, wait);
+      return;
+    }
+    this.attemptKey = this.props.retryKey;
+    this.setState({ failed: false });
   }
 
   override render(): ReactNode {
