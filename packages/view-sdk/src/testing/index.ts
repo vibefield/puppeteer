@@ -2,7 +2,8 @@
  * `@vibecook/puppeteer-view-sdk/testing`: what a view's tests (and a host's)
  * may use (L16). Never imported by a view's own code.
  *
- * - Fixtures: deterministic agents, models, themes, stages and inputs.
+ * - Fixtures: deterministic agents, models, themes, stages and inputs; the
+ *   record's past (`fixtureHistory`) as a host lends it.
  * - `createFixtureReplica`: a hand-driven replica keeping the identity rules,
  *   its spawn menu included; given the slot's scheduler it batches like the real one.
  * - `checkConformance` / `runConformance`: the suite every view passes (MV-W4).
@@ -39,6 +40,7 @@ export {
   FIXTURE_EPOCH,
   FIXTURE_STAGES,
   fixtureColour,
+  fixtureHistory,
   fixtureInput,
   fixtureModel,
   fixturePalette,
@@ -53,6 +55,7 @@ export {
   type FixtureInputPartial,
   type FixtureScheme,
   type FixtureStageSize,
+  type HistoryFixtureOptions,
 } from './fixtures.js';
 export { createFrameDriver, type FrameDriver, type FrameDriverOptions } from './frames.js';
 export { deepFreeze } from './freeze.js';

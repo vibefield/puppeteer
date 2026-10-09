@@ -12,7 +12,10 @@ import type {
   AgentView,
   MonitorAgentRow,
   MonitorDeviceRef,
+  MonitorEndedRow,
+  MonitorLivePast,
   MonitorModel,
+  MonitorPastSpan,
   MonitorProject,
   MonitorSpawnMenu,
   MonitorWait,
@@ -20,6 +23,7 @@ import type {
 import { allAdded } from '../internal/input.js';
 import type {
   MonitorCapabilities,
+  MonitorHistory,
   MonitorPalette,
   MonitorParameterGroup,
   MonitorParameterValues,
@@ -389,6 +393,86 @@ export function fixtureModel(agents: readonly AgentView[], revision = 1): Monito
 }
 
 export const NO_CAPABILITIES: MonitorCapabilities = Object.freeze({});
+
+export interface HistoryFixtureOptions {
+  /** The window's end; it reaches a day back. Default: a day after the epoch. */
+  readonly untilMs?: number | undefined;
+  /** Rows given a past before their `statusSince`: worked, quiet, then worked up to the seam. */
+  readonly live?: readonly AgentView[] | undefined;
+  /** `bounds` is the floor: ended lanes as one `active` band each, and no live past. Default `turns`. */
+  readonly fidelity?: 'turns' | 'bounds' | undefined;
+  readonly scheme?: FixtureScheme | undefined;
+}
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+
+/** Spans from `[kind, from, to]` triples, each time in minutes before `end`. */
+function spansBefore(
+  end: number,
+  parts: readonly (readonly [MonitorPastSpan['kind'], number, number])[],
+): MonitorPastSpan[] {
+  return parts.map(([kind, from, to]) => ({ kind, from: end - from * MINUTE, to: end - to * MINUTE }));
+}
+
+/**
+ * The record's past as a host lends it (capability `history`): two ended runs — one with a silence inside a turn,
+ * drawn `unrecorded` — and, for each `live` row, a past up to its `statusSince`. The same history on every run.
+ */
+export function fixtureHistory(options: HistoryFixtureOptions = {}): MonitorHistory {
+  const untilMs = options.untilMs ?? FIXTURE_EPOCH + 24 * HOUR;
+  const sinceMs = untilMs - 24 * HOUR;
+  const fine = (options.fidelity ?? 'turns') === 'turns';
+  const scheme = options.scheme ?? 'dark';
+  const ended = (
+    id: string,
+    project: MonitorProject,
+    endedAt: number,
+    parts: readonly (readonly [MonitorPastSpan['kind'], number, number])[],
+  ): MonitorEndedRow & { colour: string } => {
+    const spans = spansBefore(endedAt, parts);
+    const startedAt = spans[0]!.from;
+    return {
+      id: `past:claude:${id}`,
+      provider: { id: 'claude', label: 'Claude Code' },
+      project,
+      device: FIXTURE_DEVICE,
+      startedAt,
+      endedAt,
+      spans: fine ? spans : [{ kind: 'active', from: startedAt, to: endedAt }],
+      colour: fixtureColour(project, scheme),
+    };
+  };
+  const live: MonitorLivePast[] = fine
+    ? (options.live ?? []).map((row) => ({
+        id: row.id,
+        seamAt: row.statusSince,
+        spans: spansBefore(row.statusSince, [
+          ['worked', 120, 90],
+          ['quiet', 90, 30],
+          ['worked', 30, 0],
+        ]).filter((span) => span.from >= sinceMs),
+      }))
+    : [];
+  return freezeDeep({
+    sinceMs,
+    untilMs,
+    readAt: untilMs,
+    fidelity: fine ? 'turns' : 'bounds',
+    state: 'complete',
+    live,
+    ended: [
+      ended('ended-1', { name: 'billing-api', seq: 0 }, untilMs - 5 * HOUR, [
+        ['worked', 180, 140],
+        ['unrecorded', 140, 100],
+        ['worked', 100, 70],
+        ['quiet', 70, 40],
+        ['worked', 40, 0],
+      ]),
+      ended('ended-2', { name: 'rosetta', seq: 2 }, untilMs - 2 * HOUR, [['worked', 50, 0]]),
+    ],
+  });
+}
 
 /** The defaults a host would store for a view's parameters. */
 export function parameterDefaults(

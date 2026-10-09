@@ -15,7 +15,9 @@ import type {
   AgentStatus,
   AgentView,
   ModelChanges,
+  MonitorEndedRow,
   MonitorModel,
+  MonitorPastSnapshot,
   MonitorSpawnMenu,
   MonitorSpawnTarget,
 } from './model.js';
@@ -109,12 +111,37 @@ export interface MonitorTheme {
   readonly animations: boolean;
 }
 
+/** An ended lane as a view sees it: the backend's row, coloured by the view host as `AgentView.colour` is. */
+export interface EndedLaneView extends MonitorEndedRow {
+  /** The project's colour in the current theme; the neutral ramp for no project. */
+  readonly colour: string;
+}
+
+/** The record's past, lent to a view that asked for it (capability `history`). */
+export interface MonitorHistory extends Omit<MonitorPastSnapshot, 'ended'> {
+  readonly ended: readonly EndedLaneView[];
+}
+
+/**
+ * What a view asks of the record, in its report. The host reads only while the view is mounted and its ask stands
+ * (PF6); the slot drops the ask with the view.
+ */
+export interface MonitorHistoryAsk {
+  /** The earliest moment the view draws, epoch ms. The host reads from here to now, at most a day back. */
+  readonly sinceMs: number;
+  /** Bumped to read the same window again: a view that scrubs to a moment past `history.untilMs` asks anew. */
+  readonly seq?: number | undefined;
+}
+
 /** What the backend lends a view beyond the model (MV-D4). */
 export interface MonitorCapabilities {
   /** The desktops and profiles a new terminal can be born under. Absent: a create opens one here at once. */
   readonly spawn?: MonitorSpawnMenu | undefined;
-  /** Reserved for history read from rosettad. Nothing provides it yet. */
-  readonly history?: never;
+  /**
+   * The record's past, read from rosettad, for a view that asked (`ViewReport.history`). Absent: this host has no
+   * record (puppeteer's own Godview), or nothing asked yet; a view draws runtime state alone, as before.
+   */
+  readonly history?: MonitorHistory | undefined;
 }
 
 export type MonitorCapabilityName = 'spawn' | 'history';
@@ -158,6 +185,8 @@ export interface ViewReport {
   readonly physics?: 'worker' | 'inline' | undefined;
   /** The view holds key events (an open bloom): the host's own keys stand aside. */
   readonly keysHeld?: boolean | undefined;
+  /** The past the view wants drawn (capability `history`). Absent: it wants none. */
+  readonly history?: MonitorHistoryAsk | undefined;
 }
 
 /** The host's answer to a create (SB §2.6): a refusal is an answer, not an error, so the promise never rejects. */

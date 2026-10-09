@@ -241,6 +241,76 @@ export interface MonitorModelChange {
   readonly spawn?: MonitorSpawnMenu | undefined;
 }
 
+/* The record's past (capability `history`, MV-D4). Read from rosettad by the backend at each ask, joined with the
+ * model there, and held nowhere: the backend still keeps live state only. Never a row of the model and never synced
+ * per row; a screen asks for it while a view that draws it is mounted. */
+
+/**
+ * What a stretch of a lane's past was, as the record can say it. Never blocked and never unseen: a transcript does
+ * not record a permission wait or a person's glance.
+ *
+ * - `worked`: inside a turn.
+ * - `quiet`: between turns.
+ * - `unrecorded`: a silence longer than the backend's cut (15 min) inside a turn. The record cannot say whether the
+ *   agent worked or waited there.
+ * - `active`: the record's bounds alone (the floor, when no turns were read). Activity was recorded between them, and
+ *   what it was inside is unknown.
+ */
+export type MonitorPastSpanKind = 'worked' | 'quiet' | 'unrecorded' | 'active';
+
+export interface MonitorPastSpan {
+  readonly kind: MonitorPastSpanKind;
+  /** Epoch ms, inside the window asked. */
+  readonly from: number;
+  readonly to: number;
+}
+
+/** A row's past before the runtime took over: what the record says it did until its current status began. */
+export interface MonitorLivePast {
+  /** The model row it belongs to. */
+  readonly id: string;
+  /** The row's `statusSince` when the past was read: from here on the runtime speaks for the lane. */
+  readonly seamAt: number;
+  /** Oldest first, never overlapping, all before `seamAt`. */
+  readonly spans: readonly MonitorPastSpan[];
+}
+
+/** A run the record holds in the window that the model does not: it ended, or ran outside this desktop's runtime. */
+export interface MonitorEndedRow {
+  /** `past:<provider>:<native session id>`, never a model row's id. */
+  readonly id: string;
+  readonly provider?: { readonly id: string; readonly label: string } | undefined;
+  /** A folder name and its colour's sequence, as a live row's. */
+  readonly project: MonitorProject;
+  readonly device: MonitorDeviceRef;
+  /** Its birth: when the record began. */
+  readonly startedAt: number;
+  /** Its last recorded activity. */
+  readonly endedAt: number;
+  /** Oldest first, never overlapping. */
+  readonly spans: readonly MonitorPastSpan[];
+}
+
+/**
+ * The past of one window of time, as the backend derived it from the record. `fidelity` says how fine it is:
+ * `turns` from the record's turns, `bounds` from each session's first and last activity alone (ended runs only, one
+ * `active` band each; live rows' past stays unrecorded).
+ */
+export interface MonitorPastSnapshot {
+  /** The window read, epoch ms; at most a day. */
+  readonly sinceMs: number;
+  readonly untilMs: number;
+  /** When the backend read it. */
+  readonly readAt: number;
+  readonly fidelity: 'turns' | 'bounds';
+  /** `partial`: some of the record could not be read; `unavailable`: none of it. `detail` says why, in words. */
+  readonly state: 'complete' | 'partial' | 'unavailable';
+  readonly detail?: string | undefined;
+  readonly live: readonly MonitorLivePast[];
+  /** In birth order. */
+  readonly ended: readonly MonitorEndedRow[];
+}
+
 /** Orders rows the way every snapshot does: agents by birth, then terminals, ties by id. */
 export function compareMonitorRows(a: MonitorAgentRow, b: MonitorAgentRow): number {
   if (a.kind !== b.kind) return a.kind === 'agent' ? -1 : 1;
