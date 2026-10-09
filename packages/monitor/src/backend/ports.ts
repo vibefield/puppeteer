@@ -4,6 +4,7 @@ import type {
   MonitorDeviceRef,
   MonitorModelChange,
   MonitorModelSnapshot,
+  MonitorPastSnapshot,
   MonitorSpawnDevice,
   MonitorSpawnTarget,
 } from '@vibecook/puppeteer-view-sdk/model';
@@ -132,6 +133,69 @@ export interface ProjectIdentityStore {
   deal(key: string): number;
 }
 
+/** A window of time the record is asked about, epoch ms. */
+export interface MonitorPastWindow {
+  readonly sinceMs: number;
+  readonly untilMs: number;
+}
+
+/** One stretch of a turn with no recorded activity, longer than the cut the backend asked for. */
+export interface MonitorRecordedSilence {
+  readonly from: number;
+  readonly to: number;
+}
+
+/** One turn of a recorded session: its first and last activity, and the silences inside it. */
+export interface MonitorRecordedTurn {
+  readonly firstAt: number;
+  readonly lastAt: number;
+  readonly silences?: readonly MonitorRecordedSilence[] | undefined;
+}
+
+/** A top-level session the record holds activity for in the window. */
+export interface MonitorRecordedSession {
+  /** The runtime's provider id (the host translates the record's own word): with the native id, the join key. */
+  readonly provider: { readonly id: string; readonly label: string };
+  readonly nativeSessionId: string;
+  /** When the session began, as the record knows it. */
+  readonly startedAt?: number | undefined;
+  /** Its first and last recorded activity, the whole session's (not clipped to the window). */
+  readonly firstAt: number;
+  readonly lastAt: number;
+  /** The key its project's colour is dealt by, as the host folds it (a live run's `projectKey` for the same place). */
+  readonly projectKey?: string | undefined;
+  /** The folder name to show; absent: the key's last segment. */
+  readonly projectName?: string | undefined;
+  /** Its turns that touch the window, oldest first. Absent: only the bounds were read (the floor). */
+  readonly turns?: readonly MonitorRecordedTurn[] | undefined;
+}
+
+/** What the record answered for a window. */
+export interface MonitorRecordedActivity {
+  /** `turns` when sessions carry their turns; `bounds` when only first and last activity were read. */
+  readonly fidelity: 'turns' | 'bounds';
+  /** Some of the record could not be read; `detail` says what, in words. */
+  readonly partial: boolean;
+  readonly detail?: string | undefined;
+  readonly sessions: readonly MonitorRecordedSession[];
+}
+
+/**
+ * The record, as the host reads it (VibeField: fieldd over rosettad). Asked on demand, never polled by the backend;
+ * a refusal is thrown and becomes the past's honest `unavailable`. The backend never imports a record's client: the
+ * host owns the reading and the translation, the backend the join and the derivation.
+ */
+export interface MonitorHistoryPort {
+  /**
+   * The sessions with activity in the window. `silenceMs` is the backend's cut: report silences inside a turn longer
+   * than it. A host that cannot read turns answers `bounds`.
+   */
+  read(
+    window: MonitorPastWindow,
+    options: { readonly silenceMs: number; readonly signal?: AbortSignal | undefined },
+  ): Promise<MonitorRecordedActivity>;
+}
+
 export interface MonitorClock {
   /** Epoch ms. */
   now(): number;
@@ -177,6 +241,8 @@ export interface CreateMonitorBackendOptions {
   host: MonitorHostPort;
   identity: ProjectIdentityStore;
   sink: MonitorCommandSink;
+  /** The record (capability `history`). Absent: `readPast` answers `unavailable`, and views draw runtime state alone. */
+  history?: MonitorHistoryPort | undefined;
   /**
    * Cost across a resumed conversation (M15): `accumulate` is puppeteer Godview's reading (a new epoch of the same
    * provider + native session adds up; a new conversation resets), `current` is VibeField's (the current epoch alone).
@@ -226,6 +292,12 @@ export interface MonitorBackend {
    * `runtimeRunId`. Undefined while the run has no row (not named, removed, or the backend disposed).
    */
   idOf(runtimeRunId: string): string | undefined;
+  /**
+   * The record's past for a window, joined with the model as it is now: each row's past before its current status
+   * (by provider and native session id, AR-D3), and the runs the record holds that the model does not. Read through
+   * the history port at each ask and held nowhere; never rejects (a refusal is `unavailable`, with its words).
+   */
+  readPast(window: MonitorPastWindow, signal?: AbortSignal): Promise<MonitorPastSnapshot>;
   /** Resolves once the runtime's all-runs listing has been merged. */
   readonly ready: Promise<void>;
   dispose(): void;

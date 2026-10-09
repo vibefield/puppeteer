@@ -21,6 +21,7 @@ import {
   resolveProfileSet,
 } from './derive.js';
 import { deepEqual, freezeTree } from './equal.js';
+import { clampPastWindow, derivePast, PAST_SILENCE_MS, unavailablePast, type PastLiveRun } from './past.js';
 import { blockedProfileSets, spawnMenuOf } from './spawn.js';
 import { EMPTY_UNREAD_LEDGER, reconcileUnread, type UnreadCandidate, type UnreadLedger } from './unread.js';
 import { USAGE_STEP_MS, UsageLedger, type UsageHistory } from './usage-ledger.js';
@@ -612,6 +613,43 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       const id = idByRun.get(runtimeRunId);
       const inputs = id === undefined ? undefined : entries.get(id)?.inputs;
       return inputs?.kind === 'agent' && inputs.host.runtimeRunId === runtimeRunId ? id : undefined;
+    },
+    async readPast(asked, signal) {
+      const window = clampPastWindow(asked) ?? { sinceMs: asked.untilMs, untilMs: asked.untilMs };
+      const port = options.history;
+      if (port === undefined) return freezeTree(unavailablePast(window, clock.now(), 'No record of past runs here'));
+      if (window.untilMs <= window.sinceMs) {
+        return freezeTree(unavailablePast(window, clock.now(), 'The window asked holds no time'));
+      }
+      let activity;
+      try {
+        activity = await port.read(window, { silenceMs: PAST_SILENCE_MS, ...(signal ? { signal } : {}) });
+      } catch (error) {
+        // the host's words: a record that is not running, starting, or a desktop asleep
+        const detail = error instanceof Error && error.message !== '' ? error.message : 'The record did not answer';
+        return freezeTree(unavailablePast(window, clock.now(), detail));
+      }
+      if (disposed) return freezeTree(unavailablePast(window, clock.now(), 'The monitor has stopped'));
+      // joined with the model as it is when the record answered, never as it was asked
+      const live: PastLiveRun[] = [];
+      for (const [id, entry] of entries) {
+        const { inputs } = entry;
+        if (inputs.kind !== 'agent') continue;
+        const nativeSessionId = inputs.state?.session.nativeSessionId ?? inputs.host.nativeSessionId;
+        if (!nativeSessionId) continue;
+        live.push({ id, providerId: inputs.host.provider.id, nativeSessionId, statusSince: entry.row.statusSince });
+      }
+      return freezeTree(
+        derivePast({
+          window,
+          activity,
+          live,
+          // a copy: the snapshot is frozen whole, and the host's facts are the host's
+          device: { ...host.getFacts().device },
+          identity,
+          readAt: clock.now(),
+        }),
+      );
     },
     dispose() {
       if (disposed) return;
