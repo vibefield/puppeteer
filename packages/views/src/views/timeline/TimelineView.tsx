@@ -17,19 +17,20 @@ import {
   formatClock,
   formatWords,
   keyLegend,
-  projectName,
   sizeCanvas,
   type MotionLoop,
 } from '@vibecook/puppeteer-view-sdk/toolkit';
-import { pulseMap, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
+import { pulseMap, pulsePastFor, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
 import { css, resolveTimelineInks, type TimelineInks } from './timeline-inks.js';
 import {
   dayStart,
   earliestHead,
   laneContentKey,
+  scrolledOutKey,
   stateAt,
   stepLight,
   timelineLanes,
+  withoutScrolledOut,
   type TimelineLaneSet,
 } from './timeline-lanes.js';
 import { paintPulse, paintWakes, type PlacedLane } from './timeline-paint.js';
@@ -51,7 +52,7 @@ import {
   type ScaleTween,
   type TimelineScale,
 } from './timeline-scale.js';
-import { laneLabel, laneSubLine, readoutAt } from './timeline-words.js';
+import { laneLabel, laneName, laneSubLine, readoutAt } from './timeline-words.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is
@@ -59,9 +60,12 @@ import { laneLabel, laneSubLine, readoutAt } from './timeline-words.js';
 // map above is a scrubber over the whole day.
 //
 // An SDK view (MV-6): it reads its input alone (the model's rows, the theme,
-// the stage, its parameters) and calls `commands.select`. Runtime only: each
-// lane is its row's birth and its current state (`timeline-lanes.ts`), and the
-// view remembers nothing a row did.
+// the stage, its parameters, and the record's past when the host lends it) and
+// calls `commands.select`. Each lane is its row's birth and its current state
+// (`timeline-lanes.ts`); the view remembers nothing a row did, and draws what
+// the record says of the past only as the host hands it (`history`, T0): a
+// row's past before its current state, and the runs that ended, faint, until
+// they scroll out (TL-D6). Those are lit and read, never opened.
 //
 // React lays the lanes out (names, heads, the offscreen buttons); everything
 // that moves with time — the wakes, the map, the ticks, the clock chip and the
@@ -77,6 +81,11 @@ const DIVIDER = 20;
 const MAP_LEFT = 14;
 const LANE_MIN = 24;
 const MINUTE = 60_000;
+/**
+ * With history, the wake canvas covers the window the lanes scroll to and this much either side: a scroll that small
+ * repaints nothing.
+ */
+const OVERSCAN = 120;
 
 interface Columns {
   width: number;
@@ -182,6 +191,8 @@ function NowMark() {
 export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactElement {
   const { model, parameters, theme, stage } = input;
   const rows = model.agents;
+  // The record's past, when the host lends it (absent: runtime only, exactly as before).
+  const history = input.capabilities.history;
   const settings = useMemo(() => normalizeTimelineParameters(parameters), [parameters]);
   // The host's animations switch and the person's reduced-motion preference: either one stills the view.
   const motion = theme.animations && !theme.reducedMotion;
@@ -202,14 +213,18 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const headEls = useRef<(HTMLDivElement | null)[]>([]);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
+  /** Ended runs that have scrolled out of the window, as one key (changes rarely; empty without history). */
+  const [scrolledOut, setScrolledOut] = useState('');
   const [bar, setBar] = useState<{ spanMs: number; live: boolean }>({ spanMs: initialScale(0).spanMs, live: true });
 
-  const laneSet = useMemo(() => timelineLanes(rows, Date.now()), [rows]);
+  // The history's own lanes are built once per history object; the rows join them by id on every publish.
+  const laneSet = useMemo(() => timelineLanes(rows, Date.now(), history), [rows, history]);
+  const visible = useMemo(() => withoutScrolledOut(laneSet, scrolledOut), [laneSet, scrolledOut]);
   const columns = columnsFor(size.width);
   const bodyHeight = Math.max(0, size.height - MAP_STRIP - AXIS);
   const layout = useMemo(
-    () => layoutLanes(laneSet, bodyHeight, settings.laneMax),
-    [laneSet, bodyHeight, settings.laneMax],
+    () => layoutLanes(visible, bodyHeight, settings.laneMax),
+    [visible, bodyHeight, settings.laneMax],
   );
   // What the canvases draw of the layout: a model that changes none of it repaints nothing.
   const layoutKey = useMemo(
@@ -222,6 +237,12 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const scaleRef = useRef<TimelineScale>(initialScale(Date.now()));
   const tweenRef = useRef<ScaleTween | null>(null);
   const laneSetRef = useRef(laneSet);
+  const historyRef = useRef(history);
+  const scrolledOutRef = useRef(scrolledOut);
+  /** The body's scroll, as its scroll events last said it (read there, never in the draw, which writes the DOM). */
+  const scrollRef = useRef(0);
+  /** Where the wake canvas stands in the rows: it moves only when the window the body shows leaves it. */
+  const canvasTopRef = useRef(0);
   const layoutRef = useRef(layout);
   const columnsRef = useRef(columns);
   const bodyHeightRef = useRef(bodyHeight);
@@ -250,6 +271,8 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const frameRef = useRef(0);
 
   laneSetRef.current = laneSet;
+  historyRef.current = history;
+  scrolledOutRef.current = scrolledOut;
   layoutRef.current = layout;
   columnsRef.current = columns;
   bodyHeightRef.current = bodyHeight;
@@ -399,7 +422,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
 
   const choose = useCallback((id: string | null): void => {
     const placed = placedOf(id);
-    if (placed) commandsRef.current.select(placed.lane.id);
+    // An ended run is lit and read, never opened: its `past:` id never reaches a command.
+    if (!placed || placed.lane.ended !== undefined) return;
+    commandsRef.current.select(placed.lane.id);
   }, []);
 
   const light = useCallback(
@@ -461,10 +486,37 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       const k = cols.x1 / scale.spanMs;
 
       const all = laneSetRef.current;
+      // An ended run stays until it has scrolled out past the left edge (TL-D6).
+      if (historyRef.current !== undefined || scrolledOutRef.current !== '') {
+        const out = historyRef.current === undefined ? '' : scrolledOutKey(all, t0);
+        if (out !== scrolledOutRef.current) {
+          scrolledOutRef.current = out;
+          setScrolledOut(out);
+        }
+      }
       const lay = layoutRef.current;
       // A move between displays changes the ratio: both canvases repaint at the new one.
       const ratio = canvasRatio(2);
-      const rowsHeight = Math.max(lay.height, bodyHeightRef.current);
+      const view = bodyHeightRef.current;
+      const rowsHeight = Math.max(lay.height, view);
+      // With the record's past, ended runs can make the rows far taller than the stage: the wake canvas then covers
+      // only the window the body shows and a margin either side, and moves when that window leaves it. Without it the
+      // canvas is as tall as the rows, as before.
+      let canvasHeight = rowsHeight;
+      let canvasTop = 0;
+      if (historyRef.current !== undefined) {
+        canvasHeight = Math.min(rowsHeight, view + 2 * OVERSCAN);
+        canvasTop = canvasTopRef.current;
+        const scrollTop = scrollRef.current;
+        if (
+          scrollTop < canvasTop ||
+          scrollTop + view > canvasTop + canvasHeight ||
+          canvasTop + canvasHeight > rowsHeight
+        ) {
+          canvasTop = Math.max(0, Math.min(rowsHeight - canvasHeight, Math.round(scrollTop - OVERSCAN)));
+        }
+      }
+      canvasTopRef.current = canvasTop;
       const second = Math.floor(now / 1000);
       const tick = second !== lastSecond;
       lastSecond = second;
@@ -472,17 +524,18 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       // The wakes: repainted when the head has moved a third of a pixel, or anything else changed.
       const wake = wakeRef.current;
       const lit = litRef.current === null ? -1 : lay.placed.findIndex((placed) => placed.lane.id === litRef.current);
-      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${rowsHeight}@${ratio}`;
+      const wakeKey = `${Math.round(t1 * k * 3)}|${Math.round(scale.spanMs)}|${revRef.current}|${lit}|${cols.x1}x${canvasHeight}+${canvasTop}@${ratio}`;
       if (wake && (wakeKey !== wakeKeyRef.current || dirtyRef.current)) {
         wakeKeyRef.current = wakeKey;
-        sizeCanvas(wake, cols.x1, rowsHeight, { maxRatio: 2 });
+        sizeCanvas(wake, cols.x1, canvasHeight, { maxRatio: 2 });
+        set(wake, 'top', canvasTop === 0 ? '' : `${canvasTop}px`);
         const ctx = wake.getContext('2d');
         if (ctx) {
           paintWakes(
             ctx,
             {
               width: cols.x1,
-              height: rowsHeight,
+              height: canvasHeight,
               ratio,
               lanes: lay.placed,
               t0,
@@ -490,6 +543,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
               nowMs: now,
               lit,
               glow: settingsRef.current.glow,
+              top: canvasTop,
             },
             inks,
           );
@@ -537,7 +591,13 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
           sizeCanvas(mapCanvas, width, PULSE_GEOMETRY.height, { maxRatio: 2 });
           const ctx = mapCanvas.getContext('2d');
           if (ctx) {
-            const map = pulseMap(pulseRowsFor(all.agents, now), start, now, { ...PULSE_GEOMETRY, width });
+            const map = pulseMap(
+              pulseRowsFor(all.agents, now),
+              start,
+              now,
+              { ...PULSE_GEOMETRY, width },
+              pulsePastFor(all.agents),
+            );
             paintPulse(
               ctx,
               mapCanvas,
@@ -637,14 +697,14 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
     return () => clearTimeout(timer);
   }, [motion, theme.animations, theme.reducedMotion, requestDraw]);
 
-  // A new layout, width or tuning: every canvas and readout draws again.
+  // A new layout, width, tuning or history: every canvas and readout draws again, once.
   useEffect(() => {
     revRef.current += 1;
     headKeysRef.current = [];
     dirtyRef.current = true;
     mapDirtyRef.current = true;
     requestDraw();
-  }, [layoutKey, columns.width, settings, requestDraw]);
+  }, [layoutKey, columns.width, settings, history, requestDraw]);
 
   // ───────────────────────────── pointing
   const pointer = useRef<{ x: number; id: number; moved: boolean; inTrack: boolean } | null>(null);
@@ -932,6 +992,11 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
           light(event.currentTarget.matches(':focus') ? focusRef.current : null);
         }}
         onLostPointerCapture={dropDrag}
+        onScroll={(event) => {
+          scrollRef.current = event.currentTarget.scrollTop;
+          // Only a canvas that covers part of the rows (history lent) has anything to move.
+          if (historyRef.current !== undefined) requestDraw();
+        }}
         onKeyDown={onBodyKey}
         onFocus={(event) => {
           // A click's focus takes the lane it lands on (pointerup); the keyboard's enters at the first.
@@ -955,26 +1020,27 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
           )}
           <div className="vf-monitor-timeline-names" aria-hidden="true">
             {layout.placed.map(({ lane, y, h }) => {
-              const row = lane.row;
               const sub = laneSubLine(lane);
               const two = h >= 30 && lane.kind === 'agent' && sub !== '';
-              const pane = row.attachment;
+              const device = lane.ended === undefined ? lane.row.device : lane.ended.device;
+              const active = lane.row?.active === true;
+              const pane = lane.row?.attachment;
               return (
                 <div
                   key={lane.id}
-                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.receded ? ' is-receded' : ''}${row.active ? ' is-active' : ''}`}
-                  style={{ top: y, height: h, '--mv-timeline-colour': row.colour } as CSSProperties}
+                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.ended !== undefined ? ' is-ended' : ''}${lane.receded ? ' is-receded' : ''}${active ? ' is-active' : ''}`}
+                  style={{ top: y, height: h, '--mv-timeline-colour': lane.colour } as CSSProperties}
                 >
                   {pane ? (
                     <i
-                      className={`vf-monitor-timeline-band${row.active ? ' is-active' : ''}`}
+                      className={`vf-monitor-timeline-band${active ? ' is-active' : ''}`}
                       style={pane.colour ? { background: pane.colour } : undefined}
                     />
                   ) : null}
                   <span className="vf-monitor-timeline-who">
-                    {row.device.self ? null : <PeerMark name={row.device.name} />}
+                    {device.self ? null : <PeerMark name={device.name} />}
                     <FolderMark terminal={lane.kind === 'terminal'} />
-                    <b>{projectName(row)}</b>
+                    <b>{laneName(lane)}</b>
                   </span>
                   {two ? <small>{sub}</small> : null}
                 </div>
@@ -994,7 +1060,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
                     top: y,
                     height: h,
                     '--mv-timeline-lane-height': `${h}px`,
-                    '--mv-timeline-colour': lane.row.colour,
+                    '--mv-timeline-colour': lane.colour,
                   } as CSSProperties
                 }
               >
@@ -1019,13 +1085,18 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       <ul className="vf-monitor-timeline-agents">
         {layout.placed.map(({ lane }) => (
           <li key={lane.id}>
-            <button
-              type="button"
-              onClick={() => commands.select(lane.id)}
-              aria-current={lane.row.active ? 'true' : undefined}
-            >
-              {laneLabel(lane, Date.now())}
-            </button>
+            {lane.ended === undefined ? (
+              <button
+                type="button"
+                onClick={() => commands.select(lane.id)}
+                aria-current={lane.row.active ? 'true' : undefined}
+              >
+                {laneLabel(lane, Date.now())}
+              </button>
+            ) : (
+              // An ended run is read, never opened: no control to press.
+              <span>{laneLabel(lane, Date.now())}</span>
+            )}
           </li>
         ))}
       </ul>

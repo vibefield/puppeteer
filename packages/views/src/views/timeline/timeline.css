@@ -489,10 +489,19 @@
   font-weight: 600;
 }
 
+/* An ended run (TL-D6): its name as faint as its wake, until it scrolls out. */
+.mv-timeline .vf-monitor-timeline-name.is-ended {
+  opacity: 0.45;
+}
+
 /* The host shows another group: the lane keeps its slot, its name, body and readout quiet (30%). */
 .mv-timeline .vf-monitor-timeline-name.is-receded,
 .mv-timeline .vf-monitor-timeline-head.is-receded {
   opacity: 0.3;
+}
+
+.mv-timeline .vf-monitor-timeline-name.is-ended.is-receded {
+  opacity: 0.135;
 }
 
 .mv-timeline .vf-monitor-timeline-name.is-active b {
@@ -594,11 +603,12 @@
     0 0 12px color-mix(in srgb, var(--mv-timeline-blue) 50%, transparent);
 }
 
-.mv-timeline .vf-monitor-timeline-head[data-tone='none'] .vf-monitor-timeline-body-mark {
+.mv-timeline .vf-monitor-timeline-head:is([data-tone='none'], [data-tone='ended']) .vf-monitor-timeline-body-mark {
   display: none;
 }
 
-.mv-timeline .vf-monitor-timeline-head[data-tone='unrecorded'] .vf-monitor-timeline-body-mark {
+/* Not recorded, or the record's bounds alone (what the agent did inside them is unknown): a hollow body. */
+.mv-timeline .vf-monitor-timeline-head:is([data-tone='unrecorded'], [data-tone='bounds']) .vf-monitor-timeline-body-mark {
   border: 1px dashed var(--text-faint);
   background: transparent;
   box-shadow: none;
@@ -724,7 +734,7 @@
   font-weight: 600;
 }
 
-.mv-timeline .vf-monitor-timeline-head:is([data-tone='none'], [data-tone='unrecorded']) :is(b, small) {
+.mv-timeline .vf-monitor-timeline-head:is([data-tone='none'], [data-tone='unrecorded'], [data-tone='bounds'], [data-tone='ended']) :is(b, small) {
   color: var(--text-faint);
 }
 

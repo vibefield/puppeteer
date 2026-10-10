@@ -1,19 +1,27 @@
-import type { LaneStatus, TimelineLane, TimelineLaneKind } from './timeline-lanes.js';
+import type { MonitorPastSpan, MonitorPastSpanKind } from '@vibecook/puppeteer-view-sdk';
+import { spanIndexAt, type LaneStatus, type TimelineLane, type TimelineLaneKind } from './timeline-lanes.js';
 
 // A lane's wake: one closed, variable-width outline that swells into work and
 // narrows through a short S-curve into a wait (DESIGN §8, "Godview's timeline
 // is the swarm through time"). Produced as plain path commands so the shape is
 // testable without a canvas; `toPath2D` is the thin adapter the painter uses.
 //
-// Runtime only (MV-6), a lane's wake is its current state alone, one segment;
-// the outline, its light and its sheen are drawn for any run of segments, so a
-// wake read from history (rosettad, later) takes the same shape.
+// Runtime only (MV-6), a lane's wake is its current state alone, one segment.
+// With the record's past (`history`, T3) it is the same wake: worked stretches
+// at work's width, quiet ones at rest's hair, then the current state. Time the
+// record does not cover breaks the wake into runs, each its own outline, with
+// the dotted unrecorded thread between them.
 
-/** Half the wake's thickness: work is wide, a wait you owe is a thread, rest is a hair. */
-export function wakeRadius(kind: TimelineLaneKind, status: LaneStatus, laneHeight: number): number {
+/** What a stretch of wake shows: a lane's state, or `bounds`, the record's bounds alone (the floor), flat and faint. */
+export type WakeStatus = LaneStatus | 'bounds';
+
+/** Half the wake's thickness: work is wide, a wait you owe is a thread, the record's bounds a flat band, rest a hair. */
+export function wakeRadius(kind: TimelineLaneKind, status: WakeStatus, laneHeight: number): number {
   if (kind === 'terminal') return status === 'working' ? 1.8 : 0.6;
   if (status === 'working') return Math.min(7.5, Math.max(4, laneHeight * 0.22));
-  if (status === 'blocked' || status === 'unseen') return Math.min(3.8, Math.max(2.2, laneHeight * 0.115));
+  if (status === 'blocked' || status === 'unseen' || status === 'bounds') {
+    return Math.min(3.8, Math.max(2.2, laneHeight * 0.115));
+  }
   return 0.85;
 }
 
@@ -24,14 +32,46 @@ export interface WakeSegment {
   /** The same in the canvas's x, the window's left edge at 0. */
   readonly x0: number;
   readonly x1: number;
-  readonly status: LaneStatus;
+  readonly status: WakeStatus;
   readonly r: number;
 }
 
+/** How each recorded stretch is drawn: work as work, a quiet stretch as rest's hair, the bounds flat (never the swell). */
+const RECORDED: Readonly<Record<Exclude<MonitorPastSpanKind, 'unrecorded'>, WakeStatus>> = {
+  worked: 'working',
+  quiet: 'idle',
+  bounds: 'bounds',
+};
+
+/** The recorded stretches that reach `[lo, end)`, in px from `t0`, onto `out`. An unrecorded one is no wake. */
+function recordedSegments(
+  out: WakeSegment[],
+  past: readonly MonitorPastSpan[],
+  kind: TimelineLaneKind,
+  lo: number,
+  end: number,
+  t0: number,
+  pxPerMs: number,
+  laneHeight: number,
+): WakeSegment[] {
+  // Only the spans that reach the window: a lane may carry a day of them.
+  for (let index = Math.max(0, spanIndexAt(past, lo)); index < past.length; index += 1) {
+    const span = past[index]!;
+    if (span.from >= end) break;
+    if (span.kind === 'unrecorded') continue;
+    const a = Math.max(span.from, lo);
+    const b = Math.min(span.to, end);
+    if (b <= a) continue;
+    const status = RECORDED[span.kind];
+    out.push({ a, b, x0: (a - t0) * pxPerMs, x1: (b - t0) * pxPerMs, status, r: wakeRadius(kind, status, laneHeight) });
+  }
+  return out;
+}
+
 /**
- * The lane's current state between `t0` and `t1` (the head), in px from `t0`.
- * It starts no earlier than the state does and a little before the window, so
- * the wake enters from off-canvas rather than starting at the edge.
+ * The lane between `t0` and `t1` (the head), in px from `t0`: its recorded stretches, then its current state (an
+ * ended run's record stops at its last activity). Each starts no earlier than it does and a little before the window,
+ * so the wake enters from off-canvas rather than starting at the edge.
  */
 export function wakeSegments(
   lane: TimelineLane,
@@ -41,21 +81,80 @@ export function wakeSegments(
   laneHeight: number,
   nowMs: number,
 ): WakeSegment[] {
+  const lo = t0 - 30 / pxPerMs;
+  if (lane.ended !== undefined) {
+    const end = Math.min(lane.ended.endedAt, t1);
+    return lane.past === undefined ? [] : recordedSegments([], lane.past, lane.kind, lo, end, t0, pxPerMs, laneHeight);
+  }
+  const out: WakeSegment[] =
+    lane.past === undefined
+      ? []
+      : recordedSegments([], lane.past, lane.kind, lo, Math.min(lane.sinceMs, t1, nowMs), t0, pxPerMs, laneHeight);
   const end = Math.min(nowMs, t1);
   const span = lane.current;
-  if (span.fromMs >= end) return [];
+  if (span.fromMs >= end) return out;
   const a = Math.max(span.fromMs, lane.sinceMs, t0 - 30 / pxPerMs);
-  if (end <= a) return [];
-  return [
-    {
-      a,
-      b: end,
-      x0: (a - t0) * pxPerMs,
-      x1: (end - t0) * pxPerMs,
-      status: span.status,
-      r: wakeRadius(lane.kind, span.status, laneHeight),
-    },
-  ];
+  if (end <= a) return out;
+  out.push({
+    a,
+    b: end,
+    x0: (a - t0) * pxPerMs,
+    x1: (end - t0) * pxPerMs,
+    status: span.status,
+    r: wakeRadius(lane.kind, span.status, laneHeight),
+  });
+  return out;
+}
+
+/** The wake as the record breaks it: one run per stretch of segments with no gap between them. */
+export function wakeRuns(segments: readonly WakeSegment[]): WakeSegment[][] {
+  const runs: WakeSegment[][] = [];
+  let run: WakeSegment[] = [];
+  for (const segment of segments) {
+    const last = run[run.length - 1];
+    if (last !== undefined && segment.a > last.b) {
+      runs.push(run);
+      run = [];
+    }
+    run.push(segment);
+  }
+  if (run.length > 0) runs.push(run);
+  return runs;
+}
+
+/**
+ * The time in the lane's life between `t0` and `t1` that no recorded stretch covers (an unrecorded one included):
+ * drawn as the dotted thread, the same as before a runtime lane's current state (T3). A row's life runs to its
+ * current status; an ended run's to its last activity.
+ */
+export function unrecordedStretches(lane: TimelineLane, t0: number, t1: number): { a: number; b: number }[] {
+  const from = Math.max(lane.bornMs, t0);
+  const to = Math.min(lane.ended === undefined ? lane.sinceMs : lane.ended.endedAt, t1);
+  const out: { a: number; b: number }[] = [];
+  if (to <= from) return out;
+  const past = lane.past ?? [];
+  let cursor = from;
+  for (let index = Math.max(0, spanIndexAt(past, from)); index < past.length && cursor < to; index += 1) {
+    const span = past[index]!;
+    if (span.from >= to) break;
+    if (span.kind === 'unrecorded' || span.to <= cursor) continue;
+    if (span.from > cursor) out.push({ a: cursor, b: span.from });
+    cursor = span.to;
+  }
+  if (cursor < to) out.push({ a: cursor, b: to });
+  return out;
+}
+
+/**
+ * Where the runtime takes over a row's recorded past: its current state's start, when the record runs up to it
+ * unbroken (a gap there is already the dotted thread). The x and the wake's half-thickness either side of it.
+ */
+export function wakeSeam(lane: TimelineLane, segments: readonly WakeSegment[]): { x: number; r: number } | undefined {
+  if (lane.ended !== undefined || lane.past === undefined || segments.length < 2) return undefined;
+  const current = segments[segments.length - 1]!;
+  const before = segments[segments.length - 2]!;
+  if (current.a !== lane.sinceMs || before.b !== current.a) return undefined;
+  return { x: current.x0, r: Math.max(before.r, current.r) };
 }
 
 /** How far either side of a change the S-curve runs: never more than 5 px, never more than 40% of either span. */
@@ -88,7 +187,13 @@ export type PathCommand =
 
 /** Whether the wake begins with a round cap: it starts where the lane's current state does, inside the window. */
 export function capsStart(lane: TimelineLane, first: WakeSegment): boolean {
-  return first.a <= Math.max(lane.bornMs, lane.sinceMs) + 1000 && first.x0 > -20;
+  const start = lane.ended === undefined ? Math.max(lane.bornMs, lane.sinceMs) : lane.bornMs;
+  return first.a <= start + 1000 && first.x0 > -20;
+}
+
+/** Whether a run of a recorded wake begins with a round cap: where its first stretch begins, inside the window. */
+export function capsRun(first: WakeSegment): boolean {
+  return first.x0 > -20;
 }
 
 /** The outline: the top edge left to right, the bottom edge back, each change of thickness a short S-curve. */

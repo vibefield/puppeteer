@@ -1,15 +1,33 @@
-import { laneAlpha, type LaneStatus, type TimelineLane } from './timeline-lanes.js';
+import { laneAlpha, type TimelineLane } from './timeline-lanes.js';
 import { css, type TimelineInks } from './timeline-inks.js';
 import type { PulseBand, PulseMap } from './pulse-map.js';
 import { ticksBetween, tickStep } from './timeline-scale.js';
-import { capsStart, toPath2D, wakeGradient, wakeOutline, wakeSegments, wakeSheens } from './wake-geometry.js';
+import {
+  capsRun,
+  capsStart,
+  toPath2D,
+  unrecordedStretches,
+  wakeGradient,
+  wakeOutline,
+  wakeRuns,
+  wakeSeam,
+  wakeSegments,
+  wakeSheens,
+  type WakeSegment,
+  type WakeStatus,
+} from './wake-geometry.js';
 
 // The timeline's two canvases: the wakes behind the lanes, and the map of the
 // day. Every colour here comes from the palette the host hands the view (the
 // swarm's own resolved orange and blue, the instrument ramp, `timeline-inks.ts`)
-// or from a row's project colour; the only other values are alphas of those.
+// or from a lane's project colour (a row's, or an ended run's); the only other
+// values are alphas of those.
 
 const HOUR = 3_600_000;
+/** How far past the canvas's edges a lane is still drawn: its light (the blur) reaches into the canvas. */
+const LIGHT_MARGIN = 32;
+/** The record's bounds alone (the floor): the project's colour, faint, so it never reads as work. */
+const BOUNDS_ALPHA = 0.5;
 
 export interface PlacedLane {
   readonly lane: TimelineLane;
@@ -29,19 +47,124 @@ export interface WakePaint {
   /** The lit lane, or -1 when all are lit. */
   readonly lit: number;
   readonly glow: number;
+  /**
+   * The rows' y the canvas's top edge stands at. The canvas covers the window the lanes scroll to, never every lane
+   * (ended runs make the rows far taller than the stage), and only the lanes it covers are drawn. Default 0.
+   */
+  readonly top?: number | undefined;
 }
 
-function wakeColour(inks: TimelineInks, lane: TimelineLane, status: LaneStatus): string {
+function wakeColour(inks: TimelineInks, lane: TimelineLane, status: WakeStatus): string {
   if (lane.kind === 'terminal') return css(status === 'working' ? inks.muted : inks.border);
-  if (status === 'working') return css(inks.project(lane.row.colour));
+  if (status === 'working') return css(inks.project(lane.colour));
+  if (status === 'bounds') return css(inks.project(lane.colour), BOUNDS_ALPHA);
   if (status === 'blocked') return css(inks.orange);
   if (status === 'unseen') return css(inks.blue);
   return css(inks.faint);
 }
 
+/** The dotted thread: time in a lane's life it claims nothing for (the record does not cover it). */
+function dotted(ctx: CanvasRenderingContext2D, inks: TimelineInks): void {
+  ctx.setLineDash([1.2, 3.4]);
+  ctx.lineWidth = 1.2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = css(inks.faint);
+}
+
+/** One run of a wake: its light (the outline's own blur, `glow` 0 for none), the outline, and the sheen along its work. */
+function paintRun(
+  ctx: CanvasRenderingContext2D,
+  segments: readonly WakeSegment[],
+  cy: number,
+  cap: boolean,
+  lane: TimelineLane,
+  inks: TimelineInks,
+  glow: number,
+  fade: number,
+): void {
+  const first = segments[0]!;
+  const last = segments[segments.length - 1]!;
+  const path = toPath2D(wakeOutline(segments, cy, cap));
+  const gradient = ctx.createLinearGradient(first.x0, 0, Math.max(first.x0 + 1, last.x1), 0);
+  for (const stop of wakeGradient(segments, (segment) => wakeColour(inks, lane, segment.status))) {
+    gradient.addColorStop(stop.offset, stop.color);
+  }
+  // The light around it first (the outline's own blur), then the wake.
+  if (glow > 0) {
+    ctx.save();
+    ctx.filter = `blur(${inks.dark ? 6 : 5}px)`;
+    ctx.globalAlpha = fade * Math.min(1, (inks.dark ? 0.62 : 0.24) * glow);
+    ctx.fillStyle = gradient;
+    ctx.fill(path);
+    ctx.restore();
+    ctx.globalAlpha = fade;
+  }
+  ctx.fillStyle = gradient;
+  ctx.fill(path);
+  // A sheen along the work, so it reads as a lit tube rather than a bar.
+  if (lane.kind === 'agent') {
+    ctx.strokeStyle = inks.dark ? css(inks.ink, 0.28) : css(inks.ground, 0.4);
+    ctx.lineWidth = 1;
+    for (const sheen of wakeSheens(segments, cy)) {
+      ctx.beginPath();
+      ctx.moveTo(sheen.x0, sheen.y);
+      ctx.lineTo(sheen.x1, sheen.y);
+      ctx.stroke();
+    }
+  }
+}
+
+/**
+ * A lane with a record (T3): the dotted thread wherever no recorded stretch covers its life, each run of its wake,
+ * the seam where the runtime takes over a row, and an ended run's end tick. An ended run has no light (no blur:
+ * the per-lane blur is what made a tall board's frames long, M185).
+ */
+function paintRecorded(
+  ctx: CanvasRenderingContext2D,
+  placed: PlacedLane,
+  fade: number,
+  paint: WakePaint,
+  k: number,
+  blur: boolean,
+  inks: TimelineInks,
+): void {
+  const { lane, y, h } = placed;
+  const { t0, t1, nowMs } = paint;
+  const cy = y + h / 2;
+  const X = (t: number): number => (t - t0) * k;
+  const gaps = unrecordedStretches(lane, t0, Math.min(t1, nowMs));
+  if (gaps.length > 0) {
+    ctx.save();
+    dotted(ctx, inks);
+    ctx.beginPath();
+    for (const gap of gaps) {
+      ctx.moveTo(X(gap.a), cy);
+      ctx.lineTo(X(gap.b), cy);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  const segments = wakeSegments(lane, t0, t1, k, h, nowMs);
+  const glow = blur && lane.kind === 'agent' && lane.ended === undefined ? paint.glow : 0;
+  for (const run of wakeRuns(segments)) paintRun(ctx, run, cy, capsRun(run[0]!), lane, inks, glow, fade);
+  // Where the runtime takes over: a 1 px cut across the wake in the ground, as the map traces its layers' edges.
+  const seam = wakeSeam(lane, segments);
+  if (seam !== undefined) {
+    ctx.fillStyle = css(inks.ground, 0.7);
+    ctx.fillRect(seam.x - 0.5, cy - seam.r - 1, 1, 2 * seam.r + 2);
+  }
+  // An ended run's last activity: the end tick (TL-D6).
+  const ended = lane.ended?.endedAt;
+  if (ended !== undefined && ended >= t0 && ended <= t1) {
+    ctx.fillStyle = css(inks.muted);
+    ctx.fillRect(X(ended) - 1, cy - 6, 2, 12);
+  }
+}
+
 /** The wakes: the grid, then each lane's dotted unrecorded thread and its outline, with its light and its sheen. */
 export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks: TimelineInks): void {
   const { width, height, ratio, t0, t1, nowMs, lit } = paint;
+  const top = paint.top ?? 0;
   const k = width / Math.max(1, t1 - t0);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, width, height);
@@ -55,21 +178,27 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
   }
 
   const blur = 'filter' in ctx;
+  // Lanes are placed in the rows' y; the canvas starts at `top`, and draws only what it covers.
+  if (top !== 0) ctx.setTransform(ratio, 0, 0, ratio, 0, -top * ratio);
+  const shownFrom = top - LIGHT_MARGIN;
+  const shownTo = top + height + LIGHT_MARGIN;
   paint.lanes.forEach((placed, index) => {
     const { lane, y, h } = placed;
+    if (y + h < shownFrom || y > shownTo) return;
     const cy = y + h / 2;
     const fade = laneAlpha(lane, index, lit);
     ctx.globalAlpha = fade;
+    if (lane.past !== undefined || lane.ended !== undefined) {
+      paintRecorded(ctx, placed, fade, paint, k, blur, inks);
+      return;
+    }
     // From its birth to its current state the lane claims nothing (runtime only): a dotted thread, never a state.
     if (lane.sinceMs > lane.bornMs) {
       const a = Math.max(lane.bornMs, t0);
       const b = Math.min(lane.sinceMs, t1, nowMs);
       if (b > a) {
         ctx.save();
-        ctx.setLineDash([1.2, 3.4]);
-        ctx.lineWidth = 1.2;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = css(inks.faint);
+        dotted(ctx, inks);
         ctx.beginPath();
         ctx.moveTo(X(a), cy);
         ctx.lineTo(X(b), cy);
@@ -79,38 +208,20 @@ export function paintWakes(ctx: CanvasRenderingContext2D, paint: WakePaint, inks
     }
     const segments = wakeSegments(lane, t0, t1, k, h, nowMs);
     const first = segments[0];
-    const last = segments[segments.length - 1];
-    if (!first || !last) return;
-    const path = toPath2D(wakeOutline(segments, cy, capsStart(lane, first)));
-    const gradient = ctx.createLinearGradient(first.x0, 0, Math.max(first.x0 + 1, last.x1), 0);
-    for (const stop of wakeGradient(segments, (segment) => wakeColour(inks, lane, segment.status))) {
-      gradient.addColorStop(stop.offset, stop.color);
-    }
-    // The light around it first (the outline's own blur), then the wake.
-    if (blur && lane.kind === 'agent' && paint.glow > 0) {
-      ctx.save();
-      ctx.filter = `blur(${inks.dark ? 6 : 5}px)`;
-      ctx.globalAlpha = fade * Math.min(1, (inks.dark ? 0.62 : 0.24) * paint.glow);
-      ctx.fillStyle = gradient;
-      ctx.fill(path);
-      ctx.restore();
-      ctx.globalAlpha = fade;
-    }
-    ctx.fillStyle = gradient;
-    ctx.fill(path);
-    // A sheen along the work, so it reads as a lit tube rather than a bar.
-    if (lane.kind === 'agent') {
-      ctx.strokeStyle = inks.dark ? css(inks.ink, 0.28) : css(inks.ground, 0.4);
-      ctx.lineWidth = 1;
-      for (const sheen of wakeSheens(segments, cy)) {
-        ctx.beginPath();
-        ctx.moveTo(sheen.x0, sheen.y);
-        ctx.lineTo(sheen.x1, sheen.y);
-        ctx.stroke();
-      }
-    }
+    if (!first) return;
+    paintRun(
+      ctx,
+      segments,
+      cy,
+      capsStart(lane, first),
+      lane,
+      inks,
+      blur && lane.kind === 'agent' ? paint.glow : 0,
+      fade,
+    );
   });
   ctx.globalAlpha = 1;
+  if (top !== 0) ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   // The head's light: a soft column the bodies sit in.
   const light = ctx.createLinearGradient(width - 44, 0, width, 0);
   light.addColorStop(0, css(inks.ink, 0));

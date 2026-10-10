@@ -37,6 +37,9 @@ export const TIMELINE_MANIFEST: MonitorViewManifest = {
   },
   // The ids, keys, ranges and defaults stored values were saved under: no revision, so they stay valid.
   parameters: TIMELINE_PARAMETER_GROUPS,
+  // The record's past (T0): the declaration is the ask. A host with a record reads the view's day while it is mounted;
+  // one without lends nothing, and the timeline draws runtime state alone.
+  capabilities: { optional: ['history'] },
   // Bound on the lanes and the map only while one of them holds focus (MV-D8; TL: none new on the frame).
   keys: [
     { key: 'ArrowUp', label: 'light the lane above' },
@@ -53,7 +56,10 @@ export const TIMELINE_MANIFEST: MonitorViewManifest = {
   motion: { loops: true },
 };
 
-/** The timeline: each agent a lane from its birth, its current state up to now (runtime only), as an SDK view (MV-6). */
+/**
+ * The timeline: each agent a lane from its birth, its current state up to now, and before it what the record says
+ * when the host lends it (`history`), as an SDK view (MV-6).
+ */
 export const timelineMonitorView = reactMonitorView(TIMELINE_MANIFEST, TimelineView, {
   rootClass: TIMELINE_ROOT_CLASS,
 });

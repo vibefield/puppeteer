@@ -1,4 +1,5 @@
-import type { LaneStatus, TimelineLane } from './timeline-lanes.js';
+import type { MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
+import type { LaneStatus, LiveLane, TimelineLane } from './timeline-lanes.js';
 
 // The map of the day, drawn as Pulse (TL-D15): the whole field summed into one
 // ridge. Work stacks above a line in each project's colour, its height the
@@ -7,8 +8,11 @@ import type { LaneStatus, TimelineLane } from './timeline-lanes.js';
 // band outlines out, so the painter only fills what this hands it.
 //
 // Runtime only (MV-6), each agent gives the map its current state alone, from
-// when it began to now: the ridge is what births and current states support,
-// and before a state began the map claims nothing for it.
+// when it began to now, and before a state began the map claims nothing for
+// it. With the record's past (T6) the map counts agents working from the same
+// turns the lanes draw: working at t is each lane with a worked stretch holding
+// t (live and ended), plus each row working since before t. The record never
+// says a wait, so the waits stay the rows' own; its bounds count nothing.
 
 export interface PulseRow {
   /** The project's colour; rows that share it share a band. */
@@ -26,13 +30,43 @@ export interface PulseRow {
  */
 export function pulseRowsFor(lanes: readonly TimelineLane[], nowMs: number): PulseRow[] {
   return lanes
-    .filter((lane) => lane.kind === 'agent' && !lane.receded)
+    .filter((lane): lane is LiveLane => lane.kind === 'agent' && !lane.receded && lane.ended === undefined)
     .map((lane) => ({
       color: lane.row.colour,
       status: lane.current.status,
       fromMs: lane.current.fromMs,
       endMs: nowMs,
     }));
+}
+
+/** The record's work for the map: one lane's worked stretches, in its colour (an ended run's own, a row's). */
+export interface PulsePast {
+  readonly color: string;
+  /** Worked spans only, oldest first. */
+  readonly spans: readonly MonitorPastSpan[];
+}
+
+const WORKED = new WeakMap<readonly MonitorPastSpan[], readonly MonitorPastSpan[]>();
+
+/** A record's worked stretches, filtered once per record: a lane keeps its record's array while the history holds. */
+function workedOf(past: readonly MonitorPastSpan[]): readonly MonitorPastSpan[] {
+  let worked = WORKED.get(past);
+  if (worked === undefined) {
+    worked = past.filter((span) => span.kind === 'worked');
+    WORKED.set(past, worked);
+  }
+  return worked;
+}
+
+/** The map's recorded work (T6): every agent lane's worked stretches but a receded one's, as the stage counts. */
+export function pulsePastFor(lanes: readonly TimelineLane[]): PulsePast[] {
+  const out: PulsePast[] = [];
+  for (const lane of lanes) {
+    if (lane.kind !== 'agent' || lane.receded || lane.past === undefined) continue;
+    const spans = workedOf(lane.past);
+    if (spans.length > 0) out.push({ color: lane.colour, spans });
+  }
+  return out;
 }
 
 export interface PulseGeometry {
@@ -107,7 +141,15 @@ export function pulseScales(maxUp: number, maxDown: number, up: number, down: nu
   return { kUp, kDn: Math.min(down / Math.max(0.5, maxDown), kUp) };
 }
 
-export function pulseMap(rows: readonly PulseRow[], startMs: number, nowMs: number, geometry: PulseGeometry): PulseMap {
+const NO_PAST: readonly PulsePast[] = [];
+
+export function pulseMap(
+  rows: readonly PulseRow[],
+  startMs: number,
+  nowMs: number,
+  geometry: PulseGeometry,
+  past: readonly PulsePast[] = NO_PAST,
+): PulseMap {
   const { width, up, down } = geometry;
   const count = Math.max(40, Math.round(width / 2));
   const dt = Math.max(1, nowMs - startMs) / count;
@@ -115,13 +157,17 @@ export function pulseMap(rows: readonly PulseRow[], startMs: number, nowMs: numb
   const work: Float32Array[] = [];
   const blocked = new Float32Array(count);
   const unseen = new Float32Array(count);
-  for (const row of rows) {
-    let band = colors.indexOf(row.color);
+  const bandOf = (color: string): number => {
+    let band = colors.indexOf(color);
     if (band < 0) {
       band = colors.length;
-      colors.push(row.color);
+      colors.push(color);
       work.push(new Float32Array(count));
     }
+    return band;
+  };
+  for (const row of rows) {
+    const band = bandOf(row.color);
     const into =
       row.status === 'working'
         ? work[band]!
@@ -131,6 +177,11 @@ export function pulseMap(rows: readonly PulseRow[], startMs: number, nowMs: numb
             ? unseen
             : undefined;
     if (into) addCoverage(into, startMs, dt, Math.max(row.fromMs, startMs), row.endMs);
+  }
+  // The record's work: live stretches stop where each row's current state begins, so nothing is counted twice.
+  for (const lane of past) {
+    const into = work[bandOf(lane.color)]!;
+    for (const span of lane.spans) addCoverage(into, startMs, dt, Math.max(span.from, startMs), span.to);
   }
   // The project that worked most lies on the line, the least at the crest.
   const sums = work.map((values) => values.reduce((sum, value) => sum + value, 0));

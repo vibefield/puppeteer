@@ -1,4 +1,6 @@
+import type { EndedLaneView, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
 import {
+  formatClock,
   formatElapsed,
   formatShort,
   formatWords,
@@ -14,6 +16,11 @@ import type { LaneSpan, TimelineLane, TimelineMoment } from './timeline-lanes.js
 // and each lane as a screen reader hears it. The words and the lengths are the
 // toolkit's (MV-D11), ported from this file: days from 24 hours (M14), and a
 // lane's wait in the lane's own order (`laneWaitWords`, carried on the span).
+// A moment the record holds is said as the record can say it (T1): worked as
+// work, quiet as quiet, its bounds alone as bounds; never blocked, never unseen.
+
+/** What the record's bounds alone say about a moment (the floor, T5). */
+export const BOUNDS_WORDS = 'recorded · start and end only';
 
 /** A span's state as the readout words it: `blocked · <what it waits on>`, `reply unseen`, or the status. */
 function spanWord(span: LaneSpan): string {
@@ -23,7 +30,7 @@ function spanWord(span: LaneSpan): string {
 }
 
 /** The class a head takes, which picks its body's light and its readout's ink. */
-export type ReadoutTone = 'working' | 'idle' | 'blocked' | 'unseen' | 'none' | 'unrecorded';
+export type ReadoutTone = 'working' | 'idle' | 'blocked' | 'unseen' | 'none' | 'unrecorded' | 'bounds' | 'ended';
 
 export interface TimelineReadout {
   tone: ReadoutTone;
@@ -36,10 +43,30 @@ export interface TimelineReadout {
 }
 
 /**
+ * A recorded moment's readout: a worked stretch as a working span reads (how far in, and of how long, closed), a
+ * quiet one as `quiet`, the bounds alone as what they are.
+ */
+function recordedReadout(span: MonitorPastSpan, at: number, live: boolean): TimelineReadout {
+  if (span.kind === 'worked') {
+    const word = statusWord('working');
+    return {
+      tone: 'working',
+      big: formatElapsed(at - span.from),
+      small: live ? word : `${word} · of ${formatShort(span.to - span.from)}`,
+      owed: false,
+    };
+  }
+  if (span.kind === 'quiet') return { tone: 'idle', big: '', small: 'quiet', owed: false };
+  return { tone: 'bounds', big: '', small: BOUNDS_WORDS, owed: false };
+}
+
+/**
  * A body's readout for the moment `at` (the head's). Following now it is the
  * present; looking back it says how far into its current state the lane was,
  * and that the state has lasted until now: `4:39` · `idle · of 7m+` (TL-D13).
- * Before its current state a lane claims nothing: `–` · `not recorded` (TL-D9).
+ * Before its current state a lane has only its record: a recorded moment says
+ * what the record says, and anything else `–` · `not recorded` (TL-D9). Past
+ * an ended run's last activity it says that activity (the record holds no exit).
  */
 export function readoutAt(
   lane: TimelineLane,
@@ -50,6 +77,16 @@ export function readoutAt(
 ): TimelineReadout {
   if (moment.kind === 'unborn') return { tone: 'none', big: '', small: 'not started yet', owed: false };
   if (moment.kind === 'unrecorded') return { tone: 'unrecorded', big: '–', small: 'not recorded', owed: false };
+  if (moment.kind === 'past') return recordedReadout(moment.span, at, live);
+  if (moment.kind === 'ended') {
+    const last = lane.ended?.endedAt ?? at;
+    return {
+      tone: 'ended',
+      big: '',
+      small: `ended · last activity ${live ? `${formatShort(nowMs - last)} ago` : formatClock(last)}`,
+      owed: false,
+    };
+  }
   const span = moment.span;
   if (lane.kind === 'terminal') {
     const running = span.status === 'working';
@@ -66,14 +103,37 @@ export function readoutAt(
   return { tone: span.status, big: formatElapsed(at - span.fromMs), small: word, owed };
 }
 
-/** The line under a lane's name when it has room for two: what runs it, and its branch. */
+/** An ended run's name: its title, else what ran it and where (`Claude Code · rosetta`). */
+export function endedName(run: Pick<EndedLaneView, 'title' | 'provider' | 'project'>): string {
+  return run.title || [run.provider?.label, run.project.name].filter(Boolean).join(' · ');
+}
+
+/** A lane's name, as its name column prints it: a row's project, or an ended run's own name. */
+export function laneName(lane: TimelineLane): string {
+  return lane.ended === undefined ? projectName(lane.row) : endedName(lane.ended);
+}
+
+/**
+ * The line under a lane's name when it has room for two: what runs it, and its branch. An ended run has no model,
+ * so its provider stands there, unless its name already says it.
+ */
 export function laneSubLine(lane: TimelineLane): string {
   if (lane.kind !== 'agent') return '';
+  if (lane.ended !== undefined) {
+    const run = lane.ended;
+    return [run.title ? run.provider?.label : undefined, run.project.branch].filter(Boolean).join(' · ');
+  }
   return [modelWord(lane.row), lane.row.project.branch].filter(Boolean).join(' · ');
 }
 
 /** A lane as a screen reader hears it, at now. */
 export function laneLabel(lane: TimelineLane, nowMs: number): string {
+  if (lane.ended !== undefined) {
+    const run = lane.ended;
+    const where = run.device.self ? '' : `on ${run.device.name}, `;
+    const who = [run.title, run.project.name, run.provider?.label].filter(Boolean).join(', ');
+    return `${where}${who}, ended, last activity ${formatWords(nowMs - run.endedAt)} ago`;
+  }
   const row = lane.row;
   const where = row.device.self ? '' : `on ${row.device.name}, `;
   const name = projectName(row);
