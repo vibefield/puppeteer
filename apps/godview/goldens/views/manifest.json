@@ -515,6 +515,28 @@
       "sha256": "e3d06992d23f2e57d028f0c78a4445c8cfa838d8bdea46d022036c297e791a42"
     },
     {
+      "file": "timeline/dark-default-n20-history-bounds.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "history": "bounds",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "86aa4e91f1a625c4ac2d125373edfafa71fda14e673f3fc6ba2ef16db7edfca9"
+    },
+    {
+      "file": "timeline/dark-default-n20-history-turns.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "history": "turns",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "b4ba62123edfc410cbe96d0165068782ef2c3605e37b05e730a8e354b06ca003"
+    },
+    {
       "file": "timeline/dark-default-n20.png",
       "view": "timeline",
       "theme": "dark",
@@ -573,6 +595,28 @@
       "animations": "off",
       "stage": "1180×252",
       "sha256": "81a8b62c9b59fa0c41c9623e6ec9a675deeffc927eb8b5e1fd063ec5ffd78600"
+    },
+    {
+      "file": "timeline/light-default-n20-history-bounds.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "history": "bounds",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "3d8231989cfc4421d61a3031450c7a85ff9a470180b0ba680a83c1babcf27aef"
+    },
+    {
+      "file": "timeline/light-default-n20-history-turns.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "history": "turns",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "c1fb0cbd3066771701089fbc4e8cc0bcc12811558c49e78669b11b1f2adfdbb3"
     },
     {
       "file": "timeline/light-default-n20.png",

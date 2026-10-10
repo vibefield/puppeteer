@@ -2,7 +2,7 @@
 
 // Capture the view goldens (README.md): every lab view (list, rain, swarm, timeline, spend) in both themes
 // at Godview's three stage sizes, for n = 1 and n = 20, on the capture clock, still (the rain and
-// the swarm in motion, below). One offscreen Electron window does all of it
+// the swarm in motion, below), and the timeline with history lent. One offscreen Electron window does all of it
 // (capture-main.mjs). The wall clock's time zone and the locale are pinned, because the timeline
 // prints local times.
 //
@@ -49,6 +49,10 @@ const VIEWS = [
   // The spend view (MV-7), still: its only motion is a waiting head's wave, which the switch stops (MV-W4).
   { view: 'spend', page: 'spend-lab.html', script: 'spend-lab.mjs', animations: '0' },
 ];
+// The timeline with the record's past lent (TLV, `?history=`, the lab's `timelineHistory` over the seeded world): the
+// turns (worked, quiet, unrecorded, the seam, ended runs faint) and the floor (T5: one band per ended run). Default
+// stage, n = 20, both themes, still. Absent history is the twelve above, which stay as they were.
+const HISTORY_CASES = ['turns', 'bounds'];
 
 const flag = (name) => process.argv.includes(`--${name}`);
 const option = (name) => {
@@ -89,6 +93,26 @@ for (const { view, page, animations } of VIEWS) {
         });
       }
     }
+  }
+}
+for (const theme of THEMES) {
+  for (const history of HISTORY_CASES) {
+    const [width, height] = SIZES.default;
+    const file = `timeline/${theme}-default-n20-history-${history}.png`;
+    if (only && !file.includes(only)) continue;
+    const query = new URLSearchParams({ capture: '1', theme, size: 'default', n: '20', animations: '0', history });
+    images.push({
+      file,
+      view: 'timeline',
+      theme,
+      size: 'default',
+      n: 20,
+      history,
+      animations: 'off',
+      width,
+      height,
+      url: `${pathToFileURL(join(dist, 'timeline-lab.html')).href}?${query}`,
+    });
   }
 }
 if (flag('update')) for (const { file } of images) rmSync(join(out, file), { force: true });

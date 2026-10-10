@@ -7,7 +7,10 @@ either goes away or is named and shown to James as an intentional change.
 ## What is captured
 
 `views/<view>/<theme>-<size>-n<n>.png`, 60 images (6.4 MB), with `views/manifest.json` listing each one's
-parameters and sha256 and the environment that recorded them.
+parameters and sha256 and the environment that recorded them. Beside them, four of the timeline with the record's past
+lent (TLV): `views/timeline/<theme>-default-n20-history-<case>.png`, the lab's `?history=turns` (worked, quiet,
+unrecorded, the seam, ended runs faint) and `?history=bounds` (T5's floor: one band per ended run), at the default stage,
+n = 20, still. Without history the timeline's twelve draw exactly as before.
 
 |        |                                                                                                                                                         |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
