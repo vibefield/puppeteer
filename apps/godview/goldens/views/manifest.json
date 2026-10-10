@@ -523,7 +523,7 @@
       "history": "bounds",
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "86aa4e91f1a625c4ac2d125373edfafa71fda14e673f3fc6ba2ef16db7edfca9"
+      "sha256": "796429f4d17b17ee9d0be535a1b365d9ba6f4adc8a0d4bdb5145c32cdfb17528"
     },
     {
       "file": "timeline/dark-default-n20-history-turns.png",
@@ -534,7 +534,7 @@
       "history": "turns",
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "b4ba62123edfc410cbe96d0165068782ef2c3605e37b05e730a8e354b06ca003"
+      "sha256": "2fdcf4e313d562c797536175f89cd018a0e4fc02ac916b626f1639191ed2b07d"
     },
     {
       "file": "timeline/dark-default-n20.png",
@@ -605,7 +605,7 @@
       "history": "bounds",
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "3d8231989cfc4421d61a3031450c7a85ff9a470180b0ba680a83c1babcf27aef"
+      "sha256": "69834747d42826ca5cf39cd6f5316343e9ff99980e21be17522287830db0b3a9"
     },
     {
       "file": "timeline/light-default-n20-history-turns.png",
@@ -616,7 +616,7 @@
       "history": "turns",
       "animations": "off",
       "stage": "1180×252",
-      "sha256": "c1fb0cbd3066771701089fbc4e8cc0bcc12811558c49e78669b11b1f2adfdbb3"
+      "sha256": "51ec8293f894e3864a00277da853ded06a37e251df2fad739d1bc47b7fcf6866"
     },
     {
       "file": "timeline/light-default-n20.png",
