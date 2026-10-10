@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import type { MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
-import { laneFor, type TimelineLane } from './timeline-lanes.js';
+import { historyLanes, laneFor, type TimelineLane } from './timeline-lanes.js';
 import {
+  capsRun,
   capsStart,
   neck,
+  unrecordedStretches,
   wakeGradient,
   wakeOutline,
   wakeRadius,
+  wakeRuns,
+  wakeSeam,
   wakeSegments,
   wakeSheens,
   type WakeSegment,
@@ -141,5 +146,116 @@ describe('the wake’s shape over a run of states', () => {
     const sheens = wakeSheens(segments, 15);
     expect(sheens).toHaveLength(1);
     expect(sheens[0]!.y).toBeLessThan(15);
+  });
+});
+
+describe("the wake with the record's past (T3)", () => {
+  const k = 600 / (60 * MIN);
+  const t0 = NOW - 60 * MIN;
+  const ago = (kind: MonitorPastSpan['kind'], from: number, to: number): MonitorPastSpan => ({
+    kind,
+    from: NOW - from * MIN,
+    to: NOW - to * MIN,
+  });
+  /** Worked, quiet, a silence inside a turn, the bounds alone, worked up to the seam, then working now. */
+  const recorded = [
+    ago('worked', 55, 45),
+    ago('quiet', 45, 40),
+    ago('unrecorded', 40, 30),
+    ago('bounds', 30, 25),
+    ago('worked', 25, 20),
+  ];
+  const withPast = laneFor(
+    agentViewFixture({ id: 'a', createdAt: NOW - 50 * MIN, status: 'working', statusSince: NOW - 20 * MIN }),
+    NOW,
+    recorded,
+  );
+
+  it("draws worked at work's width, quiet at rest's hair, the bounds flat at a thread's, then the current state", () => {
+    const segments = wakeSegments(withPast, t0, NOW, k, 30, NOW);
+    expect(segments.map((segment) => segment.status)).toEqual(['working', 'idle', 'bounds', 'working', 'working']);
+    expect(segments.map((segment) => segment.r)).toEqual([
+      wakeRadius('agent', 'working', 30),
+      0.85,
+      wakeRadius('agent', 'blocked', 30),
+      wakeRadius('agent', 'working', 30),
+      wakeRadius('agent', 'working', 30),
+    ]);
+    expect(wakeRadius('agent', 'bounds', 30)).toBeLessThan(wakeRadius('agent', 'working', 30));
+    // The current state keeps its own arithmetic: from where it began to the head.
+    expect(segments[4]).toMatchObject({ a: NOW - 20 * MIN, b: NOW });
+  });
+
+  it('breaks where the record does not cover the lane: a run before the silence, a run after', () => {
+    const runs = wakeRuns(wakeSegments(withPast, t0, NOW, k, 30, NOW));
+    expect(runs.map((run) => run.map((segment) => segment.status))).toEqual([
+      ['working', 'idle'],
+      ['bounds', 'working', 'working'],
+    ]);
+    // Each run starts inside the window, so each is capped; one entering from off-canvas is not.
+    expect(runs.every((run) => capsRun(run[0]!))).toBe(true);
+    const entering = wakeSegments(withPast, NOW - 50 * MIN, NOW, k, 30, NOW);
+    expect(capsRun(entering[0]!)).toBe(false);
+  });
+
+  it('cuts the seam where the record runs up to the current state, and none across a gap', () => {
+    const segments = wakeSegments(withPast, t0, NOW, k, 30, NOW);
+    expect(wakeSeam(withPast, segments)).toEqual({ x: segments[4]!.x0, r: wakeRadius('agent', 'working', 30) });
+    // The status moved on since the read: a gap before the current state, which the dotted thread already shows.
+    const movedOn = laneFor(
+      agentViewFixture({ id: 'a', createdAt: NOW - 50 * MIN, status: 'idle', statusSince: NOW - 15 * MIN }),
+      NOW,
+      recorded,
+    );
+    expect(wakeSeam(movedOn, wakeSegments(movedOn, t0, NOW, k, 30, NOW))).toBeUndefined();
+    // A lane with no record has no seam.
+    expect(wakeSeam(lane(), wakeSegments(lane(), t0, NOW, k, 30, NOW))).toBeUndefined();
+  });
+
+  it("lays the dotted thread over every stretch of the lane's life no recorded span covers, a silence included", () => {
+    // Born at its record\'s first span (55 min ago); the silence (40–30) is not recorded; the record runs to the seam.
+    expect(unrecordedStretches(withPast, t0, NOW)).toEqual([{ a: NOW - 40 * MIN, b: NOW - 30 * MIN }]);
+    const born = laneFor(
+      agentViewFixture({ id: 'b', createdAt: NOW - 50 * MIN, status: 'working', statusSince: NOW - 10 * MIN }),
+      NOW,
+      [ago('worked', 30, 20)],
+    );
+    expect(unrecordedStretches(born, t0, NOW)).toEqual([
+      { a: NOW - 50 * MIN, b: NOW - 30 * MIN },
+      { a: NOW - 20 * MIN, b: NOW - 10 * MIN },
+    ]);
+    // Only inside the window asked for.
+    expect(unrecordedStretches(born, NOW - 25 * MIN, NOW - 12 * MIN)).toEqual([
+      { a: NOW - 20 * MIN, b: NOW - 12 * MIN },
+    ]);
+  });
+
+  it("ends an ended run's wake at its last activity, with no current state", () => {
+    const [ended] = historyLanes({
+      sinceMs: NOW - 24 * 60 * MIN,
+      untilMs: NOW,
+      readAt: NOW,
+      fidelity: 'bounds',
+      state: 'complete',
+      live: [],
+      ended: [
+        {
+          id: 'past:claude:x',
+          project: { name: 'notes', seq: 1 },
+          device: { id: 'here', name: 'here', self: true },
+          startedAt: NOW - 50 * MIN,
+          endedAt: NOW - 20 * MIN,
+          spans: [ago('bounds', 50, 20)],
+          colour: 'teal',
+          receded: false,
+        },
+      ],
+    }).ended;
+    const segments = wakeSegments(ended!, t0, NOW, k, 30, NOW);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({ a: NOW - 50 * MIN, b: NOW - 20 * MIN, status: 'bounds' });
+    expect(capsStart(ended!, segments[0]!)).toBe(true);
+    expect(unrecordedStretches(ended!, t0, NOW)).toEqual([]);
+    expect(wakeSeam(ended!, segments)).toBeUndefined();
   });
 });

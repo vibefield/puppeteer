@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, EndedLaneView } from '@vibecook/puppeteer-view-sdk';
+import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
-import { laneFor, stateAt, type TimelineLane } from './timeline-lanes.js';
-import { laneLabel, laneSubLine, readoutAt } from './timeline-words.js';
+import { historyLanes, laneFor, stateAt, type TimelineLane } from './timeline-lanes.js';
+import { BOUNDS_WORDS, endedName, laneLabel, laneName, laneSubLine, readoutAt } from './timeline-words.js';
 
 const SEC = 1000;
 const MIN = 60 * SEC;
@@ -154,5 +155,84 @@ describe('laneSubLine', () => {
     );
     expect(laneSubLine(lane({ provider: undefined, model: undefined }))).toBe('');
     expect(laneSubLine(lane({ kind: 'terminal', model: 'opus' }))).toBe('');
+  });
+});
+
+describe('words for the record', () => {
+  const recorded = laneFor(
+    agentViewFixture({ id: 'a', createdAt: NOW - 90 * MIN, status: 'working', statusSince: NOW - 10 * MIN }),
+    NOW,
+    [
+      { kind: 'worked', from: NOW - 80 * MIN, to: NOW - 39 * MIN },
+      { kind: 'quiet', from: NOW - 39 * MIN, to: NOW - 30 * MIN },
+      { kind: 'unrecorded', from: NOW - 30 * MIN, to: NOW - 20 * MIN },
+      { kind: 'bounds', from: NOW - 20 * MIN, to: NOW - 10 * MIN },
+    ],
+  );
+  const said = (ago: number) => readoutAt(recorded, stateAt(recorded, NOW - ago), NOW - ago, false, NOW);
+
+  it('reads a worked moment as a working span reads, quiet as quiet, the bounds as what they are', () => {
+    expect(said(42 * MIN)).toEqual({ tone: 'working', big: '38:00', small: 'working · of 41m', owed: false });
+    expect(said(35 * MIN)).toEqual({ tone: 'idle', big: '', small: 'quiet', owed: false });
+    expect(said(25 * MIN)).toEqual({ tone: 'unrecorded', big: '–', small: 'not recorded', owed: false });
+    expect(said(15 * MIN)).toEqual({ tone: 'bounds', big: '', small: BOUNDS_WORDS, owed: false });
+    expect(BOUNDS_WORDS).toBe('recorded · start and end only');
+    // Never blocked and never unseen: the record holds neither, so nothing it says rings.
+    expect([42, 35, 25, 15].some((minutes) => said(minutes * MIN).owed)).toBe(false);
+  });
+
+  const run = (overrides: Partial<EndedLaneView> = {}): TimelineLane =>
+    historyLanes({
+      sinceMs: NOW - 24 * 60 * MIN,
+      untilMs: NOW,
+      readAt: NOW,
+      fidelity: 'turns',
+      state: 'complete',
+      live: [],
+      ended: [
+        {
+          id: 'past:claude:x',
+          provider: { id: 'claude', label: 'Claude Code' },
+          project: { name: 'rosetta', seq: 2, branch: 'main' },
+          device: { id: 'here', name: 'here', self: true },
+          startedAt: NOW - 60 * MIN,
+          endedAt: NOW - 3 * MIN,
+          spans: [{ kind: 'worked', from: NOW - 60 * MIN, to: NOW - 3 * MIN }],
+          colour: 'teal',
+          receded: false,
+          ...overrides,
+        },
+      ],
+    }).ended[0]!;
+
+  it("says an ended run's last activity: how long ago following now, the clock looking back", () => {
+    const ended = run();
+    expect(readoutAt(ended, stateAt(ended, NOW), NOW, true, NOW)).toEqual({
+      tone: 'ended',
+      big: '',
+      small: 'ended · last activity 3m ago',
+      owed: false,
+    });
+    expect(readoutAt(ended, stateAt(ended, NOW - MIN), NOW - MIN, false, NOW).small).toBe(
+      `ended · last activity ${formatClock(NOW - 3 * MIN)}`,
+    );
+    // Inside its life it reads its record, as a row\'s past does.
+    expect(readoutAt(ended, stateAt(ended, NOW - 30 * MIN), NOW - 30 * MIN, false, NOW).small).toBe('working · of 57m');
+  });
+
+  it('names an ended run by its title, else what ran it and where; its line, and its label', () => {
+    const plain = run();
+    expect(laneName(plain)).toBe('Claude Code · rosetta');
+    expect(laneSubLine(plain)).toBe('main');
+    expect(laneLabel(plain, NOW)).toBe('rosetta, Claude Code, ended, last activity 3 minutes ago');
+    const titled = run({ title: 'Split the invoice writer', device: { id: 'p', name: 'tower', self: false } });
+    expect(laneName(titled)).toBe('Split the invoice writer');
+    expect(laneSubLine(titled)).toBe('Claude Code · main');
+    expect(laneLabel(titled, NOW)).toBe(
+      'on tower, Split the invoice writer, rosetta, Claude Code, ended, last activity 3 minutes ago',
+    );
+    expect(endedName({ provider: undefined, project: { name: 'notes' } })).toBe('notes');
+    // A row is named as before.
+    expect(laneName(lane())).toBe('notes');
   });
 });

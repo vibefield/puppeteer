@@ -1,12 +1,20 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibecook/puppeteer-view-sdk';
+import type {
+  AgentView,
+  EndedLaneView,
+  MonitorHistory,
+  MonitorViewInput,
+  MonitorViewInstance,
+} from '@vibecook/puppeteer-view-sdk';
 import {
   agentViewFixture,
+  agentViewsFixture,
   countingCommands,
   createFixtureClock,
   createFrameDriver,
+  fixtureHistory,
   fixtureInput,
   fixtureStage,
   fixtureTheme,
@@ -431,4 +439,237 @@ describe('at a size to draw at', () => {
     size = { width: 0, height: 0 };
   });
   runConformance(timelineMonitorView);
+});
+
+// The record's past, as a host lends it (`history`): built by hand, so each case says what it holds.
+const MIN = 60_000;
+
+function endedRun(
+  id: string,
+  startedAgo: number,
+  endedAgo: number,
+  overrides: Partial<EndedLaneView> = {},
+): EndedLaneView {
+  return {
+    id: `past:claude:${id}`,
+    provider: { id: 'claude', label: 'Claude Code' },
+    project: { name: 'notes', seq: 1 },
+    device: { id: 'here', name: 'here', self: true },
+    startedAt: NOW - startedAgo * MIN,
+    endedAt: NOW - endedAgo * MIN,
+    spans: [{ kind: 'worked', from: NOW - startedAgo * MIN, to: NOW - endedAgo * MIN }],
+    colour: 'oklch(0.7 0.1 200)',
+    receded: false,
+    ...overrides,
+  };
+}
+
+function pastHistory(partial: Partial<MonitorHistory> = {}): MonitorHistory {
+  return {
+    sinceMs: NOW - 24 * 60 * MIN,
+    untilMs: NOW,
+    readAt: NOW,
+    fidelity: 'turns',
+    state: 'complete',
+    live: [],
+    ended: [],
+    ...partial,
+  };
+}
+
+describe("with the record's past (history)", () => {
+  /** Born 50 minutes ago; worked, then quiet up to its current state, working these ten minutes. */
+  const row = agentViewFixture({
+    id: 'a',
+    createdAt: NOW - 50 * MIN,
+    status: 'working',
+    statusSince: NOW - 10 * MIN,
+    project: { name: 'billing', seq: 0 },
+  });
+  const lent = pastHistory({
+    live: [
+      {
+        id: 'a',
+        seamAt: NOW - 10 * MIN,
+        spans: [
+          { kind: 'worked', from: NOW - 50 * MIN, to: NOW - 30 * MIN },
+          { kind: 'quiet', from: NOW - 30 * MIN, to: NOW - 10 * MIN },
+        ],
+      },
+    ],
+    ended: [
+      endedRun('y', 55, 25),
+      endedRun('x', 40, 20, { title: 'Split the invoice writer' }),
+      // Ended two hours ago: scrolled out of the hour in view (TL-D6).
+      endedRun('gone', 5 * 60, 2 * 60),
+    ],
+  });
+  const heads = (root: Element) =>
+    [...root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-head')].map((head) => [
+      head.dataset.tone,
+      head.querySelector('b')?.textContent,
+      head.querySelector('small')?.textContent,
+    ]);
+
+  it('draws the runs that ended faint in their birth slots, until they scroll out', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } });
+    await act(async () => frames.step(2));
+    expect(names(view.root)).toEqual(['Claude Code · notes', 'billing', 'Split the invoice writer']);
+    expect(view.root.querySelectorAll('.vf-monitor-timeline-name.is-ended')).toHaveLength(2);
+    // Following now, an ended run says its last activity (the record holds no exit); the row says its state.
+    expect(heads(view.root)).toEqual([
+      ['ended', '', 'ended · last activity 25m ago'],
+      ['working', '10:00', 'working'],
+      ['ended', '', 'ended · last activity 20m ago'],
+    ]);
+  });
+
+  it('reads the past as the record says it, looking back', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } });
+    const map = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-map-box')!;
+    await act(async () => {
+      map.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', shiftKey: true, bubbles: true }));
+      frames.step(2);
+    });
+    // Thirty minutes back: the row was quiet; both ended runs were working, 25 and 10 minutes into stretches of 30 and 20.
+    expect(heads(view.root)).toEqual([
+      ['working', '25:00', 'working · of 30m'],
+      ['idle', '', 'quiet'],
+      ['working', '10:00', 'working · of 20m'],
+    ]);
+  });
+
+  it('lights an ended run but never opens it: no key, press or button sends its past: id', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } });
+    await act(async () => frames.step(2));
+    const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
+    const key = (name: string) =>
+      act(async () => {
+        body.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+      });
+    await key('ArrowDown');
+    await key('Enter');
+    expect(view.commands.selects).toEqual([]);
+    await key('ArrowDown');
+    await key('Enter');
+    expect(view.commands.selects).toEqual(['a']);
+    // A press on the ended run's lane selects nothing; one on the row's selects it.
+    const lanes = [...view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-name')];
+    const press = (lane: HTMLElement) =>
+      act(async () => {
+        const at = { clientX: 40, clientY: parseFloat(lane.style.top) + 4, button: 0, bubbles: true };
+        body.dispatchEvent(new PointerEvent('pointerdown', at));
+        body.dispatchEvent(new PointerEvent('pointerup', at));
+      });
+    await press(lanes[0]!);
+    expect(view.commands.selects).toEqual(['a']);
+    await press(lanes[1]!);
+    expect(view.commands.selects).toEqual(['a', 'a']);
+    // A screen reader reads an ended run but finds nothing to press.
+    expect(buttons(view.root)).toHaveLength(1);
+    const read = [...view.root.querySelectorAll('.vf-monitor-timeline-agents li > span')].map(
+      (item) => item.textContent,
+    );
+    expect(read).toEqual([
+      'notes, Claude Code, ended, last activity 25 minutes ago',
+      'Split the invoice writer, notes, Claude Code, ended, last activity 20 minutes ago',
+    ]);
+  });
+
+  it("cuts the seam where the runtime takes over, and ticks each ended run's last activity", async () => {
+    await mount({ agents: [row], capabilities: { history: lent } });
+    await act(async () => frames.step(2));
+    const rects = calls.filter((call) => call.op === 'fillRect').map((call) => call.args as number[]);
+    // Three lanes of 36 px: the row's seam is a 1 px cut across its 7.5 px wake (2r + 2), off the top edge.
+    expect(rects.some(([, y, w, h]) => w === 1 && h === 17 && y! > 0)).toBe(true);
+    expect(rects.filter(([, , w, h]) => w === 2 && h === 12).length).toBeGreaterThanOrEqual(2);
+    // Every lane's record covers its whole life here, so no dotted thread is drawn (the gap rule draws only gaps).
+    expect(calls.filter((call) => call.op === 'setLineDash')).toHaveLength(0);
+  });
+
+  it("prints the backend's sentence when the record is not whole, and nothing when it is", async () => {
+    const record = (root: Element) => root.querySelector('.vf-monitor-timeline-record');
+    const partial = await mount({
+      agents: [row],
+      capabilities: {
+        history: pastHistory({ state: 'partial', detail: 'tower is asleep; its runs are not in this record.' }),
+      },
+    });
+    expect(record(partial.root)?.textContent).toBe('tower is asleep; its runs are not in this record.');
+    expect(record(partial.root)?.getAttribute('role')).toBe('status');
+    await partial.update(
+      fixtureInput({
+        parameters: PARAMETERS,
+        agents: [row],
+        capabilities: { history: pastHistory({ state: 'complete', detail: 'unused' }) },
+      }),
+    );
+    expect(record(partial.root)).toBeNull();
+    await partial.update(fixtureInput({ parameters: PARAMETERS, agents: [row] }));
+    expect(record(partial.root)).toBeNull();
+    // Unavailable: today's floor (the row alone), and the sentence.
+    await partial.update(
+      fixtureInput({
+        parameters: PARAMETERS,
+        agents: [row],
+        capabilities: { history: pastHistory({ state: 'unavailable', detail: 'The record index is starting.' }) },
+      }),
+    );
+    expect(record(partial.root)?.textContent).toBe('The record index is starting.');
+    expect(names(partial.root)).toEqual(['billing']);
+  });
+
+  it('repaints both canvases once for a new history, and nothing for the same one', async () => {
+    const theme = fixtureTheme('dark', { animations: false });
+    const agents = [row];
+    const view = await mount({ agents, theme, capabilities: { history: lent } });
+    // Settle: the first draw scrolls the two-hour-old run out, which lays the lanes out again and draws once more.
+    for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
+    expect(frames.pending).toBe(0);
+    const clears = () => calls.filter((call) => call.op === 'clearRect').length;
+    let before = clears();
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents, theme, capabilities: { history: lent } }));
+    await act(async () => frames.step(2));
+    expect(clears()).toBe(before);
+    before = clears();
+    await view.update(fixtureInput({ parameters: PARAMETERS, agents, theme, capabilities: { history: { ...lent } } }));
+    expect(frames.pending).toBe(1);
+    await act(async () => frames.step(1));
+    expect(clears() - before).toBe(2);
+  });
+
+  it('sizes the wake canvas to the window when ended runs make the rows tall, and moves it as the lanes scroll', async () => {
+    const tall = pastHistory({ ended: Array.from({ length: 40 }, (_, index) => endedRun(`r${index}`, 50 + index, 5)) });
+    const view = await mount({ agents: [row], capabilities: { history: tall } });
+    await act(async () => frames.step(2));
+    const wake = view.root.querySelector<HTMLCanvasElement>('.vf-monitor-timeline-wakes')!;
+    const rows = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-rows')!;
+    // The body shows 252 px of 41 lanes; the canvas covers that and 120 px either side, never all of them.
+    expect(parseFloat(rows.style.height)).toBeGreaterThan(900);
+    expect(wake.style.height).toBe(`${252 + 240}px`);
+    const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
+    Object.defineProperty(body, 'scrollTop', { configurable: true, value: 400 });
+    await act(async () => {
+      body.dispatchEvent(new Event('scroll'));
+      frames.step(1);
+    });
+    expect(wake.style.top).toBe('280px');
+    // Without ended runs the canvas is as tall as the rows, as before.
+    const short = await mount({ agents: agentViewsFixture(20), capabilities: { history: pastHistory() } });
+    await act(async () => frames.step(2));
+    const shortWake = short.root.querySelector<HTMLCanvasElement>('.vf-monitor-timeline-wakes')!;
+    const shortRows = short.root.querySelector<HTMLElement>('.vf-monitor-timeline-rows')!;
+    expect(shortWake.style.height).toBe(`${Math.max(parseFloat(shortRows.style.height), 252)}px`);
+  });
+});
+
+// The suite again with the record lent: the view keeps every rule with history in its input (MV-W4).
+describe('at a size to draw at, with history', () => {
+  beforeAll(() => {
+    size = { width: 1064, height: 320 };
+  });
+  afterAll(() => {
+    size = { width: 0, height: 0 };
+  });
+  runConformance(timelineMonitorView, { capabilities: { history: fixtureHistory({ live: agentViewsFixture(20) }) } });
 });

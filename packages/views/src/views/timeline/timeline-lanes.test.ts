@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, EndedLaneView, MonitorHistory, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
 import {
   dayStart,
   earliestHead,
+  ENDED_ALPHA,
+  historyLanes,
   laneContentKey,
   laneAlpha,
   laneFor,
   laneStatus,
+  pastBefore,
   QUIET_ALPHA,
+  scrolledOutKey,
   stateAt,
   stepLight,
   timelineLanes,
+  withoutScrolledOut,
 } from './timeline-lanes.js';
 import { TIMELINE_HORIZON_MS } from './timeline-scale.js';
 
@@ -217,5 +222,170 @@ describe('the day’s start and the head’s limit', () => {
   it('never reaches past the horizon', () => {
     const old = timelineLanes([agentRow('a', 30 * 60 * MIN)], NOW);
     expect(dayStart(old, 60 * MIN, NOW)).toBe(NOW - TIMELINE_HORIZON_MS);
+  });
+});
+
+// The record's past, as a host lends it (`history`): plain data, built by hand so each case says what it holds.
+
+/** A recorded stretch from `fromAgo` to `toAgo` before now. */
+const span = (kind: MonitorPastSpan['kind'], fromAgo: number, toAgo: number): MonitorPastSpan => ({
+  kind,
+  from: NOW - fromAgo,
+  to: NOW - toAgo,
+});
+
+/** A run that ended: its record from `startedAgo` to its last activity `endedAgo` before now, worked throughout. */
+function endedRun(
+  id: string,
+  startedAgo: number,
+  endedAgo: number,
+  overrides: Partial<EndedLaneView> = {},
+): EndedLaneView {
+  return {
+    id: `past:claude:${id}`,
+    provider: { id: 'claude', label: 'Claude Code' },
+    project: { name: 'notes', seq: 1 },
+    device: { id: 'here', name: 'here', self: true },
+    startedAt: NOW - startedAgo,
+    endedAt: NOW - endedAgo,
+    spans: [span('worked', startedAgo, endedAgo)],
+    colour: 'teal',
+    receded: false,
+    ...overrides,
+  };
+}
+
+function history(partial: Partial<MonitorHistory> = {}): MonitorHistory {
+  return {
+    sinceMs: NOW - 24 * 60 * MIN,
+    untilMs: NOW,
+    readAt: NOW,
+    fidelity: 'turns',
+    state: 'complete',
+    live: [],
+    ended: [],
+    ...partial,
+  };
+}
+
+describe('a row with its recorded past (T1, T3)', () => {
+  const recorded = [
+    span('worked', 70 * MIN, 40 * MIN),
+    span('quiet', 40 * MIN, 20 * MIN),
+    span('worked', 20 * MIN, 10 * MIN),
+  ];
+  const lent = history({ live: [{ id: 'a', seamAt: NOW - 10 * MIN, spans: recorded }] });
+
+  it('joins its past by its own id, and is born at the earlier of its birth and the record (a resumed session)', () => {
+    const [lane] = timelineLanes([agentRow('a', 50 * MIN, { status: 'working' }, 10 * MIN)], NOW, lent).agents;
+    expect(lane!.past).toBe(recorded);
+    expect(lane!.bornMs).toBe(NOW - 70 * MIN);
+    expect(lane!.ended === undefined && lane!.sinceMs).toBe(NOW - 10 * MIN);
+    // A row the record does not hold has none, and is the row alone, exactly as without history.
+    const [other] = timelineLanes([agentRow('b', 50 * MIN, {}, 10 * MIN)], NOW, lent).agents;
+    expect(other).toEqual(laneFor(agentRow('b', 50 * MIN, {}, 10 * MIN), NOW));
+  });
+
+  it('cuts its past at the CURRENT statusSince, and keeps it whole when the status has moved on since the read', () => {
+    const back = laneFor(agentRow('a', 50 * MIN, {}, 15 * MIN), NOW, recorded);
+    expect(back.past).toEqual([
+      span('worked', 70 * MIN, 40 * MIN),
+      span('quiet', 40 * MIN, 20 * MIN),
+      span('worked', 20 * MIN, 15 * MIN),
+    ]);
+    const on = laneFor(agentRow('a', 50 * MIN, {}, 5 * MIN), NOW, recorded);
+    expect(on.past).toBe(recorded);
+    // Between the read's seam and the newer status the record says nothing: not recorded, until the host reads again.
+    expect(stateAt(on, NOW - 7 * MIN).kind).toBe('unrecorded');
+    expect(pastBefore(recorded, NOW - 80 * MIN)).toBeUndefined();
+    expect(pastBefore([], NOW)).toBeUndefined();
+  });
+
+  it('reads a moment from its record: worked, quiet and bounds are recorded; a silence or uncovered time is not', () => {
+    const lane = laneFor(agentRow('a', 90 * MIN, { status: 'blocked' }, 10 * MIN), NOW, [
+      span('worked', 80 * MIN, 60 * MIN),
+      span('unrecorded', 60 * MIN, 40 * MIN),
+      span('quiet', 40 * MIN, 30 * MIN),
+      span('bounds', 25 * MIN, 10 * MIN),
+    ]);
+    const at = (ago: number) => stateAt(lane, NOW - ago);
+    expect(at(85 * MIN).kind).toBe('unrecorded');
+    expect(at(70 * MIN)).toEqual({ kind: 'past', span: span('worked', 80 * MIN, 60 * MIN) });
+    expect(at(50 * MIN).kind).toBe('unrecorded');
+    expect(at(35 * MIN)).toEqual({ kind: 'past', span: span('quiet', 40 * MIN, 30 * MIN) });
+    expect(at(27 * MIN).kind).toBe('unrecorded');
+    expect(at(20 * MIN)).toEqual({ kind: 'past', span: span('bounds', 25 * MIN, 10 * MIN) });
+    expect(at(5 * MIN)).toEqual({ kind: 'span', span: lane.current });
+    expect(at(95 * MIN).kind).toBe('unborn');
+  });
+
+  it('keys its record into what the canvases draw', () => {
+    const row = agentRow('a', 50 * MIN, {}, 10 * MIN);
+    const bare = laneContentKey([laneFor(row, NOW)]);
+    const kept = laneContentKey([laneFor(row, NOW, recorded)]);
+    expect(kept).not.toBe(bare);
+    expect(laneContentKey([laneFor(row, NOW, recorded.slice(1))])).not.toBe(kept);
+  });
+});
+
+describe('the runs that ended (TL-D6)', () => {
+  const rows = [agentRow('early', 50 * MIN), agentRow('late', 10 * MIN), terminalRow('shell', 90 * MIN)];
+  const lent = history({ ended: [endedRun('mid', 30 * MIN, 15 * MIN), endedRun('first', 80 * MIN, 60 * MIN)] });
+
+  it('take their birth slots among the agents, the terminals still below', () => {
+    const set = timelineLanes(rows, NOW, lent);
+    expect(set.agents.map((lane) => lane.id)).toEqual(['past:claude:first', 'early', 'past:claude:mid', 'late']);
+    expect(set.terminals.map((lane) => lane.id)).toEqual(['shell']);
+    const ended = set.agents[0]!;
+    expect(ended.ended?.id).toBe('past:claude:first');
+    expect([ended.kind, ended.bornMs, ended.colour]).toEqual(['agent', NOW - 80 * MIN, 'teal']);
+  });
+
+  it('are built once per history object; the rows join them on every call', () => {
+    const one = timelineLanes(rows, NOW, lent);
+    const two = timelineLanes([...rows], NOW, lent);
+    expect(two.agents[0]).toBe(one.agents[0]);
+    expect(historyLanes(lent)).toBe(historyLanes(lent));
+    expect(historyLanes({ ...lent }).ended[0]).not.toBe(historyLanes(lent).ended[0]);
+  });
+
+  it('are drawn faint, fainter again when receded or another lane is lit', () => {
+    const [ended] = historyLanes(history({ ended: [endedRun('x', 30 * MIN, 15 * MIN)] })).ended;
+    const [quiet] = historyLanes(history({ ended: [endedRun('y', 30 * MIN, 15 * MIN, { receded: true })] })).ended;
+    expect(laneAlpha(ended!, 0, -1)).toBe(ENDED_ALPHA);
+    expect(laneAlpha(quiet!, 0, -1)).toBe(QUIET_ALPHA * ENDED_ALPHA);
+    expect(laneAlpha(ended!, 0, 0)).toBe(ENDED_ALPHA);
+    expect(laneAlpha(ended!, 0, 1)).toBe(QUIET_ALPHA * ENDED_ALPHA);
+  });
+
+  it('say they ended past their last activity, and read their record before it', () => {
+    const [ended] = historyLanes(lent).ended;
+    expect(stateAt(ended!, NOW - 70 * MIN)).toEqual({ kind: 'past', span: span('worked', 80 * MIN, 60 * MIN) });
+    expect(stateAt(ended!, NOW - 60 * MIN)).toEqual({ kind: 'ended' });
+    expect(stateAt(ended!, NOW - 85 * MIN).kind).toBe('unborn');
+  });
+
+  it('stay until they have scrolled out past the left edge', () => {
+    const set = timelineLanes(rows, NOW, lent);
+    expect(scrolledOutKey(set, NOW - 90 * MIN)).toBe('');
+    expect(scrolledOutKey(set, NOW - 30 * MIN)).toBe('past:claude:first');
+    expect(scrolledOutKey(set, NOW - 15 * MIN)).toBe('past:claude:first\npast:claude:mid');
+    expect(withoutScrolledOut(set, '')).toBe(set);
+    const left = withoutScrolledOut(set, scrolledOutKey(set, NOW - 30 * MIN));
+    expect(left.agents.map((lane) => lane.id)).toEqual(['early', 'past:claude:mid', 'late']);
+    expect(left.terminals).toBe(set.terminals);
+  });
+
+  it('start the day at their births too, never past the horizon', () => {
+    expect(dayStart(timelineLanes(rows, NOW, lent), 60 * MIN, NOW)).toBe(NOW - 80 * MIN);
+    const old = history({ ended: [endedRun('old', 30 * 60 * MIN, 20 * 60 * MIN)] });
+    expect(dayStart(timelineLanes(rows, NOW, old), 60 * MIN, NOW)).toBe(NOW - TIMELINE_HORIZON_MS);
+  });
+
+  it('key their record into what the canvases draw', () => {
+    const key = laneContentKey(timelineLanes(rows, NOW, lent).agents);
+    expect(key).toContain('past:claude:mid,ended');
+    const moved = history({ ended: [endedRun('mid', 30 * MIN, 12 * MIN), endedRun('first', 80 * MIN, 60 * MIN)] });
+    expect(laneContentKey(timelineLanes(rows, NOW, moved).agents)).not.toBe(key);
   });
 });

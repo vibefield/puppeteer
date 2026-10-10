@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import type { MonitorHistory, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
-import { laneFor } from './timeline-lanes.js';
+import { laneFor, timelineLanes } from './timeline-lanes.js';
 import {
   PULSE_GEOMETRY,
   addCoverage,
   pulseMap,
+  pulsePastFor,
   pulseRowsFor,
   pulseScales,
   smooth,
@@ -100,5 +102,74 @@ describe('pulseRowsFor', () => {
   it('gives each agent its current state from when it began', () => {
     const rows = pulseRowsFor([lane('u', { status: 'idle', unread: true, statusSince: 30 * MIN })], NOW);
     expect(rows).toEqual([{ color: 'u', status: 'unseen', fromMs: 30 * MIN, endMs: NOW }]);
+  });
+});
+
+describe("the record's work on the map (T6)", () => {
+  const at = (kind: MonitorPastSpan['kind'], from: number, to: number): MonitorPastSpan => ({
+    kind,
+    from: from * MIN,
+    to: to * MIN,
+  });
+  const row = (id: string, overrides: AgentViewFixturePartial = {}) =>
+    agentViewFixture({ id, colour: id, status: 'working', createdAt: 0, statusSince: 60 * MIN, ...overrides });
+  const history: MonitorHistory = {
+    sinceMs: NOW - 24 * 60 * MIN,
+    untilMs: NOW,
+    readAt: NOW,
+    fidelity: 'turns',
+    state: 'complete',
+    live: [
+      { id: 'a', seamAt: 60 * MIN, spans: [at('worked', 10, 20), at('quiet', 20, 30), at('worked', 30, 60)] },
+      { id: 'r', seamAt: 60 * MIN, spans: [at('worked', 10, 60)] },
+    ],
+    ended: [
+      {
+        id: 'past:claude:e',
+        project: { name: 'e', seq: 3 },
+        device: { id: 'here', name: 'here', self: true },
+        startedAt: 0,
+        endedAt: 50 * MIN,
+        spans: [at('worked', 0, 15), at('unrecorded', 15, 30), at('worked', 30, 50)],
+        colour: 'ended-colour',
+        receded: false,
+      },
+      {
+        id: 'past:claude:b',
+        project: { name: 'b', seq: 4 },
+        device: { id: 'here', name: 'here', self: true },
+        startedAt: 5 * MIN,
+        endedAt: 45 * MIN,
+        spans: [at('bounds', 5, 45)],
+        colour: 'bounds-colour',
+        receded: false,
+      },
+    ],
+  };
+  const lanes = timelineLanes([row('a'), row('r', { receded: true })], NOW, history).agents;
+
+  it("counts each lane's worked stretches in its own colour, but a receded lane's; quiet and bounds count nothing", () => {
+    const past = pulsePastFor(lanes);
+    expect(past.map((lane) => [lane.color, lane.spans.map((span) => span.kind)])).toEqual([
+      ['a', ['worked', 'worked']],
+      ['ended-colour', ['worked', 'worked']],
+    ]);
+    // The rows\' waits and current states are their own, as before.
+    expect(pulseRowsFor(lanes, NOW)).toEqual([{ color: 'a', status: 'working', fromMs: 60 * MIN, endMs: NOW }]);
+  });
+
+  it('adds that work to the ridge, and leaves the ridge as it was without it', () => {
+    const rows = pulseRowsFor(lanes, NOW);
+    const geometry = { ...PULSE_GEOMETRY, width: 200 };
+    const bare = pulseMap(rows, START, NOW, geometry);
+    expect(pulseMap(rows, START, NOW, geometry, [])).toEqual(bare);
+    const map = pulseMap(rows, START, NOW, geometry, pulsePastFor(lanes));
+    expect(map.work.map((band) => band.color).sort()).toEqual(['a', 'ended-colour']);
+    // Before any row\'s current state the bare ridge is flat; with the record it rises where the lanes worked.
+    const early = map.xs.findIndex((x) => x > 30);
+    const rise = (of: typeof map) => of.base - of.work[of.work.length - 1]!.top[early]!;
+    expect(rise(bare)).toBeCloseTo(0);
+    expect(rise(map)).toBeGreaterThan(1);
+    expect(map.blocked.bottom[early]).toBeCloseTo(map.base);
   });
 });
