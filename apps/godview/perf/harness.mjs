@@ -11,6 +11,9 @@
 //   node perf/harness.mjs --b /path/to/other/apps/godview   A/B/A' rounds (A is --a, this app by default)
 //   node perf/harness.mjs --synthetic-b-ms 2                the negative control: B is A plus a 2 ms
 //                                                         busy wait in every animation-frame callback
+//   node perf/harness.mjs --history-ended 40                the history arm (TLV): B is A's own build lending
+//                                                         a view that declares it a fixture history (each row a
+//                                                         day of turns, 40 runs that ended within the hour)
 //   options: --rounds 7 · --counts 10,20,60 · --views swarm,list,rain,timeline · --warmup-ms 3000
 //            --window-ms 10000 · --step-ms 3000 · --fps 60 · --load-max 60 · --out <dir>
 //
@@ -51,6 +54,7 @@ const config = {
   a: resolve(option('a', thisApp)),
   b: option('b') ? resolve(option('b')) : undefined,
   syntheticBMs: Number(option('synthetic-b-ms', 0)),
+  historyEnded: Number(option('history-ended', 0)),
   rounds: Number(option('rounds', 7)),
   counts: option('counts', '10,20,60').split(',').map(Number),
   views: option('views', 'swarm,list,rain,timeline').split(','),
@@ -172,8 +176,11 @@ function frameStats(deltas) {
   return { count: sorted.length, p50: at(0.5), p95: at(0.95), max: sorted.at(-1) ?? null };
 }
 
-/** One launch of one build: agents up to each count in turn, every view measured at each. */
-async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
+/**
+ * One launch of one build: agents up to each count in turn, every view measured at each. `historyEnded` > 0 asks the
+ * app to lend a fixture history (`window.__gvPerfHistory`, apps/godview/src/renderer/monitor/perf-history.ts).
+ */
+async function runArm(appDir, round, label, viewOrder, slowMs = 0, historyEnded = 0) {
   const runDir = mkdtempSync('/tmp/gvp-');
   const profile = join(runDir, 'profile');
   const home = join(runDir, 'home');
@@ -255,7 +262,7 @@ async function runArm(appDir, round, label, viewOrder, slowMs = 0) {
     page = await connectPage(target.webSocketDebuggerUrl);
     await page.send('Page.enable');
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `${slowMs > 0 ? `window.__gvPerfSlowMs = ${slowMs};\n` : ''}${readFileSync(join(here, 'page-probe.js'), 'utf8')}`,
+      source: `${slowMs > 0 ? `window.__gvPerfSlowMs = ${slowMs};\n` : ''}${historyEnded > 0 ? `window.__gvPerfHistory = { ended: ${historyEnded} };\n` : ''}${readFileSync(join(here, 'page-probe.js'), 'utf8')}`,
     });
     writeFileSync(gate, '');
     await until('the probe and the monitor stage', async () => {
@@ -381,9 +388,11 @@ async function main() {
       throw new Error(`${app} is not built: run \`node build.mjs\` there first`);
   }
   mkdirSync(config.out, { recursive: true });
-  // The negative control's B is A's own build; only the probe slows it.
+  // The negative control's B is A's own build; only the probe slows it. The history arm's B is A's own build too; only
+  // the fixture history it lends differs.
   const synthetic = !config.b && config.syntheticBMs > 0;
-  const builds = { A: config.a, ...(config.b ? { B: config.b } : synthetic ? { B: config.a } : {}) };
+  const history = !config.b && !synthetic && config.historyEnded > 0;
+  const builds = { A: config.a, ...(config.b ? { B: config.b } : synthetic || history ? { B: config.a } : {}) };
   const plan = [];
   for (let round = 0; round < config.rounds; round += 1) {
     // A' is the null arm: the same build as A, measured in the same round.
@@ -400,7 +409,15 @@ async function main() {
     const started = Date.now();
     try {
       const slowMs = synthetic && step.arm === 'B' ? config.syntheticBMs : 0;
-      const outcome = await runArm(step.app, step.round, step.arm.replace("'", '2'), step.viewOrder, slowMs);
+      const historyEnded = history && step.arm === 'B' ? config.historyEnded : 0;
+      const outcome = await runArm(
+        step.app,
+        step.round,
+        step.arm.replace("'", '2'),
+        step.viewOrder,
+        slowMs,
+        historyEnded,
+      );
       results.runs.push({
         ...step,
         load: { before, after: loadavg().map((value) => Number(value.toFixed(2))) },

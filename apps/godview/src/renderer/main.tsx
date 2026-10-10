@@ -71,6 +71,7 @@ import {
   VIGNETTE_OPACITY_KEY,
 } from './monitor/stage-parameters.js';
 import { FindSheet } from '@vibecook/puppeteer-views';
+import { usePerfHistory } from './monitor/perf-history.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
 import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
@@ -471,6 +472,8 @@ function Godview() {
   // The chrome's rows (M19): the inspector, Find, the deck's frames and split sessions read these; the views, the
   // counts and the status shortcuts read the model through the replica.
   const { agents, actions, counts, selectNextStatus, notifications, dismissNotification } = monitor;
+  // Godview keeps no record, so it lends no history; only the perf harness asks it to lend a fixture (TLV).
+  const perfCapabilities = usePerfHistory(monitor.model, monitor.views.get(view.id), palette);
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
@@ -839,6 +842,7 @@ function Godview() {
           stage={stageGeometry}
           theme={monitorTheme}
           parameters={parameters}
+          capabilities={perfCapabilities}
           commands={monitor.commands}
           scheduler={frameScheduler}
         />

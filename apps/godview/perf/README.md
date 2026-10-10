@@ -21,6 +21,7 @@ node perf/harness.mjs --b /path/to/slice/apps/godview      # A/B/A′ rounds; A 
 | `--step-ms`                   | 3000                     | each agent changes state this often, its phase offset by its place                                                            |
 | `--fps`                       | 60                       | the offscreen frame rate (Electron allows up to 240)                                                                          |
 | `--synthetic-b-ms`            | none                     | the negative control: with no `--b`, B is A's own build plus this many ms of busy wait in every page animation-frame callback |
+| `--history-ended`             | none                     | the history arm (TLV): with no `--b`, B is A's own build lending a view that declares `history` a fixture (each agent row a day of turns, this many runs that ended within the hour; `src/renderer/monitor/perf-history.ts`); A and A′ lend none |
 | `--load-max`                  | 60                       | before each launch, wait for the 1-minute load average to fall below this (L17)                                               |
 | `--out`                       | `perf/runs/<time>`       | `results.json`, `summary.md`, one Electron log per launch                                                                     |
 
