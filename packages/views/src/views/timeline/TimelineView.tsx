@@ -31,6 +31,7 @@ import {
   stepLight,
   timelineLanes,
   withoutScrolledOut,
+  type TimelineLane,
   type TimelineLaneSet,
 } from './timeline-lanes.js';
 import { paintPulse, paintWakes, type PlacedLane } from './timeline-paint.js';
@@ -52,7 +53,7 @@ import {
   type ScaleTween,
   type TimelineScale,
 } from './timeline-scale.js';
-import { laneLabel, laneName, laneSubLine, readoutAt } from './timeline-words.js';
+import { laneLabel, laneName, laneSubLine, readoutAt, recordState } from './timeline-words.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is
@@ -174,6 +175,71 @@ function PeerMark({ name }: { name: string }) {
   );
 }
 
+/** A lane's name row, floated over the wakes' far end: a row's project, or an ended run's own name, faint. */
+function nameRow({ lane, y, h }: PlacedLane): ReactElement {
+  const sub = laneSubLine(lane);
+  const two = h >= 30 && lane.kind === 'agent' && sub !== '';
+  const device = lane.ended === undefined ? lane.row.device : lane.ended.device;
+  const active = lane.row?.active === true;
+  const pane = lane.row?.attachment;
+  return (
+    <div
+      key={lane.id}
+      className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.ended !== undefined ? ' is-ended' : ''}${lane.receded ? ' is-receded' : ''}${active ? ' is-active' : ''}`}
+      style={{ top: y, height: h, '--mv-timeline-colour': lane.colour } as CSSProperties}
+    >
+      {pane ? (
+        <i
+          className={`vf-monitor-timeline-band${active ? ' is-active' : ''}`}
+          style={pane.colour ? { background: pane.colour } : undefined}
+        />
+      ) : null}
+      <span className="vf-monitor-timeline-who">
+        {device.self ? null : <PeerMark name={device.name} />}
+        <FolderMark terminal={lane.kind === 'terminal'} />
+        <b>{laneName(lane)}</b>
+      </span>
+      {two ? <small>{sub}</small> : null}
+    </div>
+  );
+}
+
+/** A lane's head row: its body and its readout, which the draw lights and writes. */
+function headRow({ lane, y, h }: PlacedLane, ref: (element: HTMLDivElement | null) => void): ReactElement {
+  return (
+    <div
+      key={lane.id}
+      ref={ref}
+      className={`vf-monitor-timeline-head${lane.kind === 'terminal' ? ' is-terminal' : ''}${h < 30 ? ' is-one' : ''}${lane.receded ? ' is-receded' : ''}`}
+      style={
+        {
+          top: y,
+          height: h,
+          '--mv-timeline-lane-height': `${h}px`,
+          '--mv-timeline-colour': lane.colour,
+        } as CSSProperties
+      }
+    >
+      <i className="vf-monitor-timeline-body-mark" />
+      <span className="vf-monitor-timeline-readout">
+        <b />
+        <small />
+      </span>
+    </div>
+  );
+}
+
+/** An ended run's rows as a render built them, and what they were built for. */
+interface EndedRows {
+  /** `y|h|index`: a new place builds the name and the head again. */
+  readonly place: string;
+  /** The minute its spoken line was worded in. */
+  readonly minute: number;
+  readonly name: ReactElement;
+  readonly head: ReactElement;
+  readonly item: ReactElement | null;
+}
+
 /**
  * The key that brings the head back to now. The manifest declares it, the map hears it, and the now button, which does
  * the same, prints its legend under the mark (M177 ruling 4).
@@ -215,6 +281,15 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const chipRef = useRef<HTMLDivElement>(null);
   const focusRingRef = useRef<HTMLDivElement>(null);
   const headEls = useRef<(HTMLDivElement | null)[]>([]);
+  /** One stable ref per head slot, for the rows held by identity (a fresh ref would re-attach on every render). */
+  const headRefs = useRef<((element: HTMLDivElement | null) => void)[]>([]);
+  /**
+   * An ended run's three rows (its name, its head, its line in the screen reader's list), held by identity: a model
+   * publish rebuilds the live lanes, never these. An ended lane keeps its object while the history does, so its rows
+   * are built again only for a new history, a new place in the layout, or (its spoken line) a new minute. The lit lane
+   * and the head's moment never reach them: the draw lights the canvas and writes the readouts itself.
+   */
+  const endedRows = useRef(new WeakMap<TimelineLane, EndedRows>());
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   /** Ended runs that have scrolled out of the window, as one key (changes rarely; empty without history). */
@@ -645,11 +720,14 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
           const el = headEls.current[index];
           if (!el) return;
           const readout = readoutAt(placed.lane, stateAt(placed.lane, at), at, following, now);
-          const key = `${readout.tone}|${readout.big}|${readout.small}|${readout.owed}`;
+          const key = `${readout.tone}|${readout.big}|${readout.small}|${readout.owed}${readout.recorded ? '|r' : ''}`;
           if (headKeysRef.current[index] === key) return;
           headKeysRef.current[index] = key;
           el.dataset.tone = readout.tone;
           el.dataset.owed = readout.owed ? 'true' : 'false';
+          // Words from the record may take a second line rather than be cut (timeline.css).
+          if (readout.recorded) el.dataset.recorded = 'true';
+          else if (el.dataset.recorded !== undefined) delete el.dataset.recorded;
           const big = el.querySelector('b');
           const small = el.querySelector('small');
           if (big) big.textContent = readout.big;
@@ -899,6 +977,34 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   } as CSSProperties;
   const empty = layout.placed.length === 0;
 
+  /** An ended run's rows, from the cache while its place and the minute hold (see `endedRows`). */
+  const endedRowsAt = (placed: PlacedLane, index: number): EndedRows => {
+    const { lane } = placed;
+    const place = `${placed.y}|${placed.h}|${index}`;
+    const minute = Math.floor(renderNow / MINUTE);
+    let rows = endedRows.current.get(lane);
+    if (rows === undefined || rows.place !== place) {
+      const ref = (headRefs.current[index] ??= (element: HTMLDivElement | null) => {
+        headEls.current[index] = element;
+      });
+      rows = { place, minute: -1, name: nameRow(placed), head: headRow(placed, ref), item: rows?.item ?? null };
+    }
+    if (rows.minute !== minute || rows.item === null) {
+      // An ended run is read, never opened: no control to press.
+      rows = {
+        ...rows,
+        minute,
+        item: (
+          <li key={lane.id}>
+            <span>{laneLabel(lane, renderNow)}</span>
+          </li>
+        ),
+      };
+    }
+    endedRows.current.set(lane, rows);
+    return rows;
+  };
+
   return (
     <div
       ref={rootRef}
@@ -977,7 +1083,17 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
         <span ref={sinceRef} className="vf-monitor-timeline-since" aria-hidden="true" />
         {recordWords === undefined ? null : (
           <p className="vf-monitor-timeline-record" role="status" title={recordWords}>
-            {recordWords}
+            {columns.narrow ? (
+              // Too narrow for the sentence: the state, in SINCE's words; the sentence stays for a reader and the title.
+              <>
+                <span className="vf-monitor-timeline-record-state" aria-hidden="true">
+                  {recordState(history!.state)}
+                </span>
+                <span className="vf-monitor-timeline-unseen-text">{recordWords}</span>
+              </>
+            ) : (
+              recordWords
+            )}
           </p>
         )}
       </div>
@@ -1030,58 +1146,18 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
             </div>
           )}
           <div className="vf-monitor-timeline-names" aria-hidden="true">
-            {layout.placed.map(({ lane, y, h }) => {
-              const sub = laneSubLine(lane);
-              const two = h >= 30 && lane.kind === 'agent' && sub !== '';
-              const device = lane.ended === undefined ? lane.row.device : lane.ended.device;
-              const active = lane.row?.active === true;
-              const pane = lane.row?.attachment;
-              return (
-                <div
-                  key={lane.id}
-                  className={`vf-monitor-timeline-name${two ? ' is-two' : ''}${lane.kind === 'terminal' ? ' is-terminal' : ''}${lane.ended !== undefined ? ' is-ended' : ''}${lane.receded ? ' is-receded' : ''}${active ? ' is-active' : ''}`}
-                  style={{ top: y, height: h, '--mv-timeline-colour': lane.colour } as CSSProperties}
-                >
-                  {pane ? (
-                    <i
-                      className={`vf-monitor-timeline-band${active ? ' is-active' : ''}`}
-                      style={pane.colour ? { background: pane.colour } : undefined}
-                    />
-                  ) : null}
-                  <span className="vf-monitor-timeline-who">
-                    {device.self ? null : <PeerMark name={device.name} />}
-                    <FolderMark terminal={lane.kind === 'terminal'} />
-                    <b>{laneName(lane)}</b>
-                  </span>
-                  {two ? <small>{sub}</small> : null}
-                </div>
-              );
-            })}
+            {layout.placed.map((placed, index) =>
+              placed.lane.ended === undefined ? nameRow(placed) : endedRowsAt(placed, index).name,
+            )}
           </div>
           <div className="vf-monitor-timeline-heads" aria-hidden="true">
-            {layout.placed.map(({ lane, y, h }, index) => (
-              <div
-                key={lane.id}
-                ref={(element) => {
-                  headEls.current[index] = element;
-                }}
-                className={`vf-monitor-timeline-head${lane.kind === 'terminal' ? ' is-terminal' : ''}${h < 30 ? ' is-one' : ''}${lane.receded ? ' is-receded' : ''}`}
-                style={
-                  {
-                    top: y,
-                    height: h,
-                    '--mv-timeline-lane-height': `${h}px`,
-                    '--mv-timeline-colour': lane.colour,
-                  } as CSSProperties
-                }
-              >
-                <i className="vf-monitor-timeline-body-mark" />
-                <span className="vf-monitor-timeline-readout">
-                  <b />
-                  <small />
-                </span>
-              </div>
-            ))}
+            {layout.placed.map((placed, index) =>
+              placed.lane.ended === undefined
+                ? headRow(placed, (element) => {
+                    headEls.current[index] = element;
+                  })
+                : endedRowsAt(placed, index).head,
+            )}
           </div>
           <div ref={focusRingRef} className="vf-monitor-timeline-focus" hidden aria-hidden="true" />
         </div>
@@ -1094,9 +1170,11 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       ) : null}
       {/* The canvas carries no accessible tree of its own, so the lanes it draws are also offered as controls. */}
       <ul className="vf-monitor-timeline-agents">
-        {layout.placed.map(({ lane }) => (
-          <li key={lane.id}>
-            {lane.ended === undefined ? (
+        {layout.placed.map((placed, index) => {
+          const { lane } = placed;
+          if (lane.ended !== undefined) return endedRowsAt(placed, index).item;
+          return (
+            <li key={lane.id}>
               <button
                 type="button"
                 onClick={() => commands.select(lane.id)}
@@ -1104,12 +1182,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
               >
                 {laneLabel(lane, Date.now())}
               </button>
-            ) : (
-              // An ended run is read, never opened: no control to press.
-              <span>{laneLabel(lane, Date.now())}</span>
-            )}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -17,10 +17,11 @@ import type { LaneSpan, TimelineLane, TimelineMoment } from './timeline-lanes.js
 // toolkit's (MV-D11), ported from this file: days from 24 hours (M14), and a
 // lane's wait in the lane's own order (`laneWaitWords`, carried on the span).
 // A moment the record holds is said as the record can say it (T1): worked as
-// work, quiet as quiet, its bounds alone as bounds; never blocked, never unseen.
+// work, quiet as quiet; inside its bounds alone the detail was not recorded.
+// Never blocked, never unseen.
 
-/** What the record's bounds alone say about a moment (the floor, T5). */
-export const BOUNDS_WORDS = 'recorded · start and end only';
+/** What the record's bounds alone say about a moment inside them (the floor, T5): it was active, the detail unknown. */
+export const BOUNDS_WORDS = 'detail not recorded';
 
 /** A span's state as the readout words it: `blocked · <what it waits on>`, `reply unseen`, or the status. */
 function spanWord(span: LaneSpan): string {
@@ -40,6 +41,8 @@ export interface TimelineReadout {
   small: string;
   /** A wait you owe right now: the body rings (the view's one loop). */
   owed: boolean;
+  /** Said from the record (a past moment, or an ended run): its words may take a second line rather than be cut. */
+  recorded?: true;
 }
 
 /**
@@ -54,10 +57,11 @@ function recordedReadout(span: MonitorPastSpan, at: number, live: boolean): Time
       big: formatElapsed(at - span.from),
       small: live ? word : `${word} · of ${formatShort(span.to - span.from)}`,
       owed: false,
+      recorded: true,
     };
   }
-  if (span.kind === 'quiet') return { tone: 'idle', big: '', small: 'quiet', owed: false };
-  return { tone: 'bounds', big: '', small: BOUNDS_WORDS, owed: false };
+  if (span.kind === 'quiet') return { tone: 'idle', big: '', small: 'quiet', owed: false, recorded: true };
+  return { tone: 'bounds', big: '–', small: BOUNDS_WORDS, owed: false, recorded: true };
 }
 
 /**
@@ -66,7 +70,8 @@ function recordedReadout(span: MonitorPastSpan, at: number, live: boolean): Time
  * and that the state has lasted until now: `4:39` · `idle · of 7m+` (TL-D13).
  * Before its current state a lane has only its record: a recorded moment says
  * what the record says, and anything else `–` · `not recorded` (TL-D9). Past
- * an ended run's last activity it says that activity (the record holds no exit).
+ * an ended run's last activity it says when it was last active (the record
+ * holds no exit; the faint lane and its end tick already say it ended).
  */
 export function readoutAt(
   lane: TimelineLane,
@@ -83,8 +88,9 @@ export function readoutAt(
     return {
       tone: 'ended',
       big: '',
-      small: `ended · last activity ${live ? `${formatShort(nowMs - last)} ago` : formatClock(last)}`,
+      small: `last active ${live ? `${formatShort(nowMs - last)} ago` : formatClock(last)}`,
       owed: false,
+      recorded: true,
     };
   }
   const span = moment.span;
@@ -101,6 +107,15 @@ export function readoutAt(
   const owed = live && (span.status === 'blocked' || span.status === 'unseen');
   const word = live ? spanWord(span) : `${spanWord(span)} · of ${formatShort(nowMs - span.fromMs)}+`;
   return { tone: span.status, big: formatElapsed(at - span.fromMs), small: word, owed };
+}
+
+/**
+ * The record's state as a narrow head says it, in SINCE's words, where its sentence will not fit: partial or not
+ * readable now. A whole record says nothing.
+ */
+export function recordState(state: 'complete' | 'partial' | 'unavailable'): string {
+  if (state === 'partial') return 'RECORD PARTIAL';
+  return state === 'unavailable' ? 'NO RECORD NOW' : '';
 }
 
 /** An ended run's name: its title, else what ran it and where (its provider's label · its project). */
@@ -132,7 +147,7 @@ export function laneLabel(lane: TimelineLane, nowMs: number): string {
     const run = lane.ended;
     const where = run.device.self ? '' : `on ${run.device.name}, `;
     const who = [run.title, run.project.name, run.provider?.label].filter(Boolean).join(', ');
-    return `${where}${who}, ended, last activity ${formatWords(nowMs - run.endedAt)} ago`;
+    return `${where}${who}, ended, last active ${formatWords(nowMs - run.endedAt)} ago`;
   }
   const row = lane.row;
   const where = row.device.self ? '' : `on ${row.device.name}, `;

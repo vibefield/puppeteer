@@ -290,6 +290,24 @@
   line-clamp: 2;
 }
 
+/* The narrow head (104 px) holds no sentence: the state alone, in SINCE's label style, on lines that fit. */
+.mv-timeline .vf-monitor-timeline-record-state {
+  color: var(--text-faint);
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+/* Words for a reader, not the eye (the sentence beside the narrow head's state). */
+.mv-timeline .vf-monitor-timeline-unseen-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ── the axis: wall-clock ticks and the clock chip on the head line ── */
 .mv-timeline .vf-monitor-timeline-axis {
   position: relative;
@@ -729,6 +747,15 @@
   font-size: 8.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A readout from the record (a past moment, an ended run's last activity) takes a second line rather than be cut:
+   a lane is tall enough for two, and the readout is centred in it. A current state keeps its one line, as before. */
+.mv-timeline .vf-monitor-timeline-head[data-recorded='true'] .vf-monitor-timeline-readout small {
+  overflow: visible;
+  line-height: 9px;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 /* A project's ink: its hue deep enough to read on the light ground; in the dark the tint reads as it is. */

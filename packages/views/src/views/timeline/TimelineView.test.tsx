@@ -25,6 +25,13 @@ import {
 } from '@vibecook/puppeteer-view-sdk/testing';
 import { TIMELINE_MANIFEST, TIMELINE_ROOT_CLASS, timelineMonitorView } from './index.js';
 import { timelineWorld } from './lab/timeline-fixtures.js';
+import { laneLabel, laneSubLine } from './timeline-words.js';
+
+// Two of the view's words, spied on and called through: what a publish rebuilds shows in who they are asked about.
+vi.mock('./timeline-words.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./timeline-words.js')>();
+  return { ...actual, laneLabel: vi.fn(actual.laneLabel), laneSubLine: vi.fn(actual.laneSubLine) };
+});
 
 // The timeline on the SDK (MV-6), mounted as a host mounts it. happy-dom lays
 // nothing out and has no 2D context or Path2D, so the tests that draw give the
@@ -518,10 +525,15 @@ describe("with the record's past (history)", () => {
     expect(view.root.querySelectorAll('.vf-monitor-timeline-name.is-ended')).toHaveLength(2);
     // Following now, an ended run says its last activity (the record holds no exit); the row says its state.
     expect(heads(view.root)).toEqual([
-      ['ended', '', 'ended · last activity 25m ago'],
+      ['ended', '', 'last active 25m ago'],
       ['working', '10:00', 'working'],
-      ['ended', '', 'ended · last activity 20m ago'],
+      ['ended', '', 'last active 20m ago'],
     ]);
+    // Words from the record may take a second line rather than be cut; a current state keeps its one line.
+    const recorded = [...view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-head')].map(
+      (head) => head.dataset.recorded,
+    );
+    expect(recorded).toEqual(['true', undefined, 'true']);
   });
 
   it('reads the past as the record says it, looking back', async () => {
@@ -571,8 +583,8 @@ describe("with the record's past (history)", () => {
       (item) => item.textContent,
     );
     expect(read).toEqual([
-      'notes, Claude Code, ended, last activity 25 minutes ago',
-      'Split the invoice writer, notes, Claude Code, ended, last activity 20 minutes ago',
+      'notes, Claude Code, ended, last active 25 minutes ago',
+      'Split the invoice writer, notes, Claude Code, ended, last active 20 minutes ago',
     ]);
   });
 
@@ -617,6 +629,51 @@ describe("with the record's past (history)", () => {
     );
     expect(record(partial.root)?.textContent).toBe('The record index is starting.');
     expect(names(partial.root)).toEqual(['billing']);
+  });
+
+  it('says only the state in a head too narrow for the sentence, which stays for a reader and the title', async () => {
+    const sentence = 'tower is asleep; its runs are not in this record.';
+    const narrow = await mount(
+      { agents: [row], capabilities: { history: pastHistory({ state: 'partial', detail: sentence }) } },
+      { width: 600 },
+    );
+    const record = narrow.root.querySelector<HTMLElement>('.vf-monitor-timeline-record')!;
+    expect(record.querySelector('.vf-monitor-timeline-record-state')?.textContent).toBe('RECORD PARTIAL');
+    expect(record.querySelector('.vf-monitor-timeline-record-state')?.getAttribute('aria-hidden')).toBe('true');
+    expect(record.querySelector('.vf-monitor-timeline-unseen-text')?.textContent).toBe(sentence);
+    expect([record.getAttribute('role'), record.title]).toEqual(['status', sentence]);
+    await narrow.update(
+      fixtureInput({
+        parameters: PARAMETERS,
+        agents: [row],
+        capabilities: { history: pastHistory({ state: 'unavailable', detail: 'The record index is starting.' }) },
+      }),
+    );
+    expect(narrow.root.querySelector('.vf-monitor-timeline-record-state')?.textContent).toBe('NO RECORD NOW');
+  });
+
+  it("holds an ended run's rows by identity: a model publish builds the live lanes' rows again, never theirs", async () => {
+    const theme = fixtureTheme('dark', { animations: false });
+    const view = await mount({ agents: [row], theme, capabilities: { history: lent } });
+    for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
+    const asked = (spy: unknown): string[] =>
+      (spy as ReturnType<typeof vi.fn>).mock.calls.map(([lane]) => (lane as { id: string }).id).sort();
+    vi.mocked(laneSubLine).mockClear();
+    vi.mocked(laneLabel).mockClear();
+    const moved = { ...row, status: 'blocked' as const, statusSince: NOW - MIN };
+    await view.update(
+      fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: lent } }),
+    );
+    // The row's name row and spoken line were built again; the two ended runs' were not.
+    expect(asked(laneSubLine)).toEqual(['a']);
+    expect(asked(laneLabel)).toEqual(['a']);
+    expect(names(view.root)).toEqual(['Claude Code · notes', 'billing', 'Split the invoice writer']);
+    // A new history object builds them again.
+    vi.mocked(laneSubLine).mockClear();
+    await view.update(
+      fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: { ...lent } } }),
+    );
+    expect(asked(laneSubLine)).toEqual(['a', 'past:claude:x', 'past:claude:y']);
   });
 
   it('repaints both canvases once for a new history, and nothing for the same one', async () => {

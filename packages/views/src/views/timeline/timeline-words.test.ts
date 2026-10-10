@@ -3,7 +3,7 @@ import type { AgentView, EndedLaneView } from '@vibecook/puppeteer-view-sdk';
 import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
 import { historyLanes, laneFor, stateAt, type TimelineLane } from './timeline-lanes.js';
-import { BOUNDS_WORDS, endedName, laneLabel, laneName, laneSubLine, readoutAt } from './timeline-words.js';
+import { BOUNDS_WORDS, endedName, laneLabel, laneName, laneSubLine, readoutAt, recordState } from './timeline-words.js';
 
 const SEC = 1000;
 const MIN = 60 * SEC;
@@ -171,12 +171,19 @@ describe('words for the record', () => {
   );
   const said = (ago: number) => readoutAt(recorded, stateAt(recorded, NOW - ago), NOW - ago, false, NOW);
 
-  it('reads a worked moment as a working span reads, quiet as quiet, the bounds as what they are', () => {
-    expect(said(42 * MIN)).toEqual({ tone: 'working', big: '38:00', small: 'working · of 41m', owed: false });
-    expect(said(35 * MIN)).toEqual({ tone: 'idle', big: '', small: 'quiet', owed: false });
+  it('reads a worked moment as a working span reads, quiet as quiet, inside the bounds alone the detail unknown', () => {
+    expect(said(42 * MIN)).toEqual({
+      tone: 'working',
+      big: '38:00',
+      small: 'working · of 41m',
+      owed: false,
+      recorded: true,
+    });
+    expect(said(35 * MIN)).toEqual({ tone: 'idle', big: '', small: 'quiet', owed: false, recorded: true });
     expect(said(25 * MIN)).toEqual({ tone: 'unrecorded', big: '–', small: 'not recorded', owed: false });
-    expect(said(15 * MIN)).toEqual({ tone: 'bounds', big: '', small: BOUNDS_WORDS, owed: false });
-    expect(BOUNDS_WORDS).toBe('recorded · start and end only');
+    // The same shape as not recorded: it was active then, what it did is not in the record.
+    expect(said(15 * MIN)).toEqual({ tone: 'bounds', big: '–', small: BOUNDS_WORDS, owed: false, recorded: true });
+    expect(BOUNDS_WORDS).toBe('detail not recorded');
     // Never blocked and never unseen: the record holds neither, so nothing it says rings.
     expect([42, 35, 25, 15].some((minutes) => said(minutes * MIN).owed)).toBe(false);
   });
@@ -207,14 +214,16 @@ describe('words for the record', () => {
 
   it("says an ended run's last activity: how long ago following now, the clock looking back", () => {
     const ended = run();
+    // The faint lane and its end tick already say it ended: the words say when it was last active.
     expect(readoutAt(ended, stateAt(ended, NOW), NOW, true, NOW)).toEqual({
       tone: 'ended',
       big: '',
-      small: 'ended · last activity 3m ago',
+      small: 'last active 3m ago',
       owed: false,
+      recorded: true,
     });
     expect(readoutAt(ended, stateAt(ended, NOW - MIN), NOW - MIN, false, NOW).small).toBe(
-      `ended · last activity ${formatClock(NOW - 3 * MIN)}`,
+      `last active ${formatClock(NOW - 3 * MIN)}`,
     );
     // Inside its life it reads its record, as a row\'s past does.
     expect(readoutAt(ended, stateAt(ended, NOW - 30 * MIN), NOW - 30 * MIN, false, NOW).small).toBe('working · of 57m');
@@ -224,15 +233,23 @@ describe('words for the record', () => {
     const plain = run();
     expect(laneName(plain)).toBe('Claude Code · rosetta');
     expect(laneSubLine(plain)).toBe('main');
-    expect(laneLabel(plain, NOW)).toBe('rosetta, Claude Code, ended, last activity 3 minutes ago');
+    expect(laneLabel(plain, NOW)).toBe('rosetta, Claude Code, ended, last active 3 minutes ago');
     const titled = run({ title: 'Split the invoice writer', device: { id: 'p', name: 'tower', self: false } });
     expect(laneName(titled)).toBe('Split the invoice writer');
     expect(laneSubLine(titled)).toBe('Claude Code · main');
     expect(laneLabel(titled, NOW)).toBe(
-      'on tower, Split the invoice writer, rosetta, Claude Code, ended, last activity 3 minutes ago',
+      'on tower, Split the invoice writer, rosetta, Claude Code, ended, last active 3 minutes ago',
     );
     expect(endedName({ provider: undefined, project: { name: 'notes' } })).toBe('notes');
     // A row is named as before.
     expect(laneName(lane())).toBe('notes');
+  });
+});
+
+describe('recordState', () => {
+  it("says a record that is not whole in SINCE's words, for a head too narrow for the sentence; a whole one says nothing", () => {
+    expect(recordState('partial')).toBe('RECORD PARTIAL');
+    expect(recordState('unavailable')).toBe('NO RECORD NOW');
+    expect(recordState('complete')).toBe('');
   });
 });
