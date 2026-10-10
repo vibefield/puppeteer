@@ -617,7 +617,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     async readPast(asked, signal) {
       const window = clampPastWindow(asked) ?? { sinceMs: asked.untilMs, untilMs: asked.untilMs };
       const port = options.history;
-      if (port === undefined) return freezeTree(unavailablePast(window, clock.now(), 'No record of past runs here'));
+      // no record source: nothing to lend (a view draws runtime state alone, with no words about a past)
+      if (port === undefined) return undefined;
       if (window.untilMs <= window.sinceMs) {
         return freezeTree(unavailablePast(window, clock.now(), 'The window asked holds no time'));
       }

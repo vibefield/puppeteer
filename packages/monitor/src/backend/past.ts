@@ -10,6 +10,7 @@ import { folderName } from './derive.js';
 import type {
   MonitorPastWindow,
   MonitorRecordedActivity,
+  MonitorRecordedRun,
   MonitorRecordedSession,
   MonitorRecordedTurn,
   ProjectIdentityStore,
@@ -19,6 +20,12 @@ import type {
 // past here, once, beside the runtime: the join key (provider + native session
 // id, AR-D3) is the backend's alone, so no screen re-derives it. Nothing is
 // kept: each ask reads the record through the host's port and derives afresh.
+//
+// ONLY THIS RUNTIME'S RUNS (TIMELINE SHAPES v2, item 7). A session is a lane
+// only when it is one of the host's runs: live while the model holds its row,
+// ended once it does not. A session the record holds that this runtime never
+// ran (an agent started in another terminal app, maybe running right now) is
+// no lane at all — drawing it as ended would be a lie.
 //
 // What the record can say, and what it cannot (TL T1):
 //   · inside a turn the agent worked; between turns it was quiet;
@@ -146,42 +153,61 @@ function touches(session: MonitorRecordedSession, window: MonitorPastWindow): bo
   return session.lastAt >= window.sinceMs && session.firstAt <= window.untilMs;
 }
 
-function endedRow(input: DerivePastInput, session: MonitorRecordedSession, fine: boolean): MonitorEndedRow {
+function endedRow(
+  input: DerivePastInput,
+  session: MonitorRecordedSession,
+  run: MonitorRecordedRun,
+  fine: boolean,
+): MonitorEndedRow {
   const { window, identity, device } = input;
   const from = pastStart(session, window);
   const to = Math.min(window.untilMs, session.lastAt);
+  // a session whose turns were not read is one flat `bounds` span, even in a turns snapshot
   const spans: MonitorPastSpan[] =
     fine && session.turns !== undefined
       ? spansFromTurns(session.turns, from, to)
       : to > from
         ? [{ kind: 'bounds', from, to }]
         : [];
-  const key = session.projectKey;
+  // the run's own key first: the one its colour was dealt by while it was live
+  const key = run.projectKey || session.projectKey || undefined;
+  // read, never dealt: every ended lane is a run this runtime ran, so its project was dealt while it was live, and a
+  // past that is only read writes no identity (an unknown key wears the neutral ramp)
+  const seq = key === undefined ? undefined : identity.seq(key);
+  const title = run.title || session.title || undefined;
+  const label = run.provider.label || session.provider.label;
   return {
     id: `${ENDED_LANE_PREFIX}${session.provider.id}:${session.nativeSessionId}`,
-    provider: { id: session.provider.id, label: session.provider.label },
+    provider: { id: session.provider.id, label },
+    ...(title === undefined ? {} : { title }),
+    ...(run.profileSet === undefined ? {} : { profileSet: run.profileSet }),
     project: {
-      name: session.projectName ?? folderName(key, session.provider.label),
-      // the record's run worked in the project too: it is dealt as a live run would be (L4), so its ink agrees with
-      // every later run there
-      ...(key === undefined || key === '' ? {} : { seq: identity.seq(key) ?? identity.deal(key) }),
+      name: session.projectName ?? folderName(key, label),
+      ...(seq === undefined ? {} : { seq }),
     },
     device,
-    startedAt: Math.min(session.startedAt ?? session.firstAt, session.firstAt),
+    startedAt: Math.min(
+      run.createdAt ?? Number.POSITIVE_INFINITY,
+      session.startedAt ?? session.firstAt,
+      session.firstAt,
+    ),
     endedAt: session.lastAt,
     spans,
   };
 }
 
 /**
- * The past of a window: the model's rows joined with the record by provider and native session id, each row's past
- * before its current status, and the record's runs the model does not hold as ended lanes, in birth order.
+ * The past of a window: the record's sessions joined by provider and native session id (AR-D3) with the model's rows
+ * — each row's past before its current status — and with the host's runs the model no longer holds, as ended lanes in
+ * birth order. A session that is neither is left out.
  */
 export function derivePast(input: DerivePastInput): MonitorPastSnapshot {
   const { window, activity, readAt } = input;
   const fine = activity.fidelity === 'turns';
   const liveByKey = new Map<string, PastLiveRun>();
   for (const run of input.live) liveByKey.set(pastKey(run.providerId, run.nativeSessionId), run);
+  const ranHere = new Map<string, MonitorRecordedRun>();
+  for (const run of activity.runs) ranHere.set(pastKey(run.provider.id, run.nativeSessionId), run);
 
   const live: MonitorLivePast[] = [];
   const ended: MonitorEndedRow[] = [];
@@ -192,7 +218,9 @@ export function derivePast(input: DerivePastInput): MonitorPastSnapshot {
     seen.add(key);
     const run = liveByKey.get(key);
     if (run === undefined) {
-      ended.push(endedRow(input, session, fine));
+      // ended only if this runtime ran it; a stranger's session is no lane
+      const recorded = ranHere.get(key);
+      if (recorded !== undefined) ended.push(endedRow(input, session, recorded, fine));
       continue;
     }
     // the floor keeps a live row's past unrecorded (T5): bounds cannot say where its current turn began
@@ -216,6 +244,7 @@ export function derivePast(input: DerivePastInput): MonitorPastSnapshot {
 
 /** The past when the record cannot be read: nothing, honestly said. */
 export function unavailablePast(window: MonitorPastWindow, readAt: number, detail: string): MonitorPastSnapshot {
+  // `bounds`: nothing finer was read
   return {
     sinceMs: window.sinceMs,
     untilMs: window.untilMs,

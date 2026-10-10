@@ -166,8 +166,30 @@ export interface MonitorRecordedSession {
   readonly projectKey?: string | undefined;
   /** The folder name to show; absent: the key's last segment. */
   readonly projectName?: string | undefined;
+  /** The record's own title for the session. */
+  readonly title?: string | undefined;
   /** Its turns that touch the window, oldest first. Absent: only the bounds were read (the floor). */
   readonly turns?: readonly MonitorRecordedTurn[] | undefined;
+}
+
+/**
+ * A run THIS host's runtime ran, alive or long gone, as the host's own records keep it (VibeField: fieldd's signed
+ * session records). The backend joins the record's sessions to these by provider and native session id (AR-D3): only
+ * a session that is one of them is ever a lane. A session the record holds that this runtime never ran (an agent
+ * started in another terminal app) is no lane, live or ended.
+ */
+export interface MonitorRecordedRun {
+  readonly provider: { readonly id: string; readonly label: string };
+  readonly nativeSessionId: string;
+  readonly runtimeRunId: string;
+  /** When the run was born, epoch ms. */
+  readonly createdAt?: number | undefined;
+  /** The Agent Profile SET it ran under. */
+  readonly profileSet?: string | undefined;
+  /** The canonical root the host folds its project to: the key a live run's colour was dealt by. */
+  readonly projectKey?: string | undefined;
+  /** The host's title for the run, when it kept one. */
+  readonly title?: string | undefined;
 }
 
 /** What the record answered for a window. */
@@ -178,12 +200,16 @@ export interface MonitorRecordedActivity {
   readonly partial: boolean;
   readonly detail?: string | undefined;
   readonly sessions: readonly MonitorRecordedSession[];
+  /** This host's runs whose sessions may be in the window (it may list more; the join keeps only the matched). */
+  readonly runs: readonly MonitorRecordedRun[];
 }
 
 /**
  * The record, as the host reads it (VibeField: fieldd over rosettad). Asked on demand, never polled by the backend;
- * a refusal is thrown and becomes the past's honest `unavailable`. The backend never imports a record's client: the
- * host owns the reading and the translation, the backend the join and the derivation.
+ * a refusal is thrown and becomes the past's honest `unavailable`, so a host answers fast — a record that is not up
+ * refuses at once, never a read that hangs. The backend never imports a record's client: the host owns the reading,
+ * the translation and its run records, the backend the join and the derivation. A host with no record source passes
+ * no port, and its views are lent no past at all.
  */
 export interface MonitorHistoryPort {
   /**
@@ -241,7 +267,7 @@ export interface CreateMonitorBackendOptions {
   host: MonitorHostPort;
   identity: ProjectIdentityStore;
   sink: MonitorCommandSink;
-  /** The record (capability `history`). Absent: `readPast` answers `unavailable`, and views draw runtime state alone. */
+  /** The record (capability `history`). Absent: `readPast` answers nothing, and views draw runtime state alone. */
   history?: MonitorHistoryPort | undefined;
   /**
    * Cost across a resumed conversation (M15): `accumulate` is puppeteer Godview's reading (a new epoch of the same
@@ -293,11 +319,12 @@ export interface MonitorBackend {
    */
   idOf(runtimeRunId: string): string | undefined;
   /**
-   * The record's past for a window, joined with the model as it is now: each row's past before its current status
-   * (by provider and native session id, AR-D3), and the runs the record holds that the model does not. Read through
-   * the history port at each ask and held nowhere; never rejects (a refusal is `unavailable`, with its words).
+   * The record's past for a window, joined with the model as it is now (by provider and native session id, AR-D3):
+   * each row's past before its current status, and this runtime's runs the model no longer holds as ended lanes.
+   * Read through the history port at each ask and held nowhere; never rejects (a refusal is `unavailable`, with its
+   * words). `undefined` when the backend has no history port: there is no record here to lend.
    */
-  readPast(window: MonitorPastWindow, signal?: AbortSignal): Promise<MonitorPastSnapshot>;
+  readPast(window: MonitorPastWindow, signal?: AbortSignal): Promise<MonitorPastSnapshot | undefined>;
   /** Resolves once the runtime's all-runs listing has been merged. */
   readonly ready: Promise<void>;
   dispose(): void;

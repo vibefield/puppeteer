@@ -16,7 +16,7 @@ computed at its home desktop (MV-D22) and the sync plane carries them (L8); the 
 | `clock` | `{ now(), schedule(ms, fn) → cancel }` | default `Date.now` + `setTimeout`; tests pass a manual clock |
 | `scheduler` | `(fn) → cancel`: one emission per tick; it may run the tick before it returns | default one macrotask (`setTimeout 0`); the host may pass a frame |
 | `sink` | `select(resolved)` · `create(resolved)` | fieldd's doors; the Ghosttea workspace |
-| `history?` | `MonitorHistoryPort`: `read({sinceMs, untilMs}, {silenceMs, signal?})` → `MonitorRecordedActivity` (`fidelity: turns \| bounds`, `partial`, `detail?`, `sessions[]`: provider, native id, first/last activity, project key, turns with their silences). Asked at each `readPast`, never polled; a throw is the host's words for `unavailable` | fieldd over rosettad (`index.activity`'s reader); absent in puppeteer Godview, so its views draw runtime state alone |
+| `history?` | `MonitorHistoryPort`: `read({sinceMs, untilMs}, {silenceMs, signal?})` → `MonitorRecordedActivity` (`fidelity: turns \| bounds`, `partial`, `detail?`, `sessions[]`: provider, native id, first/last activity, project key, title, turns with their silences; `runs[]`: the host's own runs, provider, native id, run id, birth, profile set, project key, title). Asked at each `readPast`, never polled; a throw is the host's words for `unavailable` | fieldd over rosettad (`index.activity`'s reader) and its session records; absent in puppeteer Godview, so its views are lent no past |
 
 `MonitorHostRun`: `runtimeRunId` · `createdAt` · `provider {id,label}` · `terminalSessionId?` · `replacedTerminalSessionId?`
 (AR-4) · `terminalIdentity?` · `projectKey?` (the canonical root the host folds to) · `workspace? {root, sourcePath,
@@ -227,16 +227,21 @@ the store hands out; comparing the drawn fields before deriving would be the nex
 
 `readPast({sinceMs, untilMs})` reads the record through the `history` port and joins it with the model as it is when
 the record answers. The window is clamped to a day ending at `untilMs` (`PAST_MAX_WINDOW_MS`). Nothing is kept: each
-ask derives afresh (`past.ts`), so the backend still holds live state only.
+ask derives afresh (`past.ts`), so the backend still holds live state only. TIMELINE SHAPES v2 (2026-10-09) is the
+contract.
 
-- **The join** is the provider id plus the native session id (AR-D3): the host's `nativeSessionId`, else the runtime's
-  `session.nativeSessionId`. A row the record holds gets a `MonitorLivePast` up to its `statusSince` (`seamAt`), where
-  the runtime takes over. A recorded session with no row is an ENDED lane, `past:<provider>:<native id>`, its project
-  dealt like a live run's (L4), in birth order.
+- **Only this runtime's runs.** The port answers the record's sessions AND the host's own runs (`runs`: provider,
+  native id, run id, birth, profile set, project key, title — VibeField reads them off fieldd's session records). The
+  join is the provider id plus the native session id (AR-D3). A model row gets a `MonitorLivePast` up to its
+  `statusSince` (`seamAt`). A session that is one of the host's runs and no longer a row is an ENDED lane,
+  `past:<provider>:<native id>`, in birth order, carrying the run's title and profile set. A session that is neither —
+  an agent started in another terminal app — is no lane at all. An ended lane's colour is READ from the identity store
+  by the run's project key and never dealt, so a past writes no identity.
 - **The spans** (`spansFromTurns`): `worked` inside a turn, `quiet` between turns, `unrecorded` across a silence inside
   a turn longer than `PAST_SILENCE_MS` (15 min), because a permission wait or a long tool leaves no record. The record
-  never says blocked or unseen, so the past never does.
-- **The floor** (`fidelity: bounds`, sessions with no turns): an ended run is one `bounds` span from its first to its
-  last activity; a live row's past stays unrecorded.
+  never says blocked or unseen, so the past never does. A session whose turns were not read (the floor, `fidelity:
+  bounds`, or one session of a turns answer) is one flat `bounds` span; a live row's past stays unrecorded then.
 - **Honest states:** `partial` when the host says some of the record was not read, `unavailable` with the host's words
-  when the port throws or is absent. `readPast` never rejects.
+  when the port throws — a host answers fast, so a record that is not up is `unavailable` at once. No port: `readPast`
+  answers `undefined`, and a host lends its views no past at all. `readPast` never rejects. An ended lane's id is never
+  a command's: `command` routes only the model's ids.
