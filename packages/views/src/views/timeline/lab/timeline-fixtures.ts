@@ -1,10 +1,22 @@
-import type { AgentView, MonitorDeviceRef, MonitorWait, ProjectTint } from '@vibecook/puppeteer-view-sdk';
+import type {
+  AgentView,
+  MonitorDeviceRef,
+  MonitorEndedRow,
+  MonitorHistory,
+  MonitorLivePast,
+  MonitorPastSnapshot,
+  MonitorPastSpan,
+  MonitorWait,
+  ProjectTint,
+} from '@vibecook/puppeteer-view-sdk';
+import { lendHistory } from '@vibecook/puppeteer-view-sdk/host';
 import {
   AGENT_MARK_PROVIDERS,
   DEFAULT_PROJECT_TINT,
   paneColour,
   projectColour,
 } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { seededRandom } from '../../../lab/lab-world.js';
 
 // The timeline's example afternoon: the prototype's world
 // (`draft/godview-timeline/site/tl-core.js`) as the rows a host's replica hands
@@ -12,9 +24,11 @@ import {
 // two peers, and two terminals: each one born somewhere in the afternoon, in
 // its current state since the moment its row says (`statusSince`).
 //
-// Runtime only (MV-6): there is no book of what each lane did before, so the
+// Runtime only (MV-6) there is no book of what each lane did before, so the
 // view draws each lane unrecorded from its birth to its current state; and an
-// agent that ended is not in the model, so it is not here either.
+// agent that ended is not in the model, so it is not here either. The record's
+// past is a host's to lend (`history`); `timelineHistory` below builds one, as a
+// host would lend it, for any rows: the lab's and the goldens' history cases.
 
 const SEC = 1000;
 const MIN = 60 * SEC;
@@ -250,4 +264,152 @@ export function timelineWorld(
     });
   }
   return rows;
+}
+
+/**
+ * The lab's history cases (T1, T5, the states): the record's turns; the floor, where each ended run is one band from
+ * its start to its last activity and rows have no past; and the two states that print the backend's sentence —
+ * `partial` (turns, some of the record missing) and `unavailable` (nothing could be read: today's floor).
+ */
+export type TimelineHistoryCase = 'turns' | 'bounds' | 'partial' | 'unavailable';
+
+export const TIMELINE_HISTORY_CASES: readonly TimelineHistoryCase[] = ['turns', 'bounds', 'partial', 'unavailable'];
+
+/** The backend's one honest sentence for each degraded case (fixtures: a real backend says its own). */
+export const TIMELINE_HISTORY_DETAIL: Readonly<Partial<Record<TimelineHistoryCase, string>>> = {
+  partial: 'tower is asleep; its runs are not in this record.',
+  unavailable: 'The record index is starting.',
+};
+
+export interface TimelineHistoryOptions {
+  readonly case?: TimelineHistoryCase | undefined;
+  /** How many runs ended today (default 6): every third inside the last hour, so they show until they scroll out. */
+  readonly ended?: number | undefined;
+  /** The ramp a run with no project wears (`palette.neutral`). */
+  readonly neutral?: string | undefined;
+}
+
+const DAY = 24 * HOUR;
+const RUN_PROVIDERS = [
+  { id: 'claude', label: 'Claude Code' },
+  { id: 'codex', label: 'Codex' },
+] as const;
+const RUN_TITLES = [
+  'Split the invoice writer',
+  'Port the grants table to the new index',
+  'Why does the swarm stall at n = 60?',
+  'Tidy the release notes',
+];
+const PEER: MonitorDeviceRef = { id: 'tower', name: 'tower', self: false };
+const HERE: MonitorDeviceRef = { id: 'here', name: 'here', os: 'mac', self: true };
+
+/**
+ * A run of turns from `from` up to `to`, as the record reads them (T1): worked inside a turn, quiet between turns, now
+ * and then a silence over 15 minutes inside a turn (unrecorded), and now and then time no span covers at all (the gap
+ * rule draws both dotted). The last stretch runs up to `to`: a row's seam, or a run's last activity.
+ */
+function recordedTurns(random: () => number, from: number, to: number): MonitorPastSpan[] {
+  const spans: MonitorPastSpan[] = [];
+  let t = from;
+  let working = true;
+  while (t < to) {
+    const room = to - t;
+    if (!working && room > 30 * MIN && random() < 0.12) {
+      t += Math.round((8 + random() * 18) * MIN);
+      working = true;
+      continue;
+    }
+    let length = Math.min(room, Math.round((working ? 4 + random() * 26 : 2 + random() * 16) * MIN));
+    if (room - length < 2 * MIN) length = room;
+    if (working && length > 14 * MIN && random() < 0.3) {
+      const head = Math.round(length * 0.3);
+      const silence = Math.min(length - head - 2 * MIN, Math.round((16 + random() * 14) * MIN));
+      if (silence > 15 * MIN) {
+        spans.push(
+          { kind: 'worked', from: t, to: t + head },
+          { kind: 'unrecorded', from: t + head, to: t + head + silence },
+          { kind: 'worked', from: t + head + silence, to: t + length },
+        );
+        t += length;
+        working = false;
+        continue;
+      }
+    }
+    spans.push({ kind: working ? 'worked' : 'quiet', from: t, to: t + length });
+    t += length;
+    working = !working;
+  }
+  return spans;
+}
+
+/**
+ * The record's past for `rows` at `nowMs`, as a host lends it (`lendHistory`): each agent row's turns up to its
+ * `statusSince` (about a third of them resumed sessions, whose record starts before the row), and `ended` runs across
+ * the day in the rows' projects, wearing the rows' colours. The same rows and case give the same history, every run.
+ */
+export function timelineHistory(
+  rows: readonly AgentView[],
+  nowMs: number,
+  options: TimelineHistoryOptions = {},
+): MonitorHistory {
+  const which = options.case ?? 'turns';
+  const sinceMs = nowMs - DAY;
+  const fine = which !== 'bounds';
+  const read = which !== 'unavailable';
+  // The rows' projects, each with its colour: an ended run in a project wears the ink its live lanes wear.
+  const colourBySeq = new Map<number, string>();
+  const projects: { name: string; seq: number; branch?: string }[] = [];
+  for (const row of rows) {
+    if (row.kind !== 'agent' || projects.some((project) => project.name === row.project.name)) continue;
+    const seq = row.project.seq ?? 1000 + projects.length;
+    colourBySeq.set(seq, row.colour);
+    projects.push({ name: row.project.name, seq, ...(row.project.branch ? { branch: row.project.branch } : {}) });
+  }
+  const live: MonitorLivePast[] = [];
+  if (fine && read) {
+    for (const row of rows) {
+      if (row.kind !== 'agent') continue;
+      const random = seededRandom(`past:${row.id}`);
+      const resumed = random() < 0.35;
+      const from = Math.max(sinceMs, row.createdAt - (resumed ? Math.round((15 + random() * 45) * MIN) : 0));
+      if (row.statusSince - from < 3 * MIN) continue;
+      live.push({ id: row.id, seamAt: row.statusSince, spans: recordedTurns(random, from, row.statusSince) });
+    }
+  }
+  const ended: MonitorEndedRow[] = [];
+  const count = read && projects.length > 0 ? (options.ended ?? 6) : 0;
+  for (let index = 0; index < count; index += 1) {
+    const random = seededRandom(`ended:${index}`);
+    const project = projects[index % projects.length]!;
+    const provider = RUN_PROVIDERS[index % 4 === 1 ? 1 : 0];
+    const endedAt = nowMs - Math.round((index % 3 === 0 ? 4 + random() * 48 : 65 + random() * 15 * 60) * MIN);
+    const startedAt = Math.max(sinceMs, endedAt - Math.round((20 + random() * 280) * MIN));
+    ended.push({
+      id: `past:${provider.id}:lab-${index}`,
+      provider,
+      ...(index % 3 === 0 ? { title: RUN_TITLES[(index / 3) % RUN_TITLES.length]! } : {}),
+      project,
+      device: index % 5 === 3 ? PEER : HERE,
+      startedAt,
+      endedAt,
+      spans: fine ? recordedTurns(random, startedAt, endedAt) : [{ kind: 'bounds', from: startedAt, to: endedAt }],
+    });
+  }
+  ended.sort((a, b) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : 1));
+  const detail = TIMELINE_HISTORY_DETAIL[which];
+  const snapshot: MonitorPastSnapshot = {
+    sinceMs,
+    untilMs: nowMs,
+    readAt: nowMs,
+    fidelity: fine ? 'turns' : 'bounds',
+    state: which === 'partial' ? 'partial' : which === 'unavailable' ? 'unavailable' : 'complete',
+    ...(detail === undefined ? {} : { detail }),
+    live,
+    ended,
+  };
+  const neutral = options.neutral ?? 'var(--text-faint)';
+  return lendHistory(snapshot, {
+    colourFor: (seq) => (seq === undefined ? neutral : (colourBySeq.get(seq) ?? neutral)),
+    receded: () => false,
+  });
 }

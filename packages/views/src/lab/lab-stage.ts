@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import type {
   FrameScheduler,
   ModelChanges,
+  MonitorCapabilities,
   MonitorModel,
   MonitorTheme as SdkTheme,
   MonitorView,
@@ -30,7 +31,8 @@ import { LAB_NOW_MS, LAB_SEED } from './lab-world.js';
 // origin.
 //
 // URL: `theme=light|dark` · `size=compact|default|wide` (all three when absent) ·
-// `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1`.
+// `n=<rows>` · `animations=0|1` · `seed=<text>` · `capture=1`. A view's lab may
+// add its own (the timeline's `history=`), read by its `capabilities`.
 
 export type LabSize = 'compact' | 'default' | 'wide';
 
@@ -92,6 +94,15 @@ declare global {
   }
 }
 
+/** What a view's lab builds its capabilities from: the world as the model, on the world's clock, in the theme's ink. */
+export interface LabCapabilityContext {
+  readonly model: MonitorModel;
+  readonly nowMs: number;
+  /** The ramp a row with no project wears (`palette.neutral`). */
+  readonly neutral: string;
+  readonly search: string;
+}
+
 export interface ViewLabOptions {
   /** The page's `.vf-godview` root: the theme and the animations switch live on it. */
   readonly root: HTMLElement;
@@ -102,6 +113,8 @@ export interface ViewLabOptions {
   readonly view: MonitorView;
   readonly parameters: MonitorParameters;
   readonly defaults?: { n?: number };
+  /** What the host lends the view beyond the model (a view's lab reads its own URL keys). Absent: nothing. */
+  readonly capabilities?: ((context: LabCapabilityContext) => MonitorCapabilities | undefined) | undefined;
 }
 
 export interface ViewLab {
@@ -157,9 +170,15 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const palette = useMonitorPalette(stageRef);
-  const replica = useMemo(
-    () => labReplica(labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn })),
+  const model = useMemo(
+    () => labModel({ n: params.n, seed: params.seed, tint: palette.tint, neutral: palette.neutral, churn }),
     [params.n, params.seed, palette.tint, palette.neutral, churn],
+  );
+  const replica = useMemo(() => labReplica(model), [model]);
+  const build = options.capabilities;
+  const capabilities = useMemo(
+    () => build?.({ model, nowMs: LAB_NOW_MS, neutral: palette.neutral, search: location.search }),
+    [build, model, palette.neutral],
   );
   const [selected, setSelected] = useState<string>();
   const commands = useMemo<ViewSlotCommands>(() => ({ select: setSelected, create: () => undefined }), []);
@@ -213,6 +232,7 @@ function Stage({ size, params, options, parameters, churn, onCommit }: StageProp
         stage: stageGeometry,
         theme,
         parameters,
+        capabilities,
         commands,
         scheduler: params.capture ? CAPTURE_SCHEDULER : undefined,
       })

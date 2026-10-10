@@ -1,12 +1,24 @@
 import { createElement, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AgentView, ModelChanges, MonitorModel, MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
+import type {
+  AgentView,
+  ModelChanges,
+  MonitorCapabilities,
+  MonitorModel,
+  MonitorTheme,
+  StageGeometry,
+} from '@vibecook/puppeteer-view-sdk';
 import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
-import { mountViewLab } from '../../../lab/lab-stage.js';
+import { mountViewLab, type LabCapabilityContext } from '../../../lab/lab-stage.js';
 import { useMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults } from '../../../monitor/parameters.js';
 import { timelineMonitorView } from '../index.js';
-import { timelineWorld } from './timeline-fixtures.js';
+import {
+  TIMELINE_HISTORY_CASES,
+  timelineHistory,
+  timelineWorld,
+  type TimelineHistoryCase,
+} from './timeline-fixtures.js';
 
 // The timeline lab: the shipping view over the example afternoon, mounted
 // through the view host as Godview mounts it, at the sizes Godview gives it, in
@@ -19,6 +31,10 @@ import { timelineWorld } from './timeline-fixtures.js';
 //
 // `?n=<rows>` (or `?capture=1`) swaps the afternoon for the seeded world in Godview's stage, as the other view labs
 // show it (`lab/lab-stage.ts`): `?size=`, `?animations=0`. That page is what the goldens capture.
+//
+// `?history=turns|bounds|partial|unavailable` lends the record's past on either page, as a host would lend it
+// (`timelineHistory`): the rows' turns before their current states with the seam, runs that ended today, the floor
+// (one band per ended run), or a degraded state with the backend's sentence. `?ended=<n>` sets how many runs ended.
 
 interface Stage {
   id: string;
@@ -34,6 +50,34 @@ const STAGES: readonly Stage[] = [
 ];
 
 const NO_CHANGES: ModelChanges = Object.freeze({ added: [], updated: [], removed: [] });
+
+/** The history case the URL asks for, if any. */
+function historyCase(search: string): TimelineHistoryCase | undefined {
+  const value = new URLSearchParams(search).get('history');
+  return TIMELINE_HISTORY_CASES.find((which) => which === value);
+}
+
+/** The capabilities a host with a record would lend these rows: the history the URL asks for, else none. */
+function historyCapabilities(
+  rows: readonly AgentView[],
+  nowMs: number,
+  neutral: string,
+  search: string,
+): MonitorCapabilities | undefined {
+  const which = historyCase(search);
+  if (which === undefined) return undefined;
+  const ended = Number(new URLSearchParams(search).get('ended'));
+  return {
+    history: timelineHistory(rows, nowMs, {
+      case: which,
+      neutral,
+      ...(Number.isInteger(ended) && ended > 0 ? { ended } : {}),
+    }),
+  };
+}
+
+const labHistory = ({ model, nowMs, neutral, search }: LabCapabilityContext): MonitorCapabilities | undefined =>
+  historyCapabilities(model.agents, nowMs, neutral, search);
 
 /** One world as a replica: the model it is, never changing; a new world is a new replica. */
 function fixedReplica(model: MonitorModel): MonitorReplicaLike {
@@ -54,6 +98,10 @@ function StageView({ stage, nowMs, scheme }: { stage: Stage; nowMs: number; sche
     );
     return fixedReplica({ revision: 1, agents, byId: new Map(agents.map((row) => [row.id, row])) });
   }, [nowMs, palette.tint, palette.neutral, recede]);
+  const capabilities = useMemo(
+    () => historyCapabilities(replica.getSnapshot().model.agents, nowMs, palette.neutral, location.search),
+    [replica, nowMs, palette.neutral],
+  );
   const [selected, setSelected] = useState<string>();
   const commands = useMemo<ViewSlotCommands>(() => ({ select: setSelected, create: () => undefined }), []);
   const theme = useMemo<MonitorTheme>(
@@ -83,6 +131,7 @@ function StageView({ stage, nowMs, scheme }: { stage: Stage; nowMs: number; sche
         stage: geometry,
         theme,
         parameters,
+        capabilities,
         commands,
       }),
     ),
@@ -123,6 +172,7 @@ function main(): void {
       mount,
       view: timelineMonitorView,
       parameters: monitorParameterDefaults(timelineMonitorView.manifest.parameters),
+      capabilities: labHistory,
     });
     root
       .querySelector<HTMLButtonElement>('.timeline-lab-theme')
