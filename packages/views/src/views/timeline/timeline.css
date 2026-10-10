@@ -267,6 +267,29 @@
   white-space: nowrap;
 }
 
+/* The record not whole (partial, unavailable): the backend's own sentence, verbatim, under SINCE. The head column is
+   too narrow to hold a sentence beside it, so it wraps right-aligned into the axis row's head, which is empty past the
+   clock chip (centred on the head line), in at most two lines, clear of the lanes: a window too narrow for those ends it
+   with an ellipsis (the whole sentence stays its text, and its title). A whole record adds no words. */
+.mv-timeline .vf-monitor-timeline-record {
+  position: absolute;
+  left: calc(var(--mv-timeline-x1) + 32px);
+  right: 8px;
+  top: 44px;
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 10px;
+  text-align: right;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 /* ── the axis: wall-clock ticks and the clock chip on the head line ── */
 .mv-timeline .vf-monitor-timeline-axis {
   position: relative;

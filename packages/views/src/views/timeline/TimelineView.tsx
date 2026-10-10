@@ -82,8 +82,8 @@ const MAP_LEFT = 14;
 const LANE_MIN = 24;
 const MINUTE = 60_000;
 /**
- * With history, the wake canvas covers the window the lanes scroll to and this much either side: a scroll that small
- * repaints nothing.
+ * With ended runs lent, the wake canvas covers the window the lanes scroll to and this much either side: a scroll that
+ * small repaints nothing.
  */
 const OVERSCAN = 120;
 
@@ -193,6 +193,10 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const rows = model.agents;
   // The record's past, when the host lends it (absent: runtime only, exactly as before).
   const history = input.capabilities.history;
+  // Ended runs can make the rows far taller than the stage: only then does the wake canvas cover just the window.
+  const tall = history !== undefined && history.ended.length > 0;
+  // The record not whole (partial, unavailable): the backend's one sentence, said as it said it. Whole: no words.
+  const recordWords = history !== undefined && history.state !== 'complete' ? history.detail : undefined;
   const settings = useMemo(() => normalizeTimelineParameters(parameters), [parameters]);
   // The host's animations switch and the person's reduced-motion preference: either one stills the view.
   const motion = theme.animations && !theme.reducedMotion;
@@ -238,6 +242,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   const tweenRef = useRef<ScaleTween | null>(null);
   const laneSetRef = useRef(laneSet);
   const historyRef = useRef(history);
+  const tallRef = useRef(tall);
   const scrolledOutRef = useRef(scrolledOut);
   /** The body's scroll, as its scroll events last said it (read there, never in the draw, which writes the DOM). */
   const scrollRef = useRef(0);
@@ -272,6 +277,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
 
   laneSetRef.current = laneSet;
   historyRef.current = history;
+  tallRef.current = tall;
   scrolledOutRef.current = scrolledOut;
   layoutRef.current = layout;
   columnsRef.current = columns;
@@ -499,12 +505,12 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       const ratio = canvasRatio(2);
       const view = bodyHeightRef.current;
       const rowsHeight = Math.max(lay.height, view);
-      // With the record's past, ended runs can make the rows far taller than the stage: the wake canvas then covers
-      // only the window the body shows and a margin either side, and moves when that window leaves it. Without it the
-      // canvas is as tall as the rows, as before.
+      // Ended runs can make the rows far taller than the stage: the wake canvas then covers only the window the body
+      // shows and a margin either side, and moves when that window leaves it. Otherwise it is as tall as the rows, as
+      // before.
       let canvasHeight = rowsHeight;
       let canvasTop = 0;
-      if (historyRef.current !== undefined) {
+      if (tallRef.current) {
         canvasHeight = Math.min(rowsHeight, view + 2 * OVERSCAN);
         canvasTop = canvasTopRef.current;
         const scrollTop = scrollRef.current;
@@ -969,6 +975,11 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
           </button>
         </div>
         <span ref={sinceRef} className="vf-monitor-timeline-since" aria-hidden="true" />
+        {recordWords === undefined ? null : (
+          <p className="vf-monitor-timeline-record" role="status" title={recordWords}>
+            {recordWords}
+          </p>
+        )}
       </div>
       <div className="vf-monitor-timeline-axis" aria-hidden="true">
         <div className="vf-monitor-timeline-axis-clip">
@@ -994,8 +1005,8 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
         onLostPointerCapture={dropDrag}
         onScroll={(event) => {
           scrollRef.current = event.currentTarget.scrollTop;
-          // Only a canvas that covers part of the rows (history lent) has anything to move.
-          if (historyRef.current !== undefined) requestDraw();
+          // Only a canvas that covers part of the rows (ended runs lent) has anything to move.
+          if (tallRef.current) requestDraw();
         }}
         onKeyDown={onBodyKey}
         onFocus={(event) => {
