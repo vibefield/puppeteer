@@ -32,7 +32,8 @@ declare global {
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
-const PROVIDER = { id: 'claude', label: 'Claude Code' };
+/** The harness's agents are the imposter; so are its fixture's ended runs. */
+const PROVIDER = { id: 'imposter', label: 'Imposter' };
 
 /** A small seeded generator (mulberry32): the same seed, the same sequence. */
 function seeded(seed: number): () => number {

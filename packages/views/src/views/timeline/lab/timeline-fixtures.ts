@@ -290,10 +290,6 @@ export interface TimelineHistoryOptions {
 }
 
 const DAY = 24 * HOUR;
-const RUN_PROVIDERS = [
-  { id: 'claude', label: 'Claude Code' },
-  { id: 'codex', label: 'Codex' },
-] as const;
 const RUN_TITLES = [
   'Split the invoice writer',
   'Port the grants table to the new index',
@@ -381,7 +377,9 @@ export function timelineHistory(
   for (let index = 0; index < count; index += 1) {
     const random = seededRandom(`ended:${index}`);
     const project = projects[index % projects.length]!;
-    const provider = RUN_PROVIDERS[index % 4 === 1 ? 1 : 0];
+    // What ran it, as the afternoon deals its marks: the toolkit's providers, never a name spelled here.
+    const id = AGENT_MARK_PROVIDERS[index % 4 === 1 ? 1 : 0] ?? 'imposter';
+    const provider = { id, label: capitalized(id) };
     const endedAt = nowMs - Math.round((index % 3 === 0 ? 4 + random() * 48 : 65 + random() * 15 * 60) * MIN);
     const startedAt = Math.max(sinceMs, endedAt - Math.round((20 + random() * 280) * MIN));
     ended.push({

@@ -103,7 +103,7 @@ export function readoutAt(
   return { tone: span.status, big: formatElapsed(at - span.fromMs), small: word, owed };
 }
 
-/** An ended run's name: its title, else what ran it and where (`Claude Code · rosetta`). */
+/** An ended run's name: its title, else what ran it and where (its provider's label · its project). */
 export function endedName(run: Pick<EndedLaneView, 'title' | 'provider' | 'project'>): string {
   return run.title || [run.provider?.label, run.project.name].filter(Boolean).join(' · ');
 }
