@@ -16,7 +16,7 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const WINDOW = { sinceMs: T0 - 4 * HOUR, untilMs: T0 };
 const CLAUDE = { id: 'claude', label: 'Claude Code' };
-const KINDS: readonly MonitorPastSpanKind[] = ['worked', 'quiet', 'unrecorded', 'active'];
+const KINDS: readonly MonitorPastSpanKind[] = ['worked', 'quiet', 'unrecorded', 'bounds'];
 
 function session(overrides: Partial<MonitorRecordedSession> = {}): MonitorRecordedSession {
   return {
@@ -105,7 +105,7 @@ describe('spansFromTurns: worked inside a turn, quiet between turns', () => {
 });
 
 describe('derivePast', () => {
-  it('the floor: an ended run is ONE active band from its first to its last activity', () => {
+  it('the floor: an ended run is ONE bounds span from its first to its last activity', () => {
     const past = derivePast(input({ activity: { fidelity: 'bounds', partial: false, sessions: [session()] } }));
     expect(past.fidelity).toBe('bounds');
     expect(past.live).toEqual([]);
@@ -117,7 +117,7 @@ describe('derivePast', () => {
         device: DEVICE,
         startedAt: T0 - 3 * HOUR,
         endedAt: T0 - 2 * HOUR,
-        spans: [{ kind: 'active', from: T0 - 3 * HOUR, to: T0 - 2 * HOUR }],
+        spans: [{ kind: 'bounds', from: T0 - 3 * HOUR, to: T0 - 2 * HOUR }],
       },
     ]);
   });

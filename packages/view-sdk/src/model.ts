@@ -243,7 +243,8 @@ export interface MonitorModelChange {
 
 /* The record's past (capability `history`, MV-D4). Read from rosettad by the backend at each ask, joined with the
  * model there, and held nowhere: the backend still keeps live state only. Never a row of the model and never synced
- * per row; a screen asks for it while a view that draws it is mounted. */
+ * per row; a screen asks for it while a view that declares it is mounted. Only this runtime's runs: a session the
+ * record holds that this runtime never ran is no lane. */
 
 /**
  * What a stretch of a lane's past was, as the record can say it. Never blocked and never unseen: a transcript does
@@ -253,10 +254,12 @@ export interface MonitorModelChange {
  * - `quiet`: between turns.
  * - `unrecorded`: a silence longer than the backend's cut (15 min) inside a turn. The record cannot say whether the
  *   agent worked or waited there.
- * - `active`: the record's bounds alone (the floor, when no turns were read). Activity was recorded between them, and
- *   what it was inside is unknown.
+ * - `bounds`: the record's bounds alone (the floor, or one session whose turns were not read). Activity was recorded
+ *   between them, and what it was inside is unknown: drawn flat and faint, never counted as work.
+ *
+ * Time inside a lane's life that no span covers is not recorded; before its birth a lane is unborn.
  */
-export type MonitorPastSpanKind = 'worked' | 'quiet' | 'unrecorded' | 'active';
+export type MonitorPastSpanKind = 'worked' | 'quiet' | 'unrecorded' | 'bounds';
 
 export interface MonitorPastSpan {
   readonly kind: MonitorPastSpanKind;
@@ -265,27 +268,34 @@ export interface MonitorPastSpan {
   readonly to: number;
 }
 
-/** A row's past before the runtime took over: what the record says it did until its current status began. */
+/**
+ * A row's past before the runtime took over: what the record says it did until its current status began. A live lane
+ * is born at the earlier of its row's `createdAt` and its first span (a resumed session's record starts before its run).
+ */
 export interface MonitorLivePast {
   /** The model row it belongs to. */
   readonly id: string;
-  /** The row's `statusSince` when the past was read: from here on the runtime speaks for the lane. */
+  /** The row's `statusSince` when the past was read. A view clips to the row's CURRENT `statusSince` too. */
   readonly seamAt: number;
   /** Oldest first, never overlapping, all before `seamAt`. */
   readonly spans: readonly MonitorPastSpan[];
 }
 
-/** A run the record holds in the window that the model does not: it ended, or ran outside this desktop's runtime. */
+/** A run this runtime ran that the model no longer holds, with its record in the window. */
 export interface MonitorEndedRow {
-  /** `past:<provider>:<native session id>`, never a model row's id. */
+  /** `past:<provider>:<native session id>`, never a model row's id, and never sent through a command. */
   readonly id: string;
   readonly provider?: { readonly id: string; readonly label: string } | undefined;
+  /** The session's title for the name column (the record's); absent: the view names it by provider · project. */
+  readonly title?: string | undefined;
+  /** The Agent Profile SET it ran under, when the host knew it: what a profile filter reads. */
+  readonly profileSet?: string | undefined;
   /** A folder name and its colour's sequence, as a live row's. */
   readonly project: MonitorProject;
   readonly device: MonitorDeviceRef;
   /** Its birth: when the record began. */
   readonly startedAt: number;
-  /** Its last recorded activity. */
+  /** Its last recorded activity (not an exit: the record holds no exit). */
   readonly endedAt: number;
   /** Oldest first, never overlapping. */
   readonly spans: readonly MonitorPastSpan[];
@@ -294,7 +304,8 @@ export interface MonitorEndedRow {
 /**
  * The past of one window of time, as the backend derived it from the record. `fidelity` says how fine it is:
  * `turns` from the record's turns, `bounds` from each session's first and last activity alone (ended runs only, one
- * `active` band each; live rows' past stays unrecorded).
+ * `bounds` span each; live rows' past stays unrecorded). There is no cap: a backend that drops sessions says
+ * `partial`, with a detail.
  */
 export interface MonitorPastSnapshot {
   /** The window read, epoch ms; at most a day. */
@@ -303,7 +314,10 @@ export interface MonitorPastSnapshot {
   /** When the backend read it. */
   readonly readAt: number;
   readonly fidelity: 'turns' | 'bounds';
-  /** `partial`: some of the record could not be read; `unavailable`: none of it. `detail` says why, in words. */
+  /**
+   * `partial`: some of the record could not be read (or a re-read failed, and this is the last good one);
+   * `unavailable`: a record should be here and cannot be read now. `detail` says why, in one sentence.
+   */
   readonly state: 'complete' | 'partial' | 'unavailable';
   readonly detail?: string | undefined;
   readonly live: readonly MonitorLivePast[];

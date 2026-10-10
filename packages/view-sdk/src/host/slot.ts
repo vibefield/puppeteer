@@ -15,7 +15,6 @@ import {
   defineMonitorView,
   type MonitorCapabilities,
   type MonitorCreateAnswer,
-  type MonitorHistoryAsk,
   type MonitorParameterValues,
   type MonitorTheme,
   type MonitorView,
@@ -135,16 +134,7 @@ export const VIEW_ROOT_ATTRIBUTE = 'data-monitor-view-root';
 
 const NO_REPORT: ViewReport = Object.freeze({});
 const NO_CAPABILITIES: MonitorCapabilities = Object.freeze({});
-const REPORT_KEYS = ['renderer', 'physics', 'keysHeld', 'history'] as const;
-
-/** Report values compare by value: an ask (`history`) repeated with the same window is no news to the host. */
-function sameReportValue(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
-  const left = a as MonitorHistoryAsk;
-  const right = b as MonitorHistoryAsk;
-  return left.sinceMs === right.sinceMs && left.seq === right.seq;
-}
+const REPORT_KEYS = ['renderer', 'physics', 'keysHeld'] as const;
 
 interface Mounted {
   readonly view: MonitorView;
@@ -208,7 +198,7 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
   const applyReport = (delta: ViewReport): void => {
     let next: Record<string, unknown> | undefined;
     for (const key of REPORT_KEYS) {
-      if (!Object.hasOwn(delta, key) || sameReportValue(report[key], delta[key])) continue;
+      if (!Object.hasOwn(delta, key) || report[key] === delta[key]) continue;
       next ??= { ...report };
       if (delta[key] === undefined) delete next[key];
       else next[key] = delta[key];

@@ -22,6 +22,7 @@ import type {
 } from '../model.js';
 import { allAdded } from '../internal/input.js';
 import type {
+  EndedLaneView,
   MonitorCapabilities,
   MonitorHistory,
   MonitorPalette,
@@ -399,7 +400,7 @@ export interface HistoryFixtureOptions {
   readonly untilMs?: number | undefined;
   /** Rows given a past before their `statusSince`: worked, quiet, then worked up to the seam. */
   readonly live?: readonly AgentView[] | undefined;
-  /** `bounds` is the floor: ended lanes as one `active` band each, and no live past. Default `turns`. */
+  /** `bounds` is the floor: ended lanes as one `bounds` span each, and no live past. Default `turns`. */
   readonly fidelity?: 'turns' | 'bounds' | undefined;
   readonly scheme?: FixtureScheme | undefined;
 }
@@ -429,18 +430,20 @@ export function fixtureHistory(options: HistoryFixtureOptions = {}): MonitorHist
     project: MonitorProject,
     endedAt: number,
     parts: readonly (readonly [MonitorPastSpan['kind'], number, number])[],
-  ): MonitorEndedRow & { colour: string } => {
+  ): EndedLaneView => {
     const spans = spansBefore(endedAt, parts);
     const startedAt = spans[0]!.from;
     return {
       id: `past:claude:${id}`,
       provider: { id: 'claude', label: 'Claude Code' },
+      ...(id === 'ended-1' ? { title: 'Split the invoice writer' } : {}),
       project,
       device: FIXTURE_DEVICE,
       startedAt,
       endedAt,
-      spans: fine ? spans : [{ kind: 'active', from: startedAt, to: endedAt }],
+      spans: fine ? spans : [{ kind: 'bounds', from: startedAt, to: endedAt }],
       colour: fixtureColour(project, scheme),
+      receded: false,
     };
   };
   const live: MonitorLivePast[] = fine

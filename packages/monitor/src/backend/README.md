@@ -236,7 +236,7 @@ ask derives afresh (`past.ts`), so the backend still holds live state only.
 - **The spans** (`spansFromTurns`): `worked` inside a turn, `quiet` between turns, `unrecorded` across a silence inside
   a turn longer than `PAST_SILENCE_MS` (15 min), because a permission wait or a long tool leaves no record. The record
   never says blocked or unseen, so the past never does.
-- **The floor** (`fidelity: bounds`, sessions with no turns): an ended run is one `active` band from its first to its
+- **The floor** (`fidelity: bounds`, sessions with no turns): an ended run is one `bounds` span from its first to its
   last activity; a live row's past stays unrecorded.
 - **Honest states:** `partial` when the host says some of the record was not read, `unavailable` with the host's words
   when the port throws or is absent. `readPast` never rejects.

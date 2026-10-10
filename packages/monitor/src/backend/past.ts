@@ -25,7 +25,7 @@ import type {
 //   · a silence inside a turn longer than PAST_SILENCE_MS is NOT worked: a
 //     permission wait or a long tool leave no record, so it stays unrecorded;
 //   · it never says blocked, and never unseen (a person's glance).
-// With only a session's bounds (the floor, TL T5) an ended run is one `active`
+// With only a session's bounds (the floor, TL T5) an ended run is one `bounds`
 // band and a live row's past stays unrecorded.
 
 /** A silence inside a turn longer than this is not drawn as work (T1; the History room's own pause). */
@@ -154,7 +154,7 @@ function endedRow(input: DerivePastInput, session: MonitorRecordedSession, fine:
     fine && session.turns !== undefined
       ? spansFromTurns(session.turns, from, to)
       : to > from
-        ? [{ kind: 'active', from, to }]
+        ? [{ kind: 'bounds', from, to }]
         : [];
   const key = session.projectKey;
   return {

@@ -13,14 +13,15 @@
  * - `keepStage`: the slot's own rule for an equal stage, for a host's state.
  *   A host that measures its chrome on every resize tick keeps the stage it
  *   holds when nothing moved, so an equal tick renders nothing (M176 item 1).
- * - `lendHistory`: the backend's past (`readPast`) as `capabilities.history`,
- *   its ended lanes coloured with the replica's theme function.
+ * - `viewWantsHistory` / `keepPast` / `lendHistory`: the record's past as
+ *   `capabilities.history` — read while a mounted view declares it, kept as
+ *   the same object while nothing moved, built once per snapshot.
  */
 
 export type { FrameScheduler } from '../model.js';
 export { createFrameScheduler, frameScheduler, type RequestFrame } from './frame-scheduler.js';
 export { MonitorViewHost, type MonitorViewHostProps } from './MonitorViewHost.js';
-export { lendHistory } from './history.js';
+export { HISTORY_WINDOW_MS, keepPast, lendHistory, viewWantsHistory, type LendHistoryOptions } from './history.js';
 export { keepStage } from './parts.js';
 export {
   createViewSlot,

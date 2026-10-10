@@ -111,26 +111,27 @@ export interface MonitorTheme {
   readonly animations: boolean;
 }
 
-/** An ended lane as a view sees it: the backend's row, coloured by the view host as `AgentView.colour` is. */
+/**
+ * An ended lane as a view sees it: the backend's row, with what only the window knows joined by the host, as
+ * `AgentView` joins it. Lit and readable, never openable: a view never sends its `past:` id through a command.
+ */
 export interface EndedLaneView extends MonitorEndedRow {
   /** The project's colour in the current theme; the neutral ramp for no project. */
   readonly colour: string;
-}
-
-/** The record's past, lent to a view that asked for it (capability `history`). */
-export interface MonitorHistory extends Omit<MonitorPastSnapshot, 'ended'> {
-  readonly ended: readonly EndedLaneView[];
+  /**
+   * The host is showing another group (its device or profile filter), by `AgentView.receded`'s rule: the lane keeps
+   * its place and is drawn faint. Under a profile filter a run whose profile is unknown recedes.
+   */
+  readonly receded: boolean;
 }
 
 /**
- * What a view asks of the record, in its report. The host reads only while the view is mounted and its ask stands
- * (PF6); the slot drops the ask with the view.
+ * The record's past (capability `history`). The host builds it once per snapshot and keeps the SAME object while a
+ * re-read brings nothing new (a changed `readAt` alone is nothing new), so a view that keys on it redraws only for a
+ * past that moved.
  */
-export interface MonitorHistoryAsk {
-  /** The earliest moment the view draws, epoch ms. The host reads from here to now, at most a day back. */
-  readonly sinceMs: number;
-  /** Bumped to read the same window again: a view that scrubs to a moment past `history.untilMs` asks anew. */
-  readonly seq?: number | undefined;
+export interface MonitorHistory extends Omit<MonitorPastSnapshot, 'ended'> {
+  readonly ended: readonly EndedLaneView[];
 }
 
 /** What the backend lends a view beyond the model (MV-D4). */
@@ -138,8 +139,9 @@ export interface MonitorCapabilities {
   /** The desktops and profiles a new terminal can be born under. Absent: a create opens one here at once. */
   readonly spawn?: MonitorSpawnMenu | undefined;
   /**
-   * The record's past, read from rosettad, for a view that asked (`ViewReport.history`). Absent: this host has no
-   * record (puppeteer's own Godview), or nothing asked yet; a view draws runtime state alone, as before.
+   * The record's past over the view's day (`[now − 24 h, now]`), read by the host while a mounted view declares
+   * `capabilities.optional: ['history']` in its manifest. Absent: this host has no record (puppeteer's own Godview,
+   * the phone), or the first answer has not come; a view draws runtime state alone, exactly as before.
    */
   readonly history?: MonitorHistory | undefined;
 }
@@ -185,8 +187,6 @@ export interface ViewReport {
   readonly physics?: 'worker' | 'inline' | undefined;
   /** The view holds key events (an open bloom): the host's own keys stand aside. */
   readonly keysHeld?: boolean | undefined;
-  /** The past the view wants drawn (capability `history`). Absent: it wants none. */
-  readonly history?: MonitorHistoryAsk | undefined;
 }
 
 /** The host's answer to a create (SB §2.6): a refusal is an answer, not an error, so the promise never rejects. */
