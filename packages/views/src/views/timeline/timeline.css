@@ -31,6 +31,11 @@
   -webkit-user-select: none;
 }
 
+/* Over an ended run the host can open (TV-8): a control's cursor. Never set where the host lends no `openEnded`. */
+.mv-timeline .vf-monitor-timeline[data-opens='true'] .vf-monitor-timeline-body {
+  cursor: pointer;
+}
+
 .mv-timeline .vf-monitor-timeline[data-panning='true'] .vf-monitor-timeline-body {
   cursor: grabbing;
 }

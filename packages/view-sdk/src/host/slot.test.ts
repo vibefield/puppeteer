@@ -321,6 +321,57 @@ describe('createViewSlot', () => {
   });
 });
 
+describe('openEnded, the optional fourth command (TV-8)', () => {
+  it('hands a view none when the host has none: absent, never a no-op in its place', () => {
+    const { recording } = setup();
+    expect(Object.keys(recording.commands[0]!).sort()).toEqual(['create', 'report', 'select']);
+    expect(recording.commands[0]!.openEnded).toBeUndefined();
+    // A host that says `undefined` says the same.
+    const explicit = setup({ commands: { select: vi.fn(), create: vi.fn(), openEnded: undefined } });
+    expect('openEnded' in explicit.recording.commands[0]!).toBe(false);
+  });
+
+  it("lends it when the host has one: the id reaches the host's own, and no other command", () => {
+    const commands = { select: vi.fn(), create: vi.fn(), openEnded: vi.fn() };
+    const { recording, slot } = setup({ commands });
+    const view = recording.commands[0]!;
+    expect(Object.isFrozen(view)).toBe(true);
+    view.openEnded!('past:claude:native-gone');
+    expect(commands.openEnded.mock.calls).toEqual([['past:claude:native-gone']]);
+    expect(commands.select).not.toHaveBeenCalled();
+    expect(commands.create).not.toHaveBeenCalled();
+    // Once the view is gone it reaches nothing, as the three do.
+    slot.switchView(createRecordingView('second').view);
+    view.openEnded!('past:claude:native-gone');
+    expect(commands.openEnded).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads whether the host has one as each view mounts, and calls the one it has then', () => {
+    const commands: { select(): void; create(): void; openEnded?: (id: string) => void } = {
+      select: vi.fn(),
+      create: vi.fn(),
+    };
+    const second = createRecordingView('second');
+    const third = createRecordingView('third');
+    const { recording, slot } = setup({ commands });
+    const first = vi.fn();
+    commands.openEnded = first;
+    // The view already mounted keeps what it was given: nothing.
+    expect(recording.commands[0]!.openEnded).toBeUndefined();
+    slot.switchView(second.view);
+    const later = vi.fn();
+    commands.openEnded = later;
+    second.commands[0]!.openEnded!('past:claude:x');
+    expect([first.mock.calls, later.mock.calls]).toEqual([[], [['past:claude:x']]]);
+    // A host that lost it: the mounted view's call reaches nothing, and the next view is lent none.
+    delete commands.openEnded;
+    expect(() => second.commands[0]!.openEnded!('past:claude:x')).not.toThrow();
+    expect(later).toHaveBeenCalledTimes(1);
+    slot.switchView(third.view);
+    expect('openEnded' in third.commands[0]!).toBe(false);
+  });
+});
+
 describe("the replica's spawn menu (M2)", () => {
   it('fills capabilities.spawn when the host has no menu of its own, as one object for as long as nothing moves', () => {
     const menu = fixtureSpawnMenu();

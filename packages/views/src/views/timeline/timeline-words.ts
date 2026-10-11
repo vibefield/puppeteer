@@ -141,6 +141,9 @@ export function laneSubLine(lane: TimelineLane): string {
   return [modelWord(lane.row), lane.row.project.branch].filter(Boolean).join(' · ');
 }
 
+/** What an ended run's button adds to its line where the host can open it (TV-8): where a press takes you. */
+export const OPENS_IN_HISTORY = 'opens in History';
+
 /** A lane as a screen reader hears it, at now. */
 export function laneLabel(lane: TimelineLane, nowMs: number): string {
   if (lane.ended !== undefined) {

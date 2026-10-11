@@ -17,16 +17,27 @@ export interface CountingCommands {
     readonly target?: MonitorSpawnTarget;
   }[];
   readonly reports: readonly ViewReport[];
-  /** Every call of the three. */
+  /** Every id handed to `openEnded` (TV-8); always empty when the commands lend none. */
+  readonly opens: readonly string[];
+  /** Every call of the three, and of `openEnded` where it is lent. */
   readonly calls: number;
   reset(): void;
 }
 
+export interface CountingCommandsOptions {
+  /**
+   * Lend TV-8's optional `openEnded`, as a host with somewhere to open a past session does. Default false: the
+   * commands carry no `openEnded` at all, as on most hosts.
+   */
+  readonly openEnded?: boolean | undefined;
+}
+
 /** Commands that do nothing but remember each call. */
-export function countingCommands(): CountingCommands {
+export function countingCommands(options: CountingCommandsOptions = {}): CountingCommands {
   const selects: string[] = [];
   const creates: { at?: { readonly x: number; readonly y: number }; target?: MonitorSpawnTarget }[] = [];
   const reports: ViewReport[] = [];
+  const opens: string[] = [];
   return {
     commands: Object.freeze({
       select: (agentId: string) => {
@@ -39,17 +50,26 @@ export function countingCommands(): CountingCommands {
       report: (report: ViewReport) => {
         reports.push(report);
       },
+      ...(options.openEnded === true
+        ? {
+            openEnded: (id: string) => {
+              opens.push(id);
+            },
+          }
+        : {}),
     }),
     selects,
     creates,
     reports,
+    opens,
     get calls() {
-      return selects.length + creates.length + reports.length;
+      return selects.length + creates.length + reports.length + opens.length;
     },
     reset() {
       selects.length = 0;
       creates.length = 0;
       reports.length = 0;
+      opens.length = 0;
     },
   };
 }

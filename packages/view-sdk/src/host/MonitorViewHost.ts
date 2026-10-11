@@ -5,7 +5,8 @@
  * effects, so a view switch happens in the host's own commit: the old view's
  * root leaves the document and the new view mounts before the browser paints,
  * leaving no frame without a view. Commands and `onReport` always reach the
- * latest props without remounting anything.
+ * latest props without remounting anything. Whether the host has an
+ * `openEnded` (TV-8) is read from the latest props as each view mounts.
  */
 
 import { createElement, useLayoutEffect, useRef, type ReactElement } from 'react';
@@ -72,6 +73,12 @@ export function MonitorViewHost(props: MonitorViewHostProps): ReactElement {
         commands: {
           select: (agentId) => latest.current.commands.select(agentId),
           create: (at, target) => latest.current.commands.create(at, target),
+          // TV-8: the slot reads this as a view mounts, so a host without the command lends its views none.
+          get openEnded() {
+            return latest.current.commands.openEnded === undefined
+              ? undefined
+              : (id: string) => latest.current.commands.openEnded?.(id);
+          },
         },
         onReport: (report, reporting) => latest.current.onReport?.(report, reporting),
         onError: (error, phase, failing) => {

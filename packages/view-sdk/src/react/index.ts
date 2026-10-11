@@ -4,7 +4,8 @@
  * `reactMonitorView(manifest, Component)` is a `MonitorView`. Each mount is its
  * own React root on the element the host hands the view, so the component
  * shares nothing with the host's tree. It receives the whole input and the
- * three commands as props, and re-renders only when a part of the input
+ * commands as props (the mount's own object, so an `openEnded` the host does
+ * not lend stays absent, TV-8), and re-renders only when a part of the input
  * changed identity (MV-D21): an update that moved nothing the view can see
  * costs no render.
  *

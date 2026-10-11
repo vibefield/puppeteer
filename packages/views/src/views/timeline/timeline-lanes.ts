@@ -59,7 +59,10 @@ export interface LiveLane extends LaneCommon {
   readonly ended?: undefined;
 }
 
-/** A run this runtime ran that the model no longer holds (TL-D6): lit and read, never opened. */
+/**
+ * A run this runtime ran that the model no longer holds (TL-D6): lit and read. The view never opens it; where the
+ * host lends `openEnded` (TV-8) a press asks the host to.
+ */
 export interface EndedLane extends LaneCommon {
   readonly ended: EndedLaneView;
   readonly row?: undefined;

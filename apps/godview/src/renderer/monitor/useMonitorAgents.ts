@@ -65,7 +65,10 @@ export interface MonitorAgentsResult {
   model: MonitorModel;
   /** The four views by id, each as itself: list and rain (MV-4), the swarm (MV-5), the timeline (MV-6). */
   views: ReadonlyMap<string, MonitorView>;
-  /** The view host's commands: select and create stay this window's own. */
+  /**
+   * The view host's commands: select and create stay this window's own. No `openEnded` (TV-8): this Godview keeps no
+   * past sessions to open, so an ended lane (the perf harness lends some) is lit and read, never a control.
+   */
   commands: ViewSlotCommands;
   /** Agent rows by status, from the model. */
   counts: Record<AgentStatus, number>;

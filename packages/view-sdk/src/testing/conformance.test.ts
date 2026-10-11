@@ -90,6 +90,23 @@ describe('checkConformance', () => {
     expect(report.cases).toBe(8);
   });
 
+  it('hands the view the three commands alone unless told the host lends openEnded (TV-8)', async () => {
+    const given: boolean[] = [];
+    const probe = (id: string): MonitorView =>
+      defineMonitorView({
+        manifest: manifest(id),
+        mount(_root, _input, commands) {
+          given.push(commands.openEnded !== undefined);
+          return { update: () => undefined, unmount: () => undefined };
+        },
+      });
+    await checkConformance(probe('plain'));
+    expect(new Set(given)).toEqual(new Set([false]));
+    given.length = 0;
+    await checkConformance(probe('door'), { openEnded: true });
+    expect(new Set(given)).toEqual(new Set([true]));
+  });
+
   it('passes a well-behaved React view', async () => {
     function Calm({ input, commands }: ReactMonitorViewProps) {
       useEffect(() => {

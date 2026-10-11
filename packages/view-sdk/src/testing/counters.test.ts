@@ -54,6 +54,20 @@ describe('countingCommands', () => {
     counting.reset();
     expect(counting.calls).toBe(0);
   });
+
+  it('lends no openEnded unless asked, and remembers each id when it does (TV-8)', () => {
+    const plain = countingCommands();
+    expect(Object.keys(plain.commands).sort()).toEqual(['create', 'report', 'select']);
+    expect(plain.opens).toEqual([]);
+    const counting = countingCommands({ openEnded: true });
+    counting.commands.openEnded!('past:claude:x');
+    counting.commands.select('agent-01');
+    expect(counting.opens).toEqual(['past:claude:x']);
+    expect(counting.selects).toEqual(['agent-01']);
+    expect(counting.calls).toBe(2);
+    counting.reset();
+    expect([counting.opens, counting.calls]).toEqual([[], 0]);
+  });
 });
 
 describe('countCommits', () => {

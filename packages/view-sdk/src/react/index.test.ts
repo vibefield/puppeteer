@@ -59,6 +59,30 @@ describe('reactMonitorView', () => {
     expect(view.Component).toBe(Probe);
   });
 
+  it("hands the component the mount's own commands: an openEnded the host does not lend stays absent (TV-8)", async () => {
+    const seen: MonitorViewCommands[] = [];
+    function Probe({ commands }: ReactMonitorViewProps) {
+      seen.push(commands);
+      return createElement('p', null, commands.openEnded === undefined ? 'read only' : 'opens');
+    }
+    const view = reactMonitorView(MANIFEST, Probe);
+    const without = element();
+    await act(async () => {
+      view.mount(without, fixtureInput(), COMMANDS);
+    });
+    expect(without.textContent).toBe('read only');
+    expect(seen[0]).toBe(COMMANDS);
+    expect('openEnded' in seen[0]!).toBe(false);
+    const openEnded = vi.fn();
+    const lent: MonitorViewCommands = { ...COMMANDS, openEnded };
+    const withOne = element();
+    await act(async () => {
+      view.mount(withOne, fixtureInput(), lent);
+    });
+    expect(withOne.textContent).toBe('opens');
+    expect(seen.at(-1)).toBe(lent);
+  });
+
   it('renders again only when a part of the input changed identity', async () => {
     let renders = 0;
     function Probe({ input }: ReactMonitorViewProps) {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { MonitorPastSnapshot, MonitorPastSpanKind } from '@vibecook/puppeteer-view-sdk/model';
 import { createMemoryProjectIdentityStore } from './identity.js';
 import {
@@ -10,6 +10,8 @@ import {
   type DerivePastInput,
 } from './past.js';
 import type {
+  MonitorCommand,
+  MonitorCommandSink,
   MonitorHistoryPort,
   MonitorRecordedActivity,
   MonitorRecordedRun,
@@ -408,7 +410,7 @@ describe('the backend’s readPast', () => {
     expect([past.sinceMs, past.untilMs, past.state]).toEqual([T0 - PAST_MAX_WINDOW_MS, T0, 'complete']);
   });
 
-  it('an ended lane is never opened: its past: id is no command the backend routes', async () => {
+  it('an ended lane is never opened here: its past: id is no command the backend routes, and none opens one', async () => {
     const t = testBackend({
       history: fakeHistory(recorded([session({ nativeSessionId: 'native-gone' })])),
     });
@@ -419,5 +421,8 @@ describe('the backend’s readPast', () => {
     expect(t.backend.command({ type: 'select', id: lane!.id })).toBe(false);
     expect(t.backend.command({ type: 'acknowledge', id: lane!.id })).toBe(false);
     expect([t.sink.selected, t.sink.created]).toEqual([[], []]);
+    // TV-8: a view's `openEnded` is its HOST's to answer. The backend's commands and its sink stay the ones they were.
+    expectTypeOf<MonitorCommand['type']>().toEqualTypeOf<'select' | 'create' | 'acknowledge'>();
+    expectTypeOf<keyof MonitorCommandSink>().toEqualTypeOf<'select' | 'create'>();
   });
 });

@@ -59,6 +59,14 @@ export interface ViewSlotInput {
 export interface ViewSlotCommands {
   select(agentId: string): void;
   create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): void | Promise<unknown>;
+  /**
+   * TV-8, optional: open the ended run `id` (a `MonitorEndedRow`'s `past:…` id) where this host keeps past sessions.
+   * The host answers it itself; nothing here sends it to the backend. A host with nowhere to open one leaves it out
+   * (or `undefined`), and its views then get no `openEnded` at all, never a no-op: a view reads the command's
+   * presence to decide whether an ended lane is a control. Presence is read as each view mounts, so give it from the
+   * first render; the function itself may change freely, and a call reaches the latest one.
+   */
+  readonly openEnded?: ((id: string) => void) | undefined;
 }
 
 const OPENED: MonitorCreateAnswer = Object.freeze({ opened: true });
@@ -216,7 +224,10 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
     if (notify) options.onReport?.(report, view);
   };
 
-  /** Each mount gets its own commands; once the view is gone they reach nothing. */
+  /**
+   * Each mount gets its own commands; once the view is gone they reach nothing. `openEnded` (TV-8) is among them only
+   * when the host has one as the view mounts: absent stays absent, since the view reads its presence.
+   */
   const commandsFor = (entry: Mounted): MonitorViewCommands =>
     Object.freeze({
       select(agentId: string) {
@@ -229,6 +240,13 @@ export function createViewSlot(slot: HTMLElement, options: ViewSlotOptions): Vie
       report(delta: ViewReport) {
         if (mounted === entry) applyReport(delta);
       },
+      ...(options.commands.openEnded === undefined
+        ? {}
+        : {
+            openEnded(id: string) {
+              if (mounted === entry) options.commands.openEnded?.(id);
+            },
+          }),
     });
 
   const cancelPendingFrame = (): void => {

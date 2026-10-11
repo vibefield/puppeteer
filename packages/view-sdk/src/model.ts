@@ -283,7 +283,10 @@ export interface MonitorLivePast {
 
 /** A run this runtime ran that the model no longer holds, with its record in the window. */
 export interface MonitorEndedRow {
-  /** `past:<provider>:<native session id>`, never a model row's id, and never sent through a command. */
+  /**
+   * `past:<provider>:<native session id>`, never a model row's id, and never sent to the backend (a view may hand it
+   * to its host's `openEnded`, TV-8).
+   */
   readonly id: string;
   readonly provider?: { readonly id: string; readonly label: string } | undefined;
   /** The session's title for the name column (the record's); absent: the view names it by provider · project. */

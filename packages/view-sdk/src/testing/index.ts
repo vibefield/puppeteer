@@ -32,6 +32,7 @@ export {
   countReactEffects,
   type CommitCounter,
   type CountingCommands,
+  type CountingCommandsOptions,
   type EffectCounter,
 } from './counters.js';
 export {

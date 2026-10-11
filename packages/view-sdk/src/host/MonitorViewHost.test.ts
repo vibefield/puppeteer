@@ -136,6 +136,42 @@ describe('MonitorViewHost', () => {
     await act(async () => root.unmount());
   });
 
+  it('lends a view openEnded only when the props have one as it mounts, and sends a call to the latest (TV-8)', async () => {
+    const without = host();
+    const plain = createRecordingView('list');
+    await act(async () => without.root.render(without.element({ view: plain.view })));
+    expect(Object.keys(plain.commands[0]!).sort()).toEqual(['create', 'report', 'select']);
+    // The props gain one while the view stands: it keeps what it mounted with, and the next view is lent it.
+    const gained = vi.fn();
+    const door = { select: vi.fn(), create: vi.fn(), openEnded: gained };
+    await act(async () => without.root.render(without.element({ view: plain.view, commands: door })));
+    expect(plain.commands[0]!.openEnded).toBeUndefined();
+    const next = createRecordingView('timeline');
+    await act(async () => without.root.render(without.element({ view: next.view, commands: door })));
+    next.commands[0]!.openEnded!('past:claude:x');
+    expect(gained.mock.calls).toEqual([['past:claude:x']]);
+    await act(async () => without.root.unmount());
+
+    const { root, element } = host();
+    const recording = createRecordingView('timeline');
+    const first = { select: vi.fn(), create: vi.fn(), openEnded: vi.fn() };
+    const second = { select: vi.fn(), create: vi.fn(), openEnded: vi.fn() };
+    await act(async () => root.render(element({ view: recording.view, commands: first })));
+    await act(async () => root.render(element({ view: recording.view, commands: second })));
+    recording.commands[0]!.openEnded!('past:claude:y');
+    expect(first.openEnded).not.toHaveBeenCalled();
+    expect(second.openEnded.mock.calls).toEqual([['past:claude:y']]);
+    expect([second.select.mock.calls, second.create.mock.calls]).toEqual([[], []]);
+    expect(recording.mounts).toBe(1);
+    // The props lose it: a call from the view still standing reaches nothing.
+    await act(async () =>
+      root.render(element({ view: recording.view, commands: { select: vi.fn(), create: vi.fn() } })),
+    );
+    expect(() => recording.commands[0]!.openEnded!('past:claude:y')).not.toThrow();
+    expect(second.openEnded).toHaveBeenCalledTimes(1);
+    await act(async () => root.unmount());
+  });
+
   it('takes capabilities that go away as none, not as the last ones', async () => {
     const { root, frames, element } = host();
     const recording = createRecordingView('list');

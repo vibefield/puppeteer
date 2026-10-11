@@ -244,4 +244,5 @@ contract.
 - **Honest states:** `partial` when the host says some of the record was not read, `unavailable` with the host's words
   when the port throws — a host answers fast, so a record that is not up is `unavailable` at once. No port: `readPast`
   answers `undefined`, and a host lends its views no past at all. `readPast` never rejects. An ended lane's id is never
-  a command's: `command` routes only the model's ids.
+  a command's: `command` routes only the model's ids. A host that can open a past session answers the view's optional
+  `openEnded` itself (TV-8, `MonitorViewCommands`); that never comes here.

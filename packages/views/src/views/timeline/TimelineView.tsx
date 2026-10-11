@@ -53,7 +53,7 @@ import {
   type ScaleTween,
   type TimelineScale,
 } from './timeline-scale.js';
-import { laneLabel, laneName, laneSubLine, readoutAt, recordState } from './timeline-words.js';
+import { laneLabel, laneName, laneSubLine, OPENS_IN_HISTORY, readoutAt, recordState } from './timeline-words.js';
 
 // The timeline — Godview's swarm through time (DESIGN §8; TL, design F
 // "Wakes" with its map of the day, `draft/godview-timeline/`). Each lane is
@@ -66,7 +66,11 @@ import { laneLabel, laneName, laneSubLine, readoutAt, recordState } from './time
 // (`timeline-lanes.ts`); the view remembers nothing a row did, and draws what
 // the record says of the past only as the host hands it (`history`, T0): a
 // row's past before its current state, and the runs that ended, faint, until
-// they scroll out (TL-D6). Those are lit and read, never opened.
+// they scroll out (TL-D6). Those are lit and read. Where the host lends
+// `commands.openEnded` (TV-8) a press on one, Enter on it lit, or its button
+// in the reader's list asks the host to open it; the view opens nothing
+// itself, and its `past:` id never reaches `select`. Where the host lends
+// none, an ended run is no control at all: no pointer cursor, no button.
 //
 // React lays the lanes out (names, heads, the offscreen buttons); everything
 // that moves with time — the wakes, the map, the ticks, the clock chip and the
@@ -235,6 +239,8 @@ interface EndedRows {
   readonly place: string;
   /** The minute its spoken line was worded in. */
   readonly minute: number;
+  /** Its spoken line is a button: the host lent `openEnded` when it was built (TV-8). */
+  readonly opens: boolean;
   readonly name: ReactElement;
   readonly head: ReactElement;
   readonly item: ReactElement | null;
@@ -286,8 +292,10 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   /**
    * An ended run's three rows (its name, its head, its line in the screen reader's list), held by identity: a model
    * publish rebuilds the live lanes, never these. An ended lane keeps its object while the history does, so its rows
-   * are built again only for a new history, a new place in the layout, or (its spoken line) a new minute. The lit lane
-   * and the head's moment never reach them: the draw lights the canvas and writes the readouts itself.
+   * are built again only for a new history, a new place in the layout, or (its spoken line) a new minute or a host
+   * that began or stopped lending `openEnded`: the line is keyed on the command's presence, never on the commands
+   * object, and its press reads the command through the ref. The lit lane and the head's moment never reach them: the
+   * draw lights the canvas and writes the readouts itself.
    */
   const endedRows = useRef(new WeakMap<TimelineLane, EndedRows>());
 
@@ -333,6 +341,8 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   /** The lit lane and the keyboard's lane, by id: indices go stale when a lane is added or leaves. */
   const litRef = useRef<string | null>(null);
   const focusRef = useRef<string | null>(null);
+  /** The ended lane under the pointer, while the host can open it (TV-8): the cursor says it is a control. */
+  const pointedRef = useRef<string | null>(null);
   const revRef = useRef(0);
   /** The wakes want a repaint (the light moved, the scale was put); the map has its own, since its lens is DOM. */
   const dirtyRef = useRef(true);
@@ -503,9 +513,22 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
 
   const choose = useCallback((id: string | null): void => {
     const placed = placedOf(id);
-    // An ended run is lit and read, never opened: its `past:` id never reaches a command.
-    if (!placed || placed.lane.ended !== undefined) return;
-    commandsRef.current.select(placed.lane.id);
+    if (!placed) return;
+    // An ended run's `past:` id never reaches `select` (the backend's). The host opens it where it lends the command
+    // (TV-8); where it lends none the run is lit and read, and this does nothing.
+    if (placed.lane.ended !== undefined) commandsRef.current.openEnded?.(placed.lane.id);
+    else commandsRef.current.select(placed.lane.id);
+  }, []);
+
+  /** The pointer's lane: over an ended run the host can open the root says so, and the cursor is a control's. */
+  const point = useCallback((placed: PlacedLane | undefined): void => {
+    const opens = placed?.lane.ended !== undefined && commandsRef.current.openEnded !== undefined;
+    const id = opens ? placed.lane.id : null;
+    const was = pointedRef.current;
+    pointedRef.current = id;
+    if ((was === null) === (id === null)) return;
+    if (id === null) rootRef.current?.removeAttribute('data-opens');
+    else rootRef.current?.setAttribute('data-opens', 'true');
   }, []);
 
   const light = useCallback(
@@ -534,10 +557,12 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
     }
   }, []);
 
-  // The ring follows its lane's id through a new layout; a lane that left takes the ring with it.
+  // The ring follows its lane's id through a new layout; a lane that left takes the ring with it, and the pointer's
+  // ended lane its cursor.
   useLayoutEffect(() => {
     paintFocusRing();
-  }, [layout, paintFocusRing]);
+    if (pointedRef.current !== null) point(placedOf(pointedRef.current));
+  }, [layout, paintFocusRing, point]);
 
   // ───────────────────────────── the draw
   useEffect(() => {
@@ -796,8 +821,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
     const rect = rowsRef.current?.getBoundingClientRect();
     return rect ? { x: event.clientX - rect.left, y: event.clientY - rect.top } : { x: 0, y: 0 };
   };
-  const laneAt = (y: number): string | null =>
-    layoutRef.current.placed.find((p) => y >= p.y && y < p.y + p.h)?.lane.id ?? null;
+  const placedAt = (y: number): PlacedLane | undefined =>
+    layoutRef.current.placed.find((p) => y >= p.y && y < p.y + p.h);
+  const laneAt = (y: number): string | null => placedAt(y)?.lane.id ?? null;
   const dropDrag = (): void => {
     pointer.current = null;
     rootRef.current?.removeAttribute('data-panning');
@@ -829,7 +855,9 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
         return;
       }
     }
-    light(laneAt(local(event).y));
+    const over = placedAt(local(event).y);
+    light(over?.lane.id ?? null);
+    point(over);
   };
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const drag = pointer.current;
@@ -977,7 +1005,10 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
   } as CSSProperties;
   const empty = layout.placed.length === 0;
 
-  /** An ended run's rows, from the cache while its place and the minute hold (see `endedRows`). */
+  // Whether the host can open an ended run (TV-8): its presence alone, so a new commands object rebuilds no row.
+  const opens = commands.openEnded !== undefined;
+
+  /** An ended run's rows, from the cache while its place, the minute and the host's door hold (see `endedRows`). */
   const endedRowsAt = (placed: PlacedLane, index: number): EndedRows => {
     const { lane } = placed;
     const place = `${placed.y}|${placed.h}|${index}`;
@@ -987,16 +1018,31 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
       const ref = (headRefs.current[index] ??= (element: HTMLDivElement | null) => {
         headEls.current[index] = element;
       });
-      rows = { place, minute: -1, name: nameRow(placed), head: headRow(placed, ref), item: rows?.item ?? null };
+      rows = {
+        place,
+        minute: -1,
+        opens: rows?.opens ?? opens,
+        name: nameRow(placed),
+        head: headRow(placed, ref),
+        item: rows?.item ?? null,
+      };
     }
-    if (rows.minute !== minute || rows.item === null) {
-      // An ended run is read, never opened: no control to press.
+    if (rows.minute !== minute || rows.opens !== opens || rows.item === null) {
       rows = {
         ...rows,
         minute,
+        opens,
         item: (
           <li key={lane.id}>
-            <span>{laneLabel(lane, renderNow)}</span>
+            {opens ? (
+              // The host can open it: a control, as a row's is. The press reads the command through the ref.
+              <button type="button" onClick={() => commandsRef.current.openEnded?.(lane.id)}>
+                {`${laneLabel(lane, renderNow)}, ${OPENS_IN_HISTORY}`}
+              </button>
+            ) : (
+              // No host to open it: an ended run is read, never opened, and there is no control to press.
+              <span>{laneLabel(lane, renderNow)}</span>
+            )}
           </li>
         ),
       };
@@ -1115,6 +1161,7 @@ export function TimelineView({ input, commands }: ReactMonitorViewProps): ReactE
         onPointerCancel={onPointerEnd}
         onPointerLeave={(event) => {
           dropDrag();
+          point(undefined);
           // The keyboard's lane keeps the light while the body holds focus.
           light(event.currentTarget.matches(':focus') ? focusRef.current : null);
         }}

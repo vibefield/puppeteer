@@ -68,6 +68,8 @@ export interface ConformanceOptions {
   /** Default: the manifest's parameter defaults. */
   readonly parameters?: MonitorParameterValues | undefined;
   readonly capabilities?: MonitorCapabilities | undefined;
+  /** The host lends TV-8's optional `openEnded` command. Default false: the view is handed the three alone. */
+  readonly openEnded?: boolean | undefined;
   /** Frames a still view may take to finish one-shot work before it must stop asking. Default 5. */
   readonly settleFrames?: number | undefined;
   /** Checks not run. Each one skipped is a hole in the wall: say why beside it. */
@@ -297,7 +299,7 @@ export async function checkConformance(
     const checkOutside = (): void => {
       if (describeOutside(root) !== outside) fail('own-root', 'changed the document outside its root');
     };
-    const { commands } = countingCommands();
+    const { commands } = countingCommands({ openEnded: options.openEnded });
     let instance: MonitorViewInstance | undefined;
     let previous: MonitorViewInput | undefined;
     for (const [index, step] of steps.entries()) {

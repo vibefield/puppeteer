@@ -3,9 +3,10 @@
  *
  * A view is pure presentation. It receives the replica's model and its own UI
  * input as plain values, draws them, keeps only UI state (hover, the scrubbed
- * moment, scroll, its own animation and physics) and calls three commands. It
- * computes no business fact, syncs nothing, and touches nothing outside the
- * root it is given (the wall, MV-W1…W5).
+ * moment, scroll, its own animation and physics) and calls three commands, and
+ * a fourth where its host lends one (`openEnded`, TV-8). It computes no
+ * business fact, syncs nothing, and touches nothing outside the root it is
+ * given (the wall, MV-W1…W5).
  *
  * Everything handed to a view is plain data, so the same contract can later
  * cross into an isolated realm unchanged.
@@ -113,7 +114,8 @@ export interface MonitorTheme {
 
 /**
  * An ended lane as a view sees it: the backend's row, with what only the window knows joined by the host, as
- * `AgentView` joins it. Lit and readable, never openable: a view never sends its `past:` id through a command.
+ * `AgentView` joins it. Lit and readable, and never the backend's to open: its `past:` id goes through no command but
+ * the host's own `openEnded` (TV-8), and where the host lends none the lane is not a control.
  */
 export interface EndedLaneView extends MonitorEndedRow {
   /** The project's colour in the current theme; the neutral ramp for no project. */
@@ -194,7 +196,7 @@ export interface MonitorCreateAnswer {
   readonly opened: boolean;
 }
 
-/** The three commands a view may call (MV-D5). */
+/** The three commands a view may call (MV-D5), and TV-8's optional fourth, which only some hosts lend. */
 export interface MonitorViewCommands {
   /** Show this agent in the active pane. */
   select(agentId: string): void;
@@ -205,6 +207,14 @@ export interface MonitorViewCommands {
    */
   create(at?: { readonly x: number; readonly y: number }, target?: MonitorSpawnTarget): Promise<MonitorCreateAnswer>;
   report(report: ViewReport): void;
+  /**
+   * Open a run that ended where the host keeps past sessions (TV-8). `id` is a `MonitorEndedRow`'s id (`past:…`), and
+   * nothing else is ever passed. The HOST answers it: it is never sent to the backend, which routes only the model's
+   * ids. ABSENT wherever no record is lent or the host has nowhere to open a past session (puppeteer's own Godview,
+   * the phone): a view reads its presence, and without it an ended lane is lit and read, never a control. Whether it
+   * is there is settled when the view mounts.
+   */
+  openEnded?(id: string): void;
 }
 
 /** The view's mark, drawn by the host's bar (MV-D6) as filled paths in currentColor. */

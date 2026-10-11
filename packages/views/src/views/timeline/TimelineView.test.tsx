@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type {
   AgentView,
@@ -25,7 +26,7 @@ import {
 } from '@vibecook/puppeteer-view-sdk/testing';
 import { TIMELINE_MANIFEST, TIMELINE_ROOT_CLASS, timelineMonitorView } from './index.js';
 import { timelineWorld } from './lab/timeline-fixtures.js';
-import { laneLabel, laneSubLine } from './timeline-words.js';
+import { laneLabel, laneSubLine, OPENS_IN_HISTORY } from './timeline-words.js';
 
 // Two of the view's words, spied on and called through: what a publish rebuilds shows in who they are asked about.
 vi.mock('./timeline-words.js', async (importOriginal) => {
@@ -137,10 +138,15 @@ afterEach(async () => {
   size = { width: 0, height: 0 };
 });
 
-async function mount(
-  input: Partial<Parameters<typeof fixtureInput>[0]> = {},
-  options: { width?: number; height?: number } = {},
-): Promise<Mounted> {
+interface MountOptions {
+  width?: number;
+  height?: number;
+  /** The host lends TV-8's `openEnded` (default: it does not, as puppeteer's own Godview). */
+  openEnded?: boolean;
+}
+
+/** A stage to mount on: the root's size, the afternoon's clock and frames by hand, and a root in the document. */
+function arrange(options: MountOptions = {}): HTMLElement {
   size = { width: options.width ?? 1064, height: options.height ?? 320 };
   clock = createFixtureClock(NOW);
   const restoreClock = clock.install();
@@ -152,7 +158,15 @@ async function mount(
   };
   const root = document.createElement('div');
   document.body.append(root);
-  const commands = countingCommands();
+  return root;
+}
+
+async function mount(
+  input: Partial<Parameters<typeof fixtureInput>[0]> = {},
+  options: MountOptions = {},
+): Promise<Mounted> {
+  const root = arrange(options);
+  const commands = countingCommands({ openEnded: options.openEnded });
   let instance!: MonitorViewInstance;
   await act(async () => {
     instance = timelineMonitorView.mount(root, fixtureInput({ parameters: PARAMETERS, ...input }), commands.commands);
@@ -175,6 +189,13 @@ const names = (root: Element): string[] =>
 const buttons = (root: Element): HTMLButtonElement[] => [
   ...root.querySelectorAll<HTMLButtonElement>('.vf-monitor-timeline-agents button'),
 ];
+/** The pointer comes to rest over a lane, no button down. */
+const over = (body: HTMLElement, lane: HTMLElement) =>
+  act(async () => {
+    body.dispatchEvent(
+      new PointerEvent('pointermove', { clientX: 40, clientY: parseFloat(lane.style.top) + 4, bubbles: true }),
+    );
+  });
 
 describe('the timeline’s lanes', () => {
   it('draws the example afternoon: agents in birth order, terminals below, and no lane for a run the model lacks', async () => {
@@ -551,8 +572,9 @@ describe("with the record's past (history)", () => {
     ]);
   });
 
-  it('lights an ended run but never opens it: no key, press or button sends its past: id', async () => {
+  it('with no openEnded lent, lights an ended run but never opens it: no key, press or button sends its past: id', async () => {
     const view = await mount({ agents: [row], capabilities: { history: lent } });
+    expect(view.commands.commands.openEnded).toBeUndefined();
     await act(async () => frames.step(2));
     const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
     const key = (name: string) =>
@@ -586,6 +608,134 @@ describe("with the record's past (history)", () => {
       'notes, Claude Code, ended, last active 25 minutes ago',
       'Split the invoice writer, notes, Claude Code, ended, last active 20 minutes ago',
     ]);
+    // Nothing but the two selects was ever called, and no cursor says an ended lane is a control.
+    expect(view.commands.calls - view.commands.reports.length).toBe(2);
+    await over(body, lanes[0]!);
+    expect(view.view.hasAttribute('data-opens')).toBe(false);
+  });
+
+  it('where the host lends openEnded (TV-8), a press on an ended lane asks the host to open it, once, and selects nothing', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } }, { openEnded: true });
+    await act(async () => frames.step(2));
+    const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
+    const lanes = [...view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-name')];
+    const y = (lane: HTMLElement): number => parseFloat(lane.style.top) + 4;
+    const pointer = (type: string, clientX: number, lane: HTMLElement, buttons = 0) =>
+      body.dispatchEvent(new PointerEvent(type, { clientX, clientY: y(lane), button: 0, buttons, bubbles: true }));
+    await act(async () => {
+      pointer('pointerdown', 40, lanes[0]!, 1);
+      pointer('pointerup', 40, lanes[0]!);
+    });
+    expect(view.commands.opens).toEqual(['past:claude:y']);
+    expect(view.commands.selects).toEqual([]);
+    // The row's lane still selects, and opens nothing.
+    await act(async () => {
+      pointer('pointerdown', 40, lanes[1]!, 1);
+      pointer('pointerup', 40, lanes[1]!);
+    });
+    expect([view.commands.selects, view.commands.opens]).toEqual([['a'], ['past:claude:y']]);
+    // A drag along an ended lane moves through time and opens nothing; nor does a scrub on the map.
+    const chip = view.root.querySelector('.vf-monitor-timeline-chip')!;
+    await act(async () => {
+      pointer('pointerdown', 400, lanes[2]!, 1);
+      pointer('pointermove', 460, lanes[2]!, 1);
+      pointer('pointermove', 520, lanes[2]!, 1);
+      pointer('pointerup', 520, lanes[2]!);
+      frames.step(2);
+    });
+    expect(view.view.dataset.detached).toBe('true');
+    expect(chip.textContent).not.toBe('15:00:00');
+    const map = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-map-box')!;
+    await act(async () => {
+      map.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 20, button: 0, bubbles: true }));
+      map.dispatchEvent(new PointerEvent('pointermove', { clientX: 340, clientY: 20, buttons: 1, bubbles: true }));
+      map.dispatchEvent(new PointerEvent('pointerup', { clientX: 340, clientY: 20, button: 0, bubbles: true }));
+    });
+    expect([view.commands.selects, view.commands.opens]).toEqual([['a'], ['past:claude:y']]);
+  });
+
+  it('where the host lends openEnded, Enter on a lit ended lane opens it: the key a row already has, and no new one', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } }, { openEnded: true });
+    await act(async () => frames.step(2));
+    const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
+    const key = (name: string) =>
+      act(async () => {
+        body.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+      });
+    await key('ArrowDown');
+    await key('Enter');
+    expect([view.commands.selects, view.commands.opens]).toEqual([[], ['past:claude:y']]);
+    await key('ArrowDown');
+    await key('Enter');
+    expect([view.commands.selects, view.commands.opens]).toEqual([['a'], ['past:claude:y']]);
+    // No other key reaches the host, and the manifest declares the keys it always did.
+    for (const name of [' ', 'o', 'h', 'ArrowRight', '=']) await key(name);
+    expect(view.commands.opens).toEqual(['past:claude:y']);
+    expect(TIMELINE_MANIFEST.keys).toHaveLength(9);
+  });
+
+  it('where the host lends openEnded, an ended run is a button for a screen reader, saying where it opens', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } }, { openEnded: true });
+    await act(async () => frames.step(2));
+    expect(view.root.querySelectorAll('.vf-monitor-timeline-agents li > span')).toHaveLength(0);
+    const [first, live, last] = buttons(view.root);
+    expect(buttons(view.root).map((button) => button.type)).toEqual(['button', 'button', 'button']);
+    expect(first!.textContent).toBe('notes, Claude Code, ended, last active 25 minutes ago, opens in History');
+    expect(last!.textContent).toBe(
+      'Split the invoice writer, notes, Claude Code, ended, last active 20 minutes ago, opens in History',
+    );
+    // The row between them is worded as it always was: only an ended run says where it opens.
+    expect(live!.textContent).toMatch(/^billing, .*working for 10 minutes$/);
+    expect(OPENS_IN_HISTORY).toBe('opens in History');
+    await act(async () => buttons(view.root)[2]!.click());
+    expect([view.commands.selects, view.commands.opens]).toEqual([[], ['past:claude:x']]);
+    await act(async () => buttons(view.root)[1]!.click());
+    expect([view.commands.selects, view.commands.opens]).toEqual([['a'], ['past:claude:x']]);
+  });
+
+  it('shows a control’s cursor over an ended lane the host can open, and only there', async () => {
+    const view = await mount({ agents: [row], capabilities: { history: lent } }, { openEnded: true });
+    await act(async () => frames.step(2));
+    const body = view.root.querySelector<HTMLElement>('.vf-monitor-timeline-body')!;
+    const lanes = [...view.root.querySelectorAll<HTMLElement>('.vf-monitor-timeline-name')];
+    expect(view.view.hasAttribute('data-opens')).toBe(false);
+    await over(body, lanes[0]!);
+    expect(view.view.dataset.opens).toBe('true');
+    await over(body, lanes[1]!);
+    expect(view.view.hasAttribute('data-opens')).toBe(false);
+    await over(body, lanes[2]!);
+    expect(view.view.dataset.opens).toBe('true');
+    // The pointer leaves the lanes (React reads a leave from the out that bubbles).
+    await act(async () => {
+      body.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, relatedTarget: null }));
+    });
+    expect(view.view.hasAttribute('data-opens')).toBe(false);
+    // A lane that leaves under a resting pointer takes its cursor with it.
+    await over(body, lanes[2]!);
+    expect(view.view.dataset.opens).toBe('true');
+    await view.update(
+      fixtureInput({
+        parameters: PARAMETERS,
+        agents: [row],
+        capabilities: { history: { ...lent, ended: [lent.ended[0]!] } },
+      }),
+    );
+    expect(view.view.hasAttribute('data-opens')).toBe(false);
+  });
+
+  it('changes nothing else for the command: the two markups differ only in an ended run’s spoken line', async () => {
+    const theme = fixtureTheme('dark', { animations: false });
+    const markup = async (openEnded: boolean): Promise<string> => {
+      const view = await mount({ agents: [row], theme, capabilities: { history: lent } }, { openEnded });
+      for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
+      return view.root.outerHTML;
+    };
+    const without = await markup(false);
+    const lentOne = await markup(true);
+    expect(lentOne).not.toBe(without);
+    expect(lentOne.replace(/<button type="button">([^<]*), opens in History<\/button>/g, '<span>$1</span>')).toBe(
+      without,
+    );
   });
 
   it("cuts the seam where the runtime takes over, and ticks each ended run's last activity", async () => {
@@ -652,28 +802,79 @@ describe("with the record's past (history)", () => {
     expect(narrow.root.querySelector('.vf-monitor-timeline-record-state')?.textContent).toBe('NO RECORD NOW');
   });
 
-  it("holds an ended run's rows by identity: a model publish builds the live lanes' rows again, never theirs", async () => {
+  const asked = (spy: unknown): string[] =>
+    (spy as ReturnType<typeof vi.fn>).mock.calls.map(([lane]) => (lane as { id: string }).id).sort();
+
+  it.each([
+    ['with no openEnded lent', false],
+    ['with openEnded lent (TV-8)', true],
+  ])(
+    "holds an ended run's rows by identity, %s: a model publish builds the live lanes' rows again, never theirs",
+    async (_case, openEnded) => {
+      const theme = fixtureTheme('dark', { animations: false });
+      const view = await mount({ agents: [row], theme, capabilities: { history: lent } }, { openEnded });
+      for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
+      const spoken = () => [...view.root.querySelectorAll('.vf-monitor-timeline-agents li > *')];
+      const before = spoken();
+      expect(before.map((item) => item.tagName)).toEqual(
+        openEnded ? ['BUTTON', 'BUTTON', 'BUTTON'] : ['SPAN', 'BUTTON', 'SPAN'],
+      );
+      vi.mocked(laneSubLine).mockClear();
+      vi.mocked(laneLabel).mockClear();
+      const moved = { ...row, status: 'blocked' as const, statusSince: NOW - MIN };
+      await view.update(
+        fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: lent } }),
+      );
+      // The row's name row and spoken line were built again; the two ended runs' were not.
+      expect(asked(laneSubLine)).toEqual(['a']);
+      expect(asked(laneLabel)).toEqual(['a']);
+      expect(names(view.root)).toEqual(['Claude Code · notes', 'billing', 'Split the invoice writer']);
+      expect(spoken()).toEqual(before);
+      // A new history object builds them again.
+      vi.mocked(laneSubLine).mockClear();
+      await view.update(
+        fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: { ...lent } } }),
+      );
+      expect(asked(laneSubLine)).toEqual(['a', 'past:claude:x', 'past:claude:y']);
+    },
+  );
+
+  it("keys an ended run's spoken line on the command's presence, never on the commands object", async () => {
     const theme = fixtureTheme('dark', { animations: false });
-    const view = await mount({ agents: [row], theme, capabilities: { history: lent } });
-    for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
-    const asked = (spy: unknown): string[] =>
-      (spy as ReturnType<typeof vi.fn>).mock.calls.map(([lane]) => (lane as { id: string }).id).sort();
-    vi.mocked(laneSubLine).mockClear();
-    vi.mocked(laneLabel).mockClear();
-    const moved = { ...row, status: 'blocked' as const, statusSince: NOW - MIN };
-    await view.update(
-      fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: lent } }),
-    );
-    // The row's name row and spoken line were built again; the two ended runs' were not.
-    expect(asked(laneSubLine)).toEqual(['a']);
-    expect(asked(laneLabel)).toEqual(['a']);
-    expect(names(view.root)).toEqual(['Claude Code · notes', 'billing', 'Split the invoice writer']);
-    // A new history object builds them again.
-    vi.mocked(laneSubLine).mockClear();
-    await view.update(
-      fixtureInput({ parameters: PARAMETERS, agents: [moved], theme, capabilities: { history: { ...lent } } }),
-    );
-    expect(asked(laneSubLine)).toEqual(['a', 'past:claude:x', 'past:claude:y']);
+    const input = fixtureInput({ parameters: PARAMETERS, agents: [row], theme, capabilities: { history: lent } });
+    const root = arrange();
+    root.classList.add(TIMELINE_ROOT_CLASS);
+    const reactRoot = createRoot(root);
+    const render = (commands: ReturnType<typeof countingCommands>) =>
+      act(async () =>
+        reactRoot.render(createElement(timelineMonitorView.Component, { input, commands: commands.commands })),
+      );
+    try {
+      const first = countingCommands({ openEnded: true });
+      await render(first);
+      for (let frame = 0; frame < 5 && frames.pending > 0; frame += 1) await act(async () => frames.step(1));
+      // The same door on a new commands object: the row's line is worded again, the ended runs' are not…
+      vi.mocked(laneLabel).mockClear();
+      const second = countingCommands({ openEnded: true });
+      await render(second);
+      expect(asked(laneLabel)).toEqual(['a']);
+      // …and a press reaches the commands the view holds now, not the ones the line was built under.
+      await act(async () => buttons(root)[0]!.click());
+      expect([first.opens, second.opens]).toEqual([[], ['past:claude:y']]);
+      // The door gone: each ended run's line is built again, as words alone. And back.
+      vi.mocked(laneLabel).mockClear();
+      await render(countingCommands());
+      expect(asked(laneLabel)).toEqual(['a', 'past:claude:x', 'past:claude:y']);
+      expect(buttons(root)).toHaveLength(1);
+      expect(root.querySelectorAll('.vf-monitor-timeline-agents li > span')).toHaveLength(2);
+      vi.mocked(laneLabel).mockClear();
+      await render(countingCommands({ openEnded: true }));
+      expect(asked(laneLabel)).toEqual(['a', 'past:claude:x', 'past:claude:y']);
+      expect(buttons(root)).toHaveLength(3);
+    } finally {
+      await act(async () => reactRoot.unmount());
+      root.remove();
+    }
   });
 
   it('repaints both canvases once for a new history, and nothing for the same one', async () => {
@@ -729,4 +930,18 @@ describe('at a size to draw at, with history', () => {
     size = { width: 0, height: 0 };
   });
   runConformance(timelineMonitorView, { capabilities: { history: fixtureHistory({ live: agentViewsFixture(20) }) } });
+});
+
+// And again where the host can open an ended run (TV-8): the view keeps every rule with the command lent.
+describe('at a size to draw at, with history and openEnded', () => {
+  beforeAll(() => {
+    size = { width: 1064, height: 320 };
+  });
+  afterAll(() => {
+    size = { width: 0, height: 0 };
+  });
+  runConformance(timelineMonitorView, {
+    capabilities: { history: fixtureHistory({ live: agentViewsFixture(20) }) },
+    openEnded: true,
+  });
 });
