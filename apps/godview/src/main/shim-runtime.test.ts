@@ -29,7 +29,8 @@ describe('nodeCanExecInPlace', () => {
   });
 });
 
-describe('the node a launcher names', () => {
+// Godview enables spawn-through only on POSIX, where execve and shell launchers exist.
+describe.skipIf(process.platform === 'win32')('the node a launcher names', () => {
   let root: string;
   const at = (...parts: string[]): string => join(root, ...parts);
   const electron = { command: '/Applications/Godview.app/Contents/MacOS/Godview', version: '24.18.0' };

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibefield/puppeteer-core';
 import type { OwnActionRecord } from '@vibefield/puppeteer-record';
@@ -33,25 +33,27 @@ function fakeFs(
   files: Record<string, string> = {},
   links: Record<string, string> = {},
 ): LauncherFs {
-  const dirs = new Set(directories);
+  const dirs = new Set(directories.map((path) => resolve(path)));
+  const contentsByPath = Object.fromEntries(Object.entries(files).map(([path, contents]) => [resolve(path), contents]));
+  const targets = Object.entries(links).map(([link, target]) => [resolve(link), resolve(target)] as const);
   const physical = (given: string): string => {
-    const path = given.length > 1 ? given.replace(/\/+$/u, '') : given;
-    for (const [link, target] of Object.entries(links)) {
-      if (path === link || path.startsWith(`${link}/`)) return target + path.slice(link.length);
+    const path = resolve(given);
+    for (const [link, target] of targets) {
+      if (path === link || path.startsWith(`${link}${sep}`)) return target + path.slice(link.length);
     }
     return path;
   };
   return {
     isDirectory: async (path) => dirs.has(physical(path)),
-    isFile: async (path) => physical(path) in files,
+    isFile: async (path) => physical(path) in contentsByPath,
     read: async (path) => {
-      const contents = files[physical(path)];
+      const contents = contentsByPath[physical(path)];
       if (contents === undefined) throw new Error(`ENOENT: ${path}`);
       return contents;
     },
     realpath: async (path) => {
       const real = physical(path);
-      if (!dirs.has(real) && !(real in files)) throw new Error(`ENOENT: ${path}`);
+      if (!dirs.has(real) && !(real in contentsByPath)) throw new Error(`ENOENT: ${path}`);
       return real;
     },
   };
@@ -103,18 +105,18 @@ const READY: HistorySearchStatus = {
 describe('project resolution (QL-D9)', () => {
   it('finds the git root of a folder, and a worktree’s repository through its commondir', async () => {
     const repo = fakeFs(['/w/app', '/w/app/.git', '/w/app/src']);
-    expect(await gitRootsOf('/w/app/src/deep', repo)).toEqual(['/w/app']);
+    expect(await gitRootsOf('/w/app/src/deep', repo)).toEqual([resolve('/w/app')]);
     const worktree = fakeFs(['/w/app', '/w/app/.git', '/w/app/.git/worktrees/feat', '/w/lanes/feat'], {
       '/w/lanes/feat/.git': 'gitdir: /w/app/.git/worktrees/feat\n',
       '/w/app/.git/worktrees/feat/commondir': '../..\n',
     });
-    expect(await gitRootsOf('/w/lanes/feat/pkg', worktree)).toEqual(['/w/lanes/feat', '/w/app']);
+    expect(await gitRootsOf('/w/lanes/feat/pkg', worktree)).toEqual([resolve('/w/lanes/feat'), resolve('/w/app')]);
     expect(await gitRootsOf('/tmp/loose', fakeFs([]))).toEqual([]);
   });
 
   it('keeps a worktree whose repository moved as its own root', async () => {
     const orphan = fakeFs(['/w/lanes/feat'], { '/w/lanes/feat/.git': 'gitdir: /gone/.git/worktrees/feat' });
-    expect(await gitRootsOf('/w/lanes/feat', orphan)).toEqual(['/w/lanes/feat']);
+    expect(await gitRootsOf('/w/lanes/feat', orphan)).toEqual([resolve('/w/lanes/feat')]);
   });
 
   const projects: HistoryProject[] = [
@@ -150,9 +152,9 @@ describe('project resolution (QL-D9)', () => {
 
   it('meets the daemon’s physical roots from a symlinked folder (the fake’s links)', async () => {
     const linked = fakeFs(['/real/app', '/real/app/.git', '/real/app/src'], {}, { '/home/app': '/real/app' });
-    expect(await physicalPath('/home/app/src/', linked)).toBe('/real/app/src');
-    expect(await physicalPath('/home/app/missing', linked)).toBe('/home/app/missing');
-    expect(await gitRootsOf('/home/app/src', linked)).toEqual(['/real/app']);
+    expect(await physicalPath('/home/app/src/', linked)).toBe(resolve('/real/app/src'));
+    expect(await physicalPath('/home/app/missing', linked)).toBe(resolve('/home/app/missing'));
+    expect(await gitRootsOf('/home/app/src', linked)).toEqual([resolve('/real/app')]);
     const real: HistoryProject = { id: 'p-real', name: 'app', rootPaths: ['/real/app'] };
     expect((await resolveLauncherProject('/home/app/src', [real], linked))?.id).toBe('p-real');
     // Outside a repository, the exact root is matched on the physical path too.
@@ -167,6 +169,13 @@ describe('project resolution (QL-D9)', () => {
     expect(isWithin('/w/app', '/w/app/')).toBe(true);
     expect(isWithin('/w/application', '/w/app')).toBe(false);
     expect(isWithin('/anything', '/')).toBe(true);
+  });
+
+  it.runIf(process.platform === 'win32')('matches drive roots and mixed Windows separators', () => {
+    expect(isWithin('C:\\Work\\App\\src', 'c:/work/app/')).toBe(true);
+    expect(isWithin('C:\\Work\\App', 'C:/')).toBe(true);
+    expect(isWithin('C:\\Work\\Application', 'C:/Work/App')).toBe(false);
+    expect(isWithin('D:\\Work\\App', 'C:/Work/App')).toBe(false);
   });
 });
 

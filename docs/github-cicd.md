@@ -23,6 +23,10 @@ Godview bundle without native prebuilds. Live agent credentials and Electron
 smoke tests are not needed for these checks. Existing opt-in live-agent workflows
 remain separate.
 
+Spawn-through interception is POSIX-only and disabled by Godview on Windows.
+Its real shell, `execve`, `ps`, and owner-only permission tests run on Linux and
+macOS; portable protocol, gateway, and process-exit tests also run on Windows.
+
 During the Ghosttea source window, app CI bootstraps the sibling SDK before
 installing Puppeteer. `.github/ci/ghosttea.json` pins the public upstream commit
 and the digest of `ghosttea-sdk.patch`, which contains the unpublished Frame and

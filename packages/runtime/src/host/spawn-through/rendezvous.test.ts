@@ -36,6 +36,8 @@ afterEach(async () => {
 });
 
 const modeOf = async (path: string): Promise<number> => (await stat(path)).mode & 0o777;
+// Only POSIX enforces the owner-only mode used by spawn-through files.
+const itPosix = it.skipIf(process.platform === 'win32');
 
 /** Every file under `directory`: its inode, mtime, mode and bytes. */
 async function snapshot(directory: string): Promise<Record<string, string>> {
@@ -51,7 +53,7 @@ async function snapshot(directory: string): Promise<Record<string, string>> {
 }
 
 describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
-  it('publishes the rendezvous and the provider table owner-only, and reads them back', async () => {
+  itPosix('publishes the rendezvous and the provider table owner-only, and reads them back', async () => {
     await writeRendezvous(home, { port: 4242, token: 'bearer', strict: false, launchProviders: providers });
 
     expect(await modeOf(home)).toBe(0o700);
@@ -126,24 +128,33 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
     expect(read![2]!.nativeInvocation).not.toHaveProperty('classifies');
   });
 
-  it('is idempotent: an identical call rewrites no file, and a changed one is written when it changed', async () => {
-    const options = { port: 4242, token: 'bearer', strict: false, launchProviders: providers, hostLabel: 'Field Host' };
-    await writeRendezvous(home, options);
-    const before = await snapshot(home);
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    await writeRendezvous(home, options);
-    expect(await snapshot(home)).toEqual(before);
+  itPosix(
+    'is idempotent: an identical call rewrites no file, and a changed one is written when it changed',
+    async () => {
+      const options = {
+        port: 4242,
+        token: 'bearer',
+        strict: false,
+        launchProviders: providers,
+        hostLabel: 'Field Host',
+      };
+      await writeRendezvous(home, options);
+      const before = await snapshot(home);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await writeRendezvous(home, options);
+      expect(await snapshot(home)).toEqual(before);
 
-    const first = (await readRendezvous(home))!.writtenAt;
-    await writeRendezvous(home, { ...options, strict: true });
-    const changed = (await readRendezvous(home))!;
-    expect(changed.strict).toBe(true);
-    expect(changed.writtenAt).not.toBe(first);
-    // The table says what it said: left as it was.
-    expect((await snapshot(home))[LAUNCH_PROVIDERS_FILE]).toBe(before[LAUNCH_PROVIDERS_FILE]);
-  });
+      const first = (await readRendezvous(home))!.writtenAt;
+      await writeRendezvous(home, { ...options, strict: true });
+      const changed = (await readRendezvous(home))!;
+      expect(changed.strict).toBe(true);
+      expect(changed.writtenAt).not.toBe(first);
+      // The table says what it said: left as it was.
+      expect((await snapshot(home))[LAUNCH_PROVIDERS_FILE]).toBe(before[LAUNCH_PROVIDERS_FILE]);
+    },
+  );
 
-  it('holds an existing, looser home to owner-only', async () => {
+  itPosix('holds an existing, looser home to owner-only', async () => {
     await mkdir(home, { mode: 0o755 });
     await chmod(home, 0o755);
     await writeRendezvous(home, { port: 4242, token: 'bearer', strict: false, launchProviders: providers });

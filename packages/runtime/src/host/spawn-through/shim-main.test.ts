@@ -18,6 +18,7 @@ import { TERMINALS_FILE, writeTerminals, type SpawnThroughTerminal } from './ter
 
 const TOKEN = 'bearer-never-printed';
 const SECRET = 'secret-ingress-token';
+const describePosix = describe.skipIf(process.platform === 'win32');
 
 /** Prints what it was run as, with, where, and under which variables — one fact per line. */
 const REPORT = [
@@ -299,7 +300,8 @@ function expectCleanAgentEnvironment(ran: Ran, shimHome: string): void {
   expect(`${ran.stdout}${ran.stderr}`).not.toContain(TOKEN);
 }
 
-describe('the shim, end to end (bundled, run through its launcher)', { timeout: 60_000 }, () => {
+// A Windows host does not intercept commands: there is no execve or POSIX launcher.
+describePosix('the shim, end to end (bundled, run through its launcher)', { timeout: 60_000 }, () => {
   it('execs the recipe in place: the gateway saw its pid, only allow-listed variables, and nothing of the kit reaches the agent', async () => {
     const requests = await gatewayAnswering(home, () => ({
       action: 'exec',
@@ -332,7 +334,11 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('says it is not interactive when its output is redirected to a file', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({
+      action: 'fallback',
+      code: 'passthrough',
+      reason: 'test',
+    }));
     const redirected = await launch(home, 'example', ['to a file'], { stdoutFile: join(root, 'redirected.txt') });
     // Its output went where the person sent it: the real executable ran as typed.
     expect(redirected.lines('ARG ')).toEqual(['to a file']);
@@ -340,7 +346,11 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it.skipIf(!python)('says it is interactive only when its input and its output are both a terminal', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({
+      action: 'fallback',
+      code: 'passthrough',
+      reason: 'test',
+    }));
     for (const tty of ['both', 'out', 'in'] as const) {
       const ran = await launch(home, 'example', [tty], { tty });
       expect(ran.lines('ARG '), tty).toEqual([tty]);
@@ -642,7 +652,12 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     });
 
     it("not strict, under one of the host's shells: runs as typed, at once, as it always did", async () => {
-      await writeRendezvous(home, { port: await deadPort(), token: TOKEN, strict: false, launchProviders: providers });
+      await writeRendezvous(home, {
+        port: await deadPort(),
+        token: TOKEN,
+        strict: false,
+        launchProviders: providers,
+      });
       await writeTerminals(home, [thisShell]);
       const ran = await launch(home, 'example', ['relaxed'], { tty: 'both' });
 
@@ -801,7 +816,11 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
   });
 
   it('routes `ai --<provider>` as the imposter, and falls back to the chosen ai with the flag kept', async () => {
-    const requests = await gatewayAnswering(home, () => ({ action: 'fallback', code: 'passthrough', reason: 'test' }));
+    const requests = await gatewayAnswering(home, () => ({
+      action: 'fallback',
+      code: 'passthrough',
+      reason: 'test',
+    }));
     const onPath = await launch(home, 'ai', ['--example', 'hello']);
     expect(requests[0]).toMatchObject({ type: 'launch', providerId: 'example', argv: ['hello'], imposter: true });
     expect(onPath.lines('REAL ')).toEqual(['ai']);

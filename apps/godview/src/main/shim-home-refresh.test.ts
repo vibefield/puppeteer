@@ -59,7 +59,8 @@ async function snapshot(): Promise<Record<string, string>> {
 
 const modeOf = async (path: string): Promise<number> => (await stat(path)).mode & 0o777;
 
-describe('refreshShimHome', () => {
+// The spawn-through home relies on POSIX permissions; Godview disables it on Windows.
+describe.skipIf(process.platform === 'win32')('refreshShimHome', () => {
   it('leaves a home nothing touched byte for byte: no file rewritten, none counted', async () => {
     const before = await snapshot();
     expect(Object.keys(before).sort()).toEqual(
@@ -109,7 +110,7 @@ describe('describeShimHomeRefresh', () => {
   });
 });
 
-describe('startShimHomeRefresh', () => {
+describe.skipIf(process.platform === 'win32')('startShimHomeRefresh', () => {
   const timeouts = (): number => process.getActiveResourcesInfo().filter((type) => type === 'Timeout').length;
 
   it('refreshes on its interval without keeping the process alive, and writes nothing once stopped', async () => {

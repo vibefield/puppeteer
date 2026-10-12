@@ -79,20 +79,24 @@ describe('sweepStaleShimHomes', () => {
     expect(await readdir(temp)).toHaveLength(1);
   });
 
-  it('reports a home it cannot remove, and goes on', async () => {
-    const stuck = await home('godview-agent-shims-911');
-    await mkdir(join(stuck, 'locked'));
-    await writeFile(join(stuck, 'locked', 'file'), 'x');
-    await chmod(join(stuck, 'locked'), 0o500);
-    const next = await home('godview-agent-shims-912');
-    try {
-      const sweep = await sweepStaleShimHomes(temp, { isAlive: () => false });
-      expect(sweep.failed).toEqual([{ path: stuck, message: expect.stringMatching(/EACCES|permission/iu) }]);
-      expect(sweep.removed).toEqual([next]);
-    } finally {
-      await chmod(join(stuck, 'locked'), 0o700);
-    }
-  });
+  // chmod cannot make this directory undeletable on Windows or for a POSIX root user.
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'reports a home it cannot remove, and goes on',
+    async () => {
+      const stuck = await home('godview-agent-shims-911');
+      await mkdir(join(stuck, 'locked'));
+      await writeFile(join(stuck, 'locked', 'file'), 'x');
+      await chmod(join(stuck, 'locked'), 0o500);
+      const next = await home('godview-agent-shims-912');
+      try {
+        const sweep = await sweepStaleShimHomes(temp, { isAlive: () => false });
+        expect(sweep.failed).toEqual([{ path: stuck, message: expect.stringMatching(/EACCES|permission/iu) }]);
+        expect(sweep.removed).toEqual([next]);
+      } finally {
+        await chmod(join(stuck, 'locked'), 0o700);
+      }
+    },
+  );
 
   it('never throws: a temp directory it cannot read is a failure it reports', async () => {
     const missing = join(root, 'missing');
@@ -107,7 +111,8 @@ describe('sweepStaleShimHomes', () => {
 describe('pidIsAlive', () => {
   it('knows this process is alive, and a reaped child is not', () => {
     expect(pidIsAlive(process.pid)).toBe(true);
-    const child = spawnSync('/usr/bin/true');
+    const child = spawnSync(process.execPath, ['-e', '']);
+    expect(child.status).toBe(0);
     expect(pidIsAlive(child.pid)).toBe(false);
   });
 });

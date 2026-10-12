@@ -27,23 +27,26 @@ const modeOf = async (path: string): Promise<number> => (await stat(path)).mode 
 const STARTED = '2026-09-27T21:00:00.000Z';
 
 describe('the shells a host owns (terminals.json)', { timeout: 60_000 }, () => {
-  it('publishes the list owner-only, holding each shell to its pid and start, and reads it back', async () => {
-    // A host can hand over its own terminal records: only the pid and the start are written.
-    await writeTerminals(home, [{ pid: 4242, startedAt: STARTED, terminalSessionId: 'pane-1' } as never]);
+  it.skipIf(process.platform === 'win32')(
+    'publishes the list owner-only, holding each shell to its pid and start, and reads it back',
+    async () => {
+      // A host can hand over its own terminal records: only the pid and the start are written.
+      await writeTerminals(home, [{ pid: 4242, startedAt: STARTED, terminalSessionId: 'pane-1' } as never]);
 
-    expect(await modeOf(home)).toBe(0o700);
-    expect(await modeOf(join(home, TERMINALS_FILE))).toBe(0o600);
-    const written = JSON.parse(await readFile(join(home, TERMINALS_FILE), 'utf8'));
-    expect(written).toMatchObject({ format: 1, terminals: [{ pid: 4242, startedAt: STARTED }] });
-    expect(Date.parse(written.writtenAt)).not.toBeNaN();
-    expect(written.terminals[0]).not.toHaveProperty('terminalSessionId');
-    expect(await readTerminals(home)).toEqual([{ pid: 4242, startedAt: STARTED }]);
+      expect(await modeOf(home)).toBe(0o700);
+      expect(await modeOf(join(home, TERMINALS_FILE))).toBe(0o600);
+      const written = JSON.parse(await readFile(join(home, TERMINALS_FILE), 'utf8'));
+      expect(written).toMatchObject({ format: 1, terminals: [{ pid: 4242, startedAt: STARTED }] });
+      expect(Date.parse(written.writtenAt)).not.toBeNaN();
+      expect(written.terminals[0]).not.toHaveProperty('terminalSessionId');
+      expect(await readTerminals(home)).toEqual([{ pid: 4242, startedAt: STARTED }]);
 
-    // The last terminal ended: an empty list is still the host's word.
-    await writeTerminals(home, []);
-    expect(await readTerminals(home)).toEqual([]);
-    expect((await readdir(home)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
-  });
+      // The last terminal ended: an empty list is still the host's word.
+      await writeTerminals(home, []);
+      expect(await readTerminals(home)).toEqual([]);
+      expect((await readdir(home)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
+    },
+  );
 
   it('answers undefined, never throws, for a list a shim could not use', async () => {
     expect(await readTerminals(join(root, 'absent'))).toBeUndefined();

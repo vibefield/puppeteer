@@ -1,6 +1,6 @@
 import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extensionActUnavailable,
@@ -699,7 +699,7 @@ async function skillAgent(options: { named?: (folder: string) => string; skips?:
   });
   const skill = async (folder: string, body = 'Write the notes.') => {
     await mkdir(folder, { recursive: true });
-    await writeFile(join(folder, 'SKILL.md'), `---\nname: ${folder.split('/').pop()}\n---\n${body}\n`);
+    await writeFile(join(folder, 'SKILL.md'), `---\nname: ${basename(folder)}\n---\n${body}\n`);
   };
   return { runner, work, skills, kept, skill, run };
 }

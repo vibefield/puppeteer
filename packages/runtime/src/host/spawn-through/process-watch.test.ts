@@ -5,9 +5,9 @@ import { processStartedAt, watchProcessExit } from './process-watch.js';
 
 const sleepers: ChildProcess[] = [];
 function sleeper(): ChildProcess & { pid: number } {
-  const child = spawn('sleep', ['30'], { stdio: 'ignore' });
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30_000)'], { stdio: 'ignore' });
   sleepers.push(child);
-  if (child.pid === undefined) throw new Error('sleep did not start');
+  if (child.pid === undefined) throw new Error('sleeper did not start');
   return child as ChildProcess & { pid: number };
 }
 async function kill(child: ChildProcess): Promise<void> {
@@ -68,10 +68,17 @@ describe('watchProcessExit', { timeout: 60_000 }, () => {
 
   it("takes a pid it may not signal (another user's) for alive", async () => {
     const onExit = vi.fn();
-    const stop = watchProcessExit(1, { intervalMs: 20 }, onExit);
-    await pause(150);
-    stop();
-    expect(onExit).not.toHaveBeenCalled();
+    const signal = vi.spyOn(process, 'kill').mockImplementation(() => {
+      throw Object.assign(new Error('another user owns this process'), { code: 'EPERM' });
+    });
+    const stop = watchProcessExit(4242, { intervalMs: 20 }, onExit);
+    try {
+      await vi.waitFor(() => expect(signal).toHaveBeenCalled(), { timeout: 10_000 });
+      expect(onExit).not.toHaveBeenCalled();
+    } finally {
+      stop();
+      signal.mockRestore();
+    }
   });
 
   it("never holds the host's exit", () => {
@@ -96,7 +103,7 @@ describe('watchProcessExit', { timeout: 60_000 }, () => {
   });
 });
 
-describe('processStartedAt', { timeout: 60_000 }, () => {
+describe.skipIf(process.platform === 'win32')('processStartedAt', { timeout: 60_000 }, () => {
   it('is stable for a live pid and undefined for a gone one', async () => {
     const child = sleeper();
     const first = await processStartedAt(child.pid);

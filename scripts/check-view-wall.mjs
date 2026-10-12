@@ -725,7 +725,7 @@ function manifestIdOf(module, exported) {
  * its manifest's id. Anything the wall cannot follow is a problem, never a view silently left out.
  */
 export function readRegisteredViews(registryFile, { list = VIEW_REGISTRY_LIST, root = scriptRoot } = {}) {
-  const where = (path) => relative(root, path);
+  const where = (path) => relative(root, path).split(sep).join('/');
   const views = [];
   const problems = [];
   if (!existsSync(registryFile)) {
@@ -830,7 +830,7 @@ export function checkViewWall({
   includeLabs = false,
   skin,
 } = {}) {
-  const where = (path) => relative(root, path);
+  const where = (path) => relative(root, path).split(sep).join('/');
   const registryFile = resolve(root, registry);
   const registered = readRegisteredViews(registryFile, { root });
   const registration = [...registered.problems];
@@ -897,7 +897,7 @@ export function summarizeViewWall(report, mode = 'fail') {
 export function formatViewWall(report, { verbose = false, mode = 'fail' } = {}) {
   const summary = summarizeViewWall(report, mode);
   const lines = [];
-  const where = (file) => relative(report.root, file);
+  const where = (file) => relative(report.root, file).split(sep).join('/');
   const source = report.registry ? `registered in ${where(report.registry)} ${VIEW_REGISTRY_LIST}` : 'given';
   lines.push(
     `view wall (${summary.mode === 'fail' ? 'every view fails on a breach' : 'report mode (--report)'}): ${report.views.length} views ${source}; host CSS: ${report.hostStylesheets.map(where).join(', ') || 'none'}`,

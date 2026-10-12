@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_HISTORY_ORIGIN,
@@ -102,7 +103,7 @@ describe('announcements', () => {
   function reader(files: Record<string, string>, livePids: number[]): AnnounceDirectoryReader {
     return {
       list: () => Object.keys(files),
-      read: (path) => files[path.split('/').pop() ?? ''] ?? '',
+      read: (path) => files[basename(path)] ?? '',
       isAlive: (pid) => livePids.includes(pid),
     };
   }
@@ -141,11 +142,13 @@ describe('announcements', () => {
 
   it('derives the same directory as the daemon', () => {
     expect(defaultAnnounceDirectory('darwin', { HOME: '/Users/me' })).toBe(
-      '/Users/me/Library/Application Support/rosetta/daemons',
+      join('/Users/me', 'Library/Application Support/rosetta/daemons'),
     );
-    expect(defaultAnnounceDirectory('linux', { HOME: '/home/me' })).toBe('/home/me/.local/state/rosetta/daemons');
+    expect(defaultAnnounceDirectory('linux', { HOME: '/home/me' })).toBe(
+      join('/home/me', '.local/state/rosetta/daemons'),
+    );
     expect(defaultAnnounceDirectory('linux', { HOME: '/home/me', XDG_STATE_HOME: '/state' })).toBe(
-      '/state/rosetta/daemons',
+      join('/state', 'rosetta/daemons'),
     );
     expect(defaultAnnounceDirectory('linux', { HOME: '/home/me', ROSETTA_ANNOUNCE_DIR: '/x' })).toBe('/x');
     expect(defaultAnnounceDirectory('linux', {})).toBeUndefined();

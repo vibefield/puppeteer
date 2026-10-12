@@ -504,7 +504,7 @@ test("it reads the repository's registered views, and every one of them holds th
   for (const name of ['swarm', 'list', 'rain', 'timeline']) {
     const view = report.views.find((candidate) => candidate.name === name);
     assert.ok(view, name);
-    assert.match(view.directory, new RegExp(`packages/views/src/views/${name}$`));
+    assert.equal(view.directory, join(report.root, 'packages', 'views', 'src', 'views', name));
   }
   assert.deepEqual(summary.failing, []);
   assert.deepEqual(summary.registration, []);

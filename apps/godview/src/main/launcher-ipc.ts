@@ -1,5 +1,5 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron';
 import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibefield/puppeteer-core';
 import { isOwnActionV2, type OwnActionRecord } from '@vibefield/puppeteer-record';
@@ -95,24 +95,20 @@ export const NODE_LAUNCHER_FS: LauncherFs = {
   realpath: (path) => realpath(path),
 };
 
-function trimSlash(path: string): string {
-  return path.length > 1 && path.endsWith(sep) ? path.slice(0, -1) : path;
-}
-
 /**
  * The physical form of an absolute path, as the history daemon records
  * project roots (rosetta's `root_paths` are real paths): a symlinked pane
  * folder must meet them. A path that does not exist stays as it was.
  */
 export async function physicalPath(path: string, fs: LauncherFs = NODE_LAUNCHER_FS): Promise<string> {
-  return fs.realpath(path).then(trimSlash, () => trimSlash(resolve(path)));
+  // Normalize either Windows separator without stripping a drive's root.
+  return fs.realpath(path).then(resolve, () => resolve(path));
 }
 
 /** `path` is `folder` or lies under it. */
 export function isWithin(path: string, folder: string): boolean {
-  const inner = trimSlash(path);
-  const outer = trimSlash(folder);
-  return inner === outer || inner.startsWith(outer === sep ? sep : outer + sep);
+  const offset = relative(folder, path);
+  return offset === '' || (offset !== '..' && !offset.startsWith(`..${sep}`) && !isAbsolute(offset));
 }
 
 /**
@@ -161,11 +157,11 @@ export async function resolveLauncherProject(
   fs: LauncherFs = NODE_LAUNCHER_FS,
 ): Promise<HistoryProject | undefined> {
   for (const root of await gitRootsOf(cwd, fs)) {
-    const owner = projects.find((project) => project.rootPaths.some((path) => trimSlash(path) === root));
+    const owner = projects.find((project) => project.rootPaths.some((path) => resolve(path) === root));
     if (owner) return owner;
   }
-  const forms = new Set([trimSlash(cwd), await physicalPath(cwd, fs)]);
-  return projects.find((project) => project.rootPaths.some((path) => forms.has(trimSlash(path))));
+  const forms = new Set([resolve(cwd), await physicalPath(cwd, fs)]);
+  return projects.find((project) => project.rootPaths.some((path) => forms.has(resolve(path))));
 }
 
 /* ── agents ────────────────────────────────────────────────────────────── */
@@ -278,7 +274,7 @@ export async function launcherSessions(input: LauncherSessionsInput): Promise<La
       provider && runtime?.dataRoot
         ? input.profiles.find(
             (candidate) =>
-              candidate.provider === provider.id && trimSlash(candidate.dataRoot) === trimSlash(runtime.dataRoot!),
+              candidate.provider === provider.id && resolve(candidate.dataRoot) === resolve(runtime.dataRoot!),
           )
         : undefined;
     const here = input.project
