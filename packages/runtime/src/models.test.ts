@@ -6,6 +6,7 @@ import {
   defineModelService,
   type AgentModelCatalog,
   type AgentModelDiscoveryContext,
+  type AgentModelDiscoveryResult,
   type AgentAdapterBinding,
   type ProfileService,
 } from '@vibefield/puppeteer-core';
@@ -34,7 +35,7 @@ function catalog(context: AgentModelDiscoveryContext): AgentModelCatalog {
     ],
   };
 }
-async function setup() {
+async function setup(options: { resumeSelection?: boolean } = {}) {
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'runtime-models-')));
   cleanups.push(() => rm(cwd, { recursive: true, force: true }));
   let count = 0,
@@ -53,10 +54,12 @@ async function setup() {
     },
     async dispose() {},
   });
-  const discover = vi.fn(async (context: AgentModelDiscoveryContext) => ({
-    status: 'available' as const,
-    catalog: catalog(context),
-  }));
+  const discover = vi.fn(
+    async (context: AgentModelDiscoveryContext): Promise<AgentModelDiscoveryResult> => ({
+      status: 'available',
+      catalog: catalog(context),
+    }),
+  );
   const create = vi.fn(async (_options: Parameters<AgentProvider['createSession']>[0]) => binding());
   const prepare = vi.fn(async (options: { cwd: string }) => ({
     sessionId: 'prepared-native',
@@ -93,8 +96,25 @@ async function setup() {
     profiles,
     createSession: create,
     prepareSession: prepare,
+    // A continuation that carries an account root of the provider's own, as the builtin codecs do.
+    launch: {
+      provider: { id: 'example', label: 'Example', resume: true },
+      continuation: {
+        capture: ({ agentOptions }) => {
+          const root = (agentOptions as { privateRoot?: string } | undefined)?.privateRoot;
+          return root === undefined ? undefined : JSON.stringify({ root });
+        },
+        restore: (state) =>
+          state === undefined ? undefined : { privateRoot: (JSON.parse(state) as { root: string }).root },
+      },
+    },
     models: defineModelService({
-      provider: { id: 'example', label: 'Example', discovery: 'prelaunch' },
+      provider: {
+        id: 'example',
+        label: 'Example',
+        discovery: 'prelaunch',
+        ...(options.resumeSelection === undefined ? {} : { resumeSelection: options.resumeSelection }),
+      },
       discover,
       toAgentOptions: (selection) => ({ privateModel: selection.modelId, privateEffort: selection.controls?.effort }),
     }),
@@ -180,7 +200,7 @@ describe('runtime model discovery and launch selection', () => {
     expect(JSON.stringify(spawned)).not.toContain('privateModel');
   });
 
-  it('rejects stale choices, invalid controls, ambiguous native options, and resume overrides before provider launch', async () => {
+  it('rejects stale choices, invalid controls, ambiguous native options, and a resume its provider cannot apply before provider launch', async () => {
     const { runtime, discover, create, prepare } = await setup();
     for (const modelSelection of [{ modelId: 'removed' }, { modelId: 'native-choice', controls: { effort: 'max' } }]) {
       expect(await runtime.spawn({ agent: 'example', modelSelection })).toMatchObject({
@@ -268,5 +288,147 @@ describe('runtime model discovery and launch selection', () => {
     await runtime.dispose();
     expect(await pending).toMatchObject({ status: 'cancelled' });
     expect(cleaned).toBe(true);
+  });
+});
+
+describe('resume starts at the session’s own launch selection', () => {
+  const continuation = (root?: string) => ({
+    providerId: 'example',
+    nativeSessionId: 'native-old',
+    implementation: 'native' as const,
+    ...(root === undefined ? {} : { state: JSON.stringify({ root }) }),
+  });
+  const modelSelection = { modelId: 'native-choice', controls: { effort: 'high' } };
+
+  it('discovers again in the resumed account and folder, and lays the translation over the continuation', async () => {
+    const { runtime, cwd, discover, create } = await setup({ resumeSelection: true });
+    const profile = await workProfile(runtime);
+    const resumed = await runtime.resume({
+      continuation: continuation('/roots/work'),
+      profile: profile.id,
+      modelSelection,
+    });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(discover).toHaveBeenCalledTimes(1);
+    expect(discover.mock.calls[0]?.[0]).toMatchObject({ cwd, profile });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd,
+        resume: 'native-old',
+        profile,
+        agentOptions: { privateRoot: '/roots/work', privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('modelSelection');
+    // The continuation handed back is the session's own root; the selection never enters it.
+    expect(resumed.info.continuation).toEqual({
+      providerId: 'example',
+      nativeSessionId: resumed.info.nativeSession.id,
+      implementation: 'native',
+      state: JSON.stringify({ root: '/roots/work' }),
+    });
+    expect(JSON.stringify(resumed)).not.toContain('privateModel');
+
+    // A resume that names no account continues in the provider's own root, never the default set's.
+    await runtime.resume({ continuation: continuation(), modelSelection });
+    expect(discover).toHaveBeenCalledTimes(2);
+    expect(discover.mock.calls[1]?.[0].profile).toBeUndefined();
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        resume: 'native-old',
+        agentOptions: { privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    expect(create.mock.calls[1]?.[0]).not.toHaveProperty('profile');
+  });
+
+  it('refuses a stale or invalid selection and a failed discovery after discovering again, before the provider launches', async () => {
+    const { runtime, discover, create } = await setup({ resumeSelection: true });
+    for (const stale of [{ modelId: 'removed' }, { modelId: 'native-choice', controls: { effort: 'max' } }]) {
+      expect(
+        await runtime.resume({ continuation: continuation('/roots/work'), modelSelection: stale }),
+      ).toMatchObject({
+        error: { code: 'AGENT_LAUNCH_REFUSED', refusal: { code: 'INVALID_MODEL_SELECTION' } },
+      });
+    }
+    expect(discover).toHaveBeenCalledTimes(2);
+    discover.mockImplementationOnce(async () => ({
+      status: 'auth-required',
+      provider: 'example',
+      code: 'auth-required',
+      message: 'Sign in to discover models.',
+    }));
+    expect(await runtime.resume({ continuation: continuation('/roots/work'), modelSelection })).toMatchObject({
+      error: {
+        code: 'AGENT_LAUNCH_REFUSED',
+        message: 'Sign in to discover models.',
+        refusal: { code: 'MODEL_DISCOVERY_UNAVAILABLE' },
+      },
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('keeps today’s continuation exactly when the resume carries no selection', async () => {
+    const { runtime, discover, create } = await setup();
+    expect(await runtime.resume({ continuation: continuation('/roots/work') })).not.toHaveProperty('error');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ resume: 'native-old', agentOptions: { privateRoot: '/roots/work' } }),
+    );
+    expect(await runtime.resume({ continuation: continuation() })).not.toHaveProperty('error');
+    expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ resume: 'native-old', agentOptions: undefined }));
+    expect(discover).not.toHaveBeenCalled();
+  });
+
+  it('applies on the lower-level resume paths too, and refuses a selection beside native options there', async () => {
+    const { runtime, cwd, discover, create, prepare } = await setup({ resumeSelection: true });
+    const created = await runtime.createSession({ agent: 'example', resume: 'native-old', modelSelection });
+    expect(created).not.toHaveProperty('error');
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        resume: 'native-old',
+        agentOptions: { privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    const prepared = await runtime.prepareSession({ agent: 'example', resume: 'native-old', modelSelection });
+    expect(prepared).not.toHaveProperty('error');
+    expect(prepare).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        cwd,
+        resume: 'native-old',
+        agentOptions: { privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    expect(discover).toHaveBeenCalledTimes(2);
+    const typed = { agent: 'example', resume: 'native-old', modelSelection, agentOptions: { privateRoot: '/typed' } };
+    expect(await runtime.createSession(typed)).toMatchObject({
+      error: {
+        code: 'AGENT_LAUNCH_REFUSED',
+        message: 'Choose either a model selection or provider-native launch options.',
+        refusal: { code: 'INVALID_MODEL_SELECTION' },
+      },
+    });
+    expect(await runtime.prepareSession(typed)).toMatchObject({
+      error: {
+        message: 'Choose either a model selection or provider-native launch options.',
+        refusal: { code: 'INVALID_MODEL_SELECTION' },
+      },
+    });
+    expect(discover).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses before discovery where the provider’s resume cannot take a selection', async () => {
+    for (const resumeSelection of [undefined, false]) {
+      const { runtime, discover, create } = await setup(resumeSelection === undefined ? {} : { resumeSelection });
+      expect(runtime.modelProviders()[0]?.resumeSelection).toBe(resumeSelection);
+      expect(await runtime.resume({ continuation: continuation('/roots/work'), modelSelection })).toMatchObject({
+        error: {
+          code: 'AGENT_LAUNCH_REFUSED',
+          message: 'Example cannot start a resumed session at a model selection; resume without one.',
+          refusal: { code: 'INVALID_MODEL_SELECTION' },
+        },
+      });
+      expect(discover).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    }
   });
 });
