@@ -62,7 +62,7 @@
 
 import { lstat, readdir, readFile, readlink, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve, sep, win32 } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
@@ -890,7 +890,7 @@ function gitKey(address: string): string {
 function describeGitAddress(address: string): string | undefined {
   const trimmed = address.trim();
   if (!parsableAddress(trimmed)) return undefined;
-  if (trimmed.startsWith('/') || trimmed.startsWith('~/')) return trimmed;
+  if (isAbsolute(trimmed) || win32.isAbsolute(trimmed) || trimmed.startsWith('~/')) return trimmed;
   const scp = /^(?:([^@/:\s]+)@)?([^/:\s]{2,}):(?!\/\/)([^\s?#]+)$/u.exec(trimmed);
   if (scp && !/^[A-Za-z][A-Za-z0-9+.-]*:\/\//u.test(trimmed)) {
     const user = scp[1] === undefined ? '' : scp[1] === 'git' ? 'git@' : '•••@';

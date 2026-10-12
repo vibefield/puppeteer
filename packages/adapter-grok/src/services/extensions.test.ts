@@ -1730,6 +1730,9 @@ describe('Grok marketplaces', () => {
         ['deploy-user', 'deploy@git.example.com:team/tools.git'],
         ['ssh', 'ssh://deploy:hunter2@git.example.com/team/x.git'],
         ['local', resolve('/Users/test/repos/market.git')],
+        ['windows-drive', 'C:\\repos\\market.git'],
+        ['windows-forward-slashes', 'C:/repos/market.git'],
+        ['windows-share', '\\\\server\\share\\market.git'],
       ]
         .map(([name, git]) => `[[marketplace.sources]]\nname = "${name}"\ngit = ${JSON.stringify(git)}\n`)
         .join('\n'),
@@ -1744,6 +1747,9 @@ describe('Grok marketplaces', () => {
       '•••@git.example.com:team/tools.git',
       'ssh://•••@git.example.com/team/x.git',
       resolve('/Users/test/repos/market.git'),
+      'C:\\repos\\market.git',
+      'C:/repos/market.git',
+      '\\\\server\\share\\market.git',
     ]);
   });
 
