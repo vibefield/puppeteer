@@ -215,7 +215,10 @@ export interface CreateAgentSessionOptions {
   workspace?: AgentWorkspaceRequest | undefined;
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
-  /** Validated public model choice. Omit to inherit native settings; mutually exclusive with agentOptions. */
+  /**
+   * Validated public model choice. Omit to inherit native settings; mutually exclusive with agentOptions. A `resume`
+   * takes one only where the provider's model service declares `resumeSelection`.
+   */
   modelSelection?: AgentModelSelection | undefined;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
   profile?: string | undefined;
@@ -260,6 +263,15 @@ export interface ResumeAgentOptions {
   profile?: string | undefined;
   /** The host's say over the session's loopback ingress (stable ingress). */
   ingress?: HostIngress | undefined;
+  /**
+   * Start the resumed session at this public model choice — the session's own launch selection, which the host keeps
+   * beside the continuation. The runtime discovers again in the resumed run's account (`profile`, never the default
+   * set's) and workspace, validates it as a launch does, and gives the provider its translation over the options the
+   * continuation restores. Refused with `INVALID_MODEL_SELECTION` or `MODEL_DISCOVERY_UNAVAILABLE` as a launch is, and
+   * with `INVALID_MODEL_SELECTION` where the provider's resume cannot take one (`AgentModelProvider.resumeSelection`).
+   * Omit it to continue at the native session's own settings.
+   */
+  modelSelection?: AgentModelSelection | undefined;
 }
 
 /** Host-only native invocation request. Adapters normalize it before normal preparation. */
