@@ -1624,6 +1624,7 @@ offAll();</code></pre>
   externalRefs?: readonly ExternalRef[];
   workspace?: AgentWorkspaceRequest;
   agentOptions?: unknown;
+  modelSelection?: AgentModelSelection; // from discoverModels(); never beside agentOptions
   profile?: string; // registered profile ID
   ingress?: HostIngress; // host-owned loopback endpoint preferences
 }</code></pre>
@@ -1649,6 +1650,7 @@ interface ResumeAgentOptions {
   workspace?: AgentWorkspaceRequest;
   profile?: string; // persist beside the continuation
   ingress?: HostIngress;
+  modelSelection?: AgentModelSelection; // the session's own launch selection, persisted beside it
 }</code></pre>
               </article>
               <article class="type-card">
