@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'kimi',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -26,36 +27,36 @@ describe('Kimi native invocation normalization', () => {
   });
 
   it('requires and owns one isolated imposter store', () => {
-    const home = '/tmp/kimi-imposter';
+    const home = resolve('/tmp/kimi-imposter');
     expect(
       normalizeKimiNativeInvocation(
-        invocation([], { implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: home } }),
+        invocation([], { implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: home } }),
       ),
     ).toEqual({
       status: 'accepted',
       options: {
-        executable: '/opt/ai',
+        executable: resolve('/opt/ai'),
         kimiHome: home,
         env: { AI_PERSONA: 'kimi', KIMI_CODE_HOME: home, PUPPETEER_IMPOSTER_HOME: home },
       },
     });
-    const state = captureKimiContinuationState({ kimiHome: '../kimi-home' }, '/repo', {});
-    expect(restoreKimiContinuationState(state)).toEqual({ kimiHome: '/kimi-home' });
+    const state = captureKimiContinuationState({ kimiHome: '../kimi-home' }, resolve('/repo'), {});
+    expect(restoreKimiContinuationState(state)).toEqual({ kimiHome: resolve('/kimi-home') });
     const imposterState = captureKimiContinuationState(
       {
         kimiHome: home,
         env: { AI_PERSONA: 'kimi', KIMI_CODE_HOME: home, PUPPETEER_IMPOSTER_HOME: home },
       },
-      '/repo',
+      resolve('/repo'),
       {},
     );
-    expect(restoreKimiContinuationState(imposterState, { imposterExecutable: '/opt/ai' })).toEqual({
-      executable: '/opt/ai',
+    expect(restoreKimiContinuationState(imposterState, { imposterExecutable: resolve('/opt/ai') })).toEqual({
+      executable: resolve('/opt/ai'),
       kimiHome: home,
       env: { AI_PERSONA: 'kimi', KIMI_CODE_HOME: home, PUPPETEER_IMPOSTER_HOME: home },
     });
-    expect(() => restoreKimiContinuationState(JSON.stringify({ version: 2, home: '/kimi-home', extra: true }))).toThrow(
-      'invalid Kimi continuation state',
-    );
+    expect(() =>
+      restoreKimiContinuationState(JSON.stringify({ version: 2, home: resolve('/kimi-home'), extra: true })),
+    ).toThrow('invalid Kimi continuation state');
   });
 });

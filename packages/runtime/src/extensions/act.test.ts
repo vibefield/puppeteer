@@ -1,6 +1,6 @@
 import { lstat, mkdir, mkdtemp, readdir, readFile, readlink, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extensionActUnavailable,
@@ -138,7 +138,7 @@ async function setup(
       profileId === work.id ? { profile: work } : { error: `unknown account profile: ${profileId}` },
     nativeDefaultProfileId: () => undefined,
     run,
-    env: { PATH: '/usr/bin', HOME: '/Users/test', ANTHROPIC_API_KEY: 'sk-ant-secret', LANG: 'en_US.UTF-8' },
+    env: { PATH: '/usr/bin', HOME: resolve('/Users/test'), ANTHROPIC_API_KEY: 'sk-ant-secret', LANG: 'en_US.UTF-8' },
     ...(host === null ? {} : { host }),
     report,
   });
@@ -595,7 +595,7 @@ describe('the inventory reader, fresh', () => {
       provider: 'example',
       label: 'Work',
       kind: 'managed',
-      dataRoot: '/profiles/work/example',
+      dataRoot: resolve('/profiles/work/example'),
       createdAt: '1970-01-01T00:00:00.000Z',
     };
     const reader = createExtensionInventoryReader({
@@ -721,9 +721,9 @@ describe('createExtensionActRunner, skills placed', () => {
     expect(receipt).toMatchObject({
       status: 'changed',
       message: 'added',
-      display: 'link ~/kept/release-notes → ~/agent/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/agent/skills/release-notes'.replaceAll('/', sep),
     });
-    expect(output.join('')).toBe('link ~/kept/release-notes → ~/agent/skills/release-notes\n');
+    expect(output.join('')).toBe('link ~/kept/release-notes → ~/agent/skills/release-notes\n'.replaceAll('/', sep));
     expect(await readlink(join(t.skills, 'release-notes'))).toBe(folder);
     // no command ran: the runtime placed the link itself
     expect(t.run).not.toHaveBeenCalled();
@@ -784,7 +784,10 @@ describe('createExtensionActRunner, skills placed', () => {
     });
     await expect(lstat(join(t.skills, 'unread'))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(output.join('')).toBe(
-      'link ~/kept/unread → ~/agent/skills/unread\nundone: link ~/kept/unread → ~/agent/skills/unread\n',
+      'link ~/kept/unread → ~/agent/skills/unread\nundone: link ~/kept/unread → ~/agent/skills/unread\n'.replaceAll(
+        '/',
+        sep,
+      ),
     );
   });
 
@@ -845,7 +848,7 @@ describe('createExtensionActRunner, skills placed', () => {
     });
     expect(refused).toMatchObject({
       status: 'failed',
-      message: 'the link at ~/agent/skills/other could not be made: something is already there',
+      message: 'the link at ~/agent/skills/other could not be made: something is already there'.replaceAll('/', sep),
     });
     // a relative folder is never planned at all
     await expect(
@@ -939,7 +942,7 @@ describe('createExtensionActRunner, plugins', () => {
       resolveProfile,
       nativeDefaultProfileId: () => undefined,
       run,
-      env: { PATH: '/usr/bin', HOME: '/Users/test' },
+      env: { PATH: '/usr/bin', HOME: resolve('/Users/test') },
     });
     return {
       runner,
@@ -1155,7 +1158,7 @@ describe('createExtensionActRunner, installs and marketplaces', () => {
       commands.push([...request.argv]);
       const [, noun, verb, id] = request.argv;
       if (noun === 'plugin' && verb === 'install') installed.set(id!, id === 'lint@northlight' ? '2.0.0' : '1.3.0');
-      if (noun === 'plugin' && verb === 'install-from' && id === '/Users/test/bundle') {
+      if (noun === 'plugin' && verb === 'install-from' && id === resolve('/Users/test/bundle')) {
         // a folder of several plugins installs each of them
         installed.set('alpha@local', '1.0.0');
         installed.set('beta@local', '1.0.0');
@@ -1177,7 +1180,7 @@ describe('createExtensionActRunner, installs and marketplaces', () => {
       resolveProfile,
       nativeDefaultProfileId: () => undefined,
       run,
-      env: { PATH: '/usr/bin', HOME: '/Users/test' },
+      env: { PATH: '/usr/bin', HOME: resolve('/Users/test') },
     });
     return {
       runner,
@@ -1280,9 +1283,9 @@ describe('createExtensionActRunner, installs and marketplaces', () => {
     const bundle = await t.runner.run({
       providerId: 'example',
       profileId: t.work.id,
-      target: { kind: 'plugin', id: '/Users/test/bundle' },
+      target: { kind: 'plugin', id: resolve('/Users/test/bundle') },
       act: 'install',
-      source: '/Users/test/bundle',
+      source: resolve('/Users/test/bundle'),
     });
     expect(bundle).toMatchObject({ status: 'changed', message: 'installed alpha, beta' });
     for (const bad of [
@@ -1461,7 +1464,7 @@ describe('the catalog reader, checked', () => {
       provider: 'example',
       label: 'Work',
       kind: 'managed',
-      dataRoot: '/tmp/none',
+      dataRoot: resolve('/tmp/none'),
       createdAt: '1970-01-01T00:00:00.000Z',
     };
     const withMarkets: ExtensionProvider = {

@@ -1,9 +1,10 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
 import { CODEX_PROFILE_ROOT_VARIABLE, codexProfileIdentityFrom, createCodexProfileService } from './profiles.js';
 import type { Transport } from '../transport/app-server-client.js';
 
-const HOME = '/Users/test';
+const HOME = resolve('/Users/test');
 const NOW = new Date('2026-09-06T12:00:00.000Z');
 
 const managed: AgentProfile = AgentProfileSchema.parse({
@@ -11,7 +12,7 @@ const managed: AgentProfile = AgentProfileSchema.parse({
   provider: 'codex',
   label: 'Work',
   kind: 'managed',
-  dataRoot: '/Users/test/.puppeteer/profiles/codex/7a10',
+  dataRoot: resolve('/Users/test/.puppeteer/profiles/codex/7a10'),
   createdAt: '2026-09-06T00:00:00.000Z',
 });
 
@@ -20,7 +21,7 @@ const nativeDefault: AgentProfile = AgentProfileSchema.parse({
   provider: 'codex',
   label: 'Default',
   kind: 'native-default',
-  dataRoot: '/Users/test/.codex',
+  dataRoot: resolve('/Users/test/.codex'),
   createdAt: '2026-09-06T00:00:00.000Z',
 });
 
@@ -87,7 +88,7 @@ describe('Codex profile provider', () => {
     expect(provider.support).toMatchObject({
       supported: true,
       identity: 'native-protocol',
-      nativeDefaultRoot: '/Users/test/.codex',
+      nativeDefaultRoot: resolve('/Users/test/.codex'),
     });
     expect(provider.support.sharedSurfaces).toContain('~/.agents/skills');
   });
@@ -95,24 +96,24 @@ describe('Codex profile provider', () => {
   it('binds a managed profile to its root and leaves the native default alone', () => {
     const profiles = service(fakeAppServer({ account: null }));
     expect(profiles.bindingEnvironment(managed)).toEqual({
-      [CODEX_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/codex/7a10',
+      [CODEX_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/.puppeteer/profiles/codex/7a10'),
     });
     expect(profiles.bindingEnvironment(nativeDefault)).toEqual({});
   });
 
   it('names the bound root as the history layout root for an indexer', () => {
     const profiles = service(fakeAppServer({ account: null }));
-    expect(profiles.observationRoot(managed)).toBe('/Users/test/.puppeteer/profiles/codex/7a10');
-    expect(profiles.observationRoot(nativeDefault)).toBe('/Users/test/.codex');
+    expect(profiles.observationRoot(managed)).toBe(resolve('/Users/test/.puppeteer/profiles/codex/7a10'));
+    expect(profiles.observationRoot(nativeDefault)).toBe(resolve('/Users/test/.codex'));
   });
 
   it('describes the native interactive login as a terminal spec', () => {
-    const spec = service(fakeAppServer({ account: null })).loginInvocation(managed, { cwd: '/work/repo' });
+    const spec = service(fakeAppServer({ account: null })).loginInvocation(managed, { cwd: resolve('/work/repo') });
     expect(spec).toEqual({
       command: '/opt/node/bin/codex',
       args: ['login'],
-      cwd: '/work/repo',
-      env: { [CODEX_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/codex/7a10' },
+      cwd: resolve('/work/repo'),
+      env: { [CODEX_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/.puppeteer/profiles/codex/7a10') },
     });
   });
 });
@@ -129,7 +130,7 @@ describe('Codex managed root initialization', () => {
     await profiles.initializeRoot?.(managed);
     expect(written).toEqual([
       {
-        path: '/Users/test/.puppeteer/profiles/codex/7a10/config.toml',
+        path: resolve('/Users/test/.puppeteer/profiles/codex/7a10/config.toml'),
         contents: 'cli_auth_credentials_store = "file"\n',
       },
     ]);
@@ -176,7 +177,7 @@ describe('Codex profile verification', () => {
       source: { kind: 'native-protocol', stability: 'documented' },
     });
     expect(server.spawns).toEqual([
-      { executable: '/opt/node/bin/codex', env: { CODEX_HOME: '/Users/test/.puppeteer/profiles/codex/7a10' } },
+      { executable: '/opt/node/bin/codex', env: { CODEX_HOME: resolve('/Users/test/.puppeteer/profiles/codex/7a10') } },
     ]);
     expect(server.methods).toEqual(['initialize', 'initialized', 'account/read']);
     expect(server.closed()).toBe(true);

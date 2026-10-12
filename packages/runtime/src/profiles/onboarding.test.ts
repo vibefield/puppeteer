@@ -1,6 +1,6 @@
 import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   AgentHost,
@@ -143,7 +143,7 @@ describe('createProfileOnboarding', () => {
     const profile = created as AgentProfile;
     // The account's root is inside the set's folder, named for the provider.
     expect(profile.dataRoot).toBe(join(box.rootsDirectory, 'work', `alpha-${profile.id.slice(0, 8)}`));
-    expect((await stat(profile.dataRoot)).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect((await stat(profile.dataRoot)).mode & 0o777).toBe(0o700);
     expect(alpha.initialized).toEqual([profile]);
     expect(box.stored.snapshot?.profiles).toEqual([profile]);
     expect(box.stored.snapshot?.sets).toMatchObject([
@@ -161,7 +161,8 @@ describe('createProfileOnboarding', () => {
       isDefault: false,
       profiles: [],
     });
-    expect((await stat(join(box.rootsDirectory, 'client-demo'))).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32')
+      expect((await stat(join(box.rootsDirectory, 'client-demo'))).mode & 0o777).toBe(0o700);
 
     const alpha = (await box.onboarding.createProfile({ providerId: 'alpha', set: 'client-demo' })) as AgentProfile;
     expect(alpha).toMatchObject({ set: 'client-demo', label: 'Client demo' });
@@ -462,7 +463,7 @@ describe('createProfileOnboarding', () => {
       defaultCwd: '/workspace',
     });
     const added = (await flow.createProfile({ providerId: 'beta', set: 'work' })) as AgentProfile;
-    expect(added.dataRoot.startsWith(join(rootsDirectory, 'work') + '/')).toBe(true);
+    expect(added.dataRoot.startsWith(join(rootsDirectory, 'work') + sep)).toBe(true);
     expect((await box.registry.getSet('work'))?.set.directory).toBe(join(rootsDirectory, 'work'));
     // a new "Work" never lands in that folder, even once it is gone from disk
     await rm(join(rootsDirectory, 'work'), { recursive: true, force: true });

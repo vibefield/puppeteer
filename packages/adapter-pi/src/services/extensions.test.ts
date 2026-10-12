@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
@@ -16,6 +16,8 @@ import {
   type SkillItem,
 } from '@vibefield/puppeteer-core';
 import { createPiExtensionService } from './extensions.js';
+
+const shownArgument = (argument: string): string => (argument.includes('\\') ? JSON.stringify(argument) : argument);
 
 const now = () => new Date('2026-09-25T09:00:00.000Z');
 const made: string[] = [];
@@ -369,7 +371,7 @@ const heldSkill = (inventory: ExtensionInventory, id: string): SkillItem => {
 
 describe('Pi extension acts', () => {
   it('filters skills only inside the app', () => {
-    const pi = createPiExtensionService({ home: '/Users/test' });
+    const pi = createPiExtensionService({ home: resolve('/Users/test') });
     expect(pi.plan!(actProfile('managed', '/p'), actSkill(), 'disable')).toMatchObject({
       available: false,
       reason: 'in-app',
@@ -390,14 +392,14 @@ describe('Pi extension acts', () => {
         kind: 'files',
         steps: [{ op: 'link', path: join(root, 'agent', 'skills', 'release-notes'), target: kept }],
       },
-      display: 'link ~/kept/release-notes → ~/profiles/work/pi-7c1e/agent/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/profiles/work/pi-7c1e/agent/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     // The native default's folder is `~/.pi/agent/skills`, under the home it was given.
     expect(pi.plan!(nativeProfile(home), placed('release-notes', kept), 'add')).toMatchObject({
       available: true,
       runs: { steps: [{ op: 'link', path: join(home, '.pi', 'agent', 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/.pi/agent/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/.pi/agent/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     // Only a folder to link, under a name that stays one folder.
@@ -449,14 +451,14 @@ describe('Pi extension acts', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'linked') }] },
-      display: 'unlink ~/profiles/work/pi-7c1e/agent/skills/linked',
+      display: 'unlink ~/profiles/work/pi-7c1e/agent/skills/linked'.replaceAll('/', sep),
       reaches: [],
     });
     const keepIn = join(home, 'kept', 'mine');
     expect(remove('mine', keepIn)).toMatchObject({
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: join(skills, 'mine'), to: keepIn }] },
-      display: 'move ~/profiles/work/pi-7c1e/agent/skills/mine → ~/kept/mine',
+      display: 'move ~/profiles/work/pi-7c1e/agent/skills/mine → ~/kept/mine'.replaceAll('/', sep),
       reaches: [],
     });
     // With nowhere to keep it, the person's own folder stays.
@@ -572,7 +574,7 @@ describe('Pi package acts', () => {
         act: 'remove',
         available: true,
         runs: { kind: 'command', argv: [PI, 'remove', source], env: { PI_CODING_AGENT_DIR: agent, PI_OFFLINE: '1' } },
-        display: `${PI} remove ${source}`,
+        display: `${PI} remove ${shownArgument(source)}`,
         reaches: [],
       });
       if (id.startsWith('local:')) continue;
@@ -581,7 +583,7 @@ describe('Pi package acts', () => {
         act: 'update',
         available: true,
         runs: { kind: 'command', argv: [PI, 'update', source], env: { PI_CODING_AGENT_DIR: agent } },
-        display: `${PI} update ${source}`,
+        display: `${PI} update ${shownArgument(source)}`,
         reaches: [],
       });
     }
@@ -679,7 +681,7 @@ describe('Pi package acts', () => {
     // A pinned package is still removed by its own command.
     expect(pi.plan!(work, held('npm:@acme/pi-tools'), 'remove')).toMatchObject({ available: true });
     // The plan reads the item alone: a service that read nothing plans a pinned one the same.
-    const fresh = createPiExtensionService({ executable: PI, home: '/Users/test' });
+    const fresh = createPiExtensionService({ executable: PI, home: resolve('/Users/test') });
     const item: PluginItem = {
       kind: 'plugin',
       id: 'npm:pi-pinned',
@@ -688,7 +690,7 @@ describe('Pi package acts', () => {
       enabled: true,
       pinned: true,
     };
-    expect(fresh.plan!(actProfile('managed', '/profiles/other/pi'), item, 'update')).toEqual({
+    expect(fresh.plan!(actProfile('managed', resolve('/profiles/other/pi')), item, 'update')).toEqual({
       target: { kind: 'plugin', id: 'npm:pi-pinned' },
       act: 'update',
       available: false,
@@ -790,10 +792,10 @@ describe('Pi package acts', () => {
 
 describe('Pi installs', () => {
   const PI = '/opt/pi/bin/pi';
-  const HOME = '/Users/test';
-  const AGENT = '/profiles/work/pi-7c1e/agent';
+  const HOME = resolve('/Users/test');
+  const AGENT = resolve('/profiles/work/pi-7c1e/agent');
   const pi = createPiExtensionService({ executable: PI, home: HOME, now });
-  const work = actProfile('managed', '/profiles/work/pi-7c1e');
+  const work = actProfile('managed', resolve('/profiles/work/pi-7c1e'));
   /** The plugin as the runtime hands an install from a source a person gave to the adapter. */
   const fromSource = (source: string): PluginItem => ({
     kind: 'plugin',
@@ -822,21 +824,21 @@ describe('Pi installs', () => {
       // Pi reads a bare scp address as a folder: it goes with the `git:` Pi needs
       ['git@github.com:northlight/pi-review.git', 'git:git@github.com:northlight/pi-review.git'],
       // a folder goes as its whole path, `~` at the home Pi sees
-      ['/Users/test/packs/local-pack', '/Users/test/packs/local-pack'],
-      ['~/packs/local-pack', '/Users/test/packs/local-pack'],
-      ['/Users/test/packs/ext.ts', '/Users/test/packs/ext.ts'],
+      [resolve('/Users/test/packs/local-pack'), resolve('/Users/test/packs/local-pack')],
+      ['~/packs/local-pack', resolve('/Users/test/packs/local-pack')],
+      [resolve('/Users/test/packs/ext.ts'), resolve('/Users/test/packs/ext.ts')],
     ] as const) {
       expect(install(source), source).toEqual({
         target: { kind: 'plugin', id: source },
         act: 'install',
         available: true,
         runs: { kind: 'command', argv: [PI, 'install', argument, '--no-approve'], env: { PI_CODING_AGENT_DIR: AGENT } },
-        display: `${PI} install ${argument} --no-approve`,
+        display: `${PI} install ${shownArgument(argument)} --no-approve`,
         reaches: [],
       });
     }
     // The native default is Pi's own directory: nothing points the command elsewhere.
-    const native = install('npm:@acme/pi-tools', [], actProfile('native-default', '/Users/test/.pi/agent'));
+    const native = install('npm:@acme/pi-tools', [], actProfile('native-default', resolve('/Users/test/.pi/agent')));
     expect(native).toMatchObject({
       available: true,
       runs: { argv: [PI, 'install', 'npm:@acme/pi-tools', '--no-approve'] },
@@ -981,7 +983,7 @@ describe('Pi installs', () => {
         id: 'shared:browser-use',
         name: 'browser-use',
         shared: true,
-        location: '/Users/test/.agents/skills/browser-use',
+        location: resolve('/Users/test/.agents/skills/browser-use'),
       }),
       actSkill({ id: 'plugin:npm:@acme/pi-tools:lint', name: 'lint', origin: 'plugin', plugin: 'npm:@acme/pi-tools' }),
       actServer(),
@@ -990,7 +992,7 @@ describe('Pi installs', () => {
       {},
       { source: 'npm:@acme/pi-lint', holds: ['npm:@acme/pi-tools'] },
       { listed: { id: 'pi-review', name: 'pi-review', marketplace: 'pi.dev' } },
-      { keepIn: '/Users/test/kept/release-notes' },
+      { keepIn: resolve('/Users/test/kept/release-notes') },
     ];
     for (const item of items) {
       for (const act of ExtensionActKindSchema.options) {

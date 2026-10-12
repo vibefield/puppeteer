@@ -1,5 +1,5 @@
 import { cp, lstat, mkdir, readlink, rename, rm, stat, symlink, unlink } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import { describeFileSteps, type ExtensionFileStep } from '@vibefield/puppeteer-core';
 
 /**
@@ -127,8 +127,9 @@ async function undo(done: Done): Promise<void> {
 /** A path as a person reads it: from `~` when it is under the home. */
 function shownPath(path: string, home: string | undefined): string {
   if (home === undefined || home === '') return path;
-  if (path === home) return '~';
-  return path.startsWith(`${home}/`) ? `~/${path.slice(home.length + 1)}` : path;
+  const offset = relative(home, path);
+  if (offset === '') return '~';
+  return offset === '..' || offset.startsWith(`..${sep}`) || isAbsolute(offset) ? path : `~${sep}${offset}`;
 }
 
 /** Which step stopped, as a clause that stands alone. */

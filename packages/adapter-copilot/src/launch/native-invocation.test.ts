@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'copilot',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -31,21 +32,23 @@ describe('Copilot native invocation normalization', () => {
   });
 
   it('owns and restores an isolated imposter state root', () => {
-    const root = '/tmp/copilot-imposter';
+    const root = resolve('/tmp/copilot-imposter');
     const normalized = normalizeCopilotNativeInvocation(
-      invocation([], { implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: root } }),
+      invocation([], { implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: root } }),
     );
     expect(normalized).toEqual({
       status: 'accepted',
       options: {
-        executable: '/opt/ai',
+        executable: resolve('/opt/ai'),
         copilotHome: root,
         env: { AI_PERSONA: 'copilot', COPILOT_HOME: root, PUPPETEER_IMPOSTER_HOME: root },
       },
     });
     if (normalized.status !== 'accepted' || !normalized.options) throw new Error('expected accepted Copilot options');
-    const state = captureCopilotContinuationState(normalized.options, '/repo');
-    expect(restoreCopilotContinuationState(state, { imposterExecutable: '/opt/ai' })).toEqual(normalized.options);
+    const state = captureCopilotContinuationState(normalized.options, resolve('/repo'));
+    expect(restoreCopilotContinuationState(state, { imposterExecutable: resolve('/opt/ai') })).toEqual(
+      normalized.options,
+    );
     expect(() => restoreCopilotContinuationState('{"version":1,"home":"/tmp","extra":true}')).toThrow(
       'invalid Copilot continuation state',
     );

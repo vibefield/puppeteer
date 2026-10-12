@@ -1,7 +1,7 @@
 import { execFile, spawnSync } from 'node:child_process';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import {
   AgentProfileSchema,
@@ -21,7 +21,7 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-const service = createHermesProfileService({ home: '/home/tester', executable: 'hermes' });
+const service = createHermesProfileService({ home: resolve('/home/tester'), executable: 'hermes' });
 const verifiedAt = '2026-09-23T12:00:00.000Z';
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
@@ -30,7 +30,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'hermes',
     label: 'Research',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/hermes/5b7c31de',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
@@ -70,9 +70,9 @@ const verifying = (stdout: string, overrides: Parameters<typeof createHermesProf
   const exec = vi.fn<HermesProfileExec>(async () => ({ stdout }));
   const readWrapper = vi.fn<HermesWrapperRead>(async () => wrapper);
   const verifier = createHermesProfileService({
-    home: '/home/tester',
+    home: resolve('/home/tester'),
     executable: 'hermes',
-    env: { PATH: '/usr/bin:/bin', HOME: '/home/tester' },
+    env: { PATH: '/usr/bin:/bin', HOME: resolve('/home/tester') },
     now: () => new Date(verifiedAt),
     exec,
     readWrapper,
@@ -87,7 +87,7 @@ describe('Hermes profiles', () => {
     expect(service.provider.support).toMatchObject({
       supported: true,
       identity: 'native-protocol',
-      nativeDefaultRoot: '/home/tester/.hermes',
+      nativeDefaultRoot: resolve('/home/tester/.hermes'),
       credential: 'root',
       service: { id: 'nous', label: 'Nous Research' },
     });
@@ -103,71 +103,73 @@ describe('Hermes profiles', () => {
 
   it('binds a managed profile through the native root variable', () => {
     expect(service.bindingEnvironment(profile())).toEqual({
-      HERMES_HOME: '/home/tester/.puppeteer/profiles/hermes/5b7c31de',
+      HERMES_HOME: resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de'),
     });
   });
 
   it('injects nothing for the native default profile', () => {
-    expect(service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.hermes' }))).toEqual(
-      {},
-    );
+    expect(
+      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.hermes') })),
+    ).toEqual({});
   });
 
   it('initializes a root Hermes keeps to itself', async () => {
     await expect(service.initializeRoot?.(profile())).resolves.toBeUndefined();
     await expect(
-      service.initializeRoot?.(profile({ dataRoot: '/home/tester/.puppeteer/profiles/work/hermes-5b7c31de' })),
+      service.initializeRoot?.(profile({ dataRoot: resolve('/home/tester/.puppeteer/profiles/work/hermes-5b7c31de') })),
     ).resolves.toBeUndefined();
     await expect(
-      service.initializeRoot?.(profile({ kind: 'native-default', dataRoot: '/home/tester/.hermes' })),
+      service.initializeRoot?.(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.hermes') })),
     ).resolves.toBeUndefined();
   });
 
   it("refuses a root Hermes would fold into another root's sign-in", async () => {
     for (const dataRoot of [
       // A parent named `profiles` makes the grandparent Hermes's root.
-      '/home/tester/.puppeteer/profiles/profiles/hermes-5b7c31de',
+      resolve('/home/tester/.puppeteer/profiles/profiles/hermes-5b7c31de'),
       // Any home inside ~/.hermes has ~/.hermes as its root.
-      '/home/tester/.hermes/profiles/work',
-      '/home/tester/.hermes/puppeteer/hermes-5b7c31de',
-      '/home/tester/.hermes',
+      resolve('/home/tester/.hermes/profiles/work'),
+      resolve('/home/tester/.hermes/puppeteer/hermes-5b7c31de'),
+      resolve('/home/tester/.hermes'),
     ]) {
       await expect(service.initializeRoot?.(profile({ dataRoot })), dataRoot).rejects.toThrow(/another root/);
     }
     await expect(
-      service.initializeRoot?.(profile({ dataRoot: '/home/tester/.hermes-work/hermes-5b7c31de' })),
+      service.initializeRoot?.(profile({ dataRoot: resolve('/home/tester/.hermes-work/hermes-5b7c31de') })),
     ).resolves.toBeUndefined();
   });
 
   it('names the history layout root for an indexer', () => {
-    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/hermes/5b7c31de');
-    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.hermes' }))).toBe(
-      '/home/tester/.hermes',
-    );
+    expect(service.observationRoot(profile())).toBe(resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de'));
+    expect(
+      service.observationRoot(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.hermes') })),
+    ).toBe(resolve('/home/tester/.hermes'));
   });
 
   it('signs in to Nous Portal with `hermes portal`, never the removed `hermes login`', () => {
     const expected = {
       command: 'hermes',
       args: ['portal'],
-      cwd: '/work/repo',
-      env: { HERMES_HOME: '/home/tester/.puppeteer/profiles/hermes/5b7c31de' },
+      cwd: resolve('/work/repo'),
+      env: { HERMES_HOME: resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de') },
     };
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual(expected);
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo', route: 'portal' })).toEqual(expected);
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo') })).toEqual(expected);
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'portal' })).toEqual(expected);
   });
 
   it("adds another provider's sign-in through the native credential-pool manager", () => {
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo', route: 'provider' })).toEqual({
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'provider' })).toEqual({
       command: 'hermes',
       args: ['auth'],
-      cwd: '/work/repo',
-      env: { HERMES_HOME: '/home/tester/.puppeteer/profiles/hermes/5b7c31de' },
+      cwd: resolve('/work/repo'),
+      env: { HERMES_HOME: resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de') },
     });
   });
 
   it('refuses a route it never offered', () => {
-    expect(() => service.loginInvocation(profile(), { cwd: '/work/repo', route: 'login' })).toThrow(/sign-in route/);
+    expect(() => service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'login' })).toThrow(
+      /sign-in route/,
+    );
   });
 });
 
@@ -176,10 +178,10 @@ describe('Hermes identity read', () => {
     const { verifier, exec, readWrapper } = verifying(JSON.stringify(document()), {
       env: {
         PATH: '/usr/bin:/bin',
-        HOME: '/home/tester',
+        HOME: resolve('/home/tester'),
         PYTHONPATH: '/elsewhere',
         PYTHONHOME: '/elsewhere',
-        HERMES_HOME: '/home/tester/.hermes-other',
+        HERMES_HOME: resolve('/home/tester/.hermes-other'),
         // a launched session never sees these, and Hermes's pool loader would seed and save them
         NOUS_API_KEY: 'SECRET-nous',
         OPENROUTER_API_KEY: 'SECRET-openrouter',
@@ -197,8 +199,8 @@ describe('Hermes identity read', () => {
     expect(args).toHaveLength(4);
     expect(options.env).toEqual({
       PATH: '/usr/bin:/bin',
-      HOME: '/home/tester',
-      HERMES_HOME: '/home/tester/.puppeteer/profiles/hermes/5b7c31de',
+      HOME: resolve('/home/tester'),
+      HERMES_HOME: resolve('/home/tester/.puppeteer/profiles/hermes/5b7c31de'),
     });
 
     const script = args[3]!;
@@ -214,10 +216,10 @@ describe('Hermes identity read', () => {
 
   it('reads the native default without a root variable, even one the host inherited', async () => {
     const { verifier, exec } = verifying(JSON.stringify(document()), {
-      env: { PATH: '/usr/bin:/bin', HOME: '/home/tester', HERMES_HOME: '/home/tester/.hermes-other' },
+      env: { PATH: '/usr/bin:/bin', HOME: resolve('/home/tester'), HERMES_HOME: resolve('/home/tester/.hermes-other') },
     });
-    await verifier.verify(profile({ kind: 'native-default', dataRoot: '/home/tester/.hermes' }));
-    expect(exec.mock.calls[0]![2].env).toEqual({ PATH: '/usr/bin:/bin', HOME: '/home/tester' });
+    await verifier.verify(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.hermes') }));
+    expect(exec.mock.calls[0]![2].env).toEqual({ PATH: '/usr/bin:/bin', HOME: resolve('/home/tester') });
   });
 
   it('prefers an interpreter the composition names', async () => {
@@ -576,7 +578,8 @@ const STUBS: Record<string, string> = {
   ].join('\n'),
 };
 
-describe.skipIf(!python3)('Hermes identity script', () => {
+// This integration fixture models the installer's POSIX shell wrapper and venv.
+describe.skipIf(!python3 || process.platform === 'win32')('Hermes identity script', () => {
   let scratch: string;
   let bin: string;
   const printed: string[] = [];

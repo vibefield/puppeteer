@@ -1,6 +1,6 @@
 import { chmod, lstat, mkdir, mkdtemp, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   AgentProfileSchema,
@@ -29,16 +29,21 @@ const made: string[] = [];
 
 // A service built without a home reads the process's: here, an empty one, never the machine's.
 let processHome: string | undefined;
+let processUserProfile: string | undefined;
 let emptyHome: string;
 beforeAll(async () => {
   processHome = process.env.HOME;
+  processUserProfile = process.env.USERPROFILE;
   emptyHome = await realpath(await mkdtemp(join(tmpdir(), 'codex-extensions-home-')));
   process.env.HOME = emptyHome;
+  if (process.platform === 'win32') process.env.USERPROFILE = emptyHome;
   expect(homedir()).toBe(emptyHome);
 });
 afterAll(async () => {
   if (processHome === undefined) delete process.env.HOME;
   else process.env.HOME = processHome;
+  if (processUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = processUserProfile;
   await rm(emptyHome, { recursive: true, force: true });
 });
 
@@ -171,7 +176,7 @@ function answersFor(home: string, root: string): Record<string, Answer> {
             {
               name: 'repo-only',
               description: 'Belongs to a repository',
-              path: '/work/repo/.agents/skills/repo-only/SKILL.md',
+              path: resolve('/work/repo/.agents/skills/repo-only/SKILL.md'),
               scope: 'repo',
               enabled: true,
               pluginId: null,
@@ -734,7 +739,7 @@ describe('Codex extensions', () => {
     );
     expect(find(inventory, 'mcp-server', 'seen')).toMatchObject({
       origin: 'own',
-      target: `probe ${root} ${root} "mcp list --json"`,
+      target: `probe ${process.platform === 'win32' ? JSON.stringify(root) : root} ${process.platform === 'win32' ? JSON.stringify(root) : root} "mcp list --json"`,
     });
 
     process.env.FAIL_LISTING = '1';
@@ -773,7 +778,7 @@ describe('Codex extension acts', () => {
     enabled: true,
     shared: true as const,
     switchable: true as const,
-    location: '/Users/test/.agents/skills/release-notes',
+    location: resolve('/Users/test/.agents/skills/release-notes'),
   };
 
   it("turns a server of the profile's own on and off through its config, and removes it with its own command", async () => {
@@ -860,7 +865,7 @@ describe('Codex extension acts', () => {
       runs: {
         kind: 'protocol',
         method: 'skills/config/write',
-        params: { path: '/Users/test/.agents/skills/release-notes/SKILL.md', enabled: false },
+        params: { path: resolve('/Users/test/.agents/skills/release-notes/SKILL.md'), enabled: false },
       },
       display: 'skills/config/write release-notes enabled = false',
       reaches: [],
@@ -921,7 +926,10 @@ describe('Codex extension acts', () => {
         ],
       },
       display:
-        'move ~/kept/work/standup → ~/.agents/skills/standup\nlink ~/.agents/skills/standup → ~/kept/work/standup',
+        'move ~/kept/work/standup → ~/.agents/skills/standup\nlink ~/.agents/skills/standup → ~/kept/work/standup'.replaceAll(
+          '/',
+          sep,
+        ),
       // Grok, Kimi, OpenCode and Pi read the folder too
       reaches: ['shared-folder'],
     });
@@ -1824,7 +1832,10 @@ describe('Codex marketplaces and catalogs', () => {
     expect(inventory.unread).toEqual([
       {
         kind: 'marketplace',
-        message: 'config.toml could not be read; ~/.agents/plugins/marketplace.json could not be read',
+        message: 'config.toml could not be read; ~/.agents/plugins/marketplace.json could not be read'.replaceAll(
+          '/',
+          sep,
+        ),
       },
     ]);
     // the curated catalog is no entry of the config
@@ -1943,7 +1954,7 @@ describe('Codex installs and marketplace acts', () => {
       display: '/opt/node/bin/codex plugin marketplace add northlight/plugins --json',
       reaches: [],
     });
-    for (const source of ['git@github.com:northlight/plugins.git', '/Users/test/work/workbench']) {
+    for (const source of ['git@github.com:northlight/plugins.git', resolve('/Users/test/work/workbench')]) {
       expect(codex.plan!(nativeProfile(root), adding(source), 'add'), source).toMatchObject({
         available: true,
         runs: { kind: 'command', argv: ['/opt/node/bin/codex', 'plugin', 'marketplace', 'add', source, '--json'] },

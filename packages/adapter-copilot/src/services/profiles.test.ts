@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import {
   AgentProfileSchema,
   ProfileIdentitySchema,
@@ -13,8 +14,8 @@ import {
   createCopilotProfileService,
 } from './profiles.js';
 
-const HOME = '/home/tester';
-const ROOT = '/home/tester/.puppeteer/profiles/copilot/4f21b0c9';
+const HOME = resolve('/home/tester');
+const ROOT = resolve('/home/tester/.puppeteer/profiles/copilot/4f21b0c9');
 const NOW = new Date('2026-09-23T12:00:00.000Z');
 const VERIFIED_AT = NOW.toISOString();
 const SOURCE = { kind: 'native-protocol', stability: 'experimental' } as const;
@@ -35,9 +36,9 @@ const MINIMAL = {
 const AMBIENT: NodeJS.ProcessEnv = {
   ...MINIMAL,
   ...ENV_SECRETS,
-  COPILOT_HOME: '/home/tester/another-root',
+  COPILOT_HOME: resolve('/home/tester/another-root'),
   NODE_OPTIONS: '--require /tmp/inject.js',
-  SSH_AUTH_SOCK: '/tmp/agent.sock',
+  SSH_AUTH_SOCK: resolve('/tmp/agent.sock'),
 };
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
@@ -55,7 +56,7 @@ const managed = profile();
 const nativeDefault = profile({
   id: 'copilot:native-default',
   kind: 'native-default',
-  dataRoot: '/home/tester/.copilot',
+  dataRoot: resolve('/home/tester/.copilot'),
 });
 
 const STATUS_USER = {
@@ -152,11 +153,11 @@ describe('Copilot profile provider', () => {
         supported: true,
         identity: 'native-protocol',
         sharedSurfaces: [
-          '/home/tester/.agents/skills',
+          resolve('/home/tester/.agents/skills'),
           'one copilot-cli keychain item per GitHub login',
           "GitHub CLI's login in any root without a Copilot login",
         ],
-        nativeDefaultRoot: '/home/tester/.copilot',
+        nativeDefaultRoot: resolve('/home/tester/.copilot'),
         credential: 'external',
         service: { id: 'github', label: 'GitHub' },
       },
@@ -177,21 +178,21 @@ describe('Copilot profile provider', () => {
 
   it('names the history layout root for an indexer', () => {
     expect(profiles.observationRoot(managed)).toBe(ROOT);
-    expect(profiles.observationRoot(nativeDefault)).toBe('/home/tester/.copilot');
+    expect(profiles.observationRoot(nativeDefault)).toBe(resolve('/home/tester/.copilot'));
   });
 
   it('runs the native interactive login inside the profile binding', () => {
-    expect(profiles.loginInvocation(managed, { cwd: '/work/repo' })).toEqual({
+    expect(profiles.loginInvocation(managed, { cwd: resolve('/work/repo') })).toEqual({
       command: '/opt/copilot/bin/copilot',
       args: ['login'],
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       env: { [COPILOT_PROFILE_ROOT_VARIABLE]: ROOT },
     });
   });
 
   it('takes the executable from the ambient override when none is given', () => {
     const fromEnv = createCopilotProfileService({ home: HOME, env: { PUPPETEER_COPILOT_BIN: '/custom/copilot' } });
-    expect(fromEnv.loginInvocation(managed, { cwd: '/work/repo' }).command).toBe('/custom/copilot');
+    expect(fromEnv.loginInvocation(managed, { cwd: resolve('/work/repo') }).command).toBe('/custom/copilot');
   });
 });
 

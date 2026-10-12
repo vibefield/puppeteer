@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'codex',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -19,7 +20,7 @@ const normalize = (argv: string[], over: Partial<AgentNativeInvocation> = {}) =>
   normalizeCodexNativeInvocation(invocation(argv, over));
 
 const imposter: Partial<AgentNativeInvocation> = {
-  implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: '/tmp/codex-imposter' },
+  implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: resolve('/tmp/codex-imposter') },
 };
 
 const THREAD = '64a61b19-f4d8-4f96-ba56-07024b470813';
@@ -65,43 +66,47 @@ describe('Codex native invocation normalization', () => {
   });
 
   it('owns app-server environment, imposter selection, and continuation state', () => {
-    const imposterRoot = '/tmp/codex-imposter';
+    const imposterRoot = resolve('/tmp/codex-imposter');
     expect(
       normalizeCodexNativeInvocation(
         invocation([], {
           environment: { CODEX_HOME: '../codex-home' },
-          implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: imposterRoot },
+          implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: imposterRoot },
         }),
       ),
     ).toEqual({
       status: 'accepted',
       options: {
-        executable: '/opt/ai',
-        env: { CODEX_HOME: '/codex-home', AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_HOME: imposterRoot },
+        executable: resolve('/opt/ai'),
+        env: { CODEX_HOME: resolve('/codex-home'), AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_HOME: imposterRoot },
         appServerEnv: {
-          CODEX_HOME: '/codex-home',
+          CODEX_HOME: resolve('/codex-home'),
           AI_PERSONA: 'codex',
           PUPPETEER_IMPOSTER_HOME: imposterRoot,
         },
       },
     });
-    const state = captureCodexContinuationState({ appServerEnv: { CODEX_HOME: '../codex-home' } }, '/repo', {});
+    const state = captureCodexContinuationState(
+      { appServerEnv: { CODEX_HOME: '../codex-home' } },
+      resolve('/repo'),
+      {},
+    );
     expect(restoreCodexContinuationState(state)).toEqual({
-      env: { CODEX_HOME: '/codex-home' },
-      appServerEnv: { CODEX_HOME: '/codex-home' },
+      env: { CODEX_HOME: resolve('/codex-home') },
+      appServerEnv: { CODEX_HOME: resolve('/codex-home') },
     });
     const imposterState = captureCodexContinuationState(
       { appServerEnv: { AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_HOME: imposterRoot } },
-      '/repo',
+      resolve('/repo'),
       {},
     );
-    expect(restoreCodexContinuationState(imposterState, { imposterExecutable: '/opt/ai' })).toEqual({
-      executable: '/opt/ai',
+    expect(restoreCodexContinuationState(imposterState, { imposterExecutable: resolve('/opt/ai') })).toEqual({
+      executable: resolve('/opt/ai'),
       env: { AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_HOME: imposterRoot },
       appServerEnv: { AI_PERSONA: 'codex', PUPPETEER_IMPOSTER_HOME: imposterRoot },
     });
     expect(() =>
-      restoreCodexContinuationState(JSON.stringify({ version: 2, home: '/codex-home', extra: true })),
+      restoreCodexContinuationState(JSON.stringify({ version: 2, home: resolve('/codex-home'), extra: true })),
     ).toThrow('invalid Codex continuation state');
   });
 
@@ -179,7 +184,7 @@ describe('Codex invocation classes', () => {
     expect(normalize(['-m', 'x', 'login'])).toMatchObject({ status: 'passthrough', kind: 'utility' });
     expect(normalize(['--remote', 'ws://x', 'exec', 'q'])).toMatchObject({ kind: 'one-shot' });
     expect(normalize(['--remote', 'ws://x', '--help'])).toMatchObject({ kind: 'utility' });
-    expect(normalize(['-C', '/elsewhere', 'cloud'])).toMatchObject({ kind: 'elsewhere' });
+    expect(normalize(['-C', resolve('/elsewhere'), 'cloud'])).toMatchObject({ kind: 'elsewhere' });
     expect(normalize(['exec', '--help'])).toMatchObject({ kind: 'utility' });
   });
 
@@ -191,11 +196,11 @@ describe('Codex invocation classes', () => {
       [['resume', '--remote-auth-token-env=TOKEN'], '--remote-auth-token-env=TOKEN'],
       [['fork'], 'fork'],
       [['fork', '--last'], 'fork'],
-      [['-C', '/elsewhere'], '-C'],
+      [['-C', resolve('/elsewhere')], '-C'],
       [['--cd=/elsewhere'], '--cd=/elsewhere'],
       [['--worktree'], '--worktree'],
       [['--no-daemon'], '--no-daemon'],
-      [['--add-dir', '/extra'], '--add-dir'],
+      [['--add-dir', resolve('/extra')], '--add-dir'],
       [['-p', 'work'], '-p'],
       [['--oss'], '--oss'],
       [['--local-provider', 'ollama'], '--local-provider'],
@@ -212,7 +217,7 @@ describe('Codex invocation classes', () => {
       expect(resolution, argv.join(' ')).toMatchObject({ status: 'rejected', argument });
       expect(resolution.status === 'rejected' && resolution.reason, argv.join(' ')).toMatch(/^[a-zA-Z][^.]*[^.]$/u);
     }
-    expect(normalize(['-C', '/elsewhere'])).toEqual({
+    expect(normalize(['-C', resolve('/elsewhere')])).toEqual({
       status: 'rejected',
       reason: 'it moves the session to another directory, and a managed session works in the directory it was typed in',
       argument: '-C',
@@ -220,9 +225,9 @@ describe('Codex invocation classes', () => {
   });
 
   it('names the first argument, in argv order, that the recipe cannot carry', () => {
-    expect(normalize(['--worktree', '-C', '/x'])).toMatchObject({ argument: '--worktree' });
-    expect(normalize(['-C', '/x', '--worktree'])).toMatchObject({ argument: '-C' });
-    expect(normalize(['-m', 'x', '--add-dir', '/d', '--no-daemon'])).toMatchObject({ argument: '--add-dir' });
+    expect(normalize(['--worktree', '-C', resolve('/x')])).toMatchObject({ argument: '--worktree' });
+    expect(normalize(['-C', resolve('/x'), '--worktree'])).toMatchObject({ argument: '-C' });
+    expect(normalize(['-m', 'x', '--add-dir', resolve('/d'), '--no-daemon'])).toMatchObject({ argument: '--add-dir' });
   });
 });
 
@@ -415,7 +420,7 @@ describe('what a managed Codex session carries', () => {
     const started = normalize(['-m', 'x', '-s', 'read-only'], imposter);
     expect(started).toMatchObject({
       status: 'accepted',
-      options: { model: 'x', sandbox: 'read-only', executable: '/opt/ai' },
+      options: { model: 'x', sandbox: 'read-only', executable: resolve('/opt/ai') },
     });
     // The imposter has no configuration to read: its thread keeps the adapter's defaults.
     expect(started.status === 'accepted' ? started.options?.permissionDefaults : 'rejected').toBeUndefined();
@@ -440,16 +445,16 @@ describe('what a managed Codex session carries', () => {
 
   it('never persists a carried argument: continuation state is the launch environment alone', () => {
     const resolution = normalize(['-m', 'gpt-5', '--search', 'fix it', '--no-alt-screen'], {
-      environment: { CODEX_HOME: '/codex-home' },
+      environment: { CODEX_HOME: resolve('/codex-home') },
     });
     expect(resolution.status).toBe('accepted');
     const options = resolution.status === 'accepted' ? resolution.options : undefined;
     expect(options).toMatchObject({ permissionDefaults: 'configuration' });
-    const state = captureCodexContinuationState(options, '/repo', {});
-    expect(JSON.parse(state!)).toEqual({ version: 2, home: '/codex-home' });
+    const state = captureCodexContinuationState(options, resolve('/repo'), {});
+    expect(JSON.parse(state!)).toEqual({ version: 2, home: resolve('/codex-home') });
     expect(restoreCodexContinuationState(state)).toEqual({
-      env: { CODEX_HOME: '/codex-home' },
-      appServerEnv: { CODEX_HOME: '/codex-home' },
+      env: { CODEX_HOME: resolve('/codex-home') },
+      appServerEnv: { CODEX_HOME: resolve('/codex-home') },
     });
   });
 });

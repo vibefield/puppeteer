@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -107,7 +107,7 @@ describe('Claude Code extensions', () => {
         skipped: { url: 'https://no-type.example.com/mcp' },
       },
       projects: {
-        '/Users/test/billing': {
+        [resolve('/Users/test/billing')]: {
           mcpServers: { sentry: { type: 'http', url: 'https://mcp.sentry.dev/mcp' } },
           disabledMcpServers: ['sentry'],
         },
@@ -130,7 +130,7 @@ describe('Claude Code extensions', () => {
             installPath: join(root, 'plugins', 'cache', 'official', 'figma', '1.1.0'),
           },
         ],
-        'repo-only@northlight': [{ scope: 'project', projectPath: '/Users/test/billing', version: '1.0.0' }],
+        'repo-only@northlight': [{ scope: 'project', projectPath: resolve('/Users/test/billing'), version: '1.0.0' }],
       },
     });
     await write(join(review, '.claude-plugin', 'plugin.json'), {
@@ -203,7 +203,7 @@ describe('Claude Code extensions', () => {
     expect(find(inventory, 'mcp-server', 'skipped')).toBeUndefined();
     expect(find(inventory, 'mcp-server', 'project:/Users/test/billing:sentry')).toMatchObject({
       origin: 'project',
-      project: '/Users/test/billing',
+      project: resolve('/Users/test/billing'),
       enabled: false,
     });
     expect(find(inventory, 'mcp-server', 'plugin:review@northlight:house')).toMatchObject({
@@ -492,23 +492,23 @@ const addedServer = (name: string, definition: McpServerDefinition): McpServerIt
 });
 
 describe('Claude Code extension acts', () => {
-  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
+  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: resolve('/Users/test') });
   it('removes a user server with its own command, saying a remote one takes its sign-in with it', () => {
-    expect(claude.plan!(actProfile('managed', '/profiles/work/claude'), actServer(), 'remove')).toEqual({
+    expect(claude.plan!(actProfile('managed', resolve('/profiles/work/claude')), actServer(), 'remove')).toEqual({
       target: { kind: 'mcp-server', id: 'linear' },
       act: 'remove',
       available: true,
       runs: {
         kind: 'command',
         argv: ['claude', 'mcp', 'remove', '--scope', 'user', 'linear'],
-        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+        env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') },
       },
       display: 'claude mcp remove --scope user linear',
       reaches: ['definition', 'sign-in'],
     });
     expect(
       claude.plan!(
-        actProfile('native-default', '/Users/test/.claude'),
+        actProfile('native-default', resolve('/Users/test/.claude')),
         actServer({ transport: 'stdio', target: 'npx x' }),
         'remove',
       ),
@@ -516,7 +516,7 @@ describe('Claude Code extension acts', () => {
   });
 
   it('signs a remote server in with its own login in a terminal, and out with its own command', () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     expect(claude.plan!(work, actServer(), 'sign-in')).toEqual({
       target: { kind: 'mcp-server', id: 'linear' },
       act: 'sign-in',
@@ -524,7 +524,7 @@ describe('Claude Code extension acts', () => {
       runs: {
         kind: 'terminal',
         argv: ['claude', 'mcp', 'login', 'linear'],
-        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+        env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') },
       },
       display: 'claude mcp login linear',
       // the profile's own keychain item: it reaches no other profile
@@ -546,7 +546,7 @@ describe('Claude Code extension acts', () => {
   });
 
   it("has no switch for a whole profile, and leaves a project's server and a skill alone", () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     expect(claude.plan!(work, actServer(), 'disable')).toMatchObject({
       available: false,
       reason: 'no-command',
@@ -565,7 +565,7 @@ describe('Claude Code extension acts', () => {
   it("adds a stdio server at user scope, each variable named in Claude Code's own syntax and never its value", () => {
     // values the host's environment holds: an add names the variables and never carries one
     const values = { GITHUB_TOKEN: 'ghp_northlightvalue0123456789', GITHUB_HOST: 'github.northlight.example' };
-    const hosted = createClaudeExtensionService({ executable: 'claude', env: values, home: '/Users/test' });
+    const hosted = createClaudeExtensionService({ executable: 'claude', env: values, home: resolve('/Users/test') });
     const github = addedServer(
       'github',
       McpServerDefinitionSchema.parse({
@@ -601,15 +601,15 @@ describe('Claude Code extension acts', () => {
       reaches: [],
     };
     const work = ExtensionActPlanSchema.parse(
-      hosted.plan!(actProfile('managed', '/profiles/work/claude'), github, 'add'),
+      hosted.plan!(actProfile('managed', resolve('/profiles/work/claude')), github, 'add'),
     );
     expect(work).toEqual({
       ...plan,
-      runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+      runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') } },
     });
     // the native default is the root Claude Code finds with no variable at all
     const native = ExtensionActPlanSchema.parse(
-      hosted.plan!(actProfile('native-default', '/Users/test/.claude'), github, 'add'),
+      hosted.plan!(actProfile('native-default', resolve('/Users/test/.claude')), github, 'add'),
     );
     expect(native).toEqual({ ...plan, runs: { kind: 'command', argv } });
     for (const answer of [work, native]) {
@@ -619,7 +619,7 @@ describe('Claude Code extension acts', () => {
   });
 
   it('adds a remote server at its address, over HTTP or SSE', () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     const docs = addedServer('docs', { transport: 'http', url: 'https://mcp.northlight.studio/docs' });
     expect(ExtensionActPlanSchema.parse(claude.plan!(work, docs, 'add'))).toEqual({
       target: { kind: 'mcp-server', id: 'docs' },
@@ -638,7 +638,7 @@ describe('Claude Code extension acts', () => {
           '--transport',
           'http',
         ],
-        env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' },
+        env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') },
       },
       display: 'claude mcp add docs https://mcp.northlight.studio/docs --scope user --transport http',
       reaches: [],
@@ -666,7 +666,7 @@ describe('Claude Code extension acts', () => {
   });
 
   it("answers an add Claude Code's command cannot take: a name or address it would misread, no definition, no folder", () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     const docs = { transport: 'http', url: 'https://mcp.northlight.studio/docs' } as const;
     for (const name of ['--scope', 'north light']) {
       expect(claude.plan!(work, addedServer(name, docs), 'add')).toEqual({
@@ -724,7 +724,7 @@ describe('Claude Code skills placed', () => {
           { op: 'link', path: join(home, 'profiles', 'work', 'claude', 'skills', 'release-notes'), target: kept },
         ],
       },
-      display: 'link ~/kept/release-notes → ~/profiles/work/claude/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/profiles/work/claude/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     // Grok and OpenCode read the home's ~/.claude/skills whatever their profile
@@ -733,7 +733,7 @@ describe('Claude Code skills placed', () => {
     ).toMatchObject({
       available: true,
       runs: { kind: 'files', steps: [{ op: 'link', path: join(home, '.claude', 'skills', 'release-notes') }] },
-      display: 'link ~/kept/release-notes → ~/.claude/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/.claude/skills/release-notes'.replaceAll('/', sep),
       reaches: ['shared-folder'],
     });
   });
@@ -749,13 +749,13 @@ describe('Claude Code skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: location }] },
-      display: 'unlink ~/profiles/work/claude/skills/release-notes',
+      display: 'unlink ~/profiles/work/claude/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     expect(claude.plan!(work, actSkill({ location }), 'remove', { keepIn })).toMatchObject({
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: location, to: keepIn }] },
-      display: 'move ~/profiles/work/claude/skills/release-notes → ~/kept/release-notes',
+      display: 'move ~/profiles/work/claude/skills/release-notes → ~/kept/release-notes'.replaceAll('/', sep),
     });
     expect(claude.plan!(work, actSkill({ location }), 'remove')).toMatchObject({
       available: false,
@@ -849,7 +849,7 @@ describe('Claude Code skills placed', () => {
 });
 
 describe('Claude Code plugin acts', () => {
-  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
+  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: resolve('/Users/test') });
   const actPlugin = (fields: Record<string, unknown> = {}) =>
     ({
       kind: 'plugin',
@@ -863,7 +863,7 @@ describe('Claude Code plugin acts', () => {
     }) as never;
 
   it("turns a plugin on and off, updates it and uninstalls it with Claude Code's own commands, at user scope", () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     const forms: Record<string, string[]> = {
       enable: ['claude', 'plugin', 'enable', 'review@northlight', '--scope', 'user'],
       disable: ['claude', 'plugin', 'disable', 'review@northlight', '--scope', 'user'],
@@ -878,7 +878,7 @@ describe('Claude Code plugin acts', () => {
         target: { kind: 'plugin', id: 'review@northlight' },
         act,
         available: true,
-        runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+        runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') } },
         display: argv.join(' '),
         // a managed root's plugins are its own
         reaches: [],
@@ -887,7 +887,7 @@ describe('Claude Code plugin acts', () => {
   });
 
   it('says an uninstall or an update in the native default reaches Grok, which loads every plugin installed there', () => {
-    const native = actProfile('native-default', '/Users/test/.claude');
+    const native = actProfile('native-default', resolve('/Users/test/.claude'));
     for (const act of ['remove', 'purge', 'update'] as const) {
       const plan = ExtensionActPlanSchema.parse(claude.plan!(native, actPlugin(), act));
       expect(plan, act).toMatchObject({ available: true, runs: { kind: 'command' }, reaches: ['shared-folder'] });
@@ -901,12 +901,12 @@ describe('Claude Code plugin acts', () => {
   });
 
   it("leaves the account's synced plugins to claude.ai, and plans nothing Claude Code's commands cannot take", () => {
-    const work = actProfile('managed', '/profiles/work/claude');
+    const work = actProfile('managed', resolve('/profiles/work/claude'));
     const synced = actPlugin({
       id: 'toolkit@synced',
       name: 'toolkit',
       origin: 'managed',
-      location: '/profiles/work/claude/plugins/synced/toolkit',
+      location: resolve('/profiles/work/claude/plugins/synced/toolkit'),
     });
     for (const act of ['enable', 'disable', 'remove', 'purge', 'update'] as const) {
       expect(claude.plan!(work, synced, act)).toEqual({
@@ -1115,7 +1115,7 @@ describe('Claude Code catalogs', () => {
         ],
         'lint@northlight': [{ scope: 'user', version: '1.9.0' }],
         'deploy@northlight': [{ scope: 'user', version: '2.1.0', gitCommitSha: 'b'.repeat(40) }],
-        'types@northlight': [{ scope: 'project', projectPath: '/Users/test/app', version: '2.0.0' }],
+        'types@northlight': [{ scope: 'project', projectPath: resolve('/Users/test/app'), version: '2.0.0' }],
         'handbook@acme-org': [{ scope: 'user', version: '5d2e8f0a1b3c' }],
       },
     });
@@ -1564,7 +1564,11 @@ describe('Claude Code catalogs', () => {
       ['long-repo', null, 'Claude Code has not fetched its catalog'],
       ['long-url', '•••', 'Claude Code has not fetched its catalog'],
       // read in place, at a path no disk takes
-      ['long-path', null, 'Its catalog could not be read'],
+      [
+        'long-path',
+        null,
+        process.platform === 'win32' ? 'Claude Code has not fetched its catalog' : 'Its catalog could not be read',
+      ],
       ['long-location', 'northlight-studio/far', 'Claude Code has not fetched its catalog'],
     ]);
     expect(catalog.plugins.map((plugin) => plugin.id)).toEqual(['lint@northlight', 'types@northlight']);
@@ -1704,9 +1708,9 @@ describe('Claude Code catalogs', () => {
 });
 
 describe('Claude Code installs and marketplaces', () => {
-  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: '/Users/test' });
-  const work = actProfile('managed', '/profiles/work/claude');
-  const native = actProfile('native-default', '/Users/test/.claude');
+  const claude = createClaudeExtensionService({ executable: 'claude', env: {}, home: resolve('/Users/test') });
+  const work = actProfile('managed', resolve('/profiles/work/claude'));
+  const native = actProfile('native-default', resolve('/Users/test/.claude'));
   /** A plugin as the runtime hands it for an install: from its catalog entry, always the root's own. */
   const installing = (id = 'lint@northlight'): PluginItem => ({
     kind: 'plugin',
@@ -1760,7 +1764,7 @@ describe('Claude Code installs and marketplaces', () => {
     };
     expect(ExtensionActPlanSchema.parse(claude.plan!(work, installing(), 'install', { listed: listing() }))).toEqual({
       ...plan,
-      runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+      runs: { kind: 'command', argv, env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') } },
       // a managed root's plugins are its own
       reaches: [],
     });
@@ -1793,7 +1797,7 @@ describe('Claude Code installs and marketplaces', () => {
       target: { kind: 'plugin', id: 'lint@northlight' },
       act: 'install',
       available: true,
-      runs: { kind: 'terminal', argv, env: { CLAUDE_CONFIG_DIR: '/profiles/work/claude' } },
+      runs: { kind: 'terminal', argv, env: { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') } },
       display: 'claude plugin install lint@northlight --scope user',
       reaches: [],
     });
@@ -1829,7 +1833,7 @@ describe('Claude Code installs and marketplaces', () => {
   });
 
   it("adds, fetches and removes a marketplace with Claude Code's own commands, a removal taking its plugins", () => {
-    const env = { CLAUDE_CONFIG_DIR: '/profiles/work/claude' };
+    const env = { CLAUDE_CONFIG_DIR: resolve('/profiles/work/claude') };
     // an add is handed the marketplace named by its source, until Claude Code names it from its catalog
     const adding = (source: string) => marketplace({ id: source, name: source, source });
     const forms: Array<[ExtensionActKind, MarketplaceItem, string[], ExtensionReach[]]> = [
@@ -1863,7 +1867,7 @@ describe('Claude Code installs and marketplaces', () => {
     // a git address, a folder, the address of a marketplace.json: each one argument, as given
     for (const source of [
       'https://git.northlight.example/plugins.git#stable',
-      '/Users/test/work/local-market',
+      resolve('/Users/test/work/local-market'),
       'https://northlight.example/marketplace.json',
     ]) {
       expect(claude.plan!(work, adding(source), 'add')).toMatchObject({
@@ -1963,13 +1967,13 @@ describe('Claude Code installs and marketplaces', () => {
       marketplace({ id: 'acme-org', name: 'acme-org', origin: 'managed' }),
       actServer(),
       actServer({ transport: 'stdio', target: 'npx x' }),
-      actSkill({ location: '/profiles/work/claude/skills/release-notes' }),
+      actSkill({ location: resolve('/profiles/work/claude/skills/release-notes') }),
     ];
     const options: ExtensionActPlanOptions[] = [
       {},
       { source: 'northlight-studio/lint', holds: [] },
       { listed: listing({ asks: [{ kind: 'command', command: 'curl -fsSL https://get.northlight.example/x.sh' }] }) },
-      { keepIn: '/Users/test/kept/release-notes' },
+      { keepIn: resolve('/Users/test/kept/release-notes') },
     ];
     for (const profile of [work, native]) {
       for (const item of items) {

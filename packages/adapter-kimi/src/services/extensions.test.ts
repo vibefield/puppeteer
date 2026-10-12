@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
@@ -59,7 +59,7 @@ const find = (inventory: ExtensionInventory, kind: ExtensionItem['kind'], id: st
 
 describe('Kimi Code extensions', () => {
   it('declares plugins, servers and skills, changed inside Kimi Code or in a folder, and no marketplaces', () => {
-    const { provider } = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const { provider } = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     expect(ExtensionProviderSchema.parse(provider)).toEqual({
       id: 'kimi',
       label: 'Kimi',
@@ -423,7 +423,7 @@ const actPlugin = (fields: Record<string, unknown> = {}) =>
 
 describe('Kimi extension acts', () => {
   it('changes nothing from outside the app', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
     expect(kimi.plan!(actProfile('managed', '/p'), actServer(), 'disable')).toMatchObject({
       available: false,
       reason: 'in-app',
@@ -438,7 +438,7 @@ describe('Kimi extension acts', () => {
   });
 
   it('adds a server only inside the app, in the words of every server act', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
     const context7 = actServer({
       id: 'context7',
       name: 'context7',
@@ -462,7 +462,7 @@ describe('Kimi extension acts', () => {
   });
 
   it('changes a plugin only inside the app, whatever the act, and what a plugin brings with it', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
     const work = actProfile('managed', '/p');
     // The runtime answers a plugin's add and sign-ins itself; asked anyway, Kimi says the same.
     for (const act of ['enable', 'disable', 'remove', 'purge', 'update', 'add', 'sign-in', 'sign-out'] as const) {
@@ -505,7 +505,7 @@ const actMarketplace = (fields: Record<string, unknown> = {}) =>
 
 describe('Kimi installs and marketplaces', () => {
   it('installs a plugin only inside the app, from its catalog tabs or from a source there', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     const work = actProfile('managed', '/p');
     // as the runtime hands a catalog entry: the plugin as Kimi would hold it once installed
     const listed = { id: 'kimi-webbridge', name: 'Kimi WebBridge', marketplace: 'kimi' };
@@ -535,7 +535,7 @@ describe('Kimi installs and marketplaces', () => {
   });
 
   it('has no marketplace to add, fetch again or remove: its one catalog is inside the app', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     for (const act of EVERY_ACT) {
       expect(ExtensionActPlanSchema.parse(kimi.plan!(actProfile('managed', '/p'), actMarketplace(), act)), act).toEqual(
         {
@@ -553,20 +553,23 @@ describe('Kimi installs and marketplaces', () => {
   });
 
   it('answers every act on every kind with a plan the schema takes, and never throws', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     const items = [
       actPlugin(),
       actMarketplace(),
       actServer(),
-      actSkill({ linkTarget: '/Users/test/kept/release-notes' }),
+      actSkill({ linkTarget: resolve('/Users/test/kept/release-notes') }),
     ];
     const options = [
       undefined,
       { source: 'https://github.com/obra/superpowers', holds: [] },
       { listed: { id: 'kimi-datasource', name: 'kimi-datasource', marketplace: 'kimi' } },
-      { keepIn: '/Users/test/kept/elsewhere' },
+      { keepIn: resolve('/Users/test/kept/elsewhere') },
     ];
-    for (const profile of [actProfile('managed', '/p'), actProfile('native-default', '/Users/test/.kimi-code')]) {
+    for (const profile of [
+      actProfile('managed', '/p'),
+      actProfile('native-default', resolve('/Users/test/.kimi-code')),
+    ]) {
       for (const item of items) {
         for (const act of EVERY_ACT) {
           for (const option of options) {
@@ -611,7 +614,7 @@ describe('Kimi skills placed', () => {
       act: 'add',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/profiles/work/kimi-4c1d/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/profiles/work/kimi-4c1d/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
 
@@ -626,27 +629,30 @@ describe('Kimi skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(root, 'skills', 'release-notes') }] },
-      display: 'unlink ~/profiles/work/kimi-4c1d/skills/release-notes',
+      display: 'unlink ~/profiles/work/kimi-4c1d/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
   });
 
   it('places into the native default where Kimi Code resolves it, and only a folder by a name a folder takes', () => {
-    const kept = '/Users/test/kept/release-notes';
-    const native = actProfile('native-default', '/Users/test/.kimi-code');
-    const plain = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const kept = resolve('/Users/test/kept/release-notes');
+    const native = actProfile('native-default', resolve('/Users/test/.kimi-code'));
+    const plain = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     expect(plain.plan!(native, placed('release-notes', kept), 'add')).toMatchObject({
       available: true,
       runs: {
         kind: 'files',
-        steps: [{ op: 'link', path: '/Users/test/.kimi-code/skills/release-notes', target: kept }],
+        steps: [{ op: 'link', path: resolve('/Users/test/.kimi-code/skills/release-notes'), target: kept }],
       },
-      display: 'link ~/kept/release-notes → ~/.kimi-code/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/.kimi-code/skills/release-notes'.replaceAll('/', sep),
     });
-    const moved = createKimiExtensionService({ home: '/Users/test', env: { KIMI_CODE_HOME: '/Volumes/work/kimi' } });
+    const moved = createKimiExtensionService({
+      home: resolve('/Users/test'),
+      env: { KIMI_CODE_HOME: '/Volumes/work/kimi' },
+    });
     expect(moved.plan!(native, placed('release-notes', kept), 'add')).toMatchObject({
       runs: { kind: 'files', steps: [{ op: 'link', path: '/Volumes/work/kimi/skills/release-notes', target: kept }] },
-      display: 'link ~/kept/release-notes → /Volumes/work/kimi/skills/release-notes',
+      display: 'link ~/kept/release-notes → /Volumes/work/kimi/skills/release-notes'.replaceAll('/', sep),
     });
 
     expect(plain.plan!(native, placed('release-notes'), 'add')).toEqual({
@@ -657,7 +663,7 @@ describe('Kimi skills placed', () => {
       message: 'Kimi takes a skill as a folder to link',
     });
     for (const name of ['../escape', '.hidden', 'team/notes']) {
-      expect(plain.plan!(native, placed(name, '/Users/test/kept/x'), 'add'), name).toMatchObject({
+      expect(plain.plan!(native, placed(name, resolve('/Users/test/kept/x')), 'add'), name).toMatchObject({
         available: false,
         reason: 'unsupported',
         message: `Kimi cannot take a skill folder named ${name}`,
@@ -683,7 +689,7 @@ describe('Kimi skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: join(root, 'skills', 'review'), to: keepIn }] },
-      display: 'move ~/profiles/work/kimi-4c1d/skills/review → ~/kept/review',
+      display: 'move ~/profiles/work/kimi-4c1d/skills/review → ~/kept/review'.replaceAll('/', sep),
       reaches: [],
     });
     expect(kimi.plan!(work, review, 'remove')).toEqual({

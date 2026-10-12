@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
@@ -23,6 +23,8 @@ import {
   type SkillItem,
 } from '@vibefield/puppeteer-core';
 import { createGrokExtensionService, parseGrokConfig } from './extensions.js';
+
+const shownArgument = (argument: string): string => (argument.includes('\\') ? JSON.stringify(argument) : argument);
 
 const now = () => new Date('2026-09-25T09:00:00.000Z');
 const made: string[] = [];
@@ -570,28 +572,30 @@ const added = (definition: McpServerDefinition, name = 'context7'): McpServerIte
 });
 
 describe('Grok extension acts', () => {
-  const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
+  const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: resolve('/Users/test') });
   it("turns a server of the profile's own config on and off, and removes it, with Grok's own commands", () => {
-    expect(grok.plan!(actProfile('managed', '/profiles/work/grok'), actServer(), 'disable')).toEqual({
+    expect(grok.plan!(actProfile('managed', resolve('/profiles/work/grok')), actServer(), 'disable')).toEqual({
       target: { kind: 'mcp-server', id: 'linear' },
       act: 'disable',
       available: true,
       runs: {
         kind: 'command',
         argv: ['/opt/grok/bin/grok', 'mcp', 'disable', 'linear'],
-        env: { GROK_HOME: '/profiles/work/grok' },
+        env: { GROK_HOME: resolve('/profiles/work/grok') },
       },
       display: '/opt/grok/bin/grok mcp disable linear',
       reaches: [],
     });
-    expect(grok.plan!(actProfile('native-default', '/Users/test/.grok'), actServer(), 'remove')).toMatchObject({
-      runs: { kind: 'command', argv: ['/opt/grok/bin/grok', 'mcp', 'remove', 'linear', '--scope', 'user'] },
-      reaches: ['definition'],
-    });
+    expect(grok.plan!(actProfile('native-default', resolve('/Users/test/.grok')), actServer(), 'remove')).toMatchObject(
+      {
+        runs: { kind: 'command', argv: ['/opt/grok/bin/grok', 'mcp', 'remove', 'linear', '--scope', 'user'] },
+        reaches: ['definition'],
+      },
+    );
   });
 
   it('leaves what it borrows to its lender, a skill to its config, and never passes a flag as a name', () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     expect(
       grok.plan!(
         work,
@@ -611,7 +615,7 @@ describe('Grok extension acts', () => {
   });
 
   it('signs in to a server only inside the app, or when a session first uses it', () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     expect(grok.plan!(work, actServer(), 'sign-in')).toMatchObject({
       available: false,
       reason: 'in-app',
@@ -624,7 +628,7 @@ describe('Grok extension acts', () => {
 
   it('adds a server with its own add, each variable named for Grok to expand and never given a value', () => {
     const plan = grok.plan!(
-      actProfile('managed', '/profiles/work/grok'),
+      actProfile('managed', resolve('/profiles/work/grok')),
       added({
         transport: 'stdio',
         command: 'npx',
@@ -657,7 +661,7 @@ describe('Grok extension acts', () => {
           '--transport',
           'stdio',
         ],
-        env: { GROK_HOME: '/profiles/work/grok' },
+        env: { GROK_HOME: resolve('/profiles/work/grok') },
       },
       display:
         '/opt/grok/bin/grok mcp add --scope user --env CONTEXT7_API_KEY=${CONTEXT7_API_KEY:-} --env CONTEXT7_REGION=${CONTEXT7_REGION:-} context7 -- npx -y @upstash/context7-mcp --transport stdio',
@@ -666,7 +670,7 @@ describe('Grok extension acts', () => {
   });
 
   it('adds a remote server over HTTP at its address, and none over SSE, which its add cannot say', () => {
-    const native = actProfile('native-default', '/Users/test/.grok');
+    const native = actProfile('native-default', resolve('/Users/test/.grok'));
     const http = grok.plan!(native, added({ transport: 'http', url: 'https://mcp.linear.app/mcp' }, 'linear'), 'add');
     expect(http).toMatchObject({
       available: true,
@@ -695,7 +699,7 @@ describe('Grok extension acts', () => {
   });
 
   it('adds only a server with a definition, under a name its command takes and its catalog loads', () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     const linear: McpServerDefinition = { transport: 'http', url: 'https://mcp.linear.app/mcp' };
     for (const name of ['--scope', 'my server']) {
       expect(grok.plan!(work, added(linear, name), 'add'), name).toMatchObject({
@@ -719,7 +723,7 @@ describe('Grok extension acts', () => {
   });
 
   it('turns a plugin Grok installed on and off, uninstalls it with its data kept or gone, and updates it, by name', () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     const commands: Array<[ExtensionActKind, string[]]> = [
       ['enable', ['plugin', 'enable', 'review']],
       ['disable', ['plugin', 'disable', 'review']],
@@ -733,14 +737,14 @@ describe('Grok extension acts', () => {
         target: { kind: 'plugin', id: 'review' },
         act,
         available: true,
-        runs: { kind: 'command', argv, env: { GROK_HOME: '/profiles/work/grok' } },
+        runs: { kind: 'command', argv, env: { GROK_HOME: resolve('/profiles/work/grok') } },
         display: argv.join(' '),
         reaches: [],
       });
     }
     // An install without a manifest name goes by the name Grok gave its folder; the native default needs no root.
     const native = grok.plan!(
-      actProfile('native-default', '/Users/test/.grok'),
+      actProfile('native-default', resolve('/Users/test/.grok')),
       actPlugin({ id: 'notes-1a2b3c4d', name: 'notes-1a2b3c4d' }),
       'purge',
     );
@@ -752,7 +756,7 @@ describe('Grok extension acts', () => {
   });
 
   it("leaves Claude Code's plugins to it and a folder in plugins/ where it is, and never passes a flag as a name", () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     const figma = actPlugin({
       id: 'figma@claude-plugins-official',
       name: 'figma',
@@ -786,7 +790,7 @@ describe('Grok extension acts', () => {
   });
 
   it('answers an add or a sign-in on a plugin, and an update or a purge of anything else, with no command', () => {
-    const work = actProfile('managed', '/profiles/work/grok');
+    const work = actProfile('managed', resolve('/profiles/work/grok'));
     expect(grok.plan!(work, actPlugin(), 'add')).toEqual({
       target: { kind: 'plugin', id: 'review' },
       act: 'add',
@@ -966,7 +970,7 @@ describe('Grok skills placed', () => {
       act: 'add',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/profiles/work/grok-5c1e/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/profiles/work/grok-5c1e/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
 
@@ -981,25 +985,35 @@ describe('Grok skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(root, 'skills', 'release-notes') }] },
-      display: 'unlink ~/profiles/work/grok-5c1e/skills/release-notes',
+      display: 'unlink ~/profiles/work/grok-5c1e/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
   });
 
   it("places into the native default's root under the name it is given, and only a folder by a name a folder takes", () => {
-    const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
-    const native = actProfile('native-default', '/Users/test/.grok');
-    // The key, as given: Grok's own lowercase name for it is its reading, not the folder's.
-    expect(grok.plan!(native, placed('Release_Notes', '/Users/test/kept/Release_Notes'), 'add')).toMatchObject({
-      available: true,
-      runs: {
-        kind: 'files',
-        steps: [
-          { op: 'link', path: '/Users/test/.grok/skills/Release_Notes', target: '/Users/test/kept/Release_Notes' },
-        ],
-      },
-      display: 'link ~/kept/Release_Notes → ~/.grok/skills/Release_Notes',
+    const grok = createGrokExtensionService({
+      executable: '/opt/grok/bin/grok',
+      env: {},
+      home: resolve('/Users/test'),
     });
+    const native = actProfile('native-default', resolve('/Users/test/.grok'));
+    // The key, as given: Grok's own lowercase name for it is its reading, not the folder's.
+    expect(grok.plan!(native, placed('Release_Notes', resolve('/Users/test/kept/Release_Notes')), 'add')).toMatchObject(
+      {
+        available: true,
+        runs: {
+          kind: 'files',
+          steps: [
+            {
+              op: 'link',
+              path: resolve('/Users/test/.grok/skills/Release_Notes'),
+              target: resolve('/Users/test/kept/Release_Notes'),
+            },
+          ],
+        },
+        display: 'link ~/kept/Release_Notes → ~/.grok/skills/Release_Notes'.replaceAll('/', sep),
+      },
+    );
     expect(grok.plan!(native, placed('release-notes'), 'add')).toEqual({
       target: { kind: 'skill', id: 'release-notes' },
       act: 'add',
@@ -1008,7 +1022,7 @@ describe('Grok skills placed', () => {
       message: 'Grok takes a skill as a folder to link',
     });
     for (const name of ['../escape', '.hidden', 'team/notes']) {
-      expect(grok.plan!(native, placed(name, '/Users/test/kept/x'), 'add'), name).toMatchObject({
+      expect(grok.plan!(native, placed(name, resolve('/Users/test/kept/x')), 'add'), name).toMatchObject({
         available: false,
         reason: 'unsupported',
         message: `Grok cannot take a skill folder named ${name}`,
@@ -1031,7 +1045,7 @@ describe('Grok skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: join(root, 'skills', 'release_notes'), to: keepIn }] },
-      display: 'move ~/.grok/skills/release_notes → ~/kept/release-notes',
+      display: 'move ~/.grok/skills/release_notes → ~/kept/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     expect(grok.plan!(native, own, 'remove')).toEqual({
@@ -1158,7 +1172,7 @@ async function populateMarketplaces(
       '',
       '[[marketplace.sources]]',
       'name = "gone"',
-      `path = "${join(home, 'markets', 'gone')}"`,
+      `path = ${JSON.stringify(join(home, 'markets', 'gone'))}`,
       '',
     ].join('\n'),
   );
@@ -1674,7 +1688,7 @@ describe('Grok marketplaces', () => {
         'git = "https://git.example.com/empty.git"',
         '[[marketplace.sources]]',
         'name = "listless"',
-        `path = "${join(home, 'markets', 'listless')}"`,
+        `path = ${JSON.stringify(join(home, 'markets', 'listless'))}`,
         '[[marketplace.sources]]',
         'name = "relative"',
         'path = "markets/relative"',
@@ -1699,7 +1713,10 @@ describe('Grok marketplaces', () => {
     expect(catalog.plugins).toEqual([]);
     const inventory = ExtensionInventorySchema.parse(await grok.inventory(nativeProfile(home)));
     expect(inventory.unread).toEqual([
-      { kind: 'marketplace', message: '~/.claude/plugins/known_marketplaces.json could not be read' },
+      {
+        kind: 'marketplace',
+        message: '~/.claude/plugins/known_marketplaces.json could not be read'.replaceAll('/', sep),
+      },
     ]);
   });
 
@@ -1712,7 +1729,7 @@ describe('Grok marketplaces', () => {
         ['scp', 'git@github.com:northlight/plugins.git'],
         ['deploy-user', 'deploy@git.example.com:team/tools.git'],
         ['ssh', 'ssh://deploy:hunter2@git.example.com/team/x.git'],
-        ['local', '/Users/test/repos/market.git'],
+        ['local', resolve('/Users/test/repos/market.git')],
       ]
         .map(([name, git]) => `[[marketplace.sources]]\nname = "${name}"\ngit = "${git}"\n`)
         .join('\n'),
@@ -1726,7 +1743,7 @@ describe('Grok marketplaces', () => {
       'git@github.com:northlight/plugins.git',
       '•••@git.example.com:team/tools.git',
       'ssh://•••@git.example.com/team/x.git',
-      '/Users/test/repos/market.git',
+      resolve('/Users/test/repos/market.git'),
     ]);
   });
 
@@ -1835,7 +1852,7 @@ describe('Grok marketplaces', () => {
         `git = "https://git.example.com/team${'?'.repeat(20_000)}\\nx"`,
         '[[marketplace.sources]]',
         'name = "northlight"',
-        `path = "${market}"`,
+        `path = ${JSON.stringify(market)}`,
         '',
       ].join('\n'),
     );
@@ -1883,7 +1900,10 @@ describe('Grok marketplaces', () => {
     const home = await tempHome();
     const root = join(home, '.grok');
     const market = join(home, 'market');
-    await write(join(root, 'config.toml'), `[[marketplace.sources]]\nname = "northlight"\npath = "${market}"\n`);
+    await write(
+      join(root, 'config.toml'),
+      `[[marketplace.sources]]\nname = "northlight"\npath = ${JSON.stringify(market)}\n`,
+    );
     await write(join(market, '.grok-plugin', 'marketplace.json'), {
       plugins: [
         {
@@ -1916,7 +1936,10 @@ describe('Grok marketplaces', () => {
     const home = await tempHome();
     const root = join(home, '.grok');
     const market = join(home, 'market');
-    await write(join(root, 'config.toml'), `[[marketplace.sources]]\nname = "crowded"\npath = "${market}"\n`);
+    await write(
+      join(root, 'config.toml'),
+      `[[marketplace.sources]]\nname = "crowded"\npath = ${JSON.stringify(market)}\n`,
+    );
     const names = Array.from({ length: 405 }, (_, index) => `p${String(index).padStart(3, '0')}`);
     await write(join(market, '.grok-plugin', 'marketplace.json'), {
       plugins: names.map((name) => ({ name, source: `./plugins/${name}` })),
@@ -1962,12 +1985,12 @@ const fromSource = (source: string): ExtensionActItem => ({
 });
 
 describe('Grok installs and marketplace acts', () => {
-  const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: '/Users/test' });
-  const work = actProfile('managed', '/profiles/work/grok');
-  const native = actProfile('native-default', '/Users/test/.grok');
+  const grok = createGrokExtensionService({ executable: '/opt/grok/bin/grok', env: {}, home: resolve('/Users/test') });
+  const work = actProfile('managed', resolve('/profiles/work/grok'));
+  const native = actProfile('native-default', resolve('/Users/test/.grok'));
 
   it('installs a plugin from a folder on this Mac with its own install, trusted by the person the host asked', () => {
-    const source = '/Users/test/plugins/review';
+    const source = resolve('/Users/test/plugins/review');
     expect(
       ExtensionActPlanSchema.parse(grok.plan!(work, fromSource(source), 'install', { source, holds: ['notes'] })),
     ).toEqual({
@@ -1977,9 +2000,9 @@ describe('Grok installs and marketplace acts', () => {
       runs: {
         kind: 'command',
         argv: ['/opt/grok/bin/grok', 'plugin', 'install', source, '--trust'],
-        env: { GROK_HOME: '/profiles/work/grok' },
+        env: { GROK_HOME: resolve('/profiles/work/grok') },
       },
-      display: '/opt/grok/bin/grok plugin install /Users/test/plugins/review --trust',
+      display: `/opt/grok/bin/grok plugin install ${shownArgument(source)} --trust`,
       reaches: [],
     });
     // From `~`, and whole however it was written; the native default needs no root.
@@ -2013,7 +2036,7 @@ describe('Grok installs and marketplace acts', () => {
         message: 'Grok installs a plugin from a folder on this Mac',
       });
     }
-    const source = '/Users/test/plugins/review';
+    const source = resolve('/Users/test/plugins/review');
     expect(grok.plan!(work, fromSource(source), 'install', { source, holds: ['notes', 'review'] })).toEqual({
       target: { kind: 'plugin', id: source },
       act: 'install',
@@ -2039,7 +2062,9 @@ describe('Grok installs and marketplace acts', () => {
       message: "Grok's install of a marketplace plugin isn't confirmed yet: run `grok plugin install` in a terminal",
     });
     for (const other of [actServer(), actSkill()]) {
-      expect(grok.plan!(work, other, 'install', { source: '/Users/test/plugins/review', holds: [] })).toMatchObject({
+      expect(
+        grok.plan!(work, other, 'install', { source: resolve('/Users/test/plugins/review'), holds: [] }),
+      ).toMatchObject({
         available: false,
         reason: 'unsupported',
         message: 'Only a plugin is installed',
@@ -2052,7 +2077,7 @@ describe('Grok installs and marketplace acts', () => {
       'https://github.com/northlight/plugins.git',
       'ssh://github.com/northlight/plugins.git',
       'git@github.com:northlight/plugins.git',
-      '/Users/test/markets/northlight',
+      resolve('/Users/test/markets/northlight'),
     ]) {
       expect(ExtensionActPlanSchema.parse(grok.plan!(work, toAdd(source), 'add')), source).toEqual({
         target: { kind: 'marketplace', id: source },
@@ -2061,9 +2086,9 @@ describe('Grok installs and marketplace acts', () => {
         runs: {
           kind: 'command',
           argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', 'add', source],
-          env: { GROK_HOME: '/profiles/work/grok' },
+          env: { GROK_HOME: resolve('/profiles/work/grok') },
         },
-        display: `/opt/grok/bin/grok plugin marketplace add ${source}`,
+        display: `/opt/grok/bin/grok plugin marketplace add ${shownArgument(source)}`,
         reaches: [],
       });
     }
@@ -2073,7 +2098,7 @@ describe('Grok installs and marketplace acts', () => {
       available: true,
       runs: {
         kind: 'command',
-        argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', 'add', '/Users/test/markets/northlight'],
+        argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', 'add', resolve('/Users/test/markets/northlight')],
       },
     });
     expect((home as { runs: { env?: unknown } }).runs.env).toBeUndefined();
@@ -2108,13 +2133,18 @@ describe('Grok installs and marketplace acts', () => {
         runs: {
           kind: 'command',
           argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', act, 'xAI Official'],
-          env: { GROK_HOME: '/profiles/work/grok' },
+          env: { GROK_HOME: resolve('/profiles/work/grok') },
         },
         display: `/opt/grok/bin/grok plugin marketplace ${act} "xAI Official"`,
         reaches: [],
       });
     }
-    const own = actMarketplace({ id: 'northlight', name: 'northlight', origin: 'own', source: '/Users/test/markets' });
+    const own = actMarketplace({
+      id: 'northlight',
+      name: 'northlight',
+      origin: 'own',
+      source: resolve('/Users/test/markets'),
+    });
     expect(grok.plan!(native, own, 'remove')).toMatchObject({
       available: true,
       runs: { kind: 'command', argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', 'remove', 'northlight'] },
@@ -2136,7 +2166,7 @@ describe('Grok installs and marketplace acts', () => {
       runs: {
         kind: 'command',
         argv: ['/opt/grok/bin/grok', 'plugin', 'marketplace', 'update', 'claude-plugins-official'],
-        env: { GROK_HOME: '/profiles/work/grok' },
+        env: { GROK_HOME: resolve('/profiles/work/grok') },
       },
       display: '/opt/grok/bin/grok plugin marketplace update claude-plugins-official',
       reaches: [],
@@ -2189,14 +2219,14 @@ describe('Grok installs and marketplace acts', () => {
       actMarketplace({ id: 'claude:x', name: 'x', origin: 'borrowed', lender: 'claude', shared: true }),
       actMarketplace({ origin: 'managed' }),
       actMarketplace({ id: '-x', name: '-x', origin: 'own', source: undefined }),
-      toAdd('/Users/test/markets/northlight'),
+      toAdd(resolve('/Users/test/markets/northlight')),
     ];
     const options: ExtensionActPlanOptions[] = [
       {},
-      { source: '/Users/test/plugins/review', holds: ['review'] },
+      { source: resolve('/Users/test/plugins/review'), holds: ['review'] },
       { source: 'review', holds: [] },
       { listed: { id: 'review@xAI Official', name: 'review', marketplace: 'xAI Official' } },
-      { keepIn: '/Users/test/kept/review' },
+      { keepIn: resolve('/Users/test/kept/review') },
     ];
     for (const profile of [work, native]) {
       for (const item of items) {

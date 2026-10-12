@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, parse } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { findPiSession, piCwdKey } from './session-store.js';
 
@@ -20,7 +20,8 @@ async function session(sessionDir: string, id: string): Promise<void> {
 
 describe('Pi session discovery', () => {
   it('uses Pi cwd encoding and resolves only an exact or unique UUID prefix', async () => {
-    expect(piCwdKey('/private/tmp/repo')).toBe('--private-tmp-repo--');
+    const drive = process.platform === 'win32' ? `${parse(process.cwd()).root.slice(0, 1)}--` : '';
+    expect(piCwdKey('/private/tmp/repo')).toBe(`--${drive}private-tmp-repo--`);
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-pi-store-'));
     roots.push(root);
     await session(root, '01abcdef-1111');

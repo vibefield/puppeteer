@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
@@ -9,14 +10,18 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'claude',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
   ...over,
 });
 
-const imposter = { kind: 'imposter' as const, executable: '/opt/ai', stateRoot: '/tmp/claude-imposter' };
+const imposter = {
+  kind: 'imposter' as const,
+  executable: resolve('/opt/ai'),
+  stateRoot: resolve('/tmp/claude-imposter'),
+};
 
 describe('Claude native invocation normalization', () => {
   // Every typed launch is marked `typed`: its recipe then names no permission mode of its own.
@@ -37,7 +42,7 @@ describe('Claude native invocation normalization', () => {
       ),
     ).toEqual({
       status: 'accepted',
-      options: { typed: true, settingSources: ['project', 'local'], configDir: '/profile' },
+      options: { typed: true, settingSources: ['project', 'local'], configDir: resolve('/profile') },
     });
   });
 
@@ -159,7 +164,7 @@ describe('Claude native invocation normalization', () => {
       status: 'accepted',
       options: {
         typed: true,
-        executable: '/opt/ai',
+        executable: resolve('/opt/ai'),
         env: { AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposter.stateRoot },
       },
     });
@@ -188,38 +193,38 @@ describe('Claude native invocation normalization', () => {
   });
 
   it('owns imposter environment and continuation state', () => {
-    const imposterRoot = '/tmp/claude-imposter';
-    const state = captureClaudeContinuationState({ configDir: '../profile' }, '/repo', {});
-    expect(restoreClaudeContinuationState(state)).toEqual({ configDir: '/profile' });
+    const imposterRoot = resolve('/tmp/claude-imposter');
+    const state = captureClaudeContinuationState({ configDir: '../profile' }, resolve('/repo'), {});
+    expect(restoreClaudeContinuationState(state)).toEqual({ configDir: resolve('/profile') });
     const imposterState = captureClaudeContinuationState(
       { env: { AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposterRoot } },
-      '/repo',
+      resolve('/repo'),
       {},
     );
-    expect(restoreClaudeContinuationState(imposterState, { imposterExecutable: '/opt/ai' })).toEqual({
-      executable: '/opt/ai',
+    expect(restoreClaudeContinuationState(imposterState, { imposterExecutable: resolve('/opt/ai') })).toEqual({
+      executable: resolve('/opt/ai'),
       env: { AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: imposterRoot },
     });
-    expect(restoreClaudeContinuationState(JSON.stringify({ kind: 'claude', configDir: '/legacy' }))).toEqual({
-      configDir: '/legacy',
+    expect(restoreClaudeContinuationState(JSON.stringify({ kind: 'claude', configDir: resolve('/legacy') }))).toEqual({
+      configDir: resolve('/legacy'),
     });
     expect(() =>
-      restoreClaudeContinuationState(JSON.stringify({ version: 2, configDir: '/profile', extra: true })),
+      restoreClaudeContinuationState(JSON.stringify({ version: 2, configDir: resolve('/profile'), extra: true })),
     ).toThrow('invalid Claude continuation state');
   });
 
   it('persists nothing a typed launch carried: those arguments belong to the launch that was typed, not a resume', () => {
     const typed = normalizeClaudeNativeInvocation(
       invocation(['-n', 'mine', '--dangerously-skip-permissions', '--add-dir', '../lib', 'fix it'], {
-        environment: { CLAUDE_CONFIG_DIR: '/profile' },
+        environment: { CLAUDE_CONFIG_DIR: resolve('/profile') },
       }),
     );
     if (typed.status !== 'accepted') throw new Error('expected an accepted invocation');
-    const state = captureClaudeContinuationState(typed.options, '/repo', {});
-    expect(JSON.parse(state!)).toEqual({ version: 2, configDir: '/profile' });
-    expect(restoreClaudeContinuationState(state)).toEqual({ configDir: '/profile' });
+    const state = captureClaudeContinuationState(typed.options, resolve('/repo'), {});
+    expect(JSON.parse(state!)).toEqual({ version: 2, configDir: resolve('/profile') });
+    expect(restoreClaudeContinuationState(state)).toEqual({ configDir: resolve('/profile') });
     const prompted = normalizeClaudeNativeInvocation(invocation(['fix it']));
     if (prompted.status !== 'accepted') throw new Error('expected an accepted invocation');
-    expect(captureClaudeContinuationState(prompted.options, '/repo', {})).toBeUndefined();
+    expect(captureClaudeContinuationState(prompted.options, resolve('/repo'), {})).toBeUndefined();
   });
 });

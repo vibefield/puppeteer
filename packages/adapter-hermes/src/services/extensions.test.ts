@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
@@ -530,14 +530,14 @@ const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
 
 describe('Hermes extension acts', () => {
-  const hermes = createHermesExtensionService({ executable: '/opt/hermes/bin/hermes', home: '/Users/test' });
+  const hermes = createHermesExtensionService({ executable: '/opt/hermes/bin/hermes', home: resolve('/Users/test') });
   it('removes a server of its own config with its own command, and turns none off by command', () => {
-    expect(hermes.plan!(actProfile('managed', '/profiles/work/hermes'), actServer(), 'remove')).toMatchObject({
+    expect(hermes.plan!(actProfile('managed', resolve('/profiles/work/hermes')), actServer(), 'remove')).toMatchObject({
       available: true,
       runs: {
         kind: 'command',
         argv: ['/opt/hermes/bin/hermes', 'mcp', 'remove', 'linear'],
-        env: { HERMES_HOME: '/profiles/work/hermes' },
+        env: { HERMES_HOME: resolve('/profiles/work/hermes') },
       },
       reaches: ['definition'],
     });
@@ -548,13 +548,13 @@ describe('Hermes extension acts', () => {
   });
 
   it('signs in to a server its config marks auth: oauth in a terminal, and has no command that signs out', () => {
-    const work = actProfile('managed', '/profiles/work/hermes');
+    const work = actProfile('managed', resolve('/profiles/work/hermes'));
     expect(hermes.plan!(work, actServer({ auth: 'needs-sign-in' }), 'sign-in')).toMatchObject({
       available: true,
       runs: {
         kind: 'terminal',
         argv: ['/opt/hermes/bin/hermes', 'mcp', 'login', 'linear'],
-        env: { HERMES_HOME: '/profiles/work/hermes' },
+        env: { HERMES_HOME: resolve('/profiles/work/hermes') },
       },
       reaches: [],
     });
@@ -566,7 +566,7 @@ describe('Hermes extension acts', () => {
   });
 
   it('adds no server for a host: its own add asks which of the tools to use before it saves', () => {
-    const work = actProfile('managed', '/profiles/work/hermes');
+    const work = actProfile('managed', resolve('/profiles/work/hermes'));
     const context7 = actServer({
       id: 'context7',
       name: 'context7',
@@ -589,7 +589,7 @@ describe('Hermes extension acts', () => {
         'Hermes adds a server only in its own terminal: `hermes mcp add` connects to it and asks which of its tools to use',
     });
     const linear = actServer({ definition: { transport: 'http', url: 'https://mcp.linear.app/mcp' } });
-    expect(hermes.plan!(actProfile('native-default', '/Users/test'), linear, 'add')).toMatchObject({
+    expect(hermes.plan!(actProfile('native-default', resolve('/Users/test')), linear, 'add')).toMatchObject({
       available: false,
       reason: 'in-app',
     });
@@ -609,14 +609,14 @@ describe('Hermes skills placed', () => {
       act: 'add',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/profiles/hermes/h-7a10/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/profiles/hermes/h-7a10/skills/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     // The native default's is the given home's `.hermes`, whatever path the profile carries.
     expect(hermes.plan!(nativeProfile('/nowhere/.hermes'), actSkill({ linkTarget: kept }), 'add')).toMatchObject({
       available: true,
       runs: { steps: [{ op: 'link', path: join(home, '.hermes', 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/.hermes/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/.hermes/skills/release-notes'.replaceAll('/', sep),
     });
     // No folder to link, a name that is not one folder, or one Hermes's walk passes over.
     for (const fields of [
@@ -679,7 +679,7 @@ describe('Hermes skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'changelog') }] },
-      display: 'unlink ~/profiles/hermes/h-7a10/skills/changelog',
+      display: 'unlink ~/profiles/hermes/h-7a10/skills/changelog'.replaceAll('/', sep),
       reaches: [],
     });
     // The hub's folder never moves, whatever keep the host offers.
@@ -1408,11 +1408,11 @@ describe('Hermes installs', () => {
   const HERMES = '/opt/hermes/bin/hermes';
   const hermes = createHermesExtensionService({
     executable: HERMES,
-    home: '/Users/test',
+    home: resolve('/Users/test'),
     readWrapper: async () => undefined,
   });
-  const work = actProfile('managed', '/profiles/work/hermes');
-  const native = actProfile('native-default', '/Users/test/.hermes');
+  const work = actProfile('managed', resolve('/profiles/work/hermes'));
+  const native = actProfile('native-default', resolve('/Users/test/.hermes'));
   const entry = (fields: Partial<CatalogPlugin> = {}): CatalogPlugin => ({
     id: 'aihubmix',
     name: 'aihubmix',
@@ -1448,7 +1448,7 @@ describe('Hermes installs', () => {
       runs: {
         kind: 'terminal',
         argv: [HERMES, 'plugins', 'install', 'aihubmix'],
-        env: { HERMES_HOME: '/profiles/work/hermes' },
+        env: { HERMES_HOME: resolve('/profiles/work/hermes') },
       },
       display: `${HERMES} plugins install aihubmix`,
       reaches: [],
@@ -1514,7 +1514,7 @@ describe('Hermes installs', () => {
         runs: {
           kind: 'terminal',
           argv: [HERMES, 'plugins', 'install', source],
-          env: { HERMES_HOME: '/profiles/work/hermes' },
+          env: { HERMES_HOME: resolve('/profiles/work/hermes') },
         },
         display: `${HERMES} plugins install ${source}`,
         reaches: [],
@@ -1525,7 +1525,7 @@ describe('Hermes installs', () => {
       'brave-search',
       'http://example.com/acme/notes',
       'file:///Users/test/notes',
-      '/Users/test/notes',
+      resolve('/Users/test/notes'),
       './notes/plugin',
       '~/notes/plugin',
       '../acme/notes',
@@ -1586,13 +1586,13 @@ describe('Hermes installs', () => {
       actServer(),
       actServer({ id: 'fetch', name: 'fetch', transport: 'stdio', target: 'uvx mcp-server-fetch' }),
       actSkill(),
-      actSkill({ id: 'changelog', name: 'changelog', linkTarget: '/Users/test/kept/changelog' }),
+      actSkill({ id: 'changelog', name: 'changelog', linkTarget: resolve('/Users/test/kept/changelog') }),
     ];
     const variants = [
       {},
       { listed: entry() },
       { source: 'acme/notes', holds: ['disk-cleanup'] },
-      { keepIn: '/Users/test/kept/release-notes' },
+      { keepIn: resolve('/Users/test/kept/release-notes') },
     ];
     for (const item of items) {
       for (const act of ExtensionActKindSchema.options) {

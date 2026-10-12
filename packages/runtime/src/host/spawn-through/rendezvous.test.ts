@@ -161,7 +161,7 @@ describe('spawn-through rendezvous', { timeout: 60_000 }, () => {
     expect(await modeOf(home)).toBe(0o700);
   });
 
-  it('never shows a reader a half-written file', async () => {
+  itPosix('never shows a reader a half-written file', async () => {
     await writeRendezvous(home, { port: 1, token: 'token-0', strict: false, launchProviders: providers });
     const written = new Set(['token-0']);
     let writing = true;

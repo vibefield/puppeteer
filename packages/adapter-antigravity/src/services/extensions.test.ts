@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
@@ -20,6 +20,8 @@ import {
   type SkillItem,
 } from '@vibefield/puppeteer-core';
 import { createAntigravityExtensionService } from './extensions.js';
+
+const shownArgument = (argument: string): string => (argument.includes('\\') ? JSON.stringify(argument) : argument);
 
 const now = () => new Date('2026-09-25T09:00:00.000Z');
 const made: string[] = [];
@@ -127,7 +129,7 @@ async function populate(home: string): Promise<{ library: string }> {
 
   const cli = join(home, '.gemini', 'antigravity-cli');
   await write(join(cli, 'builtin', 'skills', 'automation', 'SKILL.md'), skill('automation', 'Automates the desktop'));
-  await write(join(cli, 'settings.json'), { trustedWorkspaces: ['/Users/test/billing'] });
+  await write(join(cli, 'settings.json'), { trustedWorkspaces: [resolve('/Users/test/billing')] });
   // Credential stores a read must never open: their contents would surface if it did.
   await write(join(cli, 'antigravity-oauth-token'), { token: { access_token: 'ya29.cli-access-token' } });
   await write(join(home, '.gemini', 'antigravity', 'mcp_oauth_tokens.json'), { sentry: 'mcp-oauth-access-token' });
@@ -324,7 +326,7 @@ describe('Antigravity extensions', () => {
           oauth: { clientId: 'sentry-client', clientSecret: 'oauth-client-secret' },
         },
         bigquery: { serverUrl: 'https://bigquery.googleapis.com/mcp', authProviderType: 'google_credentials' },
-        notes: { command: 'node', args: ['server.js'], cwd: '/Users/test/notes-server' },
+        notes: { command: 'node', args: ['server.js'], cwd: resolve('/Users/test/notes-server') },
         github: {
           command: 'docker',
           args: [
@@ -401,7 +403,7 @@ const actPlugin = (fields: Record<string, unknown> = {}) =>
     name: 'review',
     origin: 'own',
     enabled: true,
-    location: '/profiles/work/antigravity/.gemini/config/plugins/review',
+    location: resolve('/profiles/work/antigravity/.gemini/config/plugins/review'),
     ...fields,
   }) as never;
 /** A server to add, as the runtime gives it: the server as Antigravity would hold it once added. */
@@ -418,18 +420,23 @@ const added = (definition: McpServerDefinition, name = 'context7'): McpServerIte
 });
 
 describe('Antigravity extension acts', () => {
-  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/Users/test' });
+  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: resolve('/Users/test') });
   it("switches a server of the home's own under the profile's HOME, and offers no removal it has not probed", () => {
-    expect(agy.plan!(actProfile('managed', '/profiles/work/antigravity'), actServer(), 'enable')).toMatchObject({
+    expect(
+      agy.plan!(actProfile('managed', resolve('/profiles/work/antigravity')), actServer(), 'enable'),
+    ).toMatchObject({
       available: true,
       runs: {
         kind: 'command',
         argv: ['agy', 'mcp', 'enable', 'linear'],
-        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+        env: {
+          HOME: resolve('/profiles/work/antigravity'),
+          PUPPETEER_ANTIGRAVITY_HOME: resolve('/profiles/work/antigravity'),
+        },
       },
       reaches: [],
     });
-    const native = agy.plan!(actProfile('native-default', '/Users/test'), actServer(), 'disable');
+    const native = agy.plan!(actProfile('native-default', resolve('/Users/test')), actServer(), 'disable');
     expect(native).toMatchObject({ available: true, runs: { argv: ['agy', 'mcp', 'disable', 'linear'] } });
     expect((native as { runs: { env?: unknown } }).runs.env).toBeUndefined();
     expect(agy.plan!(actProfile('managed', '/p'), actServer(), 'remove')).toMatchObject({ available: false });
@@ -446,7 +453,7 @@ describe('Antigravity extension acts', () => {
 
   it("adds a server with its own add under the profile's HOME, the command line after `--`", () => {
     const plan = agy.plan!(
-      actProfile('managed', '/profiles/work/antigravity'),
+      actProfile('managed', resolve('/profiles/work/antigravity')),
       added({ transport: 'stdio', command: 'npx', args: ['-y', '@upstash/context7-mcp', '--transport', 'stdio'] }),
       'add',
     );
@@ -457,13 +464,16 @@ describe('Antigravity extension acts', () => {
       runs: {
         kind: 'command',
         argv: ['agy', 'mcp', 'add', 'context7', '--', 'npx', '-y', '@upstash/context7-mcp', '--transport', 'stdio'],
-        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+        env: {
+          HOME: resolve('/profiles/work/antigravity'),
+          PUPPETEER_ANTIGRAVITY_HOME: resolve('/profiles/work/antigravity'),
+        },
       },
       display: 'agy mcp add context7 -- npx -y @upstash/context7-mcp --transport stdio',
       reaches: [],
     });
     const http = agy.plan!(
-      actProfile('native-default', '/Users/test'),
+      actProfile('native-default', resolve('/Users/test')),
       added({ transport: 'http', url: 'https://mcp.linear.app/mcp' }, 'linear'),
       'add',
     );
@@ -477,7 +487,7 @@ describe('Antigravity extension acts', () => {
   });
 
   it('adds no server that reads a variable, since Antigravity keeps only literal values, and none over SSE', () => {
-    const work = actProfile('managed', '/profiles/work/antigravity');
+    const work = actProfile('managed', resolve('/profiles/work/antigravity'));
     expect(
       agy.plan!(
         work,
@@ -511,7 +521,7 @@ describe('Antigravity extension acts', () => {
   });
 
   it('adds only a server with a definition, under a name its command takes', () => {
-    const work = actProfile('managed', '/profiles/work/antigravity');
+    const work = actProfile('managed', resolve('/profiles/work/antigravity'));
     const linear: McpServerDefinition = { transport: 'http', url: 'https://mcp.linear.app/mcp' };
     for (const name of ['--version', 'my server']) {
       expect(agy.plan!(work, added(linear, name), 'add'), name).toMatchObject({
@@ -529,7 +539,7 @@ describe('Antigravity extension acts', () => {
   });
 
   it("switches and uninstalls a plugin of the home's own under the profile's HOME, by the name the read found", () => {
-    const work = actProfile('managed', '/profiles/work/antigravity');
+    const work = actProfile('managed', resolve('/profiles/work/antigravity'));
     const commands: Array<[ExtensionActKind, string[]]> = [
       ['enable', ['agy', 'plugin', 'enable', 'review']],
       ['disable', ['agy', 'plugin', 'disable', 'review']],
@@ -543,15 +553,18 @@ describe('Antigravity extension acts', () => {
         runs: {
           kind: 'command',
           argv,
-          env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+          env: {
+            HOME: resolve('/profiles/work/antigravity'),
+            PUPPETEER_ANTIGRAVITY_HOME: resolve('/profiles/work/antigravity'),
+          },
         },
         display: argv.join(' '),
         reaches: [],
       });
     }
     const native = agy.plan!(
-      actProfile('native-default', '/Users/test'),
-      actPlugin({ location: '/Users/test/.gemini/config/plugins/review' }),
+      actProfile('native-default', resolve('/Users/test')),
+      actPlugin({ location: resolve('/Users/test/.gemini/config/plugins/review') }),
       'remove',
     );
     expect(native).toMatchObject({
@@ -562,7 +575,7 @@ describe('Antigravity extension acts', () => {
   });
 
   it('offers no purge or update, which Antigravity has no command for, and no name its commands cannot take', () => {
-    const work = actProfile('managed', '/profiles/work/antigravity');
+    const work = actProfile('managed', resolve('/profiles/work/antigravity'));
     expect(agy.plan!(work, actPlugin(), 'purge')).toEqual({
       target: { kind: 'plugin', id: 'review' },
       act: 'purge',
@@ -619,11 +632,11 @@ describe('Antigravity extension acts', () => {
   });
 
   it('uninstalls only a plugin whose folder has its name, since the uninstall takes the folder by that name', () => {
-    const work = actProfile('managed', '/profiles/work/antigravity');
+    const work = actProfile('managed', resolve('/profiles/work/antigravity'));
     const copied = actPlugin({
       id: 'other',
       name: 'other',
-      location: '/profiles/work/antigravity/.gemini/config/plugins/dropped-in',
+      location: resolve('/profiles/work/antigravity/.gemini/config/plugins/dropped-in'),
     });
     expect(agy.plan!(work, copied, 'remove')).toEqual({
       target: { kind: 'plugin', id: 'other' },
@@ -728,14 +741,18 @@ describe('Antigravity skills placed', () => {
         kind: 'files',
         steps: [{ op: 'link', path: join(work, '.gemini', 'config', 'skills', 'release-notes'), target: kept }],
       },
-      display: 'link ~/kept/release-notes → ~/profiles/work/antigravity-3c1f/.gemini/config/skills/release-notes',
+      display:
+        'link ~/kept/release-notes → ~/profiles/work/antigravity-3c1f/.gemini/config/skills/release-notes'.replaceAll(
+          '/',
+          sep,
+        ),
       reaches: [],
     });
     // The native default's is the process home's, whatever root the profile carries.
     expect(service.plan!(nativeProfile(home), actSkill({ linkTarget: kept }), 'add')).toMatchObject({
       available: true,
       runs: { steps: [{ op: 'link', path: join(home, '.gemini', 'config', 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/.gemini/config/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/.gemini/config/skills/release-notes'.replaceAll('/', sep),
     });
     // No folder to link, or a name that is not one folder Antigravity lists.
     for (const fields of [{}, { id: '../escape', linkTarget: kept }, { id: '.hidden', linkTarget: kept }]) {
@@ -771,7 +788,7 @@ describe('Antigravity skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(skills, 'changelog') }] },
-      display: 'unlink ~/.gemini/config/skills/changelog',
+      display: 'unlink ~/.gemini/config/skills/changelog'.replaceAll('/', sep),
       reaches: [],
     });
     // The person's own folder moves to where the host keeps it; with nowhere to keep it, it stays.
@@ -782,7 +799,7 @@ describe('Antigravity skills placed', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: join(skills, 'release-notes'), to: kept }] },
-      display: 'move ~/.gemini/config/skills/release-notes → ~/kept/release-notes',
+      display: 'move ~/.gemini/config/skills/release-notes → ~/kept/release-notes'.replaceAll('/', sep),
       reaches: [],
     });
     expect(service.plan!(work, held('release-notes'), 'remove')).toMatchObject({
@@ -817,9 +834,9 @@ const sourced = (source: string): PluginItem => ({
 });
 
 describe('Antigravity plugin installs', () => {
-  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: '/Users/test' });
-  const work = actProfile('managed', '/profiles/work/antigravity');
-  const native = actProfile('native-default', '/Users/test/.gemini/antigravity-cli');
+  const agy = createAntigravityExtensionService({ executable: 'agy', env: {}, home: resolve('/Users/test') });
+  const work = actProfile('managed', resolve('/profiles/work/antigravity'));
+  const native = actProfile('native-default', resolve('/Users/test/.gemini/antigravity-cli'));
   const install = (source: string, holds: readonly string[] = [], profile = work) =>
     ExtensionActPlanSchema.parse(agy.plan!(profile, sourced(source), 'install', { source, holds }));
   const marketplace: MarketplaceItem = {
@@ -831,24 +848,27 @@ describe('Antigravity plugin installs', () => {
   };
 
   it("installs from a folder or a GitHub repository with its own install, under the profile's HOME", () => {
-    expect(install('/Users/test/code/review')).toEqual({
-      target: { kind: 'plugin', id: '/Users/test/code/review' },
+    expect(install(resolve('/Users/test/code/review'))).toEqual({
+      target: { kind: 'plugin', id: resolve('/Users/test/code/review') },
       act: 'install',
       available: true,
       runs: {
         kind: 'command',
-        argv: ['agy', 'plugin', 'install', '/Users/test/code/review'],
-        env: { HOME: '/profiles/work/antigravity', PUPPETEER_ANTIGRAVITY_HOME: '/profiles/work/antigravity' },
+        argv: ['agy', 'plugin', 'install', resolve('/Users/test/code/review')],
+        env: {
+          HOME: resolve('/profiles/work/antigravity'),
+          PUPPETEER_ANTIGRAVITY_HOME: resolve('/profiles/work/antigravity'),
+        },
       },
-      display: 'agy plugin install /Users/test/code/review',
+      display: `agy plugin install ${shownArgument(resolve('/Users/test/code/review'))}`,
       reaches: [],
     });
     // `~/` is the person's home, never the profile's HOME: the command is given the whole path.
     expect(install('~/code/review')).toMatchObject({
       target: { kind: 'plugin', id: '~/code/review' },
       available: true,
-      runs: { kind: 'command', argv: ['agy', 'plugin', 'install', '/Users/test/code/review'] },
-      display: 'agy plugin install /Users/test/code/review',
+      runs: { kind: 'command', argv: ['agy', 'plugin', 'install', resolve('/Users/test/code/review')] },
+      display: `agy plugin install ${shownArgument(resolve('/Users/test/code/review'))}`,
     });
     for (const source of [
       'https://github.com/northlight/review',
@@ -857,8 +877,8 @@ describe('Antigravity plugin installs', () => {
       'https://github.com/northlight/agy-plugins/tree/main/plugins/review',
       'https://github.com/north-light/review.plugin/tree/v1.2.0',
       // A Gemini CLI extension, and another profile's copy of a plugin, are folders like any other.
-      '/Users/test/.gemini/extensions/review',
-      '/Users/test/.gemini/config/plugins/review',
+      resolve('/Users/test/.gemini/extensions/review'),
+      resolve('/Users/test/.gemini/config/plugins/review'),
     ]) {
       expect(install(source), source).toMatchObject({
         target: { kind: 'plugin', id: source },
@@ -907,13 +927,13 @@ describe('Antigravity plugin installs', () => {
       ['/Users/test/code/../review', whole],
       ['~/code/../review', whole],
       ['~/', whole],
-      ['/Users/test/code/review@2', at],
+      [resolve('/Users/test/code/review@2'), at],
       ['~/code/@northlight/review', at],
       // Its own plugins folder, anything in it, and the `.gemini` above it, in the home the profile binds.
-      ['/profiles/work/antigravity/.gemini/config/plugins/review', own],
-      ['/profiles/work/antigravity/.gemini/config/plugins', own],
-      ['/profiles/work/antigravity/.gemini', own],
-      ['/Users/test/.gemini/config/plugins/review', own, native],
+      [resolve('/profiles/work/antigravity/.gemini/config/plugins/review'), own],
+      [resolve('/profiles/work/antigravity/.gemini/config/plugins'), own],
+      [resolve('/profiles/work/antigravity/.gemini'), own],
+      [resolve('/Users/test/.gemini/config/plugins/review'), own, native],
       ['~/.gemini', own, native],
     ];
     for (const [source, message, profile] of refusals) {
@@ -930,7 +950,7 @@ describe('Antigravity plugin installs', () => {
   it('answers held for a plugin it has by the name the source would most likely give it', () => {
     const holds = ['review', 'data-tools'];
     for (const source of [
-      '/Users/test/code/review',
+      resolve('/Users/test/code/review'),
       '~/code/review',
       'https://github.com/northlight/review',
       'https://github.com/northlight/review.git/',
@@ -948,7 +968,7 @@ describe('Antigravity plugin installs', () => {
     for (const source of [
       'https://github.com/northlight/agy-plugins',
       'https://github.com/northlight/review/tree/main/plugins/lint',
-      '/Users/test/code/review-2',
+      resolve('/Users/test/code/review-2'),
     ]) {
       expect(install(source, holds), source).toMatchObject({ available: true });
     }
@@ -996,7 +1016,7 @@ describe('Antigravity plugin installs', () => {
     const items: ExtensionActItem[] = [actServer(), actSkill(), actPlugin(), marketplace];
     for (const item of items) {
       for (const act of ExtensionActKindSchema.options) {
-        for (const options of [{}, { source: '/Users/test/code/review', holds: [] }, { source: '-rf' }]) {
+        for (const options of [{}, { source: resolve('/Users/test/code/review'), holds: [] }, { source: '-rf' }]) {
           const plan = ExtensionActPlanSchema.parse(agy.plan!(work, item, act, options));
           expect(plan.target, `${item.kind} ${act}`).toEqual({ kind: item.kind, id: item.id });
           expect(plan.act).toBe(act);
@@ -1005,7 +1025,7 @@ describe('Antigravity plugin installs', () => {
     }
     // Never `agy mcp install`: only a plugin is installed.
     for (const item of [actServer(), actSkill(), marketplace]) {
-      expect(agy.plan!(work, item, 'install', { source: '/Users/test/code/review' })).toMatchObject({
+      expect(agy.plan!(work, item, 'install', { source: resolve('/Users/test/code/review') })).toMatchObject({
         available: false,
         reason: 'unsupported',
         message: 'Only a plugin is installed',

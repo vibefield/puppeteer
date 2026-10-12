@@ -120,7 +120,7 @@ describe('built-in extension capabilities', () => {
     });
     expect(await runtime.planExtensionAct({ providerId: 'claude', target, act: 'remove' })).toMatchObject({
       available: true,
-      display: `${join(home, 'no-claude')} mcp remove --scope user linear`,
+      display: `${process.platform === 'win32' ? JSON.stringify(join(home, 'no-claude')) : join(home, 'no-claude')} mcp remove --scope user linear`,
       reaches: ['definition', 'sign-in'],
     });
     const output: string[] = [];
@@ -184,7 +184,7 @@ describe('built-in extension capabilities', () => {
     expect(started).toMatchObject({
       runtimeSessionId: 'pty-sign-in',
       profileId: 'claude:native-default',
-      display: `${join(home, 'no-claude')} mcp login linear`,
+      display: `${process.platform === 'win32' ? JSON.stringify(join(home, 'no-claude')) : join(home, 'no-claude')} mcp login linear`,
       reaches: [],
     });
     // the native default binds nothing, and the login runs in Claude's own folder

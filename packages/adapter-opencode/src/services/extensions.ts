@@ -49,7 +49,7 @@
 import type { Dirent } from 'node:fs';
 import { readdir, readFile, readlink, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   describeMcpCommand,
@@ -428,8 +428,8 @@ function installSource(source: string): { key: string; shown: string } | { refus
       ? { key: source, shown: path }
       : { refused: SOURCE_WORDS.address };
   }
-  if (source.startsWith('/')) {
-    return isAbsolute(source) && isNormalizedAbsolutePath(source)
+  if (isAbsolute(source)) {
+    return isNormalizedAbsolutePath(source)
       ? { key: pathToFileURL(source).href, shown: source }
       : { refused: SOURCE_WORDS.unnormalized };
   }
@@ -580,7 +580,7 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     },
   };
 
-  const shown = (path: string): string => (path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path);
+  const shown = (path: string): string => (path.startsWith(`${home}${sep}`) ? `~${path.slice(home.length)}` : path);
 
   /** The global config directory, first of those OpenCode scans: read per call, as `env` may be the process's. */
   const configRootOf = (): string => {

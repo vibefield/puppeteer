@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -329,9 +329,9 @@ describe('OpenCode extensions', () => {
     });
     const inventory = await read(home);
     expect(inventory.unread).toEqual([
-      { kind: 'plugin', message: '~/.config/opencode/opencode.json could not be read' },
-      { kind: 'mcp-server', message: '~/.config/opencode/opencode.json could not be read' },
-      { kind: 'skill', message: '~/.config/opencode/opencode.json could not be read' },
+      { kind: 'plugin', message: '~/.config/opencode/opencode.json could not be read'.replaceAll('/', sep) },
+      { kind: 'mcp-server', message: '~/.config/opencode/opencode.json could not be read'.replaceAll('/', sep) },
+      { kind: 'skill', message: '~/.config/opencode/opencode.json could not be read'.replaceAll('/', sep) },
     ]);
     expect(inventory.items.map((item) => item.id)).toEqual(['docs']);
   });
@@ -462,7 +462,9 @@ describe('OpenCode extensions', () => {
       mcp: { docs: { type: 'remote', url: 'https://docs.example.com/mcp' } },
     });
     const partial = await read(broken);
-    expect(partial.unread).toEqual([{ kind: 'plugin', message: '~/.config/opencode/tui.json could not be read' }]);
+    expect(partial.unread).toEqual([
+      { kind: 'plugin', message: '~/.config/opencode/tui.json could not be read'.replaceAll('/', sep) },
+    ]);
     expect(partial.items.map((item) => item.id)).toEqual(['opencode-wakatime', 'docs']);
   });
 });
@@ -530,7 +532,7 @@ const heldSkill = (inventory: ExtensionInventory, id: string): SkillItem => {
 
 describe('OpenCode extension acts', () => {
   it('has no command for a server or a skill', () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {} });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {} });
     expect(opencode.plan!(actProfile('managed', '/p'), actServer({ shared: true }), 'disable')).toMatchObject({
       available: false,
       reason: 'no-command',
@@ -545,7 +547,7 @@ describe('OpenCode extension acts', () => {
   });
 
   it('has no command that switches, removes or updates a plugin, and says why for each act', () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
     const noSwitch = "OpenCode has no switch for a plugin: it loads every plugin in its config's plugin list";
     const noRemoval =
       'OpenCode has no command that removes a plugin: it is an entry in the plugin list of its one config, which every profile reads';
@@ -579,8 +581,11 @@ describe('OpenCode extension acts', () => {
   });
 
   it('says a plugin that is a file changes where the file is', () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
-    const file = actPlugin({ id: 'file:///Users/test/.config/opencode/plugins/notify.ts', name: 'notify' });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
+    const file = actPlugin({
+      id: pathToFileURL(resolve('/Users/test/.config/opencode/plugins/notify.ts')).href,
+      name: 'notify',
+    });
     const answer = (act: ExtensionActKind) =>
       (opencode.plan!(actProfile('managed', '/p'), file, act) as { message: string }).message;
     expect(answer('disable')).toBe('OpenCode has no switch for a plugin: it loads every plugin file it finds');
@@ -591,9 +596,9 @@ describe('OpenCode extension acts', () => {
   });
 
   it("signs a remote server in and out in the profile's own data home, though the definition is every profile's", () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
     expect(
-      opencode.plan!(actProfile('managed', '/profiles/work/opencode'), actServer({ shared: true }), 'sign-in'),
+      opencode.plan!(actProfile('managed', resolve('/profiles/work/opencode')), actServer({ shared: true }), 'sign-in'),
     ).toEqual({
       target: { kind: 'mcp-server', id: 'linear' },
       act: 'sign-in',
@@ -601,12 +606,16 @@ describe('OpenCode extension acts', () => {
       runs: {
         kind: 'terminal',
         argv: ['opencode', 'mcp', 'auth', 'linear'],
-        env: { XDG_DATA_HOME: '/profiles/work/opencode/data' },
+        env: { XDG_DATA_HOME: resolve('/profiles/work/opencode/data') },
       },
       display: 'opencode mcp auth linear',
       reaches: [],
     });
-    const native = opencode.plan!(actProfile('native-default', '/Users/test'), actServer({ shared: true }), 'sign-out');
+    const native = opencode.plan!(
+      actProfile('native-default', resolve('/Users/test')),
+      actServer({ shared: true }),
+      'sign-out',
+    );
     expect(native).toMatchObject({
       available: true,
       runs: { kind: 'command', argv: ['opencode', 'mcp', 'logout', 'linear'] },
@@ -618,7 +627,7 @@ describe('OpenCode extension acts', () => {
   });
 
   it('adds a server with its own non-interactive add, into the one config every profile reads', () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
     const github: McpServerDefinition = {
       transport: 'stdio',
       command: 'npx',
@@ -626,7 +635,9 @@ describe('OpenCode extension acts', () => {
       env: ['GITHUB_TOKEN', 'GITHUB_HOST'],
     };
     // A managed profile binds only the data home; the config it writes is every profile's, so no variable.
-    expect(opencode.plan!(actProfile('managed', '/profiles/work/opencode'), added('github', github), 'add')).toEqual({
+    expect(
+      opencode.plan!(actProfile('managed', resolve('/profiles/work/opencode')), added('github', github), 'add'),
+    ).toEqual({
       target: { kind: 'mcp-server', id: 'github' },
       act: 'add',
       available: true,
@@ -654,7 +665,7 @@ describe('OpenCode extension acts', () => {
     for (const transport of ['http', 'sse'] as const) {
       expect(
         opencode.plan!(
-          actProfile('native-default', '/Users/test'),
+          actProfile('native-default', resolve('/Users/test')),
           added('linear', { transport, url: 'https://mcp.linear.app/mcp' }),
           'add',
         ),
@@ -670,7 +681,7 @@ describe('OpenCode extension acts', () => {
   });
 
   it('adds a server only from its definition, under a name its commands take', () => {
-    const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
+    const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
     const work = actProfile('managed', '/p');
     expect(opencode.plan!(work, actServer(), 'add')).toMatchObject({ available: false, reason: 'unsupported' });
     expect(
@@ -734,7 +745,7 @@ describe('OpenCode extension acts', () => {
           kind: 'files',
           steps: [{ op: 'link', path: join(home, '.config', 'opencode', 'skills', 'release-notes'), target: kept }],
         },
-        display: 'link ~/kept/release-notes → ~/.config/opencode/skills/release-notes',
+        display: 'link ~/kept/release-notes → ~/.config/opencode/skills/release-notes'.replaceAll('/', sep),
         reaches: ['every-profile'],
       });
     }
@@ -748,7 +759,7 @@ describe('OpenCode extension acts', () => {
       ),
     ).toMatchObject({
       runs: { steps: [{ op: 'link', path: join(xdg, 'opencode', 'skills', 'release-notes'), target: kept }] },
-      display: 'link ~/kept/release-notes → ~/xdg/opencode/skills/release-notes',
+      display: 'link ~/kept/release-notes → ~/xdg/opencode/skills/release-notes'.replaceAll('/', sep),
     });
     // Only a folder to link, under a name that stays one folder.
     const work = managedProfile(home);
@@ -791,14 +802,14 @@ describe('OpenCode extension acts', () => {
       act: 'remove',
       available: true,
       runs: { kind: 'files', steps: [{ op: 'unlink', path: join(config, 'skills', 'linked') }] },
-      display: 'unlink ~/.config/opencode/skills/linked',
+      display: 'unlink ~/.config/opencode/skills/linked'.replaceAll('/', sep),
       reaches: ['every-profile'],
     });
     const keepIn = join(home, 'kept', 'mine');
     expect(remove('mine', keepIn)).toMatchObject({
       available: true,
       runs: { kind: 'files', steps: [{ op: 'move', from: join(config, 'skills', 'mine'), to: keepIn }] },
-      display: 'move ~/.config/opencode/skills/mine → ~/kept/mine',
+      display: 'move ~/.config/opencode/skills/mine → ~/kept/mine'.replaceAll('/', sep),
       reaches: ['every-profile'],
     });
     // With nowhere to keep it, the person's own folder stays.
@@ -862,8 +873,8 @@ const sourced = (source: string): PluginItem => ({
 });
 
 describe('OpenCode plugin installs', () => {
-  const opencode = createOpenCodeExtensionService({ home: '/Users/test', env: {}, executable: 'opencode' });
-  const work = actProfile('managed', '/profiles/work/opencode');
+  const opencode = createOpenCodeExtensionService({ home: resolve('/Users/test'), env: {}, executable: 'opencode' });
+  const work = actProfile('managed', resolve('/profiles/work/opencode'));
   const install = (source: string, holds: readonly string[] = [], profile = work) =>
     ExtensionActPlanSchema.parse(opencode.plan!(profile, sourced(source), 'install', { source, holds }));
   const marketplace: MarketplaceItem = {
@@ -883,7 +894,7 @@ describe('OpenCode plugin installs', () => {
       runs: {
         kind: 'command',
         argv: ['opencode', 'plugin', 'opencode-wakatime@1.2.3', '--global', '--pure'],
-        env: { XDG_DATA_HOME: '/profiles/work/opencode/data' },
+        env: { XDG_DATA_HOME: resolve('/profiles/work/opencode/data') },
       },
       display: 'opencode plugin opencode-wakatime@1.2.3 --global --pure',
       reaches: ['every-profile'],
@@ -894,9 +905,9 @@ describe('OpenCode plugin installs', () => {
       '@acme/opencode-review',
       '@acme/opencode-review@next',
       'oc-theme.dusk_2@2.0.0-beta.1+build.5',
-      '/Users/test/code/opencode-notify',
-      'file:///Users/test/code/opencode-notify',
-      'file:///Users/test/code/My%20Plugin',
+      resolve('/Users/test/code/opencode-notify'),
+      pathToFileURL(resolve('/Users/test/code/opencode-notify')).href,
+      pathToFileURL(resolve('/Users/test/code/My Plugin')).href,
     ]) {
       expect(install(source), source).toMatchObject({
         target: { kind: 'plugin', id: source },
@@ -906,7 +917,11 @@ describe('OpenCode plugin installs', () => {
       });
     }
     // The native default binds nothing: its data home is OpenCode's own.
-    const native = install('opencode-wakatime', [], actProfile('native-default', '/Users/test/.local/share/opencode'));
+    const native = install(
+      'opencode-wakatime',
+      [],
+      actProfile('native-default', resolve('/Users/test/.local/share/opencode')),
+    );
     expect(native).toMatchObject({
       available: true,
       runs: { kind: 'command', argv: ['opencode', 'plugin', 'opencode-wakatime', '--global', '--pure'] },
@@ -971,7 +986,11 @@ describe('OpenCode plugin installs', () => {
   });
 
   it('answers held for a package it lists at any version, or a folder it lists, where its command changes nothing', () => {
-    const holds = ['opencode-wakatime', '@acme/opencode-review', 'file:///Users/test/code/opencode-notify'];
+    const holds = [
+      'opencode-wakatime',
+      '@acme/opencode-review',
+      pathToFileURL(resolve('/Users/test/code/opencode-notify')).href,
+    ];
     expect(install('opencode-wakatime@2.0.0', holds)).toEqual({
       target: { kind: 'plugin', id: 'opencode-wakatime@2.0.0' },
       act: 'install',
@@ -985,16 +1004,22 @@ describe('OpenCode plugin installs', () => {
       message:
         'OpenCode already lists @acme/opencode-review in its plugin list; its own command leaves that entry as it is',
     });
-    for (const source of ['/Users/test/code/opencode-notify', 'file:///Users/test/code/opencode-notify']) {
+    for (const source of [
+      resolve('/Users/test/code/opencode-notify'),
+      pathToFileURL(resolve('/Users/test/code/opencode-notify')).href,
+    ]) {
       expect(install(source, holds), source).toMatchObject({
         available: false,
         reason: 'held',
-        message:
-          'OpenCode already lists /Users/test/code/opencode-notify in its plugin list; its own command leaves that entry as it is',
+        message: `OpenCode already lists ${resolve('/Users/test/code/opencode-notify')} in its plugin list; its own command leaves that entry as it is`,
       });
     }
     // Another scope, another name or another folder is another plugin.
-    for (const source of ['@other/opencode-review', 'opencode-wakatime-pro', '/Users/test/code/opencode-notify-2']) {
+    for (const source of [
+      '@other/opencode-review',
+      'opencode-wakatime-pro',
+      resolve('/Users/test/code/opencode-notify-2'),
+    ]) {
       expect(install(source, holds), source).toMatchObject({ available: true });
     }
   });
@@ -1030,7 +1055,7 @@ describe('OpenCode plugin installs', () => {
       actServer(),
       actSkill(),
       actPlugin(),
-      actPlugin({ id: 'file:///Users/test/.config/opencode/plugins/notify.ts', name: 'notify' }),
+      actPlugin({ id: pathToFileURL(resolve('/Users/test/.config/opencode/plugins/notify.ts')).href, name: 'notify' }),
       marketplace,
     ];
     for (const item of items) {

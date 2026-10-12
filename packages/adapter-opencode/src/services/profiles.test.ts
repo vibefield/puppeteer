@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import {
   AgentProfileSchema,
@@ -21,7 +21,7 @@ import {
   type OpenCodeConsoleOrgsRequest,
 } from './profiles.js';
 
-const service = createOpenCodeProfileService({ home: '/home/tester', executable: 'opencode' });
+const service = createOpenCodeProfileService({ home: resolve('/home/tester'), executable: 'opencode' });
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
   AgentProfileSchema.parse({
@@ -29,7 +29,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'opencode',
     label: 'Work',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/opencode/77c5b0ad',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
@@ -145,7 +145,7 @@ describe('OpenCode profiles', () => {
     expect(service.provider.support).toMatchObject({
       supported: true,
       identity: 'native-protocol',
-      nativeDefaultRoot: '/home/tester/.local/share/opencode',
+      nativeDefaultRoot: resolve('/home/tester/.local/share/opencode'),
       credential: 'root',
       service: CONSOLE,
       signInRoutes: [
@@ -157,44 +157,52 @@ describe('OpenCode profiles', () => {
   });
 
   it('binds a managed profile through XDG_DATA_HOME one level inside the root', () => {
-    expect(openCodeDataHome(profile())).toBe('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data');
+    expect(openCodeDataHome(profile())).toBe(resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data'));
     expect(service.bindingEnvironment(profile())).toEqual({
-      [OPENCODE_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data',
+      [OPENCODE_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data'),
     });
   });
 
   it('injects nothing for the native default profile', () => {
     expect(
-      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.local/share/opencode' })),
+      service.bindingEnvironment(
+        profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.local/share/opencode') }),
+      ),
     ).toEqual({});
   });
 
   it('names the history layout root one opencode level below the bound data home', () => {
-    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data/opencode');
+    expect(service.observationRoot(profile())).toBe(
+      resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data/opencode'),
+    );
     expect(
-      service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.local/share/opencode' })),
-    ).toBe('/home/tester/.local/share/opencode');
+      service.observationRoot(
+        profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.local/share/opencode') }),
+      ),
+    ).toBe(resolve('/home/tester/.local/share/opencode'));
   });
 
   it('runs the provider login by default and the Console login on its route, both inside the binding', () => {
-    const env = { [OPENCODE_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data' };
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
+    const env = {
+      [OPENCODE_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data'),
+    };
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo') })).toEqual({
       command: 'opencode',
       args: ['auth', 'login'],
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       env,
     });
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo', route: 'provider' }).args).toEqual([
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'provider' }).args).toEqual([
       'auth',
       'login',
     ]);
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo', route: 'console' })).toEqual({
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'console' })).toEqual({
       command: 'opencode',
       args: ['console', 'login'],
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       env,
     });
-    expect(() => service.loginInvocation(profile(), { cwd: '/work/repo', route: 'nous' })).toThrow(
+    expect(() => service.loginInvocation(profile(), { cwd: resolve('/work/repo'), route: 'nous' })).toThrow(
       'unknown OpenCode sign-in route',
     );
   });
@@ -204,14 +212,14 @@ describe('OpenCode profiles', () => {
     // own invocation normalizer, so the two must agree.
     const resolution = normalizeOpenCodeNativeInvocation({
       providerId: 'opencode',
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       argv: [],
       environment: service.bindingEnvironment(profile()),
       implementation: { kind: 'native' },
     });
     expect(resolution).toEqual({
       status: 'accepted',
-      options: { env: { XDG_DATA_HOME: '/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data' } },
+      options: { env: { XDG_DATA_HOME: resolve('/home/tester/.puppeteer/profiles/opencode/77c5b0ad/data') } },
     });
   });
 });

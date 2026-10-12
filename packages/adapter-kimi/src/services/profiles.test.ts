@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   AgentProfileSchema,
   ProfileIdentitySchema,
@@ -16,7 +16,7 @@ import {
   type KimiProfileServiceOptions,
 } from './profiles.js';
 
-const service = createKimiProfileService({ home: '/home/tester', executable: 'kimi', env: {} });
+const service = createKimiProfileService({ home: resolve('/home/tester'), executable: 'kimi', env: {} });
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
   AgentProfileSchema.parse({
@@ -24,7 +24,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'kimi',
     label: 'Personal',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/kimi/1d0f77aa',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/kimi/1d0f77aa'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
@@ -39,7 +39,7 @@ describe('Kimi profiles', () => {
         supported: true,
         identity: 'native-status',
         sharedSurfaces: [],
-        nativeDefaultRoot: '/home/tester/.kimi-code',
+        nativeDefaultRoot: resolve('/home/tester/.kimi-code'),
         credential: 'root',
         service: { id: 'kimi', label: 'Moonshot AI' },
       },
@@ -50,29 +50,29 @@ describe('Kimi profiles', () => {
 
   it('binds a managed profile through the native root variable', () => {
     expect(service.bindingEnvironment(profile())).toEqual({
-      [KIMI_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/kimi/1d0f77aa',
+      [KIMI_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/kimi/1d0f77aa'),
     });
   });
 
   it('injects nothing for the native default profile', () => {
     expect(
-      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.kimi-code' })),
+      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.kimi-code') })),
     ).toEqual({});
   });
 
   it('names the history layout root for an indexer', () => {
-    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/kimi/1d0f77aa');
-    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.kimi-code' }))).toBe(
-      '/home/tester/.kimi-code',
-    );
+    expect(service.observationRoot(profile())).toBe(resolve('/home/tester/.puppeteer/profiles/kimi/1d0f77aa'));
+    expect(
+      service.observationRoot(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.kimi-code') })),
+    ).toBe(resolve('/home/tester/.kimi-code'));
   });
 
   it('runs the native device-code login inside the profile binding', () => {
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo') })).toEqual({
       command: 'kimi',
       args: ['login'],
-      cwd: '/work/repo',
-      env: { [KIMI_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/kimi/1d0f77aa' },
+      cwd: resolve('/work/repo'),
+      env: { [KIMI_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/kimi/1d0f77aa') },
     });
   });
 });

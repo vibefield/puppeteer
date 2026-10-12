@@ -15,7 +15,7 @@ vi.mock('node:fs', async (importOriginal) => {
   return {
     ...actual,
     existsSync: (path: Parameters<typeof actual.existsSync>[0]) =>
-      (String(path).endsWith('leader.sock') && mocks.socketReady) || actual.existsSync(path),
+      (/leader\.(sock|lock)$/.test(String(path)) && mocks.socketReady) || actual.existsSync(path),
   };
 });
 vi.mock('@vibefield/puppeteer-adapter-acp', async (importOriginal) => ({

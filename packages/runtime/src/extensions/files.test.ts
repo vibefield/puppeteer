@@ -1,6 +1,6 @@
 import { lstat, mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { performFileSteps } from './files.js';
 
@@ -46,22 +46,28 @@ describe('performFileSteps', () => {
     const home = root;
 
     const taken = await performFileSteps([{ op: 'link', path: own, target: kept }], { home });
-    expect(taken.error).toBe('the link at ~/agent/skills/own could not be made: something is already there');
+    expect(taken.error).toBe(
+      'the link at ~/agent/skills/own could not be made: something is already there'.replaceAll('/', sep),
+    );
     const folder = await performFileSteps([{ op: 'unlink', path: own }], { home });
-    expect(folder.error).toBe('the link at ~/agent/skills/own could not be taken away: is a folder, not a link');
+    expect(folder.error).toBe(
+      'the link at ~/agent/skills/own could not be taken away: is a folder, not a link'.replaceAll('/', sep),
+    );
     expect(await readFile(join(own, 'SKILL.md'), 'utf8')).toBe('mine');
 
     const linked = join(agent, 'linked');
     await symlink(kept, linked, 'dir');
     const aLink = await performFileSteps([{ op: 'move', from: linked, to: join(root, 'elsewhere') }], { home });
-    expect(aLink.error).toBe('~/agent/skills/linked could not be moved: is a link, not a folder');
+    expect(aLink.error).toBe('~/agent/skills/linked could not be moved: is a link, not a folder'.replaceAll('/', sep));
     const empty = join(agent, 'empty');
     await mkdir(empty);
     const noSkill = await performFileSteps([{ op: 'move', from: empty, to: join(root, 'elsewhere') }], { home });
-    expect(noSkill.error).toBe('~/agent/skills/empty could not be moved: holds no SKILL.md');
+    expect(noSkill.error).toBe('~/agent/skills/empty could not be moved: holds no SKILL.md'.replaceAll('/', sep));
     // a link to a folder that is no skill is not made either
     const notSkill = await performFileSteps([{ op: 'link', path: join(agent, 'x'), target: empty }], { home });
-    expect(notSkill.error).toBe('the link at ~/agent/skills/x could not be made: holds no SKILL.md');
+    expect(notSkill.error).toBe(
+      'the link at ~/agent/skills/x could not be made: holds no SKILL.md'.replaceAll('/', sep),
+    );
   });
 
   it("moves an agent's own folder to where it is kept, and undoes every step when a later one fails", async () => {
@@ -83,18 +89,18 @@ describe('performFileSteps', () => {
       ],
       { home: root, onOutput: (chunk) => output.push(chunk) },
     );
-    expect(result.error).toBe('~/kept/changelog could not be moved: something is already there');
+    expect(result.error).toBe('~/kept/changelog could not be moved: something is already there'.replaceAll('/', sep));
     expect((await lstat(own)).isDirectory()).toBe(true);
     expect((await lstat(own)).isSymbolicLink()).toBe(false);
     expect(await readFile(join(own, 'SKILL.md'), 'utf8')).toBe('changelog');
     await expect(lstat(keptAt)).rejects.toMatchObject({ code: 'ENOENT' });
     expect(output.join('')).toBe(
       [
-        'move ~/agent/skills/changelog → ~/kept/changelog',
-        'link ~/kept/changelog → ~/agent/skills/changelog',
-        'move ~/kept/changelog → ~/shared/changelog: something is already there',
-        'undone: link ~/kept/changelog → ~/agent/skills/changelog',
-        'undone: move ~/agent/skills/changelog → ~/kept/changelog',
+        'move ~/agent/skills/changelog → ~/kept/changelog'.replaceAll('/', sep),
+        'link ~/kept/changelog → ~/agent/skills/changelog'.replaceAll('/', sep),
+        'move ~/kept/changelog → ~/shared/changelog: something is already there'.replaceAll('/', sep),
+        'undone: link ~/kept/changelog → ~/agent/skills/changelog'.replaceAll('/', sep),
+        'undone: move ~/agent/skills/changelog → ~/kept/changelog'.replaceAll('/', sep),
         '',
       ].join('\n'),
     );

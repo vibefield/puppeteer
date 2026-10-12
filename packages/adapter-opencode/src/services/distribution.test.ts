@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
@@ -142,7 +143,7 @@ describe('OpenCode auto-update evidence', () => {
       },
       env: { XDG_CONFIG_HOME: '/home/tester/.xdg-config' },
     }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
-    expect(seen).toEqual(['/home/tester/.xdg-config/opencode/opencode.json']);
+    expect(seen).toEqual([join('/home/tester/.xdg-config', 'opencode', 'opencode.json')]);
     expect(install?.autoUpdate).toBe('disabled');
   });
 
@@ -154,7 +155,7 @@ describe('OpenCode auto-update evidence', () => {
         return '{"autoupdate":true}';
       },
     }).inspect(candidate({ realPath: '/home/tester/.opencode/bin/opencode' }));
-    expect(seen).toEqual(['/home/tester/.config/opencode/opencode.json']);
+    expect(seen).toEqual([join('/home/tester', '.config', 'opencode', 'opencode.json')]);
   });
 });
 
