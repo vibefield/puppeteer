@@ -70,12 +70,17 @@ describe.skipIf(process.platform === 'win32')('Rosetta persona spawners', () => 
       );
       expect(joined).not.toHaveProperty('state');
 
-      const logResponse = await fetch(`${plane.url}/api/sessions/${sessionId}/log?vendor=${vendor}`, {
-        headers: { authorization: `Bearer ${plane.token}` },
-      });
-      const log = (await logResponse.json()) as { entries: Array<{ event: string }> };
-      if (bootEvent) expect(log.entries.map((entry) => entry.event)).toContain(bootEvent);
-      else expect(log.entries).toEqual([]);
+      const readEvents = async (): Promise<string[]> => {
+        const logResponse = await fetch(`${plane!.url}/api/sessions/${sessionId}/log?vendor=${vendor}`, {
+          headers: { authorization: `Bearer ${plane!.token}` },
+        });
+        expect(logResponse.ok).toBe(true);
+        const log = (await logResponse.json()) as { entries: Array<{ event: string }> };
+        return log.entries.map((entry) => entry.event);
+      };
+      // Joining precedes boot. Wait for the boot emission to reach the log.
+      if (bootEvent) await waitFor(async () => (await readEvents()).includes(bootEvent), `${vendor} boot emission`);
+      else expect(await readEvents()).toEqual([]);
     },
   );
 });
