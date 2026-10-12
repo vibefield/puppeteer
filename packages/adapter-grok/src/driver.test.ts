@@ -16,6 +16,7 @@ import {
   createPreparedGrokSession,
 } from './driver.js';
 import type { GrokObservedEvent, GrokSessionObserver } from './normalization/types.js';
+import { createGrokModelService } from './services/models.js';
 
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -386,6 +387,21 @@ describe('buildGrokTuiArgs', () => {
       '--leader-socket',
       '/tmp/grok.sock',
       '--session-id',
+      'session-1',
+    ]);
+  });
+
+  it('resumes a session at a model selection: --model rides beside --resume, as on every managed launch', () => {
+    // Every managed Grok TUI joins its leader-made session through --resume (driver.ts), so a
+    // resumed one takes --model exactly as a fresh one does.
+    expect(createGrokModelService().provider.resumeSelection).toBe(true);
+    expect(buildGrokTuiArgs('/tmp/grok.sock', 'session-1', { resume: 'session-1', model: 'grok-code-fast' })).toEqual([
+      '--model',
+      'grok-code-fast',
+      '--leader',
+      '--leader-socket',
+      '/tmp/grok.sock',
+      '--resume',
       'session-1',
     ]);
   });

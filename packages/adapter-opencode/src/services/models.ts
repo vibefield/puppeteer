@@ -51,7 +51,10 @@ export function decodeOpenCodeModels(value: unknown): AgentModelChoice[] {
 export function createOpenCodeModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createOpenCodeProfileService(options);
   return defineModelService({
-    provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch' },
+    // The private server sets a session's model only when it creates one (POST /session); session.update carries
+    // title, metadata, permission and time (openapi 1.18.16), and the managed TUI's `attach` takes no --model
+    // (1.18.34, draft/artifacts/resume-selection-2026-10-12), so a resumed session keeps its own model.
+    provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch', resumeSelection: false },
     async discover(context) {
       const env = nativeModelEnvironment(
         { ...(options.env ?? process.env), ...(options.home ? { HOME: options.home } : {}) },

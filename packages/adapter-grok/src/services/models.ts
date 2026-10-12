@@ -29,7 +29,8 @@ export function decodeGrokModels(output: string): AgentModelChoice[] {
 export function createGrokModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createGrokProfileService(options);
   return defineModelService({
-    provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch' },
+    // Every managed TUI, fresh or resumed, joins its session through --resume with the launch's --model.
+    provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         { ...(options.env ?? process.env), ...(options.home ? { HOME: options.home } : {}), NO_COLOR: '1' },

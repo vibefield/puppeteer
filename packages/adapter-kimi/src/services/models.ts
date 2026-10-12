@@ -25,7 +25,8 @@ export function decodeKimiModels(value: unknown): AgentModelChoice[] {
 export function createKimiModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createKimiProfileService(options);
   return defineModelService({
-    provider: { id: 'kimi', label: 'Kimi', discovery: 'prelaunch' },
+    // A resume is `--session <id>` with the launch's --model; only --agent/--agent-file refuse it (2.0.2 help).
+    provider: { id: 'kimi', label: 'Kimi', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         {
