@@ -1,5 +1,5 @@
 /** OpenCode-specific capture privacy rules layered on the shared conservative gate. */
-import { defaultRules, extendRules } from '@vibecook/puppeteer-surface/sanitize';
+import { defaultRules, extendRules } from '@vibefield/puppeteer-surface/sanitize';
 
 export const opencodeRules = extendRules(
   {

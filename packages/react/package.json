@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-react",
+  "name": "@vibefield/puppeteer-react",
   "version": "0.1.8",
   "type": "module",
   "description": "React hooks and portable view contracts for Puppeteer agent monitors.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/react"
   },
   "main": "./src/index.ts",
@@ -17,7 +17,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -39,8 +38,8 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-monitor": "workspace:*"
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-monitor": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18 <20"
@@ -48,6 +47,6 @@
   "devDependencies": {
     "@types/react": "^19.2.17",
     "react": "^19.2.7",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }

@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { hermesRecord, hermesString } from './types.js';
 
 /** Hermes session.info usage → context-window event. */

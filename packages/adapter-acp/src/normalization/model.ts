@@ -1,5 +1,5 @@
 import type { SessionConfigOption, SessionUpdate } from '@agentclientprotocol/sdk';
-import type { AgentModelIdentity } from '@vibecook/puppeteer-core';
+import type { AgentModelIdentity } from '@vibefield/puppeteer-core';
 import type { AcpEventOfType } from './types.js';
 
 type AcpModelEvent = AcpEventOfType<'model:updated' | 'adapter:native-event'>;

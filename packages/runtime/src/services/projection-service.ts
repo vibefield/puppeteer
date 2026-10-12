@@ -1,4 +1,4 @@
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
 
 /** Runtime-only contract shared by Agent-owned read-model services. */
 export interface AgentProjectionService<Snapshot, Envelope extends AgentEventEnvelope = AgentEventEnvelope> {

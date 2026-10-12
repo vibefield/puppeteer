@@ -30,19 +30,26 @@
  *   earlier one. OpenCode keeps a skill with no description but never offers
  *   it to the model, so it reads as off.
  * - Plugins: the specs, and the `.ts` and `.js` files directly inside a
- *   `plugin` or `plugins` folder of each config directory.
+ *   `plugin` or `plugins` folder of each config directory. A package whose
+ *   only entry is the TUI's is listed in the TUI's own documents instead:
+ *   `tui.json` and `tui.jsonc` in the config root, the file
+ *   `OPENCODE_TUI_CONFIG` names, and those two in `~/.opencode` and in
+ *   `OPENCODE_CONFIG_DIR` (the 1.18.32 TuiConfig loader). Their plugin lists
+ *   are read by the same rules, and nothing else in them is.
  * Not read here: a project's documents and skills, which belong to the
  * project; the documents OpenCode fetches when it starts (a `wellknown`
  * organization's, the active Console org's), which take the network and a
- * token; the managed config directory and macOS managed preferences;
- * `tui.json`; the plugins and the skill built into the binary; and the skills
- * `skills.urls` downloads at start, which mark the skill kind unread.
+ * token; the managed config directory and macOS managed preferences; the
+ * TUI's plugin switches (`plugin_enabled`, which the TUI's own key-value store
+ * overrides, keyed by an id a plugin's code may declare), so a TUI plugin
+ * reads as on; the plugins and the skill built into the binary; and the
+ * skills `skills.urls` downloads at start, which mark the skill kind unread.
  */
 
 import type { Dirent } from 'node:fs';
 import { readdir, readFile, readlink, realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   describeMcpCommand,
@@ -52,11 +59,17 @@ import {
   extensionCommandPlan,
   extensionNotOwnWords,
   extensionSignInAbsentWords,
+  extensionSkillFolderPlan,
   extensionTerminalPlan,
+  isExtensionSource,
+  isNormalizedAbsolutePath,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -65,7 +78,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveOpenCodeExecutable } from '../detection.js';
 import { OPENCODE_PROFILE_ROOT_VARIABLE, openCodeDataHome } from './profiles.js';
 
@@ -227,10 +240,23 @@ const SENTINEL = /\$\{PUPPETEER_OPENCODE_ENV_([A-Za-z_][A-Za-z0-9_]*)\}/gu;
 const toSentinel = (value: string): string => value.replace(REFERENCE, '$${PUPPETEER_OPENCODE_ENV_$1}');
 const fromSentinel = (value: string): string => value.replace(SENTINEL, '{env:$1}');
 
-/** Every `{env:NAME}` a definition reads, wherever it sits. */
+/**
+ * Every `{env:NAME}` a definition reads, wherever it sits: what OpenCode's own
+ * `/\{env:([^}]+)\}/g` finds, found by scanning. That pattern runs every
+ * `{env:` it meets to the end of the text when no `}` follows, which a crafted
+ * config makes a wait as long as the file squared; past the last `}` there is
+ * nothing more to find.
+ */
 function references(value: unknown, into: string[]): void {
   if (typeof value === 'string') {
-    for (const match of value.matchAll(/\{env:([^}]+)\}/gu)) into.push(match[1]!.trim());
+    for (let from = 0; ;) {
+      const start = value.indexOf('{env:', from);
+      if (start < 0) break;
+      const end = value.indexOf('}', start + 5);
+      if (end < 0) break;
+      if (end > start + 5) into.push(value.slice(start + 5, end).trim());
+      from = end + 1;
+    }
   } else if (Array.isArray(value)) {
     for (const item of value) references(item, into);
   } else {
@@ -242,33 +268,53 @@ function references(value: unknown, into: string[]): void {
 const names = (values: Iterable<string>, pattern: RegExp): string[] =>
   [...new Set(values)].filter((value) => pattern.test(value)).slice(0, 64);
 
-/** One merged `mcp` entry as a listing may show it; a value with no known `type` is one OpenCode skips. */
+/** `{env:…}` or `{file:…}`: filled in by OpenCode alone, so meaningless in another agent's settings. */
+const OWN_REFERENCE = /\{(?:env|file):/u;
+
+/**
+ * One merged `mcp` entry as a listing may show it; a value with no known `type` is one OpenCode skips.
+ * Its definition, when Core's rules let it travel, comes from the raw values — never the sentinel form —
+ * and not at all when the command line or address holds an OpenCode reference, or a local server runs in
+ * a folder of its own (`cwd`), which a definition cannot carry.
+ */
 function serverItem(name: string, definition: Json, location: string | undefined): McpServerItem | undefined {
   const referenced: string[] = [];
   references(definition, referenced);
-  let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers'>;
+  let fields: Pick<McpServerItem, 'transport' | 'target' | 'env' | 'headers' | 'definition'>;
   if (definition.type === 'local') {
     const command = definition.command;
     if (!Array.isArray(command) || !command.every((part) => typeof part === 'string')) return undefined;
     const [executable, ...args] = command as string[];
     if (!text(executable)) return undefined;
-    const env = names([...Object.keys(rec(definition.environment) ?? {}), ...referenced], ENVIRONMENT_NAME);
+    // What the server reads is what `environment` sets; a `{env:…}` inside a value is OpenCode's to read.
+    const environment = Object.keys(rec(definition.environment) ?? {});
+    const env = names([...environment, ...referenced], ENVIRONMENT_NAME);
+    const travels =
+      text(definition.cwd) === undefined && !(command as string[]).some((part) => OWN_REFERENCE.test(part))
+        ? mcpServerDefinition({ transport: 'stdio', command: executable, args, env: environment })
+        : undefined;
     fields = {
       transport: 'stdio',
       target: fromSentinel(describeMcpCommand(toSentinel(executable!), args.map(toSentinel))),
       ...(env.length > 0 ? { env } : {}),
+      ...(travels ? { definition: travels } : {}),
     };
   } else if (definition.type === 'remote') {
     const url = text(definition.url);
     if (!url) return undefined;
     // OpenCode tries Streamable HTTP first and falls back to SSE on its own.
     const env = names(referenced, ENVIRONMENT_NAME);
-    const headers = names(Object.keys(rec(definition.headers) ?? {}), HEADER_NAME);
+    const declared = Object.keys(rec(definition.headers) ?? {});
+    const headers = names(declared, HEADER_NAME);
+    const travels = OWN_REFERENCE.test(url)
+      ? undefined
+      : mcpServerDefinition({ transport: 'http', url, headers: declared });
     fields = {
       transport: 'http',
       target: fromSentinel(describeMcpUrl(toSentinel(url))),
       ...(env.length > 0 ? { env } : {}),
       ...(headers.length > 0 ? { headers } : {}),
+      ...(travels ? { definition: travels } : {}),
     };
   } else {
     return undefined;
@@ -328,6 +374,73 @@ function pluginFromSpec(spec: string, declaredIn: string | undefined): PluginEnt
     ...(version && EXACT_VERSION.test(version) ? { version } : {}),
     ...(declaredIn ? { location: declaredIn } : {}),
   };
+}
+
+/** The plugins one document's `plugin` list declares: each a spec, or a `[spec, options]` pair. */
+function declaredPlugins(document: ConfigDocument): PluginEntry[] {
+  const specs = document.body.plugin;
+  if (!Array.isArray(specs)) return [];
+  return specs.flatMap((spec) => {
+    const declared = typeof spec === 'string' ? spec : Array.isArray(spec) ? spec[0] : undefined;
+    const entry = typeof declared === 'string' ? pluginFromSpec(declared, document.path) : undefined;
+    return entry ? [entry] : [];
+  });
+}
+
+/** A package as `opencode plugin` takes one: `name` or `@scope/name`, then a version or a tag after `@`. */
+const NPM_SPEC = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*(?:@[A-Za-z0-9][A-Za-z0-9._+-]*)?$/u;
+/** npm's longest package name, its scope included. */
+const NPM_NAME_LENGTH = 214;
+/** A spec npm fetches from a repository or an address instead of its registry. */
+const REPOSITORY_SPEC = /^(?:git\+|git:|github:|gitlab:|bitbucket:|gist:|[A-Za-z][A-Za-z0-9+.-]*:\/\/)/u;
+
+const SOURCE_WORDS = {
+  other: 'OpenCode installs a plugin from an npm package, by its name, or from a folder, by its whole path',
+  relative: "Give the folder's whole path: OpenCode would read a relative one from its config's folder",
+  home: "Give the folder's whole path, from `/`",
+  unnormalized: "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end",
+  address: "Give the folder's whole path instead of this `file://` address",
+  repository: 'OpenCode installs a plugin from npm or a folder, not from a repository or an address',
+  range: 'Name one version or tag of the package, not a range',
+} as const;
+
+/**
+ * What `opencode plugin` would install from a source a person gave, keyed as
+ * the inventory holds what it installs — a package by its name, its scope kept
+ * and its version dropped, a folder by its `file://` URL — or why OpenCode
+ * would not take it as given. OpenCode writes the source into its config as it
+ * is and loads it from there: a relative folder would be read from the
+ * config's folder, not from where it was given, so a folder is only its whole
+ * path; and a package is only its registry's, by one version or tag.
+ */
+function installSource(source: string): { key: string; shown: string } | { refused: string } {
+  if (!isExtensionSource(source)) return { refused: SOURCE_WORDS.other };
+  if (source.startsWith('file://')) {
+    let path: string | undefined;
+    try {
+      path = fileURLToPath(source);
+    } catch {
+      path = undefined;
+    }
+    // Only the address a whole path makes: the inventory keys a `file://` spec as it is written, and an
+    // address resolves its own `.` and `..`.
+    return path !== undefined && isNormalizedAbsolutePath(path) && pathToFileURL(path).href === source
+      ? { key: source, shown: path }
+      : { refused: SOURCE_WORDS.address };
+  }
+  if (isAbsolute(source)) {
+    return isNormalizedAbsolutePath(source)
+      ? { key: pathToFileURL(source).href, shown: source }
+      : { refused: SOURCE_WORDS.unnormalized };
+  }
+  if (source.startsWith('.')) return { refused: SOURCE_WORDS.relative };
+  if (source.startsWith('~')) return { refused: SOURCE_WORDS.home };
+  if (REPOSITORY_SPEC.test(source)) return { refused: SOURCE_WORDS.repository };
+  const at = source.indexOf('@', 1);
+  const name = at < 0 ? source : source.slice(0, at);
+  if (at >= 0 && /[\^~<>=|*]/u.test(source.slice(at + 1))) return { refused: SOURCE_WORDS.range };
+  if (!NPM_SPEC.test(source) || name.length > NPM_NAME_LENGTH) return { refused: SOURCE_WORDS.other };
+  return { key: name, shown: name };
 }
 
 async function pluginFiles(directory: string): Promise<string[]> {
@@ -449,8 +562,17 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     id: 'opencode',
     label: 'OpenCode',
     support: {
-      // `opencode plugin <module>` writes a spec into the one config every profile reads; no command removes one.
-      plugins: { store: 'shared', changes: 'command', read: true },
+      // `opencode plugin <module>` installs a package from npm, or takes a folder, and writes its spec into the one
+      // config every profile reads; no command removes one. It has no marketplace to install from. A session this
+      // runtime hosts starts `--pure` (OPENCODE_LAUNCH_FLAGS.pure, in launch/backend.ts and driver.ts), which loads
+      // OpenCode's built-in plugins alone: one the read lists loads only when a person runs OpenCode themselves.
+      plugins: {
+        store: 'shared',
+        changes: 'command',
+        read: true,
+        hostedSkips: true,
+        sources: 'An npm package, or a folder with a package.json',
+      },
       // `opencode mcp add` adds one, but nothing turns a server off or removes it except an edit to that config;
       // the instance's connect and disconnect last only as long as the process.
       mcpServers: { store: 'shared', changes: 'in-app', read: true },
@@ -458,9 +580,19 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     },
   };
 
-  const shown = (path: string): string => (path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path);
+  const shown = (path: string): string => (path.startsWith(`${home}${sep}`) ? `~${path.slice(home.length)}` : path);
+
+  /** The global config directory, first of those OpenCode scans: read per call, as `env` may be the process's. */
+  const configRootOf = (): string => {
+    const configHome = text(env.XDG_CONFIG_HOME);
+    return join(configHome && isAbsolute(configHome) ? configHome : join(home, '.config'), 'opencode');
+  };
 
   const executable = resolveOpenCodeExecutable(options.executable);
+
+  // A managed profile binds only its data home, where its sign-ins are: a command that reads them reads the profile's.
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'native-default' ? {} : { [OPENCODE_PROFILE_ROOT_VARIABLE]: openCodeDataHome(profile) };
 
   // Acts (RFC 006 C2): OpenCode has no command that turns a server off or a
   // skill out — both are keys of its one config, which serves every profile.
@@ -468,11 +600,166 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
   // under the data home it binds. `opencode mcp auth <name>` signs in (it
   // opens a browser and waits on a local callback, so a terminal) and
   // `opencode mcp logout <name>` forgets it.
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // An add is `opencode mcp add <name>` in the non-interactive form the report
+  // reads from the 1.18.32 source (not probed): `--url` for a remote server,
+  // HTTP or SSE alike, the command after `--` for a local one, and each
+  // variable as `--env NAME={env:NAME}`, so the config names it and OpenCode
+  // fills it from its own environment when it loads. That form always writes
+  // the one global config, so it needs no profile variable and reaches every
+  // profile.
+  // A skill a host keeps is placed as a link in the global config's `skills/`,
+  // the one folder of OpenCode's own, which every profile reads. OpenCode keys
+  // a skill by its frontmatter `name`, not its folder: the link is named for
+  // the host's name for it, and a removal goes by the folder the read found.
+  // Only a skill directly in that folder is taken away — the link goes, or the
+  // person's own folder moves to where the host keeps it; one in `skill/`
+  // beside it, `~/.opencode`, `OPENCODE_CONFIG_DIR`, `skills.paths` or
+  // `~/.agents/skills` changes where it is.
+  const skillPlan = (item: SkillItem, act: 'add' | 'remove', keepIn: string | undefined): ExtensionActPlan =>
+    extensionSkillFolderPlan({
+      label: 'OpenCode',
+      folder: join(configRootOf(), 'skills'),
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      reaches: ['every-profile'],
+      home,
+    });
+
+  // A plugin is a spec in the plugin list of the one config every profile
+  // reads, or a `.ts` or `.js` file in a config folder's `plugin(s)/`.
+  // `opencode plugin <module>` adds a spec (`installPlan`); no command
+  // switches, removes or updates one, since OpenCode loads every plugin it
+  // finds and installs an npm spec's package as it starts: a version moves
+  // only when the config pins another. The runtime answers a plugin's add and
+  // its sign-ins itself; asked anyway, this answers them too.
+  function pluginPlan(item: PluginItem, act: Exclude<ExtensionActKind, 'install'>): ExtensionActPlan {
+    const unavailable = (reason: 'no-command' | 'unsupported', message: string): ExtensionActPlan =>
+      extensionActUnavailable({ kind: 'plugin', id: item.id }, act, reason, message);
+    // A `file://` plugin is a file OpenCode loads where it is — a path in the list, or a file in a plugins
+    // folder — so it has no package to install again and changes where the file is.
+    const file = item.id.startsWith('file://');
+    switch (act) {
+      case 'enable':
+      case 'disable':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode has no switch for a plugin: it loads every plugin file it finds'
+            : "OpenCode has no switch for a plugin: it loads every plugin in its config's plugin list",
+        );
+      case 'remove':
+      case 'purge':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode has no command that removes a plugin: this one is a file, and changes where it is'
+            : 'OpenCode has no command that removes a plugin: it is an entry in the plugin list of its one config, which every profile reads',
+        );
+      case 'update':
+        return unavailable(
+          'no-command',
+          file
+            ? 'OpenCode loads this plugin from a file as it is, and it changes where it is'
+            : "OpenCode installs a plugin's package as it starts; a pinned version changes only in its config",
+        );
+      case 'add':
+        return unavailable(
+          'unsupported',
+          'OpenCode adds a plugin only with `opencode plugin`, from a package a person names',
+        );
+      case 'sign-in':
+      case 'sign-out':
+        return unavailable('unsupported', 'OpenCode has no sign-in for a plugin: only a remote server has one');
+    }
+  }
+
+  /**
+   * `opencode plugin <source> --global` installs a package from npm into the
+   * one package cache, or takes a folder where it is, and adds the source as
+   * written to the plugin list of the config every profile reads —
+   * `opencode.json`, or `tui.json` for a package whose only entry is the TUI's.
+   * `--global` keeps it out of a project: without it, the command would write a
+   * `.opencode/` into the folder it runs in, the profile's root. Like every
+   * command it boots OpenCode first, which runs every plugin already listed
+   * unless `--pure` says not to, and it never prompts. A package it already
+   * lists, at any version, is left as it is with exit 0, so a held one is not
+   * planned; the runtime's second read is the receipt either way.
+   */
+  function installPlan(profile: AgentProfile, item: PluginItem, options: ExtensionActPlanOptions): ExtensionActPlan {
+    const target = { kind: 'plugin' as const, id: item.id };
+    const unavailable = (reason: 'held' | 'unsupported', message: string): ExtensionActPlan =>
+      extensionActUnavailable(target, 'install', reason, message);
+    if (options.source === undefined) {
+      return unavailable(
+        'unsupported',
+        'OpenCode has no marketplace: it installs a plugin from a package a person names',
+      );
+    }
+    const source = installSource(options.source);
+    if ('refused' in source) return unavailable('unsupported', source.refused);
+    if (DEPRECATED_PLUGINS.has(source.key)) {
+      return unavailable('unsupported', `OpenCode has ${source.shown} built in, and skips the package`);
+    }
+    if (options.holds?.includes(source.key) === true) {
+      return unavailable(
+        'held',
+        `OpenCode already lists ${source.shown} in its plugin list; its own command leaves that entry as it is`,
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'install',
+      argv: [executable, 'plugin', options.source, '--global', '--pure'],
+      env: profileEnv(profile),
+      reaches: ['every-profile'],
+    });
+  }
+
+  function plan(
+    profile: AgentProfile,
+    item: ExtensionActItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
+    if (item.kind === 'plugin') return act === 'install' ? installPlan(profile, item, options) : pluginPlan(item, act);
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'marketplace') {
+      return extensionActUnavailable(target, act, 'unsupported', 'OpenCode has no marketplaces');
+    }
+    if (act === 'install') return extensionActUnavailable(target, act, 'unsupported', 'Only a plugin is installed');
+    if (act === 'add') {
+      if (item.kind === 'skill') return skillPlan(item, act, undefined);
+      if (item.definition === undefined) {
+        return extensionActUnavailable(target, act, 'unsupported', 'OpenCode adds a server only from its definition');
+      }
+      if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+        return extensionActUnavailable(target, act, 'no-command', "OpenCode's commands do not take this server's name");
+      }
+      const { definition } = item;
+      return extensionCommandPlan({
+        target,
+        act,
+        argv:
+          definition.transport === 'stdio'
+            ? [
+                executable,
+                'mcp',
+                'add',
+                item.id,
+                ...(definition.env ?? []).flatMap((name) => ['--env', `${name}={env:${name}}`]),
+                '--',
+                definition.command,
+                ...definition.args,
+              ]
+            : [executable, 'mcp', 'add', item.id, '--url', definition.url],
+        reaches: ['every-profile'],
+      });
+    }
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('OpenCode', item, 'Claude Code'));
     }
+    if (item.kind === 'skill' && act === 'remove') return skillPlan(item, act, options.keepIn);
     if (item.kind === 'mcp-server' && (act === 'sign-in' || act === 'sign-out')) {
       const absent = extensionSignInAbsentWords('OpenCode', item);
       if (absent !== undefined) return extensionActUnavailable(target, act, 'no-sign-in', absent);
@@ -483,7 +770,7 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
         target,
         act,
         argv: [executable, 'mcp', act === 'sign-in' ? 'auth' : 'logout', item.id],
-        env: profile.kind === 'native-default' ? {} : { [OPENCODE_PROFILE_ROOT_VARIABLE]: openCodeDataHome(profile) },
+        env: profileEnv(profile),
       };
       return act === 'sign-in' ? extensionTerminalPlan(fields) : extensionCommandPlan(fields);
     }
@@ -502,8 +789,7 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
     plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
-      const configHome = text(env.XDG_CONFIG_HOME);
-      const configRoot = join(configHome && isAbsolute(configHome) ? configHome : join(home, '.config'), 'opencode');
+      const configRoot = configRootOf();
       const configFile = text(env.OPENCODE_CONFIG);
       const extraDirectory = text(env.OPENCODE_CONFIG_DIR);
       const content = text(env.OPENCODE_CONFIG_CONTENT);
@@ -543,6 +829,21 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
         documents.push(read);
       }
 
+      // The TUI's documents, in its loader's order; only their plugin lists are OpenCode's to read here.
+      const tuiFile = text(env.OPENCODE_TUI_CONFIG);
+      const tuiDocuments: ConfigDocument[] = [];
+      for (const path of [
+        ...['tui.json', 'tui.jsonc'].map((file) => join(configRoot, file)),
+        ...(tuiFile && isAbsolute(tuiFile) ? [tuiFile] : []),
+        ...configDirectories
+          .slice(1)
+          .flatMap((directory) => [join(directory, 'tui.json'), join(directory, 'tui.jsonc')]),
+      ]) {
+        const read = await readDocument(path);
+        if (read === 'unreadable') missed('plugin', `${shown(path)} could not be read`);
+        else if (read !== 'absent') tuiDocuments.push(read);
+      }
+
       // MCP servers: the deep merge, and the last document that defined each one.
       let servers: Json = {};
       const definedIn = new Map<string, string | undefined>();
@@ -561,16 +862,11 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
         return item ? [item] : [];
       });
 
-      // Plugins: every declared spec, then the files in each config directory's plugin folders.
+      // Plugins: every declared spec, then the files in each config directory's plugin folders, then what only
+      // the TUI lists — a package with a server entry too is declared in both, and keeps the server's.
       const plugins = new Map<string, PluginEntry>();
       for (const document of documents) {
-        const specs = document.body.plugin;
-        if (!Array.isArray(specs)) continue;
-        for (const spec of specs) {
-          const declared = typeof spec === 'string' ? spec : Array.isArray(spec) ? spec[0] : undefined;
-          const entry = typeof declared === 'string' ? pluginFromSpec(declared, document.path) : undefined;
-          if (entry) plugins.set(entry.identity, entry);
-        }
+        for (const entry of declaredPlugins(document)) plugins.set(entry.identity, entry);
       }
       for (const directory of configDirectories) {
         for (const path of await pluginFiles(directory)) {
@@ -578,6 +874,11 @@ export function createOpenCodeExtensionService(options: OpenCodeExtensionOptions
           plugins.set(identity, { identity, name: stem(path), location: path });
         }
       }
+      const tuiPlugins = new Map<string, PluginEntry>();
+      for (const document of tuiDocuments) {
+        for (const entry of declaredPlugins(document)) tuiPlugins.set(entry.identity, entry);
+      }
+      for (const [identity, entry] of tuiPlugins) if (!plugins.has(identity)) plugins.set(identity, entry);
       const pluginItems: PluginItem[] = [...plugins.values()].flatMap((entry) =>
         DEPRECATED_PLUGINS.has(entry.identity) || entry.identity.length > 512 || entry.name.length > 256
           ? []

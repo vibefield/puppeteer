@@ -1,8 +1,10 @@
-import { AGENT_MARK_CANDIDATES } from '../../../icons/AgentIcon.js';
+import { AGENT_MARK_CANDIDATES, resolveCssColor, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
+import { labAgentView } from '../../../lab/lab-model.js';
+import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';
+import { monitorParameterDefaults, type MonitorParameters } from '../../../monitor/parameters.js';
 import { paneTint, projectTint } from '../../../colour/project-tint.js';
 import { bubbleModel, type SwarmBubbleModel } from '../bubble-model.js';
-import { resolveCssColor, type Rgba } from '../gpu/color.js';
 import {
   createSwarmRenderer,
   type RenderBody,
@@ -16,8 +18,21 @@ import {
   normalizeSwarmParameters,
   type SwarmParameters,
 } from '../swarm-parameters.js';
+import { SWARM_MANIFEST, swarmMonitorView } from '../index.js';
 import { resolveSwarmTheme } from '../swarm-theme.js';
-import { burnStages, clusterStages, lightStages, stateStages, type LabStage } from './fixtures.js';
+import {
+  bloomStages,
+  burnStages,
+  clusterStages,
+  lightStages,
+  pendingStages,
+  profileStages,
+  stateStages,
+  type LabFieldStage,
+  type LabStage,
+} from './fixtures.js';
+// The lab's own layout, bundled beside the view's stylesheets (the page inlines what the bundle emits).
+import './lab.css';
 
 // The swarm design lab: one page, the production renderer, fixture agents in
 // every state and setting, and the view's own tunables as live controls. It
@@ -27,6 +42,13 @@ import { burnStages, clusterStages, lightStages, stateStages, type LabStage } fr
 // The page is one WebGPU canvas behind a normal-flow document: each stage is a
 // DOM cell whose rectangle is measured and handed to the renderer as a body's
 // position, so captions and layout stay ordinary HTML.
+//
+// Above the parts, the SHIPPING view: the swarm as the SDK view it is, over the
+// seeded world in Godview's stage (`lab/lab-stage.ts`), so what ships —
+// its models, its physics, its chrome avoidance — is under review too, not only
+// the renderer. The theme, the motion box and the sliders drive both. Its URL is
+// the other view labs': `?n=`, `?size=`, `?theme=dark`, `?animations=0`, and
+// `?capture=1` shows the view alone, on the capture clock.
 
 interface PlacedStage {
   stage: LabStage;
@@ -42,6 +64,15 @@ interface Cluster {
   cell: HTMLElement;
   stages: LabStage[];
   positions: { x: number; y: number }[];
+}
+
+/** A whole field in one cell, with its own canvas and renderer: its frame carries the veil, clearings, hub. */
+interface FieldCell {
+  stage: LabFieldStage;
+  cell: HTMLElement;
+  canvas: HTMLCanvasElement;
+  renderer?: SwarmRenderer;
+  extras: PlacedStage[];
 }
 
 const PHYSICAL_GAP = 4;
@@ -97,9 +128,20 @@ function settle(radii: readonly number[], width: number, height: number, seed = 
 async function main(): Promise<void> {
   const root = document.getElementById('lab');
   if (!root) return;
+  let viewParameters: MonitorParameters = monitorParameterDefaults(SWARM_MANIFEST.parameters);
+  // The shipping view through the view host, as Godview mounts it (MV-5). The lab page is one IIFE, so the
+  // view's physics run inline (`import.meta.url` is empty there) and it reports `physics: 'inline'`, honestly.
+  const view = mountViewLab({
+    root,
+    mount: root.querySelector('.lab-view')!,
+    view: swarmMonitorView,
+    parameters: viewParameters,
+  });
+  // The golden page is the view alone: the renderer-direct parts would only draw under it.
+  if (view.params.capture) return;
   const nowMs = Date.now();
   let parameters: SwarmParameters = { ...DEFAULT_SWARM_PARAMETERS };
-  let motion = true;
+  let motion = view.params.animations;
   let theme: SwarmTheme | undefined;
   const colourCache = new Map<string, Rgba>();
   const accentOf = (value: string): Rgba => {
@@ -130,12 +172,12 @@ async function main(): Promise<void> {
     panelToggle.setAttribute('aria-expanded', String(opening));
   });
 
-  const themeButton = element('button', 'lab-theme', 'Dark');
+  const themeButton = element('button', 'lab-theme', view.params.theme === 'dark' ? 'Light' : 'Dark');
   themeButton.type = 'button';
   const motionLabel = element('label', 'lab-check');
   const motionInput = element('input');
   motionInput.type = 'checkbox';
-  motionInput.checked = true;
+  motionInput.checked = motion;
   motionLabel.append(motionInput, document.createTextNode('motion'));
   const panelRow = element('div', 'lab-panel-row');
   panelRow.append(themeButton, motionLabel);
@@ -161,6 +203,8 @@ async function main(): Promise<void> {
       input.addEventListener('input', () => {
         value.textContent = input.value;
         parameters = normalizeSwarmParameters({ ...parameters, [control.key]: Number(input.value) });
+        viewParameters = { ...viewParameters, [control.key]: Number(input.value) };
+        view.setParameters(viewParameters);
         // The STATE GLOW colours are resolved into the theme rather than sent as
         // uniforms, so a slider re-applies the theme rather than only rebuilding.
         applyTheme();
@@ -260,16 +304,61 @@ async function main(): Promise<void> {
   }
 
   function modelOf(stage: LabStage): SwarmBubbleModel {
+    const built = Date.now();
     const model = bubbleModel({
-      agent: stage.agent,
+      // The fixtures are legacy rows (a host's catalog still mounts them); the body reads the row as the model says it.
+      agent: labAgentView(stage.agent, built),
       parameters,
-      nowMs: Date.now(),
+      nowMs: built,
       unread: stage.unread === true,
       ...(stage.runningSinceMs === undefined ? {} : { runningSinceMs: stage.runningSinceMs }),
       ...(stage.workingShare === undefined ? {} : { workingShare: stage.workingShare }),
+      ...(stage.profile ? { profile: stage.profile } : {}),
+      // Pinned to its age at every rebuild, so a stage "before 320 ms" stays before.
+      ...(stage.opening
+        ? { opening: { sinceMs: built - stage.opening.agoMs, ...(stage.opening.on ? { on: stage.opening.on } : {}) } }
+        : {}),
     });
     return stage.patch ? stage.patch(model) : model;
   }
+
+  // The field under the spawn bloom: whole fields, each its own canvas and renderer.
+  const fieldCells: FieldCell[] = [];
+  const fieldBodies: PlacedStage[] = clusterStages(nowMs).map((stage) => ({
+    stage,
+    cell: root,
+    model: modelOf(stage),
+    accent: [0, 0, 0, 1],
+  }));
+  const addFieldPart = (title: string, lede: string, stages: LabFieldStage[]): void => {
+    const section = element('section', 'lab-part');
+    section.append(element('h2', undefined, title), element('p', 'lab-lede', lede));
+    const grid = element('div', 'lab-fields');
+    stages.forEach((stage, index) => {
+      const figure = element('figure', 'lab-stage');
+      figure.dataset.stage = stage.id;
+      const cell = element('div', 'lab-cell lab-field-cell');
+      const canvas = element('canvas', 'lab-field-canvas');
+      canvas.setAttribute('aria-hidden', 'true');
+      cell.append(canvas);
+      const caption = element('figcaption');
+      caption.append(
+        element('b', undefined, `${String(index + 1).padStart(2, '0')} · ${stage.title}`),
+        element('span', undefined, stage.note),
+      );
+      figure.append(cell, caption);
+      grid.append(figure);
+      const extras = (stage.extra ?? []).map((extra) => ({
+        stage: extra.stage,
+        cell,
+        model: modelOf(extra.stage),
+        accent: [0, 0, 0, 1] as Rgba,
+      }));
+      fieldCells.push({ stage, cell, canvas, extras });
+    });
+    section.append(grid);
+    root.querySelector('.lab-parts')!.append(section);
+  };
 
   addMarks();
   addPart('States', 'Every drawn state, one body each, at the sizes the sliders hold.', stateStages(nowMs), 'grid');
@@ -291,13 +380,42 @@ async function main(): Promise<void> {
     clusterStages(nowMs),
     'cluster',
   );
+  addPart(
+    'The body being born',
+    'Where the person let go of the spawn bloom, a pending body stands until the host’s terminal row arrives.',
+    pendingStages(nowMs),
+    'grid',
+  );
+  addPart(
+    'Born under a profile',
+    'A terminal born under an Agent Profile names it on its body, where the desktop has more than one.',
+    profileStages(nowMs),
+    'grid',
+  );
+  addFieldPart(
+    'The field under the spawn bloom',
+    'What a frame carries while the bloom is open, each field drawn by its own renderer: the veil, the clearings the bloom and its words stand on, the hub above everything, and the body being born.',
+    bloomStages(nowMs),
+  );
 
   const rebuild = (): void => {
-    for (const entry of placed) {
+    for (const entry of [...placed, ...fieldBodies, ...fieldCells.flatMap((field) => field.extras)]) {
       entry.model = modelOf(entry.stage);
       entry.accent = accentOf(entry.model.accent);
       if (entry.model.linked) entry.link = accentOf(entry.model.linked);
       else delete entry.link;
+    }
+    // Every field cell is the same size, so one settled field serves them all.
+    const fieldRect = fieldCells[0]?.cell.getBoundingClientRect();
+    if (fieldRect) {
+      const positions = settle(
+        fieldBodies.map((entry) => entry.model.radius),
+        fieldRect.width,
+        fieldRect.height,
+      );
+      fieldBodies.forEach((entry, index) => {
+        entry.offset = positions[index]!;
+      });
     }
     for (const cluster of clusters) {
       const rect = cluster.cell.getBoundingClientRect();
@@ -325,14 +443,15 @@ async function main(): Promise<void> {
     rebuild();
   };
   themeButton.addEventListener('click', () => {
-    const dark = root.classList.toggle('theme-dark');
-    root.classList.toggle('theme-light', !dark);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const dark = !root.classList.contains('theme-dark');
+    view.setTheme(dark ? 'dark' : 'light');
     themeButton.textContent = dark ? 'Light' : 'Dark';
     applyTheme();
   });
   motionInput.addEventListener('change', () => {
     motion = motionInput.checked;
+    // The view reads the host's switch, as it does in Godview.
+    view.setAnimations(motion);
   });
 
   const result = await createSwarmRenderer(canvas);
@@ -344,6 +463,11 @@ async function main(): Promise<void> {
   }
   notice.hidden = true;
   const renderer: SwarmRenderer = result.renderer;
+  for (const field of fieldCells) {
+    const made = await createSwarmRenderer(field.canvas);
+    if (made.ok) field.renderer = made.renderer;
+    else console.warn('[swarm lab] a field stage has no renderer:', made.reason);
+  }
 
   let width = 1;
   let height = 1;
@@ -352,6 +476,10 @@ async function main(): Promise<void> {
     width = rect.width;
     height = rect.height;
     renderer.resize(width, height, window.devicePixelRatio || 1);
+    for (const field of fieldCells) {
+      const cell = field.cell.getBoundingClientRect();
+      field.renderer?.resize(cell.width, cell.height, window.devicePixelRatio || 1);
+    }
     rebuild();
   };
   new ResizeObserver(resize).observe(root);
@@ -404,7 +532,7 @@ async function main(): Promise<void> {
         ...(entry.stage.glow ? { glow: entry.stage.glow } : {}),
       });
     }
-    renderer.render({
+    const shared = {
       time: (time - started) / 1000,
       motion,
       fillOpacity: parameters.bubbleFillOpacity,
@@ -419,10 +547,48 @@ async function main(): Promise<void> {
         depth: parameters.stateWaveDepth,
       },
       theme,
-      bodies,
-      marks,
-      ...(hold ? { hold } : {}),
-    });
+    };
+    renderer.render({ ...shared, bodies, marks, ...(hold ? { hold } : {}) });
+
+    // Each field stage is one frame: the host's part (AgentSwarm, once the bloom
+    // feeds it) done by hand — a body's opacity already carries the veil unless
+    // it is lit, and places are the cell's own, from its centre.
+    for (const field of fieldCells) {
+      if (!field.renderer) continue;
+      const rect = field.cell.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const { veil = 0, lit = [], clearings, hold: hub, extra = [] } = field.stage;
+      const place = (entry: PlacedStage, x: number, y: number, opacity: number, above: boolean): RenderBody => ({
+        model: entry.model,
+        x,
+        y,
+        radius: entry.model.radius,
+        scale: 1,
+        opacity,
+        focus: false,
+        seed: phaseOf(entry.stage.id),
+        accent: entry.accent,
+        ...(entry.link ? { link: entry.link } : {}),
+        ...(above ? { aboveClearings: true } : {}),
+      });
+      const fieldBodyList = fieldBodies.map((entry) =>
+        place(entry, entry.offset?.x ?? cx, entry.offset?.y ?? cy, lit.includes(entry.stage.id) ? 1 : 1 - veil, false),
+      );
+      field.extras.forEach((entry, index) => {
+        const at = extra[index]!;
+        fieldBodyList.push(place(entry, cx + at.x, cy + at.y, 1, at.above === true));
+      });
+      field.renderer.render({
+        ...shared,
+        bodies: fieldBodyList,
+        ...(veil > 0 ? { veil } : {}),
+        ...(clearings
+          ? { clearings: clearings.map((clearing) => ({ ...clearing, x: cx + clearing.x, y: cy + clearing.y })) }
+          : {}),
+        ...(hub ? { hold: { ...hub, x: cx + hub.x, y: cy + hub.y, progress: hub.progress ?? 1 } } : {}),
+      });
+    }
   };
   requestAnimationFrame(frame);
 }

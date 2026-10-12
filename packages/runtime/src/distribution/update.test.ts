@@ -8,7 +8,7 @@ import type {
   DistributionService,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   planInstallationUpdate,
   recipeArgv,
@@ -141,8 +141,8 @@ describe('runInstallationUpdate', () => {
 
     const transcript = receipt.transcriptPath!;
     expect(await readFile(transcript, 'utf8')).toBe('downloading...\ninstalled 1.3.0\n');
-    expect((await stat(transcript)).mode & 0o777).toBe(0o600);
-    expect((await stat(directory)).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect((await stat(transcript)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect((await stat(directory)).mode & 0o777).toBe(0o700);
   });
 
   it('reports unchanged — never a currency it has no evidence for — when a clean run left the version where it was', async () => {

@@ -18,7 +18,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectJsonSchema } from '@vibecook/puppeteer-surface';
+import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 
 const VERSION = '1.0.0';
 const PUBLIC_REVISION = '8a14c91d88875a831a38b3a066b1683116bcb31c';

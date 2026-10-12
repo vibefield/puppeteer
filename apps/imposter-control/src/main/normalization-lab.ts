@@ -7,14 +7,14 @@
  * are folded once across a persistent logical state; snapshots and live
  * delivery converge through revisioned, gap-aware authoritative-log sync.
  */
-import { ClaudeHookNormalizer, type ClaudeHookPayload } from '@vibecook/puppeteer-adapter-claude';
-import { CodexNotificationNormalizer, type CodexServerNotification } from '@vibecook/puppeteer-adapter-codex';
-import { AntigravityTranscriptNormalizer } from '@vibecook/puppeteer-adapter-antigravity';
-import { CopilotSessionNormalizer } from '@vibecook/puppeteer-adapter-copilot';
-import { KimiWireNormalizer } from '@vibecook/puppeteer-adapter-kimi';
-import { HermesGatewayNormalizer } from '@vibecook/puppeteer-adapter-hermes';
-import { OpenCodeNormalizer, type OpenCodeSseRecord } from '@vibecook/puppeteer-adapter-opencode';
-import { PiSessionNormalizer } from '@vibecook/puppeteer-adapter-pi';
+import { ClaudeHookNormalizer, type ClaudeHookPayload } from '@vibefield/puppeteer-adapter-claude';
+import { CodexNotificationNormalizer, type CodexServerNotification } from '@vibefield/puppeteer-adapter-codex';
+import { AntigravityTranscriptNormalizer } from '@vibefield/puppeteer-adapter-antigravity';
+import { CopilotSessionNormalizer } from '@vibefield/puppeteer-adapter-copilot';
+import { KimiWireNormalizer } from '@vibefield/puppeteer-adapter-kimi';
+import { HermesGatewayNormalizer } from '@vibefield/puppeteer-adapter-hermes';
+import { OpenCodeNormalizer, type OpenCodeSseRecord } from '@vibefield/puppeteer-adapter-opencode';
+import { PiSessionNormalizer } from '@vibefield/puppeteer-adapter-pi';
 import {
   createEnvelopeStamper,
   createInitialSessionState,
@@ -25,8 +25,8 @@ import {
   type AgentEventSource,
   type EnvelopeStamper,
   type SessionRuntimeState,
-} from '@vibecook/puppeteer-core';
-import type { EmittedEntry, SessionView } from '@vibecook/puppeteer-imposter/control';
+} from '@vibefield/puppeteer-core';
+import type { EmittedEntry, SessionView } from '@vibefield/puppeteer-imposter/control';
 import type { ControlPlaneProjection } from './plane.js';
 
 /** One shared presentation window for native evidence and normalized traces. */

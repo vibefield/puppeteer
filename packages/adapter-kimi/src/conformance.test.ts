@@ -4,13 +4,13 @@ import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach } from 'vitest';
-import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate, AgentHost } from '@vibefield/puppeteer-core';
 import {
   runAgentMonitorConformance,
   runAgentAdapterConformance,
   type AgentMonitorAdapterHarness,
   type AgentAdapterHarness,
-} from '@vibecook/puppeteer-testing/conformance';
+} from '@vibefield/puppeteer-testing/conformance';
 import { encodeKimiWorkDirKey } from './observation/session-store.js';
 import { createKimiTuiSession, type KimiTuiSession } from './driver.js';
 

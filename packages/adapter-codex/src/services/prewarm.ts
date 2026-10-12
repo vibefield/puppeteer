@@ -1,4 +1,4 @@
-import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
+import { PUPPETEER_VERSION } from '@vibefield/puppeteer-core';
 import { AppServerClient, spawnAppServerTransport, type Transport } from '../transport/app-server-client.js';
 
 export interface PrewarmCodexOptions {

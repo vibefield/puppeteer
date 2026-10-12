@@ -1,7 +1,7 @@
 /**
  * Freshness gate (the format:check pattern): registry.ts must be byte-identical
  * to a fresh render from the model. If this fails, run
- * `pnpm --filter @vibecook/puppeteer-adapter-claude generate:projections`
+ * `pnpm --filter @vibefield/puppeteer-adapter-claude generate:projections`
  * and commit the result.
  */
 import { readFileSync } from 'node:fs';
@@ -9,13 +9,13 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { loadModel } from '@vibefield/puppeteer-surface';
 import { CLAUDE_SURFACE_VERSION, verifiedHookEvents } from './registry.js';
 import { renderDetectionSurface, renderRegistry } from '../../scripts/registry-render.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const require = createRequire(import.meta.url);
-const surfaceRoot = dirname(require.resolve('@vibecook/puppeteer-surface/package.json'));
+const surfaceRoot = dirname(require.resolve('@vibefield/puppeteer-surface/package.json'));
 const repoRoot = join(surfaceRoot, '..', '..');
 const ledger = JSON.parse(readFileSync(join(repoRoot, 'support', 'agents.json'), 'utf8')) as {
   agents: Array<{ id: string; groundTruth?: string }>;

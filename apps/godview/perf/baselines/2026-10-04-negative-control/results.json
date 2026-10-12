@@ -1,0 +1,2276 @@
+{
+  "config": {
+    "a": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+    "syntheticBMs": 2,
+    "rounds": 7,
+    "counts": [
+      10
+    ],
+    "views": [
+      "swarm",
+      "timeline"
+    ],
+    "warmupMs": 2000,
+    "windowMs": 5000,
+    "stepMs": 3000,
+    "fps": 60,
+    "loadMax": 60,
+    "loadWaitMs": 2700000,
+    "out": "/Volumes/SamsungRed/lanes/mv/mv0-pu/perf-negative",
+    "builds": {
+      "A": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "B": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview"
+    }
+  },
+  "startedAt": "2026-10-04T02:38:52.435Z",
+  "runs": [
+    {
+      "round": 0,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            12.96,
+            44.08,
+            102.5
+          ]
+        },
+        "after": [
+          10.02,
+          40.91,
+          99.66
+        ]
+      },
+      "ms": 24115,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5003.9000000059605,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 157.49999997019768,
+            "callbacks": 616,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 223,
+              "stage": 223
+            },
+            "commits": 53,
+            "viewCommits": 49,
+            "viewRenderMs": 10.800000041723251,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5001.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 52.19999986886978,
+            "callbacks": 323,
+            "maxMs": 1.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 326,
+              "stage": 326
+            },
+            "commits": 76,
+            "viewCommits": 72,
+            "viewRenderMs": 65.99999979138374,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 0,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.02,
+            40.91,
+            99.66
+          ]
+        },
+        "after": [
+          14.06,
+          39.58,
+          97.49
+        ]
+      },
+      "ms": 24178,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5016.5,
+          "frames": {
+            "count": 300,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1372.3999999761581,
+            "callbacks": 618,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 222,
+              "stage": 222
+            },
+            "commits": 55,
+            "viewCommits": 51,
+            "viewRenderMs": 9.199999749660492,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5003.5999999940395,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 692.8000001311302,
+            "callbacks": 323,
+            "maxMs": 3.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 334,
+              "stage": 334
+            },
+            "commits": 82,
+            "viewCommits": 77,
+            "viewRenderMs": 63.89999997615814,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 0,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            14.06,
+            39.58,
+            97.49
+          ]
+        },
+        "after": [
+          17.32,
+          38.53,
+          95.46
+        ]
+      },
+      "ms": 23825,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5005.699999988079,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 161.59999987483025,
+            "callbacks": 616,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 235,
+              "stage": 235
+            },
+            "commits": 54,
+            "viewCommits": 50,
+            "viewRenderMs": 10.39999994635582,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5002.199999988079,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 49.800000071525574,
+            "callbacks": 323,
+            "maxMs": 1.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 349,
+              "stage": 349
+            },
+            "commits": 85,
+            "viewCommits": 80,
+            "viewRenderMs": 66.40000006556511,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            17.32,
+            38.53,
+            95.46
+          ]
+        },
+        "after": [
+          12.47,
+          35.69,
+          92.78
+        ]
+      },
+      "ms": 23483,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5001.399999976158,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 657.4999998509884,
+            "callbacks": 317,
+            "maxMs": 3.100000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 225,
+              "stage": 225
+            },
+            "commits": 57,
+            "viewCommits": 53,
+            "viewRenderMs": 60.39999994635582,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5000.899999976158,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1377.5999999046326,
+            "callbacks": 623,
+            "maxMs": 2.5999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 329,
+              "stage": 329
+            },
+            "commits": 78,
+            "viewCommits": 73,
+            "viewRenderMs": 11.90000033378601,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            12.47,
+            35.69,
+            92.78
+          ]
+        },
+        "after": [
+          10.4,
+          33.71,
+          90.74
+        ]
+      },
+      "ms": 23955,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5007.299999982119,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 34.4999997317791,
+            "callbacks": 317,
+            "maxMs": 1.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 242,
+              "stage": 242
+            },
+            "commits": 56,
+            "viewCommits": 52,
+            "viewRenderMs": 67.59999996423721,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002.199999988079,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 165.0999998152256,
+            "callbacks": 623,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 346,
+              "stage": 346
+            },
+            "commits": 79,
+            "viewCommits": 76,
+            "viewRenderMs": 13.399999916553497,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.4,
+            33.71,
+            90.74
+          ]
+        },
+        "after": [
+          10.12,
+          31.83,
+          88.42
+        ]
+      },
+      "ms": 23761,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5004.100000023842,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 34.19999983906746,
+            "callbacks": 317,
+            "maxMs": 1.5999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 233,
+              "stage": 233
+            },
+            "commits": 57,
+            "viewCommits": 54,
+            "viewRenderMs": 68.69999992847443,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002.5,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 167.6000000834465,
+            "callbacks": 623,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 341,
+              "stage": 341
+            },
+            "commits": 81,
+            "viewCommits": 78,
+            "viewRenderMs": 14.499999850988388,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 2,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.12,
+            31.83,
+            88.42
+          ]
+        },
+        "after": [
+          8.37,
+          29.69,
+          86.01
+        ]
+      },
+      "ms": 23436,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5003.199999988079,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 148.29999980330467,
+            "callbacks": 616,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 222,
+              "stage": 222
+            },
+            "commits": 55,
+            "viewCommits": 51,
+            "viewRenderMs": 10.000000029802322,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5002.100000023842,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 50.69999998807907,
+            "callbacks": 323,
+            "maxMs": 1.600000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 327,
+              "stage": 327
+            },
+            "commits": 78,
+            "viewCommits": 73,
+            "viewRenderMs": 67.8000001013279,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 2,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            8.37,
+            29.69,
+            86.01
+          ]
+        },
+        "after": [
+          6.74,
+          27.93,
+          84.07
+        ]
+      },
+      "ms": 23829,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5008.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 158.30000004172325,
+            "callbacks": 616,
+            "maxMs": 0.7999999821186066
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 227,
+              "stage": 227
+            },
+            "commits": 55,
+            "viewCommits": 51,
+            "viewRenderMs": 10.499999910593033,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5003.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 49.400000005960464,
+            "callbacks": 323,
+            "maxMs": 1.600000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 333,
+              "stage": 333
+            },
+            "commits": 79,
+            "viewCommits": 74,
+            "viewRenderMs": 68.19999992847443,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 2,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            6.74,
+            27.93,
+            84.07
+          ]
+        },
+        "after": [
+          6.35,
+          26.19,
+          81.82
+        ]
+      },
+      "ms": 23434,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1359.1000000238419,
+            "callbacks": 616,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 217,
+              "stage": 217
+            },
+            "commits": 54,
+            "viewCommits": 50,
+            "viewRenderMs": 8.800000160932541,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5000.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 694.6000002026558,
+            "callbacks": 323,
+            "maxMs": 3.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 320,
+              "stage": 320
+            },
+            "commits": 75,
+            "viewCommits": 70,
+            "viewRenderMs": 58.599999994039536,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 3,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            6.35,
+            26.19,
+            81.82
+          ]
+        },
+        "after": [
+          10.02,
+          25.63,
+          80.01
+        ]
+      },
+      "ms": 23780,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5004.800000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 33.30000028014183,
+            "callbacks": 316,
+            "maxMs": 1.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 231,
+              "stage": 231
+            },
+            "commits": 56,
+            "viewCommits": 51,
+            "viewRenderMs": 65.30000001192093,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002.5,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 159.19999966025352,
+            "callbacks": 623,
+            "maxMs": 0.6000000238418579
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 339,
+              "stage": 339
+            },
+            "commits": 81,
+            "viewCommits": 76,
+            "viewRenderMs": 12.899999797344208,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 3,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.02,
+            25.63,
+            80.01
+          ]
+        },
+        "after": [
+          7.85,
+          23.87,
+          77.8
+        ]
+      },
+      "ms": 23991,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5008.0999999940395,
+          "frames": {
+            "count": 300,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 661.9000000655651,
+            "callbacks": 318,
+            "maxMs": 3.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 234,
+              "stage": 234
+            },
+            "commits": 57,
+            "viewCommits": 53,
+            "viewRenderMs": 58.69999998807907,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5004.9000000059605,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1389.5000001490116,
+            "callbacks": 625,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 337,
+              "stage": 337
+            },
+            "commits": 76,
+            "viewCommits": 72,
+            "viewRenderMs": 11.70000010728836,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 3,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            7.85,
+            23.87,
+            77.8
+          ]
+        },
+        "after": [
+          6.6,
+          22.3,
+          75.68
+        ]
+      },
+      "ms": 24035,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5005.9000000059605,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 29.300000250339508,
+            "callbacks": 317,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 236,
+              "stage": 236
+            },
+            "commits": 57,
+            "viewCommits": 53,
+            "viewRenderMs": 50.400000005960464,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5003.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 171.60000038146973,
+            "callbacks": 623,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 347,
+              "stage": 347
+            },
+            "commits": 85,
+            "viewCommits": 80,
+            "viewRenderMs": 13.799999833106995,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 4,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            6.6,
+            22.3,
+            75.68
+          ]
+        },
+        "after": [
+          5.72,
+          21.08,
+          74
+        ]
+      },
+      "ms": 23379,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5004,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1369.4999998807907,
+            "callbacks": 616,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 216,
+              "stage": 216
+            },
+            "commits": 53,
+            "viewCommits": 50,
+            "viewRenderMs": 9.299999922513962,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5003.0999999940395,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 692.4000000953674,
+            "callbacks": 323,
+            "maxMs": 3.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 326,
+              "stage": 326
+            },
+            "commits": 82,
+            "viewCommits": 77,
+            "viewRenderMs": 65.30000016093254,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 4,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            5.72,
+            21.08,
+            74
+          ]
+        },
+        "after": [
+          6.22,
+          20.02,
+          72.09
+        ]
+      },
+      "ms": 23482,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5001.4000000059605,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 161.4000000655651,
+            "callbacks": 616,
+            "maxMs": 0.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 223,
+              "stage": 223
+            },
+            "commits": 54,
+            "viewCommits": 50,
+            "viewRenderMs": 10.499999940395355,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5001,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 47.8999999165535,
+            "callbacks": 323,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 328,
+              "stage": 328
+            },
+            "commits": 77,
+            "viewCommits": 72,
+            "viewRenderMs": 66.200000166893,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 4,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            6.22,
+            20.02,
+            72.09
+          ]
+        },
+        "after": [
+          5.27,
+          18.68,
+          70.1
+        ]
+      },
+      "ms": 23884,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5003.5999999940395,
+          "frames": {
+            "count": 300,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 163.80000019073486,
+            "callbacks": 618,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 224,
+              "stage": 224
+            },
+            "commits": 54,
+            "viewCommits": 50,
+            "viewRenderMs": 10.799999952316284,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5002.700000017881,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 52.20000001788139,
+            "callbacks": 324,
+            "maxMs": 1.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 337,
+              "stage": 337
+            },
+            "commits": 83,
+            "viewCommits": 78,
+            "viewRenderMs": 71.80000030994415,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 5,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            5.27,
+            18.68,
+            70.1
+          ]
+        },
+        "after": [
+          6.82,
+          18.14,
+          68.71
+        ]
+      },
+      "ms": 23380,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5004.800000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 34.30000004172325,
+            "callbacks": 317,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 217,
+              "stage": 217
+            },
+            "commits": 56,
+            "viewCommits": 53,
+            "viewRenderMs": 67.6999998986721,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5003.299999982119,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 165.9000000655651,
+            "callbacks": 623,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 321,
+              "stage": 321
+            },
+            "commits": 78,
+            "viewCommits": 75,
+            "viewRenderMs": 12.700000077486038,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 5,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            6.82,
+            18.14,
+            68.71
+          ]
+        },
+        "after": [
+          9.25,
+          17.91,
+          67.16
+        ]
+      },
+      "ms": 23799,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5005.700000017881,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 32.69999995827675,
+            "callbacks": 317,
+            "maxMs": 1.5999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 225,
+              "stage": 225
+            },
+            "commits": 57,
+            "viewCommits": 53,
+            "viewRenderMs": 70.40000009536743,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5004.5999999940395,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 172.59999987483025,
+            "callbacks": 623,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 335,
+              "stage": 335
+            },
+            "commits": 83,
+            "viewCommits": 78,
+            "viewRenderMs": 14.499999970197678,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 5,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            9.25,
+            17.91,
+            67.16
+          ]
+        },
+        "after": [
+          14.11,
+          18.55,
+          65.98
+        ]
+      },
+      "ms": 23957,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5008.5999999940395,
+          "frames": {
+            "count": 300,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 661.599999755621,
+            "callbacks": 318,
+            "maxMs": 3
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 223,
+              "stage": 223
+            },
+            "commits": 55,
+            "viewCommits": 53,
+            "viewRenderMs": 62.500000059604645,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002.9000000059605,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1382.900000065565,
+            "callbacks": 623,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 324,
+              "stage": 324
+            },
+            "commits": 76,
+            "viewCommits": 72,
+            "viewRenderMs": 12.099999964237213,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 6,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            14.11,
+            18.55,
+            65.98
+          ]
+        },
+        "after": [
+          10.85,
+          17.42,
+          64.2
+        ]
+      },
+      "ms": 23873,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5005.199999988079,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 158.69999992847443,
+            "callbacks": 616,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 229,
+              "stage": 229
+            },
+            "commits": 54,
+            "viewCommits": 51,
+            "viewRenderMs": 10.299999982118607,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5002.300000011921,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 49.50000020861626,
+            "callbacks": 323,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 336,
+              "stage": 336
+            },
+            "commits": 79,
+            "viewCommits": 74,
+            "viewRenderMs": 64.79999992251396,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 6,
+      "arm": "B",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            10.85,
+            17.42,
+            64.2
+          ]
+        },
+        "after": [
+          9.04,
+          16.58,
+          62.81
+        ]
+      },
+      "ms": 23812,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5002.0999999940395,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1366.9000000059605,
+            "callbacks": 616,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 229,
+              "stage": 229
+            },
+            "commits": 54,
+            "viewCommits": 50,
+            "viewRenderMs": 8.699999928474426,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5003,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 691.0000001192093,
+            "callbacks": 323,
+            "maxMs": 3.399999976158142
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 334,
+              "stage": 334
+            },
+            "commits": 77,
+            "viewCommits": 72,
+            "viewRenderMs": 62.599999874830246,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    },
+    {
+      "round": 6,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            9.04,
+            16.58,
+            62.81
+          ]
+        },
+        "after": [
+          7.74,
+          15.71,
+          61.16
+        ]
+      },
+      "ms": 23483,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 5008.0999999940395,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.800000000000182
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 162.89999976754189,
+            "callbacks": 616,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 228,
+              "stage": 228
+            },
+            "commits": 56,
+            "viewCommits": 52,
+            "viewRenderMs": 10.699999958276749,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 17,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 5005,
+          "frames": {
+            "count": 299,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 49.10000026226044,
+            "callbacks": 323,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 339,
+              "stage": 339
+            },
+            "commits": 83,
+            "viewCommits": 78,
+            "viewRenderMs": 70.20000004768372,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 16,
+          "agents": 10
+        }
+      ],
+      "driver": {
+        "sent": 57,
+        "failed": 0
+      }
+    }
+  ],
+  "finishedAt": "2026-10-04T02:47:11.312Z"
+}

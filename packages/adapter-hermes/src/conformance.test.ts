@@ -1,12 +1,12 @@
 /** Shared adapter-binding contract over a fake owned tui_gateway. */
 
 import { expect } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentHost } from '@vibefield/puppeteer-core';
 import {
   runAgentMonitorConformance,
   runAgentAdapterConformance,
   type AgentAdapterHarness,
-} from '@vibecook/puppeteer-testing/conformance';
+} from '@vibefield/puppeteer-testing/conformance';
 import { createHermesTuiSession } from './driver.js';
 import {
   createFakeHermesGatewayState,

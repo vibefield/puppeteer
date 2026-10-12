@@ -27,7 +27,7 @@ import type {
   PromptReceipt,
   PromptSubmission,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { createCodexObserver } from '../observation/observer.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
@@ -58,12 +58,41 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   selectThread?: ((threadId: string) => boolean) | undefined;
   /** Model id applied when starting a fresh thread. */
   model?: string | undefined;
+  /** Model-specific reasoning effort; native configuration remains authoritative when omitted. */
+  effort?: string | undefined;
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
   approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
+  /**
+   * Who decides the sandbox and approval policy `sandbox`/`approvalPolicy` leave unset on
+   * a fresh thread: `'adapter'` (the default) starts it with workspace-write and on-request;
+   * `'configuration'` lets the private app-server take them from its configuration, as a
+   * typed `codex` does. A typed launch passes `'configuration'`; a host's own spawn keeps
+   * the default unless it names its permissions.
+   */
+  permissionDefaults?: 'adapter' | 'configuration' | undefined;
   /** Decide structured approval requests from the controller-owned app-server connection. Default: deny. */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
   resumeInvocation?: string[] | undefined;
+  /** Settings for the private app-server's own command line (`--config=…`, `--enable=…`, `--disable=…`). */
+  appServerArguments?: string[] | undefined;
+  /**
+   * Typed arguments for the TUI's own command line. They follow the adapter's
+   * `--remote <addr>`, so nothing typed can take the address as its value.
+   */
+  tuiArguments?: string[] | undefined;
+  /**
+   * A typed prompt, which the TUI submits once it joins the owned thread. It goes
+   * last, after `--`, so clap reads it as the prompt whatever it starts with.
+   */
+  prompt?: string | undefined;
+}
+
+const OWNED_TUI_ARGUMENTS = ['--remote', '--remote-auth-token-env', '--'];
+const OWNED_APP_SERVER_ARGUMENTS = ['--listen', '--stdio'];
+
+function owns(argument: string, owned: readonly string[]): boolean {
+  return owned.some((name) => argument === name || argument.startsWith(`${name}=`));
 }
 
 /** A Codex native-TUI session — {@link AgentAdapterBinding} plus the rollout path. */
@@ -84,6 +113,16 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   if (opts.resume && opts.resumeInvocation) {
     throw new Error('Codex preparation accepts resume or resumeInvocation, not both');
   }
+  // After a picker selector the prompt would be read as the session to resume.
+  if (opts.prompt !== undefined && opts.resumeInvocation) {
+    throw new Error('Codex preparation carries a prompt only into a thread it owns, not into resumeInvocation');
+  }
+  if (opts.tuiArguments?.some((argument) => owns(argument, OWNED_TUI_ARGUMENTS))) {
+    throw new Error('Codex tuiArguments must not carry the remote transport or an end of options');
+  }
+  if (opts.appServerArguments?.some((argument) => owns(argument, OWNED_APP_SERVER_ARGUMENTS))) {
+    throw new Error('Codex appServerArguments must not carry the listener');
+  }
   const executable = resolveCodexExecutable(opts.executable);
   const host: AgentHost = opts.host;
 
@@ -91,6 +130,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     executable,
     ...(opts.appServerTransport ? { transport: opts.appServerTransport } : {}),
     ...(opts.appServerEnv ? { env: opts.appServerEnv } : {}),
+    ...(opts.appServerArguments?.length ? { args: opts.appServerArguments } : {}),
   });
   try {
     await server.ready();
@@ -117,8 +157,10 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
               start: {
                 cwd: opts.cwd,
                 model: opts.model,
+                effort: opts.effort,
                 sandbox: opts.sandbox,
                 approvalPolicy: opts.approvalPolicy,
+                permissionDefaults: opts.permissionDefaults,
               },
             }),
     });
@@ -154,9 +196,13 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
     }
   }
   const remoteAddr = appServerRemoteAddress(resumeTap?.endpoint() ?? serverEndpoint);
+  // `resume <thread>` first (clap's SESSION_ID), then the adapter's `--remote <addr>`,
+  // then what was typed, and the prompt last behind `--` (clap's PROMPT) — a variadic
+  // like `--image` can take neither the address nor the prompt.
+  const carried = [...(opts.tuiArguments ?? []), ...(opts.prompt === undefined ? [] : ['--', opts.prompt])];
   const args = opts.resumeInvocation
-    ? [...opts.resumeInvocation, '--remote', remoteAddr]
-    : ['resume', threadId, '--remote', remoteAddr];
+    ? [...opts.resumeInvocation, '--remote', remoteAddr, ...carried]
+    : ['resume', threadId, '--remote', remoteAddr, ...carried];
 
   const launch: TerminalSpec = {
     command: executable,

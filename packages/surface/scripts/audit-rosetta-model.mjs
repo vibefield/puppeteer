@@ -2,8 +2,8 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
-import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { loadModel, validateSanitizedPayload } from '@vibefield/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../scripts/agent-model-selection.mjs';
 import { rosettaAgentConfig } from './rosetta-agents.mjs';
 import { rosettaEventInventory } from './generate-rosetta-model.mjs';

@@ -1,4 +1,4 @@
-import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibefield/puppeteer-core';
 import { boundedHermesMapSet, hermesRecord, hermesString } from './types.js';
 
 function presentation(tool: string, completed = false): ToolPresentation {

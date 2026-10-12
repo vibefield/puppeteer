@@ -1,4 +1,4 @@
-import type { UsagePricing } from '@vibecook/puppeteer-core';
+import type { UsagePricing } from '@vibefield/puppeteer-core';
 
 export interface CodexUsageCounter {
   total: number;

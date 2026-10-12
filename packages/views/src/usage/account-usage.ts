@@ -1,5 +1,5 @@
-import type { AccountUsageMetric } from '@vibecook/puppeteer-core';
-import type { AccountUsageBatch, AccountUsageEntry } from '@vibecook/puppeteer-core';
+import type { AccountUsageMetric } from '@vibefield/puppeteer-core';
+import type { AccountUsageBatch, AccountUsageEntry } from '@vibefield/puppeteer-core';
 
 export type AccountUsageViewState = 'available' | 'rate-limited' | 'unauthenticated' | 'unsupported' | 'unavailable';
 

@@ -1,6 +1,12 @@
+import { tmpdir } from 'node:os';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentAdapterBinding, AgentHost, AgentProfile } from '@vibecook/puppeteer-core';
-import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+import {
+  AgentLaunchProviderSchema,
+  type AgentAdapterBinding,
+  type AgentHost,
+  type AgentProfile,
+} from '@vibefield/puppeteer-core';
+import type { AcpConnector } from '@vibefield/puppeteer-adapter-acp';
 
 const adapters = vi.hoisted(() => {
   // Minimal valid provider-scoped capabilities so composition passes runtime schema checks.
@@ -142,11 +148,21 @@ const adapters = vi.hoisted(() => {
   };
 });
 
-vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
+vi.mock('@vibefield/puppeteer-adapter-acp', () => ({
+  createAcpModelService: () => ({
+    provider: { id: 'acp', label: 'Acp', discovery: 'session' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createAcpSession: adapters.createAcpSession,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
+vi.mock('@vibefield/puppeteer-adapter-antigravity', () => ({
+  createAntigravityModelService: () => ({
+    provider: { id: 'antigravity', label: 'Antigravity', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createAntigravityDistributionService: adapters.createAntigravityDistributionService,
   createAntigravityProfileService: adapters.createAntigravityProfileService,
   createAntigravityExtensionService: adapters.createAntigravityExtensionService,
@@ -158,7 +174,15 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   restoreAntigravityContinuationState: adapters.restoreAntigravityContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
+vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
+  createClaudeModelService: () => ({
+    provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
+  // The adapter's own list, so the allow-list pin below reads what the adapter declares.
+  CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-claude')>())
+    .CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
   createClaudeExtensionService: adapters.createClaudeExtensionService,
@@ -174,7 +198,12 @@ vi.mock('@vibecook/puppeteer-adapter-claude', () => ({
   restoreClaudeContinuationState: adapters.restoreClaudeContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
+vi.mock('@vibefield/puppeteer-adapter-codex', () => ({
+  createCodexModelService: () => ({
+    provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createCodexDistributionService: adapters.createCodexDistributionService,
   createCodexProfileService: adapters.createCodexProfileService,
   createCodexExtensionService: adapters.createCodexExtensionService,
@@ -188,7 +217,12 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   restoreCodexContinuationState: adapters.restoreCodexContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
+vi.mock('@vibefield/puppeteer-adapter-copilot', () => ({
+  createCopilotModelService: () => ({
+    provider: { id: 'copilot', label: 'Copilot', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createCopilotDistributionService: adapters.createCopilotDistributionService,
   createCopilotProfileService: adapters.createCopilotProfileService,
   createCopilotTuiSession: adapters.createCopilotTuiSession,
@@ -198,7 +232,12 @@ vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
   restoreCopilotContinuationState: adapters.restoreCopilotContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
+vi.mock('@vibefield/puppeteer-adapter-grok', () => ({
+  createGrokModelService: () => ({
+    provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createGrokDistributionService: adapters.createGrokDistributionService,
   createGrokProfileService: adapters.createGrokProfileService,
   createGrokExtensionService: adapters.createGrokExtensionService,
@@ -210,7 +249,12 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
   restoreGrokContinuationState: adapters.restoreGrokContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
+vi.mock('@vibefield/puppeteer-adapter-kimi', () => ({
+  createKimiModelService: () => ({
+    provider: { id: 'kimi', label: 'Kimi', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createKimiDistributionService: adapters.createKimiDistributionService,
   createKimiProfileService: adapters.createKimiProfileService,
   createKimiExtensionService: adapters.createKimiExtensionService,
@@ -222,7 +266,12 @@ vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   restoreKimiContinuationState: adapters.restoreKimiContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
+vi.mock('@vibefield/puppeteer-adapter-opencode', () => ({
+  createOpenCodeModelService: () => ({
+    provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createOpenCodeDistributionService: adapters.createOpenCodeDistributionService,
   createOpenCodeProfileService: adapters.createOpenCodeProfileService,
   createOpenCodeExtensionService: adapters.createOpenCodeExtensionService,
@@ -233,7 +282,12 @@ vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
   restoreOpenCodeContinuationState: adapters.restoreOpenCodeContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
+vi.mock('@vibefield/puppeteer-adapter-hermes', () => ({
+  createHermesModelService: () => ({
+    provider: { id: 'hermes', label: 'Hermes', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createHermesDistributionService: adapters.createHermesDistributionService,
   createHermesProfileService: adapters.createHermesProfileService,
   createHermesExtensionService: adapters.createHermesExtensionService,
@@ -244,7 +298,12 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   restoreHermesContinuationState: adapters.restoreHermesContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
+vi.mock('@vibefield/puppeteer-adapter-pi', () => ({
+  createPiModelService: () => ({
+    provider: { id: 'pi', label: 'Pi', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createPiDistributionService: adapters.createPiDistributionService,
   createPiProfileService: adapters.createPiProfileService,
   createPiExtensionService: adapters.createPiExtensionService,
@@ -256,6 +315,7 @@ vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
 }));
 
 import { createBuiltinProviders } from './providers.js';
+import { createBuiltinAgentRuntime } from './runtime.js';
 import type { BuiltinAgentRuntime, BuiltinCreateAgentSessionOptions } from './types.js';
 
 const host: AgentHost = {
@@ -410,6 +470,24 @@ describe('createBuiltinProviders launch options', () => {
     }
   });
 
+  it('names the history kind of every executable provider, each owned by one provider', () => {
+    const owners = new Map<string, string>();
+    for (const provider of createBuiltinProviders()) {
+      const kinds = AgentLaunchProviderSchema.parse(provider.launch?.provider).historyKinds;
+      if (provider.descriptor.id === 'acp') {
+        expect(kinds).toBeUndefined();
+        continue;
+      }
+      expect(kinds?.length).toBeGreaterThan(0);
+      for (const kind of kinds ?? []) {
+        expect(owners.get(kind)).toBeUndefined();
+        owners.set(kind, provider.descriptor.id);
+      }
+    }
+    expect(owners.get('claude-code')).toBe('claude');
+    expect(owners.get('kimi-code')).toBe('kimi');
+  });
+
   it('prewarms Codex with the configured executable and selected account, without launching a session', async () => {
     const codex = createBuiltinProviders({ executables: { codex: '/opt/codex' } }).find(
       (provider) => provider.descriptor.id === 'codex',
@@ -487,6 +565,68 @@ describe('createBuiltinProviders launch options', () => {
         appServerEnv: { CODEX_HOME: '/roots/codex/p2' },
         model: 'gpt-5.6-sol',
       }),
+    );
+  });
+
+  it("gives a created session the host's launch values beneath its own variables, where its MCP servers run", async () => {
+    const providers = createBuiltinProviders({
+      executables: { claude: '/opt/claude', codex: '/opt/codex', grok: '/opt/grok' },
+    });
+    const find = (id: string) => providers.find((provider) => provider.descriptor.id === id)!;
+    const environment = { LINEAR_API_KEY: 'lin_api_secret' };
+
+    // Claude runs its servers from the terminal's process
+    await find('claude').createSession({ cwd: '/work/repo', host, environment });
+    expect(adapters.createClaudeSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ env: { LINEAR_API_KEY: 'lin_api_secret' } }),
+    );
+
+    // Codex runs them from its app-server: the terminal gets nothing, and the binding wins
+    const codex = find('codex');
+    const profile: AgentProfile = {
+      id: 'p2',
+      provider: 'codex',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/codex/p2',
+      createdAt: '2026-09-06T00:00:00.000Z',
+    };
+    vi.mocked(codex.profiles!.bindingEnvironment).mockReturnValue({ CODEX_HOME: '/roots/codex/p2' });
+    adapters.normalizeCodexNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { env: { CODEX_HOME: '/roots/codex/p2' }, appServerEnv: { CODEX_HOME: '/roots/codex/p2' } },
+    } as ReturnType<typeof adapters.normalizeCodexNativeInvocation>);
+    await codex.createSession({
+      cwd: '/work/repo',
+      host,
+      profile,
+      environment: { ...environment, CODEX_HOME: '/elsewhere' },
+    });
+    expect(adapters.createCodexTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        env: { CODEX_HOME: '/roots/codex/p2' },
+        appServerEnv: { LINEAR_API_KEY: 'lin_api_secret', CODEX_HOME: '/roots/codex/p2' },
+      }),
+    );
+
+    // Grok runs them from its leader, one per environment: two sets' values never share one
+    const grok = find('grok');
+    await grok.createSession({ cwd: '/work/repo', host, environment });
+    await grok.createSession({ cwd: '/work/repo', host, environment: { LINEAR_API_KEY: 'another' } });
+    await grok.createSession({ cwd: '/work/repo', host, environment });
+    expect(adapters.createGrokBackend).toHaveBeenCalledTimes(2);
+    expect(adapters.createGrokBackend).toHaveBeenNthCalledWith(1, {
+      executable: '/opt/grok',
+      appServerEnv: { LINEAR_API_KEY: 'lin_api_secret' },
+      host,
+    });
+
+    // a prepared recipe goes back to its caller: it never takes them
+    await codex.prepareSession!({ cwd: '/work/repo', host, environment } as Parameters<
+      NonNullable<typeof codex.prepareSession>
+    >[0]);
+    expect(adapters.prepareCodexTuiSession).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ appServerEnv: expect.objectContaining(environment) }),
     );
   });
 
@@ -582,6 +722,142 @@ describe('createBuiltinProviders launch options', () => {
     expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(
       expect.objectContaining({ executable: '/opt/company-claude' }),
     );
+  });
+
+  it('declares that the Claude adapter classifies what it does not run as a session', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    expect(claude.launch!.provider.nativeInvocation!.classifies).toBe(true);
+  });
+
+  it('takes from a Claude shell every variable that changes what the session is, and nothing else', () => {
+    const claude = createBuiltinProviders().find((provider) => provider.descriptor.id === 'claude')!;
+    // The switches stand for --bare, --safe-mode and --restricted; the session inherits them at exec.
+    expect(claude.launch!.provider.nativeInvocation!.environmentVariables).toEqual([
+      'CLAUDE_CONFIG_DIR',
+      'CLAUDE_CODE_SIMPLE',
+      'CLAUDE_CODE_SAFE_MODE',
+      'CLAUDE_CODE_RESTRICTED',
+    ]);
+  });
+
+  it('prepares a typed Claude launch as typed: the person’s name, their arguments and prompt, their permission mode only', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      title: 'host title',
+      host,
+      agentOptions: {
+        typed: true,
+        title: 'mine',
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        readsNoSettingsFiles: true,
+      },
+    });
+    expect(adapters.preflightClaudeLaunch).toHaveBeenCalledWith(expect.objectContaining({ title: true }));
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'mine',
+        permissionMode: null,
+        carriedArgs: ['--dangerously-skip-permissions', '--verbose'],
+        prompt: ['fix the bug'],
+        readsNoSettingsFiles: true,
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, agentOptions: { typed: true, permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ permissionMode: 'plan' }),
+    );
+
+    // A host's own preparation is not typed: its permission mode is its own, defaulted downstream.
+    await claude.prepareSession!({ cwd: '/work/repo', title: 'host title', host, agentOptions: { model: 'sonnet' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'host title',
+        permissionMode: undefined,
+        carriedArgs: undefined,
+        prompt: undefined,
+      }),
+    );
+    // Typed or a host's own, the provider leaves hooks off to the adapter, which refuses every launch it would blind.
+    for (const [options] of adapters.prepareClaudeTuiSession.mock.calls) {
+      expect(options).not.toHaveProperty('refuseHooksOff');
+    }
+  });
+
+  it('reads what a person typed from the invocation, never from the profile binding’s empty argv', async () => {
+    const claude = createBuiltinProviders({ executables: { claude: '/opt/claude' } }).find(
+      (provider) => provider.descriptor.id === 'claude',
+    )!;
+    const profile: AgentProfile = {
+      id: 'p1',
+      provider: 'claude',
+      label: 'Work',
+      kind: 'managed',
+      dataRoot: '/roots/claude/p1',
+      createdAt: '2026-09-27T00:00:00.000Z',
+    };
+    vi.mocked(claude.profiles!.bindingEnvironment).mockReturnValue({ CLAUDE_CONFIG_DIR: '/roots/claude/p1' });
+    // The empty argv the binding normalizes is itself a typed launch.
+    adapters.normalizeClaudeNativeInvocation.mockReturnValue({
+      status: 'accepted',
+      options: { typed: true, configDir: '/roots/claude/p1' },
+    } as ReturnType<typeof adapters.normalizeClaudeNativeInvocation>);
+
+    await claude.prepareSession!({
+      cwd: '/work/repo',
+      host,
+      profile,
+      agentOptions: { typed: true, carriedArgs: ['--verbose'], prompt: ['fix it'] },
+    });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        configDir: '/roots/claude/p1',
+        permissionMode: null,
+        carriedArgs: ['--verbose'],
+        prompt: ['fix it'],
+      }),
+    );
+
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile, agentOptions: { permissionMode: 'plan' } });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: 'plan' }),
+    );
+    await claude.prepareSession!({ cwd: '/work/repo', host, profile });
+    expect(adapters.prepareClaudeTuiSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ configDir: '/roots/claude/p1', permissionMode: undefined }),
+    );
+    for (const [options] of adapters.prepareClaudeTuiSession.mock.calls) {
+      expect(options).not.toHaveProperty('refuseHooksOff');
+    }
+  });
+
+  it('carries the Claude adapter’s refusal through the provider and the runtime to the failure a host reads', async () => {
+    const { ClaudeHooksOffError } = await vi.importActual<typeof import('@vibefield/puppeteer-adapter-claude')>(
+      '@vibefield/puppeteer-adapter-claude',
+    );
+    adapters.prepareClaudeTuiSession.mockRejectedValueOnce(
+      new ClaudeHooksOffError('user', '/home/someone/.claude/settings.json'),
+    );
+    const runtime = createBuiltinAgentRuntime({ host, defaultCwd: tmpdir() });
+    const refused = await runtime.prepareInvocation({
+      providerId: 'claude',
+      cwd: tmpdir(),
+      argv: [],
+      environment: {},
+      implementation: { kind: 'native' },
+    });
+    expect('error' in refused && refused.error).toEqual({
+      code: 'AGENT_LAUNCH_REFUSED',
+      message: 'your user settings turn hooks off (disableAllHooks), and a managed session is observed through hooks',
+      refusal: { code: 'CLAUDE_HOOKS_OFF' },
+    });
+    // The error's other fields are the reporter's: the settings file's path does not reach the failure.
+    expect(JSON.stringify(refused)).not.toContain('/home/someone');
+    await runtime.dispose();
   });
 
   it('exposes provider-level account usage independently of sessions', async () => {

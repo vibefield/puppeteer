@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibefield/puppeteer-core';
 import type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -57,16 +56,18 @@ describe('Godview monitor IPC protocol', () => {
     expect(JSON.parse(JSON.stringify(messages))).toEqual(messages);
   });
 
-  it('exposes monitor subscriptions and scoped failure acknowledgment', () => {
-    const acknowledgment: AcknowledgeAgentFailureRequest = { runtimeRunId: 'run-1', blockerId: 'failure-1' };
+  it('exposes the model, the chrome feed, notifications and the backend acknowledgment', () => {
     const bridgeMethods: (keyof PuppeteerBridge)[] = [
-      'listAgentMonitors',
-      'onAgentMonitorState',
+      'requestMonitorSnapshot',
+      'onMonitorModel',
+      'reportMonitorTerminals',
+      'reportMonitorShown',
+      'acknowledgeMonitorRow',
+      'listChromeMonitors',
+      'onChromeMonitorState',
+      'onChromeMonitorRemoved',
       'onAgentMonitorNotification',
-      'onAgentMonitorRemoved',
-      'acknowledgeAgentFailure',
     ];
-    expect(JSON.parse(JSON.stringify({ acknowledgment }))).toEqual({ acknowledgment });
-    expect(bridgeMethods).toHaveLength(5);
+    expect(bridgeMethods).toHaveLength(9);
   });
 });

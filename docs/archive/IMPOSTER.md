@@ -92,10 +92,10 @@ This is the first thing the codex persona proves that the claude persona alone n
 ### 3.1 Layout
 
 ```
-packages/surface/                       @vibecook/puppeteer-surface   (ASM runtime — §7.1)
+packages/surface/                       @vibefield/puppeteer-surface   (ASM runtime — §7.1)
   src/model.ts                          self-contained; erasableSyntaxOnly package-wide
 
-packages/imposter/                      @vibecook/puppeteer-imposter
+packages/imposter/                      @vibefield/puppeteer-imposter
   bin/ai.mjs                            entry; resolves persona, then delegates
   src/
     cli/argv.ts                         persona from argv0 | --<vendor> | AI_PERSONA
@@ -134,13 +134,13 @@ A new agent therefore costs: the ASM the adapter needs anyway, plus an ops map a
 ```json
 {
   "vendor": "claude",
-  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/claude/model/claude@2.1.207" },
+  "asm": { "package": "@vibefield/puppeteer-surface", "path": "vendors/claude/model/claude@2.1.207" },
   "shimNames": ["claude"],
   "boot": ["session.start", "instructions.loaded", "statusline.refresh"]
 }
 ```
 
-Surface publishes `files: ["dist", "vendors/*/model"]`, so a published Imposter can resolve a promoted ASM. The loader resolves `@vibecook/puppeteer-surface/package.json` and joins the declared model path; it does not deep-import JSON through package exports.
+Surface publishes `files: ["dist", "vendors/*/model"]`, so a published Imposter can resolve a promoted ASM. The loader resolves `@vibefield/puppeteer-surface/package.json` and joins the declared model path; it does not deep-import JSON through package exports.
 
 ### 3.3 Ownership split
 
@@ -314,7 +314,7 @@ Link `bin/ai.mjs` itself, **not** `$(command -v ai)`. A package manager's global
 
 Two install commands existed for these and both were deleted on 2026-08-08 (§11.1). `ai link` reimplemented the package manager. `ai shims install` wrote the symlink above into a managed directory, with conflict detection, idempotency, a Windows wrapper, `--force`, and a `list` subcommand — a hundred lines and its own test file to save one `ln -s`, in service of a "product apps need no changes" claim that §11.2 retired: an app that wants an imposted session now passes `executable` per session, which is finer-grained, needs no PATH manipulation at all, and cannot leak into a shell the user did not intend.
 
-**Naming.** `ai` collides with the npm package `ai` and is a common shell alias. Publish as `@vibecook/puppeteer-imposter` with `bin: { "ai": …, "imposter": … }`, and let anyone who dislikes the name alias it themselves.
+**Naming.** `ai` collides with the npm package `ai` and is a common shell alias. Publish as `@vibefield/puppeteer-imposter` with `bin: { "ai": …, "imposter": … }`, and let anyone who dislikes the name alias it themselves.
 
 ---
 
@@ -324,7 +324,7 @@ Two install commands existed for these and both were deleted on 2026-08-08 (§11
 
 ### 7.1 Why the ASM runtime does not move into the imposter
 
-`model.ts` has consumers that are not the imposter: Surface audits and model tooling use it directly, while adapter projection generators import its types and validator. Claude and Codex carry `@vibecook/puppeteer-surface` only as a **devDependency**; their published runtimes do not depend on the evidence package.
+`model.ts` has consumers that are not the imposter: Surface audits and model tooling use it directly, while adapter projection generators import its types and validator. Claude and Codex carry `@vibefield/puppeteer-surface` only as a **devDependency**; their published runtimes do not depend on the evidence package.
 
 It must also stay **self-contained** — no relative imports, erasable syntax only — because `.mjs` Surface scripts import it under Node type stripping. `packages/surface/tsconfig.json` enforces that constraint. An imposter package containing Ink and JSX cannot set that flag, so moving the model runtime there would degrade a compiler-enforced boundary into convention.
 
@@ -334,7 +334,7 @@ It must also stay **self-contained** — no relative imports, erasable syntax on
 
 | From `packages/emulator`                                                              | Goes to                                                 | Notes                                                                                                            |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `model.ts` (whole file)                                                               | **`packages/surface`** — `@vibecook/puppeteer-surface` | Renamed package, same contents, same `erasableSyntaxOnly`. Adapters devDepend on it; the imposter depends on it. |
+| `model.ts` (whole file)                                                               | **`packages/surface`** — `@vibefield/puppeteer-surface` | Renamed package, same contents, same `erasableSyntaxOnly`. Adapters devDepend on it; the imposter depends on it. |
 | `engine.ts` → paste decoder, hook emitter, transcript writer, statusline invoker      | `packages/imposter/src/session/channels/`               | May now import each other normally — the `validate`-injection existed only to keep the file self-contained.      |
 | `engine.ts` → scenario runner                                                         | `packages/imposter/src/session/scenario.ts`             | Becomes the raw/adversarial layer beneath the op layer (§2, §2.1).                                               |
 | `control.ts` → `createControlPlane`                                                   | `apps/imposter-control/src/main/plane.ts`               | Sole consumer; not published API.                                                                                |
@@ -344,7 +344,7 @@ It must also stay **self-contained** — no relative imports, erasable syntax on
 
 **Deleted outright**, superseded by the UDS inversion (§5): `createEmulatorControlServer` (the bin-side HTTP server — imposters dial out and serve nothing), `defaultControlStateFile` / `parseStateFile` / `livePlaneInStateFile` (no state file), `registrationChannels` / `prune` (liveness is socket close), and the imposter-side bearer dance (the plane keeps a token for the browser).
 
-`packages/emulator` is listed in `scripts/public-packages.mjs` at `0.1.8`, but it has **never been published**: it is new on the unmerged `feat/agent-emulator` branch, and `@vibecook/puppeteer-emulator` returns 404 from the registry (verified 2026-08-07). Retiring it is therefore free — no deprecation, no successor notice, no breaking change for any consumer.
+`packages/emulator` is listed in `scripts/public-packages.mjs` at `0.1.8`, but it has **never been published**: it is new on the unmerged `feat/agent-emulator` branch, and `@vibefield/puppeteer-emulator` returns 404 from the registry (verified 2026-08-07). Retiring it is therefore free — no deprecation, no successor notice, no breaking change for any consumer.
 
 The same holds for every rearrangement in this document. **Nothing described here has shipped**, so the usual constraints on moving published API do not apply, and the sequencing in §8 is chosen purely for bisectability rather than for compatibility.
 
@@ -369,7 +369,7 @@ These are the non-obvious parts of the PoC. They are cheap to lose in a rewrite 
 
 **Revised at I4 (2026-08-08).** The `synthetic` persona exists and earns its keep; folding `fake-agent.mjs` into it does not.
 
-Two reasons. `fakeAgentBin` is exported API of `@vibecook/puppeteer-testing@0.1.8`, which **is** published — removing it is a breaking change for no gain. And the two do different jobs: the fake agent exercises the **terminal spine** (alt-screen, bad UTF-8, byte floods, ignored SIGINT, child process trees) for the PTY layer, while the imposter's TUI is cosmetic by §4 and deliberately does none of that. Merging them would conflate a terminal fixture with a machine-surface stand-in.
+Two reasons. `fakeAgentBin` is exported API of `@vibefield/puppeteer-testing@0.1.8`, which **is** published — removing it is a breaking change for no gain. And the two do different jobs: the fake agent exercises the **terminal spine** (alt-screen, bad UTF-8, byte floods, ignored SIGINT, child process trees) for the PTY layer, while the imposter's TUI is cosmetic by §4 and deliberately does none of that. Merging them would conflate a terminal fixture with a machine-surface stand-in.
 
 What §7.4 actually wanted — a not-a-real-vendor check on the persona contract — is delivered by `personas/synthetic/` alone, and it paid for itself immediately. Writing a second persona found three places the contract had quietly become claude-shaped:
 

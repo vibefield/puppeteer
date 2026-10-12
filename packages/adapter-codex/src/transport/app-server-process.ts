@@ -40,6 +40,12 @@ export interface SpawnAppServerOptions {
    * is how the puppeteer imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
    */
   env?: Record<string, string>;
+  /**
+   * Arguments for `codex app-server` itself, ahead of `--listen` — the settings a
+   * typed invocation carries to the thread's server (`-c`, `--enable`, `--disable`).
+   * The server is private to one session, so its settings are that session's.
+   */
+  args?: readonly string[];
 }
 
 /**
@@ -59,10 +65,14 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
       : undefined;
   if (socketPath) rmSync(socketPath, { force: true });
   const requestedAddress = socketPath ? `unix://${socketPath}` : 'ws://127.0.0.1:0';
-  const child = spawn(resolveCodexExecutable(opts.executable), ['app-server', '--listen', requestedAddress], {
-    stdio: ['ignore', 'ignore', 'pipe'],
-    ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
-  });
+  const child = spawn(
+    resolveCodexExecutable(opts.executable),
+    ['app-server', ...(opts.args ?? []), '--listen', requestedAddress],
+    {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
+    },
+  );
   let resolvedEndpoint: AppServerEndpoint | undefined;
   let stderr = '';
   let readySettled = false;
@@ -105,6 +115,11 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
   };
   child.stderr?.on('data', (chunk: Buffer | string) => {
     stderr = `${stderr}${chunk.toString()}`.slice(-32_768);
+    // Native startup diagnostics arrive just after bind. Observe the socket
+    // immediately on that wakeup instead of always paying the next 50 ms poll.
+    // The filesystem check is still authoritative; polling remains the fallback
+    // for versions that print nothing or print before creating their listener.
+    if (!readySettled && socketPath && existsSync(socketPath)) settleReady({ kind: 'unix', path: socketPath });
     if (transportKind !== 'websocket') return;
     const match = /listening on:\s+(ws:\/\/(?:\[[^\]]+\]|[^:\s]+):\d+)/.exec(stderr);
     if (match?.[1]) settleReady({ kind: 'websocket', url: match[1] });

@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { piErrorText, piString, piTextContent } from './types.js';
 
 export function piTurnStarted(entryId: string, message: Record<string, unknown>): AgentEvent {

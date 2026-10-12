@@ -17,7 +17,7 @@ import type {
   AccountUsageSnapshot,
   AccountUsageSource,
   AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   KIMI_CODE_DEFAULT_BASE_URL,
   getKimiCodeDocument,

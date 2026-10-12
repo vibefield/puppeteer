@@ -1,4 +1,4 @@
-import type { AgentHost, PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
+import type { AgentHost, PromptReceipt, PromptSubmission } from '@vibefield/puppeteer-core';
 import type { AntigravitySessionObserver } from '../observation/session-observer.js';
 export class AntigravityPromptService {
   private inFlight = false;

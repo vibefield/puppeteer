@@ -1,3 +1,4 @@
+import { EventIdSet, withEventId } from './event-id-set.js';
 import type {
   AgentEventEnvelope,
   AgentEventConfidence,
@@ -258,9 +259,9 @@ export function createMonitorAccumulatorState(options: CreateMonitorAccumulatorO
     allocatedAt: options.allocatedAt,
     ...(options.providerId ? { providerId: options.providerId } : {}),
     ...(options.terminalSessionId ? { terminalSessionId: options.terminalSessionId } : {}),
-    runtime: { seenEventIds: new Set(), entries: new Map([[run.storageKey, run]]) },
-    semantic: { seenBatchIds: new Set(), producers: new Map(), entries: new Map(), resyncs: new Map() },
-    workspace: { seenRecordIds: new Set(), entries: new Map(), provenance: new Map() },
+    runtime: { seenEventIds: new EventIdSet(), entries: new Map([[run.storageKey, run]]) },
+    semantic: { seenBatchIds: new EventIdSet(), producers: new Map(), entries: new Map(), resyncs: new Map() },
+    workspace: { seenRecordIds: new EventIdSet(), entries: new Map(), provenance: new Map() },
     expiredLeaseIds: new Set(),
     emittedNotificationIds: new Set(),
     compactionCount: 0,
@@ -332,7 +333,7 @@ function reduceRuntime(state: MonitorAccumulatorState, input: RuntimeMonitorInpu
     evidence: input.evidence,
   };
   const applied = applyUpdates(state.runtime.entries, input.updates, context);
-  const seenEventIds = new Set(state.runtime.seenEventIds).add(input.eventId);
+  const seenEventIds = withEventId(state.runtime.seenEventIds, input.eventId);
   const next: MonitorAccumulatorState = {
     ...state,
     runtime: {
@@ -459,7 +460,7 @@ function reduceSemantic(state: MonitorAccumulatorState, batch: RuntimeMonitorObs
     evidence: batch.evidence,
   };
   const producers = new Map(state.semantic.producers);
-  const seenBatchIds = new Set(state.semantic.seenBatchIds).add(batchIdentity);
+  const seenBatchIds = withEventId(state.semantic.seenBatchIds, batchIdentity);
   const resyncs = new Map(state.semantic.resyncs);
   let semanticEntries = new Map(state.semantic.entries);
   let compactionStarts = 0;
@@ -562,7 +563,7 @@ function reduceWorkspace(state: MonitorAccumulatorState, input: WorkspaceMonitor
     const key = storageKey(context, 'environment', input.recordId);
     entries.set(key, storedEntry(context, 'environment', input.recordId, input.value, entries.get(key)));
   }
-  const seenRecordIds = new Set(state.workspace.seenRecordIds).add(input.recordId);
+  const seenRecordIds = withEventId(state.workspace.seenRecordIds, input.recordId);
   const next: MonitorAccumulatorState = {
     ...state,
     workspace: {

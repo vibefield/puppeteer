@@ -7,16 +7,17 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from 'react';
-import { ProfileGlyph } from '../icons/ProfileGlyph.js';
+import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import { Tip } from './InstrumentBar.js';
 
 // THE PROFILE TABS (the VibeField agents-settings record's T3, locked
 // 2026-09-22): a sliding segment centred in the instrument bar, between two
 // spacers. All first, then each Agent Profile as its glyph and its name — the
 // bar's one place for words (§04's "no words", amended for the tabs). The host
-// says what a choice does (VibeField recedes the other profiles' bodies and
-// starts new sessions under the chosen one); this draws the strip, slides the
-// thumb, fits the window, and reports the choice.
+// says what a choice does (VibeField recedes the other profiles' bodies; a new
+// terminal takes its profile from the spawn bloom, never from the tab — the tab
+// stopped starting sessions when SPAWN left the bar); this draws the strip,
+// slides the thumb, fits the window, and reports the choice.
 
 export interface ProfileTab {
   /** The profile's id: the host's token, never shown. */

@@ -1,5 +1,5 @@
 /// <reference types="@webgpu/types" />
-import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile } from '../../../icons/AgentIcon.js';
+import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { SwarmBubbleModel } from '../bubble-model.js';
 import {
   layoutCopy,
@@ -9,21 +9,26 @@ import {
   type CopyTone,
   type TextStyle,
 } from '../text-layout.js';
-import type { Rgba } from './color.js';
+import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
+import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 import { climb, onField, SWARM_WEIGHT, WORKING_CORE_STRENGTH } from '../weight.js';
 import bodyShader from './shaders/body.wgsl.js';
 import commonShader from './shaders/common.wgsl.js';
+import eraseShader from './shaders/erase.wgsl.js';
 import fieldShader from './shaders/field.wgsl.js';
 import glowShader from './shaders/glow.wgsl.js';
+import hubShader from './shaders/hub.wgsl.js';
 import shadowShader from './shaders/shadow.wgsl.js';
 import textShader from './shaders/text.wgsl.js';
 
-// The swarm's renderer: one WebGPU canvas, one render pass, five pipelines in
-// painter's order — field, shadows, bodies, light, type — and one upload of
-// bodies and glyph quads per frame. It draws what it is given:
-// positions and sizes belong to the physics in AgentSwarm, meaning belongs to
-// bubble-model.ts, colour to the palette. Nothing here reads the DOM.
+// The swarm's renderer: one WebGPU canvas, one render pass, seven pipelines in
+// painter's order — field, shadows, bodies, light, type; the spawn bloom's
+// clearings, which erase what is under them; the bodies being born, again
+// shadows to type, above the clearings; and the hold ring last — and one upload
+// of bodies and glyph quads per frame. It draws what it is given: positions and
+// sizes belong to the physics in AgentSwarm, meaning belongs to bubble-model.ts,
+// colour to the palette. Nothing here reads the DOM.
 
 export interface RenderBody {
   model: SwarmBubbleModel;
@@ -41,6 +46,10 @@ export interface RenderBody {
   link?: Rgba;
   /** This body's light instead of the frame's; the design lab weighs settings side by side. */
   glow?: { reach: number; strength: number; breath: number };
+  /** Drawn above the clearings, with its type: the body being born — the spawn
+   * bloom's pending body, and the host's row arriving where it stood — which
+   * the ground cut for the bloom must not erase as it lifts (record §2.8 (4)). */
+  aboveClearings?: boolean | undefined;
 }
 
 /** A mark drawn on its own, for the lab's contact sheet. */
@@ -88,10 +97,40 @@ export interface SwarmFrame {
   stateGlow: { inner: number; full: number; strength: number; count: number; speed: number; depth: number };
   theme: SwarmTheme;
   bodies: readonly RenderBody[];
-  /** Hold-to-create in flight: where, and how far along (0..1). */
-  hold?: { x: number; y: number; progress: number };
+  /** Hold-to-create in flight: where, and how far along (0..1). `frozen`: the
+   * spawn bloom's hub — the ring kept at full size, above everything the field
+   * draws (clearings included), at `opacity` (1 by default) as it shrinks away. */
+  hold?: { x: number; y: number; progress: number; frozen?: boolean; opacity?: number };
+  /** The field's quiet while the spawn bloom is open: the grid is drawn at
+   * (1 − veil). Bodies carry their own share in `RenderBody.opacity`. 0 or absent: none. */
+  veil?: number;
+  /** Solid ground cut out of everything drawn beneath (grid and bodies): where
+   * the bloom and its words stand, so nothing on the field shows through them.
+   * Only a body `aboveClearings` and the hold ring are drawn over them.
+   * At most `MAX_CLEARINGS`; the rest are ignored. */
+  clearings?: readonly SwarmClearing[];
   marks?: readonly RenderMark[];
 }
+
+/** One clearing: solid out to its edge (a circle's radius, a rect's box), then
+ * fading back to nothing over `feather` px. CSS px, y down, like the bodies; a
+ * rect's x, y is its top-left corner. `opacity` (1 by default) fades the whole
+ * clearing in and out, as the bloom opens and closes. A circle falls to 0.62 at
+ * 45% of its feather and to nothing at its end (the prototype's gradient stops);
+ * a rect falls smoothly (smoothstep) from its box to nothing at the feather. */
+export type SwarmClearing =
+  | { kind: 'circle'; x: number; y: number; radius: number; feather: number; opacity?: number | undefined }
+  | {
+      kind: 'rect';
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      feather: number;
+      opacity?: number | undefined;
+    };
+
+export { MAX_CLEARINGS } from './frame-layout.js';
 
 export interface SwarmRenderer {
   resize(width: number, height: number, dpr: number): void;
@@ -116,8 +155,11 @@ const F_RING = 1024;
 const F_SHADOW = 2048;
 const F_CORE = 4096;
 const F_WAVES = 8192;
+const F_PENDING = 16384;
 
-const FRAME_FLOATS = 48;
+/** A pending body's dashes turn a radian every this many seconds (the prototype's `spin`). */
+const DASH_TURN_SECONDS = 0.9;
+
 const BODY_FLOATS = 40;
 const GLYPH_FLOATS = 16;
 const INITIAL_BODIES = 32;
@@ -154,6 +196,7 @@ const ICON_SVG: Record<string, string> = {
 const FILLED_ICONS = new Set(['folder-solid']);
 
 function iconSvg(name: string): string | undefined {
+  if (name.startsWith(PROFILE_ICON_PREFIX)) return profileIconSvg(name.slice(PROFILE_ICON_PREFIX.length));
   const inner = ICON_SVG[name];
   if (!inner) return undefined;
   const paint = FILLED_ICONS.has(name)
@@ -192,6 +235,14 @@ async function compile(device: GPUDevice, label: string, source: string): Promis
 const PREMULTIPLIED_OVER: GPUBlendState = {
   color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
   alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+};
+
+/** The clearings' blend: the target keeps (1 − the fragment's alpha) of itself.
+ * The canvas is premultiplied, so scaling colour and alpha together is exactly
+ * the page's own ground laid over the frame at that alpha. */
+const ERASE: GPUBlendState = {
+  color: { srcFactor: 'zero', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+  alpha: { srcFactor: 'zero', dstFactor: 'one-minus-src-alpha', operation: 'add' },
 };
 
 async function loadMarks(device: GPUDevice): Promise<GPUTexture> {
@@ -238,13 +289,6 @@ function withAlpha(colour: Rgba, alpha: number): Rgba {
   return [colour[0], colour[1], colour[2], alpha];
 }
 
-function writeRgba(target: Float32Array, offset: number, colour: Rgba, alphaScale = 1): void {
-  target[offset] = colour[0];
-  target[offset + 1] = colour[1];
-  target[offset + 2] = colour[2];
-  target[offset + 3] = colour[3] * alphaScale;
-}
-
 export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<SwarmRendererResult> {
   if (typeof navigator === 'undefined' || !navigator.gpu)
     return { ok: false, reason: 'WebGPU is not available in this window' };
@@ -267,12 +311,14 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     console.error('[swarm] WebGPU error', (event as GPUUncapturedErrorEvent).error.message);
   });
 
-  const [fieldModule, shadowModule, bodyModule, glowModule, textModule] = await Promise.all([
+  const [fieldModule, shadowModule, bodyModule, glowModule, textModule, eraseModule, hubModule] = await Promise.all([
     compile(device, 'swarm field', fieldShader),
     compile(device, 'swarm shadow', shadowShader),
     compile(device, 'swarm body', bodyShader),
     compile(device, 'swarm glow', glowShader),
     compile(device, 'swarm text', textShader),
+    compile(device, 'swarm erase', eraseShader),
+    compile(device, 'swarm hub', hubShader),
   ]);
 
   const sceneLayout = device.createBindGroupLayout({
@@ -302,21 +348,29 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
   const scenePipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [sceneLayout] });
   const textPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [sceneLayout, textLayout] });
 
-  const pipeline = (label: string, module: GPUShaderModule, layout: GPUPipelineLayout): Promise<GPURenderPipeline> =>
+  const pipeline = (
+    label: string,
+    module: GPUShaderModule,
+    layout: GPUPipelineLayout,
+    blend: GPUBlendState = PREMULTIPLIED_OVER,
+  ): Promise<GPURenderPipeline> =>
     device.createRenderPipelineAsync({
       label,
       layout,
       vertex: { module, entryPoint: 'vs' },
-      fragment: { module, entryPoint: 'fs', targets: [{ format, blend: PREMULTIPLIED_OVER }] },
+      fragment: { module, entryPoint: 'fs', targets: [{ format, blend }] },
       primitive: { topology: 'triangle-list' },
     });
-  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline] = await Promise.all([
-    pipeline('swarm field', fieldModule, scenePipelineLayout),
-    pipeline('swarm shadow', shadowModule, scenePipelineLayout),
-    pipeline('swarm body', bodyModule, scenePipelineLayout),
-    pipeline('swarm glow', glowModule, scenePipelineLayout),
-    pipeline('swarm text', textModule, textPipelineLayout),
-  ]);
+  const [fieldPipeline, shadowPipeline, bodyPipeline, glowPipeline, textPipeline, erasePipeline, hubPipeline] =
+    await Promise.all([
+      pipeline('swarm field', fieldModule, scenePipelineLayout),
+      pipeline('swarm shadow', shadowModule, scenePipelineLayout),
+      pipeline('swarm body', bodyModule, scenePipelineLayout),
+      pipeline('swarm glow', glowModule, scenePipelineLayout),
+      pipeline('swarm text', textModule, textPipelineLayout),
+      pipeline('swarm erase', eraseModule, scenePipelineLayout, ERASE),
+      pipeline('swarm hub', hubModule, scenePipelineLayout),
+    ]);
 
   const frameBuffer = device.createBuffer({
     label: 'swarm frame',
@@ -324,7 +378,9 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
   const sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
-  const atlas = new GlyphAtlas(device, Math.max(1, window.devicePixelRatio || 1));
+  const atlas = new GlyphAtlas(device, Math.max(1, window.devicePixelRatio || 1), undefined, () =>
+    canvas.ownerDocument.createElement('canvas'),
+  );
   const marks = await loadMarks(device);
 
   let bodyCapacity = INITIAL_BODIES;
@@ -384,6 +440,21 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
   let heldTime = 0;
   let glyphCount = 0;
   let destroyed = false;
+  // When each pending body began to turn, on the held clock, by body id: its
+  // dashes start from where they stood, and stand still with the motion.
+  const turnStarts = new Map<string, number>();
+  const turnedThisFrame = new Set<string>();
+  /** How far a pending body's dashes have turned, radians clockwise; 0 until the model says it turns. */
+  const dashTurn = (model: SwarmBubbleModel): number => {
+    if (!model.pending?.turning) return 0;
+    let start = turnStarts.get(model.id);
+    if (start === undefined) {
+      start = heldTime;
+      turnStarts.set(model.id, start);
+    }
+    turnedThisFrame.add(model.id);
+    return (heldTime - start) / DASH_TURN_SECONDS;
+  };
 
   const toneColour = (tone: CopyTone, body: RenderBody, ink: Rgba, theme: SwarmTheme): Rgba => {
     switch (tone) {
@@ -723,6 +794,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     if (body.focus) flags |= F_FOCUS;
     if (model.ring) flags |= F_RING;
     if (model.ring?.hot) flags |= F_RING_HOT;
+    if (model.pending) flags |= F_PENDING;
 
     bodyData[offset] = body.x;
     bodyData[offset + 1] = body.y;
@@ -746,7 +818,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     bodyData[offset + 29] = glow.strength * body.opacity;
     bodyData[offset + 30] = glow.breath;
     bodyData[offset + 31] = body.seed;
-    bodyData[offset + 32] = 0;
+    bodyData[offset + 32] = dashTurn(model);
     bodyData[offset + 33] = body.seed;
     bodyData[offset + 34] = model.stale ? 1 : 0;
     bodyData[offset + 35] = body.opacity;
@@ -783,43 +855,27 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       const time = heldTime;
       const theme = frame.theme;
 
+      // Two groups, each one instance range in painter's order: the field's
+      // bodies, then the bodies being born, which are drawn over the clearings.
       glyphCount = 0;
-      for (let index = 0; index < bodies.length; index += 1) {
-        const body = bodies[index]!;
+      let packed = 0;
+      const pack = (body: RenderBody): void => {
         const layout = copyLayoutOf(body);
-        const ink = packBody(index, body, frame);
+        const ink = packBody(packed, body, frame);
         emitBodyText(body, ink, theme, time, frame.motion, layout);
-      }
+        packed += 1;
+      };
+      for (const body of bodies) if (!body.aboveClearings) pack(body);
+      const bodiesBelow = packed;
       for (const mark of frame.marks ?? []) pushTile(mark.tile, mark.size, mark.x, mark.y, mark.colour, mark.alpha);
+      const glyphsBelow = glyphCount;
+      for (const body of bodies) if (body.aboveClearings) pack(body);
       atlas.flush();
+      // A body that stopped turning (or left) starts afresh if it turns again.
+      for (const id of turnStarts.keys()) if (!turnedThisFrame.has(id)) turnStarts.delete(id);
+      turnedThisFrame.clear();
 
-      frameData[0] = width;
-      frameData[1] = height;
-      frameData[2] = dpr;
-      frameData[3] = time;
-      frameData[4] = frame.fillOpacity;
-      frameData[5] = frame.motion ? 1 : 0;
-      frameData[6] = frame.gridPitch;
-      frameData[7] = 0;
-      writeRgba(frameData, 8, theme.grid);
-      writeRgba(frameData, 12, theme.shadow, frame.fillOpacity);
-      writeRgba(frameData, 16, theme.shadowPeak, frame.fillOpacity);
-      frameData[20] = frame.hold?.x ?? 0;
-      frameData[21] = frame.hold?.y ?? 0;
-      frameData[22] = frame.hold?.progress ?? 0;
-      frameData[23] = frame.hold ? 1 : 0;
-      writeRgba(frameData, 24, theme.orange);
-      writeRgba(frameData, 28, withAlpha(theme.ink, SWARM_WEIGHT.supporting));
-      writeRgba(frameData, 32, theme.surface, 0.74);
-      writeRgba(frameData, 36, theme.ink);
-      frameData[40] = frame.stateGlow.inner;
-      frameData[41] = frame.stateGlow.full;
-      frameData[42] = frame.stateGlow.strength;
-      frameData[43] = 0;
-      frameData[44] = frame.stateGlow.count;
-      frameData[45] = frame.stateGlow.speed;
-      frameData[46] = frame.stateGlow.depth;
-      frameData[47] = 0;
+      packFrame(frameData, frame, { width, height, dpr, time });
 
       device.queue.writeBuffer(frameBuffer, 0, frameData);
       if (bodies.length > 0) {
@@ -838,21 +894,38 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
           },
         ],
       });
+      const drawBodies = (first: number, count: number): void => {
+        if (count === 0) return;
+        pass.setPipeline(shadowPipeline);
+        pass.draw(6, count, 0, first);
+        pass.setPipeline(bodyPipeline);
+        pass.draw(6, count, 0, first);
+        pass.setPipeline(glowPipeline);
+        pass.draw(6, count, 0, first);
+      };
+      const drawType = (first: number, count: number): void => {
+        if (count === 0) return;
+        pass.setPipeline(textPipeline);
+        pass.setBindGroup(1, textBindGroup!);
+        pass.draw(6, count, 0, first);
+      };
       pass.setBindGroup(0, sceneBindGroup!);
       pass.setPipeline(fieldPipeline);
       pass.draw(3);
-      if (bodies.length > 0) {
-        pass.setPipeline(shadowPipeline);
-        pass.draw(6, bodies.length);
-        pass.setPipeline(bodyPipeline);
-        pass.draw(6, bodies.length);
-        pass.setPipeline(glowPipeline);
-        pass.draw(6, bodies.length);
+      drawBodies(0, bodiesBelow);
+      drawType(0, glyphsBelow);
+      // The clearings erase what the field drew under the bloom and its words.
+      if (frameData[FRAME_LAYOUT.clearing]! > 0) {
+        pass.setPipeline(erasePipeline);
+        pass.draw(3);
       }
-      if (glyphCount > 0) {
-        pass.setPipeline(textPipeline);
-        pass.setBindGroup(1, textBindGroup!);
-        pass.draw(6, glyphCount);
+      drawBodies(bodiesBelow, packed - bodiesBelow);
+      drawType(glyphsBelow, glyphCount - glyphsBelow);
+      // The hold ring last, over everything the field drew: while the spawn
+      // bloom is open it is the hub the whole gesture turns on.
+      if (frameData[FRAME_LAYOUT.pointer + 3]! > 0) {
+        pass.setPipeline(hubPipeline);
+        pass.draw(6);
       }
       pass.end();
       device.queue.submit([encoder.finish()]);

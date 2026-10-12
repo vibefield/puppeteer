@@ -62,12 +62,14 @@ function markup(
 }
 
 describe('PaneFrameChrome', () => {
-  it('draws a shell as its badge alone: no readout, no verbs, no meter', () => {
+  it('offers fullscreen on a shell without agent controls', () => {
     const html = markup({ session: session() });
     expect(html).toContain('data-vf-pane-frame="term-1"');
     expect(html).toContain('class="vf-pane-name">rosetta<');
     expect(html).not.toContain('vf-pane-readout');
-    expect(html).not.toContain('vf-pane-verbs');
+    expect(html).toContain('aria-label="Fullscreen the pane"');
+    expect(html).not.toContain('is-stop');
+    expect(html).not.toContain('is-resume');
     expect(html).not.toContain('vf-pane-meter');
     expect(html).not.toContain('vf-pane-mark');
   });

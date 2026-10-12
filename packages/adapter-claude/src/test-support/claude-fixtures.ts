@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { CLAUDE_SURFACE_VERSION } from '../generated/registry.js';
 
 const require = createRequire(import.meta.url);
-const surfaceRoot = dirname(require.resolve('@vibecook/puppeteer-surface/package.json'));
+const surfaceRoot = dirname(require.resolve('@vibefield/puppeteer-surface/package.json'));
 const captureRoot = join(surfaceRoot, 'vendors', 'claude', 'captures', `claude@${CLAUDE_SURFACE_VERSION}`);
 const captureModes = ['init', 'headless', 'interactive'].filter((mode) => existsSync(join(captureRoot, mode)));
 

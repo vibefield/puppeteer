@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AdapterMonitorObservationBatch, ObservationCoverage } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, ObservationCoverage } from '@vibefield/puppeteer-core/monitor-spi';
 import { ANTIGRAVITY_CONTRACT, ANTIGRAVITY_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 export function antigravityCapabilitiesBatch(
   nativeSessionId: string,

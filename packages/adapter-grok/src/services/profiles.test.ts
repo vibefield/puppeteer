@@ -1,9 +1,10 @@
+import { resolve } from 'node:path';
 import {
   AgentProfileSchema,
   ProfileIdentitySchema,
   ProfileProviderSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   createGrokProfileService,
@@ -13,7 +14,7 @@ import {
 } from './profiles.js';
 import type { GrokAgentTransport } from '../transport/agent-client.js';
 
-const HOME = '/home/tester';
+const HOME = resolve('/home/tester');
 const NOW = new Date('2026-09-23T12:00:00.000Z');
 /** Absolute and nonexistent: a probe that missed its fake fails to spawn instead of reaching an install. */
 const EXECUTABLE = '/opt/grok-test/bin/grok';
@@ -25,13 +26,17 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'grok',
     label: 'Work',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/grok/8c8c0a1e',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
 
 const managed = profile();
-const nativeDefault = profile({ id: 'grok:native-default', kind: 'native-default', dataRoot: '/home/tester/.grok' });
+const nativeDefault = profile({
+  id: 'grok:native-default',
+  kind: 'native-default',
+  dataRoot: resolve('/home/tester/.grok'),
+});
 
 /** `_x.ai/auth/info` as Grok 1.0.41 answered it on 2026-09-23, with the account's values replaced. */
 const SIGNED_IN_INFO = {
@@ -141,7 +146,7 @@ describe('Grok profiles', () => {
         supported: true,
         identity: 'native-protocol',
         sharedSurfaces: [],
-        nativeDefaultRoot: '/home/tester/.grok',
+        nativeDefaultRoot: resolve('/home/tester/.grok'),
         credential: 'root',
         service: { id: 'xai', label: 'xAI' },
       },
@@ -151,7 +156,7 @@ describe('Grok profiles', () => {
 
   it('binds a managed profile through the native root variable', () => {
     expect(service(signedIn()).bindingEnvironment(managed)).toEqual({
-      [GROK_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/grok/8c8c0a1e',
+      [GROK_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e'),
     });
   });
 
@@ -161,16 +166,16 @@ describe('Grok profiles', () => {
 
   it('names the history layout root for an indexer', () => {
     const profiles = service(signedIn());
-    expect(profiles.observationRoot(managed)).toBe('/home/tester/.puppeteer/profiles/grok/8c8c0a1e');
-    expect(profiles.observationRoot(nativeDefault)).toBe('/home/tester/.grok');
+    expect(profiles.observationRoot(managed)).toBe(resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e'));
+    expect(profiles.observationRoot(nativeDefault)).toBe(resolve('/home/tester/.grok'));
   });
 
   it('runs the native interactive login inside the profile binding', () => {
-    expect(service(signedIn()).loginInvocation(managed, { cwd: '/work/repo' })).toEqual({
+    expect(service(signedIn()).loginInvocation(managed, { cwd: resolve('/work/repo') })).toEqual({
       command: EXECUTABLE,
       args: ['login'],
-      cwd: '/work/repo',
-      env: { [GROK_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/grok/8c8c0a1e' },
+      cwd: resolve('/work/repo'),
+      env: { [GROK_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e') },
     });
   });
 });
@@ -192,7 +197,7 @@ describe('Grok profile verification', () => {
     expect(agent.spawns).toEqual([
       {
         executable: EXECUTABLE,
-        env: { PATH: '/usr/bin:/bin', HOME, GROK_HOME: '/home/tester/.puppeteer/profiles/grok/8c8c0a1e' },
+        env: { PATH: '/usr/bin:/bin', HOME, GROK_HOME: resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e') },
       },
     ]);
     // No `authenticate`, no subscription check, no bearer or key method.
@@ -318,7 +323,7 @@ describe('Grok profile verification', () => {
       GROK_CODE_XAI_API_KEY: 'xai-legacy-key',
       GROK_AUTH: '{"key":"inline"}',
       GROK_AUTH_PATH: '/elsewhere/auth.json',
-      GROK_HOME: '/home/tester/.grok-other',
+      GROK_HOME: resolve('/home/tester/.grok-other'),
       OPENAI_API_KEY: 'sk-unrelated',
     };
     const kept = { PATH: '/usr/bin:/bin', HOME, USER: 'tester', LOGNAME: 'tester', LANG: 'en_US.UTF-8' };
@@ -329,7 +334,7 @@ describe('Grok profile verification', () => {
     await profiles.verify(nativeDefault);
 
     expect(agent.spawns.map((spawn) => spawn.env)).toEqual([
-      { ...kept, GROK_HOME: '/home/tester/.puppeteer/profiles/grok/8c8c0a1e' },
+      { ...kept, GROK_HOME: resolve('/home/tester/.puppeteer/profiles/grok/8c8c0a1e') },
       kept,
     ]);
   });
@@ -342,7 +347,7 @@ describe('Grok profile verification', () => {
       key: 'xai-session-secret',
       refresh_token: 'rt-secret',
       authorization: 'Bearer secret',
-      authPath: '/home/tester/.grok/auth.json',
+      authPath: resolve('/home/tester/.grok/auth.json'),
     });
     const identity = await service(agent).verify(managed);
     expect(identity).toMatchObject({ loggedIn: true, plan: 'SuperGrok Heavy' });

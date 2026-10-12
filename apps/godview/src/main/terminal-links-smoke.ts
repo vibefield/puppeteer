@@ -4,7 +4,7 @@ import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { BrowserWindow } from 'electron';
 import type { GhostteaAutomationClient } from '@vibecook/ghosttea-electron/main';
-import { buildAgentEnvironment } from '@vibecook/puppeteer-runtime';
+import { buildAgentEnvironment } from '@vibefield/puppeteer-runtime';
 
 interface LinkSmokeOptions {
   client: GhostteaAutomationClient;

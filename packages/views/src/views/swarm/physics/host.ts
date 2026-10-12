@@ -50,6 +50,8 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
   let free: Float32Array[] = [];
   let capacity = 0;
   let disposed = false;
+  /** Told to hold still: pumps solve nothing until `resume`. */
+  let paused = false;
   /** The future renderer's slot. Held, never drawn to (GT-D16). */
   let surface: SwarmRenderSurface | null = null;
 
@@ -118,6 +120,15 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
       case 'updateObstacles':
         physics?.setObstacles(command.obstacles);
         return;
+      case 'pause':
+        paused = true;
+        return;
+      case 'resume':
+        if (!paused) return;
+        paused = false;
+        // The clock starts again from now: the time held still is never stepped through.
+        physics?.seed(now());
+        return;
       case 'dragStart':
         physics?.dragStart(command.id, command.point);
         return;
@@ -154,7 +165,7 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
   };
 
   const pump = (at: number): void => {
-    if (disposed || !physics) return;
+    if (disposed || paused || !physics) return;
     if (physics.advance(at) > 0) publishFrame();
   };
 

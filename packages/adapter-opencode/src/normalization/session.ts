@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { openCodeText } from './wire.js';
 
 export function normalizeOpenCodeSessionStarted(info: Record<string, unknown>, sessionID: string): AgentEvent {

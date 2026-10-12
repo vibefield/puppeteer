@@ -37,7 +37,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectJsonSchema } from '@vibecook/puppeteer-surface';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
+import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { CODEX_VERSION } from './harness.mjs';
@@ -414,7 +415,7 @@ const write = (method, meta, transport, direction, root) => {
       : {}),
   };
   if (confidence === 'verified-headless') verified += 1;
-  const path = join(out, 'events', `${method}.json`);
+  const path = join(out, 'events', eventDocumentPath(method));
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(document, null, 2)}\n`);
 };

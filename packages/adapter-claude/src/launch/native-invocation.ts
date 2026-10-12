@@ -1,10 +1,19 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 import type { ClaudeSettingSource } from '../observation/status-channel.js';
+import { CLAUDE_ENVIRONMENT_SWITCHES, readClaudeEnvironment, readClaudeInvocation } from './invocation-grammar.js';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const REJECTED = 'custom arguments are not compatible with the managed Claude launch';
+/**
+ * Every variable of a person's shell that changes what a Claude session is: the config root, and
+ * the switches that stand for flags. The provider's allow-list is exactly this, so a shim forwards
+ * them and the normalizer reads what the session will inherit.
+ */
+export const CLAUDE_INVOCATION_ENVIRONMENT: readonly string[] = [
+  'CLAUDE_CONFIG_DIR',
+  ...CLAUDE_ENVIRONMENT_SWITCHES.map((row) => row.name),
+];
+
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
 const ClaudeContinuationStateSchema = z.union([
   z.strictObject({ version: z.literal(1), configDir: ContinuationPathSchema }),
@@ -27,85 +36,78 @@ export interface ClaudeNativeInvocationOptions {
   resumeInvocation?: string[] | undefined;
   executable?: string | undefined;
   env?: Record<string, string> | undefined;
+  /**
+   * Set on every typed launch, never on a host's own spawn: the managed launch then passes only
+   * the permission mode the person gave, never a default of its own.
+   */
+  typed?: true | undefined;
+  /** The person's own `-n/--name`; it wins over the host's title. */
+  title?: string | undefined;
+  /** The person's other arguments, verbatim and in their order (invocation-grammar.ts decides which). */
+  carriedArgs?: string[] | undefined;
+  /** The operands as typed: the prompt, then any the CLI drops. */
+  prompt?: string[] | undefined;
+  /**
+   * `--restricted` or CLAUDE_CODE_RESTRICTED: Claude reads none of the person's settings files, so
+   * the recipe neither delegates to a status line in them nor reads their hook switches.
+   */
+  readsNoSettingsFiles?: true | undefined;
 }
 
 export interface RestoreClaudeContinuationOptions {
   imposterExecutable?: string | undefined;
 }
 
-/** Claude owns its CLI grammar, config-root semantics, and imposter mapping. */
+/**
+ * The imposter's own grammar (`ai --claude --help`): it takes the managed launch's flags and
+ * `-n/--name`, and ignores anything else rather than doing what the CLI would. So an imposter
+ * launch keeps to the options it has always mapped and carries nothing.
+ */
+const IMPOSTER_REFUSAL = 'the Claude imposter does not take it';
+
+/** Claude owns its CLI grammar (invocation-grammar.ts), config-root semantics, and imposter mapping. */
 export function normalizeClaudeNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<ClaudeNativeInvocationOptions> {
   if (invocation.providerId !== 'claude') return { status: 'rejected', reason: 'provider mismatch' };
-  let resume: string | undefined;
-  let resumeInvocation: string[] | undefined;
-  const options: ClaudeNativeInvocationOptions = {};
-
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
-    if (argument === '--continue' || argument === '-c') {
-      if (resume || resumeInvocation) return { status: 'rejected', reason: REJECTED };
-      resumeInvocation = [argument];
-      continue;
-    }
-    if (argument === '--resume' || argument === '-r') {
-      if (resume || resumeInvocation) return { status: 'rejected', reason: REJECTED };
-      const selection = invocation.argv[index + 1];
-      if (selection && !selection.startsWith('-')) {
-        if (UUID.test(selection)) resume = selection;
-        else resumeInvocation = [argument, selection];
-        index += 1;
-      } else {
-        resumeInvocation = [argument];
-      }
-      continue;
-    }
-    if (argument === '--setting-sources') {
-      const value = invocation.argv[index + 1];
-      const sources = value?.split(',');
-      if (
-        !value ||
-        options.settingSources !== undefined ||
-        !sources ||
-        sources.some((source) => !['user', 'project', 'local'].includes(source))
-      ) {
-        return { status: 'rejected', reason: REJECTED };
-      }
-      options.settingSources = sources as ClaudeSettingSource[];
-      index += 1;
-      continue;
-    }
-    const field =
-      argument === '--model'
-        ? 'model'
-        : argument === '--effort'
-          ? 'effort'
-          : argument === '--permission-mode'
-            ? 'permissionMode'
-            : undefined;
-    const value = field ? invocation.argv[index + 1] : undefined;
-    if (!field || !value || value.startsWith('-') || options[field] !== undefined) {
-      return { status: 'rejected', reason: REJECTED };
-    }
-    options[field] = value;
-    index += 1;
+  const reading = readClaudeInvocation(invocation.argv);
+  if (reading.status === 'passthrough') return { status: 'passthrough', kind: reading.kind, reason: reading.reason };
+  if (reading.status === 'rejected') {
+    return {
+      status: 'rejected',
+      reason: reading.reason,
+      ...(reading.argument === undefined ? {} : { argument: reading.argument }),
+    };
   }
+  // The session inherits the whole shell environment: a switch there is read as its flag would be.
+  const environment = readClaudeEnvironment(invocation.environment);
+  if (environment.refusal) return { status: 'rejected', ...environment.refusal };
 
+  const options: ClaudeNativeInvocationOptions = { typed: true };
+  if (reading.model !== undefined) options.model = reading.model;
+  if (reading.effort !== undefined) options.effort = reading.effort;
+  if (reading.permissionMode !== undefined) options.permissionMode = reading.permissionMode;
+  if (reading.settingSources !== undefined)
+    options.settingSources = [...reading.settingSources] as ClaudeSettingSource[];
+  if (reading.resumeInvocation !== undefined) options.resumeInvocation = [...reading.resumeInvocation];
+  if (reading.title !== undefined) options.title = reading.title;
+  if (reading.carriedArgs.length > 0) options.carriedArgs = [...reading.carriedArgs];
+  if (reading.prompt.length > 0) options.prompt = [...reading.prompt];
+  if (reading.readsNoSettingsFiles || environment.readsNoSettingsFiles) options.readsNoSettingsFiles = true;
   const configDir = invocation.environment.CLAUDE_CONFIG_DIR;
   if (configDir) options.configDir = resolve(invocation.cwd, configDir);
-  if (resumeInvocation) options.resumeInvocation = resumeInvocation;
   if (invocation.implementation.kind === 'imposter') {
+    const beyond =
+      reading.firstCarried ??
+      reading.prompt[0] ??
+      (reading.resumeInvocation?.[0]?.startsWith('--from-pr') ? reading.resumeInvocation[0] : undefined);
+    if (beyond !== undefined) return { status: 'rejected', reason: IMPOSTER_REFUSAL, argument: beyond };
     const stateRoot = invocation.implementation.stateRoot;
     if (!stateRoot) return { status: 'rejected', reason: 'Claude imposter requires an isolated state root' };
     options.executable = invocation.implementation.executable;
     options.env = { AI_PERSONA: 'claude', PUPPETEER_IMPOSTER_HOME: stateRoot };
   }
-  return {
-    status: 'accepted',
-    ...(resume ? { resume } : {}),
-    ...(Object.keys(options).length > 0 ? { options } : {}),
-  };
+  return { status: 'accepted', ...(reading.resume === undefined ? {} : { resume: reading.resume }), options };
 }
 
 export function captureClaudeContinuationState(

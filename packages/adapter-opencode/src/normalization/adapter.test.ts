@@ -3,7 +3,7 @@ import {
   projectAgentMonitorState,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -11,7 +11,7 @@ import {
   createInitialSessionState,
   reduceSessionState,
   type AgentEventEnvelope,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { OpenCodeNormalizer, type OpenCodeNormalizedEvent } from './pipeline.js';

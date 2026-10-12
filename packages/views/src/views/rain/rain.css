@@ -1,0 +1,200 @@
+/* The rain view's own stylesheet (L18): imported by the view's entry module, every rule under the view's root
+   class `mv-rain` (on the element the host mounts the view in). It reads the skin (`MONITOR_SKIN`: here only
+   --text-faint) and its own `--mv-rain-*`, which the view sets from the palette it is handed (M46): the ground
+   (`rain.stage`), the tooltip's name (`text.primary`), its words by status (`rain.ink`) and a focused control's
+   ring (`rain.focus`). */
+
+/* Rain view deliberately paints black in both themes. */
+.mv-rain .vf-monitor-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--mv-rain-stage);
+}
+
+.mv-rain .vf-monitor-rain canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.mv-rain .vf-monitor-rain-surface {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.mv-rain .vf-monitor-rain-tooltip {
+  position: absolute;
+  z-index: 8;
+  width: 224px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px;
+  border: 1px solid rgba(0, 255, 0, 0.55);
+  border-radius: 4px;
+  color: var(--mv-rain-ink-working);
+  background: rgba(0, 10, 0, 0.95);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.25);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.mv-rain .vf-monitor-rain-tooltip.is-blocked {
+  border-color: rgba(234, 179, 8, 0.65);
+  color: var(--mv-rain-ink-blocked);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.25);
+}
+
+.mv-rain .vf-monitor-rain-tooltip.is-idle {
+  border-color: rgba(148, 163, 184, 0.55);
+  color: var(--mv-rain-ink-idle);
+  box-shadow: none;
+}
+
+.mv-rain .vf-monitor-rain-tooltip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid currentcolor;
+}
+
+.mv-rain .vf-monitor-rain-tooltip-head strong {
+  overflow: hidden;
+  color: var(--mv-rain-title);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-rain .vf-monitor-rain-tooltip-head span {
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mv-rain .vf-monitor-rain-tooltip dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 2px 6px;
+}
+
+.mv-rain .vf-monitor-rain-tooltip dt {
+  color: inherit;
+  font: inherit;
+  opacity: 0.6;
+}
+
+.mv-rain .vf-monitor-rain-tooltip dd {
+  margin: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-rain .vf-monitor-rain-context {
+  margin: 2px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-size: inherit;
+}
+
+.mv-rain .vf-monitor-rain-context-track {
+  flex: 1 1 auto;
+  height: 4px;
+  overflow: hidden;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.mv-rain .vf-monitor-rain-context-track i {
+  display: block;
+  height: 100%;
+  border-radius: 0;
+  background: currentcolor;
+}
+
+.mv-rain .vf-monitor-rain-agents {
+  position: absolute;
+  z-index: 9;
+  top: 0;
+  left: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  clip-path: none;
+  list-style: none;
+  white-space: normal;
+}
+
+.mv-rain .vf-monitor-rain-agents button {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mv-rain .vf-monitor-rain-agents button:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--mv-rain-focus);
+  border-radius: 4px;
+  clip-path: none;
+  color: var(--mv-rain-ink-working);
+  background: rgba(0, 10, 0, 0.95);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+}
+
+/* The empty stage. Its own class, so no host rule names it (MV-W5): the hosts' shared `.vf-monitor-empty` rules,
+   which it wore until MV-4, are folded in with the rain's own (the stream's green, the stream's type). */
+.mv-rain .vf-monitor-rain > .vf-monitor-rain-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  place-content: center;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(74, 222, 128, 0.65);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.mv-rain .vf-monitor-rain-empty span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.mv-rain .vf-monitor-rain-empty small {
+  color: var(--text-faint);
+  font-size: 9px;
+}

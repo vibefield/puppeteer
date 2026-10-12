@@ -1,7 +1,7 @@
 {
   "vendor": "hermes",
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/hermes"
   },
   "shimNames": ["hermes"],

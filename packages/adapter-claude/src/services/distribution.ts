@@ -28,7 +28,7 @@ import type {
   InstalledAgent,
   ReleaseChannel,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   CLAUDE_VERSION_FLAG,
   defaultClaudeExec,

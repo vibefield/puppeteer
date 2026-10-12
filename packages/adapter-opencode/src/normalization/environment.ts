@@ -1,4 +1,4 @@
-import type { EnvironmentEvent } from '@vibecook/puppeteer-core';
+import type { EnvironmentEvent } from '@vibefield/puppeteer-core';
 import { openCodeText } from './wire.js';
 
 /** OpenCode session snapshots → deduplicated environment events. */

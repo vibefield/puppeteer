@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-adapter-grok — Grok's native TUI and leader lifecycle,
+ * @vibefield/puppeteer-adapter-grok — Grok's native TUI and leader lifecycle,
  * composed with the generic Agent Client Protocol adapter for structured
  * observation and control.
  */
@@ -15,3 +15,4 @@ export * from './services/extensions.js';
 export * from './services/profiles.js';
 export * from './transport/agent-client.js';
 export * from './launch/native-invocation.js';
+export * from './services/models.js';

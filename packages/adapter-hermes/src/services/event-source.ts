@@ -6,7 +6,7 @@ import {
   type AgentEvent,
   type AgentEventConfidence,
   type AgentEventSource,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface HermesEventPublication {
   nativeSessionId?: string | undefined;

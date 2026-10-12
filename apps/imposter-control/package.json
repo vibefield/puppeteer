@@ -17,16 +17,16 @@
   },
   "dependencies": {
     "@parcel/watcher": "^2.5.0",
-    "@vibecook/puppeteer-adapter-antigravity": "workspace:*",
-    "@vibecook/puppeteer-adapter-claude": "workspace:*",
-    "@vibecook/puppeteer-adapter-codex": "workspace:*",
-    "@vibecook/puppeteer-adapter-copilot": "workspace:*",
-    "@vibecook/puppeteer-adapter-hermes": "workspace:*",
-    "@vibecook/puppeteer-adapter-kimi": "workspace:*",
-    "@vibecook/puppeteer-adapter-opencode": "workspace:*",
-    "@vibecook/puppeteer-adapter-pi": "workspace:*",
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-imposter": "workspace:*",
+    "@vibefield/puppeteer-adapter-antigravity": "workspace:*",
+    "@vibefield/puppeteer-adapter-claude": "workspace:*",
+    "@vibefield/puppeteer-adapter-codex": "workspace:*",
+    "@vibefield/puppeteer-adapter-copilot": "workspace:*",
+    "@vibefield/puppeteer-adapter-hermes": "workspace:*",
+    "@vibefield/puppeteer-adapter-kimi": "workspace:*",
+    "@vibefield/puppeteer-adapter-opencode": "workspace:*",
+    "@vibefield/puppeteer-adapter-pi": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-imposter": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -34,8 +34,8 @@
     "@types/node": "^22.9.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "electron": "^43.1.0",
-    "esbuild": "^0.24.0",
+    "electron": "^43.5.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.6.0"
   }
 }

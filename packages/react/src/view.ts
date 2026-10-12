@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState } from '@vibefield/puppeteer-core';
 
 /** Minimal input shared by monitor renderers; products may use richer item projections. */
 export interface AgentMonitorViewProps<

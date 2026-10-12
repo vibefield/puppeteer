@@ -4,7 +4,9 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
+  ClaudeHooksOffError,
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
   prepareClaudeSession,
@@ -12,7 +14,12 @@ import {
   type PreparedClaudeSession,
 } from './prepare.js';
 import { generateHookSettings } from './settings.js';
+import { readClaudeInvocation } from './invocation-grammar.js';
+import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
+
+// Windows starts PowerShell as well as Node; cold startup on hosted runners can exceed the usual test budget.
+const statusLineTestTimeout = process.platform === 'win32' ? 45_000 : 10_000;
 
 function runStatusLine(command: string, input: string, env: Record<string, string>): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -49,6 +56,8 @@ const BASE = {
   endpoint: 'http://127.0.0.1:4100/hooks',
   tokenEnvVar: 'PUPPETEER_HOOK_TOKEN',
   token: 'super-secret-token-value',
+  // An empty home: no test reads the machine's own user settings layer.
+  home: mkdtempSync(join(tmpdir(), 'prepare-home-')),
 };
 
 const prepared: PreparedClaudeSession[] = [];
@@ -267,6 +276,197 @@ describe('prepareClaudeSession', () => {
     expect(p.args).not.toContain('--name');
   });
 
+  describe('a typed launch', () => {
+    /** The recipe for a typed `claude <argv>`, as the provider hands the adapter's options on. */
+    async function typedLaunch(argv: string[]) {
+      const resolution = normalizeClaudeNativeInvocation({
+        providerId: 'claude',
+        cwd: BASE.cwd,
+        argv,
+        environment: {},
+        implementation: { kind: 'native' },
+      });
+      if (resolution.status !== 'accepted') throw new Error(`not accepted: ${JSON.stringify(resolution)}`);
+      const options = resolution.options!;
+      return prepare({
+        ...(resolution.resume === undefined ? {} : { resume: resolution.resume }),
+        resumeInvocation: options.resumeInvocation,
+        title: options.title,
+        model: options.model,
+        permissionMode: options.permissionMode ?? null,
+        carriedArgs: options.carriedArgs,
+        prompt: options.prompt,
+      });
+    }
+
+    /** Where the person's part of the recipe starts: after the managed launch's own flags. */
+    function personPart(args: string[]): string[] {
+      const settings = args.indexOf('--settings');
+      const mode = args[settings + 2] === '--permission-mode' ? 2 : 0;
+      return args.slice(settings + 2 + mode);
+    }
+
+    it('puts the managed flags first, the carried arguments next in the person’s order, the prompt last after `--`', async () => {
+      const p = await typedLaunch(['fix the bug', '--add-dir', '../lib', '../docs', '--verbose', '--model', 'opus']);
+      expect(p.args).toEqual([
+        '--session-id',
+        p.sessionId,
+        '--model',
+        'opus',
+        '--settings',
+        p.settingsPath,
+        '--add-dir',
+        '../lib',
+        '../docs',
+        '--verbose',
+        '--',
+        'fix the bug',
+      ]);
+    });
+
+    it('a trailing variadic of the person’s takes no managed flag, and the prompt stays the prompt', async () => {
+      const p = await typedLaunch(['fix it', '--add-dir', 'a', 'b']);
+      expect(p.args.slice(-5)).toEqual(['--add-dir', 'a', 'b', '--', 'fix it']);
+      // Every managed flag comes before the person's first argument.
+      for (const flag of ['--session-id', '--settings'])
+        expect(p.args.indexOf(flag)).toBeLessThan(p.args.indexOf('--add-dir'));
+      // Read back, the person's part means what was typed: two directories and a prompt.
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({
+        status: 'accepted',
+        carriedArgs: ['--add-dir', 'a', 'b'],
+        prompt: ['fix it'],
+      });
+    });
+
+    it('a managed flag’s value is never read as the prompt: a resume picker is followed by a flag, the prompt by `--`', async () => {
+      const p = await typedLaunch(['-r', '--', 'where were we']);
+      expect(p.args[0]).toBe('-r');
+      expect(p.args[1]!.startsWith('-')).toBe(true);
+      expect(p.args.slice(-2)).toEqual(['--', 'where were we']);
+      expect(readClaudeInvocation(p.args.slice(-2))).toMatchObject({ status: 'accepted', prompt: ['where were we'] });
+    });
+
+    it('a prompt that looks like a flag stays a prompt', async () => {
+      const p = await typedLaunch(['--', '--help']);
+      expect(p.args.slice(-2)).toEqual(['--', '--help']);
+      expect(readClaudeInvocation(personPart(p.args))).toMatchObject({ status: 'accepted', prompt: ['--help'] });
+    });
+
+    it('says each thing once: no permission mode of its own, one --name, the person’s mode when given', async () => {
+      const bare = await typedLaunch([]);
+      expect(bare.args).toEqual(['--session-id', bare.sessionId, '--settings', bare.settingsPath]);
+      const skip = await typedLaunch(['--dangerously-skip-permissions']);
+      expect(skip.args).not.toContain('--permission-mode');
+      expect(skip.args.filter((argument) => argument === '--dangerously-skip-permissions')).toHaveLength(1);
+      const both = await typedLaunch(['--permission-mode', 'plan', '--dangerously-skip-permissions']);
+      expect(both.args.filter((argument) => argument === '--permission-mode')).toHaveLength(1);
+      expect(both.args[both.args.indexOf('--permission-mode') + 1]).toBe('plan');
+      expect(both.args).toContain('--dangerously-skip-permissions');
+      const named = await typedLaunch(['-n', 'mine']);
+      expect(named.args.filter((argument) => argument === '--name' || argument === '-n')).toEqual(['--name']);
+      expect(named.args[named.args.indexOf('--name') + 1]).toBe('mine');
+    });
+
+    it('a host’s own spawn keeps its default permission mode', async () => {
+      const p = await prepare({ carriedArgs: undefined, prompt: undefined });
+      expect(p.args.slice(-2)).toEqual(['--permission-mode', 'default']);
+    });
+  });
+
+  describe('the person’s hook switches', () => {
+    type Layers = { user?: object; project?: object; local?: object };
+    /** A home and a project holding the person's settings layers; the launch reads them from there. */
+    function person(layers: Layers): { home: string; cwd: string; settingsDir: string } {
+      const root = mkdtempSync(join(tmpdir(), 'prepare-switches-'));
+      const home = join(root, 'home');
+      const cwd = join(root, 'project');
+      mkdirSync(join(home, '.claude'), { recursive: true });
+      mkdirSync(join(cwd, '.claude'), { recursive: true });
+      if (layers.user) writeFileSync(join(home, '.claude', 'settings.json'), JSON.stringify(layers.user));
+      if (layers.project) writeFileSync(join(cwd, '.claude', 'settings.json'), JSON.stringify(layers.project));
+      if (layers.local) writeFileSync(join(cwd, '.claude', 'settings.local.json'), JSON.stringify(layers.local));
+      const settingsDir = join(root, 'launch');
+      mkdirSync(settingsDir);
+      return { home, cwd, settingsDir };
+    }
+    const settingsOf = (p: PreparedClaudeSession) => JSON.parse(readFileSync(p.settingsPath, 'utf8'));
+    const hooksOff = { disableAllHooks: true };
+
+    it('refuses a typed launch whose user, project or local settings switch every hook off, writing nothing', async () => {
+      for (const layer of ['user', 'project', 'local'] as const) {
+        const where = person({ [layer]: hooksOff });
+        const refusal = prepare({ ...where, refuseHooksOff: true });
+        await expect(refusal, layer).rejects.toBeInstanceOf(ClaudeHooksOffError);
+        await expect(refusal, layer).rejects.toMatchObject({
+          code: 'CLAUDE_HOOKS_OFF',
+          source: layer,
+          message: `your ${layer} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
+        });
+        // The adapter's own refusal: the runtime carries this sentence and code to the person.
+        await expect(refusal, layer).rejects.toSatisfy(isAgentLaunchRefusedError);
+        expect(readdirSync(where.settingsDir), layer).toEqual([]);
+      }
+    });
+
+    it('launches when the switch is off, absent, overruled by a later layer, or in a layer the launch does not read', async () => {
+      for (const [label, layers, over] of [
+        ['off', { user: { disableAllHooks: false } }, {}],
+        ['absent', { user: { theme: 'dark' } }, {}],
+        ['a later layer', { user: hooksOff, local: { disableAllHooks: false } }, {}],
+        ['--setting-sources', { user: hooksOff }, { settingSources: ['project', 'local'] as const }],
+        ['--restricted', { user: hooksOff, project: hooksOff }, { readsNoSettingsFiles: true }],
+        ['the imposter', { user: hooksOff }, { env: { PUPPETEER_IMPOSTER_HOME: '/tmp/imposter-home' } }],
+      ] as const) {
+        // Typed, and as a host's own spawn: with hooks on, both launch as they always have.
+        for (const refusing of [{ refuseHooksOff: true }, {}]) {
+          const where = person(layers);
+          await expect(prepare({ ...where, ...over, ...refusing }), label).resolves.toBeDefined();
+        }
+      }
+    });
+
+    it('refuses a host’s own spawn too, writing nothing: its host could not observe it', async () => {
+      for (const layer of ['user', 'project', 'local'] as const) {
+        const where = person({ [layer]: hooksOff });
+        await expect(prepare(where), layer).rejects.toMatchObject({
+          name: 'ClaudeHooksOffError',
+          code: 'CLAUDE_HOOKS_OFF',
+          source: layer,
+        });
+        expect(readdirSync(where.settingsDir), layer).toEqual([]);
+      }
+      // A caller that opts out launches it anyway, as every host's own spawn did before.
+      await expect(prepare({ ...person({ user: hooksOff }), refuseHooksOff: false })).resolves.toBeDefined();
+    });
+
+    it('restates a person’s allow-lists with the bridge’s entry added, keeping every entry of theirs', async () => {
+      const where = person({
+        user: { allowedHttpHookUrls: ['https://user.invalid/*'], httpHookAllowedEnvVars: ['USER_TOKEN'] },
+        local: { allowedHttpHookUrls: ['https://local.invalid/*'] },
+      });
+      const p = await prepare(where);
+      expect(settingsOf(p)).toMatchObject({
+        // The layer in force for each list: local's URLs, the user's variables.
+        allowedHttpHookUrls: ['https://local.invalid/*', 'http://127.0.0.1:4100/*'],
+        httpHookAllowedEnvVars: ['USER_TOKEN', 'PUPPETEER_HOOK_TOKEN'],
+      });
+      const empty = await prepare(person({ project: { httpHookAllowedEnvVars: [] } }));
+      expect(settingsOf(empty).httpHookAllowedEnvVars).toEqual(['PUPPETEER_HOOK_TOKEN']);
+      expect(settingsOf(empty)).not.toHaveProperty('allowedHttpHookUrls');
+    });
+
+    it('writes no allow-list of its own where the person has none: that would restrict their hooks', async () => {
+      const p = await prepare(person({ user: { theme: 'dark' } }));
+      expect(settingsOf(p)).not.toHaveProperty('allowedHttpHookUrls');
+      expect(settingsOf(p)).not.toHaveProperty('httpHookAllowedEnvVars');
+      const restricted = await prepare({
+        ...person({ user: { allowedHttpHookUrls: ['https://user.invalid/*'] } }),
+        readsNoSettingsFiles: true,
+      });
+      expect(settingsOf(restricted)).not.toHaveProperty('allowedHttpHookUrls');
+    });
+  });
+
   /** A config root holding one conversation, the way Claude lays its projects out. */
   function conversationRoot(resumeId: string): string {
     const root = mkdtempSync(join(tmpdir(), 'prepare-resume-'));
@@ -296,6 +496,10 @@ describe('prepareClaudeSession', () => {
       code: 'CLAUDE_CONVERSATION_MISSING',
       sessionId: resumeId,
     });
+    // Not a refusal whose words reach a person: its message names the config root, text for logs.
+    await expect(prepare({ resume: resumeId, configDir: root })).rejects.toSatisfy(
+      (error: unknown) => !isAgentLaunchRefusedError(error),
+    );
     // The imposter keeps the same layout under its own state root.
     const imposterRoot = conversationRoot(resumeId);
     const p = await prepare({ resume: resumeId, env: { PUPPETEER_IMPOSTER_HOME: imposterRoot } });
@@ -378,95 +582,103 @@ describe('prepareClaudeSession', () => {
     },
   );
 
-  it('multiplexes context telemetry while preserving the existing status-line output and presentation', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'prepare-statusline-'));
-    const delegatePath = join(dir, 'delegate.mjs');
-    writeFileSync(
-      delegatePath,
-      "let input=''; for await (const chunk of process.stdin) input += chunk; console.log('original:' + JSON.parse(input).session_id);",
-    );
-    const delegate = `node ${JSON.stringify(delegatePath)}`;
-    const p = await prepare({
-      settingsDir: dir,
-      statusLineEndpoint: 'http://127.0.0.1:1/statusline',
-      existingStatusLine: {
+  it(
+    'multiplexes context telemetry while preserving the existing status-line output and presentation',
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-statusline-'));
+      const delegatePath = join(dir, 'delegate.mjs');
+      writeFileSync(
+        delegatePath,
+        "let input=''; for await (const chunk of process.stdin) input += chunk; console.log('original:' + JSON.parse(input).session_id);",
+      );
+      const delegate = `node ${JSON.stringify(delegatePath)}`;
+      const p = await prepare({
+        settingsDir: dir,
+        statusLineEndpoint: 'http://127.0.0.1:1/statusline',
+        existingStatusLine: {
+          type: 'command',
+          command: delegate,
+          padding: 2,
+          refreshInterval: 3,
+          hideVimModeIndicator: true,
+        },
+      });
+      const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+        statusLine: {
+          type: string;
+          command: string;
+          padding?: number;
+          refreshInterval?: number;
+          hideVimModeIndicator?: boolean;
+        };
+      };
+
+      expect(p.statusLineForwarderPath).toBeDefined();
+      expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
+      expect(settings.statusLine).toMatchObject({
         type: 'command',
-        command: delegate,
         padding: 2,
         refreshInterval: 3,
         hideVimModeIndicator: true,
-      },
-    });
-    const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
-      statusLine: {
-        type: string;
-        command: string;
-        padding?: number;
-        refreshInterval?: number;
-        hideVimModeIndicator?: boolean;
-      };
-    };
-
-    expect(p.statusLineForwarderPath).toBeDefined();
-    expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
-    expect(settings.statusLine).toMatchObject({
-      type: 'command',
-      padding: 2,
-      refreshInterval: 3,
-      hideVimModeIndicator: true,
-    });
-    expect(settings.statusLine.command).not.toContain(delegate);
-    expect(p.env).toMatchObject({
-      PUPPETEER_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
-      PUPPETEER_STATUSLINE_DELEGATE: delegate,
-      PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
-    });
-    expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
-
-    await expect(
-      runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),
-    ).resolves.toBe('original:session-42\n');
-  });
-
-  it('multiplexes root and child commands independently and forwards the original child payload', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'prepare-child-statusline-'));
-    const childDelegatePath = join(dir, 'child-delegate.mjs');
-    writeFileSync(
-      childDelegatePath,
-      "let input=''; for await (const chunk of process.stdin) input += chunk; for (const task of JSON.parse(input).tasks) console.log(JSON.stringify({id: task.id, content: 'original:' + task.id}));",
-    );
-    const childDelegate = `node ${JSON.stringify(childDelegatePath)}`;
-    const bridge = createHookBridge({ token: BASE.token, allowSession: () => true });
-    await bridge.start();
-    const childPayload = new Promise<unknown>((resolve) => {
-      bridge.onSubagentStatusLine((envelope) => resolve(envelope.body));
-    });
-    try {
-      const p = await prepare({
-        settingsDir: dir,
-        statusLineEndpoint: bridge.statusLineEndpoint(),
-        subagentStatusLineEndpoint: bridge.subagentStatusLineEndpoint(),
-        existingStatusLine: { type: 'command', command: `${process.execPath} -e "process.exit(7)"` },
-        existingSubagentStatusLine: { type: 'command', command: childDelegate },
       });
-      const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
-        statusLine: { command: string };
-        subagentStatusLine: { command: string };
-      };
-      await expect(
-        runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: p.sessionId }), p.env),
-      ).rejects.toThrow();
+      expect(settings.statusLine.command).not.toContain(delegate);
+      expect(p.env).toMatchObject({
+        PUPPETEER_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
+        PUPPETEER_STATUSLINE_DELEGATE: delegate,
+        PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
+      });
+      expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
 
-      const payload = { session_id: p.sessionId, tasks: [{ id: 'task-1' }] };
       await expect(
-        runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), {
-          ...p.env,
-          PUPPETEER_STATUSLINE_TIMEOUT_MS: '5000',
-        }),
-      ).resolves.toBe(`${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`);
-      await expect(childPayload).resolves.toEqual(payload);
-    } finally {
-      await bridge.dispose();
-    }
-  }, 10_000);
+        runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),
+      ).resolves.toBe('original:session-42\n');
+    },
+    statusLineTestTimeout,
+  );
+
+  it(
+    'multiplexes root and child commands independently and forwards the original child payload',
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-child-statusline-'));
+      const childDelegatePath = join(dir, 'child-delegate.mjs');
+      writeFileSync(
+        childDelegatePath,
+        "let input=''; for await (const chunk of process.stdin) input += chunk; for (const task of JSON.parse(input).tasks) console.log(JSON.stringify({id: task.id, content: 'original:' + task.id}));",
+      );
+      const childDelegate = `node ${JSON.stringify(childDelegatePath)}`;
+      const bridge = createHookBridge({ token: BASE.token, allowSession: () => true });
+      await bridge.start();
+      const childPayload = new Promise<unknown>((resolve) => {
+        bridge.onSubagentStatusLine((envelope) => resolve(envelope.body));
+      });
+      try {
+        const p = await prepare({
+          settingsDir: dir,
+          statusLineEndpoint: bridge.statusLineEndpoint(),
+          subagentStatusLineEndpoint: bridge.subagentStatusLineEndpoint(),
+          existingStatusLine: { type: 'command', command: `${process.execPath} -e "process.exit(7)"` },
+          existingSubagentStatusLine: { type: 'command', command: childDelegate },
+        });
+        const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+          statusLine: { command: string };
+          subagentStatusLine: { command: string };
+        };
+        await expect(
+          runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: p.sessionId }), p.env),
+        ).rejects.toThrow();
+
+        const payload = { session_id: p.sessionId, tasks: [{ id: 'task-1' }] };
+        await expect(
+          runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), {
+            ...p.env,
+            PUPPETEER_STATUSLINE_TIMEOUT_MS: '5000',
+          }),
+        ).resolves.toBe(`${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`);
+        await expect(childPayload).resolves.toEqual(payload);
+      } finally {
+        await bridge.dispose();
+      }
+    },
+    statusLineTestTimeout,
+  );
 });

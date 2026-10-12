@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexSession } from '../driver.js';
 import { createCodexObserver } from './observer.js';
 import { spawnAppServer } from '../transport/app-server-process.js';

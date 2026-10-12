@@ -4,15 +4,15 @@
  * adapter-claude's real-agent group. Read-only sandbox + approval "never":
  * the turn cannot write, network, or prompt.
  *
- *   CODEX_LIVE=1 pnpm --filter @vibecook/puppeteer-adapter-codex test
+ *   CODEX_LIVE=1 pnpm --filter @vibefield/puppeteer-adapter-codex test
  */
 
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { resolveCodexExecutable } from './detection.js';
 import { createCodexSession } from './driver.js';
 

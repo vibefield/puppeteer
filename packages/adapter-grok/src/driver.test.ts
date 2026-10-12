@@ -7,8 +7,8 @@ import {
   type AgentEventSource,
   type AgentHost,
   type AgentAdapterBinding,
-} from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import {
   buildGrokTuiArgs,
   createGrokBackend,

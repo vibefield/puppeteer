@@ -1,4 +1,4 @@
-import { AdapterMonitorObservationBatchSchema, DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibecook/puppeteer-core';
+import { AdapterMonitorObservationBatchSchema, DEFAULT_MONITOR_FRESHNESS_POLICY } from '@vibefield/puppeteer-core';
 import type {
   AgentExecutionMode,
   AgentMonitorHandle,
@@ -6,7 +6,7 @@ import type {
   MonitorNotification,
   NativeSessionRef,
   ObservationLevel,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   DEFAULT_MONITOR_BURN_RATE_WINDOW_MS,
@@ -21,7 +21,7 @@ import {
   type RuntimeMonitorInput,
   type RuntimeMonitorObservationBatch,
   type WorkspaceMonitorObservation,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { RuntimeAgentEventEnvelope } from '../types.js';
 import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';
 import { createMonitorHandle, type MonitorHandleSource, type MonitorHandleSubscriber } from '../monitor/handle.js';

@@ -1,7 +1,7 @@
 /** Bootstrap current Codex context pressure from the tail of a persisted rollout. */
 
 import { open } from 'node:fs/promises';
-import type { ContextWindowUpdatedEvent } from '@vibecook/puppeteer-core';
+import type { ContextWindowUpdatedEvent } from '@vibefield/puppeteer-core';
 
 const DEFAULT_TAIL_BYTES = 1024 * 1024;
 

@@ -1,8 +1,9 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
 import { CLAUDE_PROFILE_ROOT_VARIABLE, claudeProfileIdentityFrom, createClaudeProfileService } from './profiles.js';
 
-const HOME = '/Users/test';
+const HOME = resolve('/Users/test');
 const NOW = new Date('2026-09-06T12:00:00.000Z');
 
 const managed: AgentProfile = AgentProfileSchema.parse({
@@ -10,7 +11,7 @@ const managed: AgentProfile = AgentProfileSchema.parse({
   provider: 'claude',
   label: 'Work',
   kind: 'managed',
-  dataRoot: '/Users/test/.puppeteer/profiles/claude/9f2b',
+  dataRoot: resolve('/Users/test/.puppeteer/profiles/claude/9f2b'),
   createdAt: '2026-09-06T00:00:00.000Z',
 });
 
@@ -19,7 +20,7 @@ const nativeDefault: AgentProfile = AgentProfileSchema.parse({
   provider: 'claude',
   label: 'Default',
   kind: 'native-default',
-  dataRoot: '/Users/test/.claude',
+  dataRoot: resolve('/Users/test/.claude'),
   createdAt: '2026-09-06T00:00:00.000Z',
 });
 
@@ -32,9 +33,9 @@ interface Call {
 /** `respond` returns the status document, or throws to stand in for a failed spawn. */
 function service(respond: string | (() => string), calls: Call[] = []): ReturnType<typeof createClaudeProfileService> {
   return createClaudeProfileService({
-    executable: '/Users/test/.local/bin/claude',
+    executable: resolve('/Users/test/.local/bin/claude'),
     home: HOME,
-    env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: '/Users/test/.claude' },
+    env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: resolve('/Users/test/.claude') },
     now: () => NOW,
     exec: async (file, args, options) => {
       calls.push({ file, args, env: options.env });
@@ -60,7 +61,7 @@ describe('Claude profile provider', () => {
     expect(provider.support).toMatchObject({
       supported: true,
       identity: 'native-status',
-      nativeDefaultRoot: '/Users/test/.claude',
+      nativeDefaultRoot: resolve('/Users/test/.claude'),
     });
     expect(provider.support.sharedSurfaces).toContain('project .claude/ settings and .mcp.json');
   });
@@ -68,24 +69,24 @@ describe('Claude profile provider', () => {
   it('binds a managed profile to its root and leaves the native default alone', () => {
     const profiles = service(LOGGED_IN);
     expect(profiles.bindingEnvironment(managed)).toEqual({
-      [CLAUDE_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/claude/9f2b',
+      [CLAUDE_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/.puppeteer/profiles/claude/9f2b'),
     });
     expect(profiles.bindingEnvironment(nativeDefault)).toEqual({});
   });
 
   it('names the bound root as the history layout root for an indexer', () => {
     const profiles = service(LOGGED_IN);
-    expect(profiles.observationRoot(managed)).toBe('/Users/test/.puppeteer/profiles/claude/9f2b');
-    expect(profiles.observationRoot(nativeDefault)).toBe('/Users/test/.claude');
+    expect(profiles.observationRoot(managed)).toBe(resolve('/Users/test/.puppeteer/profiles/claude/9f2b'));
+    expect(profiles.observationRoot(nativeDefault)).toBe(resolve('/Users/test/.claude'));
   });
 
   it('describes the native interactive login as a terminal spec', () => {
-    const spec = service(LOGGED_IN).loginInvocation(managed, { cwd: '/work/repo' });
+    const spec = service(LOGGED_IN).loginInvocation(managed, { cwd: resolve('/work/repo') });
     expect(spec).toEqual({
-      command: '/Users/test/.local/bin/claude',
+      command: resolve('/Users/test/.local/bin/claude'),
       args: ['auth', 'login'],
-      cwd: '/work/repo',
-      env: { [CLAUDE_PROFILE_ROOT_VARIABLE]: '/Users/test/.puppeteer/profiles/claude/9f2b' },
+      cwd: resolve('/work/repo'),
+      env: { [CLAUDE_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/.puppeteer/profiles/claude/9f2b') },
     });
   });
 });
@@ -105,7 +106,7 @@ describe('Claude profile verification', () => {
     });
     expect(calls).toHaveLength(1);
     expect(calls[0]?.args).toEqual(['auth', 'status', '--json']);
-    expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe('/Users/test/.puppeteer/profiles/claude/9f2b');
+    expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(resolve('/Users/test/.puppeteer/profiles/claude/9f2b'));
   });
 
   it('never forwards the undocumented secure-storage override', async () => {
@@ -117,9 +118,9 @@ describe('Claude profile verification', () => {
   it('reads the native default from its own root even when the host inherited a root variable', async () => {
     const calls: Call[] = [];
     const inherited = createClaudeProfileService({
-      executable: '/Users/test/.local/bin/claude',
+      executable: resolve('/Users/test/.local/bin/claude'),
       home: HOME,
-      env: { PATH: '/usr/bin', [CLAUDE_PROFILE_ROOT_VARIABLE]: '/Users/test/elsewhere' },
+      env: { PATH: '/usr/bin', [CLAUDE_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/elsewhere') },
       now: () => NOW,
       exec: async (file, args, options) => {
         calls.push({ file, args, env: options.env });
@@ -135,9 +136,9 @@ describe('Claude profile verification', () => {
   it('signs out with the vendor command under the binding, so the root-keyed Keychain item goes too', async () => {
     const calls: Array<Call & { strict?: boolean }> = [];
     const claude = createClaudeProfileService({
-      executable: '/Users/test/.local/bin/claude',
+      executable: resolve('/Users/test/.local/bin/claude'),
       home: HOME,
-      env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: '/Users/test/.claude' },
+      env: { PATH: '/usr/bin', CLAUDE_SECURESTORAGE_CONFIG_DIR: resolve('/Users/test/.claude') },
       now: () => NOW,
       exec: async (file, args, options) => {
         calls.push({ file, args, env: options.env, ...(options.strict ? { strict: true } : {}) });
@@ -146,7 +147,11 @@ describe('Claude profile verification', () => {
     });
     expect(claude.provider.support.credential).toBe('external');
     await expect(claude.signOut?.(managed)).resolves.toBeUndefined();
-    expect(calls[0]).toMatchObject({ file: '/Users/test/.local/bin/claude', args: ['auth', 'logout'], strict: true });
+    expect(calls[0]).toMatchObject({
+      file: resolve('/Users/test/.local/bin/claude'),
+      args: ['auth', 'logout'],
+      strict: true,
+    });
     expect(calls[0]?.env[CLAUDE_PROFILE_ROOT_VARIABLE]).toBe(managed.dataRoot);
     expect(calls[0]?.env.CLAUDE_SECURESTORAGE_CONFIG_DIR).toBeUndefined();
     // and it is only a sign-out when the root reads signed out afterwards
@@ -161,7 +166,7 @@ describe('Claude profile verification', () => {
   it('never reports a sign-out the vendor did not complete or the root does not show', async () => {
     // a logout that failed but printed something is still a failure
     const printedAndFailed = createClaudeProfileService({
-      executable: '/Users/test/.local/bin/claude',
+      executable: resolve('/Users/test/.local/bin/claude'),
       home: HOME,
       env: { PATH: '/usr/bin' },
       now: () => NOW,

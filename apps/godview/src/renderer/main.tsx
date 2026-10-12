@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,8 +30,14 @@ import { paneRecoveryMetadata } from '../restore-snapshot.js';
 import type { TerminalSessionHandoff } from '../protocol.js';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
 import { AgentsDrawer } from './AgentsDrawer.js';
-import { BarControl, InstrumentBar, type AccountUsagePort, type HistoryPort } from '@vibecook/puppeteer-views';
-import { UsageColumn } from '@vibecook/puppeteer-views';
+import {
+  BarControl,
+  ChromeBoundary,
+  InstrumentBar,
+  type AccountUsagePort,
+  type HistoryPort,
+} from '@vibefield/puppeteer-views';
+import { UsageColumn } from '@vibefield/puppeteer-views';
 import { useAgentProfiles } from './agent-profiles.js';
 import {
   TweakPanel,
@@ -39,19 +46,19 @@ import {
   type GodviewTuning,
   type TweakSection,
 } from './TweakPanel.js';
-import type { AgentVisualStatus } from './agent-status.js';
-import { MONITOR_CHROME_ATTRIBUTE, MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
-import { monitorAgentCounts, nextMonitorAgentForStatus } from './monitor/agents.js';
-import { useMonitorPalette } from '@vibecook/puppeteer-views';
+import { MONITOR_STAGE_CLASS } from '@vibefield/puppeteer-views';
+import { useMonitorPalette } from '@vibefield/puppeteer-views';
 import {
   loadMonitorParameters,
   monitorParameterDefaults,
   normalizeMonitorParameters,
   saveMonitorParameters,
   type MonitorParameters,
-} from '@vibecook/puppeteer-views';
-import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
-import type { AgentMonitorView } from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
+import { MONITOR_VIEWS, monitorViewFor } from '@vibefield/puppeteer-views';
+import type { MonitorTheme, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import { frameScheduler, keepStage, MonitorViewHost } from '@vibefield/puppeteer-view-sdk/host';
+import type { MonitorViewEntry } from '@vibefield/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,
@@ -63,13 +70,22 @@ import {
   STAGE_PARAMETER_GROUPS,
   VIGNETTE_OPACITY_KEY,
 } from './monitor/stage-parameters.js';
-import { FindSheet } from '@vibecook/puppeteer-views';
+import { FindSheet } from '@vibefield/puppeteer-views';
+import { usePerfHistory } from './monitor/perf-history.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
-import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
+import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibefield/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
-import { DECK_FRAMED_CLASS, DeckFrames } from '@vibecook/puppeteer-views';
+import {
+  DECK_FRAMED_CLASS,
+  DeckFrames,
+  UnusedPaneSessions,
+  useDeckZoom,
+  zoomLayoutApplied,
+} from '@vibefield/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
+import { AppDeckLaunchers, recordBornShell, usePaneSessionUsed } from './deck/launcher-host.js';
+import { launcherSessionUsed } from './deck/launcher-fresh.js';
 import { paneFallbackCwds, paneFrameAgents } from './deck/pane-frame.js';
 import { useTerminalGround } from './deck/terminal-ground.js';
 import { useWorkspaceSettings } from './deck/workspace-settings.js';
@@ -77,8 +93,9 @@ import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
 import './styles/godview.css';
-import '@vibecook/puppeteer-views/styles/views.css';
-import '@vibecook/puppeteer-views/styles/deck-frame.css';
+import '@vibefield/puppeteer-views/styles/views.css';
+import '@vibefield/puppeteer-views/styles/deck-frame.css';
+import '@vibefield/puppeteer-views/styles/pane-launcher.css';
 import './styles/agents-drawer.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
@@ -93,12 +110,12 @@ const STAGE_PARAMETERS_KEY = 'godview:screen-parameters:v1';
 const LEGACY_PARAMETERS_KEY = 'godview:swarm-parameters:v1';
 const WORKSPACE_STORAGE_KEY = `godview:ghosttea-workspace:v2:${window.desktop.tabId}`;
 
-function viewParametersKey(view: AgentMonitorView): string {
+function viewParametersKey(view: MonitorViewEntry): string {
   return `godview:monitor-parameters:v1:${view.id}${view.parametersRevision ? `:${view.parametersRevision}` : ''}`;
 }
 
 /** A revised view starts from its own defaults; the legacy seed is for views that never moved. */
-function loadViewParameters(view: AgentMonitorView): MonitorParameters {
+function loadViewParameters(view: MonitorViewEntry): MonitorParameters {
   return loadMonitorParameters(
     viewParametersKey(view),
     view.parameterGroups,
@@ -174,6 +191,36 @@ const usagePort: AccountUsagePort = {
   subscribe: (listener) => window.puppeteer.onAccountUsage(listener),
 };
 
+/**
+ * A chrome piece that failed to render (M49): it alone goes, behind its `ChromeBoundary`, and the monitor, its view
+ * and the rest of the chrome stay. Heard once per failure. A piece is tried again only when its retry key (the facts
+ * it renders) changes, within the boundary's backoff; a piece without one stays unavailable until the window reloads
+ * (M176 item 1).
+ */
+function reportChromeError(error: unknown, name: string): void {
+  console.error(`[chrome] ${name} failed to render`, error);
+}
+
+/** The stage before its first measurement: nothing to steer around yet. */
+const EMPTY_STAGE: StageGeometry = Object.freeze({
+  width: 0,
+  height: 0,
+  insets: Object.freeze({ top: 0, right: 0, bottom: 0, left: 0 }),
+  obstacles: Object.freeze([]),
+});
+
+/** The person's reduced-motion preference, live. */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = (): void => setReduced(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  return reduced;
+}
+
 const WorkspaceReporterContext = createContext<(workspace: GhostteaWorkspaceContext) => void>(() => undefined);
 
 function savedWorkspace(): unknown {
@@ -208,11 +255,23 @@ function Godview() {
   const [agentsDrawerOpen, setAgentsDrawerOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [workspace, setWorkspace] = useState<GhostteaWorkspaceContext>();
+  const [terminalVisualIds, setTerminalVisualIds] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const transferBubble = useCallback((previous: string, next: string): void => {
+    setTerminalVisualIds((current) => new Map(current).set(next, current.get(previous) ?? previous));
+  }, []);
   const [terminalIdentities, setTerminalIdentities] = useState<ReadonlyMap<string, string>>(() => new Map());
   const paneLedgerRef = useRef(EMPTY_PANE_COLOUR_LEDGER);
   const stageRef = useRef<HTMLElement>(null);
   const chromeRef = useRef<HTMLDivElement>(null);
   const deckRef = useRef<HTMLElement>(null);
+  const unusedPanes = useRef(new UnusedPaneSessions<SessionSummary>());
+  const releaseUnusedShell = useCallback((id: string): void => {
+    // Main owns PTY disposal from the tab attachment ledger. A renderer
+    // terminate races that owner and used to report "unknown session" twice.
+    setClosingSessionIds((current) => (current.has(id) ? current : new Set([...current, id])));
+  }, []);
+  const [closingSessionIds, setClosingSessionIds] = useState<ReadonlySet<string>>(() => new Set());
+  const zoom = useDeckZoom(deckRef, workspace?.activePaneId, undefined, active);
   const settings = useWorkspaceSettings(deckRef);
   const palette = useMonitorPalette();
   const profiles = useAgentProfiles();
@@ -306,8 +365,11 @@ function Godview() {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [tweakPanelOpen]);
 
-  // Views that lay out in flow clear the chrome with these; the swarm instead
-  // reads the chrome's rect directly and steers bodies around it.
+  // The chrome's measurement is the view host's stage (MV-D19): its size, the
+  // chrome's right edge as the left inset, and the chrome's rect as an obstacle.
+  // A view reads it there and nowhere else: a flow view clears the inset, the
+  // swarm steers its bodies around the obstacle.
+  const [stageGeometry, setStageGeometry] = useState<StageGeometry>(EMPTY_STAGE);
   useEffect(() => {
     const stage = stageRef.current;
     const chrome = chromeRef.current;
@@ -315,14 +377,35 @@ function Godview() {
     const publish = (): void => {
       const rect = chrome.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
-      stage.style.setProperty('--vf-monitor-chrome-height', `${Math.round(rect.height)}px`);
-      stage.style.setProperty('--vf-monitor-chrome-right', `${Math.round(rect.right - stageRect.left)}px`);
+      const chromeRight = Math.round(rect.right - stageRect.left);
+      const measured: StageGeometry = {
+        width: Math.round(stageRect.width),
+        height: Math.round(stageRect.height),
+        insets: { top: 0, right: 0, bottom: 0, left: chromeRight },
+        obstacles: [
+          {
+            x: Math.round(rect.left - stageRect.left),
+            y: Math.round(rect.top - stageRect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          },
+        ],
+      };
+      // An equal tick keeps the stage Godview holds, so it renders nothing (M176 item 1): the observer fires for
+      // boxes that moved without resizing the stage, and a failed piece's fallback reflows the chrome it sits in.
+      setStageGeometry((current) => keepStage(current, measured));
     };
     const observer = new ResizeObserver(publish);
     observer.observe(chrome);
+    observer.observe(stage);
     publish();
     return () => observer.disconnect();
   }, []);
+  const reducedMotion = useReducedMotion();
+  const monitorTheme = useMemo<MonitorTheme>(
+    () => ({ scheme: theme, tokens: palette, reducedMotion, animations: true }),
+    [palette, reducedMotion, theme],
+  );
 
   // Each pane owns a colour (record §02, revised 2026-09-12): dealt as panes
   // open, on the wheel parallel to the projects', retired with the pane. The
@@ -363,45 +446,46 @@ function Godview() {
           next.set(handoff.session.id, handoff.monitorIdentity);
           return next;
         });
-        // `affected` is empty without a workspace, so the early return above already covered that case.
-        if (workspace && affected.length === 1 && affected[0]?.id === workspace.activePaneId) {
-          // Ghosttea commits this replacement synchronously through its public
-          // workspace context, retaining focus and the pane's split geometry.
-          workspace.mountSession(handoff.session);
+        // Main owns this birth. Record its fresh-shell receipt before the pane
+        // publishes, so both the launcher and final-attachment reaper see it.
+        transferBubble(handoff.previousSessionId, handoff.session.id);
+        recordBornShell(terminalRuntime, handoff.session.id);
+        unusedPanes.current.created(handoff.session.id);
+        // Replace all current mirrors without focus changes, unzooming or a
+        // renderer reload (which previously interrupted every background exit).
+        if (workspace?.replaceSession(handoff.previousSessionId, handoff.session)) {
           window.desktop.acknowledgeTerminalSessionHandoff(handoff.handoffId);
-          return;
         }
-        // The current Ghosttea API replaces only the active pane. Its startup
-        // rehydrator can replace every mirrored/background reference in tree
-        // order, using the complete document main queued before this message.
-        window.desktop.acknowledgeTerminalSessionHandoff(handoff.handoffId);
-        window.location.reload();
       }),
     [workspace],
   );
 
-  const { agents, actions, notifications, dismissNotification } = useMonitorAgents({
+  const monitor = useMonitorAgents({
     workspace,
     attachments: paneAttachments,
     terminalIdentities,
+    terminalVisualIds,
+    closingSessionIds,
     onSessionExited,
     palette,
-    profileLabels: profiles.labels,
   });
+  // The chrome's rows (M19): the inspector, Find, the deck's frames and split sessions read these; the views, the
+  // counts and the status shortcuts read the model through the replica.
+  const { agents, actions, counts, selectNextStatus, notifications, dismissNotification } = monitor;
+  // Godview keeps no record, so it lends no history; only the perf harness asks it to lend a fixture (TLV).
+  const perfCapabilities = usePerfHistory(monitor.model, monitor.views.get(view.id), palette);
   const agentsBySession = useMemo(() => new Map(agents.map((agent) => [agent.session.id, agent] as const)), [agents]);
   // The frame's facts, keyed like the rows (PU-14: the frame is the package's).
   const frameAgentsBySession = useMemo(() => paneFrameAgents(agentsBySession), [agentsBySession]);
   const frameFallbackCwds = useMemo(() => paneFallbackCwds(agentsBySession), [agentsBySession]);
   const activeAgent = agents.find((agent) => agent.active);
-
-  const counts = useMemo(() => monitorAgentCounts(agents), [agents]);
-
-  const selectNextStatus = useCallback(
-    (status: AgentVisualStatus): void => {
-      const next = nextMonitorAgentForStatus(agents, status, workspace?.activeSession?.id);
-      if (next) actions.select(next);
-    },
-    [actions, agents, workspace?.activeSession?.id],
+  // Retry keys (M176 item 1): the facts a chrome piece renders, held as one value, since the hooks that read them hand
+  // back a fresh object each render. The deck's two pieces: the panes Ghosttea lays out and the rows they show. The
+  // drawer: the accounts and the defaults main pushes.
+  const deckFacts = useMemo(() => ({ workspace, agentsBySession }), [workspace, agentsBySession]);
+  const drawerFacts = useMemo(
+    () => ({ profiles: profiles.profiles, defaults: profiles.defaults }),
+    [profiles.profiles, profiles.defaults],
   );
 
   useEffect(() => {
@@ -447,7 +531,7 @@ function Godview() {
         process: processCwd,
         fallback: fallbackCwd,
       });
-      return terminalRuntime.createSession({
+      const session = await terminalRuntime.createSession({
         executable: platform.defaultShell,
         args: [],
         ...(source.cwd ? { cwd: source.cwd } : {}),
@@ -457,6 +541,8 @@ function Godview() {
         persistence: 'terminate-with-app',
         programKind: 'interactive-shell',
       });
+      unusedPanes.current.created(session.id);
+      return session;
     },
     [agentsBySession, platform.defaultShell],
   );
@@ -500,7 +586,7 @@ function Godview() {
   }, []);
 
   // Only the pane's own colour: the badge and the rest of the frame are the
-  // package's (`@vibecook/puppeteer-views` DeckFrames, PU-14), drawn into the
+  // package's (`@vibefield/puppeteer-views` DeckFrames, PU-14), drawn into the
   // pane Ghosttea lays out.
   const decoratePane = useCallback(
     (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {
@@ -514,7 +600,60 @@ function Godview() {
     (session: SessionSummary): void => workspace?.mountSession(session),
     [workspace],
   );
-  const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession);
+  const frameVerbs = useAppPaneFrameVerbs(agentsBySession, mountResumedSession, zoom.toggle);
+  const paneSessionUsed = usePaneSessionUsed(agentsBySession);
+  const launcherGate = usePaneSessionUsed(agentsBySession, launcherSessionUsed);
+  useLayoutEffect(() => {
+    if (!workspace) return;
+    // Includes Ghosttea's initial empty-workspace birth, outside the split override.
+    for (const { session } of workspace.panes) {
+      if (terminalRuntime.sessionCreatedHere(session.id)) unusedPanes.current.created(session.id);
+    }
+    const detached = unusedPanes.current.update(
+      workspace.panes.map((pane) => pane.session),
+      paneSessionUsed,
+      (session) => session.activity.kind === 'foreground-job',
+    );
+    for (const session of detached) releaseUnusedShell(session.id);
+  }, [workspace, paneSessionUsed]);
+  useEffect(() => {
+    const observe = (event: Event): void => {
+      const session = (event as CustomEvent<SessionSummary>).detail;
+      const ready = unusedPanes.current.observe(
+        session,
+        paneSessionUsed(session),
+        session.activity.kind === 'foreground-job',
+      );
+      for (const shell of ready) releaseUnusedShell(shell.id);
+    };
+    terminalRuntime.addEventListener('session-metadata', observe);
+    return () => terminalRuntime.removeEventListener('session-metadata', observe);
+  }, [paneSessionUsed]);
+  const prepareLauncherReplacement = useCallback(
+    (previous: string, next: string): (() => void) => {
+      const showing = workspace?.panes.filter((pane) => pane.session.id === previous) ?? [];
+      if (showing.length !== 1 || paneSessionUsed(showing[0]!.session)) return () => undefined;
+      transferBubble(previous, next);
+      return () => setTerminalVisualIds((current) => new Map(current).set(next, next));
+    },
+    [workspace, paneSessionUsed, transferBubble],
+  );
+  const onLauncherReplaced = useCallback(
+    (previous: string, next: string): void => {
+      unusedPanes.current.release(previous);
+      transferBubble(previous, next);
+      releaseUnusedShell(previous);
+    },
+    [transferBubble],
+  );
+  const zoomedPaneId = zoomLayoutApplied(zoom.state.phase) ? zoom.state.paneId : null;
+  const paneVisibility = useMemo(
+    () =>
+      Object.fromEntries(
+        (workspace?.panes ?? []).map((pane) => [pane.id, zoomedPaneId === null || pane.id === zoomedPaneId]),
+      ),
+    [workspace, zoomedPaneId],
+  );
 
   const updateParameter = useCallback(
     (key: string, value: number): void => {
@@ -569,7 +708,6 @@ function Godview() {
     '--vf-scanline-opacity': stageParameters[SCANLINE_OPACITY_KEY] ?? 0.4,
     '--vf-vignette-opacity': stageParameters[VIGNETTE_OPACITY_KEY] ?? 1,
   } as CSSProperties;
-  const MonitorView = view.Component;
 
   return (
     <div
@@ -581,129 +719,154 @@ function Godview() {
     >
       <div className="vf-godview-scanlines" aria-hidden="true" />
       <div className="vf-godview-vignette" aria-hidden="true" />
-      <InstrumentBar
-        counts={counts}
-        onSelectStatus={selectNextStatus}
-        views={MONITOR_VIEWS}
-        viewId={view.id}
-        onSelectView={selectView}
-        theme={theme}
-        onThemeChange={changeTheme}
-        leading={
-          <div className="vf-godview-window-controls" aria-hidden="true">
-            <i className="is-close" />
-            <i className="is-minimize" />
-            <i className="is-expand" />
-          </div>
-        }
-        trailing={
-          <>
-            <BarControl
-              mark="find"
-              label="FIND"
-              shortcut="⌘F"
-              ariaLabel="Find an agent by what was said"
-              controls="vf-find-sheet"
-              on={findOpen}
-              onClick={() => setFindOpen((current) => !current)}
-            />
-            <BarControl
-              mark="agents"
-              label="AGENTS"
-              ariaLabel="Installed agents and accounts"
-              controls="vf-agents-drawer"
-              on={agentsDrawerOpen}
-              onClick={() => setAgentsDrawerOpen((current) => !current)}
-            />
-            <BarControl
-              mark="tune"
-              label="SYSTEM CONTROL"
-              ariaLabel="System control"
-              controls="vf-godview-tweak-panel"
-              on={tweakPanelOpen}
-              onClick={() => setTweakPanelOpen((current) => !current)}
-            />
-            {settings ? (
-              <BarControl
-                mark="settings"
-                label="SETTINGS"
-                ariaLabel="Open settings"
-                haspopup="dialog"
-                end
-                disabled={!settings.enabled}
-                onClick={settings.open}
-              />
-            ) : null}
-          </>
-        }
-      />
-
-      {notifications.length ? (
-        <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
-          {notifications.map((message) => (
-            <div className="vf-godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
-              <span>{message.summary ?? message.type}</span>
-              <button
-                type="button"
-                aria-label="Dismiss notification"
-                onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
-              >
-                ×
-              </button>
+      <ChromeBoundary name="bar" onError={reportChromeError}>
+        <InstrumentBar
+          counts={counts}
+          onSelectStatus={selectNextStatus}
+          views={MONITOR_VIEWS}
+          viewId={view.id}
+          onSelectView={selectView}
+          theme={theme}
+          onThemeChange={changeTheme}
+          leading={
+            <div className="vf-godview-window-controls" aria-hidden="true">
+              <i className="is-close" />
+              <i className="is-minimize" />
+              <i className="is-expand" />
             </div>
-          ))}
-        </div>
-      ) : null}
+          }
+          trailing={
+            <>
+              <BarControl
+                mark="find"
+                label="FIND"
+                shortcut="⌘F"
+                ariaLabel="Find an agent by what was said"
+                controls="vf-find-sheet"
+                on={findOpen}
+                onClick={() => setFindOpen((current) => !current)}
+              />
+              <BarControl
+                mark="agents"
+                label="AGENTS"
+                ariaLabel="Installed agents and accounts"
+                controls="vf-agents-drawer"
+                on={agentsDrawerOpen}
+                onClick={() => setAgentsDrawerOpen((current) => !current)}
+              />
+              <BarControl
+                mark="tune"
+                label="SYSTEM CONTROL"
+                ariaLabel="System control"
+                controls="vf-godview-tweak-panel"
+                on={tweakPanelOpen}
+                onClick={() => setTweakPanelOpen((current) => !current)}
+              />
+              {settings ? (
+                <BarControl
+                  mark="settings"
+                  label="SETTINGS"
+                  ariaLabel="Open settings"
+                  haspopup="dialog"
+                  end
+                  disabled={!settings.enabled}
+                  onClick={settings.open}
+                />
+              ) : null}
+            </>
+          }
+        />
+      </ChromeBoundary>
 
-      <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
+      <ChromeBoundary name="notifications" onError={reportChromeError} retryKey={notifications}>
+        {notifications.length ? (
+          <div className="vf-godview-monitor-feed" aria-live="polite" aria-label="Agent monitor notifications">
+            {notifications.map((message) => (
+              <div className="vf-godview-monitor-notice" key={`${message.runtimeRunId}:${message.notificationId}`}>
+                <span>{message.summary ?? message.type}</span>
+                <button
+                  type="button"
+                  aria-label="Dismiss notification"
+                  onClick={() => dismissNotification(message.runtimeRunId, message.notificationId)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </ChromeBoundary>
 
-      <FindSheet
-        open={findOpen}
-        agents={agents}
-        history={historyPort}
-        onClose={() => setFindOpen(false)}
-        onSelect={(agent) => {
-          actions.select(agent);
-          setFindOpen(false);
-        }}
-      />
+      <ChromeBoundary name="agents drawer" onError={reportChromeError} retryKey={drawerFacts}>
+        <AgentsDrawer open={agentsDrawerOpen} profiles={profiles} onClose={() => setAgentsDrawerOpen(false)} />
+      </ChromeBoundary>
 
-      <TweakPanel
-        open={tweakPanelOpen}
-        theme={theme}
-        value={tuning}
-        sections={tweakSections}
-        onClose={() => setTweakPanelOpen(false)}
-        onThemeChange={changeTheme}
-        onChange={changeTuning}
-        onReset={() => {
-          setTuning(defaultGodviewTuning(theme));
-          setStageParameters(monitorParameterDefaults(STAGE_PARAMETER_GROUPS));
-          setParametersByView((current) => ({
-            ...current,
-            [view.id]: monitorParameterDefaults(view.parameterGroups),
-          }));
-        }}
-      />
+      <ChromeBoundary name="find" onError={reportChromeError} retryKey={agents}>
+        <FindSheet
+          open={findOpen}
+          agents={agents}
+          history={historyPort}
+          onClose={() => setFindOpen(false)}
+          onSelect={(agent) => {
+            actions.select(agent);
+            setFindOpen(false);
+          }}
+        />
+      </ChromeBoundary>
+
+      <ChromeBoundary name="tweak panel" onError={reportChromeError}>
+        <TweakPanel
+          open={tweakPanelOpen}
+          theme={theme}
+          value={tuning}
+          sections={tweakSections}
+          onClose={() => setTweakPanelOpen(false)}
+          onThemeChange={changeTheme}
+          onChange={changeTuning}
+          onReset={() => {
+            setTuning(defaultGodviewTuning(theme));
+            setStageParameters(monitorParameterDefaults(STAGE_PARAMETER_GROUPS));
+            setParametersByView((current) => ({
+              ...current,
+              [view.id]: monitorParameterDefaults(view.parameterGroups),
+            }));
+          }}
+        />
+      </ChromeBoundary>
 
       <section ref={stageRef} className={MONITOR_STAGE_CLASS} aria-label="Agent monitor">
-        <MonitorView agents={agents} parameters={parameters} actions={actions} palette={palette} />
-        <div ref={chromeRef} className="vf-monitor-chrome" {...{ [MONITOR_CHROME_ATTRIBUTE]: '' }}>
-          <UsageColumn port={usagePort} />
+        {/* One view, drawn from this window's replica (MV-2), each an SDK view the view host mounts as itself. */}
+        <MonitorViewHost
+          replica={monitor.replica}
+          view={monitor.views.get(view.id)!}
+          stage={stageGeometry}
+          theme={monitorTheme}
+          parameters={parameters}
+          capabilities={perfCapabilities}
+          commands={monitor.commands}
+          scheduler={frameScheduler}
+        />
+        <div ref={chromeRef} className="vf-monitor-chrome">
+          <ChromeBoundary name="usage" onError={reportChromeError} retryKey={usagePort}>
+            <UsageColumn port={usagePort} />
+          </ChromeBoundary>
         </div>
-        {activeAgent?.agent?.monitor ? (
-          <AgentMonitorInspector
-            key={activeAgent.agent.monitor.runtimeRunId}
-            state={activeAgent.agent.monitor}
-            nowMs={Date.now()}
-            {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
-          />
-        ) : null}
+        <ChromeBoundary name="inspector" onError={reportChromeError} retryKey={activeAgent?.agent?.monitor}>
+          {activeAgent?.agent?.monitor ? (
+            <AgentMonitorInspector
+              key={activeAgent.agent.monitor.runtimeRunId}
+              state={activeAgent.agent.monitor}
+              nowMs={Date.now()}
+              onAcknowledge={() => monitor.acknowledge(activeAgent.id)}
+              {...(activeAgent.agent.account ? { account: activeAgent.agent.account } : {})}
+            />
+          ) : null}
+        </ChromeBoundary>
       </section>
 
       <section
         ref={deckRef}
-        className={`vf-godview-terminal-deck ${DECK_FRAMED_CLASS}`}
+        className={`vf-godview-terminal-deck vf-deck-zoom ${DECK_FRAMED_CLASS}`}
         aria-label="Terminal panes"
         style={
           {
@@ -724,6 +887,8 @@ function Godview() {
             paneMeta={persistPaneRecovery}
             createSplitSession={createSplitSession}
             splitSizing="equal"
+            onTogglePaneZoom={zoom.toggle}
+            paneVisibility={paneVisibility}
             onRehydratePane={rehydratePane}
             claimExistingSessions={window.desktop.claimExistingSessions}
             enableRemoteSessions={window.desktop.remoteSessionsEnabled}
@@ -734,15 +899,30 @@ function Godview() {
             {...(window.desktop.initialCwd ? { initialCwd: window.desktop.initialCwd } : {})}
           />
         </WorkspaceReporterContext.Provider>
-        <DeckFrames
-          deckRef={deckRef}
-          panes={workspace?.panes ?? []}
-          agentsBySession={frameAgentsBySession}
-          paneColors={paneColors}
-          fallbackCwdBySession={frameFallbackCwds}
-          verbs={frameVerbs}
-          frame={AppPaneFrame}
-        />
+        <ChromeBoundary name="deck frames" onError={reportChromeError} retryKey={deckFacts}>
+          <DeckFrames
+            deckRef={deckRef}
+            panes={workspace?.panes ?? []}
+            agentsBySession={frameAgentsBySession}
+            paneColors={paneColors}
+            fallbackCwdBySession={frameFallbackCwds}
+            verbs={frameVerbs}
+            frame={AppPaneFrame}
+            zoomedPaneId={zoomedPaneId}
+          />
+        </ChromeBoundary>
+        <ChromeBoundary name="deck launchers" onError={reportChromeError} retryKey={deckFacts}>
+          <AppDeckLaunchers
+            deckRef={deckRef}
+            workspace={workspace}
+            used={paneSessionUsed}
+            gate={launcherGate}
+            onReplaced={onLauncherReplaced}
+            prepareReplacement={prepareLauncherReplacement}
+            fallbackCwds={frameFallbackCwds}
+            paneColors={paneColors}
+          />
+        </ChromeBoundary>
       </section>
     </div>
   );

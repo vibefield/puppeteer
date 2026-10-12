@@ -1,4 +1,4 @@
-import type { AgentAdapterBinding, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, TerminalSpec } from '@vibefield/puppeteer-core';
 import type { GrokConfiguredIntent } from '../normalization/monitor.js';
 import type { GrokSessionObserver } from '../normalization/types.js';
 import type { PreparedGrokSession } from '../types.js';

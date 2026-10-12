@@ -1,10 +1,19 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { resolve as resolvePath } from 'node:path';
 import {
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
   AgentContinuationSchema,
   AgentLaunchProviderSchema,
+  AgentLaunchRefusedError,
+  AgentModelProviderSchema,
+  AgentModelDiscoveryResultSchema,
+  AgentModelSelectionSchema,
+  validateModelSelection,
+  type AgentModelDiscoveryContext,
+  type AgentModelDiscoveryResult,
+  AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
   DistributionProviderSchema,
@@ -13,6 +22,7 @@ import {
   agentEventCategory,
   agentEventType,
   isAgentEventType,
+  isAgentLaunchRefusedError,
   safeParseAgentEvent,
   AdapterEventCandidateSchema,
   type AccountUsageFetchResult,
@@ -26,6 +36,8 @@ import {
   type AgentInstallation,
   type AgentLaunchProvider,
   type AgentMonitorState,
+  type AgentNativeInvocation,
+  type AgentNativeInvocationResolution,
   type AgentProfile,
   type AgentAdapterBinding,
   type AgentProviderDescriptor,
@@ -42,7 +54,7 @@ import {
   type ProcessExitReason,
   type SessionRuntimeState,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   createOwnActionRecordId,
   type ActionRecorderStatus,
@@ -50,7 +62,7 @@ import {
   type OwnActionV2InputFor,
   type WorkspaceCleanupOutcomeV2,
   type WorkspaceFinalizationTriggerV2,
-} from '@vibecook/puppeteer-record';
+} from '@vibefield/puppeteer-record';
 import {
   createWorkspace,
   workspaceIdentity,
@@ -61,9 +73,10 @@ import {
   type WorkspaceRequest,
   type WorkspaceFinalizationRecord,
   type WorkspaceSessionMetadata,
-} from '@vibecook/puppeteer-workspaces';
-import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-workspaces';
+import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibefield/puppeteer-core/monitor-spi';
 import type {
+  MonitorRemoval,
   AdoptPreparedSessionOptions,
   AdoptPreparedSessionResult,
   AgentProcessExit,
@@ -77,6 +90,7 @@ import type {
   AgentWorkspaceInfo,
   CancelPreparedSessionResult,
   CheckReleasesOptions,
+  ClassifyAgentInvocationResult,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileOptions,
@@ -127,6 +141,9 @@ import {
   createExtensionInventoryReader,
 } from './extensions/inventory.js';
 import { createExtensionActRunner } from './extensions/act.js';
+import { createExtensionCatalogReader } from './extensions/catalog.js';
+import { launchValues } from './host/environment.js';
+import { boundSpawnThroughText } from './host/spawn-through/protocol.js';
 import { createProfileRootAllocator } from './profiles/roots.js';
 import { cloneAgentSessionInfo, createAgentController, type Agent, type AgentController } from './agent.js';
 import { createGitStateObserver, type GitStateObserver } from './observation/git.js';
@@ -385,6 +402,7 @@ function cloneLaunch(launch: TerminalSpec): TerminalSpec {
 function cloneLaunchProvider(provider: AgentLaunchProvider): AgentLaunchProvider {
   return {
     ...provider,
+    ...(provider.historyKinds ? { historyKinds: [...provider.historyKinds] } : {}),
     ...(provider.nativeInvocation
       ? {
           nativeInvocation: {
@@ -468,6 +486,28 @@ function preparationFailure(
     ...(run ? identityFields(run.identity) : {}),
     ...(terminalOutcome ? { terminalOutcome } : {}),
     error: { code, message },
+  };
+}
+
+/**
+ * What an error a provider threw while preparing or creating a session says in
+ * the failure a caller reads. Only the adapter's own refusal carries words: its
+ * sentence, held to one line by the rule for a person's terminal, and its code.
+ * Any other error's text (a path, a token, a stack) is the reporter's alone,
+ * and the failure says `generic`.
+ */
+function providerError(
+  thrown: unknown,
+  agent: string,
+  generic: string,
+):
+  | { code: 'AGENT_LAUNCH_REFUSED'; message: string; refusal: { code: string } }
+  | { code: 'AGENT_SESSION_CREATE_FAILED'; message: string } {
+  if (!isAgentLaunchRefusedError(thrown)) return { code: 'AGENT_SESSION_CREATE_FAILED', message: generic };
+  return {
+    code: 'AGENT_LAUNCH_REFUSED',
+    message: boundSpawnThroughText(thrown.message.replace(/\r\n|\r|\n/gu, ' ')) || `agent launch refused: ${agent}`,
+    refusal: { code: thrown.code },
   };
 }
 
@@ -616,13 +656,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const prewarmAbort = new AbortController();
+  const modelDiscoveryAbort = new AbortController();
+  const pendingModelDiscoveries = new Set<Promise<AgentModelDiscoveryResult>>();
   const pendingPrewarms = new Map<string, Promise<void>>();
   const warmedAt = new Map<string, number>();
   const claims = new Map<string, Map<symbol, 'direct' | 'exclusive'>>();
   const listeners = new Set<(terminalSessionId: string, envelope: RuntimeAgentEventEnvelope) => void>();
   const monitorStateListeners = new Set<(state: AgentMonitorState) => void>();
   const monitorNotificationListeners = new Set<(notification: MonitorNotification) => void>();
-  const monitorRemovedListeners = new Set<(runtimeRunId: string) => void>();
+  const monitorRemovedListeners = new Set<(runtimeRunId: string, removal: MonitorRemoval) => void>();
   const acknowledgedFailureBlockers = new Set<string>();
   const accountUsageListeners = new Set<(provider: AccountUsageProvider, result: AccountUsageFetchResult) => void>();
   const accountUsageInflight = new Map<string, Promise<AccountUsageFetchResult>>();
@@ -647,9 +689,19 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         : undefined,
     report,
   });
+  const extensionCatalogs = createExtensionCatalogReader({
+    providers: extensionProviderEntries,
+    resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, { allowRetired: true }),
+    nativeDefaultProfileId: (providerId) =>
+      profileRegistryProviders.get(providerId)?.provider.support.nativeDefaultRoot
+        ? nativeDefaultProfileId(providerId)
+        : undefined,
+    report,
+  });
   const extensionActs = createExtensionActRunner({
     providers: extensionProviderEntries,
     reader: extensionReader,
+    catalogs: extensionCatalogs,
     // a retired account's agent is no longer the profile's: acts need a live one
     resolveProfile: (providerId, profileId) => resolveSessionProfile(providerId, profileId, {}),
     nativeDefaultProfileId: (providerId) =>
@@ -817,6 +869,103 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
   }
 
+  async function readModelCatalog(
+    provider: AgentProvider,
+    context: AgentModelDiscoveryContext,
+  ): Promise<AgentModelDiscoveryResult> {
+    const id = provider.descriptor.id;
+    if (!provider.models)
+      return {
+        status: 'unsupported',
+        provider: id,
+        code: 'unsupported',
+        message: 'This provider does not expose model discovery.',
+      };
+    const signal = AbortSignal.any([modelDiscoveryAbort.signal, ...(context.signal ? [context.signal] : [])]);
+    if (signal.aborted)
+      return { status: 'cancelled', provider: id, code: 'cancelled', message: 'Model discovery was cancelled.' };
+    const operation = Promise.resolve().then(async (): Promise<AgentModelDiscoveryResult> => {
+      try {
+        const result = AgentModelDiscoveryResultSchema.parse(await provider.models!.discover({ ...context, signal }));
+        if (signal.aborted)
+          return { status: 'cancelled', provider: id, code: 'cancelled', message: 'Model discovery was cancelled.' };
+        if (result.status === 'available') {
+          if (
+            result.catalog.provider !== id ||
+            result.catalog.cwd !== context.cwd ||
+            result.catalog.profileId !== context.profile?.id
+          )
+            throw new Error('model discovery context mismatch');
+        } else if (result.provider !== id) throw new Error('foreign model discovery result');
+        return result;
+      } catch {
+        return {
+          status: signal.aborted ? 'cancelled' : 'error',
+          provider: id,
+          code: signal.aborted ? 'cancelled' : 'invalid-response',
+          message: signal.aborted
+            ? 'Model discovery was cancelled.'
+            : 'The provider did not return a valid model catalog.',
+        };
+      }
+    });
+    pendingModelDiscoveries.add(operation);
+    try {
+      return await operation;
+    } finally {
+      pendingModelDiscoveries.delete(operation);
+    }
+  }
+
+  async function selectedModelOptions(
+    provider: AgentProvider,
+    request: CreateAgentSessionOptions,
+    cwd: string,
+    profile: AgentProfile | undefined,
+  ): Promise<unknown> {
+    if (request.modelSelection === undefined) return request.agentOptions;
+    if (request.resume !== undefined)
+      throw new AgentLaunchRefusedError('INVALID_MODEL_SELECTION', 'Model selections apply to new sessions only.');
+    if (request.agentOptions !== undefined)
+      throw new AgentLaunchRefusedError(
+        'INVALID_MODEL_SELECTION',
+        'Choose either a model selection or provider-native launch options.',
+      );
+    const parsed = AgentModelSelectionSchema.safeParse(request.modelSelection);
+    if (!parsed.success)
+      throw new AgentLaunchRefusedError('INVALID_MODEL_SELECTION', 'The model selection is malformed.');
+    const selection = parsed.data;
+    const result = await readModelCatalog(provider, { cwd, ...(profile ? { profile } : {}) });
+    if (result.status !== 'available') throw new AgentLaunchRefusedError('MODEL_DISCOVERY_UNAVAILABLE', result.message);
+    return provider.models!.toAgentOptions(validateModelSelection(result.catalog, selection), result.catalog);
+  }
+
+  /**
+   * The host's launch values for a run, once its account resolved: the set
+   * the account belongs to, or the native set for the provider's own root.
+   * Checked, never kept on the run; nothing when the host keeps none or
+   * cannot answer — the run starts without them.
+   */
+  async function launchEnvironmentFor(
+    providerId: string,
+    profile: AgentProfile | undefined,
+    run: ManagedRun,
+  ): Promise<Readonly<Record<string, string>> | undefined> {
+    if (options.launchEnvironment === undefined) return undefined;
+    try {
+      return launchValues(
+        await options.launchEnvironment({
+          providerId,
+          profileSetId: profile?.set ?? run.profileSetId ?? NATIVE_PROFILE_SET_ID,
+          ...(profile === undefined ? {} : { profileId: profile.id }),
+        }),
+      );
+    } catch (error) {
+      report(error);
+      return undefined;
+    }
+  }
+
   function bindRunProfile(run: ManagedRun, profile: AgentProfile): void {
     run.profileId = profile.id;
     run.profileSetId = profile.set;
@@ -864,7 +1013,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     providerOptions: AgentProviderSessionOptions,
     run: ManagedRun,
   ): void {
-    run.continuationState = provider.launch?.continuation?.capture(providerOptions);
+    // a host's launch values never reach what the host persists
+    const { environment: _values, ...captured } = providerOptions;
+    run.continuationState = provider.launch?.continuation?.capture(captured);
     // Validate before a provider allocates process/socket resources. The final
     // continuation is rebuilt with authoritative native identity afterward.
     continuationFor(provider, 'pending-native-session', run);
@@ -985,13 +1136,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!monitor) return;
     monitor.remove();
     run.monitor = undefined;
-    publishMonitorRemoved(run.identity.runtimeRunId);
+    publishMonitorRemoved(run.identity.runtimeRunId, run.identity.runtimeEpoch);
   }
 
-  function publishMonitorRemoved(runtimeRunId: string): void {
+  function publishMonitorRemoved(runtimeRunId: string, runtimeEpoch: number): void {
+    const removal: MonitorRemoval = { runtimeEpoch };
     for (const listener of monitorRemovedListeners) {
       try {
-        listener(runtimeRunId);
+        listener(runtimeRunId, removal);
       } catch (error) {
         report(error);
       }
@@ -1013,7 +1165,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     if (!retained) return false;
     terminalFailuresByRunId.delete(runtimeRunId);
     retained.monitor.remove();
-    publishMonitorRemoved(runtimeRunId);
+    publishMonitorRemoved(runtimeRunId, retained.info.runtimeEpoch);
     if (rememberInfo) rememberTerminalRunInfo(retained.info);
     return true;
   }
@@ -1341,6 +1493,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.resume === undefined ? {} : { resume: request.resume }),
       ...(request.title === undefined ? {} : { title: request.title }),
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+      ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
       ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
@@ -2249,6 +2402,98 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     return preparationFailure('PREPARATION_NOT_FOUND', `prepared session not found: ${preparationId}`);
   }
 
+  /**
+   * Every check `prepareInvocation` makes before it prepares anything, and all
+   * that `classifyInvocation` makes: the schema, the provider and its
+   * capability, the environment allow-list, the imposter's shape, then the
+   * adapter's word on the argv. Pure: no run, no profile, no file, no process.
+   * Only an accepted invocation carries the adapter's resolution onward, and
+   * only `prepareInvocation` reads it.
+   */
+  function classifyNativeInvocation(request: AgentNativeInvocation):
+    | Exclude<ClassifyAgentInvocationResult, { status: 'accepted' }>
+    | {
+        status: 'accepted';
+        invocation: AgentNativeInvocation;
+        provider: AgentProvider;
+        resolution: Extract<AgentNativeInvocationResolution, { status: 'accepted' }>;
+      } {
+    const unsupported = (
+      code: Extract<ClassifyAgentInvocationResult, { status: 'unsupported' }>['code'],
+      reason: string,
+    ) => ({ status: 'unsupported' as const, code, reason });
+    const parsed = AgentNativeInvocationSchema.safeParse({
+      providerId: request.providerId,
+      cwd: request.cwd,
+      argv: request.argv,
+      environment: request.environment,
+      implementation: request.implementation,
+    });
+    if (!parsed.success) return unsupported('INVALID_NATIVE_INVOCATION', 'native invocation failed schema validation');
+    const invocation = parsed.data;
+    const provider = providers.get(invocation.providerId);
+    const service = provider?.launch;
+    const capability = launchProvidersById.get(invocation.providerId)?.nativeInvocation;
+    if (!provider || !service?.normalizeInvocation || !capability || !provider.prepareSession) {
+      return unsupported(
+        'NATIVE_INVOCATION_UNSUPPORTED',
+        `agent provider does not support native terminal invocation: ${invocation.providerId}`,
+      );
+    }
+    const allowedEnvironment = new Set(capability.environmentVariables);
+    const unexpectedEnvironment = Object.keys(invocation.environment).find((name) => !allowedEnvironment.has(name));
+    if (unexpectedEnvironment) {
+      return unsupported(
+        'INVALID_NATIVE_INVOCATION',
+        `native invocation environment is not accepted by ${invocation.providerId}: ${unexpectedEnvironment}`,
+      );
+    }
+    if (invocation.implementation.kind === 'imposter') {
+      const imposter = capability.imposter;
+      const validStateRoot =
+        imposter?.state === 'isolated-root'
+          ? invocation.implementation.stateRoot !== undefined
+          : invocation.implementation.stateRoot === undefined;
+      if (!imposter || !validStateRoot) {
+        return unsupported(
+          'INVALID_NATIVE_INVOCATION',
+          `imposter implementation does not match ${invocation.providerId} launch capabilities`,
+        );
+      }
+    }
+
+    const normalizationFailed = unsupported(
+      'INVALID_NATIVE_INVOCATION',
+      `native invocation normalization failed for ${invocation.providerId}`,
+    );
+    let normalized: AgentNativeInvocationResolution;
+    try {
+      normalized = service.normalizeInvocation(invocation);
+    } catch (error) {
+      report(error);
+      return normalizationFailed;
+    }
+    switch (normalized.status) {
+      case 'accepted':
+        return { status: 'accepted', invocation, provider, resolution: normalized };
+      case 'passthrough': {
+        // Hosts switch on the kind: an adapter's unknown kind is its bug, not a fourth kind.
+        const kind = AgentNativeInvocationPassthroughKindSchema.safeParse(normalized.kind);
+        return kind.success
+          ? { status: 'passthrough', kind: kind.data, reason: normalized.reason }
+          : normalizationFailed;
+      }
+      case 'rejected':
+        return {
+          status: 'rejected',
+          reason: normalized.reason,
+          ...(typeof normalized.argument === 'string' ? { argument: normalized.argument } : {}),
+        };
+      default:
+        return normalizationFailed;
+    }
+  }
+
   async function cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult> {
     const preparation = preparations.get(preparationId);
     if (!preparation) {
@@ -2366,14 +2611,77 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return launchProviders.map(cloneLaunchProvider);
     },
 
+    modelProviders() {
+      return [...providers.values()].flatMap((provider) => {
+        if (!provider.models) return [];
+        const descriptor = AgentModelProviderSchema.parse(provider.models.provider);
+        if (descriptor.id !== provider.descriptor.id) throw new Error('Model service provider mismatch.');
+        return [descriptor];
+      });
+    },
+
+    async discoverModels(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const provider = providers.get(request.agent);
+      if (!provider)
+        return {
+          status: 'unsupported',
+          provider: request.agent,
+          code: 'unsupported',
+          message: 'Unknown agent provider.',
+        };
+      if (!provider.models)
+        return {
+          status: 'unsupported',
+          provider: request.agent,
+          code: 'unsupported',
+          message: 'This provider does not expose model discovery.',
+        };
+      if (request.signal?.aborted)
+        return {
+          status: 'cancelled',
+          provider: request.agent,
+          code: 'cancelled',
+          message: 'Model discovery was cancelled.',
+        };
+      if (
+        request.timeoutMs !== undefined &&
+        (!Number.isInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 120_000)
+      )
+        return {
+          status: 'error',
+          provider: request.agent,
+          code: 'invalid-context',
+          message: 'Model discovery timeout must be between 1 and 120000 milliseconds.',
+        };
+      const choiceRequest: CreateAgentSessionOptions = {
+        agent: request.agent,
+        profile: request.profile,
+        profileSet: request.profileSet,
+      };
+      if (request.profile === undefined && request.profileSet === undefined) defaultedSpawns.add(choiceRequest);
+      const choice = await resolveProfileChoice(choiceRequest);
+      if ('error' in choice)
+        return { status: 'error', provider: request.agent, code: 'invalid-context', message: choice.error };
+      return readModelCatalog(provider, {
+        cwd: resolvePath(request.cwd ?? options.defaultCwd),
+        ...(choice.profile ? { profile: choice.profile } : {}),
+        signal: request.signal,
+        timeoutMs: request.timeoutMs,
+      });
+    },
+
     async prewarm(providerId, profileId) {
       if (disposed) throw new Error('agent runtime is disposed');
       const provider = providers.get(providerId);
       if (!provider?.prewarm) return;
       // Warm what the next spawn will use: the named account, else the default
       // set's for this provider (a plain spawn's), else the provider's own root.
+      // A shell without an account binding explicitly passes null: its native environment.
       const target =
-        profileId ?? (profileRegistryProviders.has(providerId) ? await defaultAccountFor(providerId) : undefined);
+        profileId === null
+          ? undefined
+          : (profileId ?? (profileRegistryProviders.has(providerId) ? await defaultAccountFor(providerId) : undefined));
       const key = JSON.stringify([providerId, target ?? null]);
       const pending = pendingPrewarms.get(key);
       if (pending) return pending;
@@ -2695,6 +3003,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionReader.inventory(providerId, profileId);
     },
 
+    async extensionCatalog(providerId: string, profileId?: string, options?: { fresh?: boolean }) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      return extensionCatalogs.catalog(providerId, profileId, options);
+    },
+
     async planExtensionAct(request) {
       if (disposed) throw new Error('agent runtime is disposed');
       return extensionActs.plan(request);
@@ -2715,9 +3028,19 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return extensionActs.settle(started, ended);
     },
 
-    async extensionActPlans(providerId, profileId, items) {
+    async extensionActPlans(providerId, profileId, items, adds, skills, offers) {
       if (disposed) throw new Error('agent runtime is disposed');
-      return extensionActs.plans({ providerId, ...(profileId === undefined ? {} : { profileId }), items });
+      return extensionActs.plans({
+        providerId,
+        ...(profileId === undefined ? {} : { profileId }),
+        items,
+        ...(adds === undefined ? {} : { adds }),
+        ...(skills?.adds === undefined ? {} : { skills: skills.adds }),
+        ...(skills?.keep === undefined ? {} : { keep: skills.keep }),
+        ...(offers?.installs === undefined ? {} : { installs: offers.installs }),
+        ...(offers?.sources === undefined ? {} : { sources: offers.sources }),
+        ...(offers?.only === true ? { offersOnly: true } : {}),
+      });
     },
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {
@@ -2757,6 +3080,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           return sessionFailure(run, lease.error.code, lease.error.message);
         }
 
+        const environment = await launchEnvironmentFor(request.agent, profile, run);
         const providerOptions = {
           runtimeRunId: run.identity.runtimeRunId,
           cwd: lease.workspace.root,
@@ -2766,22 +3090,21 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           agentOptions: request.agentOptions,
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
+          ...(environment === undefined ? {} : { environment }),
         };
         let session: AgentAdapterBinding;
         try {
+          providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
           session = await provider.createSession(providerOptions);
         } catch (error) {
           report(error);
-          await markRunTerminal(
-            run,
-            { kind: 'failed', code: 'AGENT_SESSION_CREATE_FAILED' },
-            { deferFailureRetention: true },
-          );
-          await recordRunStartFailure(run, 'process-spawn', 'AGENT_SESSION_CREATE_FAILED');
+          const failure = providerError(error, request.agent, `agent session creation failed: ${request.agent}`);
+          await markRunTerminal(run, { kind: 'failed', code: failure.code }, { deferFailureRetention: true });
+          await recordRunStartFailure(run, 'process-spawn', failure.code);
           await finalizeWorkspace(run, lease, 'preparation-failure');
           retainTerminalFailure(run);
-          return sessionFailure(run, 'AGENT_SESSION_CREATE_FAILED', `agent session creation failed: ${request.agent}`);
+          return { ...sessionFailure(run, failure.code, failure.message), error: failure };
         }
 
         try {
@@ -2802,63 +3125,31 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       });
     },
 
+    classifyInvocation(invocation) {
+      const classified = classifyNativeInvocation(invocation);
+      return classified.status === 'accepted' ? { status: 'accepted' } : classified;
+    },
+
     async prepareInvocation(request) {
       if (disposed) throw new Error('agent runtime is disposed');
-      const parsed = AgentNativeInvocationSchema.safeParse({
-        providerId: request.providerId,
-        cwd: request.cwd,
-        argv: request.argv,
-        environment: request.environment,
-        implementation: request.implementation,
-      });
-      if (!parsed.success) {
-        return preparationFailure('INVALID_NATIVE_INVOCATION', 'native invocation failed schema validation');
+      const classified = classifyNativeInvocation(request);
+      switch (classified.status) {
+        case 'unsupported':
+          return preparationFailure(classified.code, classified.reason);
+        case 'passthrough':
+          return {
+            error: { code: 'NATIVE_INVOCATION_PASSTHROUGH', message: classified.reason, passthrough: classified.kind },
+          };
+        case 'rejected':
+          return {
+            error: {
+              code: 'INVALID_NATIVE_INVOCATION',
+              message: classified.reason,
+              ...(classified.argument === undefined ? {} : { argument: classified.argument }),
+            },
+          };
       }
-      const invocation = parsed.data;
-      const provider = providers.get(invocation.providerId);
-      const service = provider?.launch;
-      const capability = launchProvidersById.get(invocation.providerId)?.nativeInvocation;
-      if (!provider || !service?.normalizeInvocation || !capability || !provider.prepareSession) {
-        return preparationFailure(
-          'NATIVE_INVOCATION_UNSUPPORTED',
-          `agent provider does not support native terminal invocation: ${invocation.providerId}`,
-        );
-      }
-      const allowedEnvironment = new Set(capability.environmentVariables);
-      const unexpectedEnvironment = Object.keys(invocation.environment).find((name) => !allowedEnvironment.has(name));
-      if (unexpectedEnvironment) {
-        return preparationFailure(
-          'INVALID_NATIVE_INVOCATION',
-          `native invocation environment is not accepted by ${invocation.providerId}: ${unexpectedEnvironment}`,
-        );
-      }
-      if (invocation.implementation.kind === 'imposter') {
-        const imposter = capability.imposter;
-        const validStateRoot =
-          imposter?.state === 'isolated-root'
-            ? invocation.implementation.stateRoot !== undefined
-            : invocation.implementation.stateRoot === undefined;
-        if (!imposter || !validStateRoot) {
-          return preparationFailure(
-            'INVALID_NATIVE_INVOCATION',
-            `imposter implementation does not match ${invocation.providerId} launch capabilities`,
-          );
-        }
-      }
-
-      let normalized;
-      try {
-        normalized = service.normalizeInvocation(invocation);
-      } catch (error) {
-        report(error);
-        return preparationFailure(
-          'INVALID_NATIVE_INVOCATION',
-          `native invocation normalization failed for ${invocation.providerId}`,
-        );
-      }
-      if (normalized.status === 'rejected') {
-        return preparationFailure('INVALID_NATIVE_INVOCATION', normalized.reason);
-      }
+      const { invocation, provider, resolution: normalized } = classified;
       const result = await runtime.prepareSession({
         agent: invocation.providerId,
         cwd: invocation.cwd,
@@ -2868,6 +3159,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         workspace: request.workspace,
         resume: normalized.resume,
         ...(normalized.options === undefined ? {} : { agentOptions: normalized.options }),
+        ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
       });
       if ('error' in result) return result;
       const run = runs.get(result.runtimeRunId);
@@ -2946,23 +3238,17 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         };
         let prepared: PreparedProviderSession;
         try {
+          providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
           prepared = await provider.prepareSession(providerOptions);
         } catch (error) {
           report(error);
-          await markRunTerminal(
-            run,
-            { kind: 'failed', code: 'AGENT_SESSION_CREATE_FAILED' },
-            { deferFailureRetention: true },
-          );
-          await recordRunStartFailure(run, 'preparation', 'AGENT_SESSION_CREATE_FAILED');
+          const failure = providerError(error, request.agent, `agent session preparation failed: ${request.agent}`);
+          await markRunTerminal(run, { kind: 'failed', code: failure.code }, { deferFailureRetention: true });
+          await recordRunStartFailure(run, 'preparation', failure.code);
           await finalizeWorkspace(run, lease, 'preparation-failure');
           retainTerminalFailure(run);
-          return preparationFailure(
-            'AGENT_SESSION_CREATE_FAILED',
-            `agent session preparation failed: ${request.agent}`,
-            run,
-          );
+          return { ...preparationFailure(failure.code, failure.message, run), error: failure };
         }
 
         const preparationId = randomUUID();
@@ -3508,6 +3794,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       sessionsByRunId.get(id)?.agent.monitor ??
       runs.get(id)?.monitor?.current() ??
       terminalFailuresByRunId.get(id)?.monitor.current(),
+    monitorStates() {
+      const states: AgentMonitorState[] = [];
+      for (const [id, run] of runs) {
+        // The same reading as monitorState(id): the live Agent's projection first.
+        const state = sessionsByRunId.get(id)?.agent.monitor ?? run.monitor?.current();
+        if (state) states.push(state);
+      }
+      for (const retained of terminalFailuresByRunId.values()) states.push(retained.monitor.current());
+      return states;
+    },
     observeMonitor(id) {
       const agent = sessionsByRunId.get(id)?.agent;
       if (agent) return agent.observeMonitor();
@@ -3582,6 +3878,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       disposed = true;
       const detach = disposeOptions?.detach === true;
       prewarmAbort.abort();
+      modelDiscoveryAbort.abort();
+      await Promise.allSettled([...pendingModelDiscoveries]);
       await Promise.allSettled([...pendingPrewarms.values()]);
       await Promise.allSettled([...pendingCreations]);
       const pendingAdoptions = [...preparations.values()]

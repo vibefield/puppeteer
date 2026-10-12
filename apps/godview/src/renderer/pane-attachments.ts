@@ -1,4 +1,4 @@
-import type { PaneAttachment } from '@vibecook/puppeteer-views';
+import type { PaneAttachment } from '@vibefield/puppeteer-views';
 
 export type { PaneAttachment };
 

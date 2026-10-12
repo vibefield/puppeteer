@@ -33,8 +33,8 @@ import {
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
   type AdapterDisposeOptions,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
 import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalization/index.js';
 import {
@@ -42,6 +42,7 @@ import {
   cleanupClaudeSession,
   hasClaudeOtelExporterConflict,
   locateClaudeTranscript,
+  type PrepareClaudeSessionOptions,
   type PreparedClaudeSession,
 } from './launch/prepare.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
@@ -128,7 +129,8 @@ export interface CreateClaudeSessionOptions {
   executable?: string | undefined;
   /** Adapter-normalized launch environment; runtime consumers do not configure this directly. */
   env?: Record<string, string> | undefined;
-  permissionMode?: string | undefined;
+  /** `default` when absent; `null` names none, and no configured mode is published (a typed launch that gave none). */
+  permissionMode?: string | null | undefined;
   /** Model alias or full model id passed through to Claude Code. */
   model?: string | undefined;
   /** Claude Code binary version detected before launch, when available. */
@@ -191,7 +193,10 @@ export interface ClaudeSession extends AgentAdapterBinding {
   pollTranscript(): Promise<void>;
 }
 
-export interface PrepareClaudeTuiSessionOptions extends Omit<CreateClaudeSessionOptions, 'ports'> {
+export interface PrepareClaudeTuiSessionOptions
+  extends
+    Omit<CreateClaudeSessionOptions, 'ports'>,
+    Pick<PrepareClaudeSessionOptions, 'carriedArgs' | 'prompt' | 'home' | 'readsNoSettingsFiles' | 'refuseHooksOff'> {
   /** Route semantic automation to a terminal after the preparation is adopted. */
   automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
 }
@@ -323,6 +328,11 @@ export async function prepareClaudeTuiSession(
       settingSources: options.settingSources,
       configDir: options.configDir,
       fileChangeMatcher: options.fileChangeMatcher,
+      carriedArgs: options.carriedArgs,
+      prompt: options.prompt,
+      home: options.home,
+      readsNoSettingsFiles: options.readsNoSettingsFiles,
+      refuseHooksOff: options.refuseHooksOff,
       endpoint: bridge.endpoint(),
       ...(otelUsageEnabled ? { otelLogsEndpoint: bridge.otelLogsEndpoint() } : {}),
       statusLineEndpoint: bridge.statusLineEndpoint(),
@@ -571,15 +581,18 @@ function createClaudeObservation(
     if (options.effort) {
       apply({ type: 'effort:updated', intent: 'configured', effort: options.effort }, publication);
     }
-    apply(
-      {
-        type: 'mode:updated',
-        intent: 'configured',
-        modeKind: 'provider-permission',
-        mode: claudePermissionMode(options.permissionMode ?? 'default'),
-      },
-      publication,
-    );
+    // A launch that named no mode configured none: the first hook says which one Claude chose.
+    if (options.permissionMode !== null) {
+      apply(
+        {
+          type: 'mode:updated',
+          intent: 'configured',
+          modeKind: 'provider-permission',
+          mode: claudePermissionMode(options.permissionMode ?? 'default'),
+        },
+        publication,
+      );
+    }
   }
 
   const reportHookRailUnavailable = (reason: string): void => {

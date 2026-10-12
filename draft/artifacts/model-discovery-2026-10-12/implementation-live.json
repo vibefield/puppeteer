@@ -1,0 +1,1643 @@
+[
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "claude",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:05.751Z",
+      "source": {
+        "kind": "native-protocol",
+        "freshness": "unknown",
+        "nativeVersion": "2.1.296"
+      },
+      "completeness": "complete",
+      "customModels": true,
+      "models": [
+        {
+          "id": "default",
+          "label": "Default (recommended)",
+          "description": "Opus 5.5 · Best for everyday, complex tasks",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "opus",
+          "label": "Opus",
+          "description": "Opus 5.5 · Best for everyday, complex tasks",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fable",
+          "label": "Fable",
+          "description": "Fable 5.1 · Most capable for your hardest and longest-running tasks",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sonnet",
+          "label": "Sonnet",
+          "description": "Sonnet 5.5 · Efficient for routine tasks",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "haiku",
+          "label": "Haiku",
+          "description": "Haiku 5.5 · Fastest for quick answers",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "codex",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:05.958Z",
+      "source": {
+        "kind": "native-protocol",
+        "freshness": "unknown",
+        "nativeVersion": "0.162.1"
+      },
+      "completeness": "complete",
+      "customModels": true,
+      "models": [
+        {
+          "id": "gpt-6.1-sol",
+          "label": "GPT-6.1-Sol",
+          "description": "Latest workhorse model for coding and everyday work.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                },
+                {
+                  "id": "ultra",
+                  "label": "ultra"
+                }
+              ],
+              "defaultValue": "low"
+            }
+          ]
+        },
+        {
+          "id": "gpt-6-astra",
+          "label": "GPT-6-Astra",
+          "description": "Frontier intelligence for the most demanding work.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                },
+                {
+                  "id": "ultra",
+                  "label": "ultra"
+                }
+              ],
+              "defaultValue": "medium"
+            }
+          ]
+        },
+        {
+          "id": "gpt-6-sol",
+          "label": "GPT-6-Sol",
+          "description": "Previous generation workhorse model.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                },
+                {
+                  "id": "ultra",
+                  "label": "ultra"
+                }
+              ],
+              "defaultValue": "medium"
+            }
+          ]
+        },
+        {
+          "id": "gpt-6-luna",
+          "label": "GPT-6-Luna",
+          "description": "Fast and affordable model for easier tasks.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ],
+              "defaultValue": "medium"
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "GPT-5.6-Sol",
+          "description": "Older generation workhorse model.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                },
+                {
+                  "id": "ultra",
+                  "label": "ultra"
+                }
+              ],
+              "defaultValue": "low"
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "GPT-5.6-Terra",
+          "description": "Older balanced model for straightforward work.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                },
+                {
+                  "id": "ultra",
+                  "label": "ultra"
+                }
+              ],
+              "defaultValue": "medium"
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "GPT-5.6-Luna",
+          "description": "Older fast and efficient model.",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ],
+              "defaultValue": "medium"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "status": "requires-session",
+    "provider": "acp",
+    "code": "requires-session",
+    "message": "This ACP connection exposes model choices only through session configuration, when supported by its server."
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "grok",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:07.017Z",
+      "source": {
+        "kind": "native-command",
+        "freshness": "unknown",
+        "nativeVersion": "1.0.50"
+      },
+      "completeness": "complete",
+      "customModels": true,
+      "models": [
+        {
+          "id": "grok-4.7",
+          "label": "grok-4.7",
+          "controls": []
+        },
+        {
+          "id": "grok-4.7-build-fast",
+          "label": "grok-4.7-build-fast",
+          "controls": []
+        },
+        {
+          "id": "grok-4.6",
+          "label": "grok-4.6",
+          "controls": []
+        },
+        {
+          "id": "grok-4.5",
+          "label": "grok-4.5",
+          "controls": []
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "kimi",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:08.177Z",
+      "source": {
+        "kind": "native-command",
+        "freshness": "cached",
+        "nativeVersion": "2.0.2"
+      },
+      "completeness": "complete",
+      "customModels": false,
+      "models": [
+        {
+          "id": "kimi-code/kimi-for-coding",
+          "label": "kimi-code/kimi-for-coding",
+          "controls": []
+        },
+        {
+          "id": "kimi-code/kimi-for-coding-highspeed",
+          "label": "kimi-code/kimi-for-coding-highspeed",
+          "controls": []
+        },
+        {
+          "id": "kimi-code/k3",
+          "label": "kimi-code/k3",
+          "controls": []
+        },
+        {
+          "id": "kimi-code/k3-256k",
+          "label": "kimi-code/k3-256k",
+          "controls": []
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "opencode",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:10.270Z",
+      "source": {
+        "kind": "native-protocol",
+        "freshness": "unknown",
+        "nativeVersion": "1.18.34"
+      },
+      "completeness": "partial",
+      "customModels": false,
+      "models": [
+        {
+          "id": "[\"opencode\",\"ling-3.0-flash-fin-free\"]",
+          "label": "Ling 3.0 Flash Fin Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"ling-3.1-flash-free\"]",
+          "label": "Ling 3.1 Flash Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"longcat-2.5-preview-free\"]",
+          "label": "LongCat 2.5 Preview Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"exo-free\"]",
+          "label": "Exo Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"space-bunny-free\"]",
+          "label": "Space Bunny Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"mimo-v2.6-flash-free\"]",
+          "label": "MiMo-V2.6-Flash Free",
+          "group": "OpenCode",
+          "controls": []
+        },
+        {
+          "id": "[\"opencode\",\"nemotron-3-ultra-free\"]",
+          "label": "Nemotron 3 Ultra Free",
+          "group": "OpenCode",
+          "controls": []
+        },
+        {
+          "id": "[\"opencode\",\"nemotron-3.5-lightning-free\"]",
+          "label": "Nemotron 3.5 Lightning Free",
+          "group": "OpenCode",
+          "controls": []
+        },
+        {
+          "id": "[\"opencode\",\"big-pickle\"]",
+          "label": "Big Pickle",
+          "group": "OpenCode",
+          "controls": []
+        },
+        {
+          "id": "[\"opencode\",\"step-5-preview-free\"]",
+          "label": "Step 5 Preview Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"opencode\",\"muse-spark-1.3-contributor-free\"]",
+          "label": "Muse Spark 1.3 Free",
+          "group": "OpenCode",
+          "controls": [
+            {
+              "id": "variant",
+              "label": "Variant",
+              "role": "variant",
+              "values": [
+                {
+                  "id": "minimal",
+                  "label": "minimal"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "antigravity",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:12.734Z",
+      "source": {
+        "kind": "native-command",
+        "freshness": "unknown",
+        "nativeVersion": "1.3.3"
+      },
+      "completeness": "complete",
+      "customModels": false,
+      "models": [
+        {
+          "id": "gemini-3.8-flash-high",
+          "label": "Gemini 3.8 Flash (High)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.8-flash-medium",
+          "label": "Gemini 3.8 Flash (Medium)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.8-flash-low",
+          "label": "Gemini 3.8 Flash (Low)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.7-flash-high",
+          "label": "Gemini 3.7 Flash (High)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.7-flash-medium",
+          "label": "Gemini 3.7 Flash (Medium)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.7-flash-low",
+          "label": "Gemini 3.7 Flash (Low)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.6-flash-high",
+          "label": "Gemini 3.6 Flash (High)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.6-flash-medium",
+          "label": "Gemini 3.6 Flash (Medium)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.6-flash-low",
+          "label": "Gemini 3.6 Flash (Low)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.1-pro-high",
+          "label": "Gemini 3.1 Pro (High)",
+          "controls": []
+        },
+        {
+          "id": "gemini-3.1-pro-low",
+          "label": "Gemini 3.1 Pro (Low)",
+          "controls": []
+        },
+        {
+          "id": "claude-opus-5-5-low",
+          "label": "Claude Opus 5.5 (Low)",
+          "controls": []
+        },
+        {
+          "id": "claude-opus-5-5-medium",
+          "label": "Claude Opus 5.5 (Medium)",
+          "controls": []
+        },
+        {
+          "id": "claude-opus-5-5-high",
+          "label": "Claude Opus 5.5 (High)",
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5-5-low",
+          "label": "Claude Sonnet 5.5 (Low)",
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5-5-medium",
+          "label": "Claude Sonnet 5.5 (Medium)",
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5-5-high",
+          "label": "Claude Sonnet 5.5 (High)",
+          "controls": []
+        },
+        {
+          "id": "gpt-oss-120b-medium",
+          "label": "GPT-OSS 120B (Medium)",
+          "controls": []
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "copilot",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:14.239Z",
+      "source": {
+        "kind": "native-protocol",
+        "freshness": "unknown",
+        "nativeVersion": "1.0.88"
+      },
+      "completeness": "complete",
+      "customModels": true,
+      "models": [
+        {
+          "id": "auto",
+          "label": "Auto",
+          "controls": []
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "Claude Sonnet 5",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "claude-haiku-4.5",
+          "label": "Claude Haiku 4.5",
+          "controls": []
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "GPT-5.6 Terra",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "none",
+                  "label": "none"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "GPT-5.6 Luna",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "none",
+                  "label": "none"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.4",
+          "label": "GPT-5.4",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "none",
+                  "label": "none"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.4-mini",
+          "label": "GPT-5.4 mini",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "none",
+                  "label": "none"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-5.3-codex",
+          "label": "GPT-5.3-Codex",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-5-mini",
+          "label": "GPT-5 mini",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mai-code-1.1-flash",
+          "label": "MAI-Code-1.1-Flash",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "grok-4.5",
+          "label": "Grok 4.5",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "kimi-k3",
+          "label": "Kimi K3",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "claude-haiku-5.5",
+          "label": "Claude Haiku 5.5",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "claude-sonnet-5.5",
+          "label": "Claude Sonnet 5.5",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "gpt-6-luna",
+          "label": "GPT-6 Luna",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "none",
+                  "label": "none"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                },
+                {
+                  "id": "max",
+                  "label": "max"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "grok-4.6",
+          "label": "Grok 4.6",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "grok-4.7",
+          "label": "Grok 4.7",
+          "controls": [
+            {
+              "id": "effort",
+              "label": "Effort",
+              "role": "effort",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "pi",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:14.625Z",
+      "source": {
+        "kind": "native-protocol",
+        "freshness": "cached",
+        "nativeVersion": "0.87.1"
+      },
+      "completeness": "partial",
+      "customModels": false,
+      "models": [
+        {
+          "id": "[\"xai\",\"grok-4.3\"]",
+          "label": "Grok 4.3",
+          "group": "xai",
+          "controls": [
+            {
+              "id": "thinking",
+              "label": "Thinking",
+              "role": "thinking",
+              "values": [
+                {
+                  "id": "off",
+                  "label": "off"
+                },
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"xai\",\"grok-4.5\"]",
+          "label": "Grok 4.5",
+          "group": "xai",
+          "controls": [
+            {
+              "id": "thinking",
+              "label": "Thinking",
+              "role": "thinking",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"xai\",\"grok-4.6\"]",
+          "label": "Grok 4.6",
+          "group": "xai",
+          "controls": [
+            {
+              "id": "thinking",
+              "label": "Thinking",
+              "role": "thinking",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "[\"xai\",\"grok-4.7\"]",
+          "label": "Grok 4.7",
+          "group": "xai",
+          "controls": [
+            {
+              "id": "thinking",
+              "label": "Thinking",
+              "role": "thinking",
+              "values": [
+                {
+                  "id": "low",
+                  "label": "low"
+                },
+                {
+                  "id": "medium",
+                  "label": "medium"
+                },
+                {
+                  "id": "high",
+                  "label": "high"
+                },
+                {
+                  "id": "xhigh",
+                  "label": "xhigh"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "status": "available",
+    "catalog": {
+      "provider": "hermes",
+      "cwd": "/var/folders/hs/j754ys991yd3bss5c87lf0m40000gn/T/puppeteer-live-models-stpMHQ",
+      "observedAt": "2026-10-12T18:49:15.744Z",
+      "source": {
+        "kind": "native-helper",
+        "freshness": "cached",
+        "nativeVersion": "0.21.4"
+      },
+      "completeness": "partial",
+      "customModels": false,
+      "models": [
+        {
+          "id": "[\"moa\",\"default\"]",
+          "label": "default",
+          "group": "moa",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-5.4\"]",
+          "label": "gpt-5.4",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-5.4-mini\"]",
+          "label": "gpt-5.4-mini",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-5-mini\"]",
+          "label": "gpt-5-mini",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-5.3-codex\"]",
+          "label": "gpt-5.3-codex",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-5.2-codex\"]",
+          "label": "gpt-5.2-codex",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-4.1\"]",
+          "label": "gpt-4.1",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-4o\"]",
+          "label": "gpt-4o",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gpt-4o-mini\"]",
+          "label": "gpt-4o-mini",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"claude-sonnet-4.6\"]",
+          "label": "claude-sonnet-4.6",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"claude-sonnet-5\"]",
+          "label": "claude-sonnet-5",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"claude-sonnet-4\"]",
+          "label": "claude-sonnet-4",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"claude-sonnet-4.5\"]",
+          "label": "claude-sonnet-4.5",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"claude-haiku-4.5\"]",
+          "label": "claude-haiku-4.5",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gemini-3.1-pro-preview\"]",
+          "label": "gemini-3.1-pro-preview",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gemini-3-pro-preview\"]",
+          "label": "gemini-3-pro-preview",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gemini-3-flash-preview\"]",
+          "label": "gemini-3-flash-preview",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot\",\"gemini-2.5-pro\"]",
+          "label": "gemini-2.5-pro",
+          "group": "copilot",
+          "controls": []
+        },
+        {
+          "id": "[\"copilot-acp\",\"copilot-acp\"]",
+          "label": "copilot-acp",
+          "group": "copilot-acp",
+          "controls": []
+        }
+      ]
+    }
+  }
+]

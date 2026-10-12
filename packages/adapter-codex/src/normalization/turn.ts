@@ -1,4 +1,4 @@
-import type { TurnEvent } from '@vibecook/puppeteer-core';
+import type { TurnEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, itemText, rec, str } from './types.js';
 
 export interface CodexTurnNormalization extends CategoryNormalization<TurnEvent> {

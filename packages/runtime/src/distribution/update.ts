@@ -11,7 +11,7 @@ import {
   type InstalledAgent,
   type UpdateReceipt,
   type UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { buildAgentEnvironment } from '../host/environment.js';
 
 /**

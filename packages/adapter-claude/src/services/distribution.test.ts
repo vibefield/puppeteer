@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibecook/puppeteer-core';
+import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
 import {
   CLAUDE_DISTRIBUTION_PROVIDER,
   claudeReleaseChannel,
@@ -54,7 +54,7 @@ describe('Claude distribution provider', () => {
 
   it('mirrors the Surface-declared release detectors without drift', () => {
     const require = createRequire(import.meta.url);
-    const surfaceRoot = dirname(require.resolve('@vibecook/puppeteer-surface/package.json'));
+    const surfaceRoot = dirname(require.resolve('@vibefield/puppeteer-surface/package.json'));
     const upstream = JSON.parse(readFileSync(join(surfaceRoot, 'vendors', 'claude', 'upstream.json'), 'utf8')) as {
       detectors: Array<Record<string, unknown>>;
     };

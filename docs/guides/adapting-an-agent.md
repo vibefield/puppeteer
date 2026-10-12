@@ -124,7 +124,7 @@ Choose these once and use them consistently:
 | `<vendor>`          | lowercase letters, digits, and hyphens; stable product identity | `claude`, `codex`, `grok`          |
 | `<version>`         | exact normalized vendor artifact version                        | `2.1.226`                          |
 | display name        | user-facing vendor/product name                                 | `Claude Code`                      |
-| adapter package     | `@vibecook/puppeteer-adapter-<vendor>`                          | `@vibecook/puppeteer-adapter-grok` |
+| adapter package     | `@vibefield/puppeteer-adapter-<vendor>`                          | `@vibefield/puppeteer-adapter-grok` |
 | executable override | `PUPPETEER_<VENDOR>_BIN`                                        | `PUPPETEER_GROK_BIN`               |
 | persona selector    | `ai --<vendor>` and a vendor-named shim                         | `ai --codex`                       |
 
@@ -289,7 +289,7 @@ packages/surface/vendors/<vendor>/
 
 The wildcard for `captures-raw` is already in `.gitignore`. Never commit prompts, responses, account identifiers, home paths, repository contents, bearer tokens, API keys, or raw authenticated state.
 
-Use the shared sanitizer in `@vibecook/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. For native JSON carriers, replace sensitive values in place: preserve every key, container, primitive type, identifier format, record order, and cross-record correlation. A fixture whose request and response IDs no longer join is not useful evidence.
+Use the shared sanitizer in `@vibefield/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. For native JSON carriers, replace sensitive values in place: preserve every key, container, primitive type, identifier format, record order, and cross-record correlation. A fixture whose request and response IDs no longer join is not useful evidence.
 
 Every capture set must include `capture-fidelity.json` using `puppeteer-capture-fidelity/1`:
 
@@ -452,7 +452,7 @@ Runtime capture and binary probe claims include the record, artifact, platform, 
 The model generator must write all authoring files, compute record digests after those writes, and regenerate the vendor-root canonical JSON/HTML. Refresh historical or externally attached record digests only after the tracked model/capture content is final:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
+pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
 ```
 
 Do not use that command to legitimize an unexplained change. Review the changed tree first, then refresh its digest.
@@ -491,10 +491,10 @@ Add `surface:model:<vendor>`, `surface:audit:<vendor>`, `surface:sanitize:<vendo
 Run:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-surface typecheck
-pnpm --filter @vibecook/puppeteer-surface test
-pnpm --filter @vibecook/puppeteer-surface surface:workflow:check
-pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>
+pnpm --filter @vibefield/puppeteer-surface typecheck
+pnpm --filter @vibefield/puppeteer-surface test
+pnpm --filter @vibefield/puppeteer-surface surface:workflow:check
+pnpm --filter @vibefield/puppeteer-surface run surface:audit:<vendor>
 pnpm surface:audit
 ```
 
@@ -540,7 +540,7 @@ The persona points to Surface; it does not copy the model:
 {
   "vendor": "<vendor>",
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/<vendor>"
   },
   "shimNames": ["<vendor-binary>"],
@@ -665,8 +665,8 @@ Run:
 
 ```sh
 node packages/imposter/bin/ai.mjs --<vendor> --version
-pnpm --filter @vibecook/puppeteer-imposter typecheck
-pnpm --filter @vibecook/puppeteer-imposter test
+pnpm --filter @vibefield/puppeteer-imposter typecheck
+pnpm --filter @vibefield/puppeteer-imposter test
 pnpm surface:replay --vendor <vendor> --ground-truth packages/surface/vendors/<vendor>/groundtruth.json
 pnpm agent-devkit
 ```
@@ -820,6 +820,22 @@ Add focused tests for:
 
 Use synthetic builders in the adapter’s `test-support/`; load real captured truth only from Surface-owned fixtures in tests that are explicitly validating the projection.
 
+### 7.6 Classify every native invocation
+
+A terminal host hands `launch/native-invocation.ts` whatever a person typed after the command name and acts on its answer alone: it manages the session, runs the command as typed, or — when strict, in one of its own terminals — refuses it. So the normalizer says what every invocation is, not only how to carry a session:
+
+| Answer                          | What the invocation is                                         | For example                                                                      |
+| ------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `accepted`                      | an interactive session in this process, every argument carried | the bare command; a resume                                                       |
+| `passthrough`, kind `utility`   | it runs no agent                                               | `--version`, `--help`, a login or management subcommand                          |
+| `passthrough`, kind `one-shot`  | it runs the agent non-interactively, in this process           | a print or exec mode                                                             |
+| `passthrough`, kind `elsewhere` | it starts or opens an agent that does not live in this process | a background, cloud, or attach command                                           |
+| `rejected`, with `argument`     | an interactive session the managed launch cannot carry         | an option the managed recipe cannot pass on, or one the vendor does not document |
+
+Classify from the vendor’s grammar, held as data. The Codex adapter is the reference: `packages/adapter-codex/src/launch/invocation-grammar.ts` has one row per option and subcommand of the release’s `--help` — its arity, its class, where a carried option lands in the managed recipe, and the evidence that decided it — and one walker that reads argv the way the vendor’s own parser does. A census beside it (`invocation-grammar.test.ts`) holds every row to that help, captured verbatim in `__fixtures__/`, in both directions: an option the help shows without a row fails, and so does a row the help does not show unless a recorded probe found it hidden. A new release therefore fails with exactly the options and subcommands that are new or changed until each is classed on evidence, and the probes that settle a row are recorded under `packages/surface/vendors/<vendor>/probes/`. An option the grammar does not know is `rejected`, never guessed at.
+
+Then declare `classifies: true` on the launch descriptor’s `nativeInvocation`. It is a promise a strict host relies on: such a host gives a launcher only to agents whose adapters classify, and in its own terminals it refuses every interactive invocation the adapter rejects — so an adapter that answers `rejected` for its own `--version` would refuse a person’s version query. Leave the flag absent until every utility, one-shot, and elsewhere invocation answers `passthrough`, and test each class.
+
 ---
 
 ## 8. Use the normalization devkit as the design loop
@@ -959,8 +975,13 @@ Update:
   - one `AgentProvider` entry with a strict `{ id, label }` descriptor;
   - optional adapter-owned `AccountUsageService` composition;
   - `createSession` and optional `prepareSession`;
-  - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, and any
-    conformant Imposter topology;
+    - a launch that must not proceed for a reason the person can act on throws Core's
+      `AgentLaunchRefusedError(code, sentence)`, or a subclass: `code` the adapter's own, UPPER_SNAKE; `sentence` one
+      plain line with no path, token or other internal detail. The runtime answers `AGENT_LAUNCH_REFUSED` with the
+      sentence as `error.message` and the code as `error.refusal.code`. Anything else a provider throws is an internal
+      failure: reported to the runtime's reporter, and answered `AGENT_SESSION_CREATE_FAILED` in the runtime's own words.
+  - one `launch.provider` descriptor declaring resume, native commands, the safe environment allow-list, any
+    conformant Imposter topology, and `classifies` once the normalizer classifies every invocation (§7.6);
   - `launch.normalizeInvocation` delegated to the adapter's `launch/native-invocation.ts`;
   - an opaque, credential-free continuation codec when resume depends on an agent home/configuration root or
     implementation topology. Its JSON payload crosses persistence and therefore uses a strict, versioned Zod schema;
@@ -974,10 +995,12 @@ executables, raw environment maps, app-server wiring, native resume argv, or pro
 ### 9.4 Wire product applications that expose built-in agents
 
 Runtime registration makes provider-neutral identity and launch capability available to consumers. Godview discovers
-provider ids and display labels through `providers()` and
-`launchProviders()`, creates shims from declared commands, forwards only declared environment names, and hands the
-intent to `prepareInvocation()`. Its spawn-through host owns authentication, PID-to-terminal matching, adoption,
-fallback, and `exec`; it must not parse vendor argv, choose adapter transports, or assemble provider options.
+provider ids and display labels through `providers()` and `launchProviders()`, and builds its terminal host on the
+spawn-through kit (`@vibefield/puppeteer-runtime/spawn-through`, [the host guide](spawn-through-hosts.md)): the kit
+creates shims from declared commands, forwards only declared environment names, authenticates, asks
+`classifyInvocation()` what the intent is before it hands a session to `prepareInvocation()`, and adopts, falls back or
+`exec`s; Godview supplies PID-to-terminal matching, its records and the exit report. Neither parses vendor argv, chooses
+adapter transports, or assembles provider options.
 
 Resume uses the `AgentContinuation` returned on every `AgentSessionInfo`: persist it opaquely and pass it to
 `runtime.resume()`. Product snapshots must not split it back into provider id, native session id, and launch
@@ -1022,7 +1045,7 @@ For a new vendor, update the hard-coded orchestration seams:
 Add the vendor to `.github/workflows/agent-surface-promotion.yml` only after every declared platform has a real
 adapter-through-native-agent lane. That lane must launch the exact artifact supplied through
 `PUPPETEER_LIVE_ARTIFACT` and, after its behavioral assertions pass, emit the write-once artifact-bound receipt through
-`@vibecook/puppeteer-testing/live-attestation`. A skipped, unit-only, census-only, or different-binary test is not a
+`@vibefield/puppeteer-testing/live-attestation`. A skipped, unit-only, census-only, or different-binary test is not a
 promotion lane.
 
 The scheduled upstream detector discovers `upstream.json` definitions, but promotion dispatch choices and pinned-real
@@ -1055,7 +1078,7 @@ For the first vendor, add a reviewed entry to `support/agents.json`:
   "id": "<vendor>",
   "displayName": "<Display Name>",
   "kind": "vendor",
-  "adapterPackage": "@vibecook/puppeteer-adapter-<vendor>",
+  "adapterPackage": "@vibefield/puppeteer-adapter-<vendor>",
   "persona": "<vendor>",
   "groundTruth": "packages/surface/vendors/<vendor>/groundtruth.json",
   "candidateVersion": "<version>",
@@ -1082,7 +1105,7 @@ Once all reviewed platform artifacts have been acquired:
 
 ```sh
 pnpm surface:evidence:artifacts --ground-truth <ground-truth> --artifacts <acquisition.json>
-pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
+pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
 pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>
 pnpm surface:reconcile --vendor <vendor> --ground-truth <ground-truth> --artifacts <acquisition.json>
 ```
@@ -1169,13 +1192,13 @@ Run targeted checks while iterating, then the full matrix before review.
 | Area                | Command                                                                         | What it proves                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Detector config     | `pnpm upstream:check`                                                           | every `upstream.json` satisfies policy                                                          |
-| Surface types/tests | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                | model/sanitizer runtime and vendor fixtures are sound                                           |
-| Vendor audit        | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`          | selected candidate matches evidence and vendor-specific checks                                  |
+| Surface types/tests | `pnpm --filter @vibefield/puppeteer-surface typecheck` and `test`                | model/sanitizer runtime and vendor fixtures are sound                                           |
+| Vendor audit        | `pnpm --filter @vibefield/puppeteer-surface run surface:audit:<vendor>`          | selected candidate matches evidence and vendor-specific checks                                  |
 | All Surface         | `pnpm surface:audit`                                                            | every current/candidate surface remains clean                                                   |
 | Exact replay        | `pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>`           | captures, model, persona, carriers, directions, and results agree pre-normalization             |
-| Adapter             | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`       | normalization, driver, transport, and shared conformance pass                                   |
-| Imposter            | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`               | persona/scenarios and adapter-against-Imposter pass                                             |
-| Runtime             | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                | provider and typed options are integrated                                                       |
+| Adapter             | `pnpm --filter @vibefield/puppeteer-adapter-<vendor> typecheck` and `test`       | normalization, driver, transport, and shared conformance pass                                   |
+| Imposter            | `pnpm --filter @vibefield/puppeteer-imposter typecheck` and `test`               | persona/scenarios and adapter-against-Imposter pass                                             |
+| Runtime             | `pnpm --filter @vibefield/puppeteer-runtime typecheck` and `test`                | provider and typed options are integrated                                                       |
 | Devkit              | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                | spawner, native plane, projection, and browser bundle agree                                     |
 | Devkit smoke        | `pnpm agent-devkit:smoke`                                                       | Electron main process starts and shuts down correctly                                           |
 | Godview, when wired | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke` | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |
@@ -1236,7 +1259,7 @@ This is the review checklist for files commonly missed during a first adaptation
 
 ### Product applications
 
-- [ ] launch descriptor, native-invocation normalizer, continuation codec, and adjacent adapter tests
+- [ ] launch descriptor, native-invocation normalizer with its invocation grammar and help census, continuation codec, and adjacent adapter tests
 - [ ] Godview product branding only; no provider mechanics in shim, spawn-through, or restore
 - [ ] product-app typecheck, tests, bundle, and smoke for every app changed
 

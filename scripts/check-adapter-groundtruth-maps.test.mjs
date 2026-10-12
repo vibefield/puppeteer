@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { auditAdapterGroundTruthMaps, buildAdapterGroundTruthMap } from './check-adapter-groundtruth-maps.mjs';
 
 test('every provider adapter is digest-locked to one canonical ground-truth classification', () => {
@@ -7,7 +8,7 @@ test('every provider adapter is digest-locked to one canonical ground-truth clas
 });
 
 test('known semantic inputs are classified from adapter-owned normalization modules', () => {
-  const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+  const root = fileURLToPath(new URL('..', import.meta.url));
   const cases = [
     ['claude', 'SessionStart'],
     ['codex', 'turn/started'],

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import type { ChildProcess } from 'node:child_process';
@@ -29,6 +32,45 @@ class FakeChildProcess extends EventEmitter {
 
 describe('spawnAppServer process contract', () => {
   afterEach(() => vi.clearAllMocks());
+
+  it('observes a bound Unix socket on a native wakeup without waiting for the poll', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const root = mkdtempSync(join(tmpdir(), 'codex-ready-'));
+    const socketPath = join(root, 'server.sock');
+    const child = new FakeChildProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const server = spawnAppServer({ executable: 'codex-test', transport: 'unix', socketPath });
+    try {
+      child.stderr.write('before bind');
+      expect(() => server.endpoint()).toThrow('before ready');
+      writeFileSync(socketPath, 'fixture');
+      child.stderr.write('after bind');
+      await server.ready();
+      expect(server.endpoint()).toEqual({ kind: 'unix', path: socketPath });
+    } finally {
+      await server.dispose();
+      vi.useRealTimers();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('retains polling readiness when the native Unix server is silent', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const root = mkdtempSync(join(tmpdir(), 'codex-ready-quiet-'));
+    const socketPath = join(root, 'server.sock');
+    const child = new FakeChildProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const server = spawnAppServer({ executable: 'codex-test', transport: 'unix', socketPath });
+    try {
+      writeFileSync(socketPath, 'fixture');
+      await vi.advanceTimersByTimeAsync(50);
+      expect(server.endpoint()).toEqual({ kind: 'unix', path: socketPath });
+    } finally {
+      await server.dispose();
+      vi.useRealTimers();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 
   it('discovers an ephemeral loopback endpoint from a split startup banner', async () => {
     const child = new FakeChildProcess();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SurfaceModel } from '@vibecook/puppeteer-surface';
+import type { SurfaceModel } from '@vibefield/puppeteer-surface';
 import {
   defaultSocketPath,
   defaultTokenPath,

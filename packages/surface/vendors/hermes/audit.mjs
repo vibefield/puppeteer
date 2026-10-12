@@ -4,8 +4,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
-import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { loadModel, validateSanitizedPayload } from '@vibefield/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import {
   RELEASE_TAG,
   REQUIRED_FLAGS,

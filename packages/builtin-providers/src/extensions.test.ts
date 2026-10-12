@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createAgentRuntime, type AgentRuntime } from '@vibecook/puppeteer-runtime';
+import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createAgentRuntime, type AgentRuntime } from '@vibefield/puppeteer-runtime';
 import { createBuiltinProviders } from './providers.js';
 
 /** Reading an inventory never spawns: a host that is asked to is a failure. */
@@ -120,7 +120,7 @@ describe('built-in extension capabilities', () => {
     });
     expect(await runtime.planExtensionAct({ providerId: 'claude', target, act: 'remove' })).toMatchObject({
       available: true,
-      display: `${join(home, 'no-claude')} mcp remove --scope user linear`,
+      display: `${process.platform === 'win32' ? JSON.stringify(join(home, 'no-claude')) : join(home, 'no-claude')} mcp remove --scope user linear`,
       reaches: ['definition', 'sign-in'],
     });
     const output: string[] = [];
@@ -184,7 +184,7 @@ describe('built-in extension capabilities', () => {
     expect(started).toMatchObject({
       runtimeSessionId: 'pty-sign-in',
       profileId: 'claude:native-default',
-      display: `${join(home, 'no-claude')} mcp login linear`,
+      display: `${process.platform === 'win32' ? JSON.stringify(join(home, 'no-claude')) : join(home, 'no-claude')} mcp login linear`,
       reaches: [],
     });
     // the native default binds nothing, and the login runs in Claude's own folder

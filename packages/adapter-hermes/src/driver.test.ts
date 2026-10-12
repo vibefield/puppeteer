@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { describe, expect, it, vi } from 'vitest';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
 
@@ -16,6 +16,39 @@ function host(): AgentHost {
 }
 
 describe('Hermes TUI session driver', () => {
+  it('passes model, provider, and effort as per-session creation overrides', async () => {
+    const gateway = new FakeHermesGateway();
+    const request = vi.spyOn(gateway, 'request');
+    const session = await createHermesTuiSession({
+      cwd: '/work',
+      host: host(),
+      transport: gateway,
+      model: 'chosen-model',
+      provider: 'chosen-provider',
+      effort: 'high',
+    });
+    const projection = projectAgentEvents(session);
+    try {
+      expect(request).toHaveBeenCalledWith(
+        'session.create',
+        expect.objectContaining({ model: 'chosen-model', provider: 'chosen-provider', reasoning_effort: 'high' }),
+      );
+      expect(request.mock.calls.some(([method]) => method.startsWith('config.'))).toBe(false);
+      expect(projection.monitorBatches.flatMap((batch) => batch.updates)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            family: 'model',
+            value: { kind: 'model', providerModelId: 'chosen-model', intent: 'configured' },
+          }),
+          expect.objectContaining({ family: 'effort', value: { kind: 'effort', value: 'high', intent: 'configured' } }),
+        ]),
+      );
+    } finally {
+      projection.dispose();
+      await session.dispose();
+    }
+  });
+
   it('attaches through an owned gateway and confirms prompt.submit via message.start', async () => {
     const gateway = new FakeHermesGateway({ reply: 'SURFACE_HERMES_OK' });
     const session = await createHermesTuiSession({

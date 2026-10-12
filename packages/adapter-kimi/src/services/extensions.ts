@@ -40,10 +40,14 @@ import {
   describeMcpUrl,
   extensionActUnavailable,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
@@ -53,7 +57,7 @@ import {
   type McpTransport,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { kimiCredentialRoot } from './profiles.js';
 
 export interface KimiExtensionOptions {
@@ -133,9 +137,11 @@ function splitFrontmatter(markdown: string): { block?: string; body: string } {
 function loadedType(block: string | undefined): boolean {
   const line = block?.split('\n').find((entry) => /^type\s*:/u.test(entry));
   if (line === undefined) return true;
-  const value = line
-    .replace(/^type\s*:/u, '')
-    .replace(/\s+#.*$/u, '')
+  const typed = line.replace(/^type\s*:/u, '');
+  // A comment is a `#` after whitespace and all that follows it, found in one pass: `\s+#.*$` would
+  // backtrack over a long run of spaces with no `#` after it, and a SKILL.md is anyone's to write.
+  const comment = /\s#/u.exec(typed);
+  const value = (comment === null ? typed : typed.slice(0, comment.index))
     .trim()
     .replace(/^(['"])(.*)\1$/u, '$2')
     .trim();
@@ -276,7 +282,18 @@ function serverItem(
   if (!target || target.length > 8_192) return undefined;
   const bearer = text(server.bearerTokenEnvVar);
   const env = names([...Object.keys(rec(server.env) ?? {}), ...(bearer ? [bearer] : [])], ENVIRONMENT_NAME);
-  const headers = names([...Object.keys(rec(server.headers) ?? {}), ...(bearer ? ['Authorization'] : [])], HEADER_NAME);
+  const sent = [...Object.keys(rec(server.headers) ?? {}), ...(bearer ? ['Authorization'] : [])];
+  const headers = names(sent, HEADER_NAME);
+  // Only mcp.json's own travel: a plugin's server runs from the plugin's
+  // folder. A stdio `cwd` is a folder a definition cannot carry.
+  const whole = fields.origin === 'own' && (transport !== 'stdio' || text(server.cwd) === undefined);
+  const travels = whole
+    ? mcpServerDefinition(
+        transport === 'stdio'
+          ? { transport, command, args: strings(server.args), env: Object.keys(rec(server.env) ?? {}) }
+          : { transport, url, headers: sent },
+      )
+    : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -286,6 +303,7 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env } : {}),
     ...(headers.length > 0 ? { headers } : {}),
+    ...(travels ? { definition: travels } : {}),
   };
 }
 
@@ -317,14 +335,55 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
     },
   };
 
-  // Acts (RFC 006 C2): Kimi has no command for either kind — its servers change
-  // only inside the app (`/mcp-config`), and one skill has no switch.
-  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // Acts (RFC 006 C2): Kimi has no command for any kind. Its plugins change
+  // only in `/plugins` — Space turns one on or off, D removes it, and a
+  // reinstall over one is its update — since the local server's plugin routes
+  // would take a Kimi Code process of its own, and a route that changes a
+  // plugin is not Puppeteer's to call. So every plugin act answers in-app, a
+  // purge as well, though D leaves the plugin's copy under `plugins/managed/`;
+  // a server or skill a plugin brings changes with the plugin (not-own). Its
+  // servers are added and changed only inside the app (`/mcp-config`), so an
+  // add answers as every server act does, and one skill has no switch. A skill
+  // is a folder where Kimi looks, though, so one is placed there and taken away
+  // (planSkill).
+  //
+  // Installs are the app's too: its one catalog is fetched from Kimi's own
+  // address each time `/plugins` opens (nothing under the root keeps it, so
+  // there is no catalog to read here), and a folder, zip or GitHub address
+  // installs through `/plugins install`. It has no list of marketplaces to add
+  // to, fetch or remove from — `/plugins marketplace <source>` only browses
+  // another catalog once.
+  function plan(
+    profile: AgentProfile,
+    item: ExtensionActItem,
+    act: ExtensionActKind,
+    { keepIn, source }: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'marketplace')
+      return extensionActUnavailable(target, act, 'unsupported', 'Kimi Code has one catalog, inside the app');
+    if (item.kind === 'plugin' && act === 'install')
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        source === undefined
+          ? 'Kimi Code installs plugins only inside the app: `/plugins`, from its Official and Curated tabs'
+          : 'Kimi Code installs one from a folder or an address inside the app: `/plugins install <path-or-url>`',
+      );
+    if (item.kind === 'plugin')
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        'Kimi changes plugins only inside the app: `/plugins`, where Space turns one on or off and D removes it',
+      );
     if (item.origin !== 'own')
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Kimi', item));
     if (item.kind === 'skill')
-      return extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
+      return act === 'add' || act === 'remove'
+        ? planSkill(profile, item, act, keepIn)
+        : extensionActUnavailable(target, act, 'no-command', 'Kimi has no switch for one skill');
     return act === 'sign-in' || act === 'sign-out'
       ? extensionActUnavailable(
           target,
@@ -338,6 +397,45 @@ export function createKimiExtensionService(options: KimiExtensionOptions = {}): 
           'in-app',
           'Kimi changes its servers only inside the app, with /mcp-config',
         );
+  }
+
+  /**
+   * A person's skills in a profile are the root's `skills/`
+   * (`$KIMI_CODE_HOME/skills`), a folder skill keyed by its folder's name and
+   * a flat one by its file's name without `.md`. A skill the host keeps is
+   * linked in there as a folder, and a folder skill there goes: a link is
+   * taken away, a real folder moves to where the host keeps it or, with
+   * nowhere to keep it, stays. A flat skill is one file, which only a folder's
+   * move could keep, so it stays. Whether Kimi Code itself loads a skill whose
+   * folder is a link is unproven — its source was read, never probed; the read
+   * here follows links and records where they point, and the runtime's second
+   * read is the receipt. `~/.agents/skills` is not the root's to change.
+   */
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: 'add' | 'remove',
+    keepIn: string | undefined,
+  ): ExtensionActPlan {
+    const folder = join(kimiCredentialRoot(profile, ambient, home), 'skills');
+    const flat =
+      item.location !== undefined && dirname(item.location) === folder && basename(item.location) !== item.id;
+    if (act === 'remove' && flat) {
+      return extensionActUnavailable(
+        { kind: 'skill', id: item.id },
+        act,
+        'no-command',
+        `${item.name} is a flat skill, one file in Kimi's skills folder, and only a skill's folder is taken away`,
+      );
+    }
+    return extensionSkillFolderPlan({
+      label: 'Kimi',
+      folder,
+      item,
+      act,
+      ...(keepIn === undefined ? {} : { keepIn }),
+      home,
+    });
   }
 
   return {

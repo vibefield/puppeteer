@@ -126,7 +126,7 @@ describe('loadPersona validation', () => {
   const validPersona = {
     vendor: 'broken',
     asm: {
-      package: '@vibecook/puppeteer-surface',
+      package: '@vibefield/puppeteer-surface',
       path: 'vendors/claude',
     },
     shimNames: ['broken'],

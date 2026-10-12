@@ -1,14 +1,16 @@
 import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   AgentProfileSchema,
+  ExtensionActPlanSchema,
   ExtensionInventorySchema,
   ExtensionProviderSchema,
   type ExtensionInventory,
   type ExtensionItem,
-} from '@vibecook/puppeteer-core';
+  type SkillItem,
+} from '@vibefield/puppeteer-core';
 import { createKimiExtensionService } from './extensions.js';
 
 const now = () => new Date('2026-09-25T09:00:00.000Z');
@@ -57,7 +59,7 @@ const find = (inventory: ExtensionInventory, kind: ExtensionItem['kind'], id: st
 
 describe('Kimi Code extensions', () => {
   it('declares plugins, servers and skills, changed inside Kimi Code or in a folder, and no marketplaces', () => {
-    const { provider } = createKimiExtensionService({ home: '/Users/test', env: {} });
+    const { provider } = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
     expect(ExtensionProviderSchema.parse(provider)).toEqual({
       id: 'kimi',
       label: 'Kimi',
@@ -288,6 +290,55 @@ describe('Kimi Code extensions', () => {
     expect(moved.items.map((item) => item.id)).toEqual(['elsewhere']);
   });
 
+  it("gives a server's definition only from mcp.json, whole: no folder, masked part or header stays behind", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    await write(join(root, 'mcp.json'), {
+      mcpServers: {
+        context7: {
+          command: 'npx',
+          args: ['-y', '@upstash/context7-mcp'],
+          env: { CONTEXT7_API_KEY: 'ctx-secret' },
+        },
+        docs: { url: 'https://docs.example.com/mcp' },
+        events: { transport: 'sse', url: 'https://events.example.com/sse' },
+        linear: { url: 'https://mcp.linear.app/mcp', bearerTokenEnvVar: 'LINEAR_TOKEN' },
+        masked: { command: 'uvx', args: ['mcp-server', '--api-key', 'abc'] },
+        folder: { command: 'node', args: ['server.js'], cwd: '/srv/mcp' },
+      },
+    });
+    const plugin = join(root, 'plugins', 'managed', 'timekeeper');
+    await write(join(root, 'plugins', 'installed.json'), {
+      version: 1,
+      plugins: [{ id: 'timekeeper', root: plugin, source: 'local-path', enabled: true }],
+    });
+    await write(join(plugin, 'kimi.plugin.json'), {
+      name: 'timekeeper',
+      mcpServers: { time: { command: 'uvx', args: ['mcp-server-time'] } },
+    });
+    const inventory = ExtensionInventorySchema.parse(
+      await createKimiExtensionService({ home, env: {}, now }).inventory(managedProfile(root)),
+    );
+    expect(JSON.stringify(inventory)).not.toContain('ctx-secret');
+    const definitionOf = (id: string) => {
+      const item = find(inventory, 'mcp-server', id);
+      expect(item, id).toBeDefined();
+      return item?.kind === 'mcp-server' ? item.definition : undefined;
+    };
+    expect(definitionOf('context7')).toEqual({
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@upstash/context7-mcp'],
+      env: ['CONTEXT7_API_KEY'],
+    });
+    expect(definitionOf('docs')).toEqual({ transport: 'http', url: 'https://docs.example.com/mcp' });
+    expect(definitionOf('events')).toEqual({ transport: 'sse', url: 'https://events.example.com/sse' });
+    // A bearer variable becomes an `Authorization` header, whose value would stay behind.
+    for (const id of ['linear', 'masked', 'folder', 'plugin-timekeeper:time']) {
+      expect(definitionOf(id), id).toBeUndefined();
+    }
+  });
+
   it('says which store it could not read and lists the rest', async () => {
     const home = await tempHome();
     const root = join(home, 'profiles', 'work', 'kimi-4c1d');
@@ -312,6 +363,27 @@ describe('Kimi Code extensions', () => {
     );
     expect(inventory.items).toEqual([]);
     expect(inventory.unread).toBeUndefined();
+  });
+
+  it("reads a skill's type past a crafted run of spaces in one pass, and still drops a comment after it", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    // no `#` after the run, where `\s+#.*$` would backtrack over it from every space
+    await write(
+      join(root, 'skills', 'crafted', 'SKILL.md'),
+      skill('crafted', 'A crafted type line', `type: flow${' '.repeat(20_000)}x\n`),
+    );
+    await write(
+      join(root, 'skills', 'commented', 'SKILL.md'),
+      skill('commented', 'Slash only', 'type: flow  # a note\n'),
+    );
+    const started = performance.now();
+    const inventory = ExtensionInventorySchema.parse(
+      await createKimiExtensionService({ home, env: {}, now }).inventory(managedProfile(root)),
+    );
+    expect(performance.now() - started).toBeLessThan(2_000);
+    // a type Kimi does not load leaves the skill out; a comment after a loaded one does not
+    expect(inventory.items.map((item) => item.id)).toEqual(['commented']);
   });
 });
 
@@ -339,10 +411,19 @@ const actServer = (fields: Record<string, unknown> = {}) =>
   }) as never;
 const actSkill = (fields: Record<string, unknown> = {}) =>
   ({ kind: 'skill', id: 'release-notes', name: 'release-notes', origin: 'own', enabled: true, ...fields }) as never;
+const actPlugin = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'plugin',
+    id: 'kimi-datasource',
+    name: 'kimi-datasource',
+    origin: 'own',
+    enabled: true,
+    ...fields,
+  }) as never;
 
 describe('Kimi extension acts', () => {
   it('changes nothing from outside the app', () => {
-    const kimi = createKimiExtensionService({ home: '/Users/test' });
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
     expect(kimi.plan!(actProfile('managed', '/p'), actServer(), 'disable')).toMatchObject({
       available: false,
       reason: 'in-app',
@@ -353,6 +434,335 @@ describe('Kimi extension acts', () => {
       available: false,
       reason: 'in-app',
       message: 'Kimi signs in to a server only inside the app, with /mcp-config',
+    });
+  });
+
+  it('adds a server only inside the app, in the words of every server act', () => {
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
+    const context7 = actServer({
+      id: 'context7',
+      name: 'context7',
+      transport: 'stdio',
+      target: 'npx -y @upstash/context7-mcp',
+      env: ['CONTEXT7_API_KEY'],
+      definition: {
+        transport: 'stdio',
+        command: 'npx',
+        args: ['-y', '@upstash/context7-mcp'],
+        env: ['CONTEXT7_API_KEY'],
+      },
+    });
+    expect(ExtensionActPlanSchema.parse(kimi.plan!(actProfile('managed', '/p'), context7, 'add'))).toEqual({
+      target: { kind: 'mcp-server', id: 'context7' },
+      act: 'add',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi changes its servers only inside the app, with /mcp-config',
+    });
+  });
+
+  it('changes a plugin only inside the app, whatever the act, and what a plugin brings with it', () => {
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test') });
+    const work = actProfile('managed', '/p');
+    // The runtime answers a plugin's add and sign-ins itself; asked anyway, Kimi says the same.
+    for (const act of ['enable', 'disable', 'remove', 'purge', 'update', 'add', 'sign-in', 'sign-out'] as const) {
+      expect(ExtensionActPlanSchema.parse(kimi.plan!(work, actPlugin(), act)), act).toEqual({
+        target: { kind: 'plugin', id: 'kimi-datasource' },
+        act,
+        available: false,
+        reason: 'in-app',
+        message:
+          'Kimi changes plugins only inside the app: `/plugins`, where Space turns one on or off and D removes it',
+      });
+    }
+    const brought = { origin: 'plugin', plugin: 'kimi-datasource' };
+    for (const [item, act] of [
+      [actServer({ id: 'plugin-kimi-datasource:data', name: 'data', ...brought }), 'disable'],
+      [actSkill({ id: 'plugin:kimi-datasource:query', name: 'query', ...brought }), 'remove'],
+    ] as const) {
+      expect(kimi.plan!(work, item, act), act).toMatchObject({
+        available: false,
+        reason: 'not-own',
+        message: 'It comes with the kimi-datasource plugin and changes with it',
+      });
+    }
+  });
+});
+
+// ── installs and marketplaces (RFC 006 C2) ──
+
+const EVERY_ACT = ['enable', 'disable', 'remove', 'sign-in', 'sign-out', 'add', 'update', 'purge', 'install'] as const;
+const actMarketplace = (fields: Record<string, unknown> = {}) =>
+  ({
+    kind: 'marketplace',
+    id: 'owner/kimi-plugins',
+    name: 'owner/kimi-plugins',
+    origin: 'own',
+    enabled: true,
+    source: 'owner/kimi-plugins',
+    ...fields,
+  }) as never;
+
+describe('Kimi installs and marketplaces', () => {
+  it('installs a plugin only inside the app, from its catalog tabs or from a source there', () => {
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
+    const work = actProfile('managed', '/p');
+    // as the runtime hands a catalog entry: the plugin as Kimi would hold it once installed
+    const listed = { id: 'kimi-webbridge', name: 'Kimi WebBridge', marketplace: 'kimi' };
+    expect(
+      ExtensionActPlanSchema.parse(
+        kimi.plan!(work, actPlugin({ id: 'kimi-webbridge', name: 'Kimi WebBridge' }), 'install', { listed }),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: 'kimi-webbridge' },
+      act: 'install',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi Code installs plugins only inside the app: `/plugins`, from its Official and Curated tabs',
+    });
+    const source = 'https://github.com/obra/superpowers';
+    expect(
+      ExtensionActPlanSchema.parse(
+        kimi.plan!(work, actPlugin({ id: source, name: source }), 'install', { source, holds: ['kimi-datasource'] }),
+      ),
+    ).toEqual({
+      target: { kind: 'plugin', id: source },
+      act: 'install',
+      available: false,
+      reason: 'in-app',
+      message: 'Kimi Code installs one from a folder or an address inside the app: `/plugins install <path-or-url>`',
+    });
+  });
+
+  it('has no marketplace to add, fetch again or remove: its one catalog is inside the app', () => {
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
+    for (const act of EVERY_ACT) {
+      expect(ExtensionActPlanSchema.parse(kimi.plan!(actProfile('managed', '/p'), actMarketplace(), act)), act).toEqual(
+        {
+          target: { kind: 'marketplace', id: 'owner/kimi-plugins' },
+          act,
+          available: false,
+          reason: 'unsupported',
+          message: 'Kimi Code has one catalog, inside the app',
+        },
+      );
+    }
+    // nothing to read without the network, so no catalog; and still no marketplaces kind
+    expect(kimi.catalog).toBeUndefined();
+    expect(kimi.provider.support).not.toHaveProperty('marketplaces');
+  });
+
+  it('answers every act on every kind with a plan the schema takes, and never throws', () => {
+    const kimi = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
+    const items = [
+      actPlugin(),
+      actMarketplace(),
+      actServer(),
+      actSkill({ linkTarget: resolve('/Users/test/kept/release-notes') }),
+    ];
+    const options = [
+      undefined,
+      { source: 'https://github.com/obra/superpowers', holds: [] },
+      { listed: { id: 'kimi-datasource', name: 'kimi-datasource', marketplace: 'kimi' } },
+      { keepIn: resolve('/Users/test/kept/elsewhere') },
+    ];
+    for (const profile of [
+      actProfile('managed', resolve('/p')),
+      actProfile('native-default', resolve('/Users/test/.kimi-code')),
+    ]) {
+      for (const item of items) {
+        for (const act of EVERY_ACT) {
+          for (const option of options) {
+            const { kind, id } = item as { kind: string; id: string };
+            const plan = ExtensionActPlanSchema.parse(kimi.plan!(profile, item, act, option));
+            expect(plan, `${kind} ${act}`).toMatchObject({ target: { kind, id }, act });
+          }
+        }
+      }
+    }
+  });
+});
+
+// ── skills placed (RFC 006 C2) ──
+
+/** A skill to place, as the runtime gives it: the skill as Kimi would hold it once linked. */
+const placed = (name: string, linkTarget?: string): SkillItem => ({
+  kind: 'skill',
+  id: name,
+  name,
+  origin: 'own',
+  enabled: true,
+  ...(linkTarget === undefined ? {} : { linkTarget }),
+});
+const held = (inventory: ExtensionInventory, id: string): SkillItem => {
+  const item = find(inventory, 'skill', id);
+  expect(item, id).toMatchObject({ kind: 'skill' });
+  return item as SkillItem;
+};
+
+describe('Kimi skills placed', () => {
+  it("links a kept skill into the root's skills folder, and the read finds the link as the root's own", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    const kept = join(home, 'kept', 'release-notes');
+    await write(join(kept, 'SKILL.md'), skill('release-notes', 'Drafts release notes'));
+    const kimi = createKimiExtensionService({ home, env: {}, now });
+    const work = managedProfile(root);
+
+    expect(ExtensionActPlanSchema.parse(kimi.plan!(work, placed('release-notes', kept), 'add'))).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'link', path: join(root, 'skills', 'release-notes'), target: kept }] },
+      display: 'link ~/kept/release-notes → ~/profiles/work/kimi-4c1d/skills/release-notes'.replaceAll('/', sep),
+      reaches: [],
+    });
+
+    // The runtime's step, taken here by hand: the second read follows the link.
+    await mkdir(join(root, 'skills'), { recursive: true });
+    await symlink(kept, join(root, 'skills', 'release-notes'));
+    const linked = held(ExtensionInventorySchema.parse(await kimi.inventory(work)), 'release-notes');
+    expect(linked).toMatchObject({ origin: 'own', linkTarget: kept, description: 'Drafts release notes' });
+    // Taking it away takes the link, never the host's folder, even with somewhere to keep one.
+    expect(kimi.plan!(work, linked, 'remove', { keepIn: join(home, 'kept', 'elsewhere') })).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'unlink', path: join(root, 'skills', 'release-notes') }] },
+      display: 'unlink ~/profiles/work/kimi-4c1d/skills/release-notes'.replaceAll('/', sep),
+      reaches: [],
+    });
+  });
+
+  it('places into the native default where Kimi Code resolves it, and only a folder by a name a folder takes', () => {
+    const kept = resolve('/Users/test/kept/release-notes');
+    const native = actProfile('native-default', resolve('/Users/test/.kimi-code'));
+    const plain = createKimiExtensionService({ home: resolve('/Users/test'), env: {} });
+    expect(plain.plan!(native, placed('release-notes', kept), 'add')).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'link', path: resolve('/Users/test/.kimi-code/skills/release-notes'), target: kept }],
+      },
+      display: 'link ~/kept/release-notes → ~/.kimi-code/skills/release-notes'.replaceAll('/', sep),
+    });
+    const moved = createKimiExtensionService({
+      home: resolve('/Users/test'),
+      env: { KIMI_CODE_HOME: resolve('/Volumes/work/kimi') },
+    });
+    expect(moved.plan!(native, placed('release-notes', kept), 'add')).toMatchObject({
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'link', path: resolve('/Volumes/work/kimi/skills/release-notes'), target: kept }],
+      },
+      display: `link ${join('~', 'kept', 'release-notes')} → ${resolve('/Volumes/work/kimi/skills/release-notes')}`,
+    });
+
+    expect(plain.plan!(native, placed('release-notes'), 'add')).toEqual({
+      target: { kind: 'skill', id: 'release-notes' },
+      act: 'add',
+      available: false,
+      reason: 'unsupported',
+      message: 'Kimi takes a skill as a folder to link',
+    });
+    for (const name of ['../escape', '.hidden', 'team/notes']) {
+      expect(plain.plan!(native, placed(name, resolve('/Users/test/kept/x')), 'add'), name).toMatchObject({
+        available: false,
+        reason: 'unsupported',
+        message: `Kimi cannot take a skill folder named ${name}`,
+      });
+    }
+  });
+
+  it("moves a folder skill of the root's own to where the host keeps it; one with nowhere to go, and a flat one, stay", async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    await write(join(root, 'skills', 'review', 'SKILL.md'), skill('review', 'Reviews a pull request'));
+    await write(join(root, 'skills', 'commit.md'), '\n\nWrites a conventional commit message.\n');
+    // A folder named like a flat file is still a folder.
+    await write(join(root, 'skills', 'notes.md', 'SKILL.md'), skill('notes', 'Takes notes'));
+    const kimi = createKimiExtensionService({ home, env: {}, now });
+    const work = managedProfile(root);
+    const inventory = ExtensionInventorySchema.parse(await kimi.inventory(work));
+    const review = held(inventory, 'review');
+
+    const keepIn = join(home, 'kept', 'review');
+    expect(kimi.plan!(work, review, 'remove', { keepIn })).toEqual({
+      target: { kind: 'skill', id: 'review' },
+      act: 'remove',
+      available: true,
+      runs: { kind: 'files', steps: [{ op: 'move', from: join(root, 'skills', 'review'), to: keepIn }] },
+      display: 'move ~/profiles/work/kimi-4c1d/skills/review → ~/kept/review'.replaceAll('/', sep),
+      reaches: [],
+    });
+    expect(kimi.plan!(work, review, 'remove')).toEqual({
+      target: { kind: 'skill', id: 'review' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message: "review is a folder of Kimi's own, and nothing keeps it if it goes",
+    });
+    expect(kimi.plan!(work, held(inventory, 'commit'), 'remove', { keepIn: join(home, 'kept', 'commit') })).toEqual({
+      target: { kind: 'skill', id: 'commit' },
+      act: 'remove',
+      available: false,
+      reason: 'no-command',
+      message: "commit is a flat skill, one file in Kimi's skills folder, and only a skill's folder is taken away",
+    });
+    expect(
+      kimi.plan!(work, held(inventory, 'notes.md'), 'remove', { keepIn: join(home, 'kept', 'notes') }),
+    ).toMatchObject({
+      available: true,
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'move', from: join(root, 'skills', 'notes.md'), to: join(home, 'kept', 'notes') }],
+      },
+    });
+    // One skill still has no switch.
+    expect(kimi.plan!(work, review, 'disable')).toMatchObject({
+      available: false,
+      reason: 'no-command',
+      message: 'Kimi has no switch for one skill',
+    });
+  });
+
+  it('leaves a skill of the shared folder, and one a plugin brings or Kimi ships, where it is', async () => {
+    const home = await tempHome();
+    const root = join(home, 'profiles', 'work', 'kimi-4c1d');
+    await write(join(home, '.agents', 'skills', 'browser-use', 'SKILL.md'), skill('browser-use', 'Drives a browser'));
+    await write(join(home, '.agents', 'skills', 'tips.md'), 'Short tips.\n');
+    const plugin = join(root, 'plugins', 'managed', 'webbridge');
+    await write(join(root, 'plugins', 'installed.json'), {
+      version: 1,
+      plugins: [{ id: 'webbridge', root: plugin, source: 'local-path', enabled: true }],
+    });
+    await write(join(plugin, 'kimi.plugin.json'), { name: 'webbridge', skills: ['./skills'] });
+    await write(join(plugin, 'skills', 'browse', 'SKILL.md'), skill('browse', 'Opens and reads pages'));
+    const kimi = createKimiExtensionService({ home, env: {}, now });
+    const work = managedProfile(root);
+    const inventory = ExtensionInventorySchema.parse(await kimi.inventory(work));
+    const remove = (item: SkillItem) => kimi.plan!(work, item, 'remove', { keepIn: join(home, 'kept', 'elsewhere') });
+
+    expect(remove(held(inventory, 'shared:browser-use'))).toEqual({
+      target: { kind: 'skill', id: 'shared:browser-use' },
+      act: 'remove',
+      available: false,
+      reason: 'not-own',
+      message: "browser-use is not in Kimi's own skills folder, and changes where it is",
+    });
+    // A flat skill of the shared folder is that folder's, not a flat one of the root's.
+    expect(remove(held(inventory, 'shared:tips'))).toMatchObject({
+      reason: 'not-own',
+      message: "tips is not in Kimi's own skills folder, and changes where it is",
+    });
+    expect(remove(held(inventory, 'plugin:webbridge:browse'))).toMatchObject({
+      reason: 'not-own',
+      message: 'It comes with the webbridge plugin and changes with it',
+    });
+    // What Kimi ships is never read; one given answers as what it is.
+    expect(remove(actSkill({ id: 'mcp-config', name: 'mcp-config', origin: 'bundled' }))).toMatchObject({
+      reason: 'not-own',
+      message: 'It ships with Kimi',
     });
   });
 });

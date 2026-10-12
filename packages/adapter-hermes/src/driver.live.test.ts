@@ -11,8 +11,8 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { attestLiveAdapter } from '@vibecook/puppeteer-testing/live-attestation';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
 import { probeHermesVersion, resolveHermesExecutable } from './detection.js';
 import { createHermesTuiSession } from './driver.js';

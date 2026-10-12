@@ -22,10 +22,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentEventEnvelope } from '@vibecook/puppeteer-core';
-import { createCodexSession, type CodexSession } from '@vibecook/puppeteer-adapter-codex';
-import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
-import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
+import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
+import { createCodexSession, type CodexSession } from '@vibefield/puppeteer-adapter-codex';
+import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibefield/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 

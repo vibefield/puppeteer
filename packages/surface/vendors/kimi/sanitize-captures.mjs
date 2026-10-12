@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, defaultRules, extendRules, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
+import { checkCaptureDirectory, defaultRules, extendRules, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { KIMI_CANDIDATE_VERSION } from './census/harness.mjs';
 import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
 

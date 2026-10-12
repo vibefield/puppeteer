@@ -1,0 +1,87 @@
+{
+  "provider": "pi",
+  "observedAt": "2026-10-12T18:14:10.300Z",
+  "method": "RPC get_available_models",
+  "models": [
+    {
+      "id": "grok-4.3",
+      "provider": "xai",
+      "name": "Grok 4.3",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": "none",
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "contextWindow": 1000000,
+      "maxTokens": 30000,
+      "api": "openai-responses"
+    },
+    {
+      "id": "grok-4.5",
+      "provider": "xai",
+      "name": "Grok 4.5",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "contextWindow": 500000,
+      "maxTokens": 500000,
+      "api": "openai-responses"
+    },
+    {
+      "id": "grok-4.6",
+      "provider": "xai",
+      "name": "Grok 4.6",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "contextWindow": 500000,
+      "maxTokens": 500000,
+      "api": "openai-responses"
+    },
+    {
+      "id": "grok-4.7",
+      "provider": "xai",
+      "name": "Grok 4.7",
+      "reasoning": true,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "contextWindow": 500000,
+      "maxTokens": 500000,
+      "api": "openai-responses"
+    }
+  ],
+  "currentModelThinkingLevels": [
+    "low",
+    "medium",
+    "high",
+    "xhigh"
+  ],
+  "diagnostics": "",
+  "durationMs": 216
+}

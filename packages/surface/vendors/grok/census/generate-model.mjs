@@ -6,6 +6,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
@@ -65,7 +66,7 @@ function writeJson(path, value) {
 }
 
 function writeEvent(name, document) {
-  writeJson(join(eventsRoot, `${name}.json`), {
+  writeJson(join(eventsRoot, eventDocumentPath(name)), {
     surface: 'grok',
     surfaceVersion: VERSION,
     event: name,

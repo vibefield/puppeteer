@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEnvelopeStamper, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { createEnvelopeStamper, type AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import { AgentStateService } from './state-service.js';
 
 const envelope = (event: Parameters<ReturnType<typeof createEnvelopeStamper>['next']>[0]['event']) =>

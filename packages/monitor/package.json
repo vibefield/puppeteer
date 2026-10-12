@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-monitor",
+  "name": "@vibefield/puppeteer-monitor",
   "version": "0.1.8",
   "type": "module",
   "description": "Transport-neutral external store for Puppeteer agent monitor snapshots and notifications.",
@@ -7,23 +7,27 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/monitor"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./replica": "./src/replica/index.ts"
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./replica": {
+        "types": "./dist/replica/index.d.ts",
+        "import": "./dist/replica/index.js"
       }
     }
   },
@@ -39,9 +43,10 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-view-sdk": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }

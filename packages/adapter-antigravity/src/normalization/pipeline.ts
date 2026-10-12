@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { normalizeAntigravityNative } from './adapter.js';
 import { antigravityAssistantMessage } from './conversation.js';
 import {

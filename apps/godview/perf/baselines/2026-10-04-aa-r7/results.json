@@ -1,0 +1,7129 @@
+{
+  "config": {
+    "a": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+    "rounds": 7,
+    "counts": [
+      10,
+      20,
+      60
+    ],
+    "views": [
+      "swarm",
+      "list",
+      "rain",
+      "timeline"
+    ],
+    "warmupMs": 3000,
+    "windowMs": 10000,
+    "stepMs": 3000,
+    "fps": 60,
+    "loadMax": 60,
+    "loadWaitMs": 2700000,
+    "out": "/Volumes/SamsungRed/lanes/mv/mv0-pu/perf-baseline-r7",
+    "builds": {
+      "A": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview"
+    }
+  },
+  "startedAt": "2026-10-04T01:11:02.661Z",
+  "runs": [
+    {
+      "round": 0,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "list",
+        "rain",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            37.73,
+            147.95,
+            114.57
+          ]
+        },
+        "after": [
+          60.47,
+          105.76,
+          102.79
+        ]
+      },
+      "ms": 179632,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10001.89999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 309.40000012516975,
+            "callbacks": 1237,
+            "maxMs": 0.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 322,
+              "stage": 322
+            },
+            "commits": 132,
+            "viewCommits": 123,
+            "viewRenderMs": 25.299999997019768,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.0999999940395355,
+            "callbacks": 35,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 502,
+              "stage": 502
+            },
+            "commits": 124,
+            "viewCommits": 115,
+            "viewRenderMs": 83.30000001192093,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 10,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10003.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 184.19999991357327,
+            "callbacks": 650,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 744,
+              "stage": 744
+            },
+            "commits": 170,
+            "viewCommits": 161,
+            "viewRenderMs": 25.799999848008156,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10000.29999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 66.40000002086163,
+            "callbacks": 634,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 897,
+              "stage": 897
+            },
+            "commits": 117,
+            "viewCommits": 108,
+            "viewRenderMs": 124.3999999910593,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10005.90000000596,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 538.7999999672174,
+            "callbacks": 1257,
+            "maxMs": 1.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1338,
+              "stage": 1338
+            },
+            "commits": 193,
+            "viewCommits": 184,
+            "viewRenderMs": 45.59999993443489,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 2,
+            "callbacks": 73,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1654,
+              "stage": 1654
+            },
+            "commits": 230,
+            "viewCommits": 222,
+            "viewRenderMs": 273.80000019073486,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 67,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 14,
+            "blocked": 0,
+            "idle": 7
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 292.99999991059303,
+            "callbacks": 682,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2038,
+              "stage": 2038
+            },
+            "commits": 279,
+            "viewCommits": 270,
+            "viewRenderMs": 52.19999983906746,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 70,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10001.10000000894,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 96.60000021755695,
+            "callbacks": 656,
+            "maxMs": 1.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2303,
+              "stage": 2303
+            },
+            "commits": 184,
+            "viewCommits": 175,
+            "viewRenderMs": 211.29999989271164,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10006.89999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1431.6000000089407,
+            "callbacks": 1360,
+            "maxMs": 2.1000000089406967
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3762,
+              "stage": 3762
+            },
+            "commits": 564,
+            "viewCommits": 555,
+            "viewRenderMs": 209.99999995529652,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10002.60000000894,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 4.000000029802322,
+            "callbacks": 237,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4745,
+              "stage": 4745
+            },
+            "commits": 756,
+            "viewCommits": 747,
+            "viewRenderMs": 1292.7000000327826,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 206,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 51,
+            "blocked": 0,
+            "idle": 10
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10000.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 391.2000001966953,
+            "callbacks": 811,
+            "maxMs": 4.200000002980232
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5679,
+              "stage": 5679
+            },
+            "commits": 750,
+            "viewCommits": 741,
+            "viewRenderMs": 261.2000001966953,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 203,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10002.800000011921,
+          "frames": {
+            "count": 572,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 5,
+            "totalMs": 400.7000000178814,
+            "blockingMs": 0,
+            "maxMs": 126.70000000298023
+          },
+          "raf": {
+            "workMs": 159.8999998420477,
+            "callbacks": 740,
+            "maxMs": 3.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6363,
+              "stage": 6363
+            },
+            "commits": 531,
+            "viewCommits": 522,
+            "viewRenderMs": 1029.2999999672174,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1686,
+        "failed": 0
+      }
+    },
+    {
+      "round": 0,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "list",
+        "rain",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 15001,
+          "load": [
+            47.99,
+            100.77,
+            101.06
+          ]
+        },
+        "after": [
+          101.82,
+          90.65,
+          95.85
+        ]
+      },
+      "ms": 184435,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10001.20000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 300.3000000715256,
+            "callbacks": 1237,
+            "maxMs": 0.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 314,
+              "stage": 314
+            },
+            "commits": 132,
+            "viewCommits": 123,
+            "viewRenderMs": 23.00000001490116,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10001.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.3999999910593033,
+            "callbacks": 35,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 493,
+              "stage": 493
+            },
+            "commits": 123,
+            "viewCommits": 114,
+            "viewRenderMs": 81.2000000178814,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 10,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10002.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 189.70000000298023,
+            "callbacks": 652,
+            "maxMs": 1.8999999910593033
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 737,
+              "stage": 737
+            },
+            "commits": 173,
+            "viewCommits": 164,
+            "viewRenderMs": 24.60000005364418,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10002.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 69.7999999076128,
+            "callbacks": 634,
+            "maxMs": 1.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 889,
+              "stage": 889
+            },
+            "commits": 115,
+            "viewCommits": 106,
+            "viewRenderMs": 109.39999994635582,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10003.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 546.9999997466803,
+            "callbacks": 1263,
+            "maxMs": 1
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1378,
+              "stage": 1378
+            },
+            "commits": 210,
+            "viewCommits": 201,
+            "viewRenderMs": 47.700000166893005,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10009.40000000596,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 2.2000000327825546,
+            "callbacks": 73,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1718,
+              "stage": 1718
+            },
+            "commits": 242,
+            "viewCommits": 233,
+            "viewRenderMs": 220.09999994933605,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 67,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 15,
+            "blocked": 0,
+            "idle": 6
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10003.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 288.7999997586012,
+            "callbacks": 683,
+            "maxMs": 2.2000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2103,
+              "stage": 2103
+            },
+            "commits": 278,
+            "viewCommits": 269,
+            "viewRenderMs": 50.3999999910593,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10018.60000000894,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 100.700000166893,
+            "callbacks": 667,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2399,
+              "stage": 2399
+            },
+            "commits": 208,
+            "viewCommits": 200,
+            "viewRenderMs": 217.89999982714653,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10011.79999999702,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1421.999999910593,
+            "callbacks": 1385,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3805,
+              "stage": 3805
+            },
+            "commits": 604,
+            "viewCommits": 595,
+            "viewRenderMs": 221.70000013709068,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 190,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10004.59999999404,
+          "frames": {
+            "count": 597,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 33.39999999999418
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 5.999999865889549,
+            "callbacks": 244,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4800,
+              "stage": 4800
+            },
+            "commits": 756,
+            "viewCommits": 747,
+            "viewRenderMs": 1368.3999999016523,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 203,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 58,
+            "blocked": 0,
+            "idle": 3
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10048.5,
+          "frames": {
+            "count": 602,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 394.8999998867512,
+            "callbacks": 785,
+            "maxMs": 4.299999997019768
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5679,
+              "stage": 5679
+            },
+            "commits": 673,
+            "viewCommits": 666,
+            "viewRenderMs": 242.7999999821186,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 208,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10006.60000000894,
+          "frames": {
+            "count": 584,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 3,
+            "totalMs": 293.80000001192093,
+            "blockingMs": 0,
+            "maxMs": 125
+          },
+          "raf": {
+            "workMs": 198.69999988377094,
+            "callbacks": 731,
+            "maxMs": 3
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6328,
+              "stage": 6328
+            },
+            "commits": 490,
+            "viewCommits": 482,
+            "viewRenderMs": 990.4999996423721,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 195,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1677,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "list",
+        "rain",
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 210032,
+          "load": [
+            50.72,
+            105.88,
+            104.76
+          ]
+        },
+        "after": [
+          15.56,
+          64.96,
+          87.79
+        ]
+      },
+      "ms": 177221,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10003,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.0999999791383743,
+            "callbacks": 38,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 312,
+              "stage": 312
+            },
+            "commits": 130,
+            "viewCommits": 125,
+            "viewRenderMs": 140.59999991953373,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10001.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 186.30000011622906,
+            "callbacks": 636,
+            "maxMs": 1.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 485,
+              "stage": 485
+            },
+            "commits": 121,
+            "viewCommits": 115,
+            "viewRenderMs": 18.600000008940697,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10002.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 100.0999998152256,
+            "callbacks": 646,
+            "maxMs": 1.5999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 716,
+              "stage": 716
+            },
+            "commits": 163,
+            "viewCommits": 155,
+            "viewRenderMs": 136.59999994933605,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10003.199999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 323.19999988377094,
+            "callbacks": 1234,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 868,
+              "stage": 868
+            },
+            "commits": 117,
+            "viewCommits": 108,
+            "viewRenderMs": 19.500000059604645,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10001.29999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.7000000178813934,
+            "callbacks": 63,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1324,
+              "stage": 1324
+            },
+            "commits": 211,
+            "viewCommits": 202,
+            "viewRenderMs": 205.4000000357628,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 64,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 10,
+            "blocked": 10,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10002.29999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 279.30000004172325,
+            "callbacks": 668,
+            "maxMs": 2.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1651,
+              "stage": 1651
+            },
+            "commits": 230,
+            "viewCommits": 221,
+            "viewRenderMs": 49.99999986588955,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10002.09999999404,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 110.80000002682209,
+            "callbacks": 685,
+            "maxMs": 1.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2036,
+              "stage": 2036
+            },
+            "commits": 278,
+            "viewCommits": 269,
+            "viewRenderMs": 274.9000000357628,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10001.10000000894,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 525.399999961257,
+            "callbacks": 1266,
+            "maxMs": 1
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2326,
+              "stage": 2326
+            },
+            "commits": 209,
+            "viewCommits": 200,
+            "viewRenderMs": 45.20000000298023,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10007.699999988079,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 3.1999999433755875,
+            "callbacks": 169,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3745,
+              "stage": 3745
+            },
+            "commits": 549,
+            "viewCommits": 541,
+            "viewRenderMs": 1005.3999998569489,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 188,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 21,
+            "blocked": 39,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10002.89999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 369.7000000923872,
+            "callbacks": 826,
+            "maxMs": 3.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4723,
+              "stage": 4723
+            },
+            "commits": 741,
+            "viewCommits": 732,
+            "viewRenderMs": 251.8000001758337,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 204,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10003.20000000298,
+          "frames": {
+            "count": 394,
+            "p50": 16.70000000001164,
+            "p95": 66.69999999998254,
+            "max": 133.39999999999418
+          },
+          "loaf": {
+            "supported": true,
+            "count": 56,
+            "totalMs": 3863.4999999403954,
+            "blockingMs": 0,
+            "maxMs": 128.20000000298023
+          },
+          "raf": {
+            "workMs": 314.2999997884035,
+            "callbacks": 564,
+            "maxMs": 3.3999999910593033
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5576,
+              "stage": 5576
+            },
+            "commits": 643,
+            "viewCommits": 635,
+            "viewRenderMs": 1237.999999806285,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 207,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10004.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1501.3000000715256,
+            "callbacks": 1367,
+            "maxMs": 2.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6290,
+              "stage": 6290
+            },
+            "commits": 535,
+            "viewCommits": 526,
+            "viewRenderMs": 209.50000008940697,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 190,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1672,
+        "failed": 0
+      }
+    },
+    {
+      "round": 1,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "list",
+        "rain",
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            15.56,
+            64.96,
+            87.79
+          ]
+        },
+        "after": [
+          22.42,
+          51.3,
+          78.18
+        ]
+      },
+      "ms": 177205,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10001.199999988079,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.3000000268220901,
+            "callbacks": 38,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 317,
+              "stage": 317
+            },
+            "commits": 134,
+            "viewCommits": 125,
+            "viewRenderMs": 92.99999989569187,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10002,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 191.49999995529652,
+            "callbacks": 636,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 492,
+              "stage": 492
+            },
+            "commits": 122,
+            "viewCommits": 113,
+            "viewRenderMs": 20.200000017881393,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10028.79999999702,
+          "frames": {
+            "count": 601,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 100.70000006258488,
+            "callbacks": 651,
+            "maxMs": 1.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 731,
+              "stage": 731
+            },
+            "commits": 167,
+            "viewCommits": 158,
+            "viewRenderMs": 139.0999999344349,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10003.39999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 342.3000001311302,
+            "callbacks": 1234,
+            "maxMs": 0.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 882,
+              "stage": 882
+            },
+            "commits": 116,
+            "viewCommits": 107,
+            "viewRenderMs": 22.500000059604645,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10002.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.6000000089406967,
+            "callbacks": 63,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1358,
+              "stage": 1358
+            },
+            "commits": 207,
+            "viewCommits": 198,
+            "viewRenderMs": 189.19999998807907,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 64,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 10,
+            "blocked": 10,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10003.39999999106,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 288.50000008940697,
+            "callbacks": 676,
+            "maxMs": 2.2000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1700,
+              "stage": 1700
+            },
+            "commits": 244,
+            "viewCommits": 235,
+            "viewRenderMs": 52.99999998509884,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10003.40000000596,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 112.99999995529652,
+            "callbacks": 689,
+            "maxMs": 1.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2094,
+              "stage": 2094
+            },
+            "commits": 286,
+            "viewCommits": 277,
+            "viewRenderMs": 266.299999833107,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10002.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 531.1000000089407,
+            "callbacks": 1266,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2392,
+              "stage": 2392
+            },
+            "commits": 209,
+            "viewCommits": 200,
+            "viewRenderMs": 45.80000019073486,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10006.20000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 3.19999997317791,
+            "callbacks": 179,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3883,
+              "stage": 3883
+            },
+            "commits": 598,
+            "viewCommits": 589,
+            "viewRenderMs": 1077.000000193715,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 191,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 21,
+            "blocked": 39,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10000.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 379.3000000268221,
+            "callbacks": 828,
+            "maxMs": 3.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4861,
+              "stage": 4861
+            },
+            "commits": 744,
+            "viewCommits": 735,
+            "viewRenderMs": 254.79999980330467,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 203,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10004.09999999404,
+          "frames": {
+            "count": 381,
+            "p50": 16.70000000001164,
+            "p95": 66.70000000001164,
+            "max": 133.20000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 62,
+            "totalMs": 4072.300000011921,
+            "blockingMs": 0,
+            "maxMs": 129.90000000596046
+          },
+          "raf": {
+            "workMs": 334.49999998509884,
+            "callbacks": 553,
+            "maxMs": 3.6000000089406967
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5702,
+              "stage": 5702
+            },
+            "commits": 637,
+            "viewCommits": 630,
+            "viewRenderMs": 1263.2000000625849,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 206,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10003.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1483.1000004410744,
+            "callbacks": 1375,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6455,
+              "stage": 6455
+            },
+            "commits": 560,
+            "viewCommits": 551,
+            "viewRenderMs": 222.60000017285347,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1669,
+        "failed": 0
+      }
+    },
+    {
+      "round": 2,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "rain",
+        "timeline",
+        "swarm",
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            22.42,
+            51.3,
+            78.18
+          ]
+        },
+        "after": [
+          353.32,
+          159.3,
+          115.14
+        ]
+      },
+      "ms": 189038,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10004,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 188,
+            "callbacks": 637,
+            "maxMs": 1.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 331,
+              "stage": 331
+            },
+            "commits": 135,
+            "viewCommits": 126,
+            "viewRenderMs": 22.200000032782555,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10002.09999999404,
+          "frames": {
+            "count": 600,
+            "p50": 16.700000000000728,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 71.90000016987324,
+            "callbacks": 636,
+            "maxMs": 1.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 510,
+              "stage": 510
+            },
+            "commits": 122,
+            "viewCommits": 113,
+            "viewRenderMs": 103.19999986886978,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10002.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 334.3000000566244,
+            "callbacks": 1252,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 757,
+              "stage": 757
+            },
+            "commits": 170,
+            "viewCommits": 161,
+            "viewRenderMs": 26.599999994039536,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10004.10000000894,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.7000000178813934,
+            "callbacks": 34,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 906,
+              "stage": 906
+            },
+            "commits": 114,
+            "viewCommits": 105,
+            "viewRenderMs": 84.50000002980232,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 6,
+            "blocked": 4,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10003.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 304.2999998033047,
+            "callbacks": 663,
+            "maxMs": 2.2000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1426,
+              "stage": 1426
+            },
+            "commits": 209,
+            "viewCommits": 201,
+            "viewRenderMs": 44.60000003874302,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10025.90000000596,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 150.30000022053719,
+            "callbacks": 685,
+            "maxMs": 1.7999999970197678
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1777,
+              "stage": 1777
+            },
+            "commits": 265,
+            "viewCommits": 256,
+            "viewRenderMs": 272.4000000357628,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 68,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10004.29999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 535.8000001162291,
+            "callbacks": 1282,
+            "maxMs": 1.8999999910593033
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2154,
+              "stage": 2154
+            },
+            "commits": 279,
+            "viewCommits": 270,
+            "viewRenderMs": 59.39999982714653,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 68,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10006.5,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.4999999850988388,
+            "callbacks": 63,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2447,
+              "stage": 2447
+            },
+            "commits": 199,
+            "viewCommits": 191,
+            "viewRenderMs": 184.40000008046627,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 64,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 20,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10024.5,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 398.2000001221895,
+            "callbacks": 760,
+            "maxMs": 4.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3980,
+              "stage": 3980
+            },
+            "commits": 554,
+            "viewCommits": 546,
+            "viewRenderMs": 202.49999989569187,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 185,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10021.60000000894,
+          "frames": {
+            "count": 468,
+            "p50": 16.699999999982538,
+            "p95": 50,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 32,
+            "totalMs": 2324.999999985099,
+            "blockingMs": 0,
+            "maxMs": 123.79999999701977
+          },
+          "raf": {
+            "workMs": 272.79999989271164,
+            "callbacks": 657,
+            "maxMs": 3.6000000089406967
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4835,
+              "stage": 4835
+            },
+            "commits": 659,
+            "viewCommits": 651,
+            "viewRenderMs": 1327.699999898672,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 212,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10010.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1471.9000002145767,
+            "callbacks": 1422,
+            "maxMs": 2.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5803,
+              "stage": 5803
+            },
+            "commits": 756,
+            "viewCommits": 747,
+            "viewRenderMs": 271.6000000536442,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 201,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10024.70000000298,
+          "frames": {
+            "count": 601,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 4.900000050663948,
+            "callbacks": 166,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6503,
+              "stage": 6503
+            },
+            "commits": 518,
+            "viewCommits": 509,
+            "viewRenderMs": 951.0999999642372,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 191,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 53,
+            "blocked": 7,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 1703,
+        "failed": 0
+      }
+    },
+    {
+      "round": 2,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "rain",
+        "timeline",
+        "swarm",
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 150021,
+          "load": [
+            54.11,
+            115.57,
+            105.08
+          ]
+        },
+        "after": [
+          92.68,
+          99.35,
+          99.71
+        ]
+      },
+      "ms": 179491,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10003,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 192.60000018775463,
+            "callbacks": 637,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 338,
+              "stage": 338
+            },
+            "commits": 129,
+            "viewCommits": 120,
+            "viewRenderMs": 19.2000000923872,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10003.39999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 78.90000022947788,
+            "callbacks": 637,
+            "maxMs": 1.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 519,
+              "stage": 519
+            },
+            "commits": 124,
+            "viewCommits": 116,
+            "viewRenderMs": 108.99999998509884,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10002.300000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 341.9999998509884,
+            "callbacks": 1253,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 778,
+              "stage": 778
+            },
+            "commits": 177,
+            "viewCommits": 168,
+            "viewRenderMs": 26.400000020861626,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10003.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.9000000059604645,
+            "callbacks": 34,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 929,
+              "stage": 929
+            },
+            "commits": 116,
+            "viewCommits": 107,
+            "viewRenderMs": 86.70000000298023,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 6,
+            "blocked": 4,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10005.70000000298,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 320.3999999910593,
+            "callbacks": 664,
+            "maxMs": 2.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1415,
+              "stage": 1415
+            },
+            "commits": 206,
+            "viewCommits": 197,
+            "viewRenderMs": 44.90000006556511,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10003.39999999106,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 151.89999976754189,
+            "callbacks": 684,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1781,
+              "stage": 1781
+            },
+            "commits": 267,
+            "viewCommits": 258,
+            "viewRenderMs": 274.7999999523163,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10001.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 527.9999998956919,
+            "callbacks": 1286,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2166,
+              "stage": 2166
+            },
+            "commits": 283,
+            "viewCommits": 275,
+            "viewRenderMs": 57.89999981224537,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10005.60000000894,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.7000000178813934,
+            "callbacks": 64,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2460,
+              "stage": 2460
+            },
+            "commits": 203,
+            "viewCommits": 194,
+            "viewRenderMs": 183.8000000268221,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 64,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 20,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10001.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 389.699999794364,
+            "callbacks": 761,
+            "maxMs": 4.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3916,
+              "stage": 3916
+            },
+            "commits": 543,
+            "viewCommits": 534,
+            "viewRenderMs": 203.90000015497208,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 184,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10004.79999999702,
+          "frames": {
+            "count": 443,
+            "p50": 16.699999999982538,
+            "p95": 66.60000000000582,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 48,
+            "totalMs": 3192.899999961257,
+            "blockingMs": 0,
+            "maxMs": 119.90000000596046
+          },
+          "raf": {
+            "workMs": 300.4999999701977,
+            "callbacks": 642,
+            "maxMs": 5.399999991059303
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4764,
+              "stage": 4764
+            },
+            "commits": 665,
+            "viewCommits": 658,
+            "viewRenderMs": 1355.5999999791384,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 210,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10030.20000000298,
+          "frames": {
+            "count": 601,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1439.7000001072884,
+            "callbacks": 1424,
+            "maxMs": 3
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5698,
+              "stage": 5698
+            },
+            "commits": 738,
+            "viewCommits": 730,
+            "viewRenderMs": 273.49999986588955,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 205,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10007.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 5.5999999940395355,
+            "callbacks": 159,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6368,
+              "stage": 6368
+            },
+            "commits": 504,
+            "viewCommits": 495,
+            "viewRenderMs": 900.7999998480082,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 187,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 58,
+            "blocked": 2,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 1677,
+        "failed": 0
+      }
+    },
+    {
+      "round": 3,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm",
+        "list",
+        "rain"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 510083,
+          "load": [
+            52.56,
+            117.74,
+            119.45
+          ]
+        },
+        "after": [
+          327.23,
+          180.84,
+          142.6
+        ]
+      },
+      "ms": 191640,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10007.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 81.50000017881393,
+            "callbacks": 639,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 329,
+              "stage": 329
+            },
+            "commits": 134,
+            "viewCommits": 125,
+            "viewRenderMs": 118.20000003278255,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10003.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 357.10000021755695,
+            "callbacks": 1236,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 507,
+              "stage": 507
+            },
+            "commits": 124,
+            "viewCommits": 115,
+            "viewRenderMs": 20.799999877810478,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10000.300000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.300000011920929,
+            "callbacks": 50,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 754,
+              "stage": 754
+            },
+            "commits": 169,
+            "viewCommits": 160,
+            "viewRenderMs": 103.29999987781048,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 34,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 0,
+            "blocked": 0,
+            "idle": 11
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10004.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 200.99999991059303,
+            "callbacks": 634,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 904,
+              "stage": 904
+            },
+            "commits": 116,
+            "viewCommits": 107,
+            "viewRenderMs": 17.399999976158142,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10002.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 100.80000011622906,
+            "callbacks": 661,
+            "maxMs": 1.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1404,
+              "stage": 1404
+            },
+            "commits": 202,
+            "viewCommits": 193,
+            "viewRenderMs": 221.29999986290932,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10018.29999999702,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 585.3999999314547,
+            "callbacks": 1278,
+            "maxMs": 2.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1750,
+              "stage": 1750
+            },
+            "commits": 248,
+            "viewCommits": 238,
+            "viewRenderMs": 57.29999992251396,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10003.5,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 2.8000000566244125,
+            "callbacks": 87,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2143,
+              "stage": 2143
+            },
+            "commits": 289,
+            "viewCommits": 280,
+            "viewRenderMs": 241.1999998241663,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 69,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 0,
+            "blocked": 10,
+            "idle": 11
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10010.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 319.90000000596046,
+            "callbacks": 661,
+            "maxMs": 2.6000000089406967
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2425,
+              "stage": 2425
+            },
+            "commits": 195,
+            "viewCommits": 186,
+            "viewRenderMs": 44.30000014603138,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10009.89999999106,
+          "frames": {
+            "count": 464,
+            "p50": 16.699999999982538,
+            "p95": 33.30000000001746,
+            "max": 300
+          },
+          "loaf": {
+            "supported": true,
+            "count": 17,
+            "totalMs": 1536.4000000059605,
+            "blockingMs": 0,
+            "maxMs": 129.40000000596046
+          },
+          "raf": {
+            "workMs": 239.09999987483025,
+            "callbacks": 617,
+            "maxMs": 7.799999997019768
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3997,
+              "stage": 3997
+            },
+            "commits": 520,
+            "viewCommits": 514,
+            "viewRenderMs": 1588.1999999135733,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 193,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10020.800000011921,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1674.4000000059605,
+            "callbacks": 1429,
+            "maxMs": 2.6000000089406967
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4944,
+              "stage": 4944
+            },
+            "commits": 742,
+            "viewCommits": 733,
+            "viewRenderMs": 291.3000003248453,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 206,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10037.699999988079,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 33.29999999998836
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 6.899999961256981,
+            "callbacks": 235,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5917,
+              "stage": 5917
+            },
+            "commits": 775,
+            "viewCommits": 766,
+            "viewRenderMs": 1400.4999999552965,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 202,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 6,
+            "blocked": 4,
+            "idle": 51
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10004.20000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 409.89999997615814,
+            "callbacks": 767,
+            "maxMs": 4.299999997019768
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6631,
+              "stage": 6631
+            },
+            "commits": 547,
+            "viewCommits": 538,
+            "viewRenderMs": 209.8000001758337,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 195,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1713,
+        "failed": 0
+      }
+    },
+    {
+      "round": 3,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "timeline",
+        "swarm",
+        "list",
+        "rain"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 135017,
+          "load": [
+            58.47,
+            130.21,
+            128.2
+          ]
+        },
+        "after": [
+          310.57,
+          168.84,
+          141.26
+        ]
+      },
+      "ms": 190280,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10010,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 77.60000009834766,
+            "callbacks": 639,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 344,
+              "stage": 344
+            },
+            "commits": 135,
+            "viewCommits": 126,
+            "viewRenderMs": 113.6999998986721,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10004,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 348.89999987185,
+            "callbacks": 1243,
+            "maxMs": 0.7000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 531,
+              "stage": 531
+            },
+            "commits": 133,
+            "viewCommits": 125,
+            "viewRenderMs": 20.599999874830246,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10002.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.5999999344348907,
+            "callbacks": 51,
+            "maxMs": 0.10000000894069672
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 775,
+              "stage": 775
+            },
+            "commits": 167,
+            "viewCommits": 160,
+            "viewRenderMs": 104.10000003874302,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 34,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 0,
+            "blocked": 0,
+            "idle": 11
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10002.70000000298,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 199.99999998509884,
+            "callbacks": 634,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 923,
+              "stage": 923
+            },
+            "commits": 114,
+            "viewCommits": 106,
+            "viewRenderMs": 16.799999952316284,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10002.79999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 97.40000021457672,
+            "callbacks": 663,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1431,
+              "stage": 1431
+            },
+            "commits": 207,
+            "viewCommits": 199,
+            "viewRenderMs": 218.8999998420477,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10002.29999999702,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 577.9999999701977,
+            "callbacks": 1280,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1783,
+              "stage": 1783
+            },
+            "commits": 255,
+            "viewCommits": 247,
+            "viewRenderMs": 54.899999901652336,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10010.10000000894,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 2.2000000029802322,
+            "callbacks": 90,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2184,
+              "stage": 2184
+            },
+            "commits": 296,
+            "viewCommits": 286,
+            "viewRenderMs": 249.4999999254942,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 70,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 0,
+            "blocked": 10,
+            "idle": 11
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10004.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 307.6000001132488,
+            "callbacks": 660,
+            "maxMs": 2.2000000029802322
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2461,
+              "stage": 2461
+            },
+            "commits": 193,
+            "viewCommits": 184,
+            "viewRenderMs": 44.69999983906746,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10014.5,
+          "frames": {
+            "count": 513,
+            "p50": 16.699999999982538,
+            "p95": 50,
+            "max": 83.39999999999418
+          },
+          "loaf": {
+            "supported": true,
+            "count": 27,
+            "totalMs": 1785.800000026822,
+            "blockingMs": 0,
+            "maxMs": 77.5
+          },
+          "raf": {
+            "workMs": 188.2000000178814,
+            "callbacks": 656,
+            "maxMs": 7.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3947,
+              "stage": 3947
+            },
+            "commits": 503,
+            "viewCommits": 496,
+            "viewRenderMs": 1050.1999997347593,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 185,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10035.20000000298,
+          "frames": {
+            "count": 601,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1569.9000001251698,
+            "callbacks": 1424,
+            "maxMs": 2.3999999910593033
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4914,
+              "stage": 4914
+            },
+            "commits": 732,
+            "viewCommits": 727,
+            "viewRenderMs": 275.29999981820583,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 212,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10017.59999999404,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 9.2000000923872,
+            "callbacks": 207,
+            "maxMs": 0.20000000298023224
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5784,
+              "stage": 5784
+            },
+            "commits": 702,
+            "viewCommits": 697,
+            "viewRenderMs": 1233.600000038743,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 200,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 1,
+            "blocked": 9,
+            "idle": 51
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 397.4999999701977,
+            "callbacks": 742,
+            "maxMs": 4.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6421,
+              "stage": 6421
+            },
+            "commits": 467,
+            "viewCommits": 461,
+            "viewRenderMs": 187.80000001192093,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 189,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1701,
+        "failed": 0
+      }
+    },
+    {
+      "round": 4,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "list",
+        "rain",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 270050,
+          "load": [
+            50.2,
+            157.15,
+            150.24
+          ]
+        },
+        "after": [
+          16.19,
+          93.35,
+          124.73
+        ]
+      },
+      "ms": 176817,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10002.299999982119,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 310.40000009536743,
+            "callbacks": 1237,
+            "maxMs": 0.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 302,
+              "stage": 302
+            },
+            "commits": 132,
+            "viewCommits": 123,
+            "viewRenderMs": 24.599999994039536,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.699999988079071,
+            "callbacks": 36,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 484,
+              "stage": 484
+            },
+            "commits": 128,
+            "viewCommits": 119,
+            "viewRenderMs": 116.09999984502792,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 10,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10003.799999982119,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 191.89999997615814,
+            "callbacks": 652,
+            "maxMs": 1.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 722,
+              "stage": 722
+            },
+            "commits": 176,
+            "viewCommits": 167,
+            "viewRenderMs": 23.700000166893005,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10002.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 60.4000001847744,
+            "callbacks": 634,
+            "maxMs": 1.2999999821186066
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 871,
+              "stage": 871
+            },
+            "commits": 113,
+            "viewCommits": 105,
+            "viewRenderMs": 126.80000001192093,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10003.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 563.0999990701675,
+            "callbacks": 1263,
+            "maxMs": 1.100000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1342,
+              "stage": 1342
+            },
+            "commits": 205,
+            "viewCommits": 197,
+            "viewRenderMs": 51,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10001.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.7000000476837158,
+            "callbacks": 76,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1673,
+              "stage": 1673
+            },
+            "commits": 239,
+            "viewCommits": 232,
+            "viewRenderMs": 253.9999997317791,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 67,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 14,
+            "blocked": 0,
+            "idle": 7
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10002.199999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 320.2000000178814,
+            "callbacks": 683,
+            "maxMs": 2.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2055,
+              "stage": 2055
+            },
+            "commits": 273,
+            "viewCommits": 264,
+            "viewRenderMs": 59.00000011920929,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10003.299999982119,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 98.9999997317791,
+            "callbacks": 667,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2356,
+              "stage": 2356
+            },
+            "commits": 209,
+            "viewCommits": 200,
+            "viewRenderMs": 249.8999997973442,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10002.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1450.6999998092651,
+            "callbacks": 1399,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3800,
+              "stage": 3800
+            },
+            "commits": 625,
+            "viewCommits": 616,
+            "viewRenderMs": 234.8999997973442,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 190,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10006.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 4.099999964237213,
+            "callbacks": 240,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4801,
+              "stage": 4801
+            },
+            "commits": 773,
+            "viewCommits": 765,
+            "viewRenderMs": 1340.9000009000301,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 204,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 60,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10002.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 381.8000001013279,
+            "callbacks": 837,
+            "maxMs": 3.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5810,
+              "stage": 5810
+            },
+            "commits": 778,
+            "viewCommits": 769,
+            "viewRenderMs": 267.9000004529953,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 205,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10002.800000011921,
+          "frames": {
+            "count": 557,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 116.60000000000582
+          },
+          "loaf": {
+            "supported": true,
+            "count": 12,
+            "totalMs": 875.9000000059605,
+            "blockingMs": 0,
+            "maxMs": 130.5
+          },
+          "raf": {
+            "workMs": 197.29999965429306,
+            "callbacks": 749,
+            "maxMs": 3
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6576,
+              "stage": 6576
+            },
+            "commits": 595,
+            "viewCommits": 587,
+            "viewRenderMs": 1161.099999755621,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 192,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1670,
+        "failed": 0
+      }
+    },
+    {
+      "round": 4,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "swarm",
+        "list",
+        "rain",
+        "timeline"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 0,
+          "load": [
+            16.19,
+            93.35,
+            124.73
+          ]
+        },
+        "after": [
+          258.75,
+          135.93,
+          133.72
+        ]
+      },
+      "ms": 187402,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10000.100000023842,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 330.2000004053116,
+            "callbacks": 1237,
+            "maxMs": 0.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 322,
+              "stage": 322
+            },
+            "commits": 132,
+            "viewCommits": 123,
+            "viewRenderMs": 25.30000004172325,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10003.600000023842,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.9999999701976776,
+            "callbacks": 34,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 501,
+              "stage": 501
+            },
+            "commits": 123,
+            "viewCommits": 114,
+            "viewRenderMs": 134.89999997615814,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 10,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10003,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 222.60000029206276,
+            "callbacks": 651,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 740,
+              "stage": 740
+            },
+            "commits": 168,
+            "viewCommits": 159,
+            "viewRenderMs": 27.70000022649765,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10004,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 72.89999949932098,
+            "callbacks": 635,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 890,
+              "stage": 890
+            },
+            "commits": 114,
+            "viewCommits": 105,
+            "viewRenderMs": 133.79999989271164,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10002.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 580.9000000059605,
+            "callbacks": 1266,
+            "maxMs": 1.2000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1364,
+              "stage": 1364
+            },
+            "commits": 208,
+            "viewCommits": 200,
+            "viewRenderMs": 50.70000025629997,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10031.199999988079,
+          "frames": {
+            "count": 601,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.5000000298023224,
+            "callbacks": 78,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1714,
+              "stage": 1714
+            },
+            "commits": 256,
+            "viewCommits": 249,
+            "viewRenderMs": 230.90000012516975,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 68,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 14,
+            "blocked": 0,
+            "idle": 7
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10002.600000023842,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 297.00000017881393,
+            "callbacks": 674,
+            "maxMs": 2.300000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2067,
+              "stage": 2067
+            },
+            "commits": 259,
+            "viewCommits": 252,
+            "viewRenderMs": 51.49999991059303,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10005.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 98.2000000178814,
+            "callbacks": 665,
+            "maxMs": 1.899999976158142
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2364,
+              "stage": 2364
+            },
+            "commits": 206,
+            "viewCommits": 197,
+            "viewRenderMs": 224.10000002384186,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10017.59999999404,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1454.2000004947186,
+            "callbacks": 1370,
+            "maxMs": 2.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3874,
+              "stage": 3874
+            },
+            "commits": 561,
+            "viewCommits": 554,
+            "viewRenderMs": 227.89999994635582,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10033,
+          "frames": {
+            "count": 601,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 7.89999982714653,
+            "callbacks": 227,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4844,
+              "stage": 4844
+            },
+            "commits": 731,
+            "viewCommits": 723,
+            "viewRenderMs": 1312.0000004172325,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 204,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 52,
+            "blocked": 0,
+            "idle": 9
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10041,
+          "frames": {
+            "count": 602,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 405.39999982714653,
+            "callbacks": 833,
+            "maxMs": 4
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5835,
+              "stage": 5835
+            },
+            "commits": 782,
+            "viewCommits": 774,
+            "viewRenderMs": 273.09999990463257,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 208,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10006.90000000596,
+          "frames": {
+            "count": 579,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 66.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 6,
+            "totalMs": 366.40000000596046,
+            "blockingMs": 0,
+            "maxMs": 70.5
+          },
+          "raf": {
+            "workMs": 170.49999955296516,
+            "callbacks": 760,
+            "maxMs": 4.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6533,
+              "stage": 6533
+            },
+            "commits": 547,
+            "viewCommits": 541,
+            "viewRenderMs": 1110.9000001847744,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 192,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1695,
+        "failed": 0
+      }
+    },
+    {
+      "round": 5,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "list",
+        "rain",
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 210049,
+          "load": [
+            58.98,
+            104.62,
+            121.88
+          ]
+        },
+        "after": [
+          144.55,
+          141.54,
+          136.07
+        ]
+      },
+      "ms": 187280,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10022.299999982119,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999891,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.0999999642372131,
+            "callbacks": 38,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 340,
+              "stage": 340
+            },
+            "commits": 133,
+            "viewCommits": 124,
+            "viewRenderMs": 94.50000011920929,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10001.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 183.70000046491623,
+            "callbacks": 637,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 519,
+              "stage": 519
+            },
+            "commits": 125,
+            "viewCommits": 116,
+            "viewRenderMs": 19.700000047683716,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10000.899999976158,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 107.60000020265579,
+            "callbacks": 653,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 768,
+              "stage": 768
+            },
+            "commits": 176,
+            "viewCommits": 167,
+            "viewRenderMs": 135.90000015497208,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10024.399999976158,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 337.1999996304512,
+            "callbacks": 1235,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 920,
+              "stage": 920
+            },
+            "commits": 115,
+            "viewCommits": 107,
+            "viewRenderMs": 21.700000047683716,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10002.199999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.3000001013278961,
+            "callbacks": 64,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1444,
+              "stage": 1444
+            },
+            "commits": 209,
+            "viewCommits": 201,
+            "viewRenderMs": 190.89999958872795,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 63,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 10,
+            "blocked": 10,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10001.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.80000000000291,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 288.5000001192093,
+            "callbacks": 682,
+            "maxMs": 3.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1806,
+              "stage": 1806
+            },
+            "commits": 266,
+            "viewCommits": 257,
+            "viewRenderMs": 51.69999998807907,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 68,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10002.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 127.19999986886978,
+            "callbacks": 684,
+            "maxMs": 1.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2191,
+              "stage": 2191
+            },
+            "commits": 280,
+            "viewCommits": 271,
+            "viewRenderMs": 299.7999994456768,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 537.6999992728233,
+            "callbacks": 1263,
+            "maxMs": 1
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2484,
+              "stage": 2484
+            },
+            "commits": 202,
+            "viewCommits": 193,
+            "viewRenderMs": 46.19999986886978,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10035.800000011921,
+          "frames": {
+            "count": 601,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 6.499999970197678,
+            "callbacks": 186,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3945,
+              "stage": 3945
+            },
+            "commits": 602,
+            "viewCommits": 593,
+            "viewRenderMs": 1079.000000178814,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 193,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 22,
+            "blocked": 38,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10004.299999982119,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 370.7999998033047,
+            "callbacks": 804,
+            "maxMs": 3.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4884,
+              "stage": 4884
+            },
+            "commits": 721,
+            "viewCommits": 712,
+            "viewRenderMs": 249.19999983906746,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 206,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10018.100000023842,
+          "frames": {
+            "count": 416,
+            "p50": 16.70000000001164,
+            "p95": 66.69999999998254,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 53,
+            "totalMs": 3452.100000053644,
+            "blockingMs": 0,
+            "maxMs": 120.09999999403954
+          },
+          "raf": {
+            "workMs": 342.1000003516674,
+            "callbacks": 590,
+            "maxMs": 3.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5713,
+              "stage": 5713
+            },
+            "commits": 633,
+            "viewCommits": 624,
+            "viewRenderMs": 1273.1999999582767,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 202,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10035.299999982119,
+          "frames": {
+            "count": 601,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1519.800000101328,
+            "callbacks": 1380,
+            "maxMs": 2.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6468,
+              "stage": 6468
+            },
+            "commits": 563,
+            "viewCommits": 554,
+            "viewRenderMs": 222.29999965429306,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 198,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1678,
+        "failed": 0
+      }
+    },
+    {
+      "round": 5,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "list",
+        "rain",
+        "timeline",
+        "swarm"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 135018,
+          "load": [
+            53.95,
+            119.04,
+            128.94
+          ]
+        },
+        "after": [
+          224.83,
+          182.8,
+          154.27
+        ]
+      },
+      "ms": 190053,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10001.299999982119,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.5,
+            "callbacks": 38,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 322,
+              "stage": 322
+            },
+            "commits": 133,
+            "viewCommits": 124,
+            "viewRenderMs": 93.2000000178814,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 4,
+            "blocked": 6,
+            "idle": 1
+          }
+        },
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10004.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 183.8000001013279,
+            "callbacks": 637,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 504,
+              "stage": 504
+            },
+            "commits": 129,
+            "viewCommits": 120,
+            "viewRenderMs": 19.399999916553497,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10002.5,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 104.79999977350235,
+            "callbacks": 651,
+            "maxMs": 1.600000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 750,
+              "stage": 750
+            },
+            "commits": 172,
+            "viewCommits": 163,
+            "viewRenderMs": 134.89999973773956,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10005.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.700000000004366,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 343.10000026226044,
+            "callbacks": 1233,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 901,
+              "stage": 901
+            },
+            "commits": 115,
+            "viewCommits": 106,
+            "viewRenderMs": 21.200000137090683,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10009.299999982119,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1.7999999821186066,
+            "callbacks": 64,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1443,
+              "stage": 1443
+            },
+            "commits": 211,
+            "viewCommits": 202,
+            "viewRenderMs": 197.69999971985817,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 63,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 10,
+            "blocked": 10,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10002.700000017881,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 300.10000041127205,
+            "callbacks": 688,
+            "maxMs": 2.300000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1820,
+              "stage": 1820
+            },
+            "commits": 276,
+            "viewCommits": 267,
+            "viewRenderMs": 54.70000013709068,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 68,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10009.600000023842,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 143.80000030994415,
+            "callbacks": 693,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2228,
+              "stage": 2228
+            },
+            "commits": 303,
+            "viewCommits": 294,
+            "viewRenderMs": 306.50000005960464,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10005.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 554.9000001847744,
+            "callbacks": 1263,
+            "maxMs": 1.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2502,
+              "stage": 2502
+            },
+            "commits": 200,
+            "viewCommits": 191,
+            "viewRenderMs": 48.30000013113022,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10002.899999976158,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 4.699999928474426,
+            "callbacks": 180,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4071,
+              "stage": 4071
+            },
+            "commits": 580,
+            "viewCommits": 571,
+            "viewRenderMs": 1052.3999993801117,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 191,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 11,
+            "blocked": 49,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10003.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 371.40000024437904,
+            "callbacks": 833,
+            "maxMs": 3.699999988079071
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5082,
+              "stage": 5082
+            },
+            "commits": 748,
+            "viewCommits": 739,
+            "viewRenderMs": 255.39999985694885,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 203,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10001.40000000596,
+          "frames": {
+            "count": 380,
+            "p50": 16.70000000001164,
+            "p95": 66.70000000001164,
+            "max": 133.29999999998836
+          },
+          "loaf": {
+            "supported": true,
+            "count": 53,
+            "totalMs": 3817.5,
+            "blockingMs": 0,
+            "maxMs": 134.09999999403954
+          },
+          "raf": {
+            "workMs": 330.8000003397465,
+            "callbacks": 552,
+            "maxMs": 3.100000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5949,
+              "stage": 5949
+            },
+            "commits": 650,
+            "viewCommits": 642,
+            "viewRenderMs": 1295.6000000536442,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 206,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10006,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1445.3000001311302,
+            "callbacks": 1351,
+            "maxMs": 2
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6619,
+              "stage": 6619
+            },
+            "commits": 486,
+            "viewCommits": 481,
+            "viewRenderMs": 193.50000032782555,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        }
+      ],
+      "driver": {
+        "sent": 1699,
+        "failed": 0
+      }
+    },
+    {
+      "round": 6,
+      "arm": "A",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "rain",
+        "timeline",
+        "swarm",
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 210032,
+          "load": [
+            58.43,
+            139.52,
+            144.13
+          ]
+        },
+        "after": [
+          184.22,
+          148.47,
+          145.59
+        ]
+      },
+      "ms": 184321,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10002.90000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 199.0000004172325,
+            "callbacks": 637,
+            "maxMs": 1.7999999821186066
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 320,
+              "stage": 320
+            },
+            "commits": 132,
+            "viewCommits": 123,
+            "viewRenderMs": 20.100000023841858,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10003.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.700000000000728,
+            "p95": 16.700000000000728,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 80.19999977946281,
+            "callbacks": 636,
+            "maxMs": 1.5999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 503,
+              "stage": 503
+            },
+            "commits": 124,
+            "viewCommits": 115,
+            "viewRenderMs": 107.49999994039536,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10000.800000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 340.2999998629093,
+            "callbacks": 1253,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 750,
+              "stage": 750
+            },
+            "commits": 172,
+            "viewCommits": 163,
+            "viewRenderMs": 25.80000016093254,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10001.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.5,
+            "callbacks": 34,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 900,
+              "stage": 900
+            },
+            "commits": 115,
+            "viewCommits": 106,
+            "viewRenderMs": 107.99999994039536,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 6,
+            "blocked": 4,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10005.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 317.40000012516975,
+            "callbacks": 664,
+            "maxMs": 2.4000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1376,
+              "stage": 1376
+            },
+            "commits": 212,
+            "viewCommits": 203,
+            "viewRenderMs": 48.299999952316284,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 63,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10005.800000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 134.70000004768372,
+            "callbacks": 672,
+            "maxMs": 2.0999999940395355
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1717,
+              "stage": 1717
+            },
+            "commits": 244,
+            "viewCommits": 235,
+            "viewRenderMs": 258.7999999523163,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10001.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 529.9999997913837,
+            "callbacks": 1288,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2118,
+              "stage": 2118
+            },
+            "commits": 286,
+            "viewCommits": 278,
+            "viewRenderMs": 60.49999976158142,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10002.199999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 2.0999999344348907,
+            "callbacks": 66,
+            "maxMs": 0.19999998807907104
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2410,
+              "stage": 2410
+            },
+            "commits": 209,
+            "viewCommits": 200,
+            "viewRenderMs": 196.39999997615814,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 63,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 20,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10008,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 395.90000009536743,
+            "callbacks": 765,
+            "maxMs": 3.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3839,
+              "stage": 3839
+            },
+            "commits": 554,
+            "viewCommits": 545,
+            "viewRenderMs": 207.00000023841858,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 185,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10003.199999988079,
+          "frames": {
+            "count": 423,
+            "p50": 16.699999999982538,
+            "p95": 66.70000000001164,
+            "max": 116.69999999998254
+          },
+          "loaf": {
+            "supported": true,
+            "count": 52,
+            "totalMs": 3523.1999999284744,
+            "blockingMs": 0,
+            "maxMs": 129.2999999821186
+          },
+          "raf": {
+            "workMs": 285.10000002384186,
+            "callbacks": 619,
+            "maxMs": 4.700000017881393
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4668,
+              "stage": 4668
+            },
+            "commits": 656,
+            "viewCommits": 650,
+            "viewRenderMs": 1335.6999996304512,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 207,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10013.59999999404,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1456.099999934435,
+            "callbacks": 1427,
+            "maxMs": 2.300000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5647,
+              "stage": 5647
+            },
+            "commits": 762,
+            "viewCommits": 754,
+            "viewRenderMs": 276.3000004887581,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 208,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10007.899999976158,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 6.5000001192092896,
+            "callbacks": 160,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6334,
+              "stage": 6334
+            },
+            "commits": 517,
+            "viewCommits": 513,
+            "viewRenderMs": 937.8000001907349,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 187,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 57,
+            "blocked": 3,
+            "idle": 1
+          }
+        }
+      ],
+      "driver": {
+        "sent": 1674,
+        "failed": 0
+      }
+    },
+    {
+      "round": 6,
+      "arm": "A'",
+      "app": "/Volumes/SamsungRed/lanes/mv/mv0-pu/puppeteer/apps/godview",
+      "viewOrder": [
+        "rain",
+        "timeline",
+        "swarm",
+        "list"
+      ],
+      "load": {
+        "before": {
+          "waitedMs": 585146,
+          "load": [
+            55.74,
+            151.97,
+            164.31
+          ]
+        },
+        "after": [
+          10.58,
+          88.44,
+          135.38
+        ]
+      },
+      "ms": 177098,
+      "measurements": [
+        {
+          "count": 10,
+          "view": "rain",
+          "ms": 10015.699999988079,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999891,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000109
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 229.69999960064888,
+            "callbacks": 638,
+            "maxMs": 1.7000000178813934
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 299,
+              "stage": 299
+            },
+            "commits": 126,
+            "viewCommits": 119,
+            "viewRenderMs": 22.4000001847744,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "timeline",
+          "ms": 10004.800000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999999272,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 77.50000011920929,
+            "callbacks": 636,
+            "maxMs": 1.5
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 477,
+              "stage": 477
+            },
+            "commits": 123,
+            "viewCommits": 114,
+            "viewRenderMs": 113.89999988675117,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 33,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "swarm",
+          "ms": 10003.59999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 348.4000004529953,
+            "callbacks": 1253,
+            "maxMs": 0.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 721,
+              "stage": 721
+            },
+            "commits": 173,
+            "viewCommits": 164,
+            "viewRenderMs": 29.60000005364418,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 34,
+          "agents": 10
+        },
+        {
+          "count": 10,
+          "view": "list",
+          "ms": 10002.09999999404,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.799999999995634,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.9999999701976776,
+            "callbacks": 34,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 873,
+              "stage": 873
+            },
+            "commits": 117,
+            "viewCommits": 108,
+            "viewRenderMs": 131.0000001192093,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 33,
+          "agents": 10,
+          "board": {
+            "rows": 11,
+            "working": 6,
+            "blocked": 4,
+            "idle": 1
+          }
+        },
+        {
+          "count": 20,
+          "view": "rain",
+          "ms": 10003.300000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 341.59999987483025,
+            "callbacks": 659,
+            "maxMs": 3.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1345,
+              "stage": 1345
+            },
+            "commits": 202,
+            "viewCommits": 193,
+            "viewRenderMs": 48.30000019073486,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 64,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "timeline",
+          "ms": 10004.40000000596,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 142.0999999642372,
+            "callbacks": 676,
+            "maxMs": 2.100000023841858
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 1681,
+              "stage": 1681
+            },
+            "commits": 243,
+            "viewCommits": 236,
+            "viewRenderMs": 271.29999962449074,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 67,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "swarm",
+          "ms": 10003.300000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 543.4000000953674,
+            "callbacks": 1282,
+            "maxMs": 1
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2065,
+              "stage": 2065
+            },
+            "commits": 273,
+            "viewCommits": 266,
+            "viewRenderMs": 58.49999991059303,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 69,
+          "agents": 20
+        },
+        {
+          "count": 20,
+          "view": "list",
+          "ms": 10002.800000011921,
+          "frames": {
+            "count": 600,
+            "p50": 16.69999999999709,
+            "p95": 16.70000000001164,
+            "max": 16.80000000000291
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 0.8000000417232513,
+            "callbacks": 66,
+            "maxMs": 0.10000002384185791
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 2360,
+              "stage": 2360
+            },
+            "commits": 207,
+            "viewCommits": 200,
+            "viewRenderMs": 224.0000001490116,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 64,
+          "agents": 20,
+          "board": {
+            "rows": 21,
+            "working": 20,
+            "blocked": 0,
+            "idle": 1
+          }
+        },
+        {
+          "count": 60,
+          "view": "rain",
+          "ms": 10002.899999976158,
+          "frames": {
+            "count": 599,
+            "p50": 16.69999999999709,
+            "p95": 16.79999999998836,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 376.0999997854233,
+            "callbacks": 794,
+            "maxMs": 3.800000011920929
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 3850,
+              "stage": 3850
+            },
+            "commits": 625,
+            "viewCommits": 618,
+            "viewRenderMs": 227.60000041127205,
+            "viewNames": [
+              "RainView"
+            ]
+          },
+          "ops": 191,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "timeline",
+          "ms": 10003.59999999404,
+          "frames": {
+            "count": 408,
+            "p50": 16.70000000001164,
+            "p95": 66.69999999998254,
+            "max": 116.70000000001164
+          },
+          "loaf": {
+            "supported": true,
+            "count": 58,
+            "totalMs": 3881.7000000178814,
+            "blockingMs": 0,
+            "maxMs": 125.90000000596046
+          },
+          "raf": {
+            "workMs": 299.70000049471855,
+            "callbacks": 626,
+            "maxMs": 2.7999999821186066
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 4773,
+              "stage": 4773
+            },
+            "commits": 718,
+            "viewCommits": 709,
+            "viewRenderMs": 1358.9000000059605,
+            "viewNames": [
+              "TimelineView"
+            ]
+          },
+          "ops": 205,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "swarm",
+          "ms": 10005.90000000596,
+          "frames": {
+            "count": 600,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 1430.3999991118908,
+            "callbacks": 1432,
+            "maxMs": 2.9000000059604645
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 5753,
+              "stage": 5753
+            },
+            "commits": 753,
+            "viewCommits": 747,
+            "viewRenderMs": 263.50000098347664,
+            "viewNames": [
+              "AgentSwarm"
+            ]
+          },
+          "ops": 204,
+          "agents": 60
+        },
+        {
+          "count": 60,
+          "view": "list",
+          "ms": 10001.300000011921,
+          "frames": {
+            "count": 599,
+            "p50": 16.699999999982538,
+            "p95": 16.70000000001164,
+            "max": 16.800000000017462
+          },
+          "loaf": {
+            "supported": true,
+            "count": 0,
+            "totalMs": 0,
+            "blockingMs": 0,
+            "maxMs": 0
+          },
+          "raf": {
+            "workMs": 3.4000000059604645,
+            "callbacks": 199,
+            "maxMs": 0.20000001788139343
+          },
+          "react": {
+            "seen": {
+              "renderers": 1,
+              "commits": 6569,
+              "stage": 6569
+            },
+            "commits": 607,
+            "viewCommits": 599,
+            "viewRenderMs": 1115.6000002622604,
+            "viewNames": [
+              "AgentList"
+            ]
+          },
+          "ops": 191,
+          "agents": 60,
+          "board": {
+            "rows": 61,
+            "working": 54,
+            "blocked": 2,
+            "idle": 5
+          }
+        }
+      ],
+      "driver": {
+        "sent": 1666,
+        "failed": 0
+      }
+    }
+  ],
+  "finishedAt": "2026-10-04T02:34:25.040Z"
+}

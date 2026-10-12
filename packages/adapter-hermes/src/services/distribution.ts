@@ -12,15 +12,15 @@
  */
 
 import { execFile } from 'node:child_process';
-import { open } from 'node:fs/promises';
-import { basename, dirname } from 'node:path';
+import { access, constants, open } from 'node:fs/promises';
+import { basename, delimiter, dirname, join } from 'node:path';
 import type {
   DistributionProvider,
   DistributionService,
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parseHermesVersion } from '../detection.js';
 import { HERMES_VERSION_FLAG } from '../generated/detection.js';
 
@@ -37,6 +37,9 @@ export type HermesDistributionExec = (
 
 /** Injected bounded file read so unit tests never touch a real install. */
 export type HermesDistributionReadHead = (path: string) => Promise<string>;
+
+/** Injected wrapper read so unit tests never touch a real install: the head of the file `executable` names. */
+export type HermesWrapperRead = (executable: string, env: NodeJS.ProcessEnv) => Promise<string | undefined>;
 
 export interface HermesDistributionServiceOptions {
   executable?: string | undefined;
@@ -92,6 +95,29 @@ export async function readHermesWrapperHead(path: string): Promise<string> {
     await handle.close();
   }
 }
+
+/**
+ * The head of the first `executable` on PATH, which is the one a launch runs;
+ * a path is read as given. The profile service finds the interpreter in it,
+ * the extension service the checkout.
+ */
+export const readHermesWrapper: HermesWrapperRead = async (executable, env) => {
+  const candidates = /[/\\]/u.test(executable)
+    ? [executable]
+    : (env.PATH ?? '')
+        .split(delimiter)
+        .filter((directory) => directory.length > 0)
+        .map((directory) => join(directory, executable));
+  for (const candidate of candidates) {
+    try {
+      await access(candidate, constants.X_OK);
+      return await readHermesWrapperHead(candidate);
+    } catch {
+      // Not an executable file here; the next PATH entry decides.
+    }
+  }
+  return undefined;
+};
 
 function isHermesCommandName(value: string): boolean {
   const name = basename(value).toLowerCase();

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
-} from '@vibecook/puppeteer-core/monitor-spi';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core/monitor-spi';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
@@ -20,7 +20,7 @@ import type { Transport } from '../transport/app-server-client.js';
 function controllable(
   resumeFailuresBeforeSuccess: number,
   historyResult: unknown = {},
-  options: { deferRead?: boolean } = {},
+  options: { deferRead?: boolean; deferCatalog?: boolean } = {},
 ) {
   let onMsg: ((m: unknown) => void) | undefined;
   let onCls: ((i: { code: number | null; signal: string | null }) => void) | undefined;
@@ -29,6 +29,7 @@ function controllable(
   const calls: { method?: string; params?: unknown }[] = [];
   const sent: Record<string, unknown>[] = [];
   let deferredReadId: number | undefined;
+  let deferredCatalogId: number | undefined;
   const transport: Transport = {
     send: (m) => {
       const msg = m as { id?: number; method?: string; params?: unknown };
@@ -45,6 +46,8 @@ function controllable(
           } else {
             onMsg?.({ jsonrpc: '2.0', id: msg.id, result: {} });
           }
+        } else if (msg.method === 'model/list' && options.deferCatalog) {
+          deferredCatalogId = msg.id;
         } else if (msg.method === 'thread/read') {
           if (options.deferRead) deferredReadId = msg.id;
           else onMsg?.({ jsonrpc: '2.0', id: msg.id, result: historyResult });
@@ -76,6 +79,11 @@ function controllable(
     resumeAttempts: () => resumeAttempts,
     calls: () => calls,
     sent: () => sent,
+    releaseCatalog: (result: unknown = {}) => {
+      if (deferredCatalogId === undefined) throw new Error('model/list is not pending');
+      onMsg?.({ jsonrpc: '2.0', id: deferredCatalogId, result });
+      deferredCatalogId = undefined;
+    },
     releaseRead: () => {
       if (deferredReadId === undefined) throw new Error('thread/read is not pending');
       onMsg?.({ jsonrpc: '2.0', id: deferredReadId, result: historyResult });
@@ -143,6 +151,35 @@ describe('createCodexObserver attach resilience', () => {
 });
 
 describe('createCodexObserver controller-owned bootstrap', () => {
+  it('applies requested model and effort when creating the native thread, without changing profile defaults', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({
+      transport: t.transport,
+      start: { cwd: '/tmp/ws', model: 'chosen-model', effort: 'high' },
+    });
+    const projection = projectAgentEvents(obs);
+    try {
+      expect(t.calls().find((call) => call.method === 'thread/start')?.params).toMatchObject({
+        model: 'chosen-model',
+        config: { model_reasoning_effort: 'high' },
+      });
+      expect(t.calls().some((call) => call.method?.startsWith('config/'))).toBe(false);
+      expect(projection.monitorBatches.flatMap((batch) => batch.updates)).toContainEqual(
+        expect.objectContaining({ family: 'effort', value: { kind: 'effort', value: 'high', intent: 'configured' } }),
+      );
+    } finally {
+      projection.dispose();
+      await obs.dispose();
+    }
+    const defaults = controllable(0);
+    const inherited = await createCodexObserver({ transport: defaults.transport, start: { cwd: '/tmp/ws' } });
+    try {
+      expect(defaults.calls().find((call) => call.method === 'thread/start')?.params).not.toHaveProperty('config');
+    } finally {
+      await inherited.dispose();
+    }
+  });
+
   it('publishes the native-TUI observer rail as catalog-routed candidates', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
@@ -155,6 +192,69 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     expect(candidates.every(({ type, event }) => safeParseAgentEvent(type, event).success)).toBe(true);
 
     off();
+    await obs.dispose();
+  });
+
+  it('reaches native readiness without a catalog reply or fresh-thread history reads', async () => {
+    const t = controllable(0, {}, { deferCatalog: true });
+    const contextRead = vi.spyOn(rolloutContext, 'readLastCodexContextWindow');
+    try {
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws', model: 'model-a' } });
+      const projection = projectAgentEvents(obs);
+      expect(obs.sessionId).toBe('th-owned');
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(t.calls().map((call) => call.method)).not.toContain('thread/read');
+      expect(contextRead).not.toHaveBeenCalled();
+      // The model can change before optional metadata arrives. Enrich the
+      // latest identity, never restore the model from the bootstrap response.
+      const candidates: AdapterEventCandidate[] = [];
+      obs.events.onCandidate((candidate) => candidates.push(candidate));
+      t.deliver({
+        jsonrpc: '2.0',
+        method: 'thread/settings/updated',
+        params: { threadId: 'th-owned', model: 'model-b' },
+      });
+      t.releaseCatalog({
+        data: [
+          { id: 'model-a', displayName: 'A' },
+          { id: 'model-b', displayName: 'B' },
+        ],
+      });
+      await vi.waitFor(() =>
+        expect(candidates.filter((c) => c.type === 'model:updated').at(-1)?.event).toMatchObject({
+          model: { id: 'model-b', displayName: 'B' },
+        }),
+      );
+      const correction = candidates.filter((c) => c.type === 'monitor:batch').at(-1)?.event;
+      expect(correction).toMatchObject({
+        batch: {
+          phase: 'correction',
+          updates: expect.arrayContaining([
+            expect.objectContaining({
+              family: 'model',
+              key: 'observed',
+              value: expect.objectContaining({ providerModelId: 'model-b', displayName: 'B' }),
+            }),
+          ]),
+        },
+      });
+      await obs.dispose();
+    } finally {
+      contextRead.mockRestore();
+    }
+  });
+
+  it.each(['dispose', 'rail-close'] as const)('does not publish late catalog evidence after %s', async (ending) => {
+    const t = controllable(0, {}, { deferCatalog: true });
+    const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws', model: 'model-a' } });
+    const candidates: AdapterEventCandidate[] = [];
+    obs.events.onCandidate((candidate) => candidates.push(candidate));
+    if (ending === 'dispose') await obs.dispose();
+    else t.fireClose();
+    const count = candidates.length;
+    t.releaseCatalog({ data: [{ id: 'model-a', displayName: 'A' }] });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(candidates).toHaveLength(count);
     await obs.dispose();
   });
 
@@ -197,6 +297,58 @@ describe('createCodexObserver controller-owned bootstrap', () => {
 
     projection.dispose();
     await obs.dispose();
+  });
+
+  describe('who decides the permissions left unset', () => {
+    const configuredPermission = (projection: ReturnType<typeof projectAgentEvents>): unknown =>
+      projection.monitorBatches
+        .flatMap(({ updates }) => updates as Array<{ key?: string; value?: { raw?: unknown } }>)
+        .find(({ key }) => key === 'provider-permission-configured')?.value?.raw;
+
+    it("keeps the adapter's explicit defaults for a caller that is not a typed launch (a host's own spawn)", async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+      const projection = projectAgentEvents(obs);
+      expect(t.calls().find((call) => call.method === 'thread/start')?.params).toMatchObject({
+        cwd: '/tmp/ws',
+        sandbox: 'workspace-write',
+        approvalPolicy: 'on-request',
+      });
+      expect(configuredPermission(projection)).toBe('approval:on-request; sandbox:workspace-write');
+      projection.dispose();
+      await obs.dispose();
+    });
+
+    it("leaves them out of thread/start for a typed launch, so the app-server's configuration decides", async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({
+        transport: t.transport,
+        start: { cwd: '/tmp/ws', permissionDefaults: 'configuration' },
+      });
+      const projection = projectAgentEvents(obs);
+      const params = t.calls().find((call) => call.method === 'thread/start')?.params;
+      expect(params).toMatchObject({ cwd: '/tmp/ws' });
+      expect(params).not.toHaveProperty('sandbox');
+      expect(params).not.toHaveProperty('approvalPolicy');
+      expect(configuredPermission(projection)).toBeUndefined();
+      projection.dispose();
+      await obs.dispose();
+    });
+
+    it('sends what a typed launch named and leaves only the rest to the configuration', async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({
+        transport: t.transport,
+        start: { cwd: '/tmp/ws', sandbox: 'read-only', permissionDefaults: 'configuration' },
+      });
+      const projection = projectAgentEvents(obs);
+      const params = t.calls().find((call) => call.method === 'thread/start')?.params;
+      expect(params).toMatchObject({ cwd: '/tmp/ws', sandbox: 'read-only' });
+      expect(params).not.toHaveProperty('approvalPolicy');
+      expect(configuredPermission(projection)).toBe('sandbox:read-only');
+      projection.dispose();
+      await obs.dispose();
+    });
   });
 
   it('keeps the observed TUI run alive and degrades monitor readiness when its app-server rail closes', async () => {

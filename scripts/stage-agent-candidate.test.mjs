@@ -14,7 +14,7 @@ test('staging changes only candidate version state and the stable persona projec
       },
     ],
   };
-  const persona = { id: 'fake', asm: { package: '@vibecook/puppeteer-surface', path: 'old' }, boot: [] };
+  const persona = { id: 'fake', asm: { package: '@vibefield/puppeteer-surface', path: 'old' }, boot: [] };
   stageCandidateDocuments({
     ledger,
     persona,
@@ -31,7 +31,7 @@ test('staging changes only candidate version state and the stable persona projec
     persona: 'fake',
   });
   assert.deepEqual(persona.asm, {
-    package: '@vibecook/puppeteer-surface',
+    package: '@vibefield/puppeteer-surface',
     path: 'vendors/fake',
   });
 });

@@ -1,4 +1,4 @@
-import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 import type {
   SemanticObservationAttachRequest,
   SemanticObservationEvent,

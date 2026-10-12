@@ -13,7 +13,7 @@ import {
   type SessionLifecycle,
   type SessionRuntimeState,
   type AdapterDisposeOptions,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { AgentEventBus } from './events/event-bus.js';
 import type { AgentMonitorService } from './services/monitor-service.js';
 import { AgentStateService } from './services/state-service.js';

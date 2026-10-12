@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-adapter-codex — Codex native adapter.
+ * @vibefield/puppeteer-adapter-codex — Codex native adapter.
  *
  * Codex's native surface is a structured JSON-RPC `app-server` protocol (M5;
  * packages/surface/vendors/codex/findings.md), so this adapter is a structured driver, not
@@ -22,3 +22,4 @@ export * from './driver.js';
 export * from './observation/observer.js';
 export * from './launch/tui-session.js';
 export * from './launch/native-invocation.js';
+export * from './services/models.js';

@@ -1,7 +1,7 @@
 /** ACP 1.2.1 protocol facts projected onto the evidence-backed monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { MonitorMetricFamily } from '@vibecook/puppeteer-core';
+import type { MonitorMetricFamily } from '@vibefield/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { SessionConfigOption, SessionModeState, SessionNotification } from '@agentclientprotocol/sdk';
 import { acpModelIdentity } from './model.js';
 import { ACP_CONTRACT, ACP_MONITOR_CAPABILITIES } from './monitor-capabilities.js';

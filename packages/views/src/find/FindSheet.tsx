@@ -7,12 +7,12 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { HistoryPort, HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import { AgentIcon } from '../icons/AgentIcon.js';
-import type { MonitorAgent } from '../monitor/types.js';
+import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
+import type { FindAgent } from './find-agent.js';
 import {
   FIND_DEBOUNCE_MS,
   FIND_MAX_SNIPPETS,
-  buildFindRows,
+  createFindRows,
   footSentence,
   isCursorKey,
   liveScope,
@@ -35,11 +35,11 @@ import {
 /** The daemon port, as the host supplies it (`history-port.ts`). */
 export type FindHistoryBridge = HistoryPort;
 
-export interface FindSheetProps {
+export interface FindSheetProps<Agent extends FindAgent = FindAgent> {
   open: boolean;
-  agents: readonly MonitorAgent[];
+  agents: readonly Agent[];
   onClose(): void;
-  onSelect(agent: MonitorAgent): void;
+  onSelect(agent: Agent): void;
   /** The daemon port the host supplies; a sheet never reaches a window bridge itself. */
   history: FindHistoryBridge;
   nowMs?: number;
@@ -136,7 +136,14 @@ function FindRowView({
   );
 }
 
-export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: FindSheetProps) {
+export function FindSheet<Agent extends FindAgent>({
+  open,
+  agents,
+  onClose,
+  onSelect,
+  history,
+  nowMs,
+}: FindSheetProps<Agent>) {
   const bridge = history;
   const [query, setQuery] = useState('');
   const [facts, setFacts] = useState<ReadonlyMap<string, HistorySessionFacts>>(() => new Map());
@@ -267,9 +274,10 @@ export function FindSheet({ open, agents, onClose, onSelect, history, nowMs }: F
     return () => window.removeEventListener('keydown', closeOnEscape, true);
   }, [open, onClose]);
 
+  const rowsFor = useMemo(() => createFindRows<Agent>(), []);
   const rows = useMemo(
-    () => buildFindRows({ agents, facts, hits, query, nowMs: clock }),
-    [agents, facts, hits, query, clock],
+    () => rowsFor({ agents, facts, hits, query, nowMs: clock }),
+    [agents, facts, hits, query, clock, rowsFor],
   );
   // New rows put the cursor on the first one, so Enter lands at once. Keyed on
   // the rows' identities, not the array, which is rebuilt on every clock tick.

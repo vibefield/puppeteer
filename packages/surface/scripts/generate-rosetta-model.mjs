@@ -4,6 +4,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from './check-evidence.mjs';
 import { writeGroundTruthArtifacts } from './groundtruth.mjs';
 import { rosettaAgentConfig, rosettaArtifactIdentity, rosettaEventIdentity } from './rosetta-agents.mjs';
@@ -275,7 +276,7 @@ export function generateRosettaSurfaceModel(vendor) {
         ? `${item.stream.glob}; ${item.record.observed ?? 0} retained observation(s); source evidence: ${item.record.evidence ?? item.stream.evidence}.`
         : `${item.stream.glob}; non-record native artifact tracked by the complete Rosetta stream inventory.`,
     };
-    writeJson(join(eventsRoot, `${item.event}.json`), document);
+    writeJson(join(eventsRoot, eventDocumentPath(item.event)), document);
     nodeByEvent.set(item.event, `event-${String(index + 1).padStart(3, '0')}`);
   }
 

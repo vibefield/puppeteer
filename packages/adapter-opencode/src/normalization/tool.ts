@@ -1,4 +1,4 @@
-import type { AgentEvent, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { AgentEvent, ToolPresentation } from '@vibefield/puppeteer-core';
 import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeError, openCodeNumber, openCodeText } from './wire.js';
 
 export interface OpenCodeToolResult {

@@ -1,4 +1,4 @@
-import type { WorkspaceEvent, WorkspaceFileChange } from '@vibecook/puppeteer-core';
+import type { WorkspaceEvent, WorkspaceFileChange } from '@vibefield/puppeteer-core';
 import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeNumber, openCodeText } from './wire.js';
 

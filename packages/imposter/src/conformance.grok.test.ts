@@ -9,10 +9,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
-import { createGrokBackend, type GrokBackend } from '@vibecook/puppeteer-adapter-grok';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
+import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibefield/puppeteer-core';
+import { createGrokBackend, type GrokBackend } from '@vibefield/puppeteer-adapter-grok';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibefield/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const children = new Set<ChildProcess>();

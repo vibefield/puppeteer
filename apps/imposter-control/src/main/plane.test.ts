@@ -13,7 +13,7 @@ import {
   REFUSED,
   type ControlClientOptions,
   type ImposterControl,
-} from '@vibecook/puppeteer-imposter/control';
+} from '@vibefield/puppeteer-imposter/control';
 import { loadConsoleUi } from './main.js';
 import { createControlPlane, type ControlPlane, type ControlPlaneProjection } from './plane.js';
 import { collectEvents, controlPaths, IDLE_SCENARIO_DRIVER, waitFor, type EventCollector } from './testing.js';

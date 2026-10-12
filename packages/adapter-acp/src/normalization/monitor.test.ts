@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { SessionNotification } from '@agentclientprotocol/sdk';
 import { ACP_MONITOR_CAPABILITIES, AcpMonitorEvidence, acpElicitationQuestions } from './monitor.js';
 

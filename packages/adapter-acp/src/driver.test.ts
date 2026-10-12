@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './transport/connection.js';
@@ -24,6 +24,55 @@ async function driveTurn(session: Awaited<ReturnType<typeof createAcpSession>>, 
 }
 
 describe('createAcpSession', () => {
+  it('awaits transport cleanup for every concurrent dispose call', async () => {
+    let finish!: () => void;
+    const closed = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const close = vi.fn(() => closed);
+    const connector = scriptedAcpConnector({ sessionId: SID, reply: 'pong' });
+    const session = await createAcpSession({
+      cwd: '/x',
+      connector: (toClient) => ({ ...connector(toClient), close }),
+    });
+    const completed = vi.fn();
+    const first = session.dispose().then(completed);
+    const second = session.dispose().then(completed);
+    await Promise.resolve();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(completed).not.toHaveBeenCalled();
+    finish();
+    await Promise.all([first, second]);
+    expect(completed).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['initialize', 'newSession', 'loadSession'] as const)(
+    'awaits cleanup when %s fails during bootstrap',
+    async (method) => {
+      const failure = new Error('bootstrap failed');
+      let finish!: () => void;
+      const closed = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      const close = vi.fn(() => closed);
+      const connector = scriptedAcpConnector({ sessionId: SID, reply: 'pong' });
+      const rejected = vi.fn((error: unknown) => error);
+      const creating = createAcpSession({
+        cwd: '/x',
+        ...(method === 'loadSession' ? { resume: SID } : {}),
+        connector: (toClient) => {
+          const connection = connector(toClient);
+          connection.agent[method] = vi.fn().mockRejectedValue(failure);
+          return { ...connection, close };
+        },
+      }).catch(rejected);
+      await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+      expect(rejected).not.toHaveBeenCalled();
+      finish();
+      await expect(creating).resolves.toBe(failure);
+    },
+  );
+
   it('exposes the ACP session id and a structured observation level', async () => {
     const session = await createAcpSession({
       cwd: '/x',

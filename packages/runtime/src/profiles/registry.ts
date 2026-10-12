@@ -12,7 +12,7 @@ import {
   type ProfileProvider,
   type ProfileService,
   type ProfileSet,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { ProfileRegistrySnapshot, ProfileSetInfo, ProfileStore } from '../types.js';
 import { profileSetSlug, uniqueProfileSetId } from './roots.js';
 

@@ -4,6 +4,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { publicPackages } from './public-packages.mjs';
+import { releaseMetadataIssues } from './release-packages.mjs';
 
 const scriptRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -50,67 +51,72 @@ const architectureDependencies = new Map([
   ['packages/core', []],
   ['packages/surface', []],
   ['packages/native-observation', []],
-  ['packages/imposter', ['@vibecook/puppeteer-surface']],
-  ['packages/adapter-acp', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-antigravity', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
-  ['packages/adapter-claude', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-codex', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-copilot', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
-  ['packages/adapter-grok', ['@vibecook/puppeteer-adapter-acp', '@vibecook/puppeteer-core']],
-  ['packages/adapter-hermes', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-kimi', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-opencode', ['@vibecook/puppeteer-core']],
-  ['packages/adapter-pi', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-native-observation']],
-  ['packages/record', ['@vibecook/puppeteer-core']],
-  ['packages/testing', ['@vibecook/puppeteer-core']],
+  ['packages/imposter', ['@vibefield/puppeteer-surface']],
+  ['packages/adapter-acp', ['@vibefield/puppeteer-core']],
+  ['packages/adapter-antigravity', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-claude', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-codex', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-copilot', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  [
+    'packages/adapter-grok',
+    ['@vibefield/puppeteer-adapter-acp', '@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation'],
+  ],
+  ['packages/adapter-hermes', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-kimi', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-opencode', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/adapter-pi', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-native-observation']],
+  ['packages/record', ['@vibefield/puppeteer-core']],
+  ['packages/testing', ['@vibefield/puppeteer-core']],
   ['packages/workspaces', []],
-  ['packages/runtime', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-record', '@vibecook/puppeteer-workspaces']],
+  ['packages/runtime', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-record', '@vibefield/puppeteer-workspaces']],
   [
     'packages/builtin-providers',
     [
-      '@vibecook/puppeteer-adapter-acp',
-      '@vibecook/puppeteer-adapter-antigravity',
-      '@vibecook/puppeteer-adapter-claude',
-      '@vibecook/puppeteer-adapter-codex',
-      '@vibecook/puppeteer-adapter-copilot',
-      '@vibecook/puppeteer-adapter-grok',
-      '@vibecook/puppeteer-adapter-hermes',
-      '@vibecook/puppeteer-adapter-kimi',
-      '@vibecook/puppeteer-adapter-opencode',
-      '@vibecook/puppeteer-adapter-pi',
-      '@vibecook/puppeteer-core',
-      '@vibecook/puppeteer-runtime',
+      '@vibefield/puppeteer-adapter-acp',
+      '@vibefield/puppeteer-adapter-antigravity',
+      '@vibefield/puppeteer-adapter-claude',
+      '@vibefield/puppeteer-adapter-codex',
+      '@vibefield/puppeteer-adapter-copilot',
+      '@vibefield/puppeteer-adapter-grok',
+      '@vibefield/puppeteer-adapter-hermes',
+      '@vibefield/puppeteer-adapter-kimi',
+      '@vibefield/puppeteer-adapter-opencode',
+      '@vibefield/puppeteer-adapter-pi',
+      '@vibefield/puppeteer-core',
+      '@vibefield/puppeteer-runtime',
     ],
   ],
-  ['packages/monitor', ['@vibecook/puppeteer-core']],
-  ['packages/react', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-monitor']],
-  ['packages/views', ['@vibecook/puppeteer-core', '@vibecook/puppeteer-react']],
+  ['packages/view-sdk', []],
+  ['packages/monitor', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-view-sdk']],
+  ['packages/react', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-monitor']],
+  ['packages/views', ['@vibefield/puppeteer-core', '@vibefield/puppeteer-react', '@vibefield/puppeteer-view-sdk']],
   [
     'apps/godview',
     [
-      '@vibecook/puppeteer-builtin-providers',
-      '@vibecook/puppeteer-core',
-      '@vibecook/puppeteer-monitor',
-      '@vibecook/puppeteer-react',
-      '@vibecook/puppeteer-record',
-      '@vibecook/puppeteer-runtime',
-      '@vibecook/puppeteer-views',
-      '@vibecook/puppeteer-workspaces',
+      '@vibefield/puppeteer-builtin-providers',
+      '@vibefield/puppeteer-core',
+      '@vibefield/puppeteer-monitor',
+      '@vibefield/puppeteer-react',
+      '@vibefield/puppeteer-record',
+      '@vibefield/puppeteer-runtime',
+      '@vibefield/puppeteer-view-sdk',
+      '@vibefield/puppeteer-views',
+      '@vibefield/puppeteer-workspaces',
     ],
   ],
   [
     'apps/imposter-control',
     [
-      '@vibecook/puppeteer-adapter-antigravity',
-      '@vibecook/puppeteer-adapter-claude',
-      '@vibecook/puppeteer-adapter-codex',
-      '@vibecook/puppeteer-adapter-copilot',
-      '@vibecook/puppeteer-adapter-hermes',
-      '@vibecook/puppeteer-adapter-kimi',
-      '@vibecook/puppeteer-adapter-opencode',
-      '@vibecook/puppeteer-adapter-pi',
-      '@vibecook/puppeteer-core',
-      '@vibecook/puppeteer-imposter',
+      '@vibefield/puppeteer-adapter-antigravity',
+      '@vibefield/puppeteer-adapter-claude',
+      '@vibefield/puppeteer-adapter-codex',
+      '@vibefield/puppeteer-adapter-copilot',
+      '@vibefield/puppeteer-adapter-hermes',
+      '@vibefield/puppeteer-adapter-kimi',
+      '@vibefield/puppeteer-adapter-opencode',
+      '@vibefield/puppeteer-adapter-pi',
+      '@vibefield/puppeteer-core',
+      '@vibefield/puppeteer-imposter',
     ],
   ],
 ]);
@@ -120,8 +126,16 @@ const retiredRepositoryPaths = [
   'apps/godview/src/main/restore-launch.ts',
   'apps/godview/src/main/scenario-recorder.test.ts',
   'apps/godview/src/main/scenario-recorder.ts',
+  // Godview's own spawn-through gateway and shim: the kit (`packages/runtime/src/host/spawn-through`) replaced them.
+  'apps/godview/src/main/spawn-through.test.ts',
+  'apps/godview/src/main/spawn-through.ts',
   'apps/godview/src/renderer/legacy-agent-state.ts',
+  // The monitor-view migration's scaffolding (MV-8, L9): the legacy shim and its frozen views, the view host's bridge,
+  // Godview's legacy rows and the MV-2 differential that compared the pre-MV seam through the shim.
+  'apps/godview/src/renderer/monitor/differential',
+  'apps/godview/src/renderer/monitor/legacy-rows.ts',
   'apps/godview/src/renderer/ScenarioRecordingControl.tsx',
+  'apps/godview/src/shim',
   'apps/emulator',
   'docs/monitor-v2-canary.md',
   'draft/DESIGN.md',
@@ -183,6 +197,15 @@ const retiredRepositoryPaths = [
   'packages/runtime/src/monitor-ipc.ts',
   'packages/runtime/src/monitor-shadow.ts',
   'packages/testing/src/session-projection.ts',
+  'packages/view-sdk/src/host/legacy.ts',
+  'packages/views/src/legacy',
+  // The window's own ledgers and a view's host-DOM helper (MV-8b, M176 item 5): the backend computes unread and cost
+  // once (L5, L11), and a view reads its stage from its input (MV-D19).
+  'packages/views/src/monitor/chrome.ts',
+  'packages/views/src/monitor/unread.ts',
+  'packages/views/src/monitor/usage-history.ts',
+  'packages/views/src/monitor/usage-ledger.ts',
+  'packages/views/src/views/swarm/physics/context.tsx',
 ];
 
 const requiredArchitectureDocuments = [
@@ -248,11 +271,7 @@ const forbiddenConsumerUsageTokens = [
   'spark',
 ];
 
-const providerNeutralLaunchPaths = [
-  'apps/godview/src/main/spawn-through.ts',
-  'apps/godview/src/shim/agent-shim.ts',
-  'apps/godview/src/restore-snapshot.ts',
-];
+const providerNeutralLaunchPaths = ['apps/godview/src/restore-snapshot.ts'];
 
 const providerNeutralLaunchHostPaths = ['apps/godview/src/main/main.ts'];
 
@@ -305,10 +324,10 @@ const forbiddenPrivateLaunchTokens = [
   'agentOptions',
 ];
 
-// The views' visual-branding maps: the agents' own marks, and the services' —
-// the company marks, and the names their plans are sold under (RFC 006, "Plans").
+// The views' visual-branding maps: the services' — the company marks, and the
+// names their plans are sold under (RFC 006, "Plans"). The agents' own marks are
+// the SDK toolkit's (`marks.ts`) since MV-4 moved AgentIcon into `/react` (M6).
 const godviewBrandingPaths = new Set([
-  'packages/views/src/icons/AgentIcon.tsx',
   'packages/views/src/icons/ServiceMark.tsx',
   'packages/views/src/icons/service-marks.ts',
 ]);
@@ -503,6 +522,10 @@ export function auditPackageLayout(root = scriptRoot) {
       ),
     ),
   );
+  // The spawn-through host kit is what every host's shim and gateway run: the same boundary, every file of it.
+  issues.push(
+    ...launchConsumerBoundaryIssues(productionTypeScriptSources(root, 'packages/runtime/src/host/spawn-through')),
+  );
   issues.push(
     ...launchHostBoundaryIssues(
       new Map(
@@ -532,8 +555,9 @@ export function auditPackageLayout(root = scriptRoot) {
     }
     const manifest = json(manifestPath);
     manifests.set(directory, manifest);
+    issues.push(...releaseMetadataIssues(manifest, directory));
     const leaf = directory.slice('packages/'.length);
-    const expectedName = `@vibecook/puppeteer-${leaf}`;
+    const expectedName = `@vibefield/puppeteer-${leaf}`;
     if (manifest.name !== expectedName) issues.push(`${directory} name is ${manifest.name}; expected ${expectedName}`);
     if (manifest.version !== rootManifest.version) {
       issues.push(`${directory} version ${manifest.version} differs from root ${rootManifest.version}`);
@@ -612,6 +636,9 @@ export function auditPackageLayout(root = scriptRoot) {
   if (!extraFiles.some((entry) => entry.type === 'generic' && entry.path === 'packages/core/src/version.ts')) {
     issues.push('release-please must update packages/core/src/version.ts');
   }
+  if (!extraFiles.some((entry) => entry.type === 'generic' && entry.path === 'README.md')) {
+    issues.push('release-please must update README.md');
+  }
   const versionSourcePath = join(root, 'packages', 'core', 'src', 'version.ts');
   if (!existsSync(versionSourcePath)) {
     issues.push('packages/core/src/version.ts is missing');
@@ -622,9 +649,16 @@ export function auditPackageLayout(root = scriptRoot) {
   if (!existsSync(readmePath)) {
     issues.push('README.md is missing');
   } else if (
-    !readFileSync(readmePath, 'utf8').includes(`pnpm add @vibecook/puppeteer-runtime@${rootManifest.version}`)
+    !readFileSync(readmePath, 'utf8').includes(`pnpm add @vibefield/puppeteer-runtime@${rootManifest.version}`)
   ) {
     issues.push(`README install command does not match root version ${rootManifest.version}`);
+  }
+  if (existsSync(readmePath)) {
+    const readme = readFileSync(readmePath, 'utf8');
+    const installBlock = readme.match(/<!-- x-release-please-start-version -->([\s\S]*?)<!-- x-release-please-end -->/);
+    if (!installBlock?.[1].includes(`pnpm add @vibefield/puppeteer-runtime@${rootManifest.version}`)) {
+      issues.push('README install command must be inside a release-please version block');
+    }
   }
 
   const allManifests = new Map([...manifests, ...applicationManifests]);
@@ -633,7 +667,7 @@ export function auditPackageLayout(root = scriptRoot) {
   issues.push(...cycleIssues(edges, nameToDirectory));
   issues.push(...architectureDependencyIssues(edges));
   for (const [directory, dependencies] of edges) {
-    if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibecook/puppeteer-surface')) {
+    if (directory.startsWith('packages/adapter-') && dependencies.includes('@vibefield/puppeteer-surface')) {
       issues.push(`${directory} must consume generated projections, not Surface at runtime`);
     }
     if (directory === 'packages/imposter') {

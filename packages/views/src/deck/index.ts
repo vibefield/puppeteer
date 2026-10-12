@@ -6,3 +6,7 @@
 export * from './pane-frame.js';
 export * from './PaneFrame.js';
 export * from './DeckFrames.js';
+export * from './deck-zoom.js';
+export * from './use-deck-zoom.js';
+export * from './unused-pane-sessions.js';
+export * from './completed-agent-panes.js';

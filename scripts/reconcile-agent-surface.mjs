@@ -3,7 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildGroundTruth, isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
 

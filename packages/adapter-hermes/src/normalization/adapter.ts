@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { hermesNativeEvent } from './types.js';
 
 const RETAINED_HERMES_EVENTS = new Set([

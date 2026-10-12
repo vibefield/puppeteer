@@ -1,4 +1,4 @@
-import type { NotificationEvent } from '@vibecook/puppeteer-core';
+import type { NotificationEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, str } from './types.js';
 
 /** Codex user-facing error notification normalization. */

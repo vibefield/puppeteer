@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibefield/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { CodexMonitorEvidence } from './monitor.js';
 import { CodexNotificationNormalizer } from './pipeline.js';
 
@@ -38,6 +38,36 @@ function project(batches: AdapterMonitorObservationBatch[], asOf: string) {
 }
 
 describe('CodexMonitorEvidence', () => {
+  it('enriches only current model claims and releases the one-shot catalog buffer', () => {
+    const names = new Map<string, string>();
+    const evidence = new CodexMonitorEvidence({
+      nativeSessionId: () => THREAD,
+      modelDisplayName: (id) => names.get(id),
+      pendingModelCatalog: true,
+    });
+    evidence.bootstrapResponseBatch({ thread: { id: THREAD }, model: 'a' }, T0, 'thread/start', {}, true);
+    evidence.notificationBatch({ method: 'thread/settings/updated', params: { threadId: THREAD, model: 'b' } }, T0);
+    names.set('a', 'Old model');
+    names.set('b', 'Current model');
+    const batch = evidence.modelCatalogBatch(T0)!;
+    expect(batch.phase).toBe('correction');
+    expect(batch.updates).toEqual([
+      {
+        family: 'model',
+        operation: 'upsert',
+        key: 'observed',
+        value: { kind: 'model', intent: 'observed', providerModelId: 'b', displayName: 'Current model' },
+      },
+    ]);
+    expect(evidence.modelCatalogBatch(T0)).toBeNull();
+    const immediate = new CodexMonitorEvidence({
+      nativeSessionId: () => THREAD,
+      modelDisplayName: (id) => names.get(id),
+    });
+    immediate.bootstrapResponseBatch({ thread: { id: THREAD }, model: 'b' }, T0, 'thread/start');
+    expect(immediate.modelCatalogBatch(T0)).toBeNull();
+  });
+
   it('keeps a model round-trip ambiguous and clears a reverted service tier', () => {
     const evidence = new CodexMonitorEvidence({ nativeSessionId: () => THREAD });
     evidence.bootstrapResponseBatch(

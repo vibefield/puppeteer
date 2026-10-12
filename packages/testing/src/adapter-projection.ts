@@ -6,8 +6,8 @@ import {
   type AgentEvent,
   type AgentEventEnvelope,
   type SessionRuntimeState,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 
 export interface TestAgentProjection {
   readonly state: SessionRuntimeState;

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { NATIVE_PROFILE_SET_ID, ProfileSetIdSchema } from '@vibecook/puppeteer-core';
+import { NATIVE_PROFILE_SET_ID, ProfileSetIdSchema } from '@vibefield/puppeteer-core';
 
 /**
  * Managed profile folders.

@@ -3,8 +3,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
-import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { buildSourceReference } from './census/extract-source-reference.mjs';
 import { hookEvents, hookSchemas, persistedSchemas, transientTypes } from './census/source-contract.mjs';
 import { kimiRules } from './sanitize-captures.mjs';

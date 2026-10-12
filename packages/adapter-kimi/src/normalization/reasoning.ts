@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { boundedKimiSetAdd } from './types.js';
 
 /** Presence-only Kimi think parts → reasoning lifecycle events. */

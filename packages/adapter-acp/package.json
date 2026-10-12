@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-acp",
+  "name": "@vibefield/puppeteer-adapter-acp",
   "version": "0.1.8",
   "type": "module",
   "description": "Generic Agent Client Protocol (ACP) adapter: transport connectors, session/update normalization, lifecycle, permissions, and deterministic prompt injection.",
@@ -41,9 +41,9 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.2.1",
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibefield/puppeteer-core": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-testing": "workspace:*"
+    "@vibefield/puppeteer-testing": "workspace:*"
   }
 }

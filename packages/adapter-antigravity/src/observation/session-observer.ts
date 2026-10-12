@@ -1,6 +1,11 @@
 import { resolve } from 'node:path';
-import { createAppendOnlyJsonlTail } from '@vibecook/puppeteer-native-observation';
-import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '@vibecook/puppeteer-core';
+import { createAppendOnlyJsonlTail } from '@vibefield/puppeteer-native-observation';
+import type {
+  AgentEvent,
+  AgentEventConfidence,
+  AgentEventSource,
+  AgentEventSourceRef,
+} from '@vibefield/puppeteer-core';
 import { AntigravityTranscriptNormalizer } from '../normalization/pipeline.js';
 import { antigravityPrompt, antigravityRecord, antigravitySourceRef } from '../normalization/types.js';
 import { listAntigravitySessions, transcriptContainsPrompt, type AntigravitySessionLocation } from './session-store.js';

@@ -1,4 +1,4 @@
-import type { AgentHost, PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
+import type { AgentHost, PromptReceipt, PromptSubmission } from '@vibefield/puppeteer-core';
 
 export class PiPromptService {
   constructor(private readonly options: { host: AgentHost; runtimeSessionId: string; isDisposed(): boolean }) {}

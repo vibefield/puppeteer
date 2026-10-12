@@ -1,4 +1,9 @@
-import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '@vibecook/puppeteer-core';
+import type {
+  AgentEvent,
+  AgentEventConfidence,
+  AgentEventSource,
+  AgentEventSourceRef,
+} from '@vibefield/puppeteer-core';
 
 export interface CopilotNormalizedRecord {
   events: AgentEvent[];

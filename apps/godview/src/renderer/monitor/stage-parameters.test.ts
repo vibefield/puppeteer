@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { monitorParameterDefaults } from '@vibecook/puppeteer-views';
+import { monitorParameterDefaults } from '@vibefield/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,
@@ -29,7 +29,7 @@ describe('terminal safe area', () => {
     // The frame is the views package's since PU-14; its stylesheet is read
     // through the package's own export, wherever the package resolves from.
     const css = readFileSync(
-      createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/styles/deck-frame.css'),
+      createRequire(import.meta.url).resolve('@vibefield/puppeteer-views/styles/deck-frame.css'),
       'utf8',
     );
     const defaults = monitorParameterDefaults(STAGE_PARAMETER_GROUPS);

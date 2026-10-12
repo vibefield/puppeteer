@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { AdapterEventCandidate, AgentEvent } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import type { AdapterEventCandidate, AgentEvent } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
 
@@ -160,7 +160,12 @@ describe('createCodexSession', () => {
 
   it('establishes identity and structured observation from thread/start', async () => {
     const s = scriptedAppServer();
-    const session = await createCodexSession({ cwd: '/x', transport: s.transport, model: 'gpt-5.6-sol' });
+    const session = await createCodexSession({
+      cwd: '/x',
+      transport: s.transport,
+      model: 'gpt-5.6-sol',
+      effort: 'high',
+    });
     const projection = projectAgentEvents(session);
     expect(session.sessionId).toBe(THREAD);
     expect(session.runtimeSessionId).toBe(THREAD);
@@ -174,6 +179,7 @@ describe('createCodexSession', () => {
     });
     expect(s.sent.find((message) => message.method === 'thread/start')?.params).toMatchObject({
       model: 'gpt-5.6-sol',
+      config: { model_reasoning_effort: 'high' },
     });
     const monitorBatches = projection.monitorBatches;
     expect(monitorBatches[0]).toMatchObject({ phase: 'bootstrap', capabilities: expect.any(Array) });

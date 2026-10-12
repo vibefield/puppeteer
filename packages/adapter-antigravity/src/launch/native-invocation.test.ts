@@ -1,5 +1,6 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { AgentNativeInvocation } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
   captureAntigravityContinuationState,
   normalizeAntigravityNativeInvocation,
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'antigravity',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -24,7 +25,7 @@ describe('Antigravity native invocation normalization', () => {
     ).toEqual({
       status: 'accepted',
       resume: 'conversation-1',
-      options: { model: 'gemini', mode: 'default', addDirs: ['/shared'] },
+      options: { model: 'gemini', mode: 'default', addDirs: [resolve('/shared')] },
     });
     expect(normalizeAntigravityNativeInvocation(invocation(['--conversation', '../escape'])).status).toBe('rejected');
     expect(normalizeAntigravityNativeInvocation(invocation(['--effort', 'maximum'])).status).toBe('rejected');
@@ -32,14 +33,14 @@ describe('Antigravity native invocation normalization', () => {
   });
 
   it('owns and restores an isolated imposter state root', () => {
-    const root = '/tmp/antigravity-imposter';
+    const root = resolve('/tmp/antigravity-imposter');
     const normalized = normalizeAntigravityNativeInvocation(
-      invocation([], { implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: root } }),
+      invocation([], { implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: root } }),
     );
     expect(normalized).toEqual({
       status: 'accepted',
       options: {
-        executable: '/opt/ai',
+        executable: resolve('/opt/ai'),
         dataRoot: root,
         env: {
           AI_PERSONA: 'antigravity',
@@ -50,14 +51,16 @@ describe('Antigravity native invocation normalization', () => {
     });
     if (normalized.status !== 'accepted' || !normalized.options)
       throw new Error('expected accepted Antigravity options');
-    const state = captureAntigravityContinuationState(normalized.options, '/repo');
-    expect(restoreAntigravityContinuationState(state, { imposterExecutable: '/opt/ai' })).toEqual(normalized.options);
+    const state = captureAntigravityContinuationState(normalized.options, resolve('/repo'));
+    expect(restoreAntigravityContinuationState(state, { imposterExecutable: resolve('/opt/ai') })).toEqual(
+      normalized.options,
+    );
     expect(() => restoreAntigravityContinuationState('{"version":1,"dataRoot":"/tmp","extra":true}')).toThrow(
       'invalid Antigravity continuation state',
     );
     expect(() =>
       restoreAntigravityContinuationState('{"version":1,"home":"/tmp/home","imposterRoot":"/tmp/imposter"}', {
-        imposterExecutable: '/opt/ai',
+        imposterExecutable: resolve('/opt/ai'),
       }),
     ).toThrow('invalid Antigravity continuation state');
   });

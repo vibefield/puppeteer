@@ -13,6 +13,29 @@ around the stage, a visually hidden button per agent for keyboard and assistive 
 
 The swarm is the first Godview view to render on the GPU. The list and rain views are unchanged by this RFC.
 
+## Terminal handoff identity (2026-09-28)
+
+`MonitorAgent.visualId` is an optional spatial identity. Swarm uses it for its physics body,
+render models, hit testing and accessible button key; actions, usage and unread still use
+`MonitorAgent.id`. Hosts default the spatial identity to the terminal session and carry it
+across explicit launcher and clean-exit replacements. A managed row claims that body while
+the replaced shell leaves the pane and roster; an attached mirror keeps its own body.
+The previous spatial identity of an existing managed row survives subsequent PTY resumes.
+
+**Correction 2026-09-29:** the first handoff implementation left `SwarmBubbleModel.id`
+as the runtime row ID. Pointer hit tests and arrival sorting read that model ID, so
+inherited bubbles painted correctly but could not be dragged, hovered or clicked.
+The render model now carries `visualId ?? id`, matching the physics body. Pointer
+selection still resolves and passes the current full agent row to the host.
+
+The shared `UnusedPaneSessions` receipt is consumed by lifetime input/agent/remote/exit facts,
+not a transient shell startup foreground job. A detached busy shell stays pending until
+native idle metadata; reattachment or actual use cancels that cleanup. Launcher handoff
+reserves the old body before mount, rolls back on refusal, and disposes the old shell only
+on its last unused attachment. In Godview, main's tab attachment ledger owns PTY termination;
+the renderer hides the closing shell immediately without issuing a competing termination.
+VibeField uses its audited terminal door instead.
+
 ## Why
 
 The swarm's design language is light and distance: soft outer glows, a graph that fills a body, a ring that follows
@@ -142,8 +165,9 @@ Agent marks are signed-distance tiles (`gpu/marks/marks.png`, twenty 64-texel ti
 SVGs by `research/svg-sdf`'s generator: spread 8, pxRange 16, the edge at 0.5; each agent's own mark plus the
 neighbours it could be confused with, so the lab can show the choice) and are reconstructed in the text pass at
 any size from the field, so a mark that breathes with the working body (0.92–1.08, 8–24 %, every 1.5 s, the DOM's
-ignition glyph) stays crisp. The tile table lives with the other branding in `AgentIcon.tsx`; a provider without a
-tile falls back to its letter.
+ignition glyph) stays crisp. The tile table lives with the other branding in `AgentIcon.tsx` (since MV-4,
+2026-10-05: the view SDK toolkit's `marks.ts`, beside the atlas and its png); a provider without a tile falls back to
+its letter.
 
 Glyphs are rasterised by Canvas2D at the device pixel ratio into an `r8unorm` atlas, one entry per size, weight,
 style, and character, in the same monospace stack the shell uses, and drawn as instanced quads snapped to device
@@ -180,6 +204,13 @@ the user last had it in front of them (the later of first sight and the last pro
 Reading Core's timestamp rather than watching the status change is what survives coalescing: a short turn can begin
 and end between two renders. The rule lives in `monitor/unread.ts` and is applied in `useMonitorAgents`, so any view
 may draw it; the swarm draws the dot.
+
+> **Erratum (2026-10-04, MV-2):** the rule is now applied by the monitor backend in main (`packages/monitor`
+> `backend/unread.ts`, verbatim, plan decision L5), with "in front of the user" being what any window reports its
+> active pane shows; `useMonitorAgents` holds the window's replica and no longer folds it.
+>
+> **Erratum (2026-10-07, MV-8b):** the window's copy, `monitor/unread.ts` (the table above), was deleted with the
+> window's usage ledgers; the backend's is the only one.
 
 ### Failure and fallback
 

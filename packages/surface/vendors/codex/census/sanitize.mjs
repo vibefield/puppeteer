@@ -25,7 +25,7 @@ import {
   defaultRules,
   extendRules,
   sanitizeCaptureDirectory,
-} from '@vibecook/puppeteer-surface/sanitize';
+} from '@vibefield/puppeteer-surface/sanitize';
 import { writeCaptureFidelity } from '../../../scripts/capture-fidelity.mjs';
 import { CODEX_VERSION } from './harness.mjs';
 

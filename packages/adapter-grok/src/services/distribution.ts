@@ -20,7 +20,7 @@ import type {
   InstalledAgent,
   ReleaseSnapshot,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { GROK_VERSION_FLAG, parseGrokVersion, resolveGrokExecutable } from '../detection.js';
 
 const GROK_NPM_PACKAGE = '@xai-official/grok';

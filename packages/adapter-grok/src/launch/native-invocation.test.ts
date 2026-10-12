@@ -1,5 +1,6 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { AgentNativeInvocation } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
   captureGrokContinuationState,
   normalizeGrokNativeInvocation,
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'grok',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -27,18 +28,18 @@ describe('Grok native invocation normalization', () => {
   });
 
   it('owns the leader-wide environment and continuation state', () => {
-    const imposterRoot = '/tmp/grok-imposter';
+    const imposterRoot = resolve('/tmp/grok-imposter');
     expect(
       normalizeGrokNativeInvocation(
         invocation([], {
           environment: { GROK_HOME: '../grok-home' },
-          implementation: { kind: 'imposter', executable: '/opt/ai', stateRoot: imposterRoot },
+          implementation: { kind: 'imposter', executable: resolve('/opt/ai'), stateRoot: imposterRoot },
         }),
       ),
     ).toEqual({
       status: 'accepted',
       options: {
-        executable: '/opt/ai',
+        executable: resolve('/opt/ai'),
         appServerEnv: {
           GROK_HOME: imposterRoot,
           AI_PERSONA: 'grok',
@@ -46,8 +47,8 @@ describe('Grok native invocation normalization', () => {
         },
       },
     });
-    const state = captureGrokContinuationState({ appServerEnv: { GROK_HOME: '../grok-home' } }, '/repo', {});
-    expect(restoreGrokContinuationState(state)).toEqual({ appServerEnv: { GROK_HOME: '/grok-home' } });
+    const state = captureGrokContinuationState({ appServerEnv: { GROK_HOME: '../grok-home' } }, resolve('/repo'), {});
+    expect(restoreGrokContinuationState(state)).toEqual({ appServerEnv: { GROK_HOME: resolve('/grok-home') } });
     const imposterState = captureGrokContinuationState(
       {
         appServerEnv: {
@@ -56,19 +57,19 @@ describe('Grok native invocation normalization', () => {
           PUPPETEER_IMPOSTER_HOME: imposterRoot,
         },
       },
-      '/repo',
+      resolve('/repo'),
       {},
     );
-    expect(restoreGrokContinuationState(imposterState, { imposterExecutable: '/opt/ai' })).toEqual({
-      executable: '/opt/ai',
+    expect(restoreGrokContinuationState(imposterState, { imposterExecutable: resolve('/opt/ai') })).toEqual({
+      executable: resolve('/opt/ai'),
       appServerEnv: {
         AI_PERSONA: 'grok',
         GROK_HOME: imposterRoot,
         PUPPETEER_IMPOSTER_HOME: imposterRoot,
       },
     });
-    expect(() => restoreGrokContinuationState(JSON.stringify({ version: 2, home: '/grok-home', extra: true }))).toThrow(
-      'invalid Grok continuation state',
-    );
+    expect(() =>
+      restoreGrokContinuationState(JSON.stringify({ version: 2, home: resolve('/grok-home'), extra: true })),
+    ).toThrow('invalid Grok continuation state');
   });
 });

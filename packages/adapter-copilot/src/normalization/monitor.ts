@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AdapterMonitorObservationBatch, ObservationCoverage } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, ObservationCoverage } from '@vibefield/puppeteer-core/monitor-spi';
 import { COPILOT_CONTRACT, COPILOT_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 export function copilotCapabilitiesBatch(
   nativeSessionId: string,

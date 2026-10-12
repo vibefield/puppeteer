@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const SAFE_NATIVE_SESSION_ID = /^[A-Za-z0-9._-]+$/u;
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
@@ -34,18 +35,25 @@ export function normalizeOpenCodeNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<OpenCodeNativeInvocationOptions> {
   if (invocation.providerId !== 'opencode') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
-  if (invocation.argv.length > 0) {
-    const value = invocation.argv[1];
+  if (argv.length > 0) {
+    const value = argv[1];
     if (
-      invocation.argv.length !== 2 ||
-      (invocation.argv[0] !== '-s' && invocation.argv[0] !== '--session') ||
+      argv.length !== 2 ||
+      (argv[0] !== '-s' && argv[0] !== '--session') ||
       !value ||
       value === '.' ||
       value === '..' ||
       !SAFE_NATIVE_SESSION_ID.test(value)
     ) {
-      return { status: 'rejected', reason: 'custom arguments are not compatible with the managed OpenCode launch' };
+      return {
+        status: 'rejected',
+        reason: 'an exact session id is required for managed OpenCode resume',
+        argument: argv[0]!,
+      };
     }
     resume = value;
   }

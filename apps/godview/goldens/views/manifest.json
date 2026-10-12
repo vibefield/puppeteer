@@ -1,0 +1,652 @@
+{
+  "tool": "apps/godview/goldens/capture.mjs",
+  "clock": "2026-10-03T15:00:00.000Z",
+  "seed": "mv0",
+  "frames": 60,
+  "dpr": 2,
+  "timeZone": "UTC",
+  "locale": "en-US",
+  "animations": "per image",
+  "environment": {
+    "electron": "43.1.0",
+    "chrome": "150.0.7871.47",
+    "node": "24.18.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "os": "25.5.0"
+  },
+  "images": [
+    {
+      "file": "list/dark-compact-n1.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "9264c8e43d23def3f23143ae367ad6e2bc807f06235adad7d1f1411c0d37e2f9"
+    },
+    {
+      "file": "list/dark-compact-n20.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "e060d3c6068393586b75d2f58d1dffed9240cbdfdc6ded8a62271b7d2fd1ef0d"
+    },
+    {
+      "file": "list/dark-default-n1.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "a9836004605599d4883d2084411578686bce0b2f8b2f001c523d4f6b1350b0f7"
+    },
+    {
+      "file": "list/dark-default-n20.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "62e87930fd4d17434812594facbc0a0d2941d563740d859da1f18151b2f06a58"
+    },
+    {
+      "file": "list/dark-wide-n1.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "79192f43d2b0763355ccbbfefa2e35760a0ff9e75aee5244a28ed4318993080f"
+    },
+    {
+      "file": "list/dark-wide-n20.png",
+      "view": "list",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "37dfa166a01140e1b40f11e44012d5230cc721c2de7de38b2138b656972e0553"
+    },
+    {
+      "file": "list/light-compact-n1.png",
+      "view": "list",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "7eda76b5fe74efd6702f652d1739f3d1fa061e7921df183742b380da73ae0e5d"
+    },
+    {
+      "file": "list/light-compact-n20.png",
+      "view": "list",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "ae8087d2672e515b122b4c397b2ba8c1152570f8af3820ff22c98ae9976abab6"
+    },
+    {
+      "file": "list/light-default-n1.png",
+      "view": "list",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "748478189653fcc5a252e43acef6b5511f153b248a0203c97bbb919f388f7e78"
+    },
+    {
+      "file": "list/light-default-n20.png",
+      "view": "list",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "5e6b703e62dca32de31422f31ffba29ae9e2bf521ddfa1760ca9f29f5b27c6e0"
+    },
+    {
+      "file": "list/light-wide-n1.png",
+      "view": "list",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "42fe2adf6ef29cf2083da40cb12b3d5643573ed75683bf8bd40cc1ff44a67e99"
+    },
+    {
+      "file": "list/light-wide-n20.png",
+      "view": "list",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "0b0f08b425424f5fcdf2317ff275e0bbe06a5d767e0b3836e17734a5378b663a"
+    },
+    {
+      "file": "rain/dark-compact-n1.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "stage": "680×170",
+      "sha256": "f129f273213aec7cd0acfab73f46fc47aa05e49b219a8cfbe8184d30d44ca9b7"
+    },
+    {
+      "file": "rain/dark-compact-n20.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "stage": "680×170",
+      "sha256": "e279b1f0290d3d6d264ac3a19b0535472b5d0e42a0ad3d0791e97e63afb54071"
+    },
+    {
+      "file": "rain/dark-default-n1.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "stage": "1180×252",
+      "sha256": "3e841f240ec8bfe52527ef778778321bc5ed0f02e8f224337d199c9590f8f05a"
+    },
+    {
+      "file": "rain/dark-default-n20.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "stage": "1180×252",
+      "sha256": "b60db48cb4f69a135422dd5b6cf334270ee44198fb73678a4be2e0bc99328b53"
+    },
+    {
+      "file": "rain/dark-wide-n1.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "stage": "1728×378",
+      "sha256": "f3f298d78815b84ae8e207c7fe7bb4921aceca873b7ec9b47d68496cbde17278"
+    },
+    {
+      "file": "rain/dark-wide-n20.png",
+      "view": "rain",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "stage": "1728×378",
+      "sha256": "9bf9daf9f26eaeb56a1dfed2e5a16846b77caae5957b8a599ebcc11684456013"
+    },
+    {
+      "file": "rain/light-compact-n1.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "stage": "680×170",
+      "sha256": "fbda497020c75570ab1bf1efb09a7f8d1db0c76827cb1b04fb8e430dd5d97675"
+    },
+    {
+      "file": "rain/light-compact-n20.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "stage": "680×170",
+      "sha256": "16adfc55e5bfcbac3cc80f7b44819777f3cb650e570936203609b496810003a2"
+    },
+    {
+      "file": "rain/light-default-n1.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "stage": "1180×252",
+      "sha256": "05888c743db436cd781cfc0a0d20d4b6aab52539393dfaa5d6ffa4c7315df1d7"
+    },
+    {
+      "file": "rain/light-default-n20.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "stage": "1180×252",
+      "sha256": "012583a1e6e84274b024003176b5202c5ee108ca9fdc0a45b06409dbc8f8146c"
+    },
+    {
+      "file": "rain/light-wide-n1.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "stage": "1728×378",
+      "sha256": "54a3fe2470e11ec51c86e47a9836963c92964a5c447b2f5344622619a2613652"
+    },
+    {
+      "file": "rain/light-wide-n20.png",
+      "view": "rain",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "stage": "1728×378",
+      "sha256": "17b7d0c2602b62da45653c3a92c4dcc3b7db51d151775adde1375c3e9cabe74a"
+    },
+    {
+      "file": "spend/dark-compact-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "5dd3b6605c0caf60ebc639f65f7687647787a5a2a6ef26740e242bdfbb40ce90"
+    },
+    {
+      "file": "spend/dark-compact-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "b0d72773ca1bbb422fe9d0a4ae54f668a7655bc51726a0377d9ef0e43eb362af"
+    },
+    {
+      "file": "spend/dark-default-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "ae875e58e0a19a12327130a71ad2549de375371656a9a467c69d6b170cf8806e"
+    },
+    {
+      "file": "spend/dark-default-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "272c530ca18868b94531a5abeaddff15f4f67225f9bc64c987d8e2add752083b"
+    },
+    {
+      "file": "spend/dark-wide-n1.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "375161dce3cea7f6854da0527e76dc074ae0593d37588c09db1895698d9f8d9f"
+    },
+    {
+      "file": "spend/dark-wide-n20.png",
+      "view": "spend",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "24222636379fcf6067a8bcc0986efaef4af21976a5adb98be2f441f9b2d92c50"
+    },
+    {
+      "file": "spend/light-compact-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "5359a77255a22a491d8885349117cc8ed9b46d8050f43ee3371a207452e5af10"
+    },
+    {
+      "file": "spend/light-compact-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "d7e336c9196d9120b571cdcf926d7d18ec6f0c92901fd35fcb7a7da868d60b36"
+    },
+    {
+      "file": "spend/light-default-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "3b032f6933da7675c1a3ae9e498571565ed3f03c4b87f1eaaa5feb79d99b5292"
+    },
+    {
+      "file": "spend/light-default-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "a4c9383896a42eaa2d850e8dfb471a4b66da8f48ef3e9c652022864e85c3ea97"
+    },
+    {
+      "file": "spend/light-wide-n1.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "160d75ae03d4abfc6c5c47aa9c2c5732a64c70c9033ea450802e3d5d397b2d05"
+    },
+    {
+      "file": "spend/light-wide-n20.png",
+      "view": "spend",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "f9e7053c43c4b0c28bb082d3ab0c38c7a5da9b2121d1838bde953b09bee618d1"
+    },
+    {
+      "file": "swarm/dark-compact-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "2cac1565b2974fb97b6740fa4e58675ee40b843b1bb55d9623ddb8c8a5cab389"
+    },
+    {
+      "file": "swarm/dark-compact-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "495ee001d8f48190a4f70523374362269c106c3131dc13eeab8246ed68b8d0f6"
+    },
+    {
+      "file": "swarm/dark-default-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "ed51869304ef9b698850481b9dc2a5646b6114cb3266186a6bcafb3a156480f8"
+    },
+    {
+      "file": "swarm/dark-default-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "52aceffe9615a3b5239aa225106376875dfd1e05f0dcc59a959e33e5f7a2cbea"
+    },
+    {
+      "file": "swarm/dark-wide-n1.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "95db95caebf1cb44113ed946c81f4c081825832b1785aa59e2a5d6fe984b387f"
+    },
+    {
+      "file": "swarm/dark-wide-n20.png",
+      "view": "swarm",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "274ddb58abfa318f37517a7c1b0aa83080d5378c42c8211c42aeec168711b1e2"
+    },
+    {
+      "file": "swarm/light-compact-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "fe94adde6126ca6e6155a0c3e790a66dff5c0dee7db286c148691246b653a80d"
+    },
+    {
+      "file": "swarm/light-compact-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "animations": "on",
+      "stage": "680×170",
+      "sha256": "fcf5001fce9574435f9b2298618d82c2880a91172928ab9a9acd1cdfb6acd093"
+    },
+    {
+      "file": "swarm/light-default-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "7a4be342853b54b4bb6331cd7cecc075b7a5a632fcd9f48742b502958ab140eb"
+    },
+    {
+      "file": "swarm/light-default-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "animations": "on",
+      "stage": "1180×252",
+      "sha256": "4a7859d65bb3c127a01ed603274319192c5692f9efd8c00b82a1965ff429cbe7"
+    },
+    {
+      "file": "swarm/light-wide-n1.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "8c6ef26a9cbd70d9289cc93bbb97120976be4cbd82a2ac6a17a46d4a5e2f0ca6"
+    },
+    {
+      "file": "swarm/light-wide-n20.png",
+      "view": "swarm",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "animations": "on",
+      "stage": "1728×378",
+      "sha256": "fef79c92b19b0412d201f1e1bcf8971f1d7281fe28c20a261c3a71a7bf192f70"
+    },
+    {
+      "file": "timeline/dark-compact-n1.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "410c82da07b95909739db14665c95a49fc620c69e140aab9a107ce6473d64e0e"
+    },
+    {
+      "file": "timeline/dark-compact-n20.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "8eade2c8601b094bc4d97697a4ee52ecdceb404ada0488092095aef1b6376116"
+    },
+    {
+      "file": "timeline/dark-default-n1.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "e3d06992d23f2e57d028f0c78a4445c8cfa838d8bdea46d022036c297e791a42"
+    },
+    {
+      "file": "timeline/dark-default-n20-history-bounds.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "history": "bounds",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "796429f4d17b17ee9d0be535a1b365d9ba6f4adc8a0d4bdb5145c32cdfb17528"
+    },
+    {
+      "file": "timeline/dark-default-n20-history-turns.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "history": "turns",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "2fdcf4e313d562c797536175f89cd018a0e4fc02ac916b626f1639191ed2b07d"
+    },
+    {
+      "file": "timeline/dark-default-n20.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "e33617a1a8c9b806de31880e8431e819692c8932a4dddc9c7aa082178da5c3c0"
+    },
+    {
+      "file": "timeline/dark-wide-n1.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "fd76de94279ada0302e4b18621a0a6526d02b3a71652a3f6cc9ec7b07339c8bd"
+    },
+    {
+      "file": "timeline/dark-wide-n20.png",
+      "view": "timeline",
+      "theme": "dark",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "069b0c39dc2951090d14e05d334328f234a2d2cae70027d1791f2e7c11b0086e"
+    },
+    {
+      "file": "timeline/light-compact-n1.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "compact",
+      "n": 1,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "beb0cef0ea233f4c50a52bdd3c24d3a766a37cc8f1745926ecc9042b1d30133e"
+    },
+    {
+      "file": "timeline/light-compact-n20.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "compact",
+      "n": 20,
+      "animations": "off",
+      "stage": "680×170",
+      "sha256": "a038e7a1ea7b43aabf23a184888c6b34fdb0bad2c75ac877fa72c33e61a265cf"
+    },
+    {
+      "file": "timeline/light-default-n1.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 1,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "81a8b62c9b59fa0c41c9623e6ec9a675deeffc927eb8b5e1fd063ec5ffd78600"
+    },
+    {
+      "file": "timeline/light-default-n20-history-bounds.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "history": "bounds",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "69834747d42826ca5cf39cd6f5316343e9ff99980e21be17522287830db0b3a9"
+    },
+    {
+      "file": "timeline/light-default-n20-history-turns.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "history": "turns",
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "51ec8293f894e3864a00277da853ded06a37e251df2fad739d1bc47b7fcf6866"
+    },
+    {
+      "file": "timeline/light-default-n20.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "default",
+      "n": 20,
+      "animations": "off",
+      "stage": "1180×252",
+      "sha256": "3040f29a256f0dc9a77c6a7b10eca2446180017ead5789d88eb579102d6d3437"
+    },
+    {
+      "file": "timeline/light-wide-n1.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "wide",
+      "n": 1,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "f7b86e7e32e9fe2ea04dc0d6e928e4042b0ec55c4f7d81120e598247b06da4a9"
+    },
+    {
+      "file": "timeline/light-wide-n20.png",
+      "view": "timeline",
+      "theme": "light",
+      "size": "wide",
+      "n": 20,
+      "animations": "off",
+      "stage": "1728×378",
+      "sha256": "631064c25db644afad25dc59109fb1210e0a632adda01df327518045d1f2a91d"
+    }
+  ]
+}

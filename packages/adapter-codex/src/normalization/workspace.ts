@@ -1,4 +1,4 @@
-import type { WorkspaceEvent, WorkspaceFileChange } from '@vibecook/puppeteer-core';
+import type { WorkspaceEvent, WorkspaceFileChange } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str } from './types.js';
 
 function normalizeChange(value: unknown): WorkspaceFileChange | undefined {

@@ -1,6 +1,6 @@
 {
   "vendor": "copilot",
-  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/copilot" },
+  "asm": { "package": "@vibefield/puppeteer-surface", "path": "vendors/copilot" },
   "shimNames": ["copilot"],
   "envelope": {},
   "nativeStore": {

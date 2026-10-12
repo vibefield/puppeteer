@@ -1,0 +1,46 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import body from '../src/views/swarm/gpu/shaders/body.wgsl.js';
+import common from '../src/views/swarm/gpu/shaders/common.wgsl.js';
+import erase from '../src/views/swarm/gpu/shaders/erase.wgsl.js';
+import field from '../src/views/swarm/gpu/shaders/field.wgsl.js';
+import glow from '../src/views/swarm/gpu/shaders/glow.wgsl.js';
+import hub from '../src/views/swarm/gpu/shaders/hub.wgsl.js';
+import shadow from '../src/views/swarm/gpu/shaders/shadow.wgsl.js';
+import text from '../src/views/swarm/gpu/shaders/text.wgsl.js';
+
+// The `.wgsl` files are the authoring copies (an editor highlights them); the
+// `.wgsl.ts` twins are what ships, so no bundler needs a text loader. This is
+// the drift guard: a shader edited in one place and not the other fails here.
+const here = dirname(fileURLToPath(import.meta.url));
+const twins: Record<string, string> = { body, common, erase, field, glow, hub, shadow, text };
+
+describe('the shader string modules', () => {
+  for (const [name, source] of Object.entries(twins)) {
+    it(`${name}.wgsl.ts is ${name}.wgsl, byte for byte`, () => {
+      expect(source).toBe(readFileSync(join(here, '../src/views/swarm/gpu/shaders', `${name}.wgsl`), 'utf8'));
+    });
+  }
+});
+
+describe('the shaders', () => {
+  // `smoothstep(hi, lo, x)` is undefined in Metal, and Chrome's and Node's Dawn
+  // lower it differently: a falling edge is written `1.0 - smoothstep(lo, hi, x)`.
+  it('never write a descending smoothstep', () => {
+    const literal = /^-?\d+(\.\d*)?$/;
+    for (const [name, source] of Object.entries(twins)) {
+      for (const call of source.matchAll(/smoothstep\(([^,()]+),([^,()]+),/g)) {
+        const [low, high] = [call[1]!.trim(), call[2]!.trim()];
+        if (!literal.test(low) || !literal.test(high)) continue;
+        expect(Number(low), `${name}: ${call[0]}`).toBeLessThan(Number(high));
+      }
+    }
+  });
+
+  it('draw the hold ring in its own pass, never in the field under the bodies', () => {
+    expect(field).not.toContain('frame.pointer');
+    expect(hub).toContain('frame.pointer');
+  });
+});

@@ -13,8 +13,8 @@ import {
   type AgentEventSource,
   type ObservationLevel,
   type PromptSubmission,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type {
   Agent,
@@ -61,6 +61,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   const normalizer = new AcpNotificationNormalizer();
   let sessionId = options.resume ?? '';
   let disposed = false;
+  let disposal: Promise<void> | undefined;
   let bootstrapping = true;
   let controlDegraded = false;
   let observation: ObservationLevel = 'structured';
@@ -167,17 +168,15 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
         },
       }
     : baseClientCapabilities;
-  await connection.agent.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities });
-
   let configOptions: readonly SessionConfigOption[] | null | undefined;
   let modes: SessionModeState | null | undefined;
-  if (options.resume) {
-    if (!connection.agent.loadSession) {
-      connection.close();
-      throw new Error('ACP agent does not support session/load — cannot resume');
-    }
-    sessionId = options.resume;
-    try {
+  try {
+    await connection.agent.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities });
+    if (options.resume) {
+      if (!connection.agent.loadSession) {
+        throw new Error('ACP agent does not support session/load — cannot resume');
+      }
+      sessionId = options.resume;
       const response = await connection.agent.loadSession({
         sessionId: options.resume,
         cwd: options.cwd,
@@ -186,15 +185,17 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       configOptions = response?.configOptions;
       modes = response?.modes;
       prompts.sealReplayedAssistant({ method: 'session/load' });
-    } catch (error) {
-      connection.close();
-      throw error;
+    } else {
+      const response = await connection.agent.newSession({ cwd: options.cwd, mcpServers: [] });
+      sessionId = response.sessionId;
+      configOptions = response.configOptions;
+      modes = response.modes;
     }
-  } else {
-    const response = await connection.agent.newSession({ cwd: options.cwd, mcpServers: [] });
-    sessionId = response.sessionId;
-    configOptions = response.configOptions;
-    modes = response.modes;
+  } catch (error) {
+    disposed = true;
+    eventSource.close();
+    await connection.close();
+    throw error;
   }
 
   const model = acpModelIdentity(configOptions);
@@ -226,11 +227,12 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
         },
       },
     },
-    async dispose() {
-      if (disposed) return;
+    dispose() {
+      if (disposal) return disposal;
       disposed = true;
       eventSource.close();
-      connection.close();
+      disposal = Promise.resolve().then(() => connection.close());
+      return disposal;
     },
   };
 }

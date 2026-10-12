@@ -1,4 +1,4 @@
-import { AcpNotificationNormalizer } from '@vibecook/puppeteer-adapter-acp';
+import { AcpNotificationNormalizer } from '@vibefield/puppeteer-adapter-acp';
 import { normalizeGrokExtension } from './adapter.js';
 import { GrokConversationNormalizer } from './conversation.js';
 import { normalizeGrokDelegation } from './delegation.js';

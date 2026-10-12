@@ -17,7 +17,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parseCopilotVersion } from '../detection.js';
 
 const COPILOT_NPM_PACKAGE = '@github/copilot';

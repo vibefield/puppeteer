@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentHost, AgentProfile, ProfileService } from '@vibecook/puppeteer-core';
+import type { AgentHost, AgentProfile, ProfileService } from '@vibefield/puppeteer-core';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';
@@ -103,10 +103,15 @@ describe('runtime cache prewarming', () => {
         profile: { ...profile, set: 'work' },
         signal: expect.any(AbortSignal),
       });
+      // An unbound terminal uses the native environment, even when managed spawns default to Work.
+      await runtime.prewarm('example', null);
+      expect(prewarm).toHaveBeenLastCalledWith({ signal: expect.any(AbortSignal) });
+      await runtime.prewarm('example', null);
+      expect(prewarm).toHaveBeenCalledTimes(2);
       // a signed-out account starts no probe: named outright it is refused
       await runtime.retireProfile('play');
       await expect(runtime.prewarm('example', 'play')).rejects.toThrow('is signed out');
-      expect(prewarm).toHaveBeenCalledOnce();
+      expect(prewarm).toHaveBeenCalledTimes(2);
     } finally {
       await runtime.dispose();
     }

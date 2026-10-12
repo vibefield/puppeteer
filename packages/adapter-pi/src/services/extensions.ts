@@ -42,26 +42,35 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { fileURLToPath, URL } from 'node:url';
 import {
   extensionActUnavailable,
+  extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
+  isExtensionSource,
+  isNormalizedAbsolutePath,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
-  type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
-import { piAgentDir } from './profiles.js';
+} from '@vibefield/puppeteer-core';
+import { resolvePiExecutable } from '../detection.js';
+import { PI_PROFILE_ROOT_VARIABLE, piAgentDir } from './profiles.js';
 
 export interface PiExtensionOptions {
   /** Home directory the native default root and the shared skills folder hang off; defaults to the process home. */
   home?: string;
   now?: () => Date;
+  /** The executable an act runs; the adapter's own resolution when absent. */
+  executable?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 const MAX_SETTINGS_BYTES = 4 * 1024 * 1024;
@@ -72,6 +81,7 @@ const MAX_ENTRIES = 20_000;
 const MAX_DEPTH = 12;
 const RESOURCE_KINDS = ['extensions', 'skills', 'prompts', 'themes'] as const;
 const NPM_NAME = /^(?:@[A-Za-z0-9._~-]+\/)?[A-Za-z0-9._~-]+$/u;
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/u;
 
 type Json = Record<string, unknown>;
 const rec = (value: unknown): Json | undefined =>
@@ -148,144 +158,266 @@ function expandBraces(pattern: string, kind: ExtensionKind, budget = { left: 64 
   return [pattern];
 }
 
-const escapeLiteral = (char: string): string => char.replace(/[.*+?^${}()|[\]\\/]/gu, '\\$&');
-
-function classEnd(segment: string, open: number): number {
+/** Index of the `]` that closes the class opening at `open`, or -1: a `]` first in it is its own. */
+function classEnd(chars: readonly string[], open: number): number {
   let index = open + 1;
-  if (segment[index] === '!' || segment[index] === '^') index++;
-  if (segment[index] === ']') index++;
-  for (; index < segment.length; index++) {
-    if (segment[index] === '\\') index++;
-    else if (segment[index] === ']') return index;
+  if (chars[index] === '!' || chars[index] === '^') index++;
+  if (chars[index] === ']') index++;
+  for (; index < chars.length; index++) {
+    if (chars[index] === '\\') index++;
+    else if (chars[index] === ']') return index;
   }
   return -1;
 }
 
-function segmentSource(segment: string, kind: ExtensionKind): string {
-  let source = '';
-  for (let index = 0; index < segment.length; index++) {
-    const char = segment[index]!;
+const STAR = Symbol('star');
+const GLOBSTAR = Symbol('globstar');
+
+/** One segment of a glob: what each character must be, and `*` for any run of them. */
+interface SegmentGlob {
+  parts: Array<((char: string) => boolean) | typeof STAR>;
+  /** A wildcard it opens with never matches a leading dot, as minimatch without `dot`. */
+  hidesDot: boolean;
+}
+
+/** A glob, segment by segment; `**` is any number of whole segments. */
+type PathGlob = Array<SegmentGlob | typeof GLOBSTAR>;
+
+/** A path as a glob reads it: its segments, each as its characters. */
+type Segments = string[][];
+type GlobTest = (segments: Segments) => boolean;
+
+const splitPath = (path: string): Segments => path.split('/').map((segment) => Array.from(segment));
+
+function segmentGlob(segment: string, kind: ExtensionKind): SegmentGlob {
+  const chars = Array.from(segment);
+  const parts: SegmentGlob['parts'] = [];
+  for (let index = 0; index < chars.length; index++) {
+    const char = chars[index]!;
     if (char === '\\') {
-      const next = segment[index + 1];
-      source += next === undefined ? '\\\\' : escapeLiteral(next);
+      const next = chars[index + 1] ?? '\\';
+      parts.push((found) => found === next);
       index++;
     } else if (char === '*') {
-      source += '[^/]*';
+      if (parts.at(-1) !== STAR) parts.push(STAR);
     } else if (char === '?') {
-      source += '[^/]';
+      parts.push(() => true);
     } else if (char === '[') {
-      const close = classEnd(segment, index);
+      const close = classEnd(chars, index);
       if (close < 0) {
-        source += '\\[';
+        parts.push((found) => found === '[');
         continue;
       }
-      let body = segment.slice(index + 1, close);
+      let body = chars.slice(index + 1, close).join('');
       if (body.includes('[:')) throw unsupported(kind);
       const negated = body.startsWith('!') || body.startsWith('^');
       if (negated) body = body.slice(1);
-      source += `[${negated ? '^/' : ''}${body.replace(/[\\\]^[]/gu, (found, offset: number) => (found === '^' && offset > 0 ? '^' : `\\${found}`))}]`;
+      const escaped = body.replace(/[\\\]^[]/gu, (found, offset: number) =>
+        found === '^' && offset > 0 ? '^' : `\\${found}`,
+      );
+      let set: RegExp;
+      try {
+        set = new RegExp(`^[${negated ? '^/' : ''}${escaped}]$`, 'u');
+      } catch {
+        // a class JavaScript does not read, such as a range written backwards
+        throw unsupported(kind);
+      }
+      parts.push((found) => set.test(found));
       index = close;
     } else {
-      source += escapeLiteral(char);
+      parts.push((found) => found === char);
     }
   }
-  // A wildcard never matches a leading dot, as minimatch without `dot`.
-  return /^[*?[]/u.test(segment) ? `(?!\\.)${source}` : source;
+  return { parts, hidesDot: /^[*?[]/u.test(segment) };
 }
 
-const GLOBSTAR = Symbol('globstar');
-const ANY_SEGMENT = '(?!\\.)[^/]+';
-
-function globSource(pattern: string, kind: ExtensionKind): string {
-  const parts: Array<string | typeof GLOBSTAR> = [];
+function pathGlob(pattern: string, kind: ExtensionKind): PathGlob {
+  const parts: PathGlob = [];
   for (const segment of pattern.split('/')) {
-    if (segment === '**') {
-      if (parts.at(-1) !== GLOBSTAR) parts.push(GLOBSTAR);
-    } else {
-      parts.push(segmentSource(segment, kind));
-    }
+    if (segment !== '**') parts.push(segmentGlob(segment, kind));
+    else if (parts.at(-1) !== GLOBSTAR) parts.push(GLOBSTAR);
   }
-  let source = '';
-  parts.forEach((part, index) => {
-    const first = index === 0;
-    const last = index === parts.length - 1;
-    if (part === GLOBSTAR) {
-      if (first && last) source += `${ANY_SEGMENT}(?:/${ANY_SEGMENT})*`;
-      else if (last) source += `(?:/${ANY_SEGMENT})+`;
-      else if (first) source += `(?:${ANY_SEGMENT}/)*`;
-      else source += `/(?:${ANY_SEGMENT}/)*`;
-      return;
-    }
-    if (!first && parts[index - 1] !== GLOBSTAR) source += '/';
-    source += part;
-  });
-  return source;
+  return parts;
 }
 
-const compiled = new Map<string, RegExp>();
+/**
+ * Whether one segment matches, by the greedy scan that comes back only to its
+ * last `*`: each star retries a run at most once, never the backtracking that
+ * several `[^/]*` in one pattern make over a long name.
+ */
+function segmentMatches(glob: SegmentGlob, text: readonly string[], walk: Walk): boolean {
+  if (glob.hidesDot && text[0] === '.') return false;
+  const { parts } = glob;
+  let at = 0;
+  let part = 0;
+  let star = -1;
+  let resume = 0;
+  while (at < text.length) {
+    spend(walk);
+    const want = parts[part];
+    if (want === STAR) {
+      star = part;
+      part += 1;
+      resume = at;
+    } else if (want !== undefined && want(text[at]!)) {
+      part += 1;
+      at += 1;
+    } else if (star >= 0) {
+      part = star + 1;
+      resume += 1;
+      at = resume;
+    } else {
+      return false;
+    }
+  }
+  while (parts[part] === STAR) part += 1;
+  return part === parts.length;
+}
+
+/**
+ * Whether a path matches, segment by segment, each pair of places in the glob
+ * and the path visited once: `**` takes whole segments that do not start with
+ * a dot — none or more, and at least one when it ends the glob.
+ */
+function pathMatches(glob: PathGlob, segments: Segments, walk: Walk): boolean {
+  const known = new Map<number, boolean>();
+  const visit = (part: number, at: number): boolean => {
+    if (part === glob.length) return at === segments.length;
+    const key = part * (segments.length + 1) + at;
+    const answer = known.get(key);
+    if (answer !== undefined) return answer;
+    spend(walk);
+    const want = glob[part]!;
+    let found = false;
+    if (want === GLOBSTAR) {
+      const least = part === glob.length - 1 ? 1 : 0;
+      for (let taken = 0; at + taken <= segments.length; taken += 1) {
+        if (taken >= least && visit(part + 1, at + taken)) {
+          found = true;
+          break;
+        }
+        const next = segments[at + taken];
+        if (next === undefined || next.length === 0 || next[0] === '.') break;
+      }
+    } else {
+      found = at < segments.length && segmentMatches(want, segments[at]!, walk) && visit(part + 1, at + 1);
+    }
+    known.set(key, found);
+    return found;
+  };
+  return visit(0, 0);
+}
+
+const compiled = new Map<string, PathGlob[]>();
+/** Patterns come from every package read: past this many, the cache is dropped rather than grown. */
+const MAX_COMPILED = 1_024;
 
 /** A minimatch-compatible test for one pattern; a comment (`#…`) matches nothing, as in minimatch. */
-function globTest(pattern: string, kind: ExtensionKind): (path: string) => boolean {
+function globTest(pattern: string, walk: Walk): GlobTest {
   if (pattern.startsWith('#')) return () => false;
-  if (pattern.startsWith('!') || /[@!+*?]\(/u.test(pattern)) throw unsupported(kind);
-  let expression = compiled.get(pattern);
-  if (expression === undefined) {
-    const sources = expandBraces(pattern, kind).map((alternative) => globSource(alternative, kind));
-    expression = new RegExp(`^(?:${sources.join('|')})$`, 'u');
-    compiled.set(pattern, expression);
+  if (pattern.startsWith('!') || /[@!+*?]\(/u.test(pattern)) throw unsupported(walk.kind);
+  let globs = compiled.get(pattern);
+  if (globs === undefined) {
+    globs = expandBraces(pattern, walk.kind).map((alternative) => pathGlob(alternative, walk.kind));
+    if (compiled.size >= MAX_COMPILED) compiled.clear();
+    compiled.set(pattern, globs);
   }
-  const regex = expression;
-  return (path) => regex.test(path);
+  const alternatives = globs;
+  return (segments) => {
+    spend(walk);
+    return alternatives.some((glob) => pathMatches(glob, segments, walk));
+  };
+}
+
+/** Matching steps one read takes per kind: past them the kind is unread, never read slowly. */
+const MAX_MATCH_STEPS = 20_000_000;
+
+function spend(walk: Walk): void {
+  walk.steps -= 1;
+  if (walk.steps < 0) {
+    throw new Unread(walk.kind, 'filters in settings.json or a package take more matching than this reader does');
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Pi's filter semantics (package-manager.js), over the globs above.
+// Pi's filter semantics (package-manager.js), over the globs above. Each list
+// is read once for all the files it filters.
 
-function matchesAnyPattern(
-  filePath: string,
-  patterns: readonly string[],
-  baseDir: string,
-  kind: ExtensionKind,
-): boolean {
+/** The names Pi matches a file's filters against: from the base, its own, its whole path — a skill's folder too. */
+function globCandidates(filePath: string, baseDir: string): Segments[] {
   const name = basename(filePath);
   const candidates = [posix(relative(baseDir, filePath)), name, posix(filePath)];
   if (name === 'SKILL.md') {
     const folder = dirname(filePath);
     candidates.push(posix(relative(baseDir, folder)), basename(folder), posix(folder));
   }
-  return patterns.some((pattern) => {
-    const test = globTest(posix(pattern), kind);
-    return candidates.some((candidate) => test(candidate));
+  return candidates.map(splitPath);
+}
+
+/** Each pattern's test, compiled the first time a file needs it, then kept for the files after. */
+function globTests(patterns: readonly string[], walk: Walk): GlobTest[] {
+  return patterns.map((pattern) => {
+    let test: GlobTest | undefined;
+    return (segments) => (test ??= globTest(posix(pattern), walk))(segments);
   });
 }
 
-function matchesAnyExactPattern(filePath: string, patterns: readonly string[], baseDir: string): boolean {
+function matchesAnyPattern(filePath: string, tests: readonly GlobTest[], baseDir: string): boolean {
+  if (tests.length === 0) return false;
+  const candidates = globCandidates(filePath, baseDir);
+  return tests.some((test) => candidates.some((segments) => test(segments)));
+}
+
+/** Exact force entries as the names they give: `./` dropped, separators as `/`. */
+function exactNames(patterns: readonly string[]): Set<string> {
+  return new Set(
+    patterns.map((pattern) =>
+      posix(pattern.startsWith('./') || pattern.startsWith('.\\') ? pattern.slice(2) : pattern),
+    ),
+  );
+}
+
+/** The names an exact entry can give a file: from the base, and whole — a skill's folder too. */
+function exactCandidates(filePath: string, baseDir: string): Set<string> {
   const candidates = new Set([posix(relative(baseDir, filePath)), posix(filePath)]);
   if (basename(filePath) === 'SKILL.md') {
     candidates.add(posix(relative(baseDir, dirname(filePath))));
     candidates.add(posix(dirname(filePath)));
   }
-  return patterns.some((pattern) =>
-    candidates.has(posix(pattern.startsWith('./') || pattern.startsWith('.\\') ? pattern.slice(2) : pattern)),
-  );
+  return candidates;
+}
+
+function matchesAnyExactPattern(filePath: string, names: ReadonlySet<string>, baseDir: string): boolean {
+  if (names.size === 0) return false;
+  for (const candidate of exactCandidates(filePath, baseDir)) if (names.has(candidate)) return true;
+  return false;
 }
 
 const isOverride = (entry: string): boolean => entry.startsWith('!') || entry.startsWith('+') || entry.startsWith('-');
 const isPattern = (entry: string): boolean => isOverride(entry) || entry.includes('*') || entry.includes('?');
 
+/** A settings list's exclusions and exact force entries. */
+interface Overrides {
+  excludes: GlobTest[];
+  forceIncludes: Set<string>;
+  forceExcludes: Set<string>;
+}
+
+function overridesOf(entries: readonly string[], walk: Walk): Overrides {
+  const after = (prefix: string): string[] =>
+    entries.filter((entry) => entry.startsWith(prefix)).map((entry) => entry.slice(1));
+  return {
+    excludes: globTests(after('!'), walk),
+    forceIncludes: exactNames(after('+')),
+    forceExcludes: exactNames(after('-')),
+  };
+}
+
 /** An auto-discovered resource: on unless an exclusion matches, then the exact force entries decide. */
-function isEnabledByOverrides(
-  filePath: string,
-  entries: readonly string[],
-  baseDir: string,
-  kind: ExtensionKind,
-): boolean {
-  const excludes = entries.filter((entry) => entry.startsWith('!')).map((entry) => entry.slice(1));
-  const forceIncludes = entries.filter((entry) => entry.startsWith('+')).map((entry) => entry.slice(1));
-  const forceExcludes = entries.filter((entry) => entry.startsWith('-')).map((entry) => entry.slice(1));
-  let enabled = !(excludes.length > 0 && matchesAnyPattern(filePath, excludes, baseDir, kind));
-  if (matchesAnyExactPattern(filePath, forceIncludes, baseDir)) enabled = true;
-  if (matchesAnyExactPattern(filePath, forceExcludes, baseDir)) enabled = false;
+function isEnabledByOverrides(filePath: string, overrides: Overrides, baseDir: string): boolean {
+  let enabled = !matchesAnyPattern(filePath, overrides.excludes, baseDir);
+  if (matchesAnyExactPattern(filePath, overrides.forceIncludes, baseDir)) enabled = true;
+  if (matchesAnyExactPattern(filePath, overrides.forceExcludes, baseDir)) enabled = false;
   return enabled;
 }
 
@@ -294,19 +426,25 @@ function applyPatterns(
   allPaths: readonly string[],
   patterns: readonly string[],
   baseDir: string,
-  kind: ExtensionKind,
+  walk: Walk,
 ): Set<string> {
-  const includes = patterns.filter((pattern) => !isOverride(pattern));
-  const excludes = patterns.filter((pattern) => pattern.startsWith('!')).map((pattern) => pattern.slice(1));
-  const forceIncludes = patterns.filter((pattern) => pattern.startsWith('+')).map((pattern) => pattern.slice(1));
-  const forceExcludes = patterns.filter((pattern) => pattern.startsWith('-')).map((pattern) => pattern.slice(1));
+  const { excludes, forceIncludes, forceExcludes } = overridesOf(patterns, walk);
+  const includes = globTests(
+    patterns.filter((pattern) => !isOverride(pattern)),
+    walk,
+  );
   let result =
-    includes.length === 0 ? [...allPaths] : allPaths.filter((path) => matchesAnyPattern(path, includes, baseDir, kind));
-  if (excludes.length > 0) result = result.filter((path) => !matchesAnyPattern(path, excludes, baseDir, kind));
+    includes.length === 0 ? [...allPaths] : allPaths.filter((path) => matchesAnyPattern(path, includes, baseDir));
+  if (excludes.length > 0) result = result.filter((path) => !matchesAnyPattern(path, excludes, baseDir));
+  // beside the list, a set: asking the list for each path would scan it once per path
+  const kept = new Set(result);
   for (const path of allPaths) {
-    if (!result.includes(path) && matchesAnyExactPattern(path, forceIncludes, baseDir)) result.push(path);
+    if (!kept.has(path) && matchesAnyExactPattern(path, forceIncludes, baseDir)) {
+      kept.add(path);
+      result.push(path);
+    }
   }
-  if (forceExcludes.length > 0) result = result.filter((path) => !matchesAnyExactPattern(path, forceExcludes, baseDir));
+  if (forceExcludes.size > 0) result = result.filter((path) => !matchesAnyExactPattern(path, forceExcludes, baseDir));
   return new Set(result);
 }
 
@@ -315,18 +453,27 @@ function applyAutoloadDisabledPatterns(
   allPaths: readonly string[],
   patterns: readonly string[],
   baseDir: string,
-  kind: ExtensionKind,
+  walk: Walk,
 ): Map<string, boolean> {
   const result = new Map<string, boolean>();
+  // the files each exact name gives, so an exact entry finds its files without asking every file
+  const named = new Map<string, string[]>();
+  for (const path of allPaths) {
+    for (const name of exactCandidates(path, baseDir)) {
+      const paths = named.get(name);
+      if (paths) paths.push(path);
+      else named.set(name, [path]);
+    }
+  }
   for (const pattern of patterns) {
     const target = isOverride(pattern) ? pattern.slice(1) : pattern;
     const enabled = !pattern.startsWith('-') && !pattern.startsWith('!');
-    const exact = pattern.startsWith('+') || pattern.startsWith('-');
-    for (const path of allPaths) {
-      if (exact ? matchesAnyExactPattern(path, [target], baseDir) : matchesAnyPattern(path, [target], baseDir, kind)) {
-        result.set(path, enabled);
-      }
+    if (pattern.startsWith('+') || pattern.startsWith('-')) {
+      for (const name of exactNames([target])) for (const path of named.get(name) ?? []) result.set(path, enabled);
+      continue;
     }
+    const tests = globTests([target], walk);
+    for (const path of allPaths) if (matchesAnyPattern(path, tests, baseDir)) result.set(path, enabled);
   }
   return result;
 }
@@ -337,6 +484,8 @@ function applyAutoloadDisabledPatterns(
 interface Walk {
   left: number;
   kind: ExtensionKind;
+  /** Matching steps left before the kind is unread. */
+  steps: number;
 }
 
 interface Entry {
@@ -484,7 +633,7 @@ async function collectSkillFilesFromPaths(paths: readonly string[], walk: Walk):
 /** A manifest glob's matches under the package root, walking from its literal prefix, dot segments skipped. */
 async function expandPackageGlob(pattern: string, root: string, walk: Walk): Promise<string[]> {
   const normalized = posix(pattern).replace(/^\.\//u, '');
-  const test = globTest(normalized, walk.kind);
+  const test = globTest(normalized, walk);
   const segments = normalized.split('/');
   const literal: string[] = [];
   for (const segment of segments) {
@@ -498,7 +647,7 @@ async function expandPackageGlob(pattern: string, root: string, walk: Walk): Pro
     for (const entry of await entriesOf(dir, walk)) {
       if (entry.name.startsWith('.')) continue;
       const rel = posix(relative(root, entry.path));
-      if (test(rel)) matches.push(entry.path);
+      if (test(splitPath(rel))) matches.push(entry.path);
       if (entry.isDir) await visit(entry.path, depth + 1);
     }
   };
@@ -538,7 +687,7 @@ async function packageSkillFiles(
     }
     const all = await collectSkillFilesFromPaths(sources, walk);
     const patterns = entries.filter(isOverride);
-    return patterns.length > 0 ? [...applyPatterns(all, patterns, packageRoot, 'skill')] : all;
+    return patterns.length > 0 ? [...applyPatterns(all, patterns, packageRoot, walk)] : all;
   }
   const convention = join(packageRoot, 'skills');
   return (await kindOf(convention)) === 'dir' ? collectSkillEntries(convention, 'pi', walk) : [];
@@ -576,7 +725,9 @@ function resolvePiPath(input: string, baseDir: string, home: string): string {
 
 /** A git source's host and repository path; never its userinfo, which can hold a token. */
 function gitSource(source: string): { host: string; path: string; ref?: string } | undefined {
-  const prefixed = source.startsWith('git:');
+  // Pi reads `git://host/path` as its `git:` prefix before `//host/path`, which resolves only through its https
+  // fallback, to `git:<host>/<path>`: the address it is.
+  const prefixed = source.startsWith('git:') && !source.startsWith('git://');
   let rest = prefixed ? source.slice(4).trim() : source;
   if (!prefixed && !/^(?:https?|ssh|git):\/\//iu.test(rest)) return undefined;
   let host: string | undefined;
@@ -621,11 +772,27 @@ function gitSource(source: string): { host: string; path: string; ref?: string }
   return { host: host.toLowerCase(), path, ...(ref ? { ref } : {}) };
 }
 
+/**
+ * Pi's `parseNpmSpec` — `^(@?[^@]+(?:\/[^@]+)?)(?:@(.+))?$` — read in one
+ * pass: the name runs to the first `@` after a scope's own, and what follows
+ * that `@` is the version, one or more characters with no line break. Where
+ * the pattern would not match, undefined. (Its two overlapping runs would try
+ * each `/` against the rest of a long spec.)
+ */
+function npmSpec(spec: string): { name: string; version?: string } | undefined {
+  const at = spec.indexOf('@', spec.startsWith('@') ? 1 : 0);
+  const name = at < 0 ? spec : spec.slice(0, at);
+  const version = at < 0 ? undefined : spec.slice(at + 1);
+  if (name.replace(/^@/u, '') === '') return undefined;
+  if (version === undefined) return { name };
+  return version === '' || /[\n\r\u2028\u2029]/u.test(version) ? undefined : { name, version };
+}
+
 function packageRef(source: string, agentDir: string, home: string): PackageRef | undefined {
   const trimmed = source.trim();
   if (trimmed.startsWith('npm:')) {
     const spec = trimmed.slice(4).trim();
-    const name = /^(@?[^@]+(?:\/[^@]+)?)(?:@(.+))?$/u.exec(spec)?.[1] ?? spec;
+    const name = npmSpec(spec)?.name ?? spec;
     if (!NPM_NAME.test(name)) return undefined;
     return { id: `npm:${name}`, name, type: 'npm', path: join(agentDir, 'npm', 'node_modules', name) };
   }
@@ -647,6 +814,93 @@ function packageRef(source: string, agentDir: string, home: string): PackageRef 
   }
   const path = resolvePiPath(trimmed, agentDir, home);
   return { id: `local:${path}`, name: basename(path).replace(/\.(?:ts|js)$/u, ''), type: 'local', path };
+}
+
+/**
+ * The source Pi's own commands take for a package the read keyed: an `npm:`
+ * or `git:` identity as it is, a local package's absolute path. Nothing for a
+ * source a command could misread — nothing to name, a leading hyphen (a flag,
+ * to Pi or to the npm or git it runs), a control character — or a local path
+ * that is not absolute.
+ */
+function packageSource(id: string): string | undefined {
+  const [, form, rest] = /^(npm|git|local):(.*)$/su.exec(id) ?? [];
+  if (rest === undefined || rest.trim() === '' || rest.startsWith('-') || CONTROL_CHARACTER.test(rest)) {
+    return undefined;
+  }
+  if (form === 'local') return isAbsolute(rest) ? rest : undefined;
+  return id;
+}
+
+/** node-semver's `valid`, not loose: an exact version, never a range or a tag. */
+const EXACT_NPM_VERSION =
+  /^v?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
+const GIT_COMMIT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/iu;
+
+/**
+ * Whether a configured source keeps its package where `pi update` never moves
+ * it (0.87.1 `updateConfiguredSources`): an exact npm version, which it skips,
+ * or a git commit, which it fetches and resets to again. A git branch or tag
+ * it fetches again too, and a branch moves.
+ */
+function sourcePins(source: string): boolean {
+  const trimmed = source.trim();
+  if (trimmed.startsWith('npm:')) {
+    const version = npmSpec(trimmed.slice(4).trim())?.version?.trim();
+    return version !== undefined && EXACT_NPM_VERSION.test(version);
+  }
+  const ref = gitSource(trimmed)?.ref;
+  return ref !== undefined && GIT_COMMIT.test(ref);
+}
+
+/** npm's rule for a package's name, without a leading `.`, `_` or `-`, which npm refuses or reads as a flag. */
+const NPM_INSTALL_NAME = /^(?:@[A-Za-z0-9~][A-Za-z0-9._~-]*\/)?[A-Za-z0-9~][A-Za-z0-9._~-]*$/u;
+/** A version, range or tag after the name: never another kind of source (`file:`, `git+ssh:`, an address). */
+const NPM_VERSION_SPEC = /^[A-Za-z0-9._~^<>=|*+-]{1,128}$/u;
+const PI_SOURCES = "Pi installs npm:<name>, git:<host>/<path>, an https or ssh address, or a folder's whole path";
+
+/**
+ * A source a person gives, as `pi install` reads it (0.87.1 `parseSource` and
+ * `utils/git.js`), and the argument that gives Pi that source: `npm:` and a
+ * name with an optional version; `git:` and a repository; an https, ssh or git
+ * address; a folder or file by its whole path, with no `.` or `..` in it. A
+ * folder goes as its absolute path, `~` at the home Pi sees, since Pi resolves
+ * any other from wherever it runs; `git@host:path`, which Pi reads as a
+ * folder, takes the `git:` it needs.
+ */
+function installArgument(source: string, home: string): { argument: string } | { refused: string } {
+  if (!isExtensionSource(source)) return { refused: PI_SOURCES };
+  if (source.startsWith('npm:')) {
+    const spec = npmSpec(source.slice(4));
+    return spec !== undefined &&
+      spec.name.length <= 214 &&
+      NPM_INSTALL_NAME.test(spec.name) &&
+      (spec.version === undefined || NPM_VERSION_SPEC.test(spec.version))
+      ? { argument: source }
+      : { refused: 'Pi installs an npm package by its name: npm:<name>, or npm:<name>@<version>' };
+  }
+  if (source.startsWith('http:')) return { refused: 'Pi fetches a repository over https or ssh' };
+  // Pi takes a host's shorthand only after `git:`; alone, it is a folder that is not there
+  if (/^(?:github|gitlab|bitbucket):/u.test(source)) {
+    return { refused: `Pi reads ${source} as a folder: give git:${source}` };
+  }
+  const argument = source.startsWith('git@') ? `git:${source}` : source;
+  if (argument.startsWith('git:') || /^(?:https|ssh):\/\//u.test(argument)) {
+    return gitSource(argument) !== undefined
+      ? { argument }
+      : { refused: 'Pi takes a repository as git:<host>/<path>, or as its https or ssh address' };
+  }
+  if (source.startsWith('~/') || isAbsolute(source)) {
+    const fromHome = source.startsWith('~/');
+    // as a person wrote it, it names one folder: never one a `.` or `..` would move it off
+    if (!isNormalizedAbsolutePath(fromHome ? source.slice(1) : source)) {
+      return { refused: "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end" };
+    }
+    return { argument: fromHome ? join(home, source.slice(2)) : source };
+  }
+  if (source.startsWith('file:')) return { refused: "Give the folder's whole path" };
+  if (/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(source)) return { refused: PI_SOURCES };
+  return { refused: "Give the folder's whole path" };
 }
 
 /** Whether a package entry, as configured, loads anything at all. */
@@ -739,18 +993,205 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     id: 'pi',
     label: 'Pi',
     support: {
-      // `pi install|remove` edit the agent directory's `packages`; a loose extension is a file in its `extensions/`.
-      plugins: { store: 'profile', changes: 'command', read: true },
+      // Pi calls them packages: `pi install|remove|update` edit the agent directory's `packages`. A loose extension
+      // is a file in its `extensions/`. It has no catalog: a person gives the source.
+      plugins: {
+        store: 'profile',
+        changes: 'command',
+        read: true,
+        label: 'Packages',
+        sources:
+          'An npm package (npm:name), a git repository (git:host/path, or its https or ssh address), or a folder on this Mac',
+      },
       // The agent directory's `skills/` per profile, `~/.agents/skills` shared by every profile.
       skills: { store: 'mixed', changes: 'folder', read: true },
     },
   };
 
-  // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the app.
-  function plan(_profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  const executable = resolvePiExecutable(options.executable, options.env ?? process.env);
+  const agentDirOf = (profile: AgentProfile): string =>
+    profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'native-default' ? {} : { [PI_PROFILE_ROOT_VARIABLE]: agentDirOf(profile) };
+
+  // Acts (RFC 006 C2): Pi filters its skills only with `pi config`, inside the
+  // app. A skill a host keeps is placed as a link in the profile's own
+  // `skills/` (Pi follows links there), and only a skill's folder directly in
+  // it is taken away: the link goes, or the person's own folder moves to where
+  // the host keeps it. A loose `.md` skill beside those folders is one file,
+  // not a folder a host keeps, so it stays; one nested deeper, in
+  // `~/.agents/skills` (every profile's, and other agents'), on a settings path
+  // or in a package changes where it is. Pi has no marketplaces.
+  function plan(
+    profile: AgentProfile,
+    item: ExtensionActItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
     const target = { kind: item.kind, id: item.id };
+    if (item.kind === 'marketplace') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        'Pi installs packages from npm, git or a folder; it has no marketplaces',
+      );
+    }
+    if (item.kind === 'plugin') {
+      return act === 'install' ? planInstall(profile, item, options) : planPlugin(profile, item, act);
+    }
+    if (act === 'install') return extensionActUnavailable(target, act, 'unsupported', 'Pi installs only packages');
+    if (item.kind === 'skill' && (act === 'add' || act === 'remove')) {
+      const folder = join(agentDirOf(profile), 'skills');
+      // A loose skill's location is its `.md` file; a folder skill's is the folder that holds `SKILL.md`.
+      if (
+        act === 'remove' &&
+        item.origin === 'own' &&
+        item.location !== undefined &&
+        dirname(item.location) === folder &&
+        item.location.endsWith('.md')
+      ) {
+        return extensionActUnavailable(
+          target,
+          act,
+          'no-command',
+          `${item.name} is a loose file in Pi's skills folder, and only a skill's folder is taken away`,
+        );
+      }
+      return extensionSkillFolderPlan({
+        label: 'Pi',
+        folder,
+        item,
+        act,
+        ...(options.keepIn === undefined ? {} : { keepIn: options.keepIn }),
+        home,
+      });
+    }
     if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
     return extensionActUnavailable(target, act, 'in-app', 'Pi filters its skills only with pi config');
+  }
+
+  /**
+   * Pi calls its plugins packages, and names one to its own commands by the
+   * source it keys it with — the forms of the report's command table
+   * (draft/PI-PLUGINS-SKILLS-MCP.md), not probed as acts: `npm:<name>` and
+   * `git:<host>/<path>` as the read gives them, a local package by its
+   * absolute path (`packageSource`). A loose extension is no package: it is a
+   * file Pi finds where it is. Pi switches a package's parts only with the
+   * filters `pi config` writes, on an interactive screen, and `pi remove`,
+   * which takes the package's entry out of settings.json, is its one way to
+   * take it out. Pi installs any configured npm or git package it finds
+   * missing whenever it resolves its packages, so the removal runs with
+   * `PI_OFFLINE=1` and installs nothing on the way; an update has to fetch, so
+   * it cannot. An update always names its package: a bare `pi update` updates
+   * Pi itself. One the read marks pinned — its source names an exact npm
+   * version or a git commit — has none: Pi's update leaves it there and says
+   * it updated.
+   */
+  function planPlugin(profile: AgentProfile, item: PluginItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Pi installs a package from npm, git or a path');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Pi has no sign-in for a package');
+    }
+    if (item.origin !== 'own') return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Pi', item));
+    if (item.id.startsWith('extension:')) {
+      // an extension Pi loads from a file or folder, not a package: `pi config` filters it, and it changes where it is
+      return act === 'enable' || act === 'disable'
+        ? extensionActUnavailable(target, act, 'in-app', 'Pi turns an extension on and off only in `pi config`')
+        : extensionActUnavailable(
+            target,
+            act,
+            'no-command',
+            'It is an extension Pi loads from where it is, and changes there',
+          );
+    }
+    if (act === 'enable' || act === 'disable') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'in-app',
+        "Pi turns a package's parts on and off only in `pi config`",
+      );
+    }
+    if (act === 'purge') {
+      return extensionActUnavailable(target, act, 'unsupported', "Pi's remove is its one way to take a package out");
+    }
+    // a package from a folder on this Mac is used where it is: there is nothing newer to fetch
+    if (act === 'update' && item.id.startsWith('local:')) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'A package from a folder on this Mac changes where it is',
+      );
+    }
+    if (act === 'update' && item.pinned === true) {
+      const where = item.version === undefined ? 'where its source pins it' : `at ${item.version}`;
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        `Pi keeps ${item.id} ${where}; its update never moves a pinned version`,
+      );
+    }
+    const source = packageSource(item.id);
+    if (source === undefined) {
+      return extensionActUnavailable(target, act, 'no-command', "Pi's commands do not take this package's source");
+    }
+    const env = profileEnv(profile);
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: [executable, act, source],
+      env: act === 'remove' ? { ...env, PI_OFFLINE: '1' } : env,
+    });
+  }
+
+  /**
+   * An install is Pi's own `pi install <source> --no-approve` (0.87.1, as its
+   * package reads; not probed as an act): `--no-approve` keeps Pi from asking
+   * whether to trust the folder it runs in, and from loading extensions to
+   * ask them; a profile's install is never a project's `-l`. Nothing else
+   * asks — npm and git ask nothing of a public source, and a private one
+   * fails at once with no terminal — so it runs as a command, never offline,
+   * which would not stop it anyway. npm runs the package's install scripts,
+   * and a repository's own, as the person. Pi keys a package by its source's
+   * identity, so one it holds already is updated instead: installing it again
+   * replaces its entry and, for git, resets the clone.
+   */
+  function planInstall(profile: AgentProfile, item: PluginItem, options: ExtensionActPlanOptions): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (options.source === undefined) {
+      return extensionActUnavailable(
+        target,
+        'install',
+        'unsupported',
+        'Pi has no catalog of its own: find packages at pi.dev/packages and add one by its source',
+      );
+    }
+    const given = installArgument(options.source, home);
+    if ('refused' in given) return extensionActUnavailable(target, 'install', 'unsupported', given.refused);
+    const ref = packageRef(given.argument, agentDirOf(profile), home);
+    if (ref === undefined) return extensionActUnavailable(target, 'install', 'unsupported', PI_SOURCES);
+    if (options.holds?.includes(ref.id)) {
+      return extensionActUnavailable(
+        target,
+        'install',
+        'held',
+        ref.type === 'local'
+          ? `Pi already has ${ref.id}, and loads it where it is`
+          : `Pi already has ${ref.id}; update it instead`,
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'install',
+      argv: [executable, 'install', given.argument, '--no-approve'],
+      env: profileEnv(profile),
+    });
   }
 
   return {
@@ -758,7 +1199,7 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
     plan,
 
     async inventory(profile: AgentProfile): Promise<ExtensionInventory> {
-      const agentDir = profile.kind === 'native-default' ? nativeDefaultRoot : piAgentDir(profile);
+      const agentDir = agentDirOf(profile);
       const unread = new Map<ExtensionKind, string>();
       const note = (error: unknown): void => {
         if (!(error instanceof Unread)) throw error;
@@ -774,8 +1215,8 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
       const extensionEntries = strings(configured.extensions) ?? [];
       const plugins: PluginItem[] = [];
       const skillResources: SkillResource[] = [];
-      const skillWalk: Walk = { left: MAX_ENTRIES, kind: 'skill' };
-      const pluginWalk: Walk = { left: MAX_ENTRIES, kind: 'plugin' };
+      const skillWalk: Walk = { left: MAX_ENTRIES, kind: 'skill', steps: MAX_MATCH_STEPS };
+      const pluginWalk: Walk = { left: MAX_ENTRIES, kind: 'plugin', steps: MAX_MATCH_STEPS };
 
       // Packages, first configured of an identity winning.
       const seen = new Set<string>();
@@ -809,6 +1250,7 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
           ...(version ? { version } : {}),
           ...(manifest?.description ? { description: manifest.description } : {}),
           ...(found ? { location: ref.path } : {}),
+          ...(sourcePins(source) ? { pinned: true as const } : {}),
         });
         if (found !== 'dir') continue;
         try {
@@ -821,9 +1263,9 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
           );
           let states: Map<string, boolean>;
           if (filter?.autoload === false) {
-            states = applyAutoloadDisabledPatterns(all, patterns ?? [], ref.path, 'skill');
+            states = applyAutoloadDisabledPatterns(all, patterns ?? [], ref.path, skillWalk);
           } else if (patterns !== undefined) {
-            const on = patterns.length === 0 ? new Set<string>() : applyPatterns(all, patterns, ref.path, 'skill');
+            const on = patterns.length === 0 ? new Set<string>() : applyPatterns(all, patterns, ref.path, skillWalk);
             states = new Map(all.map((path) => [path, on.has(path)]));
           } else {
             states = new Map(all.map((path) => [path, true]));
@@ -841,19 +1283,20 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
           .filter((entry) => !isPattern(entry))
           .map((entry) => resolvePiPath(entry, agentDir, home));
         const listed = await collectSkillFilesFromPaths(plain, skillWalk);
-        const on = applyPatterns(listed, skillEntries.filter(isPattern), agentDir, 'skill');
+        const on = applyPatterns(listed, skillEntries.filter(isPattern), agentDir, skillWalk);
+        const overrides = overridesOf(skillEntries, skillWalk);
         for (const path of listed) skillResources.push({ path, enabled: on.has(path), source: 'settings' });
         for (const path of await collectSkillEntries(join(agentDir, 'skills'), 'pi', skillWalk)) {
           skillResources.push({
             path,
-            enabled: isEnabledByOverrides(path, skillEntries, agentDir, 'skill'),
+            enabled: isEnabledByOverrides(path, overrides, agentDir),
             source: 'agent',
           });
         }
         for (const path of await collectSkillEntries(sharedSkills, 'agents', skillWalk)) {
           skillResources.push({
             path,
-            enabled: isEnabledByOverrides(path, skillEntries, dirname(sharedSkills), 'skill'),
+            enabled: isEnabledByOverrides(path, overrides, dirname(sharedSkills)),
             source: 'shared',
           });
         }
@@ -875,8 +1318,9 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
           fromSettings.map(({ path }) => path),
           extensionEntries.filter(isPattern),
           agentDir,
-          'plugin',
+          pluginWalk,
         );
+        const overrides = overridesOf(extensionEntries, pluginWalk);
         const claimed = new Set<string>();
         const add = async (path: string, unit: string, enabled: boolean): Promise<void> => {
           const key = await canonical(path);
@@ -887,7 +1331,7 @@ export function createPiExtensionService(options: PiExtensionOptions = {}): Exte
         };
         for (const { path, unit } of fromSettings) await add(path, unit, on.has(path));
         for (const { path, unit } of await collectAutoExtensionEntries(join(agentDir, 'extensions'), pluginWalk)) {
-          await add(path, unit, isEnabledByOverrides(path, extensionEntries, agentDir, 'plugin'));
+          await add(path, unit, isEnabledByOverrides(path, overrides, agentDir));
         }
       } catch (error) {
         note(error);

@@ -1,5 +1,6 @@
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { AgentNativeInvocation } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
   captureHermesContinuationState,
   normalizeHermesNativeInvocation,
@@ -8,7 +9,7 @@ import {
 
 const invocation = (argv: string[], over: Partial<AgentNativeInvocation> = {}): AgentNativeInvocation => ({
   providerId: 'hermes',
-  cwd: '/repo',
+  cwd: resolve('/repo'),
   argv,
   environment: {},
   implementation: { kind: 'native' },
@@ -24,19 +25,20 @@ describe('Hermes native invocation normalization', () => {
     ).toEqual({
       status: 'accepted',
       resume: 'session-1',
-      options: { yolo: true, hermesHome: '/hermes-home' },
+      options: { yolo: true, hermesHome: resolve('/hermes-home') },
     });
-    const state = captureHermesContinuationState('../hermes-home', undefined, '/repo', {});
-    expect(restoreHermesContinuationState(state)).toEqual({ hermesHome: '/hermes-home' });
+    const state = captureHermesContinuationState('../hermes-home', undefined, resolve('/repo'), {});
+    expect(restoreHermesContinuationState(state)).toEqual({ hermesHome: resolve('/hermes-home') });
     expect(() =>
-      restoreHermesContinuationState(JSON.stringify({ version: 1, home: '/hermes-home', extra: true })),
+      restoreHermesContinuationState(JSON.stringify({ version: 1, home: resolve('/hermes-home'), extra: true })),
     ).toThrow('invalid Hermes continuation state');
   });
 
   it('rejects unadvertised imposter and native continuation picker semantics', () => {
     expect(
-      normalizeHermesNativeInvocation(invocation([], { implementation: { kind: 'imposter', executable: '/opt/ai' } }))
-        .status,
+      normalizeHermesNativeInvocation(
+        invocation([], { implementation: { kind: 'imposter', executable: resolve('/opt/ai') } }),
+      ).status,
     ).toBe('rejected');
     expect(normalizeHermesNativeInvocation(invocation(['--continue'])).status).toBe('rejected');
   });

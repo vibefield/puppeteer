@@ -1,0 +1,152 @@
+{
+  "version": "0.21.4",
+  "captured": "2026-09-28",
+  "method": "Executed installed argparse construction and extracted native dispatch functions. Provider setup, agent construction, TUI exec, and single-query execution were replaced with route sentinels; no model requests or user configuration were used.",
+  "conditions": {
+    "stdinIsTTY": true,
+    "stdoutIsTTY": true,
+    "displayInterface": "tui",
+    "query.txt": "nonempty",
+    "empty.txt": ""
+  },
+  "sourceSha256": {
+    "hermes_cli/_parser.py": "57e96f943880933d9caa30ab26a49ca5c6041631e199e8b3aec17548b76352ca",
+    "hermes_cli/main.py": "648fdd918ae0f86d768561442a993193278692c1fe12d56eab63e276a6d732bf",
+    "hermes_cli/main_tui_launch.py": "e178023bfbaa6ec513b7612c1450bdd71c2ff3cb11b1e139287d8f979035ce5d",
+    "hermes_cli/stream_json.py": "e9229445739e6755ee1f088b0f6eb000a9761b47a8a56e932a9922e778c5d31a",
+    "cli.py": "4a1710806d415804e8eeecb01e49e3c72231bb060d6fe202b84cb3263460ae69"
+  },
+  "cases": [
+    {
+      "argv": [
+        "chat",
+        "--quiet"
+      ],
+      "native_dispatch": "interactive-tui"
+    },
+    {
+      "argv": [
+        "chat",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-tui"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-cli"
+    },
+    {
+      "argv": [
+        "chat",
+        "-q",
+        "hello",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-tui"
+    },
+    {
+      "argv": [
+        "chat",
+        "--tui",
+        "-q",
+        "hello",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-tui"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "-q",
+        "hello",
+        "--oneshot"
+      ],
+      "native_dispatch": "one-shot"
+    },
+    {
+      "argv": [
+        "--cli",
+        "chat",
+        "-q",
+        "hello",
+        "-Q"
+      ],
+      "native_dispatch": "one-shot"
+    },
+    {
+      "argv": [
+        "chat",
+        "--tui",
+        "--cli",
+        "-q",
+        "hello",
+        "--oneshot"
+      ],
+      "native_dispatch": "one-shot"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "-q",
+        "",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-cli"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "--image",
+        "example.png",
+        "--oneshot"
+      ],
+      "native_dispatch": "one-shot"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "--query-file",
+        "query.txt",
+        "--oneshot"
+      ],
+      "native_dispatch": "one-shot"
+    },
+    {
+      "argv": [
+        "chat",
+        "--cli",
+        "--query-file",
+        "empty.txt",
+        "--oneshot"
+      ],
+      "native_dispatch": "exit-2"
+    },
+    {
+      "argv": [
+        "chat",
+        "--query-file",
+        "query.txt",
+        "--oneshot"
+      ],
+      "native_dispatch": "interactive-tui"
+    },
+    {
+      "argv": [
+        "chat",
+        "-q",
+        "hello",
+        "--format",
+        "stream-json"
+      ],
+      "native_dispatch": "one-shot"
+    }
+  ]
+}

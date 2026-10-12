@@ -1,4 +1,4 @@
-import type { EnvironmentEvent } from '@vibecook/puppeteer-core';
+import type { EnvironmentEvent } from '@vibefield/puppeteer-core';
 import { kimiRecord, kimiString } from './types.js';
 
 /** Kimi profile cwd facts -> normalized environment events. */

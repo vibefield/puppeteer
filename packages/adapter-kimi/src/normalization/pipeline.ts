@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { kimiAdapterDisposition } from './adapter.js';
 import { KimiConversationNormalizer } from './conversation.js';
 import { normalizeKimiContextWindow } from './context-window.js';

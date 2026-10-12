@@ -5,8 +5,9 @@ import { ghostteadPath } from '@vibecook/ghosttead';
 import { resolveSidecarPath } from '@vibecook/truffle';
 import { build } from 'esbuild';
 import { chmod, cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +25,15 @@ let stagedGhosttead;
 try {
   stagedGhosttead = ghostteadPath();
 } catch (error) {
-  console.warn(`ghosttead not staged: ${error.message}`);
+  // Source-linked SDKs carry no npm prebuild. Resolve the binary from that
+  // same checkout, never a second terminal engine hidden behind another path.
+  const checkout = resolve(dirname(requireFromGodview.resolve('@vibecook/ghosttead')), '../../..');
+  const built = join(checkout, 'target', 'release', ghostteadBinary);
+  if (existsSync(join(checkout, 'Cargo.toml')) && existsSync(built)) stagedGhosttead = built;
+  else
+    console.warn(
+      `ghosttead not staged: ${error.message}. Build the linked checkout with cargo build --release -p ghosttead --locked.`,
+    );
 }
 // Truffle's sidecar is staged the same way, so remote sessions need no Truffle
 // checkout beside this repo either. Absent on platforms with no prebuild, which
@@ -36,6 +45,15 @@ try {
 } catch (error) {
   console.warn(`truffle sidecar not staged: ${error.message}`);
 }
+// The swarm's physics worker (MV-D7, M5): the view names it `new URL('./swarm-physics.worker.js', import.meta.url)`,
+// which esbuild leaves as written and never emits, so the host builds the entry beside its chunks — as it copies
+// ghosttea's terminal-render worker below. The views' source root is walked up from the lab entry the package
+// exports (`.ts` in-repo, `.js` once published).
+const viewsRoot = resolve(dirname(requireFromGodview.resolve('@vibefield/puppeteer-views/lab')), '../../..');
+const swarmWorkerEntry = ['ts', 'js']
+  .map((extension) => join(viewsRoot, `views/swarm/physics/swarm-physics.worker.${extension}`))
+  .find((path) => existsSync(path));
+if (!swarmWorkerEntry) throw new Error(`no swarm physics worker entry under ${viewsRoot}`);
 const reactSingletonPlugin = {
   name: 'godview-react-singleton',
   setup(buildApi) {
@@ -80,14 +98,16 @@ await Promise.all([
     target: 'node22',
     external: ['electron'],
   }),
+  // The spawn-through shim is the kit's, bundled into the one CommonJS file
+  // materializeShims copies into the shim home. No shebang: the launcher
+  // execs the runtime Godview names on it.
   build({
     ...shared,
-    entryPoints: [join(root, 'src/shim/agent-shim.ts')],
+    entryPoints: [requireFromGodview.resolve('@vibefield/puppeteer-runtime/spawn-through/shim')],
     outfile: join(dist, 'agent-shim.cjs'),
     platform: 'node',
     format: 'cjs',
     target: 'node22',
-    banner: { js: '#!/usr/bin/env node' },
   }),
   build({
     ...shared,
@@ -100,6 +120,15 @@ await Promise.all([
     jsx: 'automatic',
     splitting: true,
     plugins: [reactSingletonPlugin],
+  }),
+  // The swarm's physics worker, a module worker of its own: no React, no splitting, one file the view's URL names.
+  build({
+    ...shared,
+    entryPoints: { 'swarm-physics.worker': swarmWorkerEntry },
+    outdir: dist,
+    platform: 'browser',
+    format: 'esm',
+    target: 'es2022',
   }),
 ]);
 

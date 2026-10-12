@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "codex",
-  "adapterPackage": "@vibecook/puppeteer-adapter-codex",
+  "adapterPackage": "@vibefield/puppeteer-adapter-codex",
   "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
   "groundTruthSha256": "5b672e8e0b9851773bc4a67ab6d1d4d47ecd2b4b5fe2ee316a50e2e172cea902",
   "semanticEvents": [
@@ -19,6 +19,7 @@
     "item/started",
     "mcpServer/oauthLogin/completed",
     "mcpServer/startupStatus/updated",
+    "model/list",
     "model/rerouted",
     "remoteControl/status/changed",
     "skills/changed",
@@ -49,7 +50,6 @@
     "item/tool/call",
     "item/tool/requestUserInput",
     "mcpServer/elicitation/request",
-    "model/list",
     "plugin/installed",
     "plugin/read",
     "skills/config/write",
@@ -67,7 +67,7 @@
   },
   "totals": {
     "groundTruth": 244,
-    "semantic": 25,
-    "observedOrControlled": 27
+    "semantic": 26,
+    "observedOrControlled": 26
   }
 }

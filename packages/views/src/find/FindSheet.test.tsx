@@ -1,7 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
-import type { MonitorAgent } from '../monitor/types.js';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type { FindAgent } from './find-agent.js';
 import { FindSheet, type FindHistoryBridge } from './FindSheet.js';
 
 const NEVER: FindHistoryBridge = {
@@ -10,29 +9,24 @@ const NEVER: FindHistoryBridge = {
   search: () => new Promise(() => undefined),
 };
 
-function agent(id: string, project: string, native: string): MonitorAgent {
+function agent(id: string, project: string, native: string): FindAgent {
   return {
     id,
-    session: { id, createdAtMs: 1_000 },
     createdAtMs: 1_000,
     status: 'working',
     project,
     detail: 'editing',
     color: '#abcdef',
-    active: false,
     agent: {
       provider: { id: 'provider-x', label: 'Provider X' },
       model: 'model-1',
       branch: 'main',
       monitor: {
-        status: 'working',
         statusSince: '2026-09-09T11:59:00.000Z',
         session: { nativeSessionId: native },
-        freshness: { level: 'native-hooks', families: {} },
-      } as unknown as AgentMonitorState,
-      recency: 'live',
+      },
       nativeSessionId: native,
-    } as unknown as MonitorAgent['agent'],
+    },
   };
 }
 
@@ -46,12 +40,15 @@ describe('FindSheet', () => {
   });
 
   it('opens on the live agents with the field, the list, and an honest foot', () => {
+    const hosted = { ...agent('a', 'vibe-field', 'n-a'), hostSessionId: 'pty-1' };
     const markup = renderToStaticMarkup(
       <FindSheet
         open
-        agents={[agent('a', 'vibe-field', 'n-a'), agent('b', 'puppeteer', 'n-b')]}
+        agents={[hosted, { ...agent('b', 'puppeteer', 'n-b'), hostSessionId: 'pty-2' }]}
         onClose={() => undefined}
-        onSelect={() => undefined}
+        onSelect={(row) => {
+          expectTypeOf(row.hostSessionId).toEqualTypeOf<string>();
+        }}
         history={NEVER}
         nowMs={Date.parse('2026-09-09T12:00:00.000Z')}
       />,

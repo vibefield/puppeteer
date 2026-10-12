@@ -1,4 +1,4 @@
-import type { AgentStructuredQuestion } from '@vibecook/puppeteer-core';
+import type { AgentStructuredQuestion } from '@vibefield/puppeteer-core';
 import { claudeBoolean, claudeRecord, claudeString, nonEmptyClaudeString } from './wire.js';
 
 /** Claude AskUserQuestion input → normalized structured questions. */

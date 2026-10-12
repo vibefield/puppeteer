@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "antigravity",
-  "adapterPackage": "@vibecook/puppeteer-adapter-antigravity",
+  "adapterPackage": "@vibefield/puppeteer-adapter-antigravity",
   "groundTruth": "packages/surface/vendors/antigravity/groundtruth.json",
   "groundTruthSha256": "c851987db5f169cea2cf1c8eec1c31573b88078276b8745195f6b0c9c8663b66",
   "semanticEvents": [

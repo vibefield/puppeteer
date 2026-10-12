@@ -1064,6 +1064,7 @@
           <a href="#architecture">Architecture &amp; ownership</a><a href="#quick-start">Read the management surface</a
           ><a href="#distribution">Installations &amp; releases</a><a href="#profiles">Profiles &amp; native identity</a
           ><a href="#binding">Launch binding &amp; observation roots</a
+          ><a href="#models">Model discovery &amp; launch selection</a
           ><a href="#usage">Account usage &amp; push updates</a
           ><a href="#configuration">Host configuration &amp; prewarming</a
           ><a href="#provider-spi">Provider service contracts</a><a href="#godview">Godview management bridge</a
@@ -1226,8 +1227,8 @@
               Both createAgentRuntime() and createBuiltinAgentRuntime() expose the same management methods. Capability
               lists identify which composed providers support each family.
             </p>
-            <pre><code>import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+            <pre><code>import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
 
 declare const host: AgentHost; // Supplied by the application.
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
@@ -1247,8 +1248,8 @@ for (const account of accounts) {
 
 await runtime.dispose();</code></pre>
             <p>
-              Management DTOs are exported from <code>@vibecook/puppeteer-core</code>; runtime request/configuration
-              types are exported from <code>@vibecook/puppeteer-runtime</code>. Provider IDs are opaque outside the
+              Management DTOs are exported from <code>@vibefield/puppeteer-core</code>; runtime request/configuration
+              types are exported from <code>@vibefield/puppeteer-runtime</code>. Provider IDs are opaque outside the
               adapter. A profile uses <code>provider</code>; management requests commonly use <code>providerId</code>.
             </p>
           </section>
@@ -2047,6 +2048,138 @@ const resumed = await runtime.resume({
               <a href="agent-aggregation-api.html#ownership">aggregation ownership</a>.
             </div>
           </section>
+          <section id="models">
+            <h2>Model discovery &amp; launch selection</h2>
+            <p class="section-note">
+              Read each installed agent's native model picker in a workspace and account. The catalog is asynchronous
+              and separate from the synchronous launch descriptor. Applications render these choices without keeping
+              their own model tables or translating native launch flags.
+            </p>
+            <pre><code>// Both runtime constructors expose these methods.
+const providers = runtime.modelProviders();
+const context = { agent: 'claude', cwd: process.cwd(), profileSet: 'native' };
+const result = await runtime.discoverModels({ ...context, timeoutMs: 20_000 });
+
+if (result.status === 'available') {
+  // Render result.catalog.models and the chosen model's controls.
+  const choice = result.catalog.models[0];
+  if (choice) {
+    const started = await runtime.spawn({
+      ...context,
+      modelSelection: { modelId: choice.id },
+      // Add controls: { [control.id]: value.id } only for values the user chose.
+    });
+  }
+} else {
+  // Render result.status/code/message; an unsupported probe is not an empty picker.
+}
+</code></pre>
+            <p>
+              <code>discoverModels({ agent, cwd?, profile?, profileSet?, signal?, timeoutMs? })</code> uses the same
+              account selection as <code>spawn</code>, including the default profile set. Pass the same context to both
+              calls; use <code>profileSet: 'native'</code> to explicitly use the agent's own root. Discovery creates no
+              agent session, sends no prompt, and opens no terminal. Native tools may read or refresh their own caches.
+              Runtime disposal cancels active probes and waits for their cleanup. The default deadline is 20 seconds;
+              callers can choose 1–120,000 milliseconds.
+            </p>
+            <p>
+              An available catalog includes <code>provider</code>, optional <code>profileId</code>, <code>cwd</code>,
+              <code>observedAt</code>, source kind and native version, freshness, completeness, and model choices. IDs
+              are opaque: preserve the exact value, including provider-qualified and combined model/effort choices. Each
+              model owns its own <code>controls</code>, whose roles are <code>effort</code>, <code>thinking</code>, or
+              <code>variant</code>. A native reasoning hint alone does not establish a list of supported values. Catalog
+              membership describes the native picker; it does not promise paid inference access.
+            </p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Native source</th>
+                    <th>Scope and controls</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Claude</td>
+                    <td>Stream JSON initialize</td>
+                    <td>Native choices and per-model effort levels.</td>
+                  </tr>
+                  <tr>
+                    <td>Codex</td>
+                    <td>App-server model/list, all pages</td>
+                    <td>Native choices, per-model effort levels and advertised defaults.</td>
+                  </tr>
+                  <tr>
+                    <td>Copilot</td>
+                    <td>SDK models.list</td>
+                    <td>Native choices and per-model effort levels when supplied.</td>
+                  </tr>
+                  <tr>
+                    <td>Grok</td>
+                    <td>models command</td>
+                    <td>Native choices; diagnostics make the result partial and stale.</td>
+                  </tr>
+                  <tr>
+                    <td>Kimi</td>
+                    <td>provider list --json</td>
+                    <td>Configured model aliases; credentials are excluded.</td>
+                  </tr>
+                  <tr>
+                    <td>OpenCode</td>
+                    <td>Private backend /provider</td>
+                    <td>Connected providers only, with native variants. Partial because plugins are disabled.</td>
+                  </tr>
+                  <tr>
+                    <td>Hermes</td>
+                    <td>Native inventory helper behind model.options</td>
+                    <td>
+                      Configured providers and cached choices. Partial; no invented effort levels. Unrecognized
+                      installations report unsupported.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Antigravity</td>
+                    <td>models command</td>
+                    <td>Combined model/effort IDs remain single choices.</td>
+                  </tr>
+                  <tr>
+                    <td>Pi</td>
+                    <td>RPC get_available_models</td>
+                    <td>Configured providers, per-model thinking maps. Cached and partial with extensions disabled.</td>
+                  </tr>
+                  <tr>
+                    <td>ACP</td>
+                    <td>Session config options</td>
+                    <td>Reports requires-session; prelaunch discovery never creates a hidden session.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Omit <code>modelSelection</code> to inherit native settings. A listed ID named <code>default</code> is an
+              explicit native alias, not the absence of an override. Omitted controls inherit native behavior; the
+              runtime does not automatically apply a displayed control default. Unlisted choices require both
+              <code>catalog.customModels</code> and <code>modelSelection.custom: true</code>; unknown control values
+              remain invalid. No hard-coded catalog is used when native discovery fails.
+            </p>
+            <p>
+              Before a new session is created or prepared, the runtime discovers again in the resolved account and
+              workspace, validates the selection, and asks the adapter to translate it into private native options.
+              Stale or invalid selections return <code>AGENT_LAUNCH_REFUSED</code> with refusal code
+              <code>INVALID_MODEL_SELECTION</code>; failed discovery uses <code>MODEL_DISCOVERY_UNAVAILABLE</code>.
+              <code>modelSelection</code> and <code>agentOptions</code> are mutually exclusive. Selections apply only to
+              new sessions; resume keeps its existing continuation semantics. The lower-level
+              <code>createSession</code>/<code>prepareSession</code> APIs retain their native-default account behavior,
+              so hosts using them must name the account explicitly when previewing a managed profile's catalog.
+            </p>
+            <p>
+              <code>AgentModelService</code>, catalog/selection schemas, and validation are exported from Core. Each
+              adapter exports <code>create…ModelService()</code>; builtin composition wires it to
+              <code>AgentProvider.models</code>. Native payloads and credentials stay inside the adapter. Installations
+              without the required native command or protocol return a typed failure instead of guessed choices.
+            </p>
+          </section>
           <section id="usage">
             <h2>Account usage &amp; push updates</h2>
             <p class="section-note">
@@ -2284,7 +2417,7 @@ interface DistributionRuntimeOptions {
   /** PATH-style list searched for candidates; defaults to process.env.PATH. */
   searchPath?: string;
 }</code></pre>
-            <pre><code>import type { AgentRuntimeOptions } from '@vibecook/puppeteer-runtime';
+            <pre><code>import type { AgentRuntimeOptions } from '@vibefield/puppeteer-runtime';
 
 // The same options are accepted by createBuiltinAgentRuntime().
 type ManagementRuntimeOptions = Pick&lt;AgentRuntimeOptions, 'profiles' | 'distribution'&gt;;</code></pre>
@@ -2361,6 +2494,7 @@ interface AgentProvider {
   readonly distribution?: DistributionService;
   readonly profiles?: ProfileService;
   readonly accountUsage?: AccountUsageService;
+  readonly models?: AgentModelService;
   prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;
 }</code></pre>
             <pre><code data-source="packages/core/src/services/distribution.ts" data-types="DistributionService">interface DistributionService {
@@ -2630,6 +2764,13 @@ interface AccountUsageBatch {
           <section id="usage-history">
             <h2>Godview usage persistence</h2>
             <p class="section-note">
+              <strong>Retired 2026-10-04 (MV-2, plan decision L11).</strong> The usage file store, its two bridge
+              methods and the renderer's persistence are gone: the monitor backend in main keeps the ten-minute window
+              in memory for the app's lifetime and refills it from Core's own cost buckets
+              (<a href="../packages/monitor/src/backend/README.md">backend README, Cost</a>). The text below describes
+              the retired store.
+            </p>
+            <p class="section-note">
               The renderer keeps held totals and step snapshots so a resumed conversation can restore its usage bars.
               Main stores this ledger under the application cache directory.
             </p>
@@ -2715,9 +2856,9 @@ interface UsageHistoryKey {
               ><a class="source-link" href="../apps/godview/src/main/account-usage-monitor.ts"
                 ><strong>Usage scheduling</strong
                 ><span>Polling, push ingestion, profile rows and retained stale results.</span></a
-              ><a class="source-link" href="../apps/godview/src/main/usage-history-store.ts"
-                ><strong>Usage persistence</strong
-                ><span>Bounded app cache for restored conversation usage bars.</span></a
+              ><a class="source-link" href="../packages/monitor/src/backend/usage-ledger.ts"
+                ><strong>Usage ledger</strong
+                ><span>The backend's in-memory ledger (the file store retired in MV-2, L11).</span></a
               ><a class="source-link" href="../apps/godview/src/renderer/AgentsDrawer.tsx"
                 ><strong>Agents drawer</strong><span>Current installs/accounts UI and management actions.</span></a
               ><a class="source-link" href="rfcs/006-agent-distribution-and-account-profiles.md"

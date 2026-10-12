@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-adapter-acp — generic Agent Client Protocol adapter.
+ * @vibefield/puppeteer-adapter-acp — generic Agent Client Protocol adapter.
  *
  * ACP (agentclientprotocol.com) is a standardized JSON-RPC surface adopted by a
  * growing agent ecosystem. Because it's structured, this
@@ -12,3 +12,4 @@
 export * from './normalization/index.js';
 export * from './transport/connection.js';
 export * from './driver.js';
+export * from './services/models.js';

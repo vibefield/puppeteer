@@ -1,4 +1,4 @@
-import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibefield/puppeteer-core';
 import { copilotErrorText, copilotRecord, copilotString } from './types.js';
 
 export interface CopilotToolFact {

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { access } from 'node:fs/promises';
-import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveCopilotExecutable } from './detection.js';
 import { copilotCapabilitiesBatch, copilotObservationDegradedBatch } from './normalization/monitor.js';
 import { createCopilotSessionObserver } from './observation/session-observer.js';

@@ -1,4 +1,4 @@
-import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch } from '@vibefield/puppeteer-core';
 
 /**
  * The usage column's feed: the latest batch and its changes, from whichever

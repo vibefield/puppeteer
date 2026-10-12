@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { isRetainedHermesEvent, normalizeHermesNative } from './adapter.js';
 import { HermesConversationNormalizer } from './conversation.js';
 import { normalizeHermesContextWindow } from './context-window.js';

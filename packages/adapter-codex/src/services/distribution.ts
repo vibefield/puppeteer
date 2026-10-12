@@ -22,7 +22,7 @@ import type {
   InstallMethod,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   CODEX_VERSION_BANNER_MARKER,
   CODEX_VERSION_FLAG,

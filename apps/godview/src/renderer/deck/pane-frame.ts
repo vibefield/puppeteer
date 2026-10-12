@@ -1,21 +1,10 @@
-import type { WorkspaceConfig } from '@vibecook/ghosttea-protocol';
-import {
-  defaultBindingsForPlatform,
-  formatGhosttyTrigger,
-  parseGhosttyAction,
-  parseGhosttyTrigger,
-  synthesizeKeyEvent,
-  type GhosttyBindingEntry,
-  type KeyEventLike,
-} from '@vibecook/ghosttea-react/workspace';
-import type { PaneFrameAgent } from '@vibecook/puppeteer-views';
+import type { PaneFrameAgent } from '@vibefield/puppeteer-views';
 import type { MonitorAgent } from '../monitor/types.js';
 
 /**
- * The frame itself lives in `@vibecook/puppeteer-views` since PU-14 (design-
+ * The frame itself lives in `@vibefield/puppeteer-views` since PU-14 (design-
  * system record §07); what stays here is the seam — this host's monitor facet
- * projected into the facts the frame reads, and the zoom binding only this
- * host's runtime knows.
+ * projected into the facts the frame reads.
  */
 export function paneFrameAgent(agent: MonitorAgent): PaneFrameAgent | undefined {
   const facet = agent.agent;
@@ -66,50 +55,4 @@ export function paneFrameAgents(
     if (frame) frames.set(sessionId, frame);
   }
   return frames;
-}
-
-/**
- * The keystroke Ghosttea's workspace maps to `toggle_split_zoom`, so the
- * fullscreen verb presses exactly what the user's own binding would: the
- * platform defaults with the configuration's `keybind` mutations over them,
- * the same table the workspace resolves against. Null when the action is
- * unbound.
- */
-export function zoomKeyEvent(config: WorkspaceConfig | undefined, platform: string | undefined): KeyEventLike | null {
-  const table = new Map<string, GhosttyBindingEntry>(
-    (config?.clearKeybindings ? [] : defaultBindingsForPlatform(platform as never)).map(
-      (entry) => [formatGhosttyTrigger(entry.trigger), entry] as const,
-    ),
-  );
-  for (const mutation of config?.keybindings ?? []) {
-    let trigger: ReturnType<typeof parseGhosttyTrigger>;
-    try {
-      trigger = parseGhosttyTrigger(mutation.trigger.replace(/^(?:(?:all|global|unconsumed|performable):)+/u, ''));
-    } catch {
-      continue;
-    }
-    const canonical = formatGhosttyTrigger(trigger);
-    if (mutation.action === 'unbind') {
-      table.delete(canonical);
-      continue;
-    }
-    try {
-      table.set(canonical, {
-        trigger,
-        triggerRaw: mutation.trigger,
-        action: parseGhosttyAction(mutation.action),
-        actionRaw: mutation.action,
-        flags: { performable: false },
-      });
-    } catch {
-      // An action this Ghosttea cannot name is left as the workspace leaves it.
-    }
-  }
-  // A configured trigger lands after the defaults, and a rebinding is the
-  // keystroke the user actually knows, so the last match wins.
-  let found: GhosttyBindingEntry | undefined;
-  for (const entry of table.values()) {
-    if (entry.action.type === 'toggle_split_zoom') found = entry;
-  }
-  return found ? synthesizeKeyEvent(found.trigger) : null;
 }

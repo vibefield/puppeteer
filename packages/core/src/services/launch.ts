@@ -17,6 +17,11 @@ const CommandNameSchema = z
   .min(1)
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u);
+const HistoryKindSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-z0-9][a-z0-9._-]*$/u);
 const EnvironmentVariableSchema = z
   .string()
   .min(1)
@@ -53,6 +58,13 @@ export const AgentNativeInvocationCapabilitySchema = z
         state: z.enum(['none', 'isolated-root']),
       })
       .optional(),
+    /**
+     * True when the normalizer tells a utility, a one-shot and an elsewhere
+     * invocation apart from a session (`passthrough`), so that its `rejected`
+     * means a session it cannot carry. Absent reads false. A strict host gives
+     * a launcher only to an agent whose adapter classifies.
+     */
+    classifies: z.boolean().optional(),
   })
   .superRefine((capability, context) => {
     const commandNames = new Set<string>();
@@ -84,6 +96,13 @@ export type AgentNativeInvocationCapability = z.infer<typeof AgentNativeInvocati
 export const AgentLaunchProviderSchema = z.strictObject({
   ...AgentProviderDescriptorSchema.shape,
   resume: z.boolean(),
+  /**
+   * The runtime kinds an external transcript index (Rosetta's `/api/runtimes`)
+   * files this agent's native sessions under. A host joins an indexed session
+   * to the provider that resumes it through these, never through a table of
+   * its own. Absent when the agent keeps no native record such an index reads.
+   */
+  historyKinds: z.array(HistoryKindSchema).min(1).max(8).optional(),
   nativeInvocation: AgentNativeInvocationCapabilitySchema.optional(),
 });
 export type AgentLaunchProvider = z.infer<typeof AgentLaunchProviderSchema>;
@@ -123,11 +142,75 @@ export const AgentNativeInvocationSchema = z.strictObject({
 });
 export type AgentNativeInvocation = z.infer<typeof AgentNativeInvocationSchema>;
 
-/** Private adapter output. `options` never crosses the provider seam. */
+/**
+ * What an invocation that is not a managed session IS — a fact the adapter
+ * states from its own CLI grammar; every host lets it run as typed.
+ * `utility` runs no agent (help, version, a management subcommand);
+ * `one-shot` runs an agent non-interactively in this process (print and exec
+ * modes); `elsewhere` starts or opens an agent that does not live in this
+ * process (background, cloud, attach).
+ */
+export const AgentNativeInvocationPassthroughKindSchema = z.enum(['utility', 'one-shot', 'elsewhere']);
+export type AgentNativeInvocationPassthroughKind = z.infer<typeof AgentNativeInvocationPassthroughKindSchema>;
+
+/**
+ * Private adapter output. `options` never crosses the provider seam.
+ * `accepted`: an interactive session here, every argument carried.
+ * `passthrough`: not a session at all (see {@link AgentNativeInvocationPassthroughKind}).
+ * `rejected`: an interactive session here that the managed launch cannot
+ * carry; `argument` is the first token the adapter could not carry.
+ */
 export type AgentNativeInvocationResolution<Options = unknown> =
-  { status: 'accepted'; resume?: string; options?: Options } | { status: 'rejected'; reason: string };
+  | { status: 'accepted'; resume?: string; options?: Options }
+  | { status: 'passthrough'; kind: AgentNativeInvocationPassthroughKind; reason: string }
+  | { status: 'rejected'; reason: string; argument?: string };
 
 /** Pure adapter service: normalize one vendor CLI grammar into adapter options. */
 export interface AgentNativeInvocationNormalizer<Options = unknown> {
   normalize(invocation: AgentNativeInvocation): AgentNativeInvocationResolution<Options>;
+}
+
+// A registered symbol: every copy of this package that an adapter or a runtime loads reads the same one.
+const AGENT_LAUNCH_REFUSED = Symbol.for('@vibefield/puppeteer-core/agent-launch-refused');
+const AGENT_LAUNCH_REFUSAL_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
+
+/**
+ * The one error an adapter throws whose words are for a person. A provider's
+ * preparation or creation throws it when the launch must not proceed for a
+ * reason the person can act on: `code` is the adapter's own, stable and
+ * UPPER_SNAKE (at most 64 characters); `message` is one plain sentence with
+ * nothing in it that is not theirs to read. The runtime carries exactly this
+ * kind to the failure it answers, words and code. Anything else an adapter
+ * throws is an internal failure, whose text is for logs.
+ */
+export class AgentLaunchRefusedError<Code extends string = string> extends Error {
+  constructor(
+    readonly code: Code,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AgentLaunchRefusedError';
+  }
+
+  static {
+    // The brand sits on the prototype: every instance of every subclass carries it, and none of their data shows it.
+    Object.defineProperty(this.prototype, AGENT_LAUNCH_REFUSED, { value: true });
+  }
+}
+
+/**
+ * Whether `value` is an adapter's refusal ({@link AgentLaunchRefusedError}),
+ * read by its brand and never by `instanceof`: an adapter that loads its own
+ * copy of this package throws another copy's class. One whose code or message
+ * breaks the class's rule is not a refusal.
+ */
+export function isAgentLaunchRefusedError(value: unknown): value is AgentLaunchRefusedError {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as { [AGENT_LAUNCH_REFUSED]?: unknown; code?: unknown; message?: unknown };
+  return (
+    candidate[AGENT_LAUNCH_REFUSED] === true &&
+    typeof candidate.code === 'string' &&
+    AGENT_LAUNCH_REFUSAL_CODE.test(candidate.code) &&
+    typeof candidate.message === 'string'
+  );
 }

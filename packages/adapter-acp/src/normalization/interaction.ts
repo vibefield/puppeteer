@@ -1,5 +1,5 @@
 import type { CreateElicitationRequest } from '@agentclientprotocol/sdk';
-import type { AgentStructuredQuestion } from '@vibecook/puppeteer-core';
+import type { AgentStructuredQuestion } from '@vibefield/puppeteer-core';
 
 const MAX_QUESTIONS = 64;
 const MAX_OPTIONS = 128;

@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildGroundTruth, isClaimAddressableAsmVersion } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, isClaimAddressableAsmVersion } from '@vibefield/puppeteer-surface';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const START = '<!-- agent-support:start -->';
@@ -61,7 +61,7 @@ function validatePersona(repoRoot, agent, issues) {
   }
   const persona = json(personaPath);
   const expectedPath = `vendors/${agent.id}`;
-  if (persona.asm?.package !== '@vibecook/puppeteer-surface' || persona.asm?.path !== expectedPath) {
+  if (persona.asm?.package !== '@vibefield/puppeteer-surface' || persona.asm?.path !== expectedPath) {
     issues.push(`${agent.id}: persona ASM must target the stable canonical root (${expectedPath})`);
   }
 }

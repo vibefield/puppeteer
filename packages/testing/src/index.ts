@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-testing — vendor-neutral harness pieces for runtime and
+ * @vibefield/puppeteer-testing — vendor-neutral harness pieces for runtime and
  * adapter tests.
  *
  * - `fakeAgentBin`: a spawnable fixture TUI (DESIGN §26.1); see bin/fake-agent.mjs

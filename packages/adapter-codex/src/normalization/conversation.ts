@@ -1,4 +1,4 @@
-import type { ConversationEvent } from '@vibecook/puppeteer-core';
+import type { ConversationEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, itemText, rec, str } from './types.js';
 
 /** Codex assistant-message stream normalization and delta accumulation. */

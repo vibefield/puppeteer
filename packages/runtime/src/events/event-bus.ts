@@ -8,7 +8,7 @@ import {
   type AgentEventSelector,
   type AgentEventType,
   type AgentEnvelopeForSelector,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface AgentEventBusOptions {
   onListenerError?: ((error: unknown, envelope: AgentEventEnvelope) => void) | undefined;

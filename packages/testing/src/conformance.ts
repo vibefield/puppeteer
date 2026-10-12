@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { type AgentAdapterBinding, type MonitorMetricFamily, type ObservationLevel } from '@vibecook/puppeteer-core';
+import { type AgentAdapterBinding, type MonitorMetricFamily, type ObservationLevel } from '@vibefield/puppeteer-core';
 import { projectAgentEvents, type TestAgentProjection } from './adapter-projection.js';
 
 const OBSERVATION_LEVELS: ObservationLevel[] = [

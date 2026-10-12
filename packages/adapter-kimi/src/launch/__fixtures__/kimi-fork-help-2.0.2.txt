@@ -1,0 +1,12 @@
+Usage: kimi fork [options] [sessionId]
+
+Fork a session into a new session.
+
+Arguments:
+  sessionId     Session id to fork. Defaults to the most recent session.
+
+Options:
+  --cwd <path>  Working directory used to find the most recent session to fork. Defaults to the
+                current directory.
+  -y, --yes     Skip previous-session confirmation.
+  -h, --help    Show help.

@@ -1,5 +1,5 @@
 import type { HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import type { MonitorAgent } from '../monitor/types.js';
+import type { FindAgent } from './find-agent.js';
 
 /**
  * The Find sheet's model: everything it decides without a DOM.
@@ -18,10 +18,11 @@ export const FIND_MAX_SNIPPETS = 3;
 const SCOPE_SLACK_MS = 5 * 60_000;
 
 /** The provider-native id a live row joins on, once its provider has said one. */
-export function nativeSessionIdOf(agent: MonitorAgent): string | undefined {
+export function nativeSessionIdOf(agent: FindAgent): string | undefined {
   const facet = agent.agent;
   if (!facet) return undefined;
-  return facet.nativeSessionId || facet.monitor?.session.nativeSessionId || undefined;
+  // A host's mirror is Core's passthrough: `session` is not promised (build-mv M47).
+  return facet.nativeSessionId || facet.monitor?.session?.nativeSessionId || undefined;
 }
 
 export interface FindScope {
@@ -29,16 +30,32 @@ export interface FindScope {
   afterMs?: number;
 }
 
+/** Shared only within one projection pass: agents often carry the same
+ * evidence clock. The next pass reads timestamps afresh; nothing accumulates. */
+function timestampReader(): (value: string) => number {
+  const parsed = new Map<string, number>();
+  return (value) => {
+    const held = parsed.get(value);
+    if (held !== undefined) return held;
+    const time = Date.parse(value);
+    parsed.set(value, time);
+    return time;
+  };
+}
+
 /** What to ask the daemon about: the live runs' native ids and their earliest start. */
-export function liveScope(agents: readonly MonitorAgent[]): FindScope {
+export function liveScope(agents: readonly FindAgent[]): FindScope {
   const nativeSessionIds: string[] = [];
+  const seen = new Set<string>();
+  const readTimestamp = timestampReader();
   let earliest = Number.POSITIVE_INFINITY;
   for (const agent of agents) {
     const id = nativeSessionIdOf(agent);
-    if (!id || nativeSessionIds.includes(id)) continue;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
     nativeSessionIds.push(id);
-    const started = agent.agent?.monitor?.session.startedAt ?? agent.agent?.monitor?.statusSince;
-    const startedMs = started ? Date.parse(started) : Number.NaN;
+    const started = agent.agent?.monitor?.session?.startedAt ?? agent.agent?.monitor?.statusSince;
+    const startedMs = started ? readTimestamp(started) : Number.NaN;
     const createdMs = agent.createdAtMs;
     const candidate = Number.isFinite(startedMs) ? Math.min(startedMs, createdMs) : createdMs;
     if (Number.isFinite(candidate)) earliest = Math.min(earliest, candidate);
@@ -93,7 +110,7 @@ interface FactsField {
   weight: number;
 }
 
-function factsFields(agent: MonitorAgent, facts: HistorySessionFacts | undefined): FactsField[] {
+function factsFields(agent: FindAgent, facts: HistorySessionFacts | undefined): FactsField[] {
   const facet = agent.agent;
   const fields: FactsField[] = [];
   const push = (name: string, value: string | undefined, weight: number): void => {
@@ -118,7 +135,7 @@ export interface FactsScore {
 
 /** Every term must land on some field; the score is the best field per term, weighted. */
 export function factsScore(
-  agent: MonitorAgent,
+  agent: FindAgent,
   facts: HistorySessionFacts | undefined,
   terms: readonly string[],
 ): FactsScore {
@@ -145,8 +162,8 @@ export function factsScore(
 
 /* ── rows ──────────────────────────────────────────────────────────────── */
 
-export interface FindRow {
-  agent: MonitorAgent;
+export interface FindRow<Agent extends FindAgent = FindAgent> {
+  agent: Agent;
   nativeSessionId?: string;
   facts?: HistorySessionFacts;
   /** The transcript's own title, when the daemon has one. */
@@ -159,12 +176,20 @@ export interface FindRow {
   lastActiveMs: number;
 }
 
-export function lastActiveMs(agent: MonitorAgent, nowMs: number): number {
-  const facet = agent.agent;
-  const stamps = [facet?.monitor?.freshness.lastEvidenceAt, facet?.monitor?.statusSince]
-    .map((value) => (value ? Date.parse(value) : Number.NaN))
-    .filter((value) => Number.isFinite(value) && value <= nowMs + 60_000);
-  return stamps.length > 0 ? Math.max(...stamps) : agent.createdAtMs;
+function activityTime(agent: FindAgent, nowMs: number, readTimestamp: (value: string) => number): number {
+  const monitor = agent.agent?.monitor;
+  let latest = Number.NEGATIVE_INFINITY;
+  const evidence = monitor?.freshness?.lastEvidenceAt;
+  const evidenceMs = evidence ? readTimestamp(evidence) : Number.NaN;
+  if (Number.isFinite(evidenceMs) && evidenceMs <= nowMs + 60_000) latest = evidenceMs;
+  const status = monitor?.statusSince;
+  const statusMs = status ? readTimestamp(status) : Number.NaN;
+  if (Number.isFinite(statusMs) && statusMs <= nowMs + 60_000) latest = Math.max(latest, statusMs);
+  return latest === Number.NEGATIVE_INFINITY ? agent.createdAtMs : latest;
+}
+
+export function lastActiveMs(agent: FindAgent, nowMs: number): number {
+  return activityTime(agent, nowMs, Date.parse);
 }
 
 function recencyBoost(lastActive: number, nowMs: number): number {
@@ -175,57 +200,111 @@ function recencyBoost(lastActive: number, nowMs: number): number {
   return 0;
 }
 
-export interface BuildFindRowsInput {
-  agents: readonly MonitorAgent[];
+export interface BuildFindRowsInput<Agent extends FindAgent = FindAgent> {
+  agents: readonly Agent[];
   facts: ReadonlyMap<string, HistorySessionFacts>;
   hits: readonly HistorySearchHit[];
   query: string;
   nowMs: number;
 }
 
-export function buildFindRows({ agents, facts, hits, query, nowMs }: BuildFindRowsInput): FindRow[] {
-  const terms = tokenize(query);
-  const hitsByNative = new Map<string, HistorySearchHit[]>();
-  for (const hit of hits) {
-    if (!hit.nativeSessionId) continue;
-    const list = hitsByNative.get(hit.nativeSessionId);
-    if (list) list.push(hit);
-    else hitsByNative.set(hit.nativeSessionId, [hit]);
-  }
-  const rows: FindRow[] = [];
-  for (const agent of agents) {
-    const nativeSessionId = nativeSessionIdOf(agent);
-    const known = nativeSessionId ? facts.get(nativeSessionId) : undefined;
-    const rowHits = (nativeSessionId ? hitsByNative.get(nativeSessionId) : undefined) ?? [];
-    const { score: factScore, matched } = factsScore(agent, known, terms);
-    if (terms.length > 0 && factScore === 0 && rowHits.length === 0) continue;
-    if (terms.length === 0 && !agent.agent) continue;
-    const ordered = [...rowHits].sort((left, right) => (right.at ?? 0) - (left.at ?? 0));
-    const active = lastActiveMs(agent, nowMs);
-    const score =
-      factScore * 10 +
-      (ordered.length > 0 ? 6 : 0) +
-      Math.min(ordered.length, 5) * 4 +
-      recencyBoost(active, nowMs) +
-      (agent.status === 'blocked' ? 1 : 0);
-    rows.push({
-      agent,
-      ...(nativeSessionId ? { nativeSessionId } : {}),
-      ...(known ? { facts: known } : {}),
-      ...(known?.title ? { title: known.title } : {}),
-      factsScore: factScore,
-      matched,
-      hits: ordered,
-      score,
-      lastActiveMs: active,
-    });
-  }
-  return rows.sort(
-    (left, right) =>
-      right.score - left.score ||
-      right.lastActiveMs - left.lastActiveMs ||
-      left.agent.project.localeCompare(right.agent.project),
-  );
+const NO_HITS: readonly HistorySearchHit[] = Object.freeze([]);
+
+interface HeldFindRow<Agent extends FindAgent> {
+  readonly facts: HistorySessionFacts | undefined;
+  readonly title: string | undefined;
+  readonly summary: string | undefined;
+  readonly hits: readonly HistorySearchHit[];
+  readonly terms: readonly string[];
+  readonly nowMs: number;
+  readonly row: FindRow<Agent> | null;
+}
+
+/** One compiler per sheet. Readonly live rows keep their work while their
+ * history, query and clock inputs stand. Every call still ranks the current
+ * set, including while closed, so cursor resets and reopen behavior agree.
+ * History facts/hits may be mutable: inspect title/summary and regroup/sort
+ * hits every pass. The public stateless builder below keeps fresh outputs. */
+export function createFindRows<Agent extends FindAgent>(): (input: BuildFindRowsInput<Agent>) => FindRow<Agent>[] {
+  const cached = new WeakMap<Agent, HeldFindRow<Agent>>();
+  let lastQuery: string | undefined;
+  let terms: readonly string[] = [];
+  return ({ agents, facts, hits, query, nowMs }) => {
+    if (query !== lastQuery) {
+      terms = tokenize(query);
+      lastQuery = query;
+    }
+    const hitsByNative = new Map<string, HistorySearchHit[]>();
+    for (const hit of hits) {
+      if (!hit.nativeSessionId) continue;
+      const list = hitsByNative.get(hit.nativeSessionId);
+      if (list) list.push(hit);
+      else hitsByNative.set(hit.nativeSessionId, [hit]);
+    }
+    for (const list of hitsByNative.values()) list.sort((left, right) => (right.at ?? 0) - (left.at ?? 0));
+    const readTimestamp = timestampReader();
+    const rows: FindRow<Agent>[] = [];
+    for (const agent of agents) {
+      const nativeSessionId = nativeSessionIdOf(agent);
+      const known = nativeSessionId ? facts.get(nativeSessionId) : undefined;
+      const ordered = (nativeSessionId ? hitsByNative.get(nativeSessionId) : undefined) ?? NO_HITS;
+      const held = cached.get(agent);
+      if (
+        held !== undefined &&
+        held.facts === known &&
+        held.title === known?.title &&
+        held.summary === known?.summary &&
+        held.hits === ordered &&
+        held.terms === terms &&
+        held.nowMs === nowMs
+      ) {
+        if (held.row !== null) rows.push(held.row);
+        continue;
+      }
+      const { score: factScore, matched } = factsScore(agent, known, terms);
+      let row: FindRow<Agent> | null = null;
+      if (!(terms.length > 0 && factScore === 0 && ordered.length === 0) && !(terms.length === 0 && !agent.agent)) {
+        const active = activityTime(agent, nowMs, readTimestamp);
+        const score =
+          factScore * 10 +
+          (ordered.length > 0 ? 6 : 0) +
+          Math.min(ordered.length, 5) * 4 +
+          recencyBoost(active, nowMs) +
+          (agent.status === 'blocked' ? 1 : 0);
+        row = {
+          agent,
+          ...(nativeSessionId ? { nativeSessionId } : {}),
+          ...(known ? { facts: known } : {}),
+          ...(known?.title ? { title: known.title } : {}),
+          factsScore: factScore,
+          matched,
+          hits: [...ordered],
+          score,
+          lastActiveMs: active,
+        };
+        rows.push(row);
+      }
+      cached.set(agent, {
+        facts: known,
+        title: known?.title,
+        summary: known?.summary,
+        hits: ordered,
+        terms,
+        nowMs,
+        row,
+      });
+    }
+    return rows.sort(
+      (left, right) =>
+        right.score - left.score ||
+        right.lastActiveMs - left.lastActiveMs ||
+        left.agent.project.localeCompare(right.agent.project),
+    );
+  };
+}
+
+export function buildFindRows<Agent extends FindAgent>(input: BuildFindRowsInput<Agent>): FindRow<Agent>[] {
+  return createFindRows<Agent>()(input);
 }
 
 /* ── the words on a row ────────────────────────────────────────────────── */

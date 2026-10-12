@@ -1,4 +1,5 @@
 import Matter from 'matter-js';
+import { clampSpawnPosition, PHYSICAL_GAP } from './spawn-clamp.js';
 
 // THE SWARM'S PHYSICS, with no view attached (GT-3c, GT-D16).
 //
@@ -54,8 +55,6 @@ export const PHYSICS_HZ_FLOOR = 15;
  */
 export const FRICTION_AIR_CEILING = 0.2;
 
-/** Space between a bubble's drawn edge and its collision edge. */
-const PHYSICAL_GAP = 4;
 /** How far a chrome obstacle's body overhangs the element it stands for. */
 const CHROME_OBSTACLE_PADDING = 7;
 const DRAG_STIFFNESS = 0.2;
@@ -158,14 +157,6 @@ function guardParameters(next: SwarmPhysicsParameters): SwarmPhysicsParameters {
     ...next,
     physicsHz: clampHz(next.physicsHz),
     frictionAir: clampFriction(next.frictionAir),
-  };
-}
-
-function clampSpawnPosition(width: number, height: number, radius: number, position: SwarmPoint): SwarmPoint {
-  const margin = radius + PHYSICAL_GAP;
-  return {
-    x: Math.min(Math.max(position.x, margin), Math.max(margin, width - margin)),
-    y: Math.min(Math.max(position.y, margin), Math.max(margin, height - margin)),
   };
 }
 

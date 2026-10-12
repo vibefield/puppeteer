@@ -35,7 +35,7 @@ const MAX_DEFAULT_ENTRIES = 64;
 const TEMP_PREFIX = '.agent-profile-defaults-';
 
 // Mirrors AgentProviderIdSchema and AgentProfileIdSchema in
-// @vibecook/puppeteer-core; a profile id additionally carries the ':' that
+// @vibefield/puppeteer-core; a profile id additionally carries the ':' that
 // separates a provider from its synthetic default.
 const PROVIDER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const PROFILE_ID = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/u;

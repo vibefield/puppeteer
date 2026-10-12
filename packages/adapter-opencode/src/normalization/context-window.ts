@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { isOpenCodeRecord, openCodeNumber } from './wire.js';
 
 /** OpenCode step-finish token facts → deduplicated context-window events. */

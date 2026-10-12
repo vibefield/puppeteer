@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import type {
   AgentNativeInvocation,
@@ -5,27 +6,30 @@ import type {
   AgentProfile,
   AgentProviderDescriptor,
   ProfileService,
-} from '@vibecook/puppeteer-core';
-import type { AgentProvider } from '@vibecook/puppeteer-runtime';
-import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+} from '@vibefield/puppeteer-core';
+import type { AgentProvider } from '@vibefield/puppeteer-runtime';
+import { createAcpModelService, createAcpSession, type AcpConnector } from '@vibefield/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
   createAntigravityAccountUsageService,
   createAntigravityDistributionService,
   createAntigravityExtensionService,
   createAntigravityProfileService,
+  createAntigravityModelService,
   createAntigravityTuiSession,
   normalizeAntigravityNativeInvocation,
   prepareAntigravityTuiSession,
   restoreAntigravityContinuationState,
   type AntigravityNativeInvocationOptions,
   type CreateAntigravityTuiSessionOptions,
-} from '@vibecook/puppeteer-adapter-antigravity';
+} from '@vibefield/puppeteer-adapter-antigravity';
 import {
+  CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeAccountUsageService,
   createClaudeDistributionService,
   createClaudeExtensionService,
   createClaudeProfileService,
+  createClaudeModelService,
   captureClaudeContinuationState,
   attachClaudeTuiSession,
   createClaudeSession,
@@ -34,12 +38,13 @@ import {
   prepareClaudeTuiSession,
   restoreClaudeContinuationState,
   type ClaudeNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-claude';
+} from '@vibefield/puppeteer-adapter-claude';
 import {
   createCodexAccountUsageService,
   createCodexDistributionService,
   createCodexExtensionService,
   createCodexProfileService,
+  createCodexModelService,
   captureCodexContinuationState,
   createCodexTuiSession,
   normalizeCodexNativeInvocation,
@@ -47,79 +52,85 @@ import {
   prewarmCodex,
   restoreCodexContinuationState,
   type CodexNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-codex';
+} from '@vibefield/puppeteer-adapter-codex';
 import {
   captureCopilotContinuationState,
   createCopilotDistributionService,
   createCopilotProfileService,
+  createCopilotModelService,
   createCopilotTuiSession,
   normalizeCopilotNativeInvocation,
   prepareCopilotTuiSession,
   restoreCopilotContinuationState,
   type CopilotNativeInvocationOptions,
   type CreateCopilotTuiSessionOptions,
-} from '@vibecook/puppeteer-adapter-copilot';
+} from '@vibefield/puppeteer-adapter-copilot';
 import {
   captureGrokContinuationState,
   createGrokDistributionService,
   createGrokExtensionService,
   createGrokProfileService,
+  createGrokModelService,
   createGrokAccountUsageService,
   createGrokBackend,
   normalizeGrokNativeInvocation,
   restoreGrokContinuationState,
   type GrokBackend,
   type GrokNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-grok';
+} from '@vibefield/puppeteer-adapter-grok';
 import {
   captureKimiContinuationState,
   createKimiAccountUsageService,
   createKimiDistributionService,
   createKimiExtensionService,
   createKimiProfileService,
+  createKimiModelService,
   createKimiTuiSession,
   normalizeKimiNativeInvocation,
   prepareKimiTuiSession,
   restoreKimiContinuationState,
   type CreateKimiTuiSessionOptions,
   type KimiNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-kimi';
+} from '@vibefield/puppeteer-adapter-kimi';
 import {
   captureOpenCodeContinuationState,
   createOpenCodeDistributionService,
   createOpenCodeExtensionService,
   createOpenCodeProfileService,
+  createOpenCodeModelService,
   createOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation,
   prepareOpenCodeTuiSession,
   restoreOpenCodeContinuationState,
   type CreateOpenCodeTuiSessionOptions,
   type OpenCodeNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-opencode';
+} from '@vibefield/puppeteer-adapter-opencode';
 import {
   captureHermesContinuationState,
   createHermesDistributionService,
   createHermesExtensionService,
   createHermesProfileService,
+  createHermesModelService,
   createHermesTuiSession,
   normalizeHermesNativeInvocation,
   prepareHermesTuiSession,
   restoreHermesContinuationState,
   type CreateHermesTuiSessionOptions,
   type HermesNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-hermes';
+} from '@vibefield/puppeteer-adapter-hermes';
 import {
   capturePiContinuationState,
   createPiDistributionService,
   createPiExtensionService,
   createPiProfileService,
+  createPiModelService,
   createPiTuiSession,
   normalizePiNativeInvocation,
   preparePiTuiSession,
   restorePiContinuationState,
   type CreatePiTuiSessionOptions,
   type PiNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-pi';
+} from '@vibefield/puppeteer-adapter-pi';
 import type {
   AcpAgentOptions,
   AntigravityAgentOptions,
@@ -206,7 +217,13 @@ function withProfileBinding<
   const environment = profiles.bindingEnvironment(profile);
   if (Object.keys(environment).length === 0) return launch;
   const resolution = normalize({ providerId, cwd, argv: [], environment, implementation: { kind: 'native' } });
-  if (resolution.status === 'rejected') {
+  if (resolution.status === 'passthrough') {
+    // An empty argv is the bare session. A normalizer that calls it anything else is wrong about its own CLI.
+    throw new Error(
+      `profile ${profile.id} cannot bind ${providerId}: the adapter's normalizer calls an empty argv a ${resolution.kind} passthrough (${resolution.reason}), which is an adapter bug`,
+    );
+  }
+  if (resolution.status !== 'accepted') {
     throw new Error(`profile ${profile.id} cannot bind ${providerId}: ${resolution.reason}`);
   }
   const bound: Partial<Options> = resolution.options ?? {};
@@ -218,6 +235,28 @@ function withProfileBinding<
       ? { appServerEnv: { ...launch?.appServerEnv, ...bound.appServerEnv } }
       : {}),
   } as Options;
+}
+
+/**
+ * A host's launch values (RFC 006 C2: the keys of MCP servers the agent's
+ * settings name as variables) beneath a launch's own variables, in each
+ * environment the provider starts a process with for the run: the terminal's,
+ * or the helper's that runs the agent's MCP servers (Codex's app-server,
+ * Grok's leader). The profile binding and the adapter's own variables win.
+ * Only a created session takes them: a prepared recipe goes back to its
+ * caller, and an attach starts nothing.
+ */
+function withLaunchEnvironment<
+  Options extends { env?: Record<string, string> | undefined; appServerEnv?: Record<string, string> | undefined },
+>(
+  launch: Options | undefined,
+  environment: Readonly<Record<string, string>> | undefined,
+  into: ReadonlyArray<'env' | 'appServerEnv'>,
+): Options | undefined {
+  if (environment === undefined || Object.keys(environment).length === 0) return launch;
+  const next: Options = { ...launch } as Options;
+  for (const key of into) next[key] = { ...environment, ...launch?.[key] } as Options[typeof key];
+  return next;
 }
 
 /**
@@ -286,7 +325,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     pi: {
       distribution: createPiDistributionService({ executable: resolved.pi }),
       profiles: createPiProfileService({ ...chosen(resolved.pi), ...homeOption }),
-      extensions: createPiExtensionService(homeOption),
+      extensions: createPiExtensionService({ ...chosen(resolved.pi), ...homeOption }),
     },
   };
   const claudeLaunchFor = async (
@@ -320,10 +359,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
   ) => {
     const executable = launch?.executable ?? resolved.grok;
     const appServerEnv = launch?.appServerEnv;
-    const key = JSON.stringify([
-      executable ?? null,
-      Object.entries(appServerEnv ?? {}).sort(([a], [b]) => a.localeCompare(b)),
-    ]);
+    // a digest: the environment may carry a host's launch values, which no key repeats
+    const key = createHash('sha256')
+      .update(
+        JSON.stringify([executable ?? null, Object.entries(appServerEnv ?? {}).sort(([a], [b]) => a.localeCompare(b))]),
+      )
+      .digest('hex');
     let backend = grokBackends.get(key);
     if (!backend) {
       backend = createGrokBackend({
@@ -342,16 +383,21 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.claude.distribution,
       profiles: services.claude.profiles,
+      models: createClaudeModelService({ ...chosen(resolved.claude), ...homeOption }),
       extensions: services.claude.extensions,
       accountUsage: createClaudeAccountUsageService(),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.claude,
           resume: true,
+          historyKinds: ['claude-code'],
           nativeInvocation: {
             commands: [{ name: 'claude', executable: resolved.claude ?? 'claude' }],
-            environmentVariables: ['CLAUDE_CONFIG_DIR'],
+            // The config root and every switch that stands for a flag: the session inherits them.
+            environmentVariables: [...CLAUDE_INVOCATION_ENVIRONMENT],
             imposter: { state: 'isolated-root' },
+            // The adapter reads Claude's own grammar: its `rejected` is always a session it cannot carry.
+            classifies: true,
           },
         },
         normalizeInvocation: normalizeClaudeNativeInvocation,
@@ -361,14 +407,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
-        const launch = withProfileBinding(
-          'claude',
-          cwd,
-          profile,
-          services.claude.profiles,
-          normalizeClaudeNativeInvocation,
-          agentOptions as ClaudeProviderOptions | undefined,
+      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress, environment }) {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'claude',
+            cwd,
+            profile,
+            services.claude.profiles,
+            normalizeClaudeNativeInvocation,
+            agentOptions as ClaudeProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
         return createClaudeSession({
@@ -426,29 +476,37 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         });
       },
       async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
+        // A typed launch is prepared, never created. What the person typed is read from the
+        // invocation's own options: the profile binding normalizes an empty argv of its own, which
+        // binds the environment and says nothing of the argv.
+        const typed = agentOptions as ClaudeProviderOptions | undefined;
         const launch = withProfileBinding(
           'claude',
           cwd,
           profile,
           services.claude.profiles,
           normalizeClaudeNativeInvocation,
-          agentOptions as ClaudeProviderOptions | undefined,
+          typed,
         );
-        const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
+        const sessionTitle = typed?.title ?? title;
+        const { executable, providerVersion } = await claudeLaunchFor(resume, sessionTitle, launch);
         const prepared = await prepareClaudeTuiSession({
           cwd,
           resume,
-          title,
+          title: sessionTitle,
           executable,
           env: launch?.env,
           providerVersion,
-          permissionMode: launch?.permissionMode,
+          permissionMode: typed?.typed === true ? (typed.permissionMode ?? null) : launch?.permissionMode,
           model: launch?.model,
           effort: launch?.effort,
           settingSources: launch?.settingSources,
           configDir: launch?.configDir,
           fileChangeMatcher: launch?.fileChangeMatcher,
           resumeInvocation: launch?.resumeInvocation,
+          carriedArgs: typed?.carriedArgs,
+          prompt: typed?.prompt,
+          readsNoSettingsFiles: typed?.readsNoSettingsFiles,
           onDiagnostic: launch?.onDiagnostic,
           observeSubagentStatus: true,
           automate: host.automateTerminal,
@@ -468,6 +526,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.codex.distribution,
       profiles: services.codex.profiles,
+      models: createCodexModelService({ ...chosen(resolved.codex), ...homeOption }),
       extensions: services.codex.extensions,
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
       prewarm: ({ profile, signal }) =>
@@ -480,10 +539,12 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.codex,
           resume: true,
+          historyKinds: ['codex'],
           nativeInvocation: {
             commands: [{ name: 'codex', executable: resolved.codex ?? 'codex' }],
             environmentVariables: ['CODEX_HOME'],
             imposter: { state: 'isolated-root' },
+            classifies: true,
           },
         },
         normalizeInvocation: normalizeCodexNativeInvocation,
@@ -493,14 +554,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreCodexContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'codex',
-          cwd,
-          profile,
-          services.codex.profiles,
-          normalizeCodexNativeInvocation,
-          agentOptions as CodexProviderOptions | undefined,
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'codex',
+            cwd,
+            profile,
+            services.codex.profiles,
+            normalizeCodexNativeInvocation,
+            agentOptions as CodexProviderOptions | undefined,
+          ),
+          environment,
+          ['appServerEnv'],
         );
         return createCodexTuiSession({
           cwd,
@@ -509,21 +574,26 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           host,
           env: launch?.env,
           model: launch?.model,
+          effort: launch?.effort,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
       async prepareSession({ cwd, resume, host, agentOptions, profile }) {
+        const own = agentOptions as CodexProviderOptions | undefined;
         const launch = withProfileBinding(
           'codex',
           cwd,
           profile,
           services.codex.profiles,
           normalizeCodexNativeInvocation,
-          agentOptions as CodexProviderOptions | undefined,
+          own,
         );
         return prepareCodexTuiSession({
           cwd,
@@ -532,16 +602,24 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           host,
           env: launch?.env,
           model: launch?.model,
+          effort: launch?.effort,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
+          // The launch's own word only: a profile binding normalizes an empty argv as
+          // well, and must not start a host's own spawn from the configuration.
+          permissionDefaults: own?.permissionDefaults,
           onApproval: launch?.onApproval,
           resumeInvocation: launch?.resumeInvocation,
           appServerEnv: launch?.appServerEnv,
+          appServerArguments: launch?.appServerArguments,
+          tuiArguments: launch?.tuiArguments,
+          prompt: launch?.prompt,
         });
       },
     },
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.acp,
+      models: createAcpModelService(),
       executionMode: 'acp',
       launch: { provider: { ...BUILTIN_PROVIDER_DESCRIPTORS.acp, resume: true } },
       createSession: ({ cwd, resume, agentOptions }) => {
@@ -565,13 +643,16 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.grok.distribution,
       profiles: services.grok.profiles,
+      models: createGrokModelService({ ...chosen(resolved.grok), ...homeOption }),
       extensions: services.grok.extensions,
       accountUsage: createGrokAccountUsageService({ executable: resolved.grok }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.grok,
           resume: true,
+          historyKinds: ['grok'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'grok', executable: resolved.grok ?? 'grok' }],
             environmentVariables: ['GROK_HOME'],
             imposter: { state: 'isolated-root' },
@@ -584,14 +665,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'grok',
-          cwd,
-          profile,
-          services.grok.profiles,
-          normalizeGrokNativeInvocation,
-          agentOptions as GrokProviderOptions | undefined,
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'grok',
+            cwd,
+            profile,
+            services.grok.profiles,
+            normalizeGrokNativeInvocation,
+            agentOptions as GrokProviderOptions | undefined,
+          ),
+          environment,
+          ['appServerEnv'],
         );
         return grokBackendFor(launch, host).createSession({
           cwd,
@@ -636,13 +721,16 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.kimi.distribution,
       profiles: services.kimi.profiles,
+      models: createKimiModelService({ ...chosen(resolved.kimi), ...homeOption }),
       extensions: services.kimi.extensions,
       accountUsage: createKimiAccountUsageService(),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.kimi,
           resume: true,
+          historyKinds: ['kimi-code'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'kimi', executable: resolved.kimi ?? 'kimi' }],
             environmentVariables: ['KIMI_CODE_HOME'],
             imposter: { state: 'isolated-root' },
@@ -657,14 +745,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreKimiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'kimi',
-          cwd,
-          profile,
-          services.kimi.profiles,
-          normalizeKimiNativeInvocation,
-          agentOptions as KimiProviderOptions | undefined,
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'kimi',
+            cwd,
+            profile,
+            services.kimi.profiles,
+            normalizeKimiNativeInvocation,
+            agentOptions as KimiProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createKimiTuiSession({
           cwd,
@@ -715,12 +807,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.opencode.distribution,
       profiles: services.opencode.profiles,
+      models: createOpenCodeModelService({ ...chosen(resolved.opencode), ...homeOption }),
       extensions: services.opencode.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.opencode,
           resume: true,
+          historyKinds: ['opencode'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'opencode', executable: resolved.opencode ?? 'opencode' }],
             environmentVariables: ['XDG_DATA_HOME'],
             imposter: { state: 'isolated-root' },
@@ -734,14 +829,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreOpenCodeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'opencode',
-          cwd,
-          profile,
-          services.opencode.profiles,
-          normalizeOpenCodeNativeInvocation,
-          agentOptions as OpenCodeProviderOptions | undefined,
+      createSession: ({ cwd, resume, title, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'opencode',
+            cwd,
+            profile,
+            services.opencode.profiles,
+            normalizeOpenCodeNativeInvocation,
+            agentOptions as OpenCodeProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createOpenCodeTuiSession({
           cwd,
@@ -792,13 +891,16 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.antigravity.distribution,
       profiles: services.antigravity.profiles,
+      models: createAntigravityModelService({ ...chosen(resolved.antigravity), ...homeOption }),
       extensions: services.antigravity.extensions,
       accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.antigravity,
           resume: true,
+          historyKinds: ['antigravity'],
           nativeInvocation: {
+            classifies: true,
             commands: [
               { name: 'agy', executable: resolved.antigravity ?? 'agy' },
               { name: 'antigravity', executable: resolved.antigravity ?? 'agy' },
@@ -815,14 +917,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreAntigravityContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'antigravity',
-          cwd,
-          profile,
-          services.antigravity.profiles,
-          normalizeAntigravityNativeInvocation,
-          agentOptions as AntigravityProviderOptions | undefined,
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'antigravity',
+            cwd,
+            profile,
+            services.antigravity.profiles,
+            normalizeAntigravityNativeInvocation,
+            agentOptions as AntigravityProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createAntigravityTuiSession({
           cwd,
@@ -881,11 +987,14 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.copilot.distribution,
       profiles: services.copilot.profiles,
+      models: createCopilotModelService({ ...chosen(resolved.copilot), ...homeOption }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
           resume: true,
+          historyKinds: ['copilot'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'copilot', executable: resolved.copilot ?? 'copilot' }],
             environmentVariables: ['COPILOT_HOME'],
             imposter: { state: 'isolated-root' },
@@ -899,14 +1008,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
             restoreCopilotContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'copilot',
-          cwd,
-          profile,
-          services.copilot.profiles,
-          normalizeCopilotNativeInvocation,
-          agentOptions as CopilotProviderOptions | undefined,
+      createSession: ({ cwd, resume, title, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'copilot',
+            cwd,
+            profile,
+            services.copilot.profiles,
+            normalizeCopilotNativeInvocation,
+            agentOptions as CopilotProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createCopilotTuiSession({
           cwd,
@@ -961,12 +1074,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.pi.distribution,
       profiles: services.pi.profiles,
+      models: createPiModelService({ ...chosen(resolved.pi), ...homeOption }),
       extensions: services.pi.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.pi,
           resume: true,
+          historyKinds: ['pi'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'pi', executable: resolved.pi ?? 'pi' }],
             environmentVariables: ['PI_CODING_AGENT_DIR', 'PI_CODING_AGENT_SESSION_DIR'],
             imposter: { state: 'isolated-root' },
@@ -979,14 +1095,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restorePiContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, title, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'pi',
-          cwd,
-          profile,
-          services.pi.profiles,
-          normalizePiNativeInvocation,
-          agentOptions as PiProviderOptions | undefined,
+      createSession: ({ cwd, resume, title, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'pi',
+            cwd,
+            profile,
+            services.pi.profiles,
+            normalizePiNativeInvocation,
+            agentOptions as PiProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createPiTuiSession({
           cwd,
@@ -1035,12 +1155,15 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.hermes.distribution,
       profiles: services.hermes.profiles,
+      models: createHermesModelService({ ...chosen(resolved.hermes), ...homeOption }),
       extensions: services.hermes.extensions,
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.hermes,
           resume: true,
+          historyKinds: ['hermes'],
           nativeInvocation: {
+            classifies: true,
             commands: [{ name: 'hermes', executable: resolved.hermes ?? 'hermes' }],
             environmentVariables: ['HERMES_HOME'],
           },
@@ -1054,14 +1177,18 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: restoreHermesContinuationState,
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile }) => {
-        const launch = withProfileBinding(
-          'hermes',
-          cwd,
-          profile,
-          services.hermes.profiles,
-          normalizeHermesNativeInvocation,
-          agentOptions as HermesProviderOptions | undefined,
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+        const launch = withLaunchEnvironment(
+          withProfileBinding(
+            'hermes',
+            cwd,
+            profile,
+            services.hermes.profiles,
+            normalizeHermesNativeInvocation,
+            agentOptions as HermesProviderOptions | undefined,
+          ),
+          environment,
+          ['env'],
         );
         return createHermesTuiSession({
           cwd,
@@ -1072,6 +1199,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           hermesHome: launch?.hermesHome,
           env: launch?.env,
           yolo: launch?.yolo,
+          model: launch?.model,
+          provider: launch?.provider,
+          effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
@@ -1094,6 +1224,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           hermesHome: launch?.hermesHome,
           env: launch?.env,
           yolo: launch?.yolo,
+          model: launch?.model,
+          provider: launch?.provider,
+          effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });

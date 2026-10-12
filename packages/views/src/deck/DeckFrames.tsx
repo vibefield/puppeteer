@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType, type RefObject } from 'react';
+import { GHOSTTEA_PANE_SELECTOR, usePaneElements } from './pane-elements.js';
 import { PaneFrame, type PaneFrameVerbs } from './PaneFrame.js';
 import type { PaneFrameAgent, PaneFrameSession } from './pane-frame.js';
 
@@ -62,32 +63,7 @@ export interface DeckFramesProps {
  * lands — `transition: padding` is in the stylesheet).
  */
 export const DECK_FRAMED_CLASS = 'vf-deck-framed';
-export const GHOSTTEA_PANE_SELECTOR = '.ghostty-pane[data-pane-id]';
-
-interface PaneElements {
-  byId: ReadonlyMap<string, HTMLElement>;
-  zoomedPaneId?: string;
-}
-
-function readPaneElements(deck: HTMLElement, selector: string): PaneElements {
-  const byId = new Map<string, HTMLElement>();
-  let zoomedPaneId: string | undefined;
-  for (const element of deck.querySelectorAll<HTMLElement>(selector)) {
-    const paneId = element.dataset.paneId;
-    if (!paneId) continue;
-    byId.set(paneId, element);
-    if (element.classList.contains('is-zoomed')) zoomedPaneId = paneId;
-  }
-  return { byId, ...(zoomedPaneId ? { zoomedPaneId } : {}) };
-}
-
-function samePaneElements(left: PaneElements, right: PaneElements): boolean {
-  if (left.zoomedPaneId !== right.zoomedPaneId || left.byId.size !== right.byId.size) return false;
-  for (const [paneId, element] of left.byId) {
-    if (right.byId.get(paneId) !== element) return false;
-  }
-  return true;
-}
+export { GHOSTTEA_PANE_SELECTOR };
 
 function DefaultFrame({ paneId: _paneId, ...props }: DeckFrameSlotProps) {
   return <PaneFrame {...props} />;
@@ -111,37 +87,11 @@ export function DeckFrames({
   paneSelector = GHOSTTEA_PANE_SELECTOR,
   zoomedPaneId,
 }: DeckFramesProps) {
-  const [elements, setElements] = useState<PaneElements>({ byId: new Map() });
+  // The class rides the same effect as the observer, so a deck element that
+  // is replaced behind a stable ref is re-marked whenever the panes change —
+  // and a host that puts the class in its static className loses nothing.
+  const elements = usePaneElements(deckRef, paneSelector, panes, DECK_FRAMED_CLASS);
   const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    const deck = deckRef.current;
-    if (!deck) return;
-    // The class rides the same effect as the observer, so a deck element that
-    // is replaced behind a stable ref is re-marked whenever the panes change —
-    // and a host that puts the class in its static className loses nothing.
-    const marked = !deck.classList.contains(DECK_FRAMED_CLASS);
-    if (marked) deck.classList.add(DECK_FRAMED_CLASS);
-    let pending: number | undefined;
-    const sync = (): void => {
-      pending = undefined;
-      const next = readPaneElements(deck, paneSelector);
-      setElements((current) => (samePaneElements(current, next) ? current : next));
-    };
-    // A timer rather than an animation frame: an occluded window paints no
-    // frames, and a pane zoomed while hidden should still be framed on return.
-    const schedule = (): void => {
-      if (pending === undefined) pending = window.setTimeout(sync, 0);
-    };
-    const observer = new MutationObserver(schedule);
-    observer.observe(deck, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-    sync();
-    return () => {
-      observer.disconnect();
-      if (pending !== undefined) window.clearTimeout(pending);
-      if (marked) deck.classList.remove(DECK_FRAMED_CLASS);
-    };
-  }, [deckRef, panes, paneSelector]);
 
   // The stop verb carries the turn's time, so the clock ticks while a mounted agent works.
   const working = panes.some((pane) => agentsBySession.get(pane.session.id)?.status === 'working');

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-builtin-providers",
+  "name": "@vibefield/puppeteer-builtin-providers",
   "version": "0.1.8",
   "type": "module",
   "description": "Optional turn-key composition of the Puppeteer runtime and official agent adapters.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/builtin-providers"
   },
   "main": "./src/index.ts",
@@ -17,7 +17,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -36,21 +35,21 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vibecook/puppeteer-adapter-acp": "workspace:*",
-    "@vibecook/puppeteer-adapter-antigravity": "workspace:*",
-    "@vibecook/puppeteer-adapter-claude": "workspace:*",
-    "@vibecook/puppeteer-adapter-codex": "workspace:*",
-    "@vibecook/puppeteer-adapter-copilot": "workspace:*",
-    "@vibecook/puppeteer-adapter-grok": "workspace:*",
-    "@vibecook/puppeteer-adapter-hermes": "workspace:*",
-    "@vibecook/puppeteer-adapter-kimi": "workspace:*",
-    "@vibecook/puppeteer-adapter-opencode": "workspace:*",
-    "@vibecook/puppeteer-adapter-pi": "workspace:*",
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-runtime": "workspace:*"
+    "@vibefield/puppeteer-adapter-acp": "workspace:*",
+    "@vibefield/puppeteer-adapter-antigravity": "workspace:*",
+    "@vibefield/puppeteer-adapter-claude": "workspace:*",
+    "@vibefield/puppeteer-adapter-codex": "workspace:*",
+    "@vibefield/puppeteer-adapter-copilot": "workspace:*",
+    "@vibefield/puppeteer-adapter-grok": "workspace:*",
+    "@vibefield/puppeteer-adapter-hermes": "workspace:*",
+    "@vibefield/puppeteer-adapter-kimi": "workspace:*",
+    "@vibefield/puppeteer-adapter-opencode": "workspace:*",
+    "@vibefield/puppeteer-adapter-pi": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-runtime": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.18.0"

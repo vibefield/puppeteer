@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibecook/puppeteer-core';
+import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibefield/puppeteer-core';
 import {
   accountUsageEntryKey,
   createAccountUsageMonitor,
@@ -310,6 +310,122 @@ describe('startup ordering', () => {
 
     expect(fetchUsage.mock.calls.map(([, profileId]) => profileId)).toEqual([undefined, 'push-agent:native-default']);
     expect(batch.entries.map((entry) => entry.profileId)).toEqual(['push-agent:native-default']);
+  });
+});
+
+describe('account usage after sign-in', () => {
+  const PROFILES: AccountUsageProfileRef[] = [
+    { id: 'personal', provider: 'push-agent', label: 'Personal' },
+    { id: 'work', provider: 'push-agent', label: 'Work' },
+  ];
+  const signedOut: AccountUsageFetchResult = {
+    provider: 'push-agent',
+    status: 'unauthenticated',
+    retryable: false,
+    message: 'Sign in required',
+  };
+
+  it('drops a pre-login failure only for the signed-in account and makes it due immediately', async () => {
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => signedOut);
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => PROFILES,
+      publish: () => undefined,
+      now: () => new Date(0),
+    });
+    await monitor.refreshProfiles();
+    await monitor.refresh({ force: true, profileIds: ['work'] });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    const invalidated = await monitor.invalidateProfileAuthentication('work');
+    expect(fetchUsage).toHaveBeenCalledTimes(2); // invalidating is not a network request
+    expect(invalidated.entries.map((entry) => entry.result.status)).toEqual(['unauthenticated', 'unavailable']);
+    fetchUsage.mockResolvedValue(available('push-agent'));
+    const recovered = await monitor.refresh({ profileIds: ['work'] });
+    expect(fetchUsage.mock.calls.slice(2)).toEqual([['push-agent', 'work']]);
+    expect(recovered.entries.map((entry) => entry.result.status)).toEqual(['unauthenticated', 'available']);
+  });
+
+  it('waits for a pre-login reading so it cannot restore the old authentication failure', async () => {
+    let release!: (result: AccountUsageFetchResult) => void;
+    const fetchUsage = vi.fn(
+      () =>
+        new Promise<AccountUsageFetchResult>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => [PROFILES[1]!],
+      publish: () => undefined,
+      now: () => new Date(0),
+    });
+    await monitor.refreshProfiles({ poll: false });
+    const reading = monitor.refresh();
+    const signedIn = monitor.invalidateProfileAuthentication('work');
+    release(signedOut);
+    await reading;
+    await signedIn;
+    fetchUsage.mockResolvedValue(available('push-agent'));
+    expect((await monitor.refresh({ profileIds: ['work'] })).entries[0]?.result.status).toBe('available');
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    {
+      status: 'unavailable' as const,
+      code: 'rate-limited' as const,
+      retryable: true,
+    },
+    { status: 'unavailable' as const, retryable: true },
+    {
+      status: 'unauthenticated' as const,
+      retryable: false,
+      retryAt: new Date(60_000).toISOString(),
+    },
+  ])('keeps server backoff after sign-in and drops old account metrics: %j', async (refusal) => {
+    let nowMs = 0;
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('push-agent'));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => [PROFILES[1]!],
+      publish: () => undefined,
+      now: () => new Date(nowMs),
+    });
+    await monitor.refreshProfiles();
+    nowMs = 30_000;
+    fetchUsage.mockResolvedValueOnce({
+      provider: 'push-agent',
+      message: 'Please wait',
+      ...refusal,
+    });
+    const failed = await monitor.refresh({ force: true });
+    expect(failed.entries[0]?.stale).toBe(true);
+    const invalidated = await monitor.invalidateProfileAuthentication('work');
+    expect(invalidated.entries[0]?.result.status).toBe(refusal.status);
+    expect(invalidated.entries[0]?.stale).toBeUndefined();
+    await monitor.refresh({ force: true, profileIds: ['work'] });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
+    nowMs = 'retryAt' in refusal ? 60_000 : 30_000 + 30 * 60_000;
+    expect((await monitor.refresh()).entries[0]?.result.status).toBe('available');
+    expect(fetchUsage).toHaveBeenCalledTimes(3);
+  });
+
+  it('discards a recent successful reading when login may have switched accounts', async () => {
+    const fetchUsage = vi.fn(async (): Promise<AccountUsageFetchResult> => available('push-agent'));
+    const monitor = createAccountUsageMonitor({
+      providers: [PROVIDERS[0]!],
+      fetchUsage,
+      listProfiles: async () => [PROFILES[1]!],
+      publish: () => undefined,
+      now: () => new Date(0),
+    });
+    await monitor.refreshProfiles();
+    expect((await monitor.invalidateProfileAuthentication('work')).entries[0]?.result.status).toBe('unavailable');
+    await monitor.refresh({ profileIds: ['work'] });
+    expect(fetchUsage).toHaveBeenCalledTimes(2);
   });
 });
 

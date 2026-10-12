@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { checkRecord, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
+import { checkRecord, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { grokRules } from './privacy.mjs';
 import { sanitizeGrokCaptureSet } from './sanitize-captures.mjs';
 

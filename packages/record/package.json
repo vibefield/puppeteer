@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-record",
+  "name": "@vibefield/puppeteer-record",
   "version": "0.1.8",
   "type": "module",
   "description": "Own-action record: the append-only JSONL log of what the puppeteer runtime itself did (injections, workspace finals, exits, policy conflicts).",
@@ -40,6 +40,6 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibefield/puppeteer-core": "workspace:*"
   }
 }

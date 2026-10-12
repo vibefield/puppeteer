@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 export const ANTIGRAVITY_CONTRACT = 'antigravity-transcript@1.1.20';
 export const ANTIGRAVITY_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {

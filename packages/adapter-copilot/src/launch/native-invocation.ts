@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const SAFE_ID = /^[A-Za-z0-9._-]+$/u;
 const REJECTED = 'custom arguments are not compatible with the managed Copilot launch';
@@ -22,26 +23,30 @@ export function normalizeCopilotNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<CopilotNativeInvocationOptions> {
   if (invocation.providerId !== 'copilot') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
   const options: CopilotNativeInvocationOptions = {};
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     const separator = argument.indexOf('=');
     const flag = separator < 0 ? argument : argument.slice(0, separator);
     const inlineValue = separator < 0 ? undefined : argument.slice(separator + 1);
     if (flag === '--resume' || flag === '-r') {
-      const value = inlineValue ?? invocation.argv[++index];
-      if (resume || !value || !SAFE_ID.test(value)) return { status: 'rejected', reason: REJECTED };
+      const value = inlineValue ?? argv[++index];
+      if (resume || !value || value === '.' || value === '..' || value.startsWith('-') || !SAFE_ID.test(value))
+        return { status: 'rejected', reason: REJECTED, argument };
       resume = value;
       continue;
     }
     if (flag === '--allow-all' || flag === '--yolo') {
-      if (inlineValue !== undefined || options.allowAll) return { status: 'rejected', reason: REJECTED };
+      if (inlineValue !== undefined || options.allowAll) return { status: 'rejected', reason: REJECTED, argument };
       options.allowAll = true;
       continue;
     }
     if (flag === '--plan') {
-      if (inlineValue !== undefined || options.mode) return { status: 'rejected', reason: REJECTED };
+      if (inlineValue !== undefined || options.mode) return { status: 'rejected', reason: REJECTED, argument };
       options.mode = 'plan';
       continue;
     }
@@ -59,13 +64,15 @@ export function normalizeCopilotNativeInvocation(
                 : flag === '--name' || flag === '-n'
                   ? 'name'
                   : undefined;
-    const value = field ? (inlineValue ?? invocation.argv[++index]) : undefined;
+    const value = field ? (inlineValue ?? argv[++index]) : undefined;
     if (!field || !value || value.startsWith('-') || options[field] !== undefined)
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     if (field === 'mode' && !['interactive', 'plan', 'autopilot'].includes(value))
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     (options as Record<string, unknown>)[field] = value;
   }
+  if (resume && options.name)
+    return { status: 'rejected', argument: '--name', reason: 'the managed resume cannot rename an existing session' };
   const home = invocation.environment.COPILOT_HOME;
   if (home) options.copilotHome = resolve(invocation.cwd, home);
   if (invocation.implementation.kind === 'imposter') {

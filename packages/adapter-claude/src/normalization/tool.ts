@@ -1,4 +1,4 @@
-import type { ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { ToolActivityKind, ToolPresentation } from '@vibefield/puppeteer-core';
 import type { PendingPermission, RecentToolRequest } from './types.js';
 import { claudeRecord, claudeString } from './wire.js';
 
@@ -47,7 +47,7 @@ export function normalizeClaudeToolRequested(
   toolCallId: string,
   tool: string,
   input: unknown,
-): import('@vibecook/puppeteer-core').AgentEvent {
+): import('@vibefield/puppeteer-core').AgentEvent {
   return { type: 'tool:requested', toolCallId, tool, input, presentation: claudeToolPresentation(tool, input) };
 }
 
@@ -56,7 +56,7 @@ export function normalizeClaudeToolCompleted(
   tool: string | undefined,
   output: unknown,
   durationMs: number | undefined,
-): import('@vibecook/puppeteer-core').AgentEvent {
+): import('@vibefield/puppeteer-core').AgentEvent {
   return {
     type: 'tool:completed',
     toolCallId,
@@ -71,7 +71,7 @@ export function normalizeClaudeToolFailed(
   toolCallId: string,
   tool: string | undefined,
   error: string | undefined,
-): import('@vibecook/puppeteer-core').AgentEvent {
+): import('@vibefield/puppeteer-core').AgentEvent {
   return {
     type: 'tool:failed',
     toolCallId,

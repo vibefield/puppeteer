@@ -2,6 +2,16 @@
 
 ## Next
 
+Testing and conformance helpers require Vitest 4.1.11 or newer within Vitest 4.
+Upgrade the test runner before adopting these packages. The View SDK's optional
+Vitest peer uses the same supported range.
+
+Fresh npm 10 installs can fail while resolving Vitest's optional peers with
+`Cannot read properties of null (reading 'edgesOut')`, even with Vitest alone
+([npm/cli#9787](https://github.com/npm/cli/issues/9787)). Use pnpm 10.34.5 or a
+compatible newer npm release; on Node 22, npm 12 requires Node 22.22.2 or newer.
+The packages themselves still support Node 22.18.0 and newer.
+
 Adapter handles no longer expose reducer state or a separate monitor callback.
 Use `projectAgentEvents(binding)` in low-level adapter tests to consume the one
 normalized event stream and inspect its derived `state`, `states`, `envelopes`,
@@ -14,7 +24,7 @@ exactly once.
 
 ## 0.2.0
 
-`@vibecook/puppeteer-testing` is now provider-neutral. The following
+`@vibefield/puppeteer-testing` is now provider-neutral. The following
 Claude-specific exports from 0.1.8 are removed:
 
 - `hookFixturesDir`
@@ -34,7 +44,7 @@ package.
 
 Synthetic Claude payload construction is adapter-specific. Keep a small local
 builder in Claude adapter test support. The provider-neutral `fakeAgentBin` and
-the `@vibecook/puppeteer-testing/conformance` export path are unchanged. The
+the `@vibefield/puppeteer-testing/conformance` export path are unchanged. The
 provider-neutral harness names use adapter-binding terminology.
 
 The `AgentAdapterHarness` accepted by that conformance export now includes

@@ -5,7 +5,7 @@ import {
   runAgentMonitorConformance,
   runAgentAdapterConformance,
   type AgentAdapterHarness,
-} from '@vibecook/puppeteer-testing/conformance';
+} from '@vibefield/puppeteer-testing/conformance';
 import { createClaudeSession } from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import { createHookBridge, type HookBridge } from './observation/hook-bridge.js';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentHost } from '@vibefield/puppeteer-core';
 import { createBuiltinAgentRuntime } from './runtime.js';
 
 const live = process.env.PUPPETEER_DISTRIBUTION_LIVE === '1';

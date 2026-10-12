@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolvePiExecutable } from './detection.js';
 import { piCapabilitiesBatch, piObservationDegradedBatch } from './normalization/monitor.js';
 import { createPiSessionObserver } from './observation/session-observer.js';

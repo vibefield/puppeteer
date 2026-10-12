@@ -4,7 +4,7 @@ import type {
   AgentEventSource,
   PromptReceipt,
   PromptSubmission,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { PromptResponse } from '@agentclientprotocol/sdk';
 
 export interface AcpPromptServiceOptions {

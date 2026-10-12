@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 const CLAUDE_MONITOR_CAPABILITY_BASE: readonly ObservationCapability[] = [
   {

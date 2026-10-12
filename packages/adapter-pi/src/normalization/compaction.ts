@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { piString } from './types.js';
 
 export function normalizePiCompaction(body: Record<string, unknown>): AgentEvent[] | undefined {

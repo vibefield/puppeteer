@@ -1,4 +1,4 @@
-import type { EnvironmentEvent } from '@vibecook/puppeteer-core';
+import type { EnvironmentEvent } from '@vibefield/puppeteer-core';
 import { hermesString } from './types.js';
 
 /** Hermes session.info → environment event. */

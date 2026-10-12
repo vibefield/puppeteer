@@ -6,7 +6,7 @@ import type {
   ContextWindowUpdatedEvent,
   MonitorMetricFamily,
   UsagePricing,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -14,7 +14,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { CodexServerNotification } from './types.js';
 import { CODEX_CONTRACT, CODEX_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 import { codexUsageCounter, codexUsagePricing, type CodexUsageCounter } from './usage.js';
@@ -104,10 +104,13 @@ export interface CodexMonitorEvidenceOptions {
   nativeSessionId: () => string | undefined;
   modelDisplayName?: (modelId: string) => string | undefined;
   epoch?: string | undefined;
+  /** Retain model claims only while this caller is fetching optional names. */
+  pendingModelCatalog?: boolean | undefined;
 }
 
 export interface CodexConfiguredIntent {
   model?: string;
+  effort?: string;
   approvalPolicy?: unknown;
   sandboxPolicy?: unknown;
 }
@@ -140,10 +143,14 @@ export class CodexMonitorEvidence {
     // A -> B -> A between counters is still a mixed-model interval.
     return JSON.stringify([this.usageModelRevisions.get(threadId) ?? 0, this.usageModels.get(threadId)]);
   }
+  // Retain only model claims until the one optional catalog reply arrives.
+  // Name enrichment must not replay a stale bootstrap over newer usage/model facts.
+  private pendingModelNames: Map<string, MonitorFamilyValueMap['model']> | undefined;
   private readonly childParents = new Map<string, string>();
   private readonly childRoles = new Map<string, string | undefined>();
 
   constructor(private readonly options: CodexMonitorEvidenceOptions) {
+    if (options.pendingModelCatalog) this.pendingModelNames = new Map();
     this.epoch = options.epoch ?? `app-server:${randomUUID()}`;
   }
 
@@ -199,6 +206,17 @@ export class CodexMonitorEvidence {
       coverage?: ObservationCoverage[];
     } = {},
   ): AdapterMonitorObservationBatch {
+    if (this.pendingModelNames) {
+      for (const update of updates) {
+        if (update.family !== 'model') continue;
+        if (update.operation === 'upsert') this.pendingModelNames.set(update.key, update.value);
+        else if (update.operation === 'retract') this.pendingModelNames.delete(update.key);
+        else {
+          this.pendingModelNames.clear();
+          for (const value of update.values) this.pendingModelNames.set(value.key, value.value);
+        }
+      }
+    }
     this.sequence += 1;
     return {
       schemaVersion: 1,
@@ -222,6 +240,25 @@ export class CodexMonitorEvidence {
       ...(options.capabilities ? { capabilities: options.capabilities } : {}),
       ...(options.coverage ? { coverage: options.coverage } : {}),
     };
+  }
+
+  /** Correct display names only; preserve current identities, roles and all other families. */
+  modelCatalogBatch(observedAt: string): AdapterMonitorObservationBatch | null {
+    const pending = this.pendingModelNames;
+    this.pendingModelNames = undefined;
+    const updates: MonitorFamilyUpdate[] = [];
+    for (const [key, value] of pending ?? []) {
+      const displayName = this.options.modelDisplayName?.(value.providerModelId);
+      if (displayName && displayName !== value.displayName) {
+        updates.push(upsert('model', key, { ...value, displayName }));
+      }
+    }
+    return updates.length
+      ? this.batch('model-catalog', observedAt, updates, {
+          phase: 'correction',
+          evidence: this.evidence('model/list'),
+        })
+      : null;
   }
 
   capabilitiesBatch(observedAt: string): AdapterMonitorObservationBatch {
@@ -263,6 +300,9 @@ export class CodexMonitorEvidence {
           intent: 'configured',
         }),
       );
+    }
+    if (configured.effort && root) {
+      updates.push(upsert('effort', 'configured', { kind: 'effort', value: configured.effort, intent: 'configured' }));
     }
     const modelId = str(response?.model);
     if (threadId) {

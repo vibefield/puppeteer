@@ -1,5 +1,5 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentSessionInfo } from '@vibecook/puppeteer-runtime';
+import type { AgentSessionInfo } from '@vibefield/puppeteer-runtime';
 
 /**
  * What Godview would need to rebuild its windows after the application exits.

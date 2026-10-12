@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);
 const GrokContinuationStateSchema = z.union([
@@ -34,19 +35,22 @@ export function normalizeGrokNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<GrokNativeInvocationOptions> {
   if (invocation.providerId !== 'grok') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
   const options: GrokNativeInvocationOptions = {};
 
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     if (argument === '--continue' || argument === '-c') {
-      if (resume || options.resumeLatest) return { status: 'rejected', reason: REJECTED };
+      if (resume || options.resumeLatest) return { status: 'rejected', reason: REJECTED, argument };
       options.resumeLatest = true;
       continue;
     }
     if (argument === '--resume' || argument === '-r') {
-      if (resume || options.resumeLatest) return { status: 'rejected', reason: REJECTED };
-      const value = invocation.argv[index + 1];
+      if (resume || options.resumeLatest) return { status: 'rejected', reason: REJECTED, argument };
+      const value = argv[index + 1];
       if (value && !value.startsWith('-')) {
         resume = value;
         index += 1;
@@ -63,9 +67,9 @@ export function normalizeGrokNativeInvocation(
           : argument === '--sandbox'
             ? 'sandbox'
             : undefined;
-    const value = field ? invocation.argv[index + 1] : undefined;
+    const value = field ? argv[index + 1] : undefined;
     if (!field || !value || value.startsWith('-') || options[field] !== undefined) {
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     }
     options[field] = value;
     index += 1;

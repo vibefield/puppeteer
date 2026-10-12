@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { boundedHermesMapSet, hermesString } from './types.js';
 
 /** Owns live-gateway ↔ stored-session correlation and session lifecycle state. */

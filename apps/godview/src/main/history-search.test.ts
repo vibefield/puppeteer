@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_HISTORY_ORIGIN,
@@ -102,7 +103,7 @@ describe('announcements', () => {
   function reader(files: Record<string, string>, livePids: number[]): AnnounceDirectoryReader {
     return {
       list: () => Object.keys(files),
-      read: (path) => files[path.split('/').pop() ?? ''] ?? '',
+      read: (path) => files[basename(path)] ?? '',
       isAlive: (pid) => livePids.includes(pid),
     };
   }
@@ -141,11 +142,13 @@ describe('announcements', () => {
 
   it('derives the same directory as the daemon', () => {
     expect(defaultAnnounceDirectory('darwin', { HOME: '/Users/me' })).toBe(
-      '/Users/me/Library/Application Support/rosetta/daemons',
+      join('/Users/me', 'Library/Application Support/rosetta/daemons'),
     );
-    expect(defaultAnnounceDirectory('linux', { HOME: '/home/me' })).toBe('/home/me/.local/state/rosetta/daemons');
+    expect(defaultAnnounceDirectory('linux', { HOME: '/home/me' })).toBe(
+      join('/home/me', '.local/state/rosetta/daemons'),
+    );
     expect(defaultAnnounceDirectory('linux', { HOME: '/home/me', XDG_STATE_HOME: '/state' })).toBe(
-      '/state/rosetta/daemons',
+      join('/state', 'rosetta/daemons'),
     );
     expect(defaultAnnounceDirectory('linux', { HOME: '/home/me', ROSETTA_ANNOUNCE_DIR: '/x' })).toBe('/x');
     expect(defaultAnnounceDirectory('linux', {})).toBeUndefined();
@@ -383,11 +386,31 @@ describe('createHistorySearchService', () => {
   });
 
   it('refuses a daemon generation it does not understand', async () => {
-    const future = daemon(21, () => ({ body: { canonical_ready: true, search: READY } }));
+    const future = daemon(24, () => ({ body: { canonical_ready: true, search: READY } }));
     const service = createHistorySearchService({ fetch: future.fetch, origin: () => ORIGIN });
     const status = await service.status();
     expect(status.reachable).toBe(false);
-    expect(status.detail).toMatch(/protocol 21/);
+    expect(status.detail).toMatch(/protocol 24; this Godview understands 17 to 23/);
+  });
+
+  it.each([21, 22, 23])('answers a protocol %i daemon, whose additions are usage facts only', async (version) => {
+    const current = daemon(version, () => ({ body: { canonical_ready: true, search: READY } }));
+    const service = createHistorySearchService({ fetch: current.fetch, origin: () => ORIGIN });
+    const status = await service.status();
+    expect(status).toMatchObject({ reachable: true, protocolVersion: version, readiness: 'ready' });
+  });
+
+  it('selects an announced protocol 23 daemon and passes over a 24', () => {
+    const announced = (protocolVersion: number, pid: number): HistoryAnnouncement => ({
+      origin: `http://127.0.0.1:${50_000 + protocolVersion}`,
+      pid,
+      protocolVersion,
+      db: '/tmp/p.sqlite',
+      startedAt: pid,
+    });
+    expect(resolveHistoryOrigin({ announced: [announced(24, 2), announced(23, 1)] }).origin).toBe(
+      'http://127.0.0.1:50023',
+    );
   });
 
   it('reads protocol 20 status, sessions and search from Rosetta’s pinned wire golden', async () => {
@@ -694,5 +717,70 @@ describe('createHistorySearchService', () => {
     timeout = false;
     expect(await service.facts(['native-a'])).toEqual(original);
     expect(d.asked.filter((path) => path.startsWith('/api/sessions?'))).toHaveLength(4);
+  });
+});
+
+describe('the launcher catalogue and recent sessions', () => {
+  const PROJECTS = {
+    projects: [{ id: 'p1', name: 'rosetta', root_paths: ['/w/rosetta', '/w/rosetta-wt'], git_repo: 'x' }],
+  };
+  const RUNTIMES = {
+    runtimes: [{ id: 'rt1', kind: 'claude-code', data_root: '/home/.claude', enabled: true, discovered_at: 1 }],
+  };
+
+  it('reads projects and runtimes once per window, and top-level sessions by project from the pinned wire', async () => {
+    let clock = 1_000;
+    const d = daemon(20, (url) => {
+      if (url.pathname === '/api/status') return { body: CURRENT_WIRE.status };
+      if (url.pathname === '/api/projects') return { body: PROJECTS };
+      if (url.pathname === '/api/runtimes') return { body: RUNTIMES };
+      if (url.pathname === '/api/sessions') return { body: CURRENT_WIRE.sessions };
+      if (url.pathname === '/api/search') return { body: { state: READY, hits: [] } };
+      return undefined;
+    });
+    const service = createHistorySearchService({ fetch: d.fetch, origin: () => ORIGIN, now: () => clock });
+
+    const first = await service.catalogue();
+    expect(first.answered && first.projects).toEqual([
+      { id: 'p1', name: 'rosetta', rootPaths: ['/w/rosetta', '/w/rosetta-wt'] },
+    ]);
+    expect(first.answered && first.runtimes).toEqual([{ id: 'rt1', kind: 'claude-code', dataRoot: '/home/.claude' }]);
+    await service.catalogue();
+    expect(d.asked.filter((path) => path === '/api/projects')).toHaveLength(1);
+    clock += 20_000;
+    await service.catalogue();
+    expect(d.asked.filter((path) => path === '/api/projects')).toHaveLength(2);
+
+    const recent = await service.recent({ project: 'p1', limit: 100 });
+    expect(d.asked).toContain('/api/sessions?limit=100&project=p1');
+    expect(recent.answered && recent.sessions).toEqual([
+      {
+        id: 's1',
+        nativeSessionId: 'native-s1',
+        runtimeId: 'rt1',
+        projectId: 'p1',
+        cwd: '/w/rosetta',
+        title: 'Named',
+        summary: 'A summary',
+        startedAt: 10_000,
+        updatedAt: 20_000,
+        lastActivityAt: 19_000,
+      },
+    ]);
+
+    await service.search({ query: 'puppet', nativeSessionIds: [] }, { project: 'p1' });
+    expect(d.asked.find((path) => path.startsWith('/api/search'))).toContain('project=p1');
+  });
+
+  it('says a silent daemon is not reachable rather than listing nothing', async () => {
+    const fetch = (async () => {
+      throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } });
+    }) as unknown as typeof globalThis.fetch;
+    const service = createHistorySearchService({ fetch, origin: () => ORIGIN });
+    const catalogue = await service.catalogue();
+    expect(catalogue.answered).toBe(false);
+    expect(catalogue.status).toMatchObject({ reachable: false, detail: 'no history daemon is listening' });
+    const recent = await service.recent({ limit: 10 });
+    expect(recent.answered).toBe(false);
   });
 });

@@ -8,8 +8,8 @@ import {
   type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { resolveKimiExecutable } from './detection.js';
 import { KimiMonitorEvidence, type KimiConfiguredIntent } from './normalization/monitor.js';
 import {

@@ -9,7 +9,7 @@
 
 ## Current implementation status
 
-> **2026-08-26 layered-runtime cutover:** [`RFC-004`](../rfcs/004-layered-agent-runtime.md) is the current architecture. Monitoring is an invariant of every Agent, Runtime is provider-agnostic, concrete adapter composition lives in `@vibecook/puppeteer-builtin-providers`, adapters publish only unstamped candidates plus named capability services, and portable monitor/React packages own the presentation boundary. The baseline, feature-flag, dependency, and slice descriptions below are retained as dated implementation history.
+> **2026-08-26 layered-runtime cutover:** [`RFC-004`](../rfcs/004-layered-agent-runtime.md) is the current architecture. Monitoring is an invariant of every Agent, Runtime is provider-agnostic, concrete adapter composition lives in `@vibefield/puppeteer-builtin-providers`, adapters publish only unstamped candidates plus named capability services, and portable monitor/React packages own the presentation boundary. The baseline, feature-flag, dependency, and slice descriptions below are retained as dated implementation history.
 
 > **2026-08-25 source cutover:** [`RFC-003`](../rfcs/003-native-observation-sources.md) retires the Spaghetti runtime dependency. References below to `SPAGHETTI-01`, scoped observers, SDK pins, shadow flags, and Spaghetti-owned live semantics are retained as implementation history, not current architecture. Claude now uses authenticated OTLP logs for settled request usage, transcript JSONL for conversation/history and usage fallback, and workflow journals for exact membership.
 
@@ -314,10 +314,10 @@ These choices make the RFC implementable. They should be treated as part of the 
 
 ### 4.1 Stable API versus version-locked monitor SPI
 
-`@vibecook/puppeteer-core` will have two export surfaces:
+`@vibefield/puppeteer-core` will have two export surfaces:
 
 - The package root exports stable application contracts: `AgentMonitorState`, `MonitorNotification`, `AgentMonitorHandle`, freshness helpers, and public identity types.
-- `@vibecook/puppeteer-core/monitor-spi` exports version-locked adapter/runtime contracts: observation batches, source epochs, accumulator types, reducers, and projectors.
+- `@vibefield/puppeteer-core/monitor-spi` exports version-locked adapter/runtime contracts: observation batches, source epochs, accumulator types, reducers, and projectors.
 
 The SPI is published because adapters and runtime are separate packages. It is not an application API. All Puppeteer packages using it must remain on the exact same workspace/release version. Provider-native records never appear on either surface.
 
@@ -656,7 +656,7 @@ The likely total is 48-78 engineer-days, with substantial parallelism. The criti
 - Unknown provider mode and effort strings round-trip.
 - Oversized public collections sort deterministically, report exact omitted counts, and leave complete-set aggregates unchanged.
 - Package source and publish subpath exports both resolve.
-- `pnpm --filter @vibecook/puppeteer-core test`, `typecheck`, `pnpm packages:check`, and `pnpm pack:check` pass.
+- `pnpm --filter @vibefield/puppeteer-core test`, `typecheck`, `pnpm packages:check`, and `pnpm pack:check` pass.
 - No runtime or app behavior changes in this slice.
 
 ### 8.2 `CORE-02`: accumulator, projection, and notification semantics
@@ -1092,14 +1092,14 @@ its SDK/N-API contract and behavioral fixtures provide:
 Run the changed package first:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-core typecheck
-pnpm --filter @vibecook/puppeteer-core test
+pnpm --filter @vibefield/puppeteer-core typecheck
+pnpm --filter @vibefield/puppeteer-core test
 
-pnpm --filter @vibecook/puppeteer-runtime typecheck
-pnpm --filter @vibecook/puppeteer-runtime test
+pnpm --filter @vibefield/puppeteer-runtime typecheck
+pnpm --filter @vibefield/puppeteer-runtime test
 
-pnpm --filter @vibecook/puppeteer-adapter-claude typecheck
-pnpm --filter @vibecook/puppeteer-adapter-claude test
+pnpm --filter @vibefield/puppeteer-adapter-claude typecheck
+pnpm --filter @vibefield/puppeteer-adapter-claude test
 ```
 
 Use the equivalent filter for workspaces, record, and each provider adapter.

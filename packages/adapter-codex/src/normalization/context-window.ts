@@ -1,4 +1,4 @@
-import type { ContextWindowEvent } from '@vibecook/puppeteer-core';
+import type { ContextWindowEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, num, rec } from './types.js';
 
 /** Codex token-pressure and invalidation evidence for the context-window category. */

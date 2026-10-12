@@ -1,6 +1,6 @@
 {
   "vendor": "pi",
-  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/pi" },
+  "asm": { "package": "@vibefield/puppeteer-surface", "path": "vendors/pi" },
   "shimNames": ["pi"],
   "envelope": {},
   "nativeStore": {

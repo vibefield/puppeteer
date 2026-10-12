@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
+import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const SAFE_ID = /^[A-Za-z0-9._-]+$/u;
 const REJECTED = 'custom arguments are not compatible with the managed Pi launch';
@@ -26,16 +27,20 @@ export function normalizePiNativeInvocation(
   invocation: AgentNativeInvocation,
 ): AgentNativeInvocationResolution<PiNativeInvocationOptions> {
   if (invocation.providerId !== 'pi') return { status: 'rejected', reason: 'provider mismatch' };
+  const reading = readInvocation(invocation.argv);
+  if (reading.status !== 'accepted') return reading;
+  const argv = reading.argv;
   let resume: string | undefined;
   const options: PiNativeInvocationOptions = {};
-  for (let index = 0; index < invocation.argv.length; index += 1) {
-    const argument = invocation.argv[index]!;
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
     const separator = argument.indexOf('=');
     const flag = separator < 0 ? argument : argument.slice(0, separator);
     const inlineValue = separator < 0 ? undefined : argument.slice(separator + 1);
     if (flag === '--session') {
-      const value = inlineValue ?? invocation.argv[++index];
-      if (resume || !value || !SAFE_ID.test(value)) return { status: 'rejected', reason: REJECTED };
+      const value = inlineValue ?? argv[++index];
+      if (resume || !value || value === '.' || value === '..' || value.startsWith('-') || !SAFE_ID.test(value))
+        return { status: 'rejected', reason: REJECTED, argument };
       resume = value;
       continue;
     }
@@ -51,9 +56,9 @@ export function normalizePiNativeInvocation(
               : flag === '--session-dir'
                 ? 'sessionDir'
                 : undefined;
-    const value = field ? (inlineValue ?? invocation.argv[++index]) : undefined;
+    const value = field ? (inlineValue ?? argv[++index]) : undefined;
     if (!field || !value || value.startsWith('-') || options[field] !== undefined)
-      return { status: 'rejected', reason: REJECTED };
+      return { status: 'rejected', reason: REJECTED, argument };
     options[field] = field === 'sessionDir' ? resolve(invocation.cwd, value) : value;
   }
   const agentDir = invocation.environment.PI_CODING_AGENT_DIR;

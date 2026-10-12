@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeParseAgentEvent } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent } from '@vibefield/puppeteer-core';
 import { KimiWorkspaceNormalizer } from './workspace.js';
 
 describe('KimiWorkspaceNormalizer', () => {

@@ -1,13 +1,7 @@
-import type { ComponentType } from 'react';
-import type {
-  AgentMonitorViewDefinition,
-  AgentMonitorViewProps as PortableAgentMonitorViewProps,
-} from '@vibecook/puppeteer-react';
-import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibecook/puppeteer-core';
+import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
+import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibefield/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
-import type { MonitorPalette } from './palette.js';
-import type { MonitorParameterGroup, MonitorParameters } from './parameters.js';
-import type { UsageHistory } from './usage-ledger.js';
+import type { MonitorParameterGroup } from './parameters.js';
 
 /** The two looks the instrument skin ships; a host keeps the chosen one. */
 export type MonitorTheme = 'light' | 'dark';
@@ -59,10 +53,6 @@ export interface MonitorAgentFacet {
    * arrived — a host that knows a run exists (it spawned it) but has not heard
    * from its monitor yet shows a starting row rather than inventing a state. */
   monitor?: AgentMonitorState | undefined;
-  /** The UI's own account of the tokens (`usage-ledger.ts`): the held total
-   * and the burn per step. Views read this, never `monitor.usage`, which is
-   * Core's corrected estimate and moves with every source. */
-  usage?: UsageHistory | undefined;
   recency: MonitorRecency;
   /** The provider-native session id the host holds for this run, when the
    * monitor has not announced one yet; the find sheet joins on either. */
@@ -95,9 +85,11 @@ export interface MonitorRemoteFacet {
 export type MonitorTier = 'managed' | 'ingested' | 'remote';
 
 /**
- * One monitored session in the only shape a view ever sees.
+ * One monitored session as a host's chrome reads it: the find sheet, the deck's
+ * pane frames, the inspector (M19). The monitor views read the SDK's `AgentView`
+ * instead (MV-D17); this shape fed them through the legacy shim until MV-8.
  *
- * Agent-ness is a facet rather than a separate variant, so a view reads
+ * Agent-ness is a facet rather than a separate variant, so a reader reads
  * `agent?.model` instead of re-deriving which kind of thing it is holding.
  */
 export interface MonitorAgent {
@@ -110,6 +102,8 @@ export interface MonitorAgent {
    * needs a terminal fact guards for it, and never fills one in.
    */
   session?: MonitorSession | undefined;
+  /** Stable spatial identity across a shell-to-agent handoff. Never a runtime/action id. */
+  visualId?: string | undefined;
   /** When this row was born, from whichever half of it knows. */
   createdAtMs: number;
   remote?: MonitorRemoteFacet | undefined;
@@ -120,7 +114,10 @@ export interface MonitorAgent {
   /** The project's colour (record §02): the host deals the project a sequence
    * the first time an agent runs in it, and the theme's tint turns that into a
    * hue. A bare terminal belongs to no project and wears the ramp. It groups
-   * and labels; it never signals state. */
+   * and labels; it never signals state — with one exception, carried by shape
+   * (DESIGN §2.6, TL-D2/D14): the timeline's working span wears it, because
+   * there the wake's width says the state (work wide, a wait a thread, rest a
+   * hair), so a project hue near orange is never read as blocked. */
   color: string;
   /** Evidence recency is presentation metadata, never a fourth status. */
   stale?: boolean | undefined;
@@ -133,49 +130,84 @@ export interface MonitorAgent {
   cwd?: string | undefined;
   /** Where the user asked for it, for views that place new arrivals spatially. */
   spawnHint?: { x: number; y: number } | undefined;
-  /** Finished something while another pane was active (`monitor/unread.ts`). */
+  /** Finished something while no screen showed it: the backend's word (L5), which the views read from `AgentView`. */
   unread?: boolean | undefined;
   /** The host is showing another group of sessions (VibeField's profile tabs):
    * the row keeps its place — in the physics, in the list — and is drawn
    * faint (`monitor/recede.ts`). Presentation, never a status. */
   receded?: boolean | undefined;
+  /** The Agent Profile this row runs under, when the host knows it: a profile
+   * SET id (`'native'` for the machine's own). A managed agent's set, or the set
+   * a terminal's shell was born under (VibeField binds a pane's shell to it).
+   * Absent: unknown, or a shell bound to none. The spawn bloom lights the rows
+   * under the profile it points at (SB-D8); a terminal's body names it. */
+  profileSet?: string | undefined;
   agent?: MonitorAgentFacet | undefined;
 }
 
-export interface MonitorActions {
-  /** Mount this session in the active pane. */
-  select(agent: MonitorAgent): void;
-  /** Open a terminal; spatial views pass where the gesture happened. */
-  createAt(position?: { x: number; y: number }): void | Promise<void>;
+/** An Agent Profile the spawn bloom offers under a desktop — a profile SET, in
+ * the profile tabs' own terms (`bar/ProfileTabs.tsx` `ProfileTab`), plus who is
+ * signed in under it, for the words' detail line. */
+export interface MonitorSpawnProfile {
+  readonly id: string;
+  readonly label: string;
+  readonly glyph?: string | undefined;
+  readonly kind?: 'native' | 'managed' | undefined;
+  /** The desktop's default: letting go on the hub, or on the desktop itself, opens this one. */
+  readonly isDefault?: boolean | undefined;
+  /** An agent under it waits on the person (the tabs' orange dot). */
+  readonly blocked?: boolean | undefined;
+  /** The agents signed in under it, as the host labels them, in its order. */
+  readonly signedIn?: readonly string[] | undefined;
 }
 
-export type AgentMonitorProps = PortableAgentMonitorViewProps<MonitorAgent, MonitorActions, MonitorParameters> & {
-  /** The live tokens (`palette.ts`). Passed rather than read because two of
-   * the three views paint into a canvas, which cannot inherit a custom
-   * property — and a view that resolved its own would be a second reader of
-   * the design system with its own idea of when to re-read it. */
-  readonly palette: MonitorPalette;
-};
+/** Whether a desktop can take a terminal from here right now. Only `ready`
+ * takes one; the rest keep their place, faint, and say why (SB-D9). `reading`:
+ * ready, but its profiles are not known yet — letting go on it opens its default. */
+export type MonitorSpawnDeviceState = 'ready' | 'asleep' | 'silent' | 'incompatible' | 'reading';
+
+/** A desktop the spawn bloom offers: the one you sit at, and peers that can take a terminal from here. */
+export interface MonitorSpawnDevice {
+  readonly id: string;
+  /** Its name. A bud draws its initial (DESIGN §13 has no desktop mark). */
+  readonly label: string;
+  /** The desktop you are sitting at. */
+  readonly self?: boolean | undefined;
+  readonly state: MonitorSpawnDeviceState;
+  /** The state line under its bud: "2 RUNNING" for a ready peer, "ASLEEP · 2 H" for a faint one. The one you sit at reads HERE. */
+  readonly word?: string | undefined;
+  /** How the words say a faint desktop cannot take one, after its name: "is asleep". */
+  readonly phrase?: string | undefined;
+  /** Its Agent Profiles; absent while they are being read. */
+  readonly profiles?: readonly MonitorSpawnProfile[] | undefined;
+}
+
+/** What a new terminal can be born under. One desktop with one profile is no choice: the hold creates at once. */
+export interface MonitorSpawnMenu {
+  readonly devices: readonly MonitorSpawnDevice[];
+}
+
+/** The desktop and Agent Profile a create asks for. An absent field means the
+ * desktop you sit at and its default profile — today's hold. */
+export interface MonitorSpawnTarget {
+  readonly deviceId?: string | undefined;
+  readonly profileSet?: string | undefined;
+}
 
 /**
- * A way of looking at the running agents. Adding one is a file plus a line in
- * the registry — deliberately the same shape as adding a built-in provider in
- * `packages/builtin-providers`.
- *
- * A view is a pure function of these props. It never reaches the runtime, the
- * workspace, a terminal or a daemon, which is what keeps it structurally
- * unable to break the invariant that semantics never come from terminal text
- * (DESIGN ADR-003) and what lets two hosts mount the same view.
+ * A way of looking at the running agents, as the registry lists it: an SDK view (`view`), mounted by the view host
+ * (`@vibefield/puppeteer-view-sdk/host`), with the face the host's chrome reads read from its manifest: the id, the
+ * label, the mark the bar draws (MV-D6), the keys it prints (MV-D8), the parameter groups the tweak panel offers and
+ * the revision they are stored under. Adding one is a folder under `views/` and a line in the registry.
  */
-export interface AgentMonitorView extends Omit<
-  AgentMonitorViewDefinition<MonitorAgent, MonitorActions, MonitorParameters>,
-  'Component'
-> {
+export interface MonitorViewEntry {
+  readonly id: string;
+  readonly label: string;
+  /** The manifest's mark, which the host's bar draws (MV-D6). */
+  readonly mark: MonitorViewMark;
+  /** The keys the view takes while focused, which the bar prints (MV-D8). */
+  readonly keys?: readonly MonitorViewKey[];
   readonly parameterGroups: readonly MonitorParameterGroup[];
-  /** Set when a view's defaults were re-decided: the tunables are stored under
-   * the revision, so every installation lands on the new defaults instead of
-   * keeping the values the old design had saved. Later tunes persist as before. */
   readonly parametersRevision?: string;
-  /** The portable contract's component, plus the palette the shell resolves for it. */
-  readonly Component: ComponentType<AgentMonitorProps>;
+  readonly view: MonitorView;
 }

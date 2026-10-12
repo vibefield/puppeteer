@@ -1,4 +1,4 @@
-import type { AgentProviderMode } from '@vibecook/puppeteer-core';
+import type { AgentProviderMode } from '@vibefield/puppeteer-core';
 import type { ClaudeHookPayload, NormalizedHook } from './types.js';
 import { claudeString } from './wire.js';
 

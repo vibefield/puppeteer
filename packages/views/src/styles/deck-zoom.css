@@ -1,0 +1,70 @@
+/* The frame moves, terminal pixels do not scale. The content box is released
+   only at settlement, so Ghosttea commits one backing/PTY resize per gesture. */
+.vf-deck-zoom {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  --vf-zoom-duration: 240ms;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split {
+  position: static;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-pane:not([data-vf-zoom-pane]) {
+  visibility: hidden;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split-divider {
+  pointer-events: none;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-horizontal > :nth-child(1) {
+  grid-area: 1 / 1;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-horizontal > :nth-child(2) {
+  grid-area: 1 / 2;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-horizontal > :nth-child(3) {
+  grid-area: 1 / 3;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-vertical > :nth-child(1) {
+  grid-area: 1 / 1;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-vertical > :nth-child(2) {
+  grid-area: 2 / 1;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-split.is-vertical > :nth-child(3) {
+  grid-area: 3 / 1;
+}
+[data-vf-zoom-home] {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+.vf-deck-zoom[data-zoom-layout] .ghostty-pane[data-vf-zoom-pane] {
+  position: absolute;
+  z-index: 6;
+  left: var(--vf-zoom-left);
+  top: var(--vf-zoom-top);
+  width: var(--vf-zoom-width);
+  height: var(--vf-zoom-height);
+  transition-property: left, top, width, height;
+  transition-duration: var(--vf-zoom-duration);
+  transition-timing-function: var(--vf-ease-island, ease);
+}
+.vf-deck-zoom[data-zoom-layout] [data-vf-zoom-pane] .terminal-surface {
+  width: var(--vf-zoom-content-width, 100%);
+  height: var(--vf-zoom-content-height, 100%);
+  flex: none;
+}
+.vf-deck-zoom[data-zoom-phase='zoomed'] .ghostty-pane[data-vf-zoom-pane] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vf-deck-zoom[data-zoom-layout] .ghostty-pane[data-vf-zoom-pane] {
+    transition-timing-function: ease-out;
+  }
+}

@@ -47,7 +47,7 @@ import type {
   ProfileSignIn,
   SignInService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveOpenCodeExecutable } from '../detection.js';
 import { startOpenCodeBackend, type OpenCodeBackend } from '../launch/backend.js';
 import { OpenCodeClient } from '../transport/client.js';

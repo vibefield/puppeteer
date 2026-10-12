@@ -21,7 +21,9 @@
  *   comments and trailing commas.
  * - A plugin brings `skills/<name>/SKILL.md` and its own `mcp_config.json`
  *   (`mcp.json` is copied and ignored); a session names those servers
- *   `<plugin>_<server>`.
+ *   `<plugin>_<server>`. What else it brings is read by name only: the files
+ *   in its `commands/` and `agents/`, and the events of its `hooks.json`.
+ *   Its manifest may also say who made it and where it lives on the web.
  * - `.gemini/antigravity-cli/builtin/skills/` caches the skills that ship with
  *   the CLI.
  * - `skills.json` and `plugins.json` register more folders. The probe found
@@ -34,27 +36,36 @@
 
 import { lstat, readdir, readFile, readlink, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import {
   describeMcpCommand,
   describeMcpUrl,
   EXTENSION_COMMAND_NAME,
+  EXTENSION_PLUGIN_NAME,
   extensionActUnavailable,
   extensionCommandPlan,
   extensionNotOwnWords,
+  extensionSkillFolderPlan,
+  isExtensionSource,
+  isNormalizedAbsolutePath,
+  mcpServerDefinition,
   parseSkillFrontmatter,
   type AgentProfile,
+  type ExtensionActItem,
   type ExtensionActKind,
   type ExtensionActPlan,
+  type ExtensionActPlanOptions,
   type ExtensionInventory,
   type ExtensionItem,
   type ExtensionKind,
   type ExtensionProvider,
   type ExtensionService,
+  type MarketplaceItem,
+  type McpServerDefinition,
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveAntigravityExecutable } from '../detection.js';
 import { ANTIGRAVITY_PROFILE_ROOT_VARIABLE } from './profiles.js';
 
@@ -76,6 +87,15 @@ const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_FOLDERS = 512;
 /** What `agy plugin validate` accepts as a plugin name. */
 const PLUGIN_NAME = /^[A-Za-z0-9_-]+$/u;
+/** What an act only a plugin has answers for anything else. */
+const ONLY_A_PLUGIN = {
+  update: 'Only a plugin is updated',
+  purge: 'Only a plugin is removed with its data',
+  install: 'Only a plugin is installed',
+} as const;
+/** A GitHub repository `agy plugin install` clones, or a folder of one at a branch: `/tree/<branch>/<path>`. */
+const GITHUB_SOURCE =
+  /^https:\/\/github\.com\/[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}(?:\.git)?(?:\/tree\/[A-Za-z0-9._/-]{1,255})?\/?$/u;
 const ENVIRONMENT_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u;
 const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,128}$/u;
 
@@ -265,6 +285,8 @@ function serverItem(
   if (target.length > 8_192) return undefined;
   const env = names(Object.keys(rec(server.env) ?? {}), ENVIRONMENT_NAME);
   const headers = names(Object.keys(rec(server.headers) ?? {}), HEADER_NAME);
+  // A plugin's server comes and goes with its plugin, and may run from its folder: only the person's own travel.
+  const portable = fields.origin === 'own' ? definitionOf(server, transport) : undefined;
   return {
     kind: 'mcp-server',
     ...fields,
@@ -273,6 +295,139 @@ function serverItem(
     target,
     ...(env.length > 0 ? { env } : {}),
     ...(headers.length > 0 ? { headers } : {}),
+    ...(portable === undefined ? {} : { definition: portable }),
+  };
+}
+
+/**
+ * The server as another agent could take it, which Core decides from the
+ * values as Antigravity keeps them, before any masking — every `env` and
+ * `headers` key, and `args` only when all text. None when the entry holds what
+ * a definition cannot carry: a working folder (`cwd`), a fixed OAuth client
+ * whose secret stays behind (`oauth`), or Google credentials
+ * (`authProviderType`).
+ */
+function definitionOf(server: Json, transport: McpServerItem['transport']): McpServerDefinition | undefined {
+  if (server.cwd !== undefined || server.oauth !== undefined || server.authProviderType !== undefined) return undefined;
+  const args = server.args ?? [];
+  if (!Array.isArray(args) || !args.every((arg): arg is string => typeof arg === 'string')) return undefined;
+  return mcpServerDefinition({
+    transport,
+    command: text(server.command),
+    args,
+    url: text(server.serverUrl),
+    env: Object.keys(rec(server.env) ?? {}),
+    headers: Object.keys(rec(server.headers) ?? {}),
+  });
+}
+
+/** An event a hook runs on, as a hooks file keys it: `PreToolUse`, `Stop`. */
+const HOOK_EVENT = /^[A-Za-z][A-Za-z0-9_]{0,255}$/u;
+
+/** A part's name as a person may read it: one line, no control character, as long as Core allows. */
+const partName = (name: string): boolean =>
+  name.length > 0 && name.length <= 256 && name.trim() === name && !/[\u0000-\u001f\u007f]/u.test(name);
+
+/**
+ * Who made a plugin, as its manifest says: `author` as text, or an object's
+ * `name`. An address never shows — npm's `Name <email> (url)` keeps the name
+ * alone, and any other email-shaped word goes. Each pattern stops at the next
+ * bracket of its own kind, so a manifest, which anyone may write, is read in
+ * one pass however it is crafted.
+ */
+function authorOf(value: unknown): string | undefined {
+  const raw = typeof value === 'string' ? value : rec(value)?.name;
+  if (typeof raw !== 'string') return undefined;
+  const author = raw
+    .replace(/<[^<>]*>/gu, ' ')
+    .replace(/\([^()]*\)/gu, (group) => (group.includes('://') || group.includes('@') ? ' ' : group))
+    .split(/[\s\u0000-\u001f\u007f]+/u)
+    // A word with an `@` inside it is an address, as `\S+@\S+` would find it.
+    .filter((word) => !word.slice(1, -1).includes('@'))
+    .join(' ')
+    .trim();
+  return author.length > 0 && author.length <= 256 ? author : undefined;
+}
+
+/**
+ * A plugin's homepage, else its repository (text or `{ url }`): the first that
+ * is an http(s) address, as {@link describeMcpUrl} renders one, so a key in its
+ * userinfo or query never shows.
+ */
+function homepageOf(manifest: Json): string | undefined {
+  const repository = manifest.repository;
+  for (const candidate of [manifest.homepage, typeof repository === 'string' ? repository : rec(repository)?.url]) {
+    const address = text(candidate);
+    if (address === undefined || !/^https?:\/\//iu.test(address)) continue;
+    const shown = describeMcpUrl(address);
+    if (/^https?:\/\//u.test(shown) && shown.length <= 8_192) return shown;
+  }
+  return undefined;
+}
+
+/**
+ * The names of the regular files in one of a plugin's folders, each without
+ * its extension: a command may be Markdown or a Gemini TOML one, and both of
+ * one name are one command.
+ */
+async function partNames(folder: string, limit: number): Promise<string[]> {
+  try {
+    const found = (await readdir(folder, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+      .map((entry) => entry.name.replace(/\.[^.]*$/u, ''))
+      .filter(partName);
+    return [...new Set(found)].sort().slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The events a plugin's `hooks.json` runs on. Antigravity keys a hook by its
+ * name with its events inside — `{ "<name>": { "PreToolUse": [...] } }`, as the
+ * 1.1.12 census wrote and `/hooks` listed back as that name's `actionEvents` —
+ * so a key holding a list is an event, and a key holding an object is a named
+ * hook whose own such keys are; a file that keys its events directly, or under
+ * `hooks`, reads the same. A `description` or `enabled` beside them is no event.
+ */
+function hookEvents(document: Json | undefined): string[] {
+  const table = document === undefined ? undefined : Object.hasOwn(document, 'hooks') ? rec(document.hooks) : document;
+  const events: string[] = [];
+  for (const [key, value] of Object.entries(table ?? {})) {
+    if (Array.isArray(value)) {
+      events.push(key);
+      continue;
+    }
+    for (const [event, handlers] of Object.entries(rec(value) ?? {})) {
+      if (Array.isArray(handlers)) events.push(event);
+    }
+  }
+  return [...new Set(events.filter((event) => HOOK_EVENT.test(event)))].sort().slice(0, 64);
+}
+
+/**
+ * What a plugin says of itself beside its name: who made it and its homepage,
+ * from its manifest, and what it brings, from its folder — names only, and
+ * nothing for a part it does not have.
+ */
+async function pluginDetails(
+  folder: string,
+  manifest: Json,
+): Promise<Pick<PluginItem, 'author' | 'homepage' | 'brings'>> {
+  const author = authorOf(manifest.author);
+  const homepage = homepageOf(manifest);
+  const commands = await partNames(join(folder, 'commands'), 256);
+  const agents = await partNames(join(folder, 'agents'), 256);
+  const hooks = hookEvents(await readDocument(join(folder, 'hooks.json'), MAX_MANIFEST_BYTES).catch(() => undefined));
+  const brings = {
+    ...(commands.length > 0 ? { commands } : {}),
+    ...(agents.length > 0 ? { agents } : {}),
+    ...(hooks.length > 0 ? { hooks } : {}),
+  };
+  return {
+    ...(author === undefined ? {} : { author }),
+    ...(homepage === undefined ? {} : { homepage }),
+    ...(Object.keys(brings).length > 0 ? { brings } : {}),
   };
 }
 
@@ -285,10 +440,18 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
     id: 'antigravity',
     label: 'Antigravity',
     support: {
-      // `agy plugin install|enable|disable|uninstall`, under the bound home.
-      plugins: { store: 'profile', changes: 'command', read: true },
-      // `agy plugin install <name>@<marketplace>` and `plugin link` exist; where a marketplace is registered was not found.
-      marketplaces: { store: 'profile', changes: 'command', read: false },
+      // `agy plugin install|enable|disable|uninstall`, under the bound home; an install copies a folder in, or
+      // clones a GitHub repository.
+      plugins: {
+        store: 'profile',
+        changes: 'command',
+        read: true,
+        sources: 'A folder on this Mac, or a GitHub repository',
+      },
+      // Its Agent Marketplace is the app's: an account sees it behind a feature flag, and the app fetches the
+      // catalogs and installs from them itself (`/plugin`). No command adds, fetches or removes one; the
+      // `<name>@<marketplace>` that `agy plugin install` takes reaches only a marketplace built into the binary.
+      marketplaces: { store: 'profile', changes: 'in-app', read: false },
       // `agy mcp add|enable|disable|remove` edit the home's `mcp_config.json`.
       mcpServers: { store: 'profile', changes: 'command', read: true },
       // No skills command: a skill is a folder, and nothing switches one off.
@@ -301,18 +464,36 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
   const homeOf = (profile: AgentProfile): string => (profile.kind === 'managed' ? profile.dataRoot : nativeHome);
 
   const executable = resolveAntigravityExecutable(options.executable, options.env ?? process.env);
+  const profileEnv = (profile: AgentProfile): Record<string, string> =>
+    profile.kind === 'managed' ? { HOME: profile.dataRoot, [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: profile.dataRoot } : {};
 
   // Acts (RFC 006 C2): a server of the home's own `mcp_config.json` turns on and
   // off with `agy mcp enable|disable <name>` under the profile's HOME — only a
-  // name the read found, since disabling an unknown one writes a stub. Removal
-  // was not probed and is not offered; skills switch only inside the app.
-  function plan(profile: AgentProfile, item: McpServerItem | SkillItem, act: ExtensionActKind): ExtensionActPlan {
+  // name the read found, since disabling an unknown one writes a stub. A
+  // server's removal was not probed and is not offered. A server a host keeps
+  // comes in with `agy mcp add`, stdio or Streamable HTTP, and never one that
+  // reads a variable: `--env` stores a literal value. Skills switch only inside
+  // the app, and are placed as folders (`planSkill`). A plugin switches and goes
+  // with `agy plugin` (`planPlugin`), and comes in from a source a person gives
+  // (`planInstall`); a marketplace is the app's alone (`planMarketplace`).
+  function plan(
+    profile: AgentProfile,
+    item: ExtensionActItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions = {},
+  ): ExtensionActPlan {
+    if (item.kind === 'marketplace') return planMarketplace(item, act);
+    if (item.kind === 'plugin') {
+      return act === 'install' ? planInstall(profile, item, options) : planPlugin(profile, item, act);
+    }
+    if (act === 'update' || act === 'purge' || act === 'install') {
+      return extensionActUnavailable({ kind: item.kind, id: item.id }, act, 'unsupported', ONLY_A_PLUGIN[act]);
+    }
+    if (item.kind === 'skill') return planSkill(profile, item, act, options);
+    if (act === 'add') return planAdd(profile, item);
     const target = { kind: item.kind, id: item.id };
     if (item.origin !== 'own') {
       return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
-    }
-    if (item.kind === 'skill') {
-      return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
     }
     if (act === 'sign-in' || act === 'sign-out') {
       return item.transport === 'stdio'
@@ -339,11 +520,247 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
       target,
       act,
       argv: [executable, 'mcp', act, item.id],
-      env:
-        profile.kind === 'managed'
-          ? { HOME: profile.dataRoot, [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: profile.dataRoot }
-          : {},
+      env: profileEnv(profile),
     });
+  }
+
+  /**
+   * `agy mcp add` writes the server into the home's `mcp_config.json`: stdio,
+   * or Streamable HTTP when the positional after the name is an http(s)
+   * address, so an SSE server has no add. Antigravity reads a server's values
+   * only as literals in that file (`--env KEY=value` stores one), and a host
+   * keeps values out of an agent's files, so a server that reads a variable is
+   * not added. As the CLI's own help shows, the `--` before the command is how
+   * a command line with flags of its own reaches the server instead of
+   * `agy mcp add`.
+   */
+  function planAdd(profile: AgentProfile, item: McpServerItem): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    const unsupported = (message: string) => extensionActUnavailable(target, 'add', 'unsupported', message);
+    if (item.definition === undefined) {
+      return unsupported('Antigravity adds only a server, from its definition');
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        'add',
+        'no-command',
+        "Antigravity's commands do not take this server's name",
+      );
+    }
+    const { definition } = item;
+    let server: string[];
+    if (definition.transport === 'stdio') {
+      if (definition.env !== undefined) {
+        return unsupported("Antigravity reads a server's values only from its own file, never from a variable");
+      }
+      server = [item.id, '--', definition.command, ...definition.args];
+    } else if (definition.transport === 'sse') {
+      return unsupported('Antigravity adds a remote server by its command only as Streamable HTTP');
+    } else if (!/^https?:\/\//u.test(definition.url)) {
+      // Any other positional is a command to Antigravity's add.
+      return unsupported('Antigravity adds a remote server only at an http(s) address');
+    } else {
+      server = [item.id, definition.url];
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'add',
+      argv: [executable, 'mcp', 'add', ...server],
+      env: profileEnv(profile),
+      reaches: [],
+    });
+  }
+
+  /**
+   * A skill the host keeps is linked into the bound home's
+   * `.gemini/config/skills/`, the one folder of the person's own skills;
+   * taking one away unlinks it, or moves a real folder of the person's to
+   * where the host keeps it. The builtins and a plugin's skills are not the
+   * person's to place or take. Whether Antigravity itself follows a linked
+   * skill folder is unproven (the 1.2.11 probe placed none; `/skills reload`
+   * would tell): the read here follows links, and the runtime's second read is
+   * the receipt.
+   */
+  function planSkill(
+    profile: AgentProfile,
+    item: SkillItem,
+    act: ExtensionActKind,
+    options: ExtensionActPlanOptions,
+  ): ExtensionActPlan {
+    if (act === 'add' || act === 'remove') {
+      return extensionSkillFolderPlan({
+        label: 'Antigravity',
+        folder: join(homeOf(profile), ...CONFIG, 'skills'),
+        item,
+        act,
+        ...(act === 'remove' && options.keepIn !== undefined ? { keepIn: options.keepIn } : {}),
+        home: nativeHome,
+      });
+    }
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
+    }
+    return extensionActUnavailable(target, act, 'in-app', 'Antigravity switches a skill only inside the app');
+  }
+
+  /**
+   * A plugin in the bound home's `.gemini/config/plugins/` turns on and off
+   * with `agy plugin enable|disable <name>`, which write `config.json`
+   * `plugins.<name>.enabled`, and goes with `agy plugin uninstall <name>`,
+   * which takes the folder `plugins/<name>` whole with its import row and its
+   * switch (the 1.2.11 probe). The uninstall exits 0 for a name it never had,
+   * so only a name the read found is planned, and the runtime's second read is
+   * the receipt. It goes by the folder's name, so a plugin copied in under a
+   * folder of another name is not uninstalled by its own: the command would
+   * miss it, or take the plugin whose folder has that name. It has no variant
+   * that keeps data, so there is no purge beside it, and there is no plugin
+   * update — `agy update` updates the CLI itself.
+   */
+  function planPlugin(
+    profile: AgentProfile,
+    item: PluginItem,
+    act: Exclude<ExtensionActKind, 'install'>,
+  ): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (item.origin !== 'own') {
+      return extensionActUnavailable(target, act, 'not-own', extensionNotOwnWords('Antigravity', item));
+    }
+    if (act === 'add') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Antigravity installs a plugin from its source');
+    }
+    if (act === 'sign-in' || act === 'sign-out') {
+      return extensionActUnavailable(target, act, 'unsupported', 'Antigravity has no sign-in for a plugin');
+    }
+    if (act === 'purge') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'unsupported',
+        'Antigravity keeps a plugin in one folder, which its uninstall takes whole',
+      );
+    }
+    if (act === 'update') {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        'Antigravity has no command that updates a plugin: install it again from its source',
+      );
+    }
+    if (!EXTENSION_COMMAND_NAME.test(item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Antigravity's commands do not take this plugin's name",
+      );
+    }
+    if (act === 'remove' && (item.location === undefined || basename(item.location) !== item.id)) {
+      return extensionActUnavailable(
+        target,
+        act,
+        'no-command',
+        "Antigravity uninstalls a plugin by its folder's name, and this plugin's folder is named otherwise",
+      );
+    }
+    return extensionCommandPlan({
+      target,
+      act,
+      argv: act === 'remove' ? [executable, 'plugin', 'uninstall', item.id] : [executable, 'plugin', act, item.id],
+      env: profileEnv(profile),
+      reaches: [],
+    });
+  }
+
+  /**
+   * `agy plugin install <target>` copies a plugin into the bound home's
+   * `.gemini/config/plugins/`, from a folder on this Mac or a GitHub repository
+   * it clones (github.com alone; `/tree/<branch>/<path>` takes one folder of
+   * it), and records the import; whether the plugin starts on is its
+   * manifest's and the app's to say, and no prompt of the install's is known.
+   * Its `<name>@<marketplace>` reaches only a marketplace built into the
+   * binary, and the Agent Marketplace installs only inside the app. Antigravity
+   * replaces a same-named plugin folder silently and names the plugin from the
+   * source's manifest, which a plan cannot read, so the name a source's last
+   * segment gives is only a guess at what an install would replace: the
+   * runtime's second read decides what it did.
+   */
+  function planInstall(profile: AgentProfile, item: PluginItem, options: ExtensionActPlanOptions): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    const unavailable = (reason: 'held' | 'in-app' | 'unsupported', message: string): ExtensionActPlan =>
+      extensionActUnavailable(target, 'install', reason, message);
+    const { source } = options;
+    if (source === undefined || (source.includes('@') && EXTENSION_PLUGIN_NAME.test(source))) {
+      return unavailable('in-app', 'Antigravity installs from its Agent Marketplace only inside the app (`/plugin`)');
+    }
+    const found = installSource(source, homeOf(profile));
+    if ('refused' in found) return unavailable('unsupported', found.refused);
+    if (options.holds?.includes(found.name) === true) {
+      return unavailable('held', `Antigravity already has ${found.name}; its install would replace it`);
+    }
+    return extensionCommandPlan({
+      target,
+      act: 'install',
+      argv: [executable, 'plugin', 'install', found.target],
+      env: profileEnv(profile),
+      reaches: [],
+    });
+  }
+
+  /**
+   * The folder or repository a source names, as the install is given it, and
+   * the name its last segment gives the plugin — or why Antigravity would not
+   * take it. A folder is given whole: `~/` is the person's home, never the
+   * profile's (the command runs with the profile's as HOME), and an `@` would
+   * read as a marketplace's plugin. Nor is it the bound home's own plugins
+   * folder, whose plugins would be copied onto themselves, or the `.gemini`
+   * above it.
+   */
+  function installSource(source: string, boundHome: string): { target: string; name: string } | { refused: string } {
+    const refused = { refused: 'Antigravity installs a plugin from a folder on this Mac or a GitHub repository' };
+    if (!isExtensionSource(source)) return refused;
+    if (source.startsWith('https://')) {
+      if (!GITHUB_SOURCE.test(source)) return refused;
+      const segments = source.slice('https://github.com/'.length).replace(/\/$/u, '').split('/');
+      if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) return refused;
+      // `/tree/<branch>` alone is the repository's root; a path after the branch is one folder of it.
+      const name = segments.length > 4 ? segments[segments.length - 1]! : segments[1]!.replace(/\.git$/u, '');
+      return { target: source, name };
+    }
+    const path = source.startsWith('~/') ? join(nativeHome, source.slice(2)) : source;
+    if (!isAbsolute(path)) return refused;
+    if (!isNormalizedAbsolutePath(path) || (source.startsWith('~/') && !isNormalizedAbsolutePath(source.slice(1)))) {
+      return { refused: "Give the folder's whole path, with no `.` or `..` in it and no `/` at its end" };
+    }
+    if (path.includes('@')) {
+      return {
+        refused: "Antigravity reads `@` in a source as a marketplace's plugin: give a folder whose path has none",
+      };
+    }
+    const plugins = join(boundHome, ...CONFIG, 'plugins');
+    if (path === join(boundHome, '.gemini') || path === plugins || path.startsWith(`${plugins}${sep}`)) {
+      return { refused: "This is Antigravity's own folder: give the folder the plugin came from" };
+    }
+    return { target: path, name: basename(path) };
+  }
+
+  /**
+   * A marketplace is the app's (see `marketplaces` above): nothing a host runs
+   * adds one, fetches its catalog again or takes it away.
+   */
+  function planMarketplace(item: MarketplaceItem, act: ExtensionActKind): ExtensionActPlan {
+    const target = { kind: item.kind, id: item.id };
+    if (act === 'install' || act === 'purge') {
+      return extensionActUnavailable(target, act, 'unsupported', ONLY_A_PLUGIN[act]);
+    }
+    return extensionActUnavailable(
+      target,
+      act,
+      'in-app',
+      "Antigravity's marketplaces come with the app: it has no command that adds, fetches or removes one",
+    );
   }
 
   return {
@@ -403,6 +820,7 @@ export function createAntigravityExtensionService(options: AntigravityExtensionO
           location: folder,
           ...(version ? { version } : {}),
           ...(description ? { description } : {}),
+          ...(await pluginDetails(folder, manifest)),
         });
 
         const serverFile = join(folder, 'mcp_config.json');

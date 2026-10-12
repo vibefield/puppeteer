@@ -1,4 +1,4 @@
-import type { AgentMonitorHandle, AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
+import type { AgentMonitorHandle, AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
 
 export class MonitorNotificationGapError extends Error {
   readonly code = 'MONITOR_NOTIFICATION_GAP';

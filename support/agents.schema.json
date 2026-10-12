@@ -18,7 +18,7 @@
           "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
           "displayName": { "type": "string", "minLength": 1 },
           "kind": { "enum": ["vendor", "protocol"] },
-          "adapterPackage": { "type": "string", "pattern": "^@vibecook/puppeteer-adapter-" },
+          "adapterPackage": { "type": "string", "pattern": "^@vibefield/puppeteer-adapter-" },
           "persona": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
           "groundTruth": {
             "type": "string",

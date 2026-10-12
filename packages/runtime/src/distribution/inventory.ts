@@ -8,7 +8,7 @@ import {
   type InstallCandidate,
   type InstallCandidateOrigin,
   type InstalledAgent,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 /**
  * Host-owned discovery of candidate agent executables.

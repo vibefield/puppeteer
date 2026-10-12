@@ -19,7 +19,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { OPENCODE_VERSION_FLAG, parseOpenCodeVersion } from '../detection.js';
 
 const OPENCODE_NPM_PACKAGE = 'opencode-ai';

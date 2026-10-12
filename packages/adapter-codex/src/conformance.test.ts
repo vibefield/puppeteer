@@ -3,7 +3,7 @@ import {
   runAgentAdapterConformance,
   type AgentMonitorAdapterHarness,
   type AgentAdapterHarness,
-} from '@vibecook/puppeteer-testing/conformance';
+} from '@vibefield/puppeteer-testing/conformance';
 import { createCodexSession } from './driver.js';
 import type { Transport } from './transport/app-server-client.js';
 

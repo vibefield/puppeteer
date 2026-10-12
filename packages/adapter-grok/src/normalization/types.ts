@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibecook/puppeteer-core';
+import type { AgentEvent, AgentEventConfidence, AgentEventSource } from '@vibefield/puppeteer-core';
 
 export type GrokUpdateMeta = { promptId?: string; agentTimestampMs?: number; totalTokens?: number };
 

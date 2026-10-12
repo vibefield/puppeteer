@@ -104,8 +104,29 @@ describe('Copilot server transport', () => {
     try {
       const described = (await client.request('describe')) as { argv: string[]; env: string[] };
       expect(described.argv).toEqual([...COPILOT_SERVER_ARGS]);
-      // macOS CoreFoundation sets its text-encoding variable inside the child itself.
-      expect(described.env.filter((name) => !name.startsWith('__CF_'))).toEqual(['FAKE_MARK', 'HOME', 'PATH']);
+      // Node adds required Windows environment entries when creating a process.
+      // CoreFoundation also sets its own text-encoding variable on macOS.
+      const automatic = new Set(
+        process.platform === 'win32'
+          ? [
+              'HOMEDRIVE',
+              'HOMEPATH',
+              'LOGONSERVER',
+              'SYSTEMDRIVE',
+              'SYSTEMROOT',
+              'TEMP',
+              'USERDOMAIN',
+              'USERNAME',
+              'USERPROFILE',
+              'WINDIR',
+            ]
+          : [],
+      );
+      expect(described.env.filter((name) => !name.startsWith('__CF_') && !automatic.has(name))).toEqual([
+        'FAKE_MARK',
+        'HOME',
+        'PATH',
+      ]);
     } finally {
       await client.close();
     }
@@ -180,7 +201,8 @@ describe('Copilot server transport', () => {
     const { pid } = (await client.request('describe')) as { pid: number };
     const started = Date.now();
     await client.close();
-    expect(Date.now() - started).toBeGreaterThanOrEqual(150);
+    // Windows termination is immediate and cannot be ignored by a SIGTERM handler.
+    if (process.platform !== 'win32') expect(Date.now() - started).toBeGreaterThanOrEqual(150);
     expect(await eventually(() => !alive(pid))).toBe(true);
   });
 

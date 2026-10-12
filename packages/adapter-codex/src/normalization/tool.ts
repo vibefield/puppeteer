@@ -1,4 +1,4 @@
-import type { ToolEvent } from '@vibecook/puppeteer-core';
+import type { ToolEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str, toolPresentation } from './types.js';
 
 /** Codex tool items -> Core tool lifecycle events. */

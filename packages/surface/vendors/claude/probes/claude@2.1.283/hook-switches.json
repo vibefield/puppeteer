@@ -1,0 +1,731 @@
+{
+  "probeVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.283",
+  "capturedAt": "2026-09-27",
+  "lane": "PU-9a U3c follow-up — what blinds a managed session without a flag",
+  "artifact": {
+    "platform": "darwin-arm64",
+    "install": "native installer, versions/2.1.283",
+    "sha256": "d8cb1e5c79684cc12a8bfc813e3a2073406921b6245744b3009be3ab5651d21e"
+  },
+  "static": {
+    "method": "Read-only inspection of the digest-pinned executable. Each fact is bound to its anchor by digest and byte offset, and to an 8 KiB window around it by digest; no source text is retained.",
+    "facts": [
+      {
+        "id": "switch-parser",
+        "fact": "One parser reads every switch: off when unset or empty; otherwise on only when the value, lowercased and trimmed, is 1, true, yes or on. The env registry's bool() type is the same parser.",
+        "anchorSha256": "c7c851b23895c896ce38865f13ecbb54e11e83018c8ced9cae422c41298e6dfd",
+        "anchorBytes": 142,
+        "anchorByteOffset": 175430367,
+        "windowStart": 175428319,
+        "windowBytes": 8192,
+        "windowSha256": "5ef4149aad3ddf9eb0e1e4d15fa6ab30c16ff24b713c3a2793f78a9f502fcd45"
+      },
+      {
+        "id": "simple-mode",
+        "fact": "Simple (bare) mode is CLAUDE_CODE_SIMPLE read by that parser, or --bare in argv before `--`.",
+        "anchorSha256": "ac7e4152e808d87698de09b0b62ad0327d1a2bbb7f2c8c88f6912b77a161a07e",
+        "anchorBytes": 69,
+        "anchorByteOffset": 175590968,
+        "windowStart": 175588920,
+        "windowBytes": 8192,
+        "windowSha256": "bd1c1ba3d0d4a689f6c5f1b60ad81fa1370f931db02af18d6549ae30648c9a60"
+      },
+      {
+        "id": "safe-mode",
+        "fact": "Safe mode is CLAUDE_CODE_SAFE_MODE read by that parser, or --safe-mode in argv before `--`.",
+        "anchorSha256": "7c84f42236b5db883e5b97c3d346ec8934a1ea4df9015db90775c0871866d274",
+        "anchorBytes": 77,
+        "anchorByteOffset": 175591037,
+        "windowStart": 175588989,
+        "windowBytes": 8192,
+        "windowSha256": "9f87674862a0c1d0c55360c201c89def30f3fe4f99f9de9f07a6f65187f589fe"
+      },
+      {
+        "id": "restricted-env",
+        "fact": "CLAUDE_CODE_RESTRICTED, read by that parser, stands for --restricted.",
+        "anchorSha256": "6980658c201180f9e7bf4b17ab8c235c822b967c3f7798f185cd6527fe5b17ef",
+        "anchorBytes": 60,
+        "anchorByteOffset": 175591114,
+        "windowStart": 175589066,
+        "windowBytes": 8192,
+        "windowSha256": "a8ceaf5d3f7178f4b6e4d40a5758cb78ff52b569b6e0a9b6b91968a39b53db8b"
+      },
+      {
+        "id": "bare-gates-hooks",
+        "fact": "The customization gate: in bare mode the hooks surface is off (hooks: true in its skip table), so no settings, flag, policy or plugin hook fires; the status line is not in it.",
+        "anchorSha256": "4aea5517b6a19b3b3e53de847f514c3a82ec14a934614facf935e30c9c50ef73",
+        "anchorBytes": 95,
+        "anchorByteOffset": 180820576,
+        "windowStart": 180818528,
+        "windowBytes": 8192,
+        "windowSha256": "940eabfef82193c4f7642064186cc13e17a3cdf6a89e0c50beee88c875c753f7"
+      },
+      {
+        "id": "hooks-config",
+        "fact": "The effective hooks: policy disableAllHooks → none; policy allowManagedHooksOnly, or safe mode → policy hooks only; policy strictPluginOnlyCustomization covering hooks → policy hooks only; the merged settings' disableAllHooks → policy hooks only; else the merged hooks of every enabled source.",
+        "anchorSha256": "46e7fb5292ce1ca643bb73a33bd5c943820aca25b654d694fc56d6cabd01b855",
+        "anchorBytes": 76,
+        "anchorByteOffset": 179132528,
+        "windowStart": 179130480,
+        "windowBytes": 8192,
+        "windowSha256": "ff5e1b02283cbdbab93413bf26b0abb6450f38231c5524bc3502c979ad1ec996"
+      },
+      {
+        "id": "settings-order",
+        "fact": "Settings sources, low to high precedence: userSettings, projectSettings, localSettings, flagSettings (--settings), policySettings.",
+        "anchorSha256": "dd9051a942c17652fab30d0bb9898f58ef24ba6ccfedaafc8d086d6deaa72bea",
+        "anchorBytes": 89,
+        "anchorByteOffset": 175880077,
+        "windowStart": 175878029,
+        "windowBytes": 8192,
+        "windowSha256": "efd27a568ed9043350f6dd527e51f767908ecae7d1745cc3aa4223f2d0a54858"
+      },
+      {
+        "id": "enabled-sources",
+        "fact": "The enabled sources are the --setting-sources list plus flagSettings and policySettings, always.",
+        "anchorSha256": "d0429fb88133c34a38e74cc682a50eb1a35d1e8e1e8f9af90443ebf3cfa6b09b",
+        "anchorBytes": 93,
+        "anchorByteOffset": 175881900,
+        "windowStart": 175879852,
+        "windowBytes": 8192,
+        "windowSha256": "429090670776a748537cd6ed69d56ddc95b5cb3537ad083044a0bf3275b93008"
+      },
+      {
+        "id": "restricted-drops-layers",
+        "fact": "--restricted or CLAUDE_CODE_RESTRICTED empties the setting sources: the person's user, project and local layers are not read; flag and policy still are.",
+        "anchorSha256": "f8d09cdc574fb9b3208ca3a23d546c7b0c66d8ec68a24605718cf0308db64266",
+        "anchorBytes": 106,
+        "anchorByteOffset": 187607653,
+        "windowStart": 187605605,
+        "windowBytes": 8192,
+        "windowSha256": "0d490e52181ca4956ca507fa974352c87bda209b32e2a6fbe3ffaa733f089f48"
+      },
+      {
+        "id": "http-hook-gate",
+        "fact": "An HTTP hook reads allowedHttpHookUrls and httpHookAllowedEnvVars from the effective settings.",
+        "anchorSha256": "2d53f3108af6756be2e6fb62979e7752d67cfae826e017d8e3af0d3dbefd7e47",
+        "anchorBytes": 108,
+        "anchorByteOffset": 185062276,
+        "windowStart": 185060228,
+        "windowBytes": 8192,
+        "windowSha256": "be9668c93c6ecca3264cd50192df99846768ae6b2c14a174d7881d11cf610ee1"
+      },
+      {
+        "id": "http-hook-blocked",
+        "fact": "An HTTP hook whose URL matches no allowedHttpHookUrls pattern is blocked.",
+        "anchorSha256": "810893271e6534ec85756b9addb9587d42ad1e95178450de13ea1c6b8b1e7bdb",
+        "anchorBytes": 49,
+        "anchorByteOffset": 78365077,
+        "windowStart": 78363029,
+        "windowBytes": 8192,
+        "windowSha256": "15c21ae5a0b7c87192ef28a442ef7a38196b13e518855988d1e570bf3802c175"
+      },
+      {
+        "id": "header-interpolation",
+        "fact": "A header variable not in the hook's allowedEnvVars (narrowed by httpHookAllowedEnvVars) is not interpolated.",
+        "anchorSha256": "c392bf538b23c4f3f6cd3256f71121cea65b4a58bff44ac2299ce57131b6d6b3",
+        "anchorBytes": 45,
+        "anchorByteOffset": 78171241,
+        "windowStart": 78169193,
+        "windowBytes": 8192,
+        "windowSha256": "4bc24521d3871b8c623133c8f55944097b8c738c71d02354f4f06122eab5897e"
+      },
+      {
+        "id": "url-matcher",
+        "fact": "An allowedHttpHookUrls pattern is a URL with `*` wildcards; the port must match unless wildcarded, and `/*` matches any path.",
+        "anchorSha256": "417b641d74a5e7cce627bc16f544509a21409453fa215cf6b037aec35c17663b",
+        "anchorBytes": 37,
+        "anchorByteOffset": 183328944,
+        "windowStart": 183326896,
+        "windowBytes": 8192,
+        "windowSha256": "780f96ab2c4430629963da086c9281fc5f796bdda7c95f1b50fd2e478615ab59"
+      },
+      {
+        "id": "session-id-exported",
+        "fact": "CLAUDE_CODE_SESSION_ID is written, not read, on the local path: Claude exports its own session id when the variable is present (it only latches a cloud session reference otherwise).",
+        "anchorSha256": "4f85a1831522ecc85f6e918cee93bc3c630ecf59a44b518e4abe50290c83d978",
+        "anchorBytes": 64,
+        "anchorByteOffset": 195301447,
+        "windowStart": 195299399,
+        "windowBytes": 8192,
+        "windowSha256": "cacb787fc5832cc6d31dd321c2b0451ad72740f672ae712d045a526e4a87c925"
+      },
+      {
+        "id": "policy-chain",
+        "fact": "Policy settings are read from managed-settings.json and managed-settings.d/*.json in the platform's admin directory (plus the Windows registry, WSL inheritance, remote and helper policy): not a file the adapter can read in full.",
+        "anchorSha256": "144b9300a06652b5862633c27f63bbf67f1f9dbdecb22949e70529721e5d79f2",
+        "anchorBytes": 76,
+        "anchorByteOffset": 176360091,
+        "windowStart": 176358043,
+        "windowBytes": 8192,
+        "windowSha256": "cf8c4d5af6e2865463c0403ca4b3462dbd556de6ca97687ea01fc261d6deca18"
+      },
+      {
+        "id": "trust-gates-hooks",
+        "fact": "Hooks do not execute in a workspace whose trust dialog has not been accepted.",
+        "anchorSha256": "8beefdfe7e8efdc9a10f7152a0e523161622b5106e993d8b376d3b53d1df0f7f",
+        "anchorBytes": 45,
+        "anchorByteOffset": 78157213,
+        "windowStart": 78155165,
+        "windowBytes": 8192,
+        "windowSha256": "94b161d953608c640e9c58feb195a2e26d958d81c7bc62cf60c6811ab9b007c8"
+      }
+    ]
+  },
+  "scan": {
+    "method": "Every name on the three paths the lead named (hook registration and execution, the session id, the working directory) found by tracing the env registry (1,040 names) and the settings loader; each with its verdict and evidence, whether or not it blinds.",
+    "names": [
+      {
+        "name": "CLAUDE_CODE_SIMPLE",
+        "path": "hooks",
+        "verdict": "blinds (no hook fires)",
+        "evidence": [
+          "simple-mode",
+          "bare-gates-hooks",
+          "live F01"
+        ],
+        "adapter": "refused by name"
+      },
+      {
+        "name": "CLAUDE_CODE_SAFE_MODE",
+        "path": "hooks",
+        "verdict": "blinds (policy hooks only)",
+        "evidence": [
+          "safe-mode",
+          "hooks-config",
+          "live F03"
+        ],
+        "adapter": "refused by name"
+      },
+      {
+        "name": "CLAUDE_CODE_RESTRICTED",
+        "path": "hooks, settings",
+        "verdict": "does not blind: the person's layers are not read, --settings is",
+        "evidence": [
+          "restricted-env",
+          "restricted-drops-layers",
+          "live F04"
+        ],
+        "adapter": "accepted; no status-line delegate, no layer read"
+      },
+      {
+        "name": "disableAllHooks (user, project, local)",
+        "path": "hooks",
+        "verdict": "blinds",
+        "evidence": [
+          "hooks-config",
+          "settings-order",
+          "live F05",
+          "live F08"
+        ],
+        "adapter": "typed launch refused before launch; a host's own spawn unchanged"
+      },
+      {
+        "name": "disableAllHooks: false in the launch's --settings",
+        "path": "hooks",
+        "verdict": "turns the managed hooks back on, and the person's own hooks and status line with them",
+        "evidence": [
+          "settings-order",
+          "live F06"
+        ],
+        "adapter": "not used"
+      },
+      {
+        "name": "allowedHttpHookUrls (user, project, local)",
+        "path": "hooks",
+        "verdict": "blinds the HTTP hooks (SessionStart, a command hook, still arrives)",
+        "evidence": [
+          "http-hook-gate",
+          "http-hook-blocked",
+          "url-matcher",
+          "live F09"
+        ],
+        "adapter": "restated in the launch's settings with the bridge's entry added (F11)"
+      },
+      {
+        "name": "httpHookAllowedEnvVars (user, project, local)",
+        "path": "hooks",
+        "verdict": "strips the bearer from the HTTP hooks",
+        "evidence": [
+          "http-hook-gate",
+          "header-interpolation",
+          "live F10"
+        ],
+        "adapter": "restated with the bridge's token variable added (F11)"
+      },
+      {
+        "name": "policy: disableAllHooks, allowManagedHooksOnly, strictPluginOnlyCustomization (hooks), allowedHttpHookUrls, httpHookAllowedEnvVars",
+        "path": "hooks",
+        "verdict": "blind, and rank above --settings",
+        "evidence": [
+          "hooks-config",
+          "settings-order",
+          "policy-chain"
+        ],
+        "adapter": "not read: unprobed (a probe would write system files)"
+      },
+      {
+        "name": "workspace trust",
+        "path": "hooks",
+        "verdict": "hooks wait for the trust dialog, typed and managed alike",
+        "evidence": [
+          "trust-gates-hooks"
+        ],
+        "adapter": "nothing to carry"
+      },
+      {
+        "name": "--setting-sources excluding a layer",
+        "path": "settings",
+        "verdict": "that layer's switches do not apply",
+        "evidence": [
+          "enabled-sources",
+          "live F07"
+        ],
+        "adapter": "the check reads only the enabled layers"
+      },
+      {
+        "name": "CLAUDE_CODE_SESSION_ID",
+        "path": "session id",
+        "verdict": "does not set the id: Claude exports its own",
+        "evidence": [
+          "session-id-exported"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_RESUME_FROM_SESSION",
+        "path": "session id",
+        "verdict": "only on the SDK/URL resume path",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_HOST_SESSION_ID, CLAUDE_CODE_BRIDGE_SESSION_ID, CLAUDE_CODE_REMOTE_SESSION_ID, CLAUDE_BRIDGE_REATTACH_SESSION",
+        "path": "session id",
+        "verdict": "host naming, Remote Control and cloud paths only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_PROJECT_DIR_NAME",
+        "path": "directory",
+        "verdict": "names the transcripts' project folder under a CLAUDE_CONFIG_DIR; the session's directory is unchanged, and transcripts are found by id",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_TMUX_SESSION",
+        "path": "directory",
+        "verdict": "telemetry and display only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_BG_WORKSPACE_TRUSTED, CLAUDE_CODE_DISABLE_HOOK_FORWARDING",
+        "path": "hooks",
+        "verdict": "background and remote paths only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_CHILD_SESSION, CLAUDECODE",
+        "path": "session",
+        "verdict": "set by Claude for its own child processes (history and persistence markers); not a person's shell",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_MANAGED_SETTINGS_PATH, CLAUDE_CODE_REMOTE_SETTINGS_PATH, CLAUDE_CODE_MOCK_REMOTE_SETTINGS",
+        "path": "policy",
+        "verdict": "registry names with no reading found on these paths",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      }
+    ]
+  },
+  "live": {
+    "method": "The isolated loopback rig of invocation-grammar.json, with managed settings in the adapter's own shape: SessionStart through the adapter's command forwarder, UserPromptSubmit, Stop and SessionEnd as HTTP hooks whose Authorization header names $PUPPETEER_HOOK_TOKEN (allowedEnvVars), all to a loopback bridge that checks the bearer. The person's user settings hold a command hook of theirs and a status line of theirs, plus what each probe sets. Nothing of the owner's configuration or account is read or written.",
+    "prompt": "Reply with the single word ok.",
+    "managedArgvPrefix": [
+      "--session-id",
+      "<uuid>",
+      "--settings",
+      "<managed settings>"
+    ],
+    "sessions": 11,
+    "probes": [
+      {
+        "id": "F01",
+        "question": "CLAUDE_CODE_SIMPLE=1 in the environment, no flag: do the managed hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "No managed hook, no hook of the person's; the person's status line still ran; one model turn."
+      },
+      {
+        "id": "F02",
+        "question": "CLAUDE_CODE_SIMPLE=0 (a value Le() reads as off): every channel works (the rig's positive control)",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "0"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "Every managed hook arrived with the bearer (SessionStart by command, the rest over HTTP); the person's hooks fired and the status line ran: the rig's positive control."
+      },
+      {
+        "id": "F03",
+        "question": "CLAUDE_CODE_SAFE_MODE=true in the environment, no flag: do the managed hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {
+          "CLAUDE_CODE_SAFE_MODE": "true"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "observed": "No managed hook, no hook of the person's, no status line."
+      },
+      {
+        "id": "F04",
+        "question": "CLAUDE_CODE_RESTRICTED=1 in the environment, no flag: the managed hooks fire; the person's hooks and status line do not",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {
+          "CLAUDE_CODE_RESTRICTED": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "observed": "Every managed hook arrived with the bearer; no hook of the person's and no status line."
+      },
+      {
+        "id": "F05",
+        "question": "disableAllHooks: true in the person's user settings: do the managed hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "observed": "No managed hook, no hook of the person's, no status line."
+      },
+      {
+        "id": "F06",
+        "question": "disableAllHooks: true in user settings, disableAllHooks: false in the managed --settings: which hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {
+          "disableAllHooks": false
+        },
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "Every managed hook arrived with the bearer, and the person's own hooks and status line came back with them."
+      },
+      {
+        "id": "F07",
+        "question": "disableAllHooks: true in user settings, --setting-sources project,local: do the managed hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--setting-sources",
+          "project,local",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "observed": "Every managed hook arrived with the bearer (the person's user layer, which held their hooks too, was not read)."
+      },
+      {
+        "id": "F08",
+        "question": "disableAllHooks: true in the project settings (.claude/settings.json): do the managed hooks fire?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {
+            "disableAllHooks": true
+          }
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "observed": "No managed hook, no hook of the person's, no status line."
+      },
+      {
+        "id": "F09",
+        "question": "allowedHttpHookUrls in user settings that excludes the bridge: which managed hooks arrive?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ]
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "Only SessionStart (the command forwarder) arrived; every managed HTTP hook was blocked. The person's command hooks and status line ran."
+      },
+      {
+        "id": "F10",
+        "question": "httpHookAllowedEnvVars: [] in user settings: do the managed HTTP hooks still carry the bearer?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/wrong",
+          "Stop/http/wrong",
+          "SessionEnd/http/wrong"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "SessionStart arrived with the bearer; every managed HTTP hook arrived without it (the header variable was not interpolated)."
+      },
+      {
+        "id": "F11",
+        "question": "allowedHttpHookUrls and httpHookAllowedEnvVars: [] in user settings; the managed --settings giving each as the person's list plus the bridge's entry: do the managed HTTP hooks arrive with the bearer?",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed settings>",
+          "--",
+          "<prompt>"
+        ],
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ],
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {
+          "allowedHttpHookUrls": [
+            "<the person's entries>",
+            "http://127.0.0.1:<bridge port>/*"
+          ],
+          "httpHookAllowedEnvVars": [
+            "<the person's entries>",
+            "PUPPETEER_HOOK_TOKEN"
+          ]
+        },
+        "exit": "hung up by the harness after Stop or its timeout",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "observed": "Every managed hook arrived with the bearer; the person's hooks and status line as in F02."
+      }
+    ]
+  }
+}

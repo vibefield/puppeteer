@@ -1,0 +1,38 @@
+{
+  "probe": "antigravity_json",
+  "observedAt": "2026-10-12T18:13:24.993Z",
+  "method": "agy --print /model --output-format json",
+  "code": 0,
+  "response": {
+    "status": "SUCCESS",
+    "response": "gemini-3.8-flash-high\tGemini 3.8 Flash (High)\n",
+    "command": {
+      "name": "model",
+      "data": {
+        "id": "gemini-3.8-flash-high",
+        "label": "Gemini 3.8 Flash (High)",
+        "effort": "high",
+        "is_default": false
+      }
+    },
+    "num_turns": 0,
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "thinking_tokens": 0,
+      "cache_read_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "keys": [
+    "conversation_id",
+    "status",
+    "response",
+    "duration_seconds",
+    "num_turns",
+    "usage",
+    "command"
+  ],
+  "diagnostics": "",
+  "durationMs": 5064
+}

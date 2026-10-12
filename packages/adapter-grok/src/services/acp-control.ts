@@ -1,5 +1,5 @@
-import { createAcpSession, createStdioAcpConnector } from '@vibecook/puppeteer-adapter-acp';
-import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
+import { createAcpSession, createStdioAcpConnector } from '@vibefield/puppeteer-adapter-acp';
+import type { AgentAdapterBinding } from '@vibefield/puppeteer-core';
 import { grokExtensionEvents } from '../normalization/adapter.js';
 import type { CreateGrokSessionOptions } from '../types.js';
 

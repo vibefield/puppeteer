@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkRecord, sanitizeRecord } from '@vibecook/puppeteer-surface/sanitize';
+import { checkRecord, sanitizeRecord } from '@vibefield/puppeteer-surface/sanitize';
 import { hermesRules } from './privacy.mjs';
 import { SCENARIOS } from './census/turn-census.mjs';
 

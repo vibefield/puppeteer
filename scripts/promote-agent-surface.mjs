@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { renderSupportBlock, updateReadme, validateSupportLedger } from './render-agent-support.mjs';
 
@@ -199,7 +199,7 @@ export function validatePromotion({
     const personaPath = resolve(root, 'packages', 'imposter', 'personas', agent.persona, 'persona.json');
     const persona = existsSync(personaPath) ? json(personaPath) : undefined;
     const expectedModel = `vendors/${vendor}`;
-    if (persona?.asm?.package !== '@vibecook/puppeteer-surface' || persona?.asm?.path !== expectedModel) {
+    if (persona?.asm?.package !== '@vibefield/puppeteer-surface' || persona?.asm?.path !== expectedModel) {
       issues.push('Imposter persona must target the candidate before promotion');
     }
   }

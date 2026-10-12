@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentProfile, ProfileProvider, ProfileService } from '@vibecook/puppeteer-core';
+import type { AgentProfile, ProfileProvider, ProfileService } from '@vibefield/puppeteer-core';
 import type { ProfileRegistrySnapshot } from '../types.js';
 import {
   createFileProfileStore,
@@ -213,7 +213,7 @@ describe('createFileProfileStore', () => {
     const document: ProfileRegistrySnapshot = { version: 2, sets: [WORK_SET], profiles: [profile] };
     await store.save(document);
 
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect((await stat(path)).mode & 0o777).toBe(0o600);
     expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(document);
     await expect(store.load()).resolves.toEqual(document);
 
@@ -551,7 +551,7 @@ describe('createProfileRootAllocator', () => {
       id: 'work',
       directory: join(rootsDirectory, 'work'),
     });
-    expect((await stat(join(rootsDirectory, 'work'))).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect((await stat(join(rootsDirectory, 'work'))).mode & 0o777).toBe(0o700);
     // Registered elsewhere, or a folder nobody registered: neither is reused.
     await mkdir(join(rootsDirectory, 'work-3'));
     await expect(allocator.allocateSet('Work', new Set(['work-2']))).resolves.toMatchObject({ id: 'work-4' });
@@ -569,7 +569,7 @@ describe('createProfileRootAllocator', () => {
 
     const first = await allocator.allocateAccount(directory, 'alpha');
     expect(first).toEqual({ id: 'aaaaaaaa-1111-4111-8111-111111111111', dataRoot: join(directory, 'alpha-aaaaaaaa') });
-    expect((await stat(first.dataRoot)).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect((await stat(first.dataRoot)).mode & 0o777).toBe(0o700);
     // The same short name is taken, so the next id is tried: a root is never shared.
     const second = await allocator.allocateAccount(directory, 'alpha');
     expect(second).toEqual({ id: 'bbbbbbbb-3333', dataRoot: join(directory, 'alpha-bbbbbbbb') });

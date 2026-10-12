@@ -1,13 +1,13 @@
 {
-  "name": "@vibecook/puppeteer-native-observation",
+  "name": "@vibefield/puppeteer-native-observation",
   "version": "0.1.8",
   "type": "module",
-  "description": "Bounded, append-safe native file observation primitives for Puppeteer agent adapters.",
+  "description": "Bounded native file observation and metadata subprocess primitives for Puppeteer agent adapters.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/native-observation"
   },
   "main": "./src/index.ts",
@@ -17,7 +17,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -41,6 +40,6 @@
     "node": ">=22.18.0"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }

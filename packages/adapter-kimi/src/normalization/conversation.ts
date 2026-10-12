@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { boundedKimiMapSet } from './types.js';
 
 /** Kimi text parts/finalization → conversation events. */

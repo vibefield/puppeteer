@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  AgentLaunchRefusedError,
   agentEventCategory,
   agentEventType,
   createAdapterEventCandidate,
@@ -19,14 +20,15 @@ import {
   type AgentAdapterBinding,
   type ObservationLevel,
   type ProfileService,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
-import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
-import { createWorkspace } from '@vibecook/puppeteer-workspaces';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
+import { createActionRecorder, isOwnActionV2 } from '@vibefield/puppeteer-record';
+import { createWorkspace } from '@vibefield/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
+import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
-import type { AgentProvider, ProfileRegistrySnapshot, ProfileStore } from './types.js';
+import type { AgentProvider, LaunchEnvironmentRequest, ProfileRegistrySnapshot, ProfileStore } from './types.js';
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -1800,6 +1802,102 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  /** One provider whose creation and preparation both throw whatever `throws.next` holds when they are called. */
+  async function throwingProviderRuntime() {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-refusal-'));
+    const recordRoot = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-refusal-records-'));
+    const recorder = createActionRecorder({ path: join(recordRoot, 'own-actions.jsonl') });
+    const errors: Error[] = [];
+    const throws: { next: unknown } = { next: undefined };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      recorder,
+      onError: (error) => errors.push(error),
+      providers: [
+        {
+          descriptor: { id: 'example', label: 'Example' },
+          async createSession() {
+            throw throws.next;
+          },
+          async prepareSession() {
+            throw throws.next;
+          },
+        },
+      ],
+    });
+    return { runtime, recorder, errors, throws };
+  }
+
+  it("carries a provider's own refusal to the failure, its words and its code, the run failed as any failed start", async () => {
+    const { runtime, recorder, errors, throws } = await throwingProviderRuntime();
+    const sentence = 'your user settings turn hooks off, and a managed session is observed through hooks';
+    throws.next = new AgentLaunchRefusedError('EXAMPLE_HOOKS_OFF', sentence);
+    const refused = { code: 'AGENT_LAUNCH_REFUSED', message: sentence, refusal: { code: 'EXAMPLE_HOOKS_OFF' } };
+
+    const created = await runtime.createSession({ agent: 'example' });
+    expect(created).toMatchObject({ terminalOutcome: { kind: 'failed', code: 'AGENT_LAUNCH_REFUSED' } });
+    expect('error' in created && created.error).toEqual(refused);
+    const prepared = await runtime.prepareSession({ agent: 'example' });
+    expect('error' in prepared && prepared.error).toEqual(refused);
+    for (const failure of [created, prepared]) {
+      expect(runtime.runtimeRunInfo(failure.runtimeRunId!)).toMatchObject({
+        status: 'terminal',
+        terminalOutcome: { kind: 'failed', code: 'AGENT_LAUNCH_REFUSED' },
+      });
+    }
+    // Still the reporter's, and recorded as a start that failed where it failed.
+    expect(errors).toEqual([throws.next, throws.next]);
+    expect((await recorder.read()).filter(isOwnActionV2)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'run.start-failed', stage: 'process-spawn', code: 'AGENT_LAUNCH_REFUSED' }),
+        expect.objectContaining({ type: 'run.start-failed', stage: 'preparation', code: 'AGENT_LAUNCH_REFUSED' }),
+      ]),
+    );
+    await runtime.dispose();
+  });
+
+  it("holds a refusal's words to one printable line within the bound, and says its own when none are left", async () => {
+    const { runtime, throws } = await throwingProviderRuntime();
+    throws.next = new AgentLaunchRefusedError(
+      'EXAMPLE_HOOKS_OFF',
+      `turn \u001b[31mhooks\u0007 on\r\nin ${'x'.repeat(900)}`,
+    );
+    const bounded = await runtime.prepareSession({ agent: 'example' });
+    const words = 'error' in bounded ? bounded.error.message : '';
+    expect(words.startsWith('turn [31mhooks on in xxx')).toBe(true);
+    expect(Array.from(words)).toHaveLength(MAX_REFUSAL_MESSAGE_LENGTH);
+    expect(words.endsWith('…')).toBe(true);
+    throws.next = new AgentLaunchRefusedError('EXAMPLE_HOOKS_OFF', '\u0000\u001b\n\t');
+    expect(await runtime.createSession({ agent: 'example' })).toMatchObject({
+      error: { code: 'AGENT_LAUNCH_REFUSED', message: 'agent launch refused: example' },
+    });
+    await runtime.dispose();
+  });
+
+  it('keeps the generic words for anything else a provider throws, whatever its text or its code', async () => {
+    const { runtime, errors, throws } = await throwingProviderRuntime();
+    for (const internal of [
+      new Error('secret path /Users/someone/.example/settings.json token=abc123'),
+      Object.assign(new Error('secret path /Users/someone/.example'), { code: 'EXAMPLE_HOOKS_OFF' }),
+    ]) {
+      throws.next = internal;
+      const notCreated = await runtime.createSession({ agent: 'example' });
+      const notPrepared = await runtime.prepareSession({ agent: 'example' });
+      expect('error' in notCreated && notCreated.error).toEqual({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        message: 'agent session creation failed: example',
+      });
+      expect('error' in notPrepared && notPrepared.error).toEqual({
+        code: 'AGENT_SESSION_CREATE_FAILED',
+        message: 'agent session preparation failed: example',
+      });
+      expect(JSON.stringify([notCreated, notPrepared])).not.toContain('secret');
+      expect(errors.at(-1)).toBe(internal);
+    }
+    await runtime.dispose();
+  });
+
   it('keeps run and terminal registries distinct and preserves provider event identity while restamping', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-event-identity-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
@@ -2762,6 +2860,40 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  it("lists every run's current monitor state and seals a removal with the run's epoch", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-list-'));
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [fakeProvider('monitor-list', new Map())],
+    });
+    const removed: Array<[string, number]> = [];
+    runtime.onMonitorRemoved((runtimeRunId, removal) => removed.push([runtimeRunId, removal.runtimeEpoch]));
+
+    expect(runtime.monitorStates()).toEqual([]);
+    const first = await runtime.createSession({ agent: 'monitor-list' });
+    const second = await runtime.createSession({ agent: 'monitor-list' });
+    if ('error' in first || 'error' in second) throw new Error('unexpected create failure');
+
+    // The listing is the same reading monitorState(id) gives, for every run at once.
+    const listed = runtime.monitorStates();
+    expect(listed.map((state) => state.runtimeRunId).sort()).toEqual([first.runtimeRunId, second.runtimeRunId].sort());
+    for (const state of listed) expect(runtime.monitorState(state.runtimeRunId)).toBe(state);
+
+    // A completed run leaves the listing, and its removal names the epoch it seals.
+    await runtime.handleProcessExit(first.terminalSessionId, { exitCode: 0, signal: null, reason: 'completed' });
+    expect(removed).toEqual([[first.runtimeRunId, first.runtimeEpoch]]);
+    expect(runtime.monitorStates().map((state) => state.runtimeRunId)).toEqual([second.runtimeRunId]);
+
+    // A retained failure is still a run the listing knows: dead, blocked, not removed.
+    await runtime.handleProcessExit(second.terminalSessionId, { exitCode: 1, signal: null, reason: 'crash' });
+    expect(runtime.monitorStates()).toMatchObject([
+      { runtimeRunId: second.runtimeRunId, alive: false, status: 'blocked' },
+    ]);
+    expect(removed).toHaveLength(1);
+    await runtime.dispose();
+  });
+
   it('makes the three-state monitor an invariant of every live Agent', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-invariant-'));
     const runtime = createAgentRuntime({
@@ -3412,6 +3544,93 @@ describe('createAgentRuntime', () => {
     await rm(root, { recursive: true, force: true });
   });
 
+  it("gives a run the host's launch values for its set, checked, and never in what the host persists", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-launch-values-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const base = fakeProvider('example', handles);
+    const given: Array<Readonly<Record<string, string>> | undefined> = [];
+    const captured: unknown[] = [];
+    const provider: AgentProvider = {
+      ...base,
+      descriptor: { id: 'example', label: 'Example' },
+      createSession(providerOptions) {
+        given.push(providerOptions.environment);
+        return base.createSession(providerOptions);
+      },
+      profiles: exampleProfileService(),
+      launch: {
+        provider: { id: 'example', label: 'Example', resume: true },
+        continuation: {
+          capture: (options) => {
+            captured.push(options);
+            return undefined;
+          },
+          restore: () => undefined,
+        },
+      },
+    };
+    const asked: LaunchEnvironmentRequest[] = [];
+    let answer: 'values' | 'throw' = 'values';
+    const errors: Error[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider],
+      profiles: { store: memoryProfileStore(), rootsDirectory: join(root, 'profiles') },
+      onError: (error) => errors.push(error),
+      launchEnvironment: (run) => {
+        asked.push(run);
+        if (answer === 'throw') throw new Error('the keychain is locked');
+        if (run.profileSetId === 'native') return undefined;
+        // a key, beside names no launch value may take: the path, a loader, a root, a malformed one
+        return {
+          LINEAR_API_KEY: 'lin_api_secret',
+          PATH: '/tmp/elsewhere',
+          NODE_OPTIONS: '--require /tmp/x.js',
+          EXAMPLE_HOME: '/tmp/elsewhere',
+          'NOT A NAME': 'x',
+        };
+      },
+    });
+    const work = await runtime.createProfileSet({ label: 'Work', glyph: 'briefcase' });
+    if ('status' in work) throw new Error(work.message);
+    const account = await runtime.createProfile({ providerId: 'example', set: work.set.id });
+    if ('status' in account) throw new Error(account.message);
+    const spawn = async (options: Parameters<typeof runtime.spawn>[0]) => {
+      const spawned = await runtime.spawn(options);
+      if ('error' in spawned) throw new Error(spawned.error.message);
+      return spawned;
+    };
+
+    const inWork = await spawn({ agent: 'example', profileSet: 'work' });
+    expect(asked.at(-1)).toEqual({ providerId: 'example', profileSetId: 'work', profileId: account.id });
+    expect(given.at(-1)).toEqual({ LINEAR_API_KEY: 'lin_api_secret' });
+    // the adapter saw the account; the continuation the host persists never saw the values
+    expect(captured).toHaveLength(1);
+    expect(JSON.stringify(captured)).not.toContain('lin_api_secret');
+    expect(captured[0]).not.toHaveProperty('environment');
+    expect(JSON.stringify(inWork.info)).not.toContain('lin_api_secret');
+
+    // the provider's own root is the native set's, whose values the host keeps none of here
+    await spawn({ agent: 'example' });
+    expect(asked.at(-1)).toEqual({ providerId: 'example', profileSetId: 'native' });
+    expect(given.at(-1)).toBeUndefined();
+
+    // a resume starts processes again: it is asked again
+    const resumed = await runtime.resume({ continuation: inWork.info.continuation, profile: account.id });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(given.at(-1)).toEqual({ LINEAR_API_KEY: 'lin_api_secret' });
+
+    // a host that cannot answer lets the run start without them, and says so without the values
+    answer = 'throw';
+    await spawn({ agent: 'example', profileSet: 'work' });
+    expect(given.at(-1)).toBeUndefined();
+    expect(errors.map((error) => error.message)).toContain('the keychain is locked');
+
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('never lets a registry it cannot read stop a plain spawn, and fails a named one typed with its run ended', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-registry-unreadable-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
@@ -3567,6 +3786,46 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     expect(seen[0]).toMatchObject({ token: 'pinned' });
     expect(bound).toEqual([{ port: 4242, token: 'minted' }]);
     await runtime.dispose();
+  });
+
+  it('threads the host ingress through a prepared native invocation (spawn-through, PU-17)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-invocation-ingress-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const base = preparableProvider('one', hooks);
+    const seen: unknown[] = [];
+    const provider: AgentProvider = {
+      ...base,
+      launch: {
+        provider: {
+          id: 'one',
+          label: 'one',
+          resume: false,
+          nativeInvocation: { commands: [{ name: 'one', executable: '/opt/one' }], environmentVariables: [] },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' }),
+      },
+      async prepareSession(options) {
+        seen.push(options.ingress);
+        options.ingress?.onBound?.({ port: 4343, token: 'minted' });
+        return base.prepareSession!(options);
+      },
+    };
+    const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+    const bound: unknown[] = [];
+    const prepared = await runtime.prepareInvocation({
+      providerId: 'one',
+      cwd: root,
+      argv: [],
+      environment: {},
+      implementation: { kind: 'native' },
+      ingress: { token: 'pinned', onBound: (value) => bound.push(value) },
+    });
+    if ('error' in prepared) throw new Error(prepared.error.message);
+    expect(seen[0]).toMatchObject({ token: 'pinned' });
+    expect(bound).toEqual([{ port: 4343, token: 'minted' }]);
+    await runtime.cancelPrepared(prepared.preparationId);
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
   });
 
   it('attaches to a running terminal through the provider and restores the run at the next epoch', async () => {

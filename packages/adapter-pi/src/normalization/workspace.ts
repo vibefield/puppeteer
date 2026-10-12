@@ -1,4 +1,4 @@
-import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibecook/puppeteer-core';
+import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibefield/puppeteer-core';
 import { piRecord, piString } from './types.js';
 import type { PiToolFact } from './tool.js';
 

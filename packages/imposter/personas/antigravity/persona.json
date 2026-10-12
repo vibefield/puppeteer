@@ -1,6 +1,6 @@
 {
   "vendor": "antigravity",
-  "asm": { "package": "@vibecook/puppeteer-surface", "path": "vendors/antigravity" },
+  "asm": { "package": "@vibefield/puppeteer-surface", "path": "vendors/antigravity" },
   "shimNames": ["agy", "antigravity"],
   "envelope": {},
   "nativeStore": {

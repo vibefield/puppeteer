@@ -1,13 +1,13 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   AgentProfileSchema,
   ProfileIdentitySchema,
   ProfileProviderSchema,
   SignInServiceSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { normalizePiNativeInvocation } from '../launch/native-invocation.js';
 import { resolvePiAgentDir } from '../observation/session-store.js';
@@ -21,7 +21,7 @@ import {
   PI_PROFILE_ROOT_VARIABLE,
 } from './profiles.js';
 
-const service = createPiProfileService({ home: '/home/tester', executable: 'pi' });
+const service = createPiProfileService({ home: resolve('/home/tester'), executable: 'pi' });
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
   AgentProfileSchema.parse({
@@ -29,7 +29,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'pi',
     label: 'Personal',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/pi/9a3d21ff',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
@@ -37,7 +37,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
 describe('Pi profiles', () => {
   it('advertises a native-status identity with no service or sign-in routes of its own', () => {
     expect(() => ProfileProviderSchema.parse(service.provider)).not.toThrow();
-    expect(service.provider.support.nativeDefaultRoot).toBe('/home/tester/.pi/agent');
+    expect(service.provider.support.nativeDefaultRoot).toBe(resolve('/home/tester/.pi/agent'));
     expect(service.provider.support).toMatchObject({ supported: true, identity: 'native-status', credential: 'root' });
     // A harness: every sign-in is to another company's service, all through `/login`.
     expect(service.provider.support.service).toBeUndefined();
@@ -46,34 +46,34 @@ describe('Pi profiles', () => {
   });
 
   it('binds a managed profile one agent level inside the profile root', () => {
-    expect(piAgentDir(profile())).toBe('/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent');
+    expect(piAgentDir(profile())).toBe(resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent'));
     expect(service.bindingEnvironment(profile())).toEqual({
-      [PI_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent',
+      [PI_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent'),
     });
   });
 
   it('injects nothing for the native default profile', () => {
-    expect(service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.pi/agent' }))).toEqual(
-      {},
-    );
+    expect(
+      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.pi/agent') })),
+    ).toEqual({});
   });
 
   it('names the profile root as the history layout root, the parent of the bound agent directory', () => {
     // Pi's transcripts are <root>/agent/sessions/<cwd>/<id>.jsonl, so an
     // indexer applies the layout to the profile root, and to ~/.pi natively.
-    expect(service.observationRoot(profile())).toBe('/home/tester/.puppeteer/profiles/pi/9a3d21ff');
-    expect(service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.pi/agent' }))).toBe(
-      '/home/tester/.pi',
-    );
+    expect(service.observationRoot(profile())).toBe(resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff'));
+    expect(
+      service.observationRoot(profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.pi/agent') })),
+    ).toBe(resolve('/home/tester/.pi'));
   });
 
   it('opens the agent itself bound to the profile because Pi has no login command', () => {
-    const spec = service.loginInvocation(profile(), { cwd: '/work/repo' });
+    const spec = service.loginInvocation(profile(), { cwd: resolve('/work/repo') });
     expect(spec).toEqual({
       command: 'pi',
       args: [],
-      cwd: '/work/repo',
-      env: { [PI_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent' },
+      cwd: resolve('/work/repo'),
+      env: { [PI_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent') },
     });
     // `pi auth print-api-key` and `print-bearer-token` emit credentials and are
     // never invoked by the host.
@@ -88,14 +88,14 @@ describe('Pi profiles', () => {
     const binding = service.bindingEnvironment(profile());
     const resolution = normalizePiNativeInvocation({
       providerId: 'pi',
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       argv: [],
       environment: binding,
       implementation: { kind: 'native' },
     });
     expect(resolution).toEqual({
       status: 'accepted',
-      options: { piAgentDir: '/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent' },
+      options: { piAgentDir: resolve('/home/tester/.puppeteer/profiles/pi/9a3d21ff/agent') },
     });
     expect(resolvePiAgentDir(binding[PI_PROFILE_ROOT_VARIABLE])).toBe(
       join(service.observationRoot(profile()), 'agent'),
@@ -112,14 +112,14 @@ const SOURCE = { kind: 'native-status', stability: 'experimental' } as const;
 /** The host's own environment: provider credentials a stored-nothing root must never be credited with. */
 const AMBIENT = {
   PATH: '/usr/bin',
-  HOME: '/Users/test',
+  HOME: resolve('/Users/test'),
   XAI_API_KEY: 'xai-SECRET-ambient',
   ANTHROPIC_OAUTH_TOKEN: 'sk-ant-oat-SECRET-ambient',
   COPILOT_GITHUB_TOKEN: 'gho-SECRET-ambient',
   AWS_PROFILE: 'work',
   AWS_SECRET_ACCESS_KEY: 'aws-SECRET-ambient',
-  GOOGLE_APPLICATION_CREDENTIALS: '/Users/test/adc.json',
-  [PI_PROFILE_ROOT_VARIABLE]: '/Users/test/elsewhere',
+  GOOGLE_APPLICATION_CREDENTIALS: resolve('/Users/test/adc.json'),
+  [PI_PROFILE_ROOT_VARIABLE]: resolve('/Users/test/elsewhere'),
 };
 
 interface Call {
@@ -214,7 +214,7 @@ describe('Pi profile verification', () => {
       {
         file: '/usr/local/bin/pi',
         args: ['auth', 'check', '--provider', 'xai', '--json', '--no-refresh'],
-        env: { PATH: '/usr/bin', HOME: '/Users/test', [PI_PROFILE_ROOT_VARIABLE]: agentDir },
+        env: { PATH: '/usr/bin', HOME: resolve('/Users/test'), [PI_PROFILE_ROOT_VARIABLE]: agentDir },
       },
     ]);
     expect(JSON.stringify([identity, calls])).not.toContain('SECRET');

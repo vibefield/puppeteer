@@ -1,23 +1,29 @@
 import type {
+  AgentModelProvider,
+  AgentModelService,
+  AgentModelSelection,
+  AgentModelDiscoveryResult,
   AccountUsageFetchResult,
   AccountUsageProvider,
   AccountUsageService,
   AgentContinuation,
   AgentInstallation,
   AgentProfile,
+  CatalogPlugin,
   DistributionFailure,
   DistributionProvider,
   DistributionService,
+  ExtensionActItem,
   ExtensionActKind,
   ExtensionActPlan,
   ExtensionActReceipt,
   ExtensionActTarget,
+  ExtensionCatalog,
   ExtensionFailure,
   ExtensionInventory,
   ExtensionProvider,
   ExtensionService,
-  McpServerItem,
-  SkillItem,
+  McpServerDefinition,
   ProfileFailure,
   ProfileIdentity,
   ProfileProvider,
@@ -36,6 +42,7 @@ import type {
   BoundIngress,
   HostIngress,
   AgentNativeInvocation,
+  AgentNativeInvocationPassthroughKind,
   AgentNativeInvocationResolution,
   AgentProviderDescriptor,
   AgentMonitorHandle,
@@ -50,8 +57,8 @@ import type {
   RuntimeRunId,
   SessionRuntimeState,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import type { ActionRecorder, ActionRecorderStatus } from '@vibecook/puppeteer-record';
+} from '@vibefield/puppeteer-core';
+import type { ActionRecorder, ActionRecorderStatus } from '@vibefield/puppeteer-record';
 import type {
   WorkspaceDiff,
   WorkspaceErrorCode,
@@ -59,7 +66,7 @@ import type {
   WorkspaceMode,
   Workspace,
   WorkspaceSessionMetadata,
-} from '@vibecook/puppeteer-workspaces';
+} from '@vibefield/puppeteer-workspaces';
 import type {
   CreationRequestClaimRef,
   CreationRequestRegistry,
@@ -92,6 +99,13 @@ export interface AgentProviderSessionOptions {
   profile?: AgentProfile | undefined;
   /** The host's say over the session's loopback ingress (stable ingress; adapters without one ignore it). */
   ingress?: HostIngress | undefined;
+  /**
+   * Values the host keeps for the run (the keys of MCP servers the agent's
+   * settings name as variables), for every process the provider starts for
+   * this run — the one that runs the agent's MCP servers above all. Beneath
+   * the provider's own variables; never logged, persisted, or put in a recipe.
+   */
+  environment?: Readonly<Record<string, string>> | undefined;
 }
 
 /**
@@ -144,6 +158,8 @@ export interface AgentProvider {
   readonly distribution?: DistributionService;
   /** Adapter-owned account-profile binding, login, and identity verification. */
   readonly profiles?: ProfileService;
+  /** Native model picker metadata, independent of a run. */
+  readonly models?: AgentModelService;
   /** Adapter-owned inventory of the agent's plugins, marketplaces, MCP servers and skills per profile. */
   readonly extensions?: ExtensionService;
   /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
@@ -199,6 +215,8 @@ export interface CreateAgentSessionOptions {
   workspace?: AgentWorkspaceRequest | undefined;
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
+  /** Validated public model choice. Omit to inherit native settings; mutually exclusive with agentOptions. */
+  modelSelection?: AgentModelSelection | undefined;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
   profile?: string | undefined;
   /**
@@ -215,6 +233,16 @@ export interface CreateAgentSessionOptions {
 
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
 export type SpawnAgentOptions = Omit<CreateAgentSessionOptions, 'resume'>;
+
+export interface DiscoverAgentModelsOptions {
+  agent: string;
+  cwd?: string | undefined;
+  /** Same account choice as spawn, including its default profile set. Use profileSet: 'native' for the native default. */
+  profile?: string | undefined;
+  profileSet?: string | undefined;
+  signal?: AbortSignal | undefined;
+  timeoutMs?: number | undefined;
+}
 
 /** Consumer-facing resume request: no provider argv, environment, or transport knobs. */
 export interface ResumeAgentOptions {
@@ -240,6 +268,8 @@ export interface PrepareAgentInvocationOptions extends AgentNativeInvocation {
   creationRequestId?: string | undefined;
   externalRefs?: readonly ExternalRef[] | undefined;
   workspace?: AgentWorkspaceRequest | undefined;
+  /** The host's say over the session's loopback ingress (stable ingress), as for `prepareSession`. */
+  ingress?: HostIngress | undefined;
 }
 
 export interface AgentSessionInfo {
@@ -275,6 +305,8 @@ export type AgentSessionErrorCode =
   | 'AGENT_NOT_FOUND'
   | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
+  /** The agent's own adapter refused the launch, for a reason the person can act on: the message is its sentence. */
+  | 'AGENT_LAUNCH_REFUSED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
   | 'CREATION_REQUEST_NOT_FINGERPRINTABLE'
@@ -292,7 +324,12 @@ export interface AgentSessionFailure {
   runtimeEpoch: number;
   externalRefs: ExternalRef[];
   terminalOutcome?: CreationRequestTerminalOutcome;
-  error: { code: AgentSessionErrorCode; message: string };
+  error: {
+    code: AgentSessionErrorCode;
+    message: string;
+    /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
+    refusal?: { code: string };
+  };
 }
 
 export type CreateAgentSessionResult = AgentSessionInfo | AgentSessionFailure;
@@ -305,6 +342,8 @@ export type PreparationErrorCode =
   | 'AGENT_NOT_FOUND'
   | 'AGENT_PROFILE_NOT_FOUND'
   | 'AGENT_SESSION_CREATE_FAILED'
+  /** The agent's own adapter refused the launch, for a reason the person can act on: the message is its sentence. */
+  | 'AGENT_LAUNCH_REFUSED'
   | 'INVALID_CREATION_REQUEST_ID'
   | 'INVALID_EXTERNAL_REFS'
   | 'CREATION_REQUEST_NOT_FINGERPRINTABLE'
@@ -320,15 +359,44 @@ export type PreparationErrorCode =
   | 'RUNTIME_SESSION_CONFLICT'
   | 'PREPARATION_ADOPT_FAILED'
   | 'NATIVE_INVOCATION_UNSUPPORTED'
-  | 'INVALID_NATIVE_INVOCATION';
+  | 'INVALID_NATIVE_INVOCATION'
+  /** The adapter says the invocation is not a session: the host runs it as typed. */
+  | 'NATIVE_INVOCATION_PASSTHROUGH';
 
 export interface PreparationFailure {
   runtimeRunId?: RuntimeRunId;
   runtimeEpoch?: number;
   externalRefs?: ExternalRef[];
   terminalOutcome?: CreationRequestTerminalOutcome;
-  error: { code: PreparationErrorCode; message: string };
+  error: {
+    code: PreparationErrorCode;
+    message: string;
+    /** With `NATIVE_INVOCATION_PASSTHROUGH`: what the invocation is instead of a session. */
+    passthrough?: AgentNativeInvocationPassthroughKind;
+    /** With an adapter's rejection: the first argument its managed launch could not carry. */
+    argument?: string;
+    /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
+    refusal?: { code: string };
+  };
 }
+
+/**
+ * What a native invocation IS, by the adapter's grammar ({@link AgentRuntime.classifyInvocation}):
+ * `accepted` a session the managed launch carries; `passthrough` not a session
+ * at all; `rejected` a session it cannot carry. `unsupported` is every failure
+ * that is not the adapter's word: no such provider or capability, a request
+ * outside the schema or the environment allow-list, a normalizer that threw.
+ * The adapter's options never cross this door.
+ */
+export type ClassifyAgentInvocationResult =
+  | { status: 'accepted' }
+  | { status: 'passthrough'; kind: AgentNativeInvocationPassthroughKind; reason: string }
+  | { status: 'rejected'; reason: string; argument?: string }
+  | {
+      status: 'unsupported';
+      code: Extract<PreparationErrorCode, 'NATIVE_INVOCATION_UNSUPPORTED' | 'INVALID_NATIVE_INVOCATION'>;
+      reason: string;
+    };
 
 export interface PreparedAgentSessionInfo {
   preparationId: string;
@@ -415,6 +483,28 @@ export interface AgentRuntimeOptions {
   profiles?: ProfileRuntimeOptions;
   distribution?: DistributionRuntimeOptions;
   extensions?: ExtensionRuntimeOptions;
+  /**
+   * Values the host keeps for a run — the keys of MCP servers its agent's
+   * settings name as variables (RFC 006 C2) — asked once per spawn or resume,
+   * after the run's account resolved, and given to the processes the provider
+   * starts for it. The runtime never keeps them on the run, never captures them
+   * into a continuation or a creation fingerprint, never returns them in a
+   * prepared recipe, and never logs them; a name the environment itself or a
+   * process loader relies on (`PATH`, `HOME`, `NODE_OPTIONS`, a `*_HOME` root…)
+   * is dropped. A host that cannot answer lets the run start without them.
+   */
+  launchEnvironment?: (
+    run: LaunchEnvironmentRequest,
+  ) => Promise<Record<string, string> | undefined> | Record<string, string> | undefined;
+}
+
+/** The run a host's launch values are asked for. */
+export interface LaunchEnvironmentRequest {
+  providerId: string;
+  /** The set the run's account belongs to; the native set for a run in the provider's own root. */
+  profileSetId: string;
+  /** The run's account, when it has one. */
+  profileId?: string;
 }
 
 /** Host-injected persistence for the profile registry. */
@@ -482,8 +572,26 @@ export interface ExtensionActOptions {
   providerId: string;
   /** The provider's native default when absent. */
   profileId?: string;
+  /**
+   * For `add`, the server's name as the id — or a marketplace's source; for
+   * `install`, the catalog's id for the plugin, or the source a person gave.
+   */
   target: ExtensionActTarget;
   act: ExtensionActKind;
+  /** What an `add` gives the agent: the server, and the names of the variables it reads. */
+  definition?: McpServerDefinition;
+  /**
+   * For a plugin's `install` from a source a person gave (a package, a
+   * repository, a folder), and a marketplace's `add`: that source, as
+   * `isExtensionSource` allows; the target's id is the same string.
+   */
+  source?: string;
+  /**
+   * A skill's folder, absolute: for `add`, the one copy the host keeps, which
+   * the agent is given a link to where it looks for skills; for `remove`,
+   * where the host keeps the agent's own folder instead of leaving it.
+   */
+  folder?: string;
   /** The act's own output as it arrives: display text, never parsed. */
   onOutput?: (chunk: string) => void;
   /** Aborting stops the act and everything it started. */
@@ -682,6 +790,11 @@ export interface RestoreAgentSessionOptions {
   attaching?: boolean | undefined;
 }
 
+/** What a monitor removal seals: the run's epoch at the time it was removed. */
+export interface MonitorRemoval {
+  readonly runtimeEpoch: number;
+}
+
 /** The single application-facing surface for every agent provider. */
 export interface AgentRuntime {
   /** Primary API: spawn one provider and receive its per-run Agent event surface. */
@@ -698,8 +811,13 @@ export interface AgentRuntime {
   accountUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
   /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
   launchProviders(): readonly AgentLaunchProvider[];
-  /** Warm a provider's native caches in the background; unsupported providers are a no-op. */
-  prewarm(providerId: string, profileId?: string): Promise<void>;
+  /** Model metadata capabilities; no processes are started by this enumeration. */
+  modelProviders(): readonly AgentModelProvider[];
+  /** A fresh native read, scoped like spawn. Native caches may still be stale; see catalog.source. */
+  discoverModels(options: DiscoverAgentModelsOptions): Promise<AgentModelDiscoveryResult>;
+  /** Warm native caches; unsupported providers are a no-op. Omit the account for the
+   * managed-spawn default, or pass null for the native invocation environment. */
+  prewarm(providerId: string, profileId?: string | null): Promise<void>;
   /** Enumerate every adapter that advertises distribution facts. */
   distributionProviders(): readonly DistributionProvider[];
   /** Discover and classify installed executables; cached until refresh. */
@@ -774,9 +892,24 @@ export interface AgentRuntime {
    */
   extensionInventory(providerId: string, profileId?: string): Promise<ExtensionInventory | ExtensionFailure>;
   /**
+   * RFC 006 C2: what one profile's agent could install — the plugins listed by
+   * the marketplaces it knows — read from the catalogs the agent already
+   * fetched; the provider's native default when no profile is named. Never
+   * fetches a catalog (the agent's own `update` on a marketplace does).
+   */
+  extensionCatalog(
+    providerId: string,
+    profileId?: string,
+    options?: {
+      /** A read of its own, never one that began earlier: after an act, what the agent holds now. */
+      fresh?: boolean;
+    },
+  ): Promise<ExtensionCatalog | ExtensionFailure>;
+  /**
    * RFC 006 C2: what an act on a server or skill the profile's agent holds
    * would run — the agent's own command or protocol call, and what it reaches
-   * beyond that one item — or why the agent cannot. Plans from a fresh read.
+   * beyond that one item — or why the agent cannot. Plans from a fresh read;
+   * an `add` plans a server the read finds the agent without.
    */
   planExtensionAct(
     options: Omit<ExtensionActOptions, 'onOutput' | 'signal'>,
@@ -806,11 +939,46 @@ export interface AgentRuntime {
   extensionActPlans(
     providerId: string,
     profileId: string | undefined,
-    items: ReadonlyArray<McpServerItem | SkillItem>,
+    items: ReadonlyArray<ExtensionActItem>,
+    /** Servers a host would give the agent, by name: each one's add, planned against `items`. */
+    adds?: ReadonlyArray<{ name: string; definition: McpServerDefinition }>,
+    skills?: {
+      /** Skills a host would give the agent, by name, each from the folder it keeps: each one's link. */
+      adds?: ReadonlyArray<{ name: string; folder: string }>;
+      /** The folder a host keeps skills in: the agent's own skill folder is planned to move there when it goes. */
+      keep?: string;
+    },
+    offers?: {
+      /**
+       * Plugins the agent's catalog lists, as a host offers them: each one's
+       * install, planned against `items` (one the agent holds answers `held`).
+       */
+      installs?: ReadonlyArray<CatalogPlugin>;
+      /**
+       * Sources a person gave, before anything runs: each plugin source's
+       * install and each marketplace source's add, planned against `items`.
+       */
+      sources?: { plugins?: readonly string[]; marketplaces?: readonly string[] };
+      /** Plan only these offers; `items` then only say what the agent holds. */
+      only?: boolean;
+    },
   ): Promise<ExtensionActPlan[] | ExtensionFailure>;
   /** @deprecated Compatibility/IPC surface. Use spawn() to receive an Agent. */
   createSession(options: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
-  /** Host SPI: normalize a native CLI invocation and prepare its adapter-owned recipe. */
+  /**
+   * Host SPI: what a native CLI invocation is, by its adapter's grammar — the
+   * checks {@link prepareInvocation} makes before it prepares anything, and
+   * nothing else. Pure: no run, no preparation, no profile lookup, no file, no
+   * process. A terminal host asks this first, so a version query or a one-shot
+   * runs as typed before the host looks for a terminal.
+   */
+  classifyInvocation(invocation: AgentNativeInvocation): ClassifyAgentInvocationResult;
+  /**
+   * Host SPI: normalize a native CLI invocation and prepare its adapter-owned
+   * recipe. An invocation that is not a session fails with
+   * `NATIVE_INVOCATION_PASSTHROUGH` (and its kind); one the adapter cannot
+   * carry, with `INVALID_NATIVE_INVOCATION` (and the argument, when it names one).
+   */
   prepareInvocation(options: PrepareAgentInvocationOptions): Promise<PrepareAgentSessionResult>;
   /** Low-level provider-composition API. Terminal hosts use prepareInvocation(). */
   prepareSession(options: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult>;
@@ -821,10 +989,19 @@ export interface AgentRuntime {
   cancelPrepared(preparationId: string): Promise<CancelPreparedSessionResult>;
   runtimeRunInfo(runtimeRunId: RuntimeRunId): RuntimeRunInfo | undefined;
   monitorState(runtimeRunId: RuntimeRunId): AgentMonitorState | undefined;
+  /**
+   * Every run's current monitor state: the live runs and the retained terminal
+   * failures, in no particular order. The all-runs snapshot an aggregator
+   * subscribes to {@link onMonitorState} before taking, so a state published in
+   * between cannot be overwritten by an older one (the monitor store orders by
+   * epoch and revision).
+   */
+  monitorStates(): AgentMonitorState[];
   observeMonitor(runtimeRunId: RuntimeRunId): AgentMonitorHandle;
   onMonitorState(listener: (state: AgentMonitorState) => void): () => void;
   onMonitorNotification(listener: (notice: MonitorNotification) => void): () => void;
-  onMonitorRemoved(listener: (runtimeRunId: RuntimeRunId) => void): () => void;
+  /** A removal names the run and the epoch it seals; a newer epoch (a resume) revives the identity. */
+  onMonitorRemoved(listener: (runtimeRunId: RuntimeRunId, removal: MonitorRemoval) => void): () => void;
   acknowledgeFailureBlocker(runtimeRunId: RuntimeRunId, blockerId: string): Promise<boolean>;
   /** Best-effort audit-log health; undefined when recording is not configured. */
   recordingStatus(): ActionRecorderStatus | undefined;

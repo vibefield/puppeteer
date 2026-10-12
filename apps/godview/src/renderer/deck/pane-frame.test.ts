@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
-import { paneFrameModel } from '@vibecook/puppeteer-views';
+import type { AgentMonitorState } from '@vibefield/puppeteer-core';
+import { paneFrameModel } from '@vibefield/puppeteer-views';
 import type { MonitorAgent, MonitorAgentFacet } from '../monitor/types.js';
-import { paneFallbackCwds, paneFrameAgent, paneFrameAgents, zoomKeyEvent } from './pane-frame.js';
+import { paneFallbackCwds, paneFrameAgent, paneFrameAgents } from './pane-frame.js';
 
 const NOW = Date.parse('2026-09-10T12:00:00.000Z');
 
@@ -136,25 +136,5 @@ describe('paneFrameAgent', () => {
     expect(model.verb).toEqual({ kind: 'stop', elapsed: '1h 12m' });
     expect(model.context).toEqual({ percent: 88, hot: true });
     expect(model.name).toBe('rosetta');
-  });
-});
-
-describe('zoomKeyEvent', () => {
-  it('presses the platform default for toggle_split_zoom', () => {
-    expect(zoomKeyEvent(undefined, 'darwin')).toMatchObject({ key: 'Enter', metaKey: true, shiftKey: true });
-  });
-
-  it('follows a rebinding and an unbind from the configuration', () => {
-    const rebound = zoomKeyEvent(
-      { clearKeybindings: false, keybindings: [{ trigger: 'ctrl+shift+z', action: 'toggle_split_zoom' }] } as never,
-      'darwin',
-    );
-    expect(rebound).toMatchObject({ key: 'Z', ctrlKey: true, shiftKey: true, metaKey: false });
-    expect(
-      zoomKeyEvent(
-        { clearKeybindings: false, keybindings: [{ trigger: 'super+shift+enter', action: 'unbind' }] } as never,
-        'darwin',
-      ),
-    ).toBeNull();
   });
 });

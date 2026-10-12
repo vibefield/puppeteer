@@ -1,0 +1,1072 @@
+{
+  "probeVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.283",
+  "capturedAt": "2026-09-27",
+  "lane": "PU-9a U3c — the Claude invocation grammar",
+  "artifact": {
+    "platform": "darwin-arm64",
+    "install": "native installer, versions/2.1.283",
+    "sha256": "d8cb1e5c79684cc12a8bfc813e3a2073406921b6245744b3009be3ab5651d21e"
+  },
+  "help": {
+    "file": "help.txt",
+    "sha256": "6bc118c7b92eef0a4a59240bf5f26e26c58bbf1b5eedf7bb2df9c8889475d6f4",
+    "options": 66,
+    "subcommands": 18,
+    "note": "Identical at any terminal width and under an empty CLAUDE_CONFIG_DIR: the grammar does not depend on the configuration."
+  },
+  "parseProbes": {
+    "method": "`claude <flags under test> mcp --help`, session-free. Usage \"claude mcp\" = the flags parse and leave mcp the first operand; the root usage = a flag took mcp as its value, or an unknown option sent the rest to commander's unknown list; exit 1 = commander's own error. Version and help forms exit while parsing.",
+    "results": [
+      {
+        "argv": [
+          "--permission-mode",
+          "default",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-mode",
+          "manual",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-mode",
+          "bogusmode",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--permission-mode <mode>' argument 'bogusmode' is invalid. Allowed choices are acceptEdits, auto, bypassPermissions, manual, dontAsk, plan."
+      },
+      {
+        "argv": [
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--model",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "a",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--verbose=1",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model=opus",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "--bogus-xyz",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-cd",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-dc",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-d2e",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--debug-to-stderr",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--tmux=classic",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--tmux",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--system-prompt-file",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--append-system-prompt-file",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--remote",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--remote",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--rc",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--rc",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--pool",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--max-turns",
+          "3",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--permission-prompt-tool",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--prompt-suggestions",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--prompt-suggestions [value]' argument 'mcp' is invalid. Allowed choices are true, false, 1, 0, yes, no, "
+      },
+      {
+        "argv": [
+          "--prompt-suggestions",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--output-format",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "reads": "error: option '--output-format <format>' argument 'mcp' is invalid. Allowed choices are text, json, stream-json."
+      },
+      {
+        "argv": [
+          "--output-format",
+          "json",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-w",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "-w",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--cloud",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--teleport",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--environment",
+          "x",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--from-pr",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--file",
+          "a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--betas",
+          "a",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-r",
+          "-",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-nfoo",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-rfoo",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-c-d",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--model",
+          "--",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "-V"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-V",
+          "--verbose"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "--version",
+          "--verbose"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-vc"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "fix",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-p",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-p",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help without commands"
+      },
+      {
+        "argv": [
+          "--model",
+          "opus",
+          "-v"
+        ],
+        "exit": 0,
+        "reads": "version"
+      },
+      {
+        "argv": [
+          "-h",
+          "mcp"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "mcp",
+          "-v"
+        ],
+        "exit": 1,
+        "reads": "error: unknown option '-v'"
+      },
+      {
+        "argv": [
+          "--add-dir",
+          "--verbose",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      },
+      {
+        "argv": [
+          "--add-dir=a",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "mcp help"
+      },
+      {
+        "argv": [
+          "--add-dir=a",
+          "b",
+          "mcp",
+          "--help"
+        ],
+        "exit": 0,
+        "reads": "root help"
+      }
+    ]
+  },
+  "static": {
+    "method": "Read-only inspection of the digest-pinned executable. Each fact is bound to its anchor by digest and byte offset, and to an 8 KiB window around it by digest; no source text is retained.",
+    "facts": [
+      {
+        "id": "root-options",
+        "fact": "The root command is commander with .argument(\"[prompt]\") and .helpOption(\"-h, --help\"); every root option, listed and hidden (hideHelp), with its arity, is in one builder; the hidden ones this table rows are -d2e/--debug-to-stderr, --system-prompt-file, --append-system-prompt-file, --max-turns, --permission-prompt-tool, --remote (\"Deprecated alias for --cloud\"), --pool (\"Deprecated alias for --environment\"), --rc (\"Alias for --remote-control\").",
+        "anchorSha256": "23f22d9daa091c765b17836528e60a547886d146805e170cb6f151f7e742371e",
+        "anchorBytes": 29,
+        "anchorByteOffset": 192094865,
+        "windowStart": 192092817,
+        "windowBytes": 8192,
+        "windowSha256": "7ff53189b1859cd791f010af2f4855896b05512cc5d1c2a9ec9c7b863e55b6ac"
+      },
+      {
+        "id": "entry-fast-paths",
+        "fact": "Before commander: argv[0] in logs|attach|stop|kill|respawn|rm, or --bg/--background anywhere (argv.includes), dispatches to the background-session handlers; remote-control|rc|remote|sync|bridge and self-hosted-runner dispatch as argv[0] only; daemon as the first argument after any --dangerously-skip-permissions/--allow-dangerously-skip-permissions; the version fast path is an argv of exactly --version|-v|-V (and --verbose).",
+        "anchorSha256": "b593c059c11a68366686910caef2dcdd8b83ceaf6f14a461f02180b5573ac215",
+        "anchorBytes": 45,
+        "anchorByteOffset": 175411213,
+        "windowStart": 175409165,
+        "windowBytes": 8192,
+        "windowSha256": "bc92178de56407fc20f094c28df14713dc913283cba55cdd1f14aa41c00016f1"
+      },
+      {
+        "id": "tmux-worktree-fast-path",
+        "fact": "(--tmux or --tmux=classic) together with -w/--worktree/--worktree=… anywhere in argv execs into a tmux (or iTerm2) session for the worktree, before commander.",
+        "anchorSha256": "1020f0c97d205422db7f661d8732c46e76479fe4c0ada506697e3b0a322a99b3",
+        "anchorBytes": 32,
+        "anchorByteOffset": 175421607,
+        "windowStart": 175419559,
+        "windowBytes": 8192,
+        "windowSha256": "ab75505b9e9a7e94484d8e3dfc27e1c91e8536c17c8201f4ce8d09bce8962e34"
+      },
+      {
+        "id": "bare-before-end",
+        "fact": "--bare anywhere before the first `--` sets CLAUDE_CODE_SIMPLE=1 before commander parses, whatever commander makes of the token; --safe-mode is read the same way (argv before `--`).",
+        "anchorSha256": "73cc3588e707c77163a460a716dc099c07f6c38ff2d7af2cb419f6c8ae93c14e",
+        "anchorBytes": 54,
+        "anchorByteOffset": 175422883,
+        "windowStart": 175420835,
+        "windowBytes": 8192,
+        "windowSha256": "289f692d43d41127b3f1b839d2a361b7ae6d252f66a3e3cc04d360a4c3361b91"
+      },
+      {
+        "id": "print-gates-subcommands",
+        "fact": "Subcommands are registered only when argv has no exact -p/--print option token (value-aware, before `--`) or names a cc:// address; otherwise the program parses with none, and a subcommand name is an operand.",
+        "anchorSha256": "4706e4d5f160b8075d02e3c0cb085136b4924dfc15122a095080629860d13d9a",
+        "anchorBytes": 47,
+        "anchorByteOffset": 192126568,
+        "windowStart": 192124520,
+        "windowBytes": 8192,
+        "windowSha256": "6b34b40e08dfafe19b40288e4e5b7306f1000a1af897ce41cc7ace111f73734a"
+      },
+      {
+        "id": "pre-parse-arities",
+        "fact": "Claude's own pre-parse arity sets (one value, variadic, optional value) used to skip values before commander; every row of the table agrees with them (checked).",
+        "anchorSha256": "c7ea5da98d6a12f84280c7881d8c96633f46fcb3006d4a8e98d8c3de22922c83",
+        "anchorBytes": 29,
+        "anchorByteOffset": 177770368,
+        "windowStart": 177768320,
+        "windowBytes": 8192,
+        "windowSha256": "570bb49b2e2d74bb83449209712cba0133943f4c5ba0515cd36c88ee1d3f22be"
+      },
+      {
+        "id": "import-rewrite",
+        "fact": "`claude [options] import [codex|gemini|cursor|--dry-run|--yes[=…]]` is rewritten to `claude [options] -- \"/import …\"` (a session that runs /import) when the feature is on, before commander.",
+        "anchorSha256": "5a6ef0e0cbf3d4ff933f483176dc28643ea8f8429aff7e53be3e9641843b4251",
+        "anchorBytes": 44,
+        "anchorByteOffset": 185671530,
+        "windowStart": 185669482,
+        "windowBytes": 8192,
+        "windowSha256": "e7db346c7b14df35bcb8b8775ccc42fecbe9bd2510ec0cff5f208e025d80cd76"
+      },
+      {
+        "id": "permission-resolver",
+        "fact": "The session permission mode is the first of: --dangerously-skip-permissions (bypassPermissions, unless bypass is disabled), --permission-mode, the agent frontmatter, the settings defaultMode; so --dangerously-skip-permissions wins over any --permission-mode, and a --permission-mode overrides the settings defaultMode.",
+        "anchorSha256": "0f4db0ae448880ff1b456e13ee4d144257b665e197bcc4f7f7002340fd9421df",
+        "anchorBytes": 85,
+        "anchorByteOffset": 179165148,
+        "windowStart": 179163100,
+        "windowBytes": 8192,
+        "windowSha256": "9bdb0c43098d0de332d23ad8933263c6e66beee3455a751fadadae3521383b8f"
+      },
+      {
+        "id": "settings-last-value",
+        "fact": "The eager settings load reads only the last --settings value.",
+        "anchorSha256": "6104defd01ab2e75b083053e541f83e53bfe3a5f1721c340246acd824d6019ab",
+        "anchorBytes": 34,
+        "anchorByteOffset": 187607496,
+        "windowStart": 187605448,
+        "windowBytes": 8192,
+        "windowSha256": "28034957bd0004d717ae603a337572aab55432d6a75a369457e80cbf9d3740db"
+      },
+      {
+        "id": "positional-options",
+        "fact": "The root program is created with enablePositionalOptions().",
+        "anchorSha256": "a1acbed633adb5fa71455ad1d41ea66980ded9a9e44ce17d386a3f9f5f9adb09",
+        "anchorBytes": 56,
+        "anchorByteOffset": 192090403,
+        "windowStart": 192088355,
+        "windowBytes": 8192,
+        "windowSha256": "61562e2598dbec9be8bf543bede8da31fcf4f36c8a11be341c257039a8d602a5"
+      },
+      {
+        "id": "commander-defaults",
+        "fact": "The bundled commander's defaults: unknown options refused, excess operands allowed (dropped), combined short flag and optional value on.",
+        "anchorSha256": "fdfb418bc1f0096dd1a893142047215391da462f3a66d368c1dff32fefe35835",
+        "anchorBytes": 57,
+        "anchorByteOffset": 189274626,
+        "windowStart": 189272578,
+        "windowBytes": 8192,
+        "windowSha256": "ee53140e08f8603cb07b03ca82bc2bb5d9dc2ba6c468bf5177687301d63c30f2"
+      },
+      {
+        "id": "display-only-bg-commands",
+        "fact": "attach, logs, stop|kill, respawn and rm are spliced into the help only (visibleCommands); commander does not register them.",
+        "anchorSha256": "dd77d40257feca057c95c3b624419f19d92b1b97b1c59c9a41d14784c014084b",
+        "anchorBytes": 41,
+        "anchorByteOffset": 192062496,
+        "windowStart": 192060448,
+        "windowBytes": 8192,
+        "windowSha256": "dd576ecc3e06e91bea1e23f8ec15b80e6817f7467f4fb3e172135c00f293e86d"
+      },
+      {
+        "id": "interactive-validation",
+        "fact": "Without print mode the action exits with an error for --prompt-suggestions, --no-session-persistence, --include-partial-messages, --forward-subagent-text, --replay-user-messages and --input-format=stream-json; --json-schema is read only for a non-interactive or background session.",
+        "anchorSha256": "869381c3edc3ba55397fcf16ce9fe59ed263e633809a5aa2d6e3372042d38282",
+        "anchorBytes": 45,
+        "anchorByteOffset": 191847008,
+        "windowStart": 191844960,
+        "windowBytes": 8192,
+        "windowSha256": "7e7a1effa477daa84ab7773cd20744b691bcbc9ffce9e8de29f680edaac9eec1"
+      }
+    ]
+  },
+  "live": {
+    "method": "The repository's own isolated rig (packages/adapter-claude/src/test-support/live-model.ts): a throwaway HOME and CLAUDE_CONFIG_DIR per probe (trust and the bypass consent pre-seeded), a loopback Messages API that answers \"ok\", ANTHROPIC_AUTH_TOKEN a placeholder, nonessential traffic off, command hooks appending to a throwaway log, the session in a node-pty the harness owns. Nothing of the owner's configuration or account is read or written. <managed hooks> is a settings file whose SessionStart, UserPromptSubmit, Stop and SessionEnd command hooks log each event.",
+    "prompt": "Reply with the single word ok.",
+    "sessions": 16,
+    "probes": [
+      {
+        "id": "L01",
+        "question": "a prompt carried after `--` reaches the session as its first prompt; the generated hooks fire",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "SessionStart (startup), UserPromptSubmit with the prompt equal to the one typed, Stop and SessionEnd, all under the managed session id; one model turn."
+      },
+      {
+        "id": "L02",
+        "question": "two --settings flags: does the second compose with the first, or replace it",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--settings",
+          "<second hooks>",
+          "--permission-mode",
+          "default",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "settings-B:SessionStart",
+          "settings-B:UserPromptSubmit[default]",
+          "settings-B:Stop[default]",
+          "settings-B:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "Only the second --settings file's hooks ran; the managed hooks (first --settings) never fired. A second --settings replaces the first."
+      },
+      {
+        "id": "L03",
+        "question": "--dangerously-skip-permissions together with --permission-mode default: which mode the session is in",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--dangerously-skip-permissions",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[bypassPermissions]",
+          "managed:Stop[bypassPermissions]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "permission_mode bypassPermissions: the skip flag wins over --permission-mode default."
+      },
+      {
+        "id": "L04",
+        "question": "--dangerously-skip-permissions carried, the recipe adding no permission mode",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--dangerously-skip-permissions",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[bypassPermissions]",
+          "managed:Stop[bypassPermissions]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "permission_mode bypassPermissions."
+      },
+      {
+        "id": "L05",
+        "question": "user settings defaultMode acceptEdits; typed `claude -- <prompt>` (control, user hooks observe)",
+        "argv": [
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "user-settings:SessionStart",
+          "user-settings:UserPromptSubmit[acceptEdits]",
+          "user-settings:Stop[acceptEdits]",
+          "user-settings:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "With the user settings naming defaultMode acceptEdits, a typed `claude` runs in acceptEdits (observed through a user-settings hook)."
+      },
+      {
+        "id": "L06",
+        "question": "user settings defaultMode acceptEdits; managed launch without --permission-mode",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "user-settings:SessionStart",
+          "managed:UserPromptSubmit[acceptEdits]",
+          "user-settings:UserPromptSubmit[acceptEdits]",
+          "user-settings:Stop[acceptEdits]",
+          "managed:Stop[acceptEdits]",
+          "managed:SessionEnd",
+          "user-settings:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "The managed launch with no --permission-mode runs in acceptEdits, as typed; the user-settings hooks and the managed --settings hooks both fire."
+      },
+      {
+        "id": "L07",
+        "question": "user settings defaultMode acceptEdits; managed launch with the recipe default --permission-mode default",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "user-settings:SessionStart",
+          "managed:SessionStart",
+          "user-settings:UserPromptSubmit[default]",
+          "managed:UserPromptSubmit[default]",
+          "user-settings:Stop[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd",
+          "user-settings:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "The managed launch with the recipe's --permission-mode default runs in default: it overrides the person's defaultMode."
+      },
+      {
+        "id": "L08",
+        "question": "--restricted: the managed --settings hooks fire; the user settings hooks and status line do not",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--restricted",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "The managed --settings hooks fire; the user-settings hooks and the user-settings status line do not run."
+      },
+      {
+        "id": "L09",
+        "question": "--bare: do the managed --settings hooks fire",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--bare",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [],
+        "modelTurns": 0,
+        "observed": "No hook fired, managed or other."
+      },
+      {
+        "id": "L10",
+        "question": "--safe-mode: do the managed --settings hooks fire",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--safe-mode",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [],
+        "modelTurns": 1,
+        "observed": "No hook fired, though the session ran a model turn."
+      },
+      {
+        "id": "L11",
+        "question": "carried --add-dir, --mcp-config, --append-system-prompt, --verbose after the managed flags: each takes effect; hooks fire",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--add-dir",
+          "<throwaway dir>",
+          "--mcp-config",
+          "<throwaway mcp.json>",
+          "--append-system-prompt",
+          "<marker sentence>",
+          "--verbose",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "Hooks fire; the appended text is in the system prompt; the --mcp-config server was launched."
+      },
+      {
+        "id": "L12",
+        "question": "several operands after `--`: what the session receives as its prompt",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--",
+          "Reply",
+          "with",
+          "the",
+          "single",
+          "word",
+          "ok."
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "UserPromptSubmit carried only \"Reply\": the CLI takes the first operand as the prompt and drops the rest."
+      },
+      {
+        "id": "L13",
+        "question": "--prompt-suggestions in an interactive launch",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--prompt-suggestions"
+        ],
+        "exit": 1,
+        "hookEvents": [],
+        "modelTurns": 0,
+        "observed": "Exit 1 with \"--prompt-suggestions requires --print\" before any hook."
+      },
+      {
+        "id": "L14",
+        "question": "`claude -- mcp --help`: does commander still dispatch the first operand as a subcommand",
+        "argv": [
+          "--",
+          "mcp",
+          "--help"
+        ],
+        "exit": 1,
+        "hookEvents": [],
+        "modelTurns": 0,
+        "observed": "Exit 1 \"unknown command\" from the mcp subcommand: commander dispatches the first operand after `--` as a subcommand."
+      },
+      {
+        "id": "L15",
+        "question": "-w after the managed flags: hooks fire, and from which directory",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "-w",
+          "probe-wt",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "Hooks fire, every one from <workspace>/.claude/worktrees/probe-wt: the session left the terminal's directory."
+      },
+      {
+        "id": "L16",
+        "question": "a trailing --add-dir before `--` <prompt>: the directory reaches the session and the prompt is not swallowed",
+        "argv": [
+          "--session-id",
+          "<uuid>",
+          "--settings",
+          "<managed hooks>",
+          "--permission-mode",
+          "default",
+          "--add-dir",
+          "<throwaway dir>",
+          "--",
+          "<prompt>"
+        ],
+        "exit": "hung up by the harness after Stop or its timeout",
+        "hookEvents": [
+          "managed:SessionStart",
+          "managed:UserPromptSubmit[default]",
+          "managed:Stop[default]",
+          "managed:SessionEnd"
+        ],
+        "modelTurns": 1,
+        "observed": "The directory reached the session (in its message context); the prompt after `--` arrived whole behind the trailing variadic; hooks fire."
+      }
+    ]
+  }
+}

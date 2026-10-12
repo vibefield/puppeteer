@@ -16,7 +16,7 @@ Implementation has completed the ownership move and clean-house refactor. The re
 
 ## 1. Why refactor again
 
-The repository has already separated the ASM runtime into `@vibecook/puppeteer-surface`, but the data still reflects the older architecture:
+The repository has already separated the ASM runtime into `@vibefield/puppeteer-surface`, but the data still reflects the older architecture:
 
 - Claude and Codex captures, census tools, audits, and models live in their adapter packages.
 - Imposter resolves a real persona's ASM through that adapter's package manifest.
@@ -249,7 +249,7 @@ scripts/
 
 ### 5.1 Publication boundary
 
-`@vibecook/puppeteer-surface` publishes:
+`@vibefield/puppeteer-surface` publishes:
 
 - its compiled runtime;
 - promoted real-vendor model directories;
@@ -262,7 +262,7 @@ Adapters stop publishing `surface/model`. Built-in Imposter personas change from
 ```json
 {
   "asm": {
-    "package": "@vibecook/puppeteer-adapter-claude",
+    "package": "@vibefield/puppeteer-adapter-claude",
     "path": "surface/model/claude@2.1.207"
   }
 }
@@ -273,7 +273,7 @@ to the neutral owner:
 ```json
 {
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/claude/model/claude@2.1.207"
   }
 }
@@ -316,7 +316,7 @@ Keep publishable packages one level below `packages/`; do not introduce `package
 
 The flat layout has useful invariants:
 
-- directory names match npm name suffixes (`adapter-codex` → `@vibecook/puppeteer-adapter-codex`);
+- directory names match npm name suffixes (`adapter-codex` → `@vibefield/puppeteer-adapter-codex`);
 - `packages/*` discovers every package without recursive exceptions;
 - repository metadata and release paths stay obvious;
 - moving a module between responsibilities is visible as a package-boundary change;
@@ -394,7 +394,7 @@ Applied to the current tree:
 
 ### 5.7 Testing package cleanup
 
-`@vibecook/puppeteer-testing` currently mixes three different things:
+`@vibefield/puppeteer-testing` currently mixes three different things:
 
 1. the provider-neutral terminal-spine fake (`fakeAgentBin`);
 2. the provider-neutral `AgentSession` conformance suite;
@@ -410,7 +410,7 @@ Keep the first two. Move the third:
 
 The existing fixture loader and Claude-builder exports are public in `0.1.8`. If another `0.1.x` ships before this refactor, mark them deprecated there. Land the structural removal as the declared `0.2.0` break with migration notes, rather than silently changing what their filesystem paths mean. Do not preserve them by making a generated second copy of Surface evidence.
 
-`@vibecook/puppeteer-testing/conformance` imports Vitest. The package must declare the supported Vitest range as a peer dependency (and a development dependency for its own tests), or make the conformance runner framework-neutral. Leaving a runtime import satisfied only by an undeclared dev dependency is not acceptable packaging.
+`@vibefield/puppeteer-testing/conformance` imports Vitest. The package must declare the supported Vitest range as a peer dependency (and a development dependency for its own tests), or make the conformance runner framework-neutral. Leaving a runtime import satisfied only by an undeclared dev dependency is not acceptable packaging.
 
 The fake terminal agent remains separate from Imposter for the reasons already established in `docs/archive/IMPOSTER.md §7.4`: one exercises PTY/process failure modes; the other simulates native semantic channels.
 
@@ -527,7 +527,7 @@ If the same vendor version later resolves to a different artifact digest, that i
       "id": "claude",
       "displayName": "Claude Code",
       "kind": "vendor",
-      "adapterPackage": "@vibecook/puppeteer-adapter-claude",
+      "adapterPackage": "@vibefield/puppeteer-adapter-claude",
       "persona": "claude",
       "currentManifest": "packages/surface/vendors/claude/model/claude@2.1.207/manifest.json",
       "status": "verified",
@@ -537,7 +537,7 @@ If the same vendor version later resolves to a different artifact digest, that i
       "id": "grok",
       "displayName": "Grok Build",
       "kind": "vendor",
-      "adapterPackage": "@vibecook/puppeteer-adapter-grok",
+      "adapterPackage": "@vibefield/puppeteer-adapter-grok",
       "status": "baseline-pending"
     }
   ]
@@ -779,7 +779,7 @@ The direct seams found before implementation are preserved below as the migratio
 | Empty emulator remnant  | `packages/adapter-claude/surface/emulator/scenarios` is empty                                                                           | remove it; Imposter owns scenarios                                                                                                           |
 | Surface publication     | `packages/surface/package.json` publishes `dist` only                                                                                   | add promoted `vendors/*/model` and minimal provenance metadata                                                                               |
 | Adapter publication     | Claude publishes `surface/model`; Codex does not                                                                                        | remove all adapter model publication                                                                                                         |
-| Imposter resolution     | Claude/Codex `persona.json` point at adapter packages; loader errors and tests say adapter-owned                                        | point at `@vibecook/puppeteer-surface`, update loader contract text/tests, and remove adapter dev dependencies used only for ASM resolution |
+| Imposter resolution     | Claude/Codex `persona.json` point at adapter packages; loader errors and tests say adapter-owned                                        | point at `@vibefield/puppeteer-surface`, update loader contract text/tests, and remove adapter dev dependencies used only for ASM resolution |
 | Claude runtime          | `src/detection.ts` imports adapter-local `detection.json`; `registry.ts` is generated from the local model                              | generate checked adapter projection modules from the promoted Surface manifest                                                               |
 | Claude tooling          | audit, sanitizer, registry generator, tests, and package scripts assume adapter-relative paths and `2.1.207`                            | move tooling and resolve the explicit candidate or support-ledger baseline                                                                   |
 | Codex tooling           | census, sanitizer, model generator, audit, and `surface-model.test.ts` share hard-coded `CODEX_VERSION` and adapter-relative paths      | move under Surface and take version/artifact identity from candidate metadata                                                                |

@@ -1,8 +1,8 @@
 import type { AgentSessionInfo } from '../protocol.js';
-import { folderName } from '@vibecook/puppeteer-views';
+import { folderName } from '@vibefield/puppeteer-views';
 
-export type { AgentVisualStatus } from '@vibecook/puppeteer-views';
-export { classifyTerminalStatus } from '@vibecook/puppeteer-views';
+export type { AgentVisualStatus } from '@vibefield/puppeteer-views';
+export { classifyTerminalStatus } from '@vibefield/puppeteer-views';
 
 /** The project a run shows as: its current directory, else its workspace, else the provider's label. */
 export function projectLabel(info: AgentSessionInfo, currentCwd?: string): string {

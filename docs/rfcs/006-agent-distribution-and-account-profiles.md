@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26; the rest of C2, C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day, its sixth (an agent's catalogs read, a plugin installed, a marketplace added, fetched again or removed) the same day; C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -273,7 +273,8 @@ it is the registry's.
   holds at most one account per provider. `AgentProfile` gains `set` (the native set, `native`, for a native
   default) and `retiredAt`. The glyph is an open token the views resolve (`ProfileGlyph` in `packages/views`: eleven
   monoline symbols and the laptop for the native set, filled for the default) — open, so a glyph a newer build draws
-  never makes an older build's registry unreadable.
+  never makes an older build's registry unreadable. *(2026-10-05, MV-4: `ProfileGlyph` is the view SDK's now,
+  `@vibefield/puppeteer-view-sdk/react`, drawing the toolkit's `PROFILE_GLYPH_SHAPES`; the views package forwards it.)*
 - **The native set is synthetic**: the providers' own roots, never stored, renamed or removed. Every host sees it,
   whatever it named its own sets.
 - **Folders.** A managed set owns one directory, `<rootsDirectory>/<id>/`, the id made once from its first name
@@ -598,7 +599,8 @@ Added 2026-09-23 for VibeField's Agent Profiles (see "Profile sets"): `ProfileSe
 with version 1 adoption, set folders and per-account roots in `roots.ts`, and `AgentRuntime.profileSets`,
 `profileSet`, `createProfileSet`, `updateProfileSet`, `setDefaultProfileSet`, `removeProfileSet`, `retireProfile`,
 `signOutProfile`, `createProfile({ set })`, `spawn({ profileSet })` with the default set applied to spawns only, and
-`AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views. Godview's drawer is
+`AgentSessionInfo.profileSetId`; `ProfileGlyph` and `suggestProfileGlyph` in the views (since MV-4 the glyph is the
+view SDK's, `suggestProfileGlyph` still the views'). Godview's drawer is
 unchanged: its per-provider calls land in sets named as its user named them. After review the same day:
 `ProfileSupport.credential`, the retire-first and live-run rules on `signOutProfile`, serialized commit-after-save
 registry writes, the unreadable-registry fallback for plain spawns, and every profile service built with the
@@ -733,6 +735,125 @@ the root's own keychain item, which no read opens, so its receipt is `unconfirme
 `opencode mcp logout` under the `XDG_DATA_HOME` it binds (the server's definition is every profile's; its
 `mcp-auth.json` is the profile's); Hermes `hermes mcp login` for a server marked `auth: oauth`, with no command that
 signs out; Grok, Antigravity and Kimi sign in only inside their apps (`in-app`). A skill has no sign-in.
+
+C2's third slice, 2026-09-27: a server added to an agent that holds none of it, from a definition a host keeps, with
+its keys kept by the host and given at launch. A read's `McpServerItem` gains `definition` (`McpServerDefinition`: a
+stdio command line with the NAMES of the variables it reads, or an http/sse address), set by `mcpServerDefinition` only
+when the agent's own command line or address needed no masking, names no variable inside itself, and sends no header —
+everything another agent needs except the values; adapters add their own exclusions (a working folder, a plugin's
+relative paths, a bearer the agent adds itself). `ExtensionActKind` gains `add`; `held` (the agent holds one of its own
+by that name, which its add would replace) and `unsupported` (a transport or a variable it cannot take) join the
+reasons. The runtime plans an add after a fresh read finds the name unheld, from the server as the agent would hold it
+(`origin: 'own'`, `definition` set), and the second read holding it is the receipt; `plans` answers adds for
+definitions without a read. Each agent's settings name every variable in its own syntax and never hold a value: Claude
+Code `claude mcp add <name> --scope user -e NAME=${NAME:-} -- …` (the empty default because Claude Code refuses a
+config naming a variable it has no value for), Grok `grok mcp add --scope user --env NAME=${NAME:-} <name> -- …`,
+OpenCode `opencode mcp add <name> --env NAME={env:NAME} -- …` into its one config (every profile), Codex a
+`config/value/write` of the whole `mcp_servers.<name>` table with `env_vars` — not `codex mcp add`, which starts an
+HTTP server's browser sign-in at once and names no forwarded variable (`run_add`, `cli/src/mcp_cmd.rs` at
+`rust-v0.150.0`); Antigravity keeps values only as literals, so a server that reads one is `unsupported` there; Hermes
+connects to a server and asks which of its tools to use before it saves (`cmd_mcp_add`, 0.21.4), and Kimi changes
+servers only in its app: both `in-app`. The forms are the reports', not probed. A host's values reach the processes
+through `AgentRuntimeOptions.launchEnvironment({ providerId, profileSetId, profileId? })`, asked once per spawn and
+resume after the account resolved (the native set for the provider's own root): the runtime checks the names (none
+the environment or a loader relies on, no `*_HOME`, `*_DIR` or `XDG_*` root), hands them to `createSession` as
+`environment`, keeps them out of the continuation it captures, and never keeps, fingerprints or logs them; a prepared
+recipe goes back to its caller without them. The built-ins merge them beneath the launch's own variables where the
+agent's MCP client runs — the terminal's environment, or the helper's (Codex's app-server, Grok's leader, whose cache
+key is now a digest).
+
+C2's fourth slice, the same day: a skill a host keeps once, placed where each agent looks. The rule gains: a skill is
+placed where the agent's docs say skills go, as a link to the host's folder — never a settings key, which stays the
+agent's. A plan's run gains a fourth kind, `files`: steps (`link {path, target}`, `unlink {path}`, `move {from, to}`)
+the runtime performs itself (`extensions/files.ts`) and checks as it goes — a link only where nothing is, to a folder
+with a `SKILL.md`; `unlink` only a link, never the folder it points at; a move only of a real folder with a
+`SKILL.md`, to where nothing is (a copy that lands whole across disks) — each step said on the act's output, a failed
+step undoing the ones before it. A skill's `add` is planned from the skill as the agent would hold it once placed
+(`origin: 'own'`, `linkTarget` the host's folder) when the agent holds none of its own by that name, and Core's
+`extensionSkillFolderPlan` answers it for an agent with one folder per profile; its `remove` takes a link away, or
+moves the agent's own folder to where the host keeps it when the host names one (`plan`'s new `options.keepIn`), else
+leaves it (`no-command`). The receipt is the second read, found by name or by where the link went (OpenCode names a
+skill by its frontmatter), and a placing the agent turns out not to read — a `SKILL.md` it skips — is taken back, so
+nothing blocks the next try. `plans` answers skill adds (`skills`) and the moves to a host's folder (`keep`). Per
+agent: Claude Code `<root>/skills/<name>` (`synced` refused; the native default's `~/.claude/skills` reaches
+`shared-folder`, since Grok and OpenCode load it too); Codex reads a person's skills only from `~/.agents/skills`, so
+its add moves the host's copy there and leaves a link where it was (`shared-folder`), and a skill there is never taken
+away, only switched per profile; Grok `$GROK_HOME/skills`, Kimi `$KIMI_CODE_HOME/skills` (a flat skill is never
+taken), Pi `<agent dir>/skills` (a loose file never), Antigravity `~/.gemini/config/skills` under the profile's home;
+OpenCode its one config folder's `skills/` (`every-profile`); Hermes `$HERMES_HOME/skills`, which it walks with
+`followlinks=True`, and whose curator ages only skills recorded as written by the agent (a linked folder is read as the
+person's own, and a hub-installed folder is never moved). That Grok, Kimi and Antigravity follow a linked folder is
+their adapters' reading, not a probe: the second read is the check.
+
+C2's fifth slice, the same day: a plugin an agent holds, acted on through the agent's own command. `ExtensionActTarget`
+gains `plugin`, and `ExtensionActKind` gains `update` (the agent's own update of that one plugin to the newest its
+marketplace has) and `purge`: `remove` is the agent's own uninstall keeping the data the plugin stored apart from its
+files where the agent can keep it, so installing it again picks up where it left off, and `purge` is the same uninstall
+with that data deleted, offered only by an agent whose uninstall can do both. `plan` takes an `ExtensionActItem` (a
+server, a skill or a plugin); the runtime plans a held plugin's enable, disable, remove, purge and update, answers a
+plugin's `add` (an install, which is the next slice's) and sign-ins itself, and an update's receipt is the version
+moving (`updated 1.2.0 → 1.3.0`) or not (`still holds 1.3.0`). `PluginItem` gains `author`, `homepage` (masked as an
+address is) and `brings` — the names of its commands and agents and the events its hooks run on, read from its folder
+so a person sees what it runs; `ExtensionKindSupport` gains `label`, the agent's own word for a kind (Pi's
+"Packages"), and `hostedSkips`, a kind a session this runtime starts does not load (OpenCode's hosted sessions run
+`--pure`). `EXTENSION_PLUGIN_NAME` is a plugin key an agent's command takes as one argument (`review@northlight`).
+Per agent, from James's reports (the forms not probed as acts): Claude Code `claude plugin enable|disable <id> --scope
+user`, `uninstall <id> --scope user --keep-data` (`remove`) or without it (`purge`), `update <id> --scope user` — the
+native default's removal and update reach `shared-folder`, since Grok loads Claude Code's installed plugins from This
+Mac in every profile whatever Claude's own switch says, and the account's synced plugins are the organization's; Codex
+`codex plugin remove <id>` and its switch through the app-server's `config/value/write plugins.<id>.enabled`, with no
+update of one plugin (an upgrade of its marketplace is); Grok `grok plugin enable|disable|update <name>` and `uninstall
+<name> --confirm --keep-data` or `--confirm`, Claude Code's borrowed ones changing in Claude Code; Antigravity `agy
+plugin enable|disable|uninstall <name>`, whose uninstall takes the whole folder and exits 0 for a name it never had (the
+second read is the check; it is planned only where the folder bears the plugin's name), with no update; Hermes `hermes plugins disable|remove|update <name>` — a person's plugin
+turns on only in a terminal, where Hermes asks consent for what it may do, and a removal keeps `plugin-data/`; Pi `pi
+update|remove <source>` (the removal with `PI_OFFLINE=1`, so it installs nothing; a folder's package has no update), its switch
+only in `pi config`; Kimi
+Code only inside the app (`/plugins`); OpenCode no command that switches, removes or updates one.
+
+C2's sixth slice, the same day: an agent's catalogs, a plugin installed, and a marketplace. `ExtensionService.catalog`
+answers what a profile's agent could install — the plugins listed by the marketplaces it knows — from the catalogs it
+already fetched: file reads only, never a process or the network (a catalog is as fresh as the agent's last fetch, and
+that fetch is the agent's own act). A `CatalogPlugin` carries the catalog's key (what an install takes), what its
+listing says it would bring (`CatalogParts`: commands, agents, hook events, servers, skills, tools), what the agent asks
+or does before its code runs (`CatalogAsk`: a look, a command it asks the person to accept, a package manager's fetch,
+values by name, consent, a scan, apps that sign in), why the agent will not install it here (`blocked`), the plugin the
+agent holds from it by the agent's own install record (`held`, which can be named apart from the key) and whether its
+copy is older (`newer`, by the agent's own rule); a `CatalogSuggestion` is a marketplace the agent adds by itself later
+— added now with its own add where a source is given, only said where an add of the host's would stand beside the
+agent's. `ExtensionActKind` gains `install` (from a catalog entry, or from a source a person gave where the plugins
+support names what the agent takes, `sources`, checked by `isExtensionSource`: one argument, never a flag, never an
+address with a sign-in or a query) and `ExtensionActTarget` gains `marketplace` (`add` from a source, `update` — its
+catalog fetched again — and `remove`); `ExtensionReach` gains `plugins` (a marketplace's removal takes what was
+installed from it, its fetch updates it), the unavailable reasons gain `blocked`, `PluginItem` gains `pinned` and
+plugins support `catalog`. The runtime reads a catalog through the adapter (`extensionCatalog`, schema-checked,
+coalesced), plans an install from a fresh read of the catalog (a plugin it holds answers `held`), plans a typed source
+against what a read already found (a pure plan: no read, since reading some agents starts one), and takes the second
+read for the receipt: an install is done when the agent holds the plugin by its key, or holds exactly one it did not
+before (every one, named, where a folder held several); a marketplace's add likewise, or by its source; a fetch when the
+time the agent keeps for the marketplace moved — and a fetch that moved the version of a plugin installed from it says
+so. Installs, updates and adds run with a fifteen-minute limit (a clone, a package manager). Per agent, from four
+read-only research passes over James's reports, the adapters and the agents' own sources (nothing probed): Claude Code
+reads each marketplace's `.claude-plugin/marketplace.json` in its clone, installs with `claude plugin install
+<name>@<marketplace> --scope user -y` (a source that is a command runs in a terminal without `-y`, where the person
+accepts it; S4e1's `update` gains `-y`, which install and update need with no terminal), and adds, fetches and removes
+marketplaces with `claude plugin marketplace add|update|remove` (a removal takes its plugins; the official marketplace,
+which Claude Code adds at a profile's first session, is suggested); Codex reads its configured, curated and personal
+catalogs from files (the app-server's start runs network tasks that can reinstall plugins, so the catalog never starts
+one) and keys a plugin by the name its catalog gives itself, as Codex does (a catalog renamed since it was added lists
+nothing, and says so), installs with `codex plugin add <key> --json` (never the app-server's install, which opens a
+browser per OAuth server), and adds, upgrades and removes marketplaces with `codex plugin marketplace
+add|upgrade|remove` — an upgrade reinstalls the plugins installed from it (`plugins`); Grok reads its sources' clones in
+`marketplace-cache/` and the git marketplaces it borrows from Claude Code, installs a folder with `grok plugin install
+<folder> --trust` (a catalog install's argument is not yet known: said, not run), and adds, fetches and removes its own
+marketplaces; Hermes reads its reviewed catalog (the checkout's `plugin-catalog/` and the profile's fetched copy, by
+Hermes's own merge) and installs by name or from a repository in a terminal (it asks for values, whether to turn it on,
+and consent), its own-plugin switch and its update now terminal plans too; Pi installs a package with `pi install
+<source> --no-approve`; OpenCode with `opencode plugin <source> --global --pure` (one config for every profile);
+Antigravity with `agy plugin install <folder or GitHub address>`; Kimi Code only inside the app. A catalog, a plugin's
+manifest and a skill's file are anyone's to write, and a host reads them on its own event loop: every pattern that reads
+them runs in one pass (`describeMcpUrl` masks an address longer than a listing shows, or not on one line, before it
+parses one), and a value past Core's bounds is left out rather than failing the whole read.
 
 Added 2026-09-22 for hosts that put updates in front of a person (VibeField's Agents settings section):
 

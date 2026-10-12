@@ -1,5 +1,5 @@
-import type { AgentAdapterBinding } from '@vibecook/puppeteer-core';
-import { runAgentMonitorConformance } from '@vibecook/puppeteer-testing/conformance';
+import type { AgentAdapterBinding } from '@vibefield/puppeteer-core';
+import { runAgentMonitorConformance } from '@vibefield/puppeteer-testing/conformance';
 import { createPendingControlSession } from './driver.js';
 
 function deferred<T>() {

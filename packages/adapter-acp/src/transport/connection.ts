@@ -23,8 +23,8 @@ export interface AcpAgentConnection {
   agent: Agent;
   /** Fires when the underlying transport closes (subprocess exit / disconnect). */
   onClose(handler: (info: { code: number | null; signal: NodeJS.Signals | null }) => void): void;
-  /** Tear down the transport (kills the subprocess for the spawn connector). */
-  close(): void;
+  /** Tear down the transport, waiting for any owned subprocess to exit. */
+  close(): void | Promise<void>;
 }
 
 /**
@@ -58,20 +58,49 @@ export function createStdioAcpConnector(opts: StdioAcpConnectorOptions): AcpConn
     const agent = new ClientSideConnection(toClient, stream);
 
     let onCls: ((info: { code: number | null; signal: NodeJS.Signals | null }) => void) | undefined;
-    child.on('exit', (code, signal) => onCls?.({ code, signal }));
+    let closedInfo: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+    const exited = new Promise<void>((resolve) => {
+      child.once('close', (code, signal) => {
+        closedInfo = { code, signal };
+        resolve();
+        onCls?.(closedInfo);
+      });
+    });
+    // A failed spawn still emits close; handle error so cleanup can await it.
+    child.once('error', () => undefined);
+    let closing: Promise<void> | undefined;
+
+    const exitedWithin = async (): Promise<boolean> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([
+          exited.then(() => true),
+          new Promise<false>((resolve) => {
+            timer = setTimeout(() => resolve(false), 2_000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    const stop = async (): Promise<void> => {
+      if (closedInfo) return;
+      child.kill('SIGTERM');
+      if (await exitedWithin()) return;
+      child.kill('SIGKILL');
+      if (!(await exitedWithin())) {
+        throw new Error(`ACP process ${child.pid ?? '?'} survived SIGTERM and SIGKILL`);
+      }
+    };
 
     return {
       agent,
       onClose: (handler) => {
         onCls = handler;
+        if (closedInfo) handler(closedInfo);
       },
-      close: () => {
-        try {
-          child.kill('SIGTERM');
-        } catch {
-          /* already gone */
-        }
-      },
+      close: () => (closing ??= stop()),
     };
   };
 }

@@ -1,4 +1,4 @@
-import type { MonitorParameterGroup } from '../../monitor/parameters.js';
+import type { MonitorParameterGroup } from '@vibefield/puppeteer-view-sdk';
 
 export interface RainParameters {
   speedMultiplier: number;

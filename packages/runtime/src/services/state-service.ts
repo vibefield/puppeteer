@@ -3,7 +3,7 @@ import {
   reduceSessionState,
   type AgentEventEnvelope,
   type SessionRuntimeState,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { AgentProjectionService } from './projection-service.js';
 
 function cloneSessionRuntimeState(state: SessionRuntimeState): SessionRuntimeState {

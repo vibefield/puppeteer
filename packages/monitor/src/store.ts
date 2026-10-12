@@ -3,7 +3,7 @@ import {
   isNewerMonitorRevision,
   type AgentMonitorState,
   type MonitorNotification,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface AgentMonitorRemoval {
   runtimeRunId: string;
@@ -19,6 +19,11 @@ export interface AgentMonitorStoreSnapshot {
 export interface AgentMonitorStore {
   getSnapshot(): AgentMonitorStoreSnapshot;
   getState(runtimeRunId: string): AgentMonitorState | undefined;
+  /**
+   * The runtime removed the run and no newer epoch has revived it: its late states are refused. Seals are capped
+   * (`sealCapacity`), so this is the record of the newest removals only.
+   */
+  isSealed(runtimeRunId: string): boolean;
   subscribe(listener: () => void): () => void;
   acceptState(state: AgentMonitorState): boolean;
   acceptStates(states: readonly AgentMonitorState[]): number;
@@ -31,8 +36,19 @@ export interface AgentMonitorStore {
 export interface CreateAgentMonitorStoreOptions {
   /** Number of recent, undismissed notifications retained for a view. Default: 4. */
   notificationCapacity?: number;
+  /**
+   * Removals remembered, so a removed epoch's late state is refused. Past this bound the oldest is forgotten
+   * first. Default: `DEFAULT_MONITOR_SEAL_CAPACITY`.
+   */
+  sealCapacity?: number;
   onListenerError?: (error: unknown) => void;
 }
+
+/**
+ * The seals a store keeps by default. Generous: a late state lags its removal by moments, and a seal is a run id
+ * and an epoch, so thousands cost little while a long-lived daemon's removals can no longer grow without bound.
+ */
+export const DEFAULT_MONITOR_SEAL_CAPACITY = 4096;
 
 const EMPTY_SNAPSHOT: AgentMonitorStoreSnapshot = Object.freeze({
   states: Object.freeze([]),
@@ -63,6 +79,10 @@ export function createAgentMonitorStore(options: CreateAgentMonitorStoreOptions 
   const notificationCapacity = options.notificationCapacity ?? 4;
   if (!Number.isSafeInteger(notificationCapacity) || notificationCapacity < 1) {
     throw new RangeError('notificationCapacity must be a positive safe integer');
+  }
+  const sealCapacity = options.sealCapacity ?? DEFAULT_MONITOR_SEAL_CAPACITY;
+  if (!Number.isSafeInteger(sealCapacity) || sealCapacity < 1) {
+    throw new RangeError('sealCapacity must be a positive safe integer');
   }
 
   const statesByRunId = new Map<string, AgentMonitorState>();
@@ -105,6 +125,7 @@ export function createAgentMonitorStore(options: CreateAgentMonitorStoreOptions 
   return {
     getSnapshot: () => snapshot,
     getState: (runtimeRunId) => statesByRunId.get(runtimeRunId),
+    isSealed: (runtimeRunId) => sealedEpochs.has(runtimeRunId),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -131,7 +152,13 @@ export function createAgentMonitorStore(options: CreateAgentMonitorStoreOptions 
       ) {
         return false;
       }
+      // Insertion order is age: a run sealed again becomes the newest, and the oldest seal is forgotten first.
+      sealedEpochs.delete(removal.runtimeRunId);
       sealedEpochs.set(removal.runtimeRunId, removal.runtimeEpoch);
+      for (const oldest of sealedEpochs.keys()) {
+        if (sealedEpochs.size <= sealCapacity) break;
+        sealedEpochs.delete(oldest);
+      }
       const removed = statesByRunId.delete(removal.runtimeRunId);
       if (removed) publish();
       return true;

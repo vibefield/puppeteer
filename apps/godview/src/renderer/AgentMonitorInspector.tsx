@@ -3,8 +3,8 @@ import {
   monitorBlockerDetail,
   type AgentMonitorState,
   type MonitorMetricFamily,
-} from '@vibecook/puppeteer-core';
-import { formatUsd } from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-core';
+import { formatUsd } from '@vibefield/puppeteer-views';
 
 const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'status',
@@ -66,11 +66,14 @@ export function AgentMonitorInspector({
   state,
   nowMs,
   account,
+  onAcknowledge,
 }: {
   state: AgentMonitorState;
   nowMs: number;
   /** Label of the account this run is bound to, when it is a registered one. */
   account?: string;
+  /** Acknowledges the run's retained failure through the monitor backend (M3, M19); the row then leaves. */
+  onAcknowledge(): void;
 }) {
   return (
     <aside className="vf-godview-monitor-inspector" aria-label="Agent runtime details">
@@ -171,15 +174,7 @@ export function AgentMonitorInspector({
                   ))
                 : null}
               {blocker.kind === 'failure' && !state.alive ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    void window.puppeteer.acknowledgeAgentFailure({
-                      runtimeRunId: state.runtimeRunId,
-                      blockerId: blocker.id,
-                    })
-                  }
-                >
+                <button type="button" onClick={onAcknowledge}>
                   ACKNOWLEDGE
                 </button>
               ) : null}

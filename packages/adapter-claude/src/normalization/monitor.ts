@@ -1,6 +1,6 @@
 /** Claude-local status and hook evidence for the correction-aware monitor SPI. */
 
-import type { ActorRunRef } from '@vibecook/puppeteer-core';
+import type { ActorRunRef } from '@vibefield/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -8,8 +8,8 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/puppeteer-core/monitor-spi';
-import type { MonitorMetricFamily } from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core/monitor-spi';
+import type { MonitorMetricFamily } from '@vibefield/puppeteer-core';
 import {
   claudeContextWindowEvent,
   claudeEnvironmentEvents,

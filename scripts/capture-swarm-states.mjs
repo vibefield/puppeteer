@@ -8,12 +8,23 @@ const [pageFile, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PORT = 9333;
-const chrome = spawn(CHROME, [
-  '--headless=new', '--remote-debugging-port=' + PORT, '--enable-unsafe-webgpu', '--use-angle=metal',
-  '--user-data-dir=' + join(outDir, '..', 'chrome-profile'), '--no-first-run', '--no-default-browser-check',
-  '--window-size=1800,1000', '--hide-scrollbars', '--disable-extensions',
-  'file://' + pageFile,
-], { stdio: 'ignore' });
+const chrome = spawn(
+  CHROME,
+  [
+    '--headless=new',
+    '--remote-debugging-port=' + PORT,
+    '--enable-unsafe-webgpu',
+    '--use-angle=metal',
+    '--user-data-dir=' + join(outDir, '..', 'chrome-profile'),
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--window-size=1800,1000',
+    '--hide-scrollbars',
+    '--disable-extensions',
+    'file://' + pageFile,
+  ],
+  { stdio: 'ignore' },
+);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
@@ -25,10 +36,16 @@ for (let attempt = 0; attempt < 40; attempt += 1) {
     if (target) break;
   } catch {}
 }
-if (!target) { chrome.kill(); throw new Error('Chrome did not expose a page target'); }
+if (!target) {
+  chrome.kill();
+  throw new Error('Chrome did not expose a page target');
+}
 
 const socket = new WebSocket(target.webSocketDebuggerUrl);
-await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+await new Promise((resolve, reject) => {
+  socket.onopen = resolve;
+  socket.onerror = reject;
+});
 let nextId = 0;
 const pending = new Map();
 socket.onmessage = (event) => {
@@ -77,7 +94,8 @@ for (const theme of ['light', 'dark']) {
       return { x: Math.round(r.x), y: Math.round(r.y + window.scrollY), w: Math.round(r.width), h: Math.round(r.height) };
     })()`);
     const shot = await send('Page.captureScreenshot', {
-      format: 'png', captureBeyondViewport: true,
+      format: 'png',
+      captureBeyondViewport: true,
       clip: { x: rect.x, y: rect.y, width: rect.w, height: rect.h, scale: 2 },
     });
     writeFileSync(join(outDir, `${stage.id}-${theme}.png`), Buffer.from(shot.data, 'base64'));

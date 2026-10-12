@@ -15,7 +15,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parsePiVersion } from '../detection.js';
 
 const PI_NPM_PACKAGE = '@earendil-works/pi-coding-agent';

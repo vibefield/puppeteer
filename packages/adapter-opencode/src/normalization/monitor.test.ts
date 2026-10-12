@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { OpenCodeMessage } from '../transport/client.js';
 import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { OPENCODE_MONITOR_CAPABILITIES, OpenCodeMonitorEvidence, openCodeStructuredQuestions } from './monitor.js';

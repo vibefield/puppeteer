@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibecook/puppeteer-core';
+import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import { classifyKimiCandidate, createKimiDistributionService, KIMI_DISTRIBUTION_PROVIDER } from './distribution.js';
 

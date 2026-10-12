@@ -1,18 +1,18 @@
 import { Buffer } from 'node:buffer';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import {
   AgentProfileSchema,
   ProfileFailureSchema,
   ProfileIdentitySchema,
   ProfileProviderSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ANTIGRAVITY_PROFILE_ROOT_VARIABLE, createAntigravityProfileService } from './profiles.js';
 
-const service = createAntigravityProfileService({ home: '/home/tester', executable: 'agy', env: {} });
+const service = createAntigravityProfileService({ home: resolve('/home/tester'), executable: 'agy', env: {} });
 
 const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
   AgentProfileSchema.parse({
@@ -20,7 +20,7 @@ const profile = (overrides: Partial<AgentProfile> = {}): AgentProfile =>
     provider: 'antigravity',
     label: 'Work',
     kind: 'managed',
-    dataRoot: '/home/tester/.puppeteer/profiles/antigravity/0b12ce77',
+    dataRoot: resolve('/home/tester/.puppeteer/profiles/antigravity/0b12ce77'),
     createdAt: new Date().toISOString(),
     ...overrides,
   });
@@ -32,7 +32,7 @@ describe('Antigravity profiles', () => {
       supported: true,
       identity: 'native-status',
       sharedSurfaces: [],
-      nativeDefaultRoot: '/home/tester/.gemini/antigravity-cli',
+      nativeDefaultRoot: resolve('/home/tester/.gemini/antigravity-cli'),
       credential: 'root',
       service: { id: 'google', label: 'Google' },
     });
@@ -44,39 +44,46 @@ describe('Antigravity profiles', () => {
 
   it('binds a managed home through the adapter-owned home redirection', () => {
     expect(service.bindingEnvironment(profile())).toEqual({
-      [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/antigravity/0b12ce77',
+      [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/antigravity/0b12ce77'),
     });
   });
 
   it('injects nothing for the native default profile', () => {
     expect(
-      service.bindingEnvironment(profile({ kind: 'native-default', dataRoot: '/home/tester/.gemini/antigravity-cli' })),
+      service.bindingEnvironment(
+        profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.gemini/antigravity-cli') }),
+      ),
     ).toEqual({});
   });
 
   it('names the store inside the home as the history layout root for an indexer', () => {
     expect(service.observationRoot(profile())).toBe(
-      '/home/tester/.puppeteer/profiles/antigravity/0b12ce77/.gemini/antigravity-cli',
+      resolve('/home/tester/.puppeteer/profiles/antigravity/0b12ce77/.gemini/antigravity-cli'),
     );
     expect(
-      service.observationRoot(profile({ kind: 'native-default', dataRoot: '/home/tester/.gemini/antigravity-cli' })),
-    ).toBe('/home/tester/.gemini/antigravity-cli');
+      service.observationRoot(
+        profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.gemini/antigravity-cli') }),
+      ),
+    ).toBe(resolve('/home/tester/.gemini/antigravity-cli'));
   });
 
   it('opens the agent itself under the profile home, because no login subcommand exists', () => {
-    expect(service.loginInvocation(profile(), { cwd: '/work/repo' })).toEqual({
+    expect(service.loginInvocation(profile(), { cwd: resolve('/work/repo') })).toEqual({
       command: 'agy',
       args: [],
-      cwd: '/work/repo',
+      cwd: resolve('/work/repo'),
       env: {
-        HOME: '/home/tester/.puppeteer/profiles/antigravity/0b12ce77',
-        [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: '/home/tester/.puppeteer/profiles/antigravity/0b12ce77',
+        HOME: resolve('/home/tester/.puppeteer/profiles/antigravity/0b12ce77'),
+        [ANTIGRAVITY_PROFILE_ROOT_VARIABLE]: resolve('/home/tester/.puppeteer/profiles/antigravity/0b12ce77'),
       },
     });
     expect(
-      service.loginInvocation(profile({ kind: 'native-default', dataRoot: '/home/tester/.gemini/antigravity-cli' }), {
-        cwd: '/work/repo',
-      }).env,
+      service.loginInvocation(
+        profile({ kind: 'native-default', dataRoot: resolve('/home/tester/.gemini/antigravity-cli') }),
+        {
+          cwd: resolve('/work/repo'),
+        },
+      ).env,
     ).toEqual({});
   });
 });
@@ -217,7 +224,7 @@ describe('Antigravity profile verification', () => {
       verifiedAt: NOW.toISOString(),
       source: SOURCE,
     });
-    await writeStore(managedHome, 'settings.json', JSON.stringify({ trustedWorkspaces: ['/work/repo'] }));
+    await writeStore(managedHome, 'settings.json', JSON.stringify({ trustedWorkspaces: [resolve('/work/repo')] }));
     await expect(verify(managed())).resolves.toMatchObject({ loggedIn: false });
   });
 

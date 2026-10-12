@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect } from 'vitest';
-import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
-import { createKimiTuiSession, type KimiTuiSession } from '@vibecook/puppeteer-adapter-kimi';
-import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
-import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
+import type { AdapterEventCandidate, AgentHost } from '@vibefield/puppeteer-core';
+import { createKimiTuiSession, type KimiTuiSession } from '@vibefield/puppeteer-adapter-kimi';
+import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibefield/puppeteer-testing/conformance';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 const REPLY = 'imposter: ok';

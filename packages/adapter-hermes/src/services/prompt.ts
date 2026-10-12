@@ -1,4 +1,4 @@
-import type { AgentEvent, PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
+import type { AgentEvent, PromptReceipt, PromptSubmission } from '@vibefield/puppeteer-core';
 import type { HermesGatewayTransport } from '../transport/jsonrpc.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

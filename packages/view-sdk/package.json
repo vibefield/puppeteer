@@ -1,0 +1,90 @@
+{
+  "name": "@vibefield/puppeteer-view-sdk",
+  "version": "0.1.8",
+  "type": "module",
+  "description": "The monitor-view contract: the model a Godview view receives, the three commands it may call, and nothing else.",
+  "license": "MIT",
+  "author": "James Yong",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
+    "directory": "packages/view-sdk"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./model": "./src/model.ts",
+    "./toolkit": "./src/toolkit/index.ts",
+    "./react": "./src/react/index.ts",
+    "./host": "./src/host/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./model": {
+        "types": "./dist/model.d.ts",
+        "import": "./dist/model.js"
+      },
+      "./toolkit": {
+        "types": "./dist/toolkit/index.d.ts",
+        "import": "./dist/toolkit/index.js"
+      },
+      "./react": {
+        "types": "./dist/react/index.d.ts",
+        "import": "./dist/react/index.js"
+      },
+      "./host": {
+        "types": "./dist/host/index.d.ts",
+        "import": "./dist/host/index.js"
+      },
+      "./testing": {
+        "types": "./dist/testing/index.d.ts",
+        "import": "./dist/testing/index.js"
+      }
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "pnpm clean && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "verify:worker-bundling": "node scripts/verify-worker-bundling.mjs"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-dom": ">=18 <20",
+    "vitest": ">=4.1.11 <5"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "20.11.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

@@ -3,9 +3,9 @@ import {
   accessSync,
   chmodSync,
   constants,
-  copyFileSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { open as openFile, writeFile } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import { basename, delimiter, isAbsolute, join, resolve } from 'node:path';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, powerMonitor, shell } from 'electron';
 import {
@@ -27,20 +28,21 @@ import {
   type SessionExitedEvent,
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
-import { prewarmTerminalAgents } from './agent-prewarm.js';
-import { createActionRecorder } from '@vibecook/puppeteer-record';
+import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createMonitorBackend, runtimeRunSource } from '@vibefield/puppeteer-monitor';
+import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
+import { createActionRecorder } from '@vibefield/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
+  prewarmTerminalAgents,
   type AgentRuntime,
   type AgentWorkspaceFinal,
   type AgentWorkspaceInfo,
   type AgentWorkspaceRequest,
   type ResumeAgentOptions,
   type SpawnAgentResult,
-} from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-runtime';
 import type {
   AccountUsageBatch,
   AgentInstallationsSnapshot,
@@ -49,8 +51,6 @@ import type {
   AgentSessionInfo,
   AgentSessionSnapshot,
   CheckReleasesRequest,
-  UsageHistoryKey,
-  UsageLedgerRecord,
   CreateAgentSessionOptions,
   CreateAgentSessionResult,
   CreateProfileRequest,
@@ -70,10 +70,9 @@ import type {
   AgentInterruptResult,
   UpdateInstallationRequest,
 } from '../protocol.js';
-import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibecook/puppeteer-runtime';
+import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibefield/puppeteer-runtime';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
-import { createProjectRegistry } from './project-registry.js';
-import { appCacheDirectory, createUsageHistoryStore } from './usage-history-store.js';
+import { createProjectRegistry, projectIdentityStore } from './project-registry.js';
 import {
   createHistorySearchService,
   defaultAnnounceDirectory,
@@ -83,7 +82,9 @@ import {
   resolveHistoryOrigin,
 } from './history-search.js';
 import { createHistorySettingsStore } from './history-settings.js';
-import { acknowledgeAgentFailureForIpc, connectMonitorIpcRelay, MonitorIpcRelay } from './monitor-ipc.js';
+import { registerLauncherIpc } from './launcher-ipc.js';
+import { connectMonitorIpcRelay, isOpaqueMonitorIdentifier, MonitorIpcRelay } from './monitor-ipc.js';
+import { createGodviewMonitorHost, parseMonitorShownReport, parseMonitorTerminalReport } from './monitor-host.js';
 import {
   APPEARANCE_BLOCK_START,
   appearanceBlock,
@@ -119,12 +120,26 @@ import {
   setRestoredSessionAlias,
 } from './session-recovery.js';
 import {
+  materializeShims,
   prepareSpawnThroughLaunch,
+  shellIntegrationEnvironment,
+  spawnThroughLayout,
   startSpawnThroughGateway,
+  watchProcessExit,
+  writeRendezvous,
   type SpawnThroughGateway,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
-} from './spawn-through.js';
+} from '@vibefield/puppeteer-runtime/spawn-through';
+import { containingTerminalSession } from './containing-terminal.js';
+import {
+  describeShimHomeRefresh,
+  startShimHomeRefresh,
+  type ShimHomeRefresh,
+  type ShimHomeRefreshOutcome,
+} from './shim-home-refresh.js';
+import { sweepStaleShimHomes, type ShimHomeSweep } from './shim-home-sweep.js';
+import { chooseShimRuntime, describeShimRuntime } from './shim-runtime.js';
 import { orderNativeTabs } from './native-tab-order.js';
 import { resolveProcessCwd } from './process-cwd.js';
 import { GodviewTabRegistry } from './tab-registry.js';
@@ -158,6 +173,8 @@ declare const __dirname: string;
 const DEFAULT_COLS = 100;
 const DEFAULT_ROWS = 30;
 const ADOPTED_PROCESS_EXIT_GRACE_MS = 5_000;
+/** Godview's name at the head of every line the spawn-through shim prints, and in its sentences: one label for both. */
+const SPAWN_THROUGH_HOST_LABEL = 'Godview';
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 7_000;
 const SMOKE = process.argv.includes('--smoke');
 const APPEARANCE_SMOKE = process.argv.includes('--appearance-smoke');
@@ -270,13 +287,18 @@ let systemShutdownRequested = false;
 let recoveringBackend: Promise<void> | undefined;
 let lastFocusedWindow: BrowserWindow | undefined;
 let spawnThroughGateway: SpawnThroughGateway | undefined;
+/** The shim home: per process, removed at quit. The kit owns what is inside it. */
 let spawnThroughDirectory: string | undefined;
-let spawnThroughEnvironment: NodeJS.ProcessEnv | undefined;
+/** The kit's shell integration, for every shell the daemon births: it names the shim home, never the gateway. */
+let spawnThroughEnvironment: Record<string, string> | undefined;
+/** Publishes the shim home again on a timer: the temp directory's cleaner empties a home Godview outlives. */
+let spawnThroughHomeRefresh: ShimHomeRefresh | undefined;
 let remoteSessionsEnabled = true;
 const wiredAutomationClients = new WeakSet<GhostteaAutomationClient>();
 const managedTerminalIds = new Set<string>();
 const exitCleanups = new Set<Promise<unknown>>();
-const adoptedProcessMonitors = new Map<string, NodeJS.Timeout>();
+/** Each adopted agent's exit watch, by its terminal: the function stops it. */
+const adoptedProcessMonitors = new Map<string, () => void>();
 const adoptedPreparationSessions = new Map<string, string>();
 const pendingTerminalHandoffs = new Map<string, { window: BrowserWindow; timer: NodeJS.Timeout }>();
 
@@ -325,13 +347,21 @@ function broadcast(channel: string, value: unknown): void {
   }
 }
 
+/**
+ * THE CHROME'S FEED (M19): every run's full monitor state, ordered and sealed by
+ * the relay, for the chrome outside the monitor views only (the inspector, Find,
+ * the deck's pane frames, split sessions). The model the views, the counts and
+ * the status shortcuts draw comes from the backend (`monitor:change`) and never
+ * from here. Notifications keep their channel and their UX.
+ */
 const monitorRelay = new MonitorIpcRelay({
-  onState: (message) => broadcast('puppeteer:agent-monitor-state', message),
+  onState: (message) => broadcast('monitor:chrome-state', message),
   onNotification: (message) => broadcast('puppeteer:agent-monitor-notification', message),
   onRemoved: (message) => {
-    broadcast('puppeteer:agent-monitor-removed', message);
+    broadcast('monitor:chrome-removed', message);
     if (message.terminalSessionId) {
       agentRecords.delete(message.terminalSessionId);
+      monitorHost.runsChanged();
       scheduleRestoreCheckpoint(true);
     }
   },
@@ -687,8 +717,55 @@ const monitorConnection = connectMonitorIpcRelay(agentRuntime, monitorRelay, (er
 const profileDefaultsStore = createProfileDefaultsStore(join(app.getPath('userData'), 'agent-profile-defaults.json'));
 /** The projects agents have run in, each dealt a colour sequence for life (record §02). */
 const projectRegistry = createProjectRegistry(join(app.getPath('userData'), 'projects.json'));
-/** The renderer's usage ledgers per conversation, kept in the app's cache so a resumed session opens with its numbers. */
-const usageHistoryStore = createUsageHistoryStore(join(appCacheDirectory(app.name), 'usage-history.json'));
+/** The identity a handed-off shell carries for the monitor: the dead agent's terminal it replaced (see the handoff). */
+const monitorTerminalIdentities = new Map<string, string>();
+/** Account id -> label, the registry's own words, for the account a row names. */
+let monitorAccountLabels: ReadonlyMap<string, string> = new Map();
+/**
+ * The monitor backend (MV-2), beside the runtime: every agent's facts are
+ * computed here once and every window receives the same model over IPC. A
+ * window asks (`monitor:snapshot`) and main answers on the ONE ordered channel
+ * the changes travel on (`monitor:change`), so a snapshot can never race the
+ * changes after it (M23). A window joins only its own panes.
+ */
+const monitorHost = createGodviewMonitorHost({
+  device: { id: hostname(), name: hostname(), os: monitorDeviceOs(), self: true },
+  records: () => agentRecords.values(),
+  identityOf: (sessionId) => monitorTerminalIdentities.get(sessionId),
+  accountLabel: (profileId) => monitorAccountLabels.get(profileId),
+});
+const monitorBackend = createMonitorBackend({
+  runs: runtimeRunSource(agentRuntime),
+  host: monitorHost.port,
+  identity: projectIdentityStore(projectRegistry),
+  // A select mounts in, and a create opens, the asking window's own panes: both stay in the renderer.
+  sink: { select: () => undefined, create: () => undefined },
+  // M15: a resumed epoch of the same conversation adds up, as this app's seam always counted it.
+  cost: { acrossEpochs: 'accumulate' },
+  // M17: no agent row before the run's first state; its terminal stands in, as this app's seam drew it.
+  unobservedAgents: 'terminal',
+  // No replyMaxLength (M21): Core already bounds the reply, and this app's seam read the texts whole.
+  onError: (error) => process.stderr.write(`[main] monitor backend: ${String(error)}\n`),
+});
+monitorBackend.subscribe((change) => broadcast('monitor:change', change));
+
+/** A window that closed or reloads: its terminals and its active pane are nobody's until it reports again. */
+function forgetMonitorWindow(windowId: string): void {
+  monitorHost.forgetWindow(windowId);
+  // M20: a screen lives as long as its window (its first shown report opened it, an empty one too).
+  monitorBackend.forgetScreen(windowId);
+}
+
+function monitorDeviceOs(): 'mac' | 'windows' | 'linux' {
+  if (process.platform === 'darwin') return 'mac';
+  return process.platform === 'win32' ? 'windows' : 'linux';
+}
+
+/** The labels the registry gives its accounts; a row names its run's account by them. */
+function refreshMonitorAccountLabels(profiles: readonly AgentProfile[]): void {
+  monitorAccountLabels = new Map(profiles.map((profile) => [profile.id, profile.label] as const));
+  monitorHost.runsChanged();
+}
 /** Login terminals awaiting their exit, so the account is verified from native evidence afterwards. */
 const pendingProfileLogins = new Map<string, { profileId: string; timer: NodeJS.Timeout }>();
 /** Where the transcript history daemon lives; hand-edited, never written by Godview. */
@@ -739,6 +816,7 @@ agentRuntime.onAccountUsage((provider, result) => {
 });
 agentRuntime.onProfilesChanged((profiles) => {
   if (quitting) return;
+  refreshMonitorAccountLabels(profiles);
   broadcast('puppeteer:profiles', profiles);
   void accountUsageMonitor
     .refreshProfiles()
@@ -751,24 +829,14 @@ function pushWorkspaceFinal(final: AgentWorkspaceFinal): void {
   // A crash remains a small blocked monitor until acknowledgment. Clean
   // completion has already emitted monitor removal and can leave the board.
   const retainedFailure = record && monitorRelay.hasRun(record.info.runtimeRunId);
-  if (!retainedFailure) agentRecords.delete(final.runtimeSessionId);
+  if (!retainedFailure && agentRecords.delete(final.runtimeSessionId)) monitorHost.runsChanged();
 }
 
 function stopAdoptedProcessMonitor(runtimeSessionId: string): void {
-  const timer = adoptedProcessMonitors.get(runtimeSessionId);
-  if (timer) clearInterval(timer);
+  adoptedProcessMonitors.get(runtimeSessionId)?.();
   adoptedProcessMonitors.delete(runtimeSessionId);
   for (const [preparationId, sessionId] of adoptedPreparationSessions) {
     if (sessionId === runtimeSessionId) adoptedPreparationSessions.delete(preparationId);
-  }
-}
-
-function processIsAlive(processId: number): boolean {
-  try {
-    process.kill(processId, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 
@@ -778,6 +846,7 @@ function finishAdoptedProcess(runtimeSessionId: string, reason = 'process-exited
   const record = agentRecords.get(runtimeSessionId);
   if (record) {
     record.agentProcessAlive = false;
+    monitorHost.runsChanged();
     scheduleRestoreCheckpoint(true);
   }
   const cleanup = agentRuntime
@@ -793,18 +862,15 @@ function finishAdoptedProcess(runtimeSessionId: string, reason = 'process-exited
 function monitorAdoptedProcess(runtimeSessionId: string, processId: number, preparationId: string): void {
   stopAdoptedProcessMonitor(runtimeSessionId);
   adoptedPreparationSessions.set(preparationId, runtimeSessionId);
-  const timer = setInterval(() => {
-    if (processIsAlive(processId)) return;
-    clearInterval(timer);
-    // Ghosttea's session-exited event carries completed/crashed/requested
-    // termination semantics. Give that authoritative event one bounded turn
-    // before the PID poller falls back to an unknown process exit.
-    const fallback = setTimeout(() => finishAdoptedProcess(runtimeSessionId), ADOPTED_PROCESS_EXIT_GRACE_MS);
-    fallback.unref?.();
-    adoptedProcessMonitors.set(runtimeSessionId, fallback);
-  }, 500);
-  timer.unref?.();
-  adoptedProcessMonitors.set(runtimeSessionId, timer);
+  // Ghosttea's session-exited event carries completed/crashed/requested
+  // termination semantics. Give that authoritative event one bounded turn
+  // before the PID watch falls back to an unknown process exit.
+  adoptedProcessMonitors.set(
+    runtimeSessionId,
+    watchProcessExit(processId, { graceMs: ADOPTED_PROCESS_EXIT_GRACE_MS }, () =>
+      finishAdoptedProcess(runtimeSessionId),
+    ),
+  );
 }
 
 function restoreManifestPath(): string {
@@ -1052,11 +1118,13 @@ async function dealProjectLater(runtimeSessionId: string, workspace: AgentWorksp
   const record = agentRecords.get(runtimeSessionId);
   if (!project || !record || record.info.project) return;
   record.info = { ...record.info, project };
+  monitorHost.runsChanged();
   broadcast('puppeteer:agent-session', record.info);
 }
 
 function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
   agentRecords.set(info.runtimeSessionId, { info, session, agentProcessAlive: true });
+  monitorHost.runsChanged();
   const agent = agentRuntime.agent(info.runtimeSessionId);
   agent?.on('*', () => {
     const runtimeInfo = agent.info;
@@ -1069,6 +1137,7 @@ function rememberAgent(info: AgentSessionInfo, session: SessionSummary): void {
         continuation: { ...runtimeInfo.continuation },
         sessionId: runtimeInfo.nativeSession.id,
       };
+      monitorHost.runsChanged();
       scheduleRestoreCheckpoint(true);
       broadcast('puppeteer:agent-session', record.info);
     }
@@ -1101,6 +1170,7 @@ function onSessionExited(event: SessionExitedEvent, preserveAgentForRecovery = f
   }
   if (record) {
     record.agentProcessAlive = false;
+    monitorHost.runsChanged();
     record.session = {
       ...record.session,
       exited: true,
@@ -1148,6 +1218,9 @@ function wireAutomation(client: GhostteaAutomationClient): void {
   wiredAutomationClients.add(client);
   client.on('session-exited', (event) => {
     void onSessionExited(event);
+  });
+  client.on('session-exited', (event) => {
+    if (monitorTerminalIdentities.delete(event.sessionId)) monitorHost.runsChanged();
   });
   // An account is verified when its login terminal ends, independently of the
   // agent-session bookkeeping above: a login pane owns no run.
@@ -1327,6 +1400,10 @@ async function handoffExitedAgentTerminal(
       }
     }
     scheduleRestoreCheckpoint(true);
+    // The shell wears the dead agent's identity, as the renderer is told below: an agent later adopted in it is
+    // that row again.
+    monitorTerminalIdentities.set(session.id, runtimeSessionId);
+    monitorHost.runsChanged();
     for (const [window, previousSessionId] of previousByWindow) {
       dispatchTerminalHandoff(window, previousSessionId, runtimeSessionId, session);
     }
@@ -1556,6 +1633,8 @@ async function registerSpawnedAgent(
   }
   rememberAgent(info, session);
   if (owner) tabs.get(owner)?.sessionIds.add(result.runtimeSessionId);
+  // The launcher's rows order by last launch: this one counts from now, not after its record cache expires.
+  launcherService.noteLaunched(result.provider.id);
   return info;
 }
 
@@ -1567,14 +1646,21 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       stopAdoptedProcessMonitor(runtimeSessionId);
       managedTerminalIds.delete(runtimeSessionId);
       agentRecords.delete(runtimeSessionId);
+      monitorHost.runsChanged();
       broadcast('puppeteer:agent-removed', runtimeSessionId);
     }
     process.stderr.write(`[main] spawn-through exec failed: ${request.message}\n`);
     return { action: 'ack' };
   }
   await ensureBackend();
+  // The session resolveTerminal matched is the one onAdopted records: the kit asks for it first.
+  let terminal: SessionSummary | undefined;
   return prepareSpawnThroughLaunch(request, {
     runtime: agentRuntime,
+    resolveTerminal: async ({ pid, parentPid }) => {
+      terminal = containingTerminalSession(await backend!.automation.listSessions(), { pid, parentPid });
+      return terminal && { terminalSessionId: terminal.id };
+    },
     imposterBin: () => imposterExecutable,
     imposterStateRoot: (providerId) => {
       const directory = join(app.getPath('userData'), 'imposter', providerId);
@@ -1582,8 +1668,8 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
       chmodSync(directory, 0o700);
       return directory;
     },
-    listSessions: () => backend!.automation.listSessions(),
-    onAdopted: ({ info: adopted, session, processId, preparationId }) => {
+    onAdopted: ({ info: adopted, processId, preparationId }) => {
+      const session = terminal!;
       // Adoption is synchronous, so a project seen before is dealt at once and
       // a new folder is folded afterwards and the record re-broadcast.
       const known = projectRegistry.known(projectSource(adopted.workspace));
@@ -1603,6 +1689,21 @@ async function handleSpawnThroughRequest(request: SpawnThroughRequest): Promise<
 
 async function initializeSpawnThrough(): Promise<void> {
   if (spawnThroughGateway || process.platform === 'win32') return;
+  // The homes of Godviews that never reached their own cleanup. Listing the
+  // temp directory is the slow part, and nothing of this start waits on it.
+  await Promise.all([sweepStaleShimHomes(app.getPath('temp')).then(reportShimHomeSweep), startSpawnThrough()]);
+}
+
+function reportShimHomeSweep(sweep: ShimHomeSweep): void {
+  if (sweep.examined > 0) {
+    console.log(`[main] stale spawn-through homes: ${sweep.removed.length} removed of ${sweep.examined} examined`);
+  }
+  for (const { path, message } of sweep.failed) {
+    process.stderr.write(`[main] stale spawn-through homes: ${path}: ${message}\n`);
+  }
+}
+
+async function startSpawnThrough(): Promise<void> {
   const availableNames = new Set<string>();
   const launchProviders = agentRuntime.launchProviders().flatMap((provider) => {
     const capability = provider.nativeInvocation;
@@ -1623,41 +1724,50 @@ async function initializeSpawnThrough(): Promise<void> {
   const canUseImposter = launchProviders.some((provider) => provider.nativeInvocation?.imposter !== undefined);
   const names = [...availableNames, ...(canUseImposter ? ['ai'] : [])];
   if (names.length === 0) return;
-  const token = randomBytes(32).toString('hex');
-  spawnThroughGateway = await startSpawnThroughGateway(token, handleSpawnThroughRequest);
-  spawnThroughDirectory = join(app.getPath('temp'), `godview-agent-shims-${process.pid}`);
-  rmSync(spawnThroughDirectory, { recursive: true, force: true });
-  mkdirSync(spawnThroughDirectory, { recursive: true, mode: 0o700 });
-  for (const name of names) {
-    const destination = join(spawnThroughDirectory, name);
-    copyFileSync(join(__dirname, 'agent-shim.cjs'), destination);
-    chmodSync(destination, 0o700);
-  }
-  const zDotDirectory = join(spawnThroughDirectory, 'zdot');
-  mkdirSync(zDotDirectory, { recursive: true, mode: 0o700 });
-  for (const file of ['.zshenv', '.zprofile', '.zshrc', '.zlogin']) {
-    writeFileSync(
-      join(zDotDirectory, file),
-      [
-        '_puppeteer_zdotdir="${PUPPETEER_ORIGINAL_ZDOTDIR:-$HOME}"',
-        `if [[ -r "$_puppeteer_zdotdir/${file}" ]]; then source "$_puppeteer_zdotdir/${file}"; fi`,
-        'export PATH="$PUPPETEER_SHIM_DIR:$PATH"',
-        'unset _puppeteer_zdotdir',
-        '',
-      ].join('\n'),
-      { mode: 0o600 },
-    );
-  }
-  spawnThroughEnvironment = {
-    PUPPETEER_SPAWN_PORT: String(spawnThroughGateway.port),
-    PUPPETEER_SPAWN_TOKEN: token,
-    PUPPETEER_SHIM_DIR: spawnThroughDirectory,
-    PUPPETEER_ORIGINAL_ZDOTDIR: process.env.ZDOTDIR ?? '',
-    PUPPETEER_LAUNCH_PROVIDERS: JSON.stringify(launchProviders),
-    ...(imposterExecutable ? { PUPPETEER_IMPOSTER_EXECUTABLE: imposterExecutable } : {}),
-    PATH: `${spawnThroughDirectory}${delimiter}${originalPath}`,
-    ZDOTDIR: zDotDirectory,
+  const home = join(app.getPath('temp'), `godview-agent-shims-${process.pid}`);
+  rmSync(home, { recursive: true, force: true });
+  spawnThroughDirectory = home;
+  const shimRuntime = await chooseShimRuntime({
+    path: originalPath,
+    // A Godview started from an integrated pane inherits that pane's shim directory, first on PATH.
+    shimDirectories: [spawnThroughLayout(home).shimDirectory, process.env.PUPPETEER_SHIM_DIR],
+    electron: { command: process.execPath, version: process.versions.node },
+  });
+  console.log(`[main] ${describeShimRuntime(shimRuntime)}`);
+  const materialize = {
+    home,
+    names,
+    script: join(__dirname, 'agent-shim.cjs'),
+    runtime: shimRuntime.runtime,
+    hostLabel: SPAWN_THROUGH_HOST_LABEL,
   };
+  await materializeShims(materialize);
+  const token = randomBytes(32).toString('hex');
+  spawnThroughGateway = await startSpawnThroughGateway({ token, handle: handleSpawnThroughRequest });
+  // Not strict: Godview does not do what a strict host must first (docs/guides/spawn-through-hosts.md §7) — it keeps
+  // no terminals.json, words no refusals, and gives a launcher to every agent, classifying or not.
+  const rendezvous = {
+    port: spawnThroughGateway.port,
+    token,
+    strict: false,
+    launchProviders,
+    imposterExecutable,
+    hostLabel: SPAWN_THROUGH_HOST_LABEL,
+  };
+  await writeRendezvous(home, rendezvous);
+  spawnThroughEnvironment = shellIntegrationEnvironment({ home, shell: defaultShell(), environment: process.env });
+  // The home is under the system temp directory, whose cleaner empties it under a Godview that runs for days. The
+  // values it started with, published again, bring back what the cleaner took and rewrite nothing else.
+  spawnThroughHomeRefresh = startShimHomeRefresh({ materialize, rendezvous }, reportShimHomeRefresh);
+}
+
+function reportShimHomeRefresh(outcome: ShimHomeRefreshOutcome): void {
+  if ('error' in outcome) {
+    process.stderr.write(`[main] spawn-through home refresh failed: ${String(outcome.error)}\n`);
+    return;
+  }
+  const line = describeShimHomeRefresh(outcome.restored);
+  if (line) console.log(`[main] ${line}`);
 }
 
 function usableCwd(value: unknown): string | undefined {
@@ -1870,23 +1980,37 @@ function registerIpc(): void {
       final: record.final,
     })),
   );
-  ipcMain.handle('puppeteer:load-usage-history', (_event, key: unknown): UsageLedgerRecord | null => {
-    if (!key || typeof key !== 'object') return null;
-    const { providerId, nativeSessionId } = key as Partial<UsageHistoryKey>;
-    if (typeof providerId !== 'string' || typeof nativeSessionId !== 'string') return null;
-    return usageHistoryStore.load({ providerId, nativeSessionId }) ?? null;
+  // The model, for a window's replica: asked at mount and after a gap, answered on the change channel itself, so
+  // every change after it arrives after it (M23).
+  ipcMain.on('monitor:snapshot', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window && tabs.get(window)) safeSend(window, 'monitor:change', monitorBackend.getSnapshot());
   });
-  ipcMain.handle('puppeteer:save-usage-history', (_event, records: unknown): void => {
-    usageHistoryStore.save(records);
+  // A window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact).
+  ipcMain.on('monitor:terminals', (event, value: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const record = window ? tabs.get(window) : undefined;
+    const terminals = parseMonitorTerminalReport(value);
+    if (record && terminals) monitorHost.reportTerminals(record.id, terminals);
   });
-  ipcMain.handle('puppeteer:list-agent-monitors', (event) => {
+  // L5: the rows a window shows in its active pane; any window showing a row clears its unread mark.
+  ipcMain.on('monitor:shown', (event, value: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    const record = window ? tabs.get(window) : undefined;
+    const ids = parseMonitorShownReport(value);
+    if (record && ids) monitorBackend.reportShown(record.id, ids);
+  });
+  // M3: a crashed row stays until its failure is acknowledged; the backend asks the runtime, and the row goes with
+  // the run. Only retained, dead failure blockers can be acknowledged.
+  ipcMain.handle('monitor:acknowledge', (event, id: unknown): boolean => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window || !tabs.get(window) || !isOpaqueMonitorIdentifier(id)) return false;
+    return monitorBackend.command({ type: 'acknowledge', id });
+  });
+  // The chrome's feed (M19), its listing: the relay's ordered states, for the chrome only (see `monitorRelay`).
+  ipcMain.handle('monitor:chrome-states', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     return window && tabs.get(window) ? monitorRelay.snapshot() : [];
-  });
-  ipcMain.handle('puppeteer:acknowledge-agent-failure', (event, input: unknown): Promise<boolean> => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !tabs.get(window)) return Promise.resolve(false);
-    return acknowledgeAgentFailureForIpc(agentRuntime, monitorRelay, input);
   });
   ipcMain.handle(
     'puppeteer:submit-prompt',
@@ -2488,6 +2612,7 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
     // shutdown. Removing the attachment record is intentionally observational.
     const closed = tabs.delete(window);
     if (closed) terminateDetachedPlainSessions(tabs.unreferencedSessionIds(closed.sessionIds));
+    if (closed) forgetMonitorWindow(closed.id);
     dirtyConfigEditorSenders.delete(windowWebContents);
     scheduleRestoreCheckpoint(true);
     if (rendererRecoveryTimer) clearTimeout(rendererRecoveryTimer);
@@ -2499,6 +2624,8 @@ async function createWindow(options: CreateWindowOptions = {}): Promise<BrowserW
   });
   window.webContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
     if (isMainFrame && !isInPlace) dirtyConfigEditorSenders.delete(windowWebContents);
+    // A reloading renderer reports its terminals and its active pane again once it mounts.
+    if (isMainFrame && !isInPlace) forgetMonitorWindow(record.id);
   });
   window.webContents.on('console-message', (details) => {
     if (details.level === 'error') {
@@ -2543,17 +2670,86 @@ async function runSmoke(): Promise<void> {
   });
   const exited = await backend!.automation.waitForExit(session.id, 20_000);
   if (exited.exitCode !== 0) throw new Error(`smoke session exited ${exited.exitCode ?? exited.exitSignal}`);
+  await runShellIntegrationSmoke();
   console.log('SMOKE OK');
+}
+
+/**
+ * A pane's shell is the person's, not the shim home's: the kit's zsh
+ * integration gives ZDOTDIR back before any startup file of theirs runs, so
+ * `HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history` (macOS's /etc/zshrc line) lands in
+ * their home, and the launchers come first on PATH at the prompt. Witnessed in
+ * a throwaway HOME, through the daemon environment every pane is born with;
+ * the shell writes what it ended up with and exits, so nothing is typed.
+ */
+async function runShellIntegrationSmoke(): Promise<void> {
+  const shell = defaultShell();
+  const home = spawnThroughDirectory;
+  const skipped = !home
+    ? 'spawn-through is off'
+    : spawnThroughEnvironment?.ZDOTDIR === undefined
+      ? `${shell} is not integrated`
+      : process.env.ZDOTDIR
+        ? 'ZDOTDIR is set here, so the shell would read that directory rather than a throwaway HOME'
+        : undefined;
+  if (!home || skipped) {
+    console.log(`SHELL INTEGRATION SKIPPED (${skipped})`);
+    return;
+  }
+  const person = mkdtempSync(join(app.getPath('temp'), 'godview-shell-smoke-'));
+  try {
+    writeFileSync(
+      join(person, '.zshrc'),
+      [
+        'HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history',
+        // Registered after the integration's own hook, so it runs after it at the first prompt.
+        '_godview_smoke() {',
+        '  print -r -- "ZDOTDIR=${ZDOTDIR-<unset>}" "HISTFILE=$HISTFILE" "PATH1=${path[1]}" > "$HOME/facts"',
+        '  exit',
+        '}',
+        'precmd_functions+=(_godview_smoke)',
+        '',
+      ].join('\n'),
+    );
+    const session = await backend!.automation.createSession({
+      executable: shell,
+      args: [],
+      cwd: person,
+      environment: { mode: 'inherit', overrides: { HOME: person } },
+      cols: 80,
+      rows: 24,
+      persistence: 'terminate-with-app',
+      programKind: 'interactive-shell',
+    });
+    // The hook exits once it has written; a shell that never read the throwaway .zshrc waits at a prompt instead.
+    await backend!.automation.waitForExit(session.id, 30_000).catch(() => undefined);
+    const factsPath = join(person, 'facts');
+    if (!existsSync(factsPath)) {
+      await backend!.automation.terminateAndWait(session.id, 'application', 5_000).catch(() => undefined);
+      throw new Error(`the born ${shell} never ran the throwaway HOME's .zshrc to its first prompt`);
+    }
+    const facts = readFileSync(factsPath, 'utf8').trim();
+    const expected = [
+      'ZDOTDIR=<unset>',
+      `HISTFILE=${join(person, '.zsh_history')}`,
+      `PATH1=${spawnThroughLayout(home).shimDirectory}`,
+    ].join(' ');
+    if (facts !== expected) throw new Error(`the born ${shell} is not the person's: ${facts} (expected ${expected})`);
+    console.log(`SHELL INTEGRATION OK ${facts}`);
+  } finally {
+    rmSync(person, { recursive: true, force: true });
+  }
 }
 
 async function runAppearanceSmoke(): Promise<void> {
   if (!basename(app.getPath('userData')).startsWith('godview-appearance-smoke-')) {
     throw new Error('appearance smoke requires its isolated temporary user-data profile');
   }
+  const lightThemeName = defaultAppearanceProfiles().light.name;
   await activateManagedAppearanceMode('light');
   let document = await backend!.automation.getConfigDocument();
-  if (!document.contents.includes('# Theme: Ghosttea Light')) {
-    throw new Error('appearance smoke did not activate Ghosttea Light');
+  if (!document.contents.includes(`# Theme: ${lightThemeName}`)) {
+    throw new Error(`appearance smoke did not activate ${lightThemeName}`);
   }
 
   const current = await backend!.automation.getConfig();
@@ -2574,7 +2770,7 @@ async function runAppearanceSmoke(): Promise<void> {
   await activateManagedAppearanceMode('light');
   document = await backend!.automation.getConfigDocument();
   if (
-    !document.contents.includes('# Theme: Ghosttea Light') ||
+    !document.contents.includes(`# Theme: ${lightThemeName}`) ||
     !document.contents.includes('background-opacity = 0.57')
   ) {
     throw new Error('appearance smoke did not restore light colors with shared appearance settings');
@@ -2585,7 +2781,7 @@ async function runAppearanceSmoke(): Promise<void> {
   const persisted = parseAppearanceProfiles(readFileSync(terminalAppearanceProfilesPath, 'utf8'));
   if (
     !document.contents.includes('# Theme: Appearance Smoke Dark') ||
-    persisted.light.name !== 'Ghosttea Light' ||
+    persisted.light.name !== lightThemeName ||
     persisted.dark.name !== 'Appearance Smoke Dark'
   ) {
     throw new Error('appearance smoke did not preserve independent light and dark selections');
@@ -2946,8 +3142,12 @@ function shutdown(): Promise<void> {
     const finals = await agentRuntime.dispose();
     for (const final of finals) pushWorkspaceFinal(final);
     await monitorConnection.close();
+    monitorBackend.dispose();
     backend?.stop();
     backend = undefined;
+    // Before the home goes: a refresh in flight would publish it again.
+    await spawnThroughHomeRefresh?.stop();
+    spawnThroughHomeRefresh = undefined;
     await spawnThroughGateway?.close().catch(() => undefined);
     spawnThroughGateway = undefined;
     if (spawnThroughDirectory) rmSync(spawnThroughDirectory, { recursive: true, force: true });
@@ -2977,6 +3177,18 @@ function checkpointAndExitForSystemShutdown(event?: { preventDefault?: () => voi
 }
 
 registerIpc();
+// The empty pane launcher's questions (QL-1); resuming by native id goes through the same registration as a resume.
+const launcherService = registerLauncherIpc(ipcMain, {
+  ownerOf: (event) => {
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    return owner && tabs.get(owner) ? owner : undefined;
+  },
+  runtime: agentRuntime,
+  profileDefaults: () => profileDefaultsStore.read(),
+  readRecords: () => recorder.read(),
+  history: historySearch,
+  resume: (options, owner) => resumeAgentSession(options, owner),
+});
 app
   .whenReady()
   .then(async () => {
@@ -3012,6 +3224,13 @@ app
       return;
     }
     accountUsageMonitor.start();
+    // A row names its run's account by the registry's label; later changes arrive with onProfilesChanged.
+    void agentRuntime
+      .profiles()
+      .then((profiles) => {
+        if (!quitting) refreshMonitorAccountLabels(profiles);
+      })
+      .catch((error: unknown) => process.stderr.write(`[main] monitor account labels: ${String(error)}\n`));
     // The registry decides how many readings a provider has; without this the
     // first poll would be one unkeyed row per provider until an account changed.
     void accountUsageMonitor

@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import type { ClaudeHookPayload } from './types.js';
 import { claudeString } from './wire.js';
 

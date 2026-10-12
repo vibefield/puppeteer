@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentStructuredQuestion } from '@vibecook/puppeteer-core';
+import type { AgentEvent, AgentStructuredQuestion } from '@vibefield/puppeteer-core';
 import { boundedHermesMapSet, hermesString } from './types.js';
 
 const MAX_QUESTION_LENGTH = 4_096;

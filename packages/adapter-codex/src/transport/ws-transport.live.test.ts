@@ -4,14 +4,14 @@
  * transport, and drive createCodexSession through it. Skipped unless
  * CODEX_LIVE=1.
  *
- *   CODEX_LIVE=1 pnpm --filter @vibecook/puppeteer-adapter-codex test
+ *   CODEX_LIVE=1 pnpm --filter @vibefield/puppeteer-adapter-codex test
  */
 
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexSession } from '../driver.js';
 import { spawnAppServer } from './app-server-process.js';
 import { connectAppServerEndpoint } from './ws-transport.js';

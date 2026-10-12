@@ -1,7 +1,7 @@
 /** Hermes 0.20.0 tui_gateway facts projected onto the evidence-backed monitor SPI. */
 
 import { createHash, randomUUID } from 'node:crypto';
-import type { ActorRunRef, MonitorMetricFamily } from '@vibecook/puppeteer-core';
+import type { ActorRunRef, MonitorMetricFamily } from '@vibefield/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -9,7 +9,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { hermesStructuredQuestions } from './interaction.js';
 import { eventType, type HermesGatewayFrame } from '../transport/jsonrpc.js';
 import { HERMES_CONTRACT, HERMES_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
@@ -108,6 +108,8 @@ interface ChildIdentity {
 
 export interface HermesConfiguredIntent {
   cwd: string;
+  model?: string;
+  effort?: string;
   yolo?: boolean;
 }
 
@@ -250,6 +252,12 @@ export class HermesMonitorEvidence {
     const updates: MonitorFamilyUpdate[] = [
       upsert('environment', 'root', { kind: 'environment', cwd: configured.cwd }),
     ];
+    if (configured.model)
+      updates.push(
+        upsert('model', 'configured', { kind: 'model', providerModelId: configured.model, intent: 'configured' }),
+      );
+    if (configured.effort)
+      updates.push(upsert('effort', 'configured', { kind: 'effort', value: configured.effort, intent: 'configured' }));
     if (configured.yolo === true) {
       updates.push(
         upsert('mode', 'provider-permission-configured', {

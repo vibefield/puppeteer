@@ -1,4 +1,4 @@
-import type { EnvironmentEvent } from '@vibecook/puppeteer-core';
+import type { EnvironmentEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str } from './types.js';
 
 /** Codex cwd evidence normalized for the Core environment service. */

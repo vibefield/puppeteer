@@ -6,8 +6,10 @@
  *
  * The command is native-interactive ONLY (§16.3): never -p/--print/
  * --output-format/--input-format — those select structured print mode, a
- * different process class. The token VALUE rides `env` (injected into the
- * process, resolved by Claude's env interpolation), never the on-disk settings.
+ * different process class. A typed launch's own arguments ride after the
+ * managed flags, and invocation-grammar.ts carries none of those. The token
+ * VALUE rides `env` (injected into the process, resolved by Claude's env
+ * interpolation), never the on-disk settings.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -16,7 +18,9 @@ import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
+import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
+import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
 import {
   CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE,
   resolveClaudeStatusChannels,
@@ -42,7 +46,11 @@ export interface PrepareClaudeSessionOptions {
   executable?: string | undefined;
   /** Adapter-normalized additions; generated hook/auth values always win. */
   env?: Record<string, string> | undefined;
-  permissionMode?: string | undefined;
+  /**
+   * Passed to `--permission-mode`; `default` when absent. `null` passes none, so Claude decides
+   * as it does when typed (the person's settings, `--dangerously-skip-permissions`, an agent).
+   */
+  permissionMode?: string | null | undefined;
   /** Model alias or full model id passed to Claude Code's `--model`. */
   model?: string | undefined;
   /** Open-ended Claude effort value passed to `--effort`. */
@@ -51,6 +59,19 @@ export interface PrepareClaudeSessionOptions {
   settingSources?: readonly ClaudeSettingSource[] | undefined;
   /** Override Claude's user configuration root; defaults to `CLAUDE_CONFIG_DIR` when set. */
   configDir?: string | undefined;
+  /** The home the user settings layer hangs off when no config root is set; the process home when absent. */
+  home?: string | undefined;
+  /**
+   * Claude reads none of the person's settings files (`--restricted`, CLAUDE_CODE_RESTRICTED): no
+   * status line in them is delegated to and no hook switch in them is read.
+   */
+  readsNoSettingsFiles?: boolean | undefined;
+  /**
+   * Refuse, before anything is written, a launch whose person's settings switch every hook off
+   * ({@link ClaudeHooksOffError}), typed or a host's own spawn. Default true; `false` launches it
+   * anyway, as a session its host cannot observe.
+   */
+  refuseHooksOff?: boolean | undefined;
   /** Override auto-resolution of the user/project status line; null means no delegate. */
   existingStatusLine?: ClaudeStatusLineConfig | null | undefined;
   /** Override auto-resolution of the user/project child line; null means no delegate. */
@@ -67,6 +88,16 @@ export interface PrepareClaudeSessionOptions {
   resume?: string | undefined;
   /** Native resume/continue argv when Claude must choose the session after launch. */
   resumeInvocation?: string[] | undefined;
+  /**
+   * A typed launch's own arguments, verbatim and in the person's order, after the managed flags:
+   * a trailing option of the person's can then never take a managed flag for its value.
+   */
+  carriedArgs?: readonly string[] | undefined;
+  /**
+   * A typed launch's operands, last and after `--`: no option before them (a managed one or the
+   * person's) can take one for its value, and a prompt that starts with `-` stays a prompt.
+   */
+  prompt?: readonly string[] | undefined;
   /** Override the settings-file directory (tests); default is an mkdtemp dir. */
   settingsDir?: string | undefined;
 }
@@ -105,7 +136,11 @@ export function locateClaudeTranscript(sessionId: string, root: string): string 
   return undefined;
 }
 
-/** A resume of a conversation that is not on disk: refused before launch rather than crashed after it. */
+/**
+ * A resume of a conversation that is not on disk: refused before launch rather than crashed after it.
+ * Not an adapter's refusal whose words reach a person: its message names where the transcripts are
+ * kept (a profile's root among them), so it stays text for logs. A host's restore falls back on it.
+ */
 export class ClaudeConversationMissingError extends Error {
   readonly code = 'CLAUDE_CONVERSATION_MISSING';
   constructor(
@@ -114,6 +149,25 @@ export class ClaudeConversationMissingError extends Error {
   ) {
     super(`Claude conversation ${sessionId} is not on disk under ${join(root, 'projects')}; it cannot be resumed`);
     this.name = 'ClaudeConversationMissingError';
+  }
+}
+
+/**
+ * A launch whose person's settings switch every hook off (`disableAllHooks: true`): the managed
+ * hooks would never fire (probed 2.1.283, findings.md §7.5), so it is refused before launch, typed
+ * or a host's own spawn, rather than run as a session the host cannot observe. The adapter's own refusal
+ * ({@link AgentLaunchRefusedError}): the runtime carries its sentence and code to the person.
+ */
+export class ClaudeHooksOffError extends AgentLaunchRefusedError<'CLAUDE_HOOKS_OFF'> {
+  constructor(
+    readonly source: ClaudeSettingSource,
+    readonly settingsPath: string,
+  ) {
+    super(
+      'CLAUDE_HOOKS_OFF',
+      `your ${source} settings turn hooks off (disableAllHooks), and a managed session is observed through hooks`,
+    );
+    this.name = 'ClaudeHooksOffError';
   }
 }
 
@@ -200,6 +254,22 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // On resume the session keeps its own id + transcript, so that id IS the
   // session id; otherwise reuse a caller-chosen id or mint one.
   const sessionId = options.resume ?? options.sessionId ?? randomUUID();
+  const rawClaudeConfigDir = (options.configDir ?? process.env.CLAUDE_CONFIG_DIR)?.trim() || undefined;
+  // Claude interprets a relative CLAUDE_CONFIG_DIR from the launched process's
+  // cwd. Resolve it at that same boundary before both discovery and spawn so
+  // an Electron/main-process cwd cannot select a different delegate.
+  const claudeConfigDir = rawClaudeConfigDir ? resolve(options.cwd, rawClaudeConfigDir) : undefined;
+  // The person's own settings layers, as the launch will read them. Their hook switches decide what
+  // the managed settings must restate, and whether the launch may start at all, before anything is
+  // written. The imposter reads none of them.
+  const personLayers = { settingSources: options.settingSources, configDir: claudeConfigDir, home: options.home };
+  const hookSwitches: ClaudeHookSwitches =
+    options.readsNoSettingsFiles || options.env?.PUPPETEER_IMPOSTER_HOME !== undefined
+      ? {}
+      : await readClaudeHookSwitches(options.cwd, personLayers);
+  if (options.refuseHooksOff !== false && hookSwitches.hooksOff) {
+    throw new ClaudeHooksOffError(hookSwitches.hooksOff.source, hookSwitches.hooksOff.path);
+  }
   // Own the temp dir only when we create it; a caller-supplied settingsDir is
   // the caller's to clean, so it stays out of filesToCleanup (§23: no
   // destroying state we didn't create).
@@ -215,11 +285,6 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   const resolvedNode = runningUnderElectron ? resolveNodeBinary() : undefined;
   const electronAsNodeFallback = runningUnderElectron && resolvedNode === undefined;
   const nodeRunner = resolvedNode ?? process.execPath;
-  const rawClaudeConfigDir = (options.configDir ?? process.env.CLAUDE_CONFIG_DIR)?.trim() || undefined;
-  // Claude interprets a relative CLAUDE_CONFIG_DIR from the launched process's
-  // cwd. Resolve it at that same boundary before both discovery and spawn so
-  // an Electron/main-process cwd cannot select a different delegate.
-  const claudeConfigDir = rawClaudeConfigDir ? resolve(options.cwd, rawClaudeConfigDir) : undefined;
   if (options.resume !== undefined) {
     // `claude --resume <id>` for an id with no transcript exits at once with
     // "No conversation found", which a host can only read as a crash. A
@@ -229,12 +294,10 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
     const root = options.env?.PUPPETEER_IMPOSTER_HOME ?? claudeConfigDir ?? join(homedir(), '.claude');
     if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
   }
-  const discoveredStatusChannels = statusLineForwarderPath
-    ? await resolveClaudeStatusChannels(options.cwd, {
-        settingSources: options.settingSources,
-        configDir: claudeConfigDir,
-      })
-    : {};
+  const discoveredStatusChannels =
+    statusLineForwarderPath && !options.readsNoSettingsFiles
+      ? await resolveClaudeStatusChannels(options.cwd, personLayers)
+      : {};
   const existingStatusLine = options.statusLineEndpoint
     ? options.existingStatusLine === undefined
       ? discoveredStatusChannels.statusLine
@@ -265,15 +328,26 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
           hideVimModeIndicator: existingSubagentStatusLine?.hideVimModeIndicator,
         }
       : undefined;
-  const settings = generateHookSettings({
-    endpoint: options.endpoint,
-    tokenEnvVar: options.tokenEnvVar,
-    commandForwarderPath: hookForwarderPath,
-    commandExecutable: nodeRunner,
-    ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
-    statusLine,
-    subagentStatusLine,
-  });
+  const settings = {
+    ...generateHookSettings({
+      endpoint: options.endpoint,
+      tokenEnvVar: options.tokenEnvVar,
+      commandForwarderPath: hookForwarderPath,
+      commandExecutable: nodeRunner,
+      ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
+      statusLine,
+      subagentStatusLine,
+    }),
+    // A person's allow-list would block the managed HTTP hooks, or strip their bearer (probed
+    // 2.1.283: F09, F10). These settings rank above the person's layers, so each list is restated
+    // with the bridge's entry added (F11): every HTTP hook of theirs is allowed and interpolated as before.
+    ...(hookSwitches.allowedHttpHookUrls
+      ? { allowedHttpHookUrls: [...hookSwitches.allowedHttpHookUrls, `${new URL(options.endpoint).origin}/*`] }
+      : {}),
+    ...(hookSwitches.httpHookAllowedEnvVars
+      ? { httpHookAllowedEnvVars: [...hookSwitches.httpHookAllowedEnvVars, options.tokenEnvVar] }
+      : {}),
+  };
   await writeFile(hookForwarderPath, CLAUDE_HOOK_FORWARDER_SOURCE, 'utf8');
   if (statusLineForwarderPath) {
     await writeFile(statusLineForwarderPath, CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE, 'utf8');
@@ -294,7 +368,10 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   if (options.settingSources !== undefined) {
     args.push('--setting-sources', options.settingSources.join(','));
   }
-  args.push('--settings', settingsPath, '--permission-mode', options.permissionMode ?? 'default');
+  args.push('--settings', settingsPath);
+  if (options.permissionMode !== null) args.push('--permission-mode', options.permissionMode ?? 'default');
+  args.push(...(options.carriedArgs ?? []));
+  if (options.prompt !== undefined && options.prompt.length > 0) args.push('--', ...options.prompt);
 
   const executable = options.executable ?? 'claude';
   const isScript = SCRIPT_EXECUTABLE.test(executable);

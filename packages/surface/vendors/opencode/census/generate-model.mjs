@@ -15,7 +15,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectJsonSchema } from '@vibecook/puppeteer-surface';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
+import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 
@@ -193,9 +194,7 @@ function traceRoute(path) {
 }
 
 function eventPath(out, event) {
-  const components = event.split('/');
-  const name = components.pop();
-  return join(out, 'events', ...components, `${name}.json`);
+  return join(out, 'events', eventDocumentPath(event));
 }
 
 function records(path) {

@@ -46,7 +46,21 @@ export interface MonitorPalette {
     activeHead: string;
     hoverTailRgb: string;
     status: Readonly<Record<AgentVisualStatus, { head: string; tailRgb: string; speed?: number }>>;
+    /** The words of the rain's tooltip by status, and a focused control's ring (M46): its DOM's colours, passed
+     * like the canvas's so the view reads no host variable. */
+    ink: Readonly<Record<AgentVisualStatus, string>>;
+    focus: string;
   };
+  /** What the timeline's canvases need beyond the swarm's colours, resolved
+   * from the same theme-scoped instrument palette (§2.7): the stage's own ground
+   * (its labels are haloed in it), the secondary ink, and the hairline. */
+  timeline: TimelinePalette;
+}
+
+export interface TimelinePalette {
+  ground: string;
+  muted: string;
+  border: string;
 }
 
 export interface SwarmPalette {
@@ -150,6 +164,11 @@ export function readMonitorPalette(root?: Element | null): MonitorPalette {
     stage,
     text: { primary: TEXT_PRIMARY, secondary: TEXT_SECONDARY, tertiary: TEXT_TERTIARY },
     swarm: readSwarmPalette(root),
+    timeline: {
+      ground: readScopedToken('--monitor-bg', '#000000', root),
+      muted: readScopedToken('--text-muted', '#000000', root),
+      border: readScopedToken('--panel-border', '#000000', root),
+    },
     rain: {
       stage: readToken('--vf-card-deep', '#000000'),
       activeHead: readToken('--vf-godview-rain-working-head', '#ffffff'),
@@ -170,6 +189,12 @@ export function readMonitorPalette(root?: Element | null): MonitorPalette {
           speed: 0.1,
         },
       },
+      ink: {
+        working: readToken('--vf-godview-rain-green', '#000000'),
+        blocked: readToken('--vf-godview-rain-waiting', '#000000'),
+        idle: readToken('--vf-godview-rain-idle', '#000000'),
+      },
+      focus: readToken('--vf-godview-rain-green-focus', '#000000'),
     },
   };
 }

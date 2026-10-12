@@ -9,7 +9,7 @@ import {
   type ReleaseChannel,
   type ReleaseDetector,
   type ReleaseSnapshot,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { ReleaseCheckResult } from '../types.js';
 
 /**

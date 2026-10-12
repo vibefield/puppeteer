@@ -1,13 +1,21 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch } from '@vibefield/puppeteer-core';
 import type {
   HistorySearchRequest,
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
-} from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
+import type { MonitorHostTerminal } from '@vibefield/puppeteer-monitor';
+import type { MonitorModelChange, MonitorModelSnapshot } from '@vibefield/puppeteer-view-sdk/model';
+import type {
+  LauncherAgent,
+  LauncherHistoryStatus,
+  LauncherRecentRequest,
+  LauncherSession,
+  LauncherWordHit,
+  LauncherWordsRequest,
+} from '@vibefield/puppeteer-views/launcher';
 import type {
   AgentInstallation,
   AgentProfile,
@@ -18,7 +26,7 @@ import type {
   ProfileProvider,
   PromptReceipt as CorePromptReceipt,
   UpdateReceipt,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AgentSessionFailure as RuntimeAgentSessionFailure,
   AgentSessionInfo as RuntimeAgentSessionInfo,
@@ -26,22 +34,20 @@ import type {
   AgentWorkspaceInfo,
   ProfileLoginResult,
   ReleaseCheckResult,
-} from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-runtime';
 import type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
 } from './main/monitor-ipc.js';
-import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
+import type { WorkspaceDiff } from '@vibefield/puppeteer-workspaces';
 
-export type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
+export type { WorkspaceDiff } from '@vibefield/puppeteer-workspaces';
 export type AgentKind = AgentProviderDescriptor['id'];
 export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
 export type WorkspaceFinalEvent = AgentWorkspaceFinal;
 export type {
-  AcknowledgeAgentFailureRequest,
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
@@ -54,10 +60,10 @@ export type {
   ProfileIdentity,
   ProfileProvider,
   UpdateReceipt,
-} from '@vibecook/puppeteer-core';
-export type { ProfileLoginResult, ReleaseCheckResult } from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-core';
+export type { ProfileLoginResult, ReleaseCheckResult } from '@vibefield/puppeteer-runtime';
 
-export type { AccountUsageBatch, AccountUsageEntry } from '@vibecook/puppeteer-core';
+export type { AccountUsageBatch, AccountUsageEntry } from '@vibefield/puppeteer-core';
 
 /** One inspection of every executable the host can find, with the descriptors that name them. */
 export interface AgentInstallationsSnapshot {
@@ -108,6 +114,8 @@ export interface CreateAgentSessionOptions {
   agent: AgentKind;
   cwd?: string;
   title?: string;
+  /** Registered profile id to run under; absent means the runtime's own default account. */
+  profile?: string;
   workspace?: {
     mode: 'direct' | 'exclusive' | 'worktree';
     path?: string;
@@ -170,9 +178,10 @@ export interface TerminalSessionHandoff {
   session: SessionSummary;
 }
 
-/* Transcript history (RFC 007) and the UI's usage ledger records: the shapes
-   live with the views that read them (`@vibecook/puppeteer-views`) and are
-   re-exported here for the main process and the preload. */
+/* Transcript history (RFC 007): the shapes live with the views that read them
+   (`@vibefield/puppeteer-views`) and are re-exported here for the main process
+   and the preload. (The UI's usage ledger records went with L11; the backend
+   holds the cost window in memory.) */
 export type {
   HistoryOriginSource,
   HistorySearchHit,
@@ -181,10 +190,49 @@ export type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-  UsageHistoryKey,
-  UsageLedgerRecord,
-  UsageRunRecord,
-} from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
+export type { MonitorHostTerminal } from '@vibefield/puppeteer-monitor';
+export type { MonitorModelChange, MonitorModelSnapshot } from '@vibefield/puppeteer-view-sdk/model';
+
+/* The empty pane launcher (QL-1): the port's questions as main answers them.
+   The shapes are the launcher's own (`@vibefield/puppeteer-views/launcher`);
+   a row may carry the profile id main matched, which only this host reads. */
+export type {
+  LauncherHistoryStatus,
+  LauncherRecentRequest,
+  LauncherWordHit,
+  LauncherWordsRequest,
+} from '@vibefield/puppeteer-views/launcher';
+
+/** A launcher row with the profile a launch runs under: the provider's persisted default. */
+export interface LauncherAgentRow extends LauncherAgent {
+  profileId?: string;
+}
+
+/** A past session with the profile whose data root the history daemon read it from. */
+export interface LauncherSessionRow extends LauncherSession {
+  profileId?: string;
+}
+
+export interface LauncherRecentAnswer {
+  status: LauncherHistoryStatus;
+  sessions: LauncherSessionRow[];
+}
+
+export interface LauncherWordsAnswer {
+  answered: boolean;
+  hits: LauncherWordHit[];
+  /** Why main would not answer at all (a sender that is not a Godview window). */
+  refused?: string;
+}
+
+/** Resume a past conversation by its provider-native id (QL-D10), not by a run this Godview holds. */
+export interface ResumeNativeSessionRequest {
+  providerId: string;
+  nativeSessionId: string;
+  cwd?: string;
+  profileId?: string;
+}
 
 export interface PuppeteerBridge {
   createAgentSession(opts: CreateAgentSessionOptions): Promise<CreateAgentSessionResult>;
@@ -198,11 +246,28 @@ export interface PuppeteerBridge {
   interruptAgent(runtimeSessionId: string): Promise<AgentInterruptResult>;
   /** Resume an exited agent from its own continuation; the caller mounts the returned session. */
   resumeAgentSession(runtimeSessionId: string): Promise<CreateAgentSessionResult>;
-  listAgentMonitors(): Promise<AgentMonitorStateMessage[]>;
-  onAgentMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  /**
+   * THE CHROME'S FEED (M19): every run's full monitor state, for the chrome outside the monitor views (the inspector,
+   * Find, the deck's pane frames, split sessions) and nothing else. The views, the counts and the status shortcuts
+   * read the model (`onMonitorModel`).
+   */
+  listChromeMonitors(): Promise<AgentMonitorStateMessage[]>;
+  onChromeMonitorState(cb: (message: AgentMonitorStateMessage) => void): () => void;
+  onChromeMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
   onAgentMonitorNotification(cb: (message: AgentMonitorNotificationMessage) => void): () => void;
-  onAgentMonitorRemoved(cb: (message: AgentMonitorRemovedMessage) => void): () => void;
-  acknowledgeAgentFailure(request: AcknowledgeAgentFailureRequest): Promise<boolean>;
+  /**
+   * The monitor model (MV-2): asks main for a snapshot, at mount and again after a gap. It arrives through
+   * `onMonitorModel`, on the one ordered channel the changes travel (M23); a window that is no Godview tab gets none.
+   */
+  requestMonitorSnapshot(): void;
+  /** The model for this window's replica: the snapshot it asked for, and every change, in revision order. */
+  onMonitorModel(cb: (update: MonitorModelSnapshot | MonitorModelChange) => void): () => void;
+  /** This window's bare-terminal candidates: its panes' sessions, minus those exited or closing (a window fact). */
+  reportMonitorTerminals(terminals: MonitorHostTerminal[]): void;
+  /** The rows this window shows in its active pane (L5): any window showing a row clears its unread mark. */
+  reportMonitorShown(ids: string[]): void;
+  /** Acknowledges a crashed row's failure (M3); false when the row has none to acknowledge. */
+  acknowledgeMonitorRow(id: string): Promise<boolean>;
   workspaceDiff(runtimeSessionId: string): Promise<WorkspaceDiff | null>;
   onWorkspaceFinal(cb: (event: WorkspaceFinalEvent) => void): () => void;
   accountUsage(): Promise<AccountUsageBatch>;
@@ -232,8 +297,12 @@ export interface PuppeteerBridge {
   historyFacts(nativeSessionIds: string[]): Promise<HistorySessionFacts[]>;
   /** Words said or heard in live sessions, joined back to their runs. */
   historySearch(request: HistorySearchRequest): Promise<HistorySearchResponse>;
-  /** The persisted usage ledger for a conversation, or null when none was saved. */
-  loadUsageHistory(key: UsageHistoryKey): Promise<UsageLedgerRecord | null>;
-  /** Persist the live agents' usage ledgers; main merges them into the cache. */
-  saveUsageHistory(records: UsageLedgerRecord[]): Promise<void>;
+  /** The launcher's agent catalog: launch providers in order, their install state, last launch and default profile. */
+  launcherAgents(): Promise<LauncherAgentRow[]>;
+  /** The launcher's past sessions: this folder's project (`here`) or every project (`all`), newest first. */
+  launcherRecent(request: LauncherRecentRequest): Promise<LauncherRecentAnswer>;
+  /** The launcher's words lane over the history daemon's search. */
+  launcherWords(request: LauncherWordsRequest): Promise<LauncherWordsAnswer>;
+  /** Resume a past conversation by provider-native id; the caller mounts the returned session. */
+  resumeNativeSession(request: ResumeNativeSessionRequest): Promise<CreateAgentSessionResult>;
 }

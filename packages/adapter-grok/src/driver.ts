@@ -6,7 +6,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { AgentAdapterBinding, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveGrokExecutable } from './detection.js';
 import { grokUpdatesPath, latestGrokSessionId } from './observation/session-discovery.js';
 import { createGrokSessionObserver } from './observation/session-observer.js';

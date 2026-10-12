@@ -1,4 +1,4 @@
-import type { AdapterEvent } from '@vibecook/puppeteer-core';
+import type { AdapterEvent } from '@vibefield/puppeteer-core';
 import { type CodexNormalizationInput, rec, str } from './types.js';
 
 const AMBIENT = new Set<string>([

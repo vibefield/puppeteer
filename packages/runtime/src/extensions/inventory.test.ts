@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentProfile, ExtensionInventory, ExtensionProvider, ExtensionService } from '@vibecook/puppeteer-core';
+import type { AgentProfile, ExtensionInventory, ExtensionProvider, ExtensionService } from '@vibefield/puppeteer-core';
 import { cloneExtensionProvider, composeExtensionProviders, createExtensionInventoryReader } from './inventory.js';
 
 const PROVIDER: ExtensionProvider = {

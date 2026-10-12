@@ -3,21 +3,50 @@ import {
   type AgentMonitorState,
   type MonitorActivityKind,
   type MonitorBlocker,
-} from '@vibecook/puppeteer-core';
-import { AGENT_MARK_PROVIDERS } from '../../../icons/AgentIcon.js';
+} from '@vibefield/puppeteer-core';
+import { AGENT_MARK_PROVIDERS } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { MonitorAgent, MonitorAgentFacet, MonitorSession } from '../../../monitor/types.js';
-import type { SwarmBubbleModel } from '../bubble-model.js';
-import { USAGE_STEP_COUNT, USAGE_STEP_MS, type UsageHistory } from '../../../monitor/usage-ledger.js';
+import type { BubbleModelInput, SwarmBubbleModel } from '../bubble-model.js';
+import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 
 // Fixture agents for the design lab: every drawn state and every setting worth
-// comparing, as the same `MonitorAgent` shape the view receives, so the lab
-// draws with the production model and renderer and never with a stand-in.
+// comparing, as a host's `MonitorAgent` rows plus the cost a backend would have
+// computed for each, so the lab draws with the production model and renderer
+// and never with a stand-in.
+
+/**
+ * The cost a backend would have computed for a fixture body (packages/monitor's usage ledger): the held total and
+ * the ten-minute window in twenty 30 s steps, oldest first. Fixture data: no window keeps a usage ledger (L11), so a
+ * host's own row has no such field, and the lab's model reads it from here.
+ */
+export interface LabUsage {
+  /** Estimated API-equivalent USD for the work observed. */
+  total?: number | undefined;
+  coverage?: 'complete' | 'partial' | 'unavailable' | undefined;
+  /** USD per step, oldest first. */
+  steps: readonly number[];
+  stepMs: number;
+}
+
+/** A fixture's agent half: a host's facet, with the cost the fixture carries. */
+export interface LabAgentFacet extends MonitorAgentFacet {
+  usage?: LabUsage | undefined;
+}
+
+/** A fixture row: a host's row, its agent half carrying the fixture's cost. */
+export interface LabAgent extends MonitorAgent {
+  agent?: LabAgentFacet | undefined;
+}
+
+/** The backend's window: twenty steps of 30 s. */
+const STEP_MS = 30_000;
+const STEP_COUNT = 20;
 
 export interface LabStage {
   id: string;
   title: string;
   note: string;
-  agent: MonitorAgent;
+  agent: LabAgent;
   runningSinceMs?: number;
   /** A working body's place among the working sessions by tokens, 0..1; the lab sets it by hand. */
   workingShare?: number;
@@ -29,6 +58,30 @@ export interface LabStage {
   glow?: { reach: number; strength: number; breath: number };
   /** A last word on the model, for readings the model does not produce on its own. */
   patch?: (model: SwarmBubbleModel) => SwarmBubbleModel;
+  /** The Agent Profile a terminal was born under (its profile line). */
+  profile?: BubbleModelInput['profile'];
+  /** A birth on its way, `agoMs` since the person let go: the pending body. */
+  opening?: { agoMs: number; on?: string };
+}
+
+/**
+ * A stage that is a whole FIELD, drawn by its own renderer: what a frame carries
+ * rather than a body — the spawn bloom's veil, its clearings and its hub. Its
+ * bodies are the settled field's (`clusterStages`), plus any `extra`. Places
+ * are CSS px from the cell's centre.
+ */
+export interface LabFieldStage {
+  id: string;
+  title: string;
+  note: string;
+  /** The field's quiet: every body under it at (1 − veil) but the `lit` ones, and the grid. */
+  veil?: number;
+  /** Ids of the field's bodies pointed at, drawn above the veil at full weight. */
+  lit?: readonly string[];
+  clearings?: readonly SwarmClearing[];
+  hold?: { x: number; y: number; progress?: number; frozen?: boolean; opacity?: number };
+  /** Bodies of the stage's own, at a place; `above`: drawn over the clearings (the body being born). */
+  extra?: readonly { stage: LabStage; x: number; y: number; above?: boolean }[];
 }
 
 /** A project's colour, dealt from its sequence: the lab sets these on its root per theme (`main.ts`). */
@@ -50,17 +103,17 @@ function session(id: string, activityKind: 'shell-idle' | 'foreground-job', nowM
   };
 }
 
-/** The ledger's history for a rate curve over the last ten minutes: one step per bar. */
-function usageHistory(shape: BurnShape, total: number | undefined): UsageHistory {
+/** The cost of a rate curve over the last ten minutes: one step per bar. */
+function usageOf(shape: BurnShape, total: number | undefined): LabUsage {
   const steps = Array.from(
-    { length: USAGE_STEP_COUNT },
-    (_, index) => (BURN_SHAPES[shape](index * 2) * USAGE_STEP_MS) / 60_000 / 1_000_000,
+    { length: STEP_COUNT },
+    (_, index) => (BURN_SHAPES[shape](index * 2) * STEP_MS) / 60_000 / 1_000_000,
   );
   return {
     ...(total === undefined ? {} : { total: total / 1_000_000 }),
     coverage: 'complete',
     steps,
-    stepMs: USAGE_STEP_MS,
+    stepMs: STEP_MS,
   };
 }
 
@@ -163,29 +216,29 @@ function monitorState(spec: AgentSpec, nowMs: number): AgentMonitorState {
   };
 }
 
-export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
+export function agentFixture(spec: AgentSpec, nowMs: number): LabAgent {
   const monitor = monitorState(spec, nowMs);
   const providerId =
     AGENT_MARK_PROVIDERS[(spec.mark ?? (spec.accent ?? 1) - 1) % AGENT_MARK_PROVIDERS.length] ?? 'imposter';
-  const facet: MonitorAgentFacet = {
+  const facet: LabAgentFacet = {
     provider: { id: providerId, label: providerId.slice(0, 1).toUpperCase() + providerId.slice(1) },
     ...(spec.model ? { model: spec.model } : {}),
     ...(spec.branch ? { branch: spec.branch } : {}),
     ...(monitor.context ? { contextWindow: monitor.context } : {}),
     monitor,
-    // A provider with no pricing lane has no ledger either: no total, no rate.
+    // A provider with no pricing lane has no cost either: no total, no rate.
     ...(spec.unpriced
       ? {}
       : spec.burn
-        ? { usage: usageHistory(spec.burn, spec.tokens) }
+        ? { usage: usageOf(spec.burn, spec.tokens) }
         : spec.tokens === undefined
           ? {}
           : {
               usage: {
                 total: spec.tokens / 1_000_000,
                 coverage: 'complete',
-                steps: new Array<number>(USAGE_STEP_COUNT).fill(0),
-                stepMs: USAGE_STEP_MS,
+                steps: new Array<number>(STEP_COUNT).fill(0),
+                stepMs: STEP_MS,
               },
             }),
     recency: spec.stale ? 'stale' : 'fresh',
@@ -205,7 +258,7 @@ export function agentFixture(spec: AgentSpec, nowMs: number): MonitorAgent {
   };
 }
 
-export function terminalFixture(id: string, project: string, running: boolean, nowMs: number): MonitorAgent {
+export function terminalFixture(id: string, project: string, running: boolean, nowMs: number): LabAgent {
   return {
     id,
     session: session(id, running ? 'foreground-job' : 'shell-idle', nowMs),
@@ -874,6 +927,147 @@ export function clusterStages(nowMs: number): LabStage[] {
         nowMs,
       ),
       workingShare: 0.5,
+    },
+  ];
+}
+
+/** Part: the field under the spawn bloom — the veil, the clearings and the hub, each a
+ * frame over the settled field (`clusterStages`), drawn by its own renderer. The
+ * geometry is the bloom's own: ring one's clearing is 92 + 24 + a label + 16 px
+ * of pad, feathered 44; the words' is their box padded 18 × 14, feathered 64. */
+export function bloomStages(nowMs: number): LabFieldStage[] {
+  const ring: SwarmClearing = { kind: 'circle', x: -300, y: 0, radius: 150, feather: 44 };
+  const words: SwarmClearing = { kind: 'rect', x: 150, y: -74, width: 330, height: 120, feather: 64 };
+  return [
+    {
+      id: 'bloom-veil',
+      title: 'The veil',
+      note: 'The bloom is open: the field goes quiet under its own ground at 80% — the grid and every body — except what the person points at, which stays above it.',
+      veil: 0.8,
+      lit: ['c4'],
+    },
+    {
+      id: 'bloom-ring',
+      title: 'A ring’s clearing',
+      note: 'Solid ground to the ring’s edge, then the gradient’s stops: .62 at 45% of the 44 px feather, nothing at its end. It erases the grid, the bodies and their type alike.',
+      clearings: [{ ...ring, x: -160 }],
+    },
+    {
+      id: 'bloom-words',
+      title: 'The words’ clearing',
+      note: 'Solid under the words’ box, falling smoothly to nothing over 64 px, so no box edge shows and nothing is cut in half.',
+      clearings: [{ ...words, x: 20 }],
+    },
+    {
+      id: 'bloom-hub',
+      title: 'The hub, frozen',
+      note: 'The whole field under an open bloom: the veil, a lit body, the ring’s and the words’ clearings, and the hold ring kept at full size above everything, drawn heavier (a 1.5 px rim, a 2.5 px dot) — the hub.',
+      veil: 0.8,
+      lit: ['c4'],
+      clearings: [ring, words],
+      hold: { x: -300, y: 0, frozen: true },
+    },
+    {
+      id: 'bloom-born',
+      title: 'Born above the clearing',
+      note: 'Let go: the hub fades, and the body being born stands where the bud was, drawn over the clearing that is still lifting.',
+      veil: 0.4,
+      clearings: [{ ...ring, opacity: 0.6 }],
+      hold: { x: -300, y: 0, frozen: true, opacity: 0.5 },
+      extra: [
+        {
+          stage: {
+            id: 'born',
+            title: '',
+            note: '',
+            agent: terminalFixture('born-t', '~', false, nowMs),
+            opening: { agoMs: 900 },
+          },
+          x: -300 + 65,
+          y: -65,
+          above: true,
+        },
+      ],
+    },
+  ];
+}
+
+/** Part: the body being born — the spawn bloom's pending body, where the person let go, until the host's row arrives. */
+export function pendingStages(nowMs: number): LabStage[] {
+  return [
+    {
+      id: 'pending-quiet',
+      title: 'A birth, before 320 ms',
+      note: 'Hollow and dashed like an empty terminal, its rim heavier (1.2 × the rim’s weight against .52). It reads EMPTY and holds still: a wait drawn inside 320 ms shows no indicator at all.',
+      agent: terminalFixture('p1', '~', false, nowMs),
+      opening: { agoMs: 100 },
+    },
+    {
+      id: 'pending-opening',
+      title: 'A birth, after 320 ms',
+      note: 'Past the quiet it reads OPENING and its dashes turn — a radian every 0.9 s, clockwise — until the host’s row takes its place. Still with the motion off.',
+      agent: terminalFixture('p2', '~', false, nowMs),
+      opening: { agoMs: 900 },
+    },
+    {
+      id: 'pending-peer',
+      title: 'A birth on a peer',
+      note: 'Opening on another desktop: the peer’s name after OPENING.',
+      agent: terminalFixture('p3', '~', false, nowMs),
+      opening: { agoMs: 900, on: 'mini' },
+    },
+  ];
+}
+
+/** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
+export function profileStages(nowMs: number): LabStage[] {
+  const peer: MonitorAgent = {
+    ...terminalFixture('pr5', '~', false, nowMs),
+    remote: {
+      deviceId: 'mini',
+      deviceName: 'mini',
+      remoteSessionId: 'pr5',
+      attachable: true,
+      hostWritable: true,
+      cwdLabel: '~',
+    },
+  };
+  return [
+    {
+      id: 'profile-default',
+      title: 'Under the default profile',
+      note: 'One line in the terminal’s label style: the profile’s glyph leading its name, drawn filled because it is the desktop’s default.',
+      agent: terminalFixture('pr1', '~', false, nowMs),
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
+    },
+    {
+      id: 'profile-managed',
+      title: 'Under another profile',
+      note: 'A managed profile that is not the default: the glyph outlined.',
+      agent: terminalFixture('pr2', '~', false, nowMs),
+      profile: { label: 'Personal', glyph: 'house', kind: 'managed' },
+    },
+    {
+      id: 'profile-native',
+      title: 'Under the machine’s own',
+      note: 'The native set is always the laptop, whatever glyph it carries.',
+      agent: terminalFixture('pr3', '~', false, nowMs),
+      profile: { label: 'This Mac', glyph: 'rocket', kind: 'native' },
+    },
+    {
+      id: 'profile-running',
+      title: 'Running, under a profile',
+      note: 'The profile line follows the running line and its clock.',
+      agent: terminalFixture('pr4', 'study', true, nowMs),
+      runningSinceMs: nowMs - 83_000,
+      profile: { label: 'Work', glyph: 'briefcase', kind: 'managed', isDefault: true },
+    },
+    {
+      id: 'profile-peer',
+      title: 'A peer’s terminal, under a profile',
+      note: 'Before the host line, which a peer’s body always keeps.',
+      agent: peer,
+      profile: { label: 'Default', kind: 'native', isDefault: true },
     },
   ];
 }

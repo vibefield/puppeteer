@@ -1,0 +1,955 @@
+/* The empty pane's launcher, L1 · Ledger (Minimal Pane Frame pass 3 §21–§23,
+   QL-D1) — imported by a host beside `deck-frame.css`; nothing else imports it.
+
+   No card. A fresh shell pane shows, in its middle, a ruled field and the
+   agents as a two-column legend; the block stands on a feathered clearing of
+   the terminal's own ground, so it reads over output without a box and is
+   invisible over an empty screen. Every colour is mixed from the terminal's
+   ink; the pane colour touches only the focus rule, the caret, a matched
+   word's underline and a pressed row. No orange, no green.
+
+   Host-supplied tokens this file reads:
+   - `--vf-godview-terminal-ink` — the ink every figure is mixed from (the pane
+     frame's token; `currentColor` if absent).
+   - `--vf-pane-launcher-ground` — the clearing's colour, when a host wants one
+     other than the terminal ground (VibeField's sheet: the sheet's tint).
+   - `--vf-godview-terminal-bg` — the terminal ground, which Godview already
+     publishes on its deck. With neither ground token set the clearing is
+     transparent: no clearing at all rather than one in a guessed colour.
+   - `--pane-color` — set on the launcher by `DeckLaunchers` from the host's
+     pane colours; `--ghostty-pane-color` (Ghosttea's, on the pane) and then
+     the ink at 70% are the fallbacks, as the frame's.
+   - `--vf-terminal-safe-top`/`-bottom` — the frame's bands (24px · 30px). */
+
+/* The host layer covers the pane and is the width container the narrow tiers
+   query (a Ghosttea pane is not a container). It takes no pointer itself. */
+.vf-pane-launcher-host {
+  --ink: var(--vf-godview-terminal-ink, currentColor);
+  --pane-color: var(--ghostty-pane-color, color-mix(in srgb, var(--ink) 70%, transparent));
+  --ground: var(--vf-pane-launcher-ground, var(--vf-godview-terminal-bg, transparent));
+  --l-top: max(30%, calc(var(--vf-terminal-safe-top, 24px) + 28px));
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  container-type: inline-size;
+  color: var(--ink);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* The readout slot at the top-left previews what the hovered agent would
+   launch; lighter than a live readout (§22 "preview"). */
+.vf-pane-launcher-preview {
+  position: absolute;
+  top: 6px;
+  left: 11px;
+  max-width: calc(100% - 120px);
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 34%, transparent);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── place ─────────────────────────────────────────────────────────────── */
+
+/* Centred; the field's top at 30% of the pane, never closer than 28px under
+   the top band; the field never moves while you type, the list grows down and
+   scrolls inside itself before it reaches the bottom band. */
+.vf-pane-launcher {
+  position: absolute;
+  z-index: 0;
+  isolation: isolate;
+  top: var(--l-top);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100% - 40px));
+  max-height: calc(100% - var(--l-top) - var(--vf-terminal-safe-bottom, 30px) - 8px);
+  font-size: 11px;
+  line-height: 1.3;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  animation: vf-pane-launcher-in 160ms cubic-bezier(0.25, 1, 0.3, 1) both;
+  transition:
+    opacity 120ms cubic-bezier(0.25, 1, 0.3, 1),
+    transform 120ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+@keyframes vf-pane-launcher-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+}
+
+/* A launch took a row's mark (QL-2, C1): the launcher shrinks away toward it in
+   the click's frame — `transform-origin` is that mark, set by the launcher — in
+   160ms, and comes back the same way, in the launcher's own 120ms, if the launch
+   is refused. */
+.vf-pane-launcher.is-leaving {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.94);
+  animation: none;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+/* The row a launch took its mark from stays empty while the mark is out. */
+.vf-pane-launcher-agent.is-flying .vf-pane-launcher-mark,
+.vf-pane-launcher-row.is-flying .vf-pane-launcher-mark {
+  visibility: hidden;
+}
+
+/* A resting empty pane keeps only its field, at 60%; selecting it brings the
+   rest in with the entry motion (the rows mount then). */
+.vf-pane-launcher.is-resting {
+  opacity: 0.6;
+}
+
+/* The clearing: the terminal's ground, 22px past the block above and below and
+   40px to the sides (§22's number; the specimen CSS drew 30px), blurred 12px
+   at 96%; no border, no shadow. */
+.vf-pane-launcher::before {
+  position: absolute;
+  z-index: -1;
+  inset: -22px -40px;
+  border-radius: 26px;
+  background: var(--ground);
+  content: '';
+  filter: blur(12px);
+  opacity: 0.96;
+  pointer-events: none;
+}
+
+.vf-pane-launcher kbd {
+  font: inherit;
+}
+
+.vf-pane-launcher-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: inherit;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.vf-pane-launcher-mark svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+/* ── the field ─────────────────────────────────────────────────────────── */
+
+.vf-pane-launcher-field {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  min-width: 0;
+  padding: 0 4px 0 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  font-size: 12px;
+}
+
+.vf-pane-launcher-field.is-focus {
+  border-bottom-color: var(--pane-color);
+}
+
+.vf-pane-launcher-ico {
+  display: block;
+  flex: none;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
+
+.vf-pane-launcher-field.is-focus .vf-pane-launcher-ico {
+  opacity: 0.8;
+}
+
+/* A real input; its placeholder is drawn beside it so the narrow tier can
+   shorten it. The caret is the pane colour. */
+.vf-pane-launcher-q {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.vf-pane-launcher-q input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  color: var(--ink);
+  background: transparent;
+  caret-color: var(--pane-color);
+  font: inherit;
+  cursor: text;
+}
+
+.vf-pane-launcher-ph {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  padding-left: 3px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.vf-pane-launcher-short {
+  display: none;
+}
+
+.vf-pane-launcher-k {
+  flex: none;
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.vf-pane-launcher-scope {
+  display: inline-flex;
+  flex: none;
+  gap: 8px;
+}
+
+.vf-pane-launcher-scope button {
+  margin: 0;
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+  background: none;
+  font: 700 9px/1 ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.vf-pane-launcher-scope button.is-on {
+  border-bottom-color: color-mix(in srgb, var(--ink) 60%, transparent);
+  color: color-mix(in srgb, var(--ink) 88%, transparent);
+}
+
+/* ── the agents: a caption, then two columns of five, read down ────────── */
+
+.vf-pane-launcher-cap {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 2px 5px;
+  color: color-mix(in srgb, var(--ink) 36%, transparent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* A shell born under an Agent Profile (SB): "New ·", then the profile's glyph
+   and "Under Work" stepped up toward the ink, as the prototype lays it out. */
+.vf-pane-launcher-cap-under {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.vf-pane-launcher-cap-under svg {
+  display: block;
+  flex: none;
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+}
+
+.vf-pane-launcher-cap-under b {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 80%, transparent);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-pane-launcher-agents {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(5, auto);
+  grid-auto-flow: column;
+  gap: 1px 16px;
+}
+
+.vf-pane-launcher-agent {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+/* The ink, not the pane colour: colour is kept to its four places (the focus
+   rule, the caret, a matched word, a pressed row). */
+.vf-pane-launcher-agent:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--ink) 72%, transparent);
+  outline-offset: -1px;
+}
+
+.vf-pane-launcher-nm {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-pane-launcher-agent kbd {
+  color: color-mix(in srgb, var(--ink) 36%, transparent);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.vf-pane-launcher-agent small {
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vf-pane-launcher-agent:hover,
+.vf-pane-launcher-agent.is-hover {
+  color: color-mix(in srgb, var(--ink) 94%, transparent);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.vf-pane-launcher-agent:hover kbd,
+.vf-pane-launcher-agent.is-hover kbd {
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+.vf-pane-launcher-agent.is-press,
+.vf-pane-launcher-agent.is-press:hover {
+  color: var(--pane-color);
+  background: color-mix(in srgb, var(--pane-color) 16%, transparent);
+}
+
+.vf-pane-launcher-agent.is-press kbd {
+  color: var(--pane-color);
+}
+
+.vf-pane-launcher-agent.is-off,
+.vf-pane-launcher-agent.is-off:hover {
+  color: color-mix(in srgb, var(--ink) 34%, transparent);
+  background: transparent;
+  cursor: default;
+}
+
+.vf-pane-launcher-hint {
+  flex: none;
+  margin: 12px 0 0;
+  color: color-mix(in srgb, var(--ink) 36%, transparent);
+  font-size: 10px;
+  text-align: center;
+}
+
+/* ── the results: grouped, two lines a row, one quiet highlight ────────── */
+
+.vf-pane-launcher-list {
+  display: grid;
+  flex: 0 1 auto;
+  gap: 1px;
+  min-height: 0;
+  margin-top: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  animation: vf-pane-launcher-list-in 140ms cubic-bezier(0.25, 1, 0.3, 1) both;
+}
+
+@keyframes vf-pane-launcher-list-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.vf-pane-launcher-list > [role='group'] {
+  display: grid;
+  gap: 1px;
+}
+
+.vf-pane-launcher-grp {
+  padding: 9px 6px 3px;
+  color: color-mix(in srgb, var(--ink) 36%, transparent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vf-pane-launcher-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 5px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.vf-pane-launcher-row .vf-pane-launcher-mark {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.vf-pane-launcher-rt {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vf-pane-launcher-rt b,
+.vf-pane-launcher-rt small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-pane-launcher-rt b {
+  color: color-mix(in srgb, var(--ink) 88%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vf-pane-launcher-rt small {
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  font-size: 9.5px;
+}
+
+.vf-pane-launcher-rt small.vf-pane-launcher-ev {
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  font-style: italic;
+}
+
+.vf-pane-launcher-rt mark {
+  color: var(--ink);
+  background: none;
+  font-weight: 800;
+  text-decoration: underline 1px color-mix(in srgb, var(--pane-color) 70%, transparent);
+  text-underline-offset: 2px;
+}
+
+.vf-pane-launcher-row > kbd {
+  color: color-mix(in srgb, var(--ink) 40%, transparent);
+  font-size: 10px;
+  opacity: 0;
+}
+
+.vf-pane-launcher-row.is-cur {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.vf-pane-launcher-row.is-cur > kbd {
+  opacity: 1;
+}
+
+.vf-pane-launcher-row.is-press {
+  background: color-mix(in srgb, var(--pane-color) 16%, transparent);
+}
+
+.vf-pane-launcher-row.is-gone {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.vf-pane-launcher-empty {
+  flex: none;
+  margin: 12px 4px 2px;
+  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.vf-pane-launcher-empty span {
+  display: block;
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--ink) 38%, transparent);
+  font-size: 9.5px;
+}
+
+/* History as it is: the sentence over a 2px track. */
+.vf-pane-launcher-status {
+  display: grid;
+  flex: none;
+  gap: 5px;
+  margin: 8px 6px 0;
+  color: color-mix(in srgb, var(--ink) 46%, transparent);
+  font-size: 9.5px;
+}
+
+.vf-pane-launcher-status i {
+  display: block;
+  height: 2px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.vf-pane-launcher-status i::before {
+  display: block;
+  width: var(--p, 0%);
+  height: 100%;
+  background: color-mix(in srgb, var(--ink) 40%, transparent);
+  content: '';
+}
+
+/* A refused launch or resume, in the host's words, one line under the rows. */
+.vf-pane-launcher-failure {
+  flex: none;
+  margin: 8px 6px 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--ink) 70%, transparent);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vf-pane-launcher-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin: 8px 6px 0;
+  color: color-mix(in srgb, var(--ink) 34%, transparent);
+  font-size: 9px;
+}
+
+.vf-pane-launcher-foot b {
+  color: color-mix(in srgb, var(--ink) 52%, transparent);
+  font-weight: 700;
+}
+
+/* ── narrow: container queries on the pane, never the window ───────────── */
+
+/* under 340px: five-by-two marks with their keys */
+@container (max-width: 340px) {
+  .vf-pane-launcher-agents {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: auto;
+    grid-auto-flow: row;
+    gap: 2px;
+  }
+
+  .vf-pane-launcher-agent {
+    grid-template-columns: auto;
+    justify-items: center;
+    gap: 3px;
+    height: 38px;
+    padding: 4px 0;
+  }
+
+  .vf-pane-launcher-agent .vf-pane-launcher-nm {
+    display: none;
+  }
+
+  .vf-pane-launcher-agent .vf-pane-launcher-mark {
+    font-size: 13px;
+  }
+
+  .vf-pane-launcher-agent small {
+    font-size: 0;
+  }
+
+  .vf-pane-launcher-agent small::before {
+    font-size: 9px;
+    content: '—';
+  }
+
+  .vf-pane-launcher-cap span:last-child {
+    display: none;
+  }
+}
+
+/* under 250px: five marks, Resume…, no hint */
+@container (max-width: 250px) {
+  .vf-pane-launcher-long {
+    display: none;
+  }
+
+  .vf-pane-launcher-short {
+    display: inline;
+  }
+
+  .vf-pane-launcher-agent:nth-child(n + 6) {
+    display: none;
+  }
+
+  .vf-pane-launcher-hint {
+    display: none;
+  }
+
+  .vf-pane-launcher {
+    width: calc(100% - 28px);
+  }
+}
+
+/* under 190px: the field alone */
+@container (max-width: 190px) {
+  .vf-pane-launcher-cap,
+  .vf-pane-launcher-agents,
+  .vf-pane-launcher-k {
+    display: none;
+  }
+}
+
+/* short: under 220px tall (measured by `DeckLaunchers`) the agents become one
+   row of ten marks, 44px from the top */
+.vf-pane-launcher.is-short {
+  --l-top: 44px;
+}
+
+.vf-pane-launcher.is-short .vf-pane-launcher-cap,
+.vf-pane-launcher.is-short .vf-pane-launcher-hint {
+  display: none;
+}
+
+.vf-pane-launcher.is-short .vf-pane-launcher-agents {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-rows: auto;
+  grid-auto-flow: row;
+  gap: 0;
+  margin-top: 8px;
+}
+
+.vf-pane-launcher.is-short .vf-pane-launcher-agent {
+  grid-template-columns: auto;
+  justify-items: center;
+  gap: 2px;
+  height: 34px;
+  padding: 3px 0;
+}
+
+.vf-pane-launcher.is-short .vf-pane-launcher-agent .vf-pane-launcher-nm {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-pane-launcher,
+  .vf-pane-launcher-list {
+    animation: none;
+  }
+
+  .vf-pane-launcher,
+  .vf-pane-launcher-agent {
+    transition: none;
+  }
+}
+
+/* ── the launch (QL-2 · Minimal Pane Frame pass 4 §27–§30, look C · Cells) ──
+
+   Held per pane from the click to the agent's first frame (`PaneLaunch`). The
+   terminal's ground covers the pane; under it, the pane's own cell grid as
+   dots, one per terminal cell, masked to the grid's reach — a patch around the
+   mark while the agent starts, past the corners once it runs; a band of the
+   pane colour ripples out through the cells while it waits. On the first
+   frame the ground opens from the mark outward. Every colour is mixed from
+   the terminal's ink and the pane colour, as the launcher's.
+
+   The layer sets no z-index, containment, opacity or transform of its own, so
+   its parts sit in the pane's stacking context: the ground under the launcher
+   (5), the caption over it (6), and the mark over the frame's badge (8) while
+   it flies.
+
+   Host-supplied tokens, beside the launcher's: `--vf-terminal-cell-width`,
+   `--vf-terminal-cell-height` and `--vf-terminal-cell-origin`, the terminal's
+   grid pitch and its origin inside the pane's content box. Ghosttea's fixed
+   metrics (7.83px × 19px from 2px) are the fallbacks. */
+
+@property --vf-launch-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --vf-launch-rr {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --vf-launch-hole {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.vf-pane-launch {
+  --ink: var(--vf-godview-terminal-ink, currentColor);
+  --pane-color: var(--ghostty-pane-color, color-mix(in srgb, var(--ink) 70%, transparent));
+  --ground: var(--vf-pane-launcher-ground, var(--vf-godview-terminal-bg, transparent));
+  --cell-w: var(--vf-terminal-cell-width, 7.83px);
+  --cell-h: var(--vf-terminal-cell-height, 19px);
+  --cell-origin: var(--vf-terminal-cell-origin, 2px);
+  --grid-top: calc(var(--vf-terminal-safe-top, 24px) + var(--cell-origin));
+  --grid-right: calc(var(--vf-terminal-safe-right, 0px) + var(--cell-origin));
+  --grid-bottom: calc(var(--vf-terminal-safe-bottom, 30px) + var(--cell-origin));
+  --grid-left: calc(var(--vf-terminal-safe-left, 0px) + var(--cell-origin));
+  position: absolute;
+  inset: 0;
+  color: var(--ink);
+  font-family: ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-synthesis: none;
+  pointer-events: none;
+}
+
+/* The terminal's own ground over the pane. Its mask is a hole at the mark:
+   closed (the hole ends before it starts) until the first frame, then opened
+   past the corners in the reveal. */
+.vf-pane-launch-ground {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: var(--ground);
+  opacity: 0;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-hole) - 30px),
+    #000 var(--vf-launch-hole)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-hole) - 30px),
+    #000 var(--vf-launch-hole)
+  );
+  transition:
+    opacity 200ms ease,
+    --vf-launch-hole 480ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+.vf-pane-launch.is-lit .vf-pane-launch-ground {
+  opacity: 1;
+}
+
+/* One dot per terminal cell, at the cell's centre, clipped to the grid's own
+   area so no dot enters the frame's bands. */
+.vf-pane-launch-grid,
+.vf-pane-launch-ripple {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--dot) 0 1.05px, transparent 1.55px);
+  background-position: var(--grid-left) var(--grid-top);
+  background-size: var(--cell-w) var(--cell-h);
+  clip-path: inset(var(--grid-top) var(--grid-right) var(--grid-bottom) var(--grid-left));
+}
+
+.vf-pane-launch-grid {
+  --dot: color-mix(in srgb, var(--ink) 20%, transparent);
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    #000 0,
+    #000 calc(var(--vf-launch-r) * 0.45),
+    transparent var(--vf-launch-r)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    #000 0,
+    #000 calc(var(--vf-launch-r) * 0.45),
+    transparent var(--vf-launch-r)
+  );
+  transition: --vf-launch-r 560ms cubic-bezier(0.25, 1, 0.3, 1);
+}
+
+/* The ripple: a band of dots in the pane colour, out from the mark to the
+   grid's reach, about once a second, on the island curve. */
+.vf-pane-launch-ripple {
+  --dot: color-mix(in srgb, var(--pane-color) 85%, transparent);
+  background-image: radial-gradient(circle, var(--dot) 0 1.35px, transparent 1.85px);
+  -webkit-mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-rr) - 34px),
+    #000 calc(var(--vf-launch-rr) - 12px),
+    transparent var(--vf-launch-rr)
+  );
+  mask-image: radial-gradient(
+    circle at var(--launch-cx) var(--launch-cy),
+    transparent calc(var(--vf-launch-rr) - 34px),
+    #000 calc(var(--vf-launch-rr) - 12px),
+    transparent var(--vf-launch-rr)
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-ripple {
+  opacity: 1;
+  animation: vf-pane-launch-ripple 1.1s cubic-bezier(0.25, 1, 0.3, 1) infinite;
+}
+
+@keyframes vf-pane-launch-ripple {
+  from {
+    --vf-launch-rr: 26px;
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 0.55;
+  }
+
+  to {
+    --vf-launch-rr: var(--launch-ripple-max, 120px);
+    opacity: 0;
+  }
+}
+
+/* The caption under the mark: the agent, then the wait and its seconds. */
+.vf-pane-launch-caption {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--launch-cy) + 30px);
+  right: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  opacity: 0;
+  text-align: center;
+  transition: opacity 160ms ease;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-caption {
+  opacity: 1;
+}
+
+.vf-pane-launch-caption b,
+.vf-pane-launch-caption span {
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 0 2px var(--ground),
+    0 0 5px var(--ground),
+    0 0 9px var(--ground);
+  white-space: nowrap;
+}
+
+.vf-pane-launch-caption b {
+  color: color-mix(in srgb, var(--ink) 72%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vf-pane-launch-caption span {
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  font-size: 9.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The mark: one element from the clicked row to the badge. It is moved by
+   `transform` alone (the launch sets it); it breathes while it waits. */
+.vf-pane-launch-mark {
+  position: absolute;
+  z-index: 8;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--pane-color);
+  font-size: 26px;
+  font-style: normal;
+  line-height: 1;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.vf-pane-launch-glyph {
+  display: grid;
+  place-items: center;
+}
+
+.vf-pane-launch-glyph svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.vf-pane-launch.is-waiting .vf-pane-launch-glyph {
+  animation: vf-pane-launch-breathe 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes vf-pane-launch-breathe {
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.vf-pane-launch-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Reduced motion (M6): what changes fades, in 100ms; nothing loops. */
+.vf-pane-launch.is-reduced .vf-pane-launch-ground,
+.vf-pane-launch.is-reduced .vf-pane-launch-grid,
+.vf-pane-launch.is-reduced .vf-pane-launch-caption {
+  transition-property: opacity;
+  transition-duration: 100ms;
+}
+
+.vf-pane-launch.is-reduced .vf-pane-launch-ripple {
+  display: none;
+}
+
+.vf-pane-launch.is-reduced .vf-pane-launch-glyph {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-pane-launch-ripple,
+  .vf-pane-launch-glyph {
+    animation: none !important;
+  }
+}

@@ -1,13 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
-import type { MonitorAgent, MonitorSession } from '../monitor/types.js';
+import type { FindAgent } from './find-agent.js';
 import type { HistorySearchHit, HistorySessionFacts } from './history-port.js';
 import {
   buildFindRows,
+  createFindRows,
   factsScore,
   fieldMatch,
   footSentence,
+  lastActiveMs,
   liveScope,
   moveCursor,
   nativeSessionIdOf,
@@ -32,32 +33,26 @@ function agent(input: {
   startedAt?: string;
   createdAtMs?: number;
   terminal?: boolean;
-}): MonitorAgent {
-  const session: MonitorSession = { id: input.id, createdAtMs: input.createdAtMs ?? NOW - 3_600_000 };
-  const base: MonitorAgent = {
+}): FindAgent {
+  const base: FindAgent = {
     id: input.id,
-    session,
-    createdAtMs: session.createdAtMs,
+    createdAtMs: input.createdAtMs ?? NOW - 3_600_000,
     status: input.status ?? 'idle',
     project: input.project,
     detail: input.detail ?? '',
     color: '#123456',
-    active: false,
   };
   if (input.terminal) return base;
   const monitor = {
-    status: input.status ?? 'idle',
     statusSince: input.lastEvidenceAt ?? new Date(NOW - 600_000).toISOString(),
     session: {
       ...(input.native ? { nativeSessionId: input.native } : {}),
       ...(input.startedAt ? { startedAt: input.startedAt } : {}),
     },
     freshness: {
-      level: 'native-hooks',
-      families: {},
       ...(input.lastEvidenceAt ? { lastEvidenceAt: input.lastEvidenceAt } : {}),
     },
-  } as unknown as AgentMonitorState;
+  };
   return {
     ...base,
     agent: {
@@ -66,9 +61,8 @@ function agent(input: {
       ...(input.account ? { account: input.account } : {}),
       ...(input.branch ? { branch: input.branch } : {}),
       monitor,
-      recency: 'live',
       ...(input.native ? { nativeSessionId: input.native } : {}),
-    } as unknown as MonitorAgent['agent'],
+    },
   };
 }
 
@@ -135,9 +129,29 @@ describe('liveScope and nativeSessionIdOf', () => {
     expect(nativeSessionIdOf(agents[2]!)).toBeUndefined();
     expect(liveScope([agent({ id: 'x', project: 'p', terminal: true })])).toEqual({ nativeSessionIds: [] });
   });
+
+  it('reads a mirror with no session or freshness, as a host may hand one (M47)', () => {
+    // Core's mirror rides the wire as passthrough, so neither part is promised. VibeField once handed the sheet
+    // the legacy shim's sketch, which has neither, and the throw in render blanked its window (build-mv M47).
+    const sketch = { statusSince: new Date(NOW - 60_000).toISOString() };
+    const base = agent({ id: 's', project: 'p' });
+    const row: FindAgent = { ...base, agent: { ...base.agent!, monitor: sketch } };
+    expect(nativeSessionIdOf(row)).toBeUndefined();
+    expect(liveScope([row])).toEqual({ nativeSessionIds: [] });
+    const named: FindAgent = { ...row, agent: { ...row.agent!, nativeSessionId: 'n-s' } };
+    expect(liveScope([named]).nativeSessionIds).toEqual(['n-s']);
+    expect(lastActiveMs(named, NOW)).toBe(NOW - 60_000);
+  });
 });
 
 describe('buildFindRows', () => {
+  it('keeps the host row and its additional facts for selection', () => {
+    const hosted = { ...agent({ id: 'hosted', project: 'p' }), hostSessionId: 'pty-1' };
+    const [row] = buildFindRows({ agents: [hosted], facts: new Map(), hits: [], query: '', nowMs: NOW });
+    expect(row?.agent).toBe(hosted);
+    expectTypeOf(row!.agent.hostSessionId).toEqualTypeOf<string>();
+  });
+
   const a = agent({
     id: 'a',
     native: 'n-a',
@@ -327,5 +341,116 @@ describe('moveCursor', () => {
     expect(moveCursor(1, 'End', 3)).toBe(2);
     expect(moveCursor(1, 'Home', 3)).toBe(0);
     expect(moveCursor(0, 'ArrowDown', 0)).toBe(-1);
+  });
+});
+
+describe('a sheet’s retained Find calculations', () => {
+  it('reuses unchanged rows, keeps stable ties in current input order and selects the current agent object', () => {
+    const first = { ...agent({ id: 'a', native: 'n-a', project: 'same' }), hostSessionId: 'old' };
+    const second = { ...agent({ id: 'b', native: 'n-b', project: 'same' }), hostSessionId: 'other' };
+    const compile = createFindRows<typeof first>();
+    const input = {
+      agents: [first, second],
+      facts: new Map<string, HistorySessionFacts>(),
+      hits: [],
+      query: '',
+      nowMs: NOW,
+    };
+    const initial = compile(input);
+    const repeated = compile({ ...input, agents: [...input.agents] });
+    expect(repeated.map((row) => row.agent.id)).toEqual(['a', 'b']);
+    expect(repeated[0]).toBe(initial[0]);
+    expect(repeated[1]).toBe(initial[1]);
+    expect(compile({ ...input, agents: [second, first] }).map((row) => row.agent.id)).toEqual(['b', 'a']);
+    const replacement = { ...first, hostSessionId: 'resumed', status: 'blocked' as const };
+    const changed = compile({ ...input, agents: [replacement, second] });
+    expect(changed[0]?.agent).toBe(replacement);
+    expectTypeOf(changed[0]!.agent.hostSessionId).toEqualTypeOf<string>();
+    expect(changed[0]?.score).toBe(initial[0]!.score + 1);
+    expect(changed[1]).toBe(initial[1]);
+    expect(compile({ ...input, agents: [] })).toEqual([]);
+    expect(compile({ ...input, agents: [second] })[0]).toBe(initial[1]);
+    expect(createFindRows<typeof first>()(input)[0]).not.toBe(initial[0]);
+  });
+
+  it('refreshes query, title/summary and hit changes, including mutable history answers', () => {
+    const a = agent({ id: 'a', native: 'n-a', project: 'alpha' });
+    const b = agent({ id: 'b', native: 'n-b', project: 'beta' });
+    const title = facts('n-a', 'first title');
+    const known = new Map([['n-a', title]]);
+    const hits: HistorySearchHit[] = [];
+    let input = { agents: [a, b], facts: known, hits, query: 'needle', nowMs: NOW };
+    const compile = createFindRows<FindAgent>();
+    expect(compile(input)).toEqual([]);
+    title.title = 'needle title';
+    expect(compile(input)[0]?.title).toBe('needle title');
+    title.title = '';
+    title.summary = 'a needle in this summary';
+    expect(compile(input)[0]?.matched).toEqual(['summary']);
+    expect(compile(input)[0]?.title).toBeUndefined();
+    known.delete('n-a');
+    expect(compile(input)).toEqual([]);
+    hits.push(hit('n-b', 'older', '[needle]', NOW - 2_000), hit('n-b', 'newer', '[needle]', NOW - 1_000));
+    expect(compile(input)[0]?.hits.map((row) => row.timelineId)).toEqual(['newer', 'older']);
+    hits[0]!.at = NOW;
+    expect(compile(input)[0]?.hits.map((row) => row.timelineId)).toEqual(['older', 'newer']);
+    hits[0]!.nativeSessionId = 'n-a';
+    expect(compile(input).find((row) => row.agent === a)?.hits[0]?.timelineId).toBe('older');
+    hits.length = 0;
+    expect(compile(input)).toEqual([]);
+    input = { ...input, query: 'beta' };
+    expect(compile(input).map((row) => row.agent.id)).toEqual(['b']);
+    expect(compile(input)).toEqual(buildFindRows(input));
+  });
+
+  it('recomputes replaced live fields, mirror clocks and clock-dependent future/recency bounds', () => {
+    const compile = createFindRows<FindAgent>();
+    const original = agent({
+      id: 'a',
+      native: 'old',
+      project: 'alpha',
+      lastEvidenceAt: new Date(NOW + 60_001).toISOString(),
+    });
+    let input = { agents: [original], facts: new Map<string, HistorySessionFacts>(), hits: [], query: '', nowMs: NOW };
+    const initial = compile(input)[0]!;
+    expect(initial.lastActiveMs).toBe(original.createdAtMs);
+    input = { ...input, nowMs: NOW + 1 };
+    expect(compile(input)[0]?.lastActiveMs).toBe(NOW + 60_001);
+    input = { ...input, nowMs: NOW + 3_600_000 };
+    expect(compile(input)[0]?.score).toBeLessThan(compile({ ...input, nowMs: NOW + 1 })[0]!.score);
+    for (const current of [
+      agent({ id: 'a', native: 'resumed', project: 'alpha', lastEvidenceAt: new Date(NOW - 1_000).toISOString() }),
+      agent({ id: 'a', project: 'alpha', model: 'needle' }),
+      agent({ id: 'a', project: 'alpha', branch: 'needle' }),
+      agent({ id: 'a', project: 'alpha', account: 'needle' }),
+      agent({ id: 'a', project: 'alpha', detail: 'needle' }),
+      agent({ id: 'a', project: 'needle', terminal: true }),
+    ]) {
+      input = { ...input, agents: [current], query: 'needle' };
+      expect(compile(input)).toEqual(buildFindRows(input));
+      const all = compile({ ...input, query: current.agent === undefined ? 'needle' : '' });
+      expect(all[0]?.agent).toBe(current);
+    }
+    const absent = { ...original, agent: { provider: original.agent!.provider } };
+    expect(compile({ ...input, agents: [absent], query: '' })[0]?.nativeSessionId).toBeUndefined();
+    expect(compile({ ...input, agents: [absent], query: '' })[0]?.lastActiveMs).toBe(absent.createdAtMs);
+  });
+
+  it('keeps the stateless builder’s outputs and each row’s hit array independently owned', () => {
+    const input = {
+      agents: [agent({ id: 'a', native: 'same', project: 'a' }), agent({ id: 'b', native: 'same', project: 'b' })],
+      facts: new Map<string, HistorySessionFacts>(),
+      hits: [hit('same', 'one', 'hello')],
+      query: '',
+      nowMs: NOW,
+    };
+    const first = buildFindRows(input);
+    const second = buildFindRows(input);
+    expect(first[0]).not.toBe(second[0]);
+    expect(first[0]!.hits).not.toBe(first[1]!.hits);
+    first[0]!.hits.length = 0;
+    expect(first[1]!.hits).toHaveLength(1);
+    expect(second[0]!.hits).toHaveLength(1);
+    expect(input.hits).toHaveLength(1);
   });
 });

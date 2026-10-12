@@ -162,7 +162,7 @@ Closest implementation precedents:
 | Display name        | Hermes Agent                                 |
 | User-facing command | `hermes`                                     |
 | TUI launch          | `hermes --tui`                               |
-| Adapter package     | `@vibecook/puppeteer-adapter-hermes`        |
+| Adapter package     | `@vibefield/puppeteer-adapter-hermes`        |
 | Adapter directory   | `packages/adapter-hermes`                    |
 | Surface directory   | `packages/surface/vendors/hermes`            |
 | Imposter persona    | `packages/imposter/personas/hermes`          |

@@ -37,7 +37,7 @@ import type {
   ProfileProvider,
   ProfileService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveAntigravityExecutable } from '../detection.js';
 
 /** The adapter-owned HOME redirection; also a provider launch allow-list entry. */

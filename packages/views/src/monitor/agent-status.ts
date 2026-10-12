@@ -1,4 +1,4 @@
-import type { AgentMonitorStatus } from '@vibecook/puppeteer-core';
+import type { AgentMonitorStatus } from '@vibefield/puppeteer-core';
 
 /**
  * What a session is doing, derived only from reduced runtime state — never from

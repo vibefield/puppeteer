@@ -62,7 +62,7 @@ test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI 
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'opencode' \}\}/);
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
-  assert.match(workflow, /@vibecook\/puppeteer-adapter-opencode test/);
+  assert.match(workflow, /@vibefield\/puppeteer-adapter-opencode test/);
   assert.match(live, /opencode-live:/);
   assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
@@ -82,7 +82,7 @@ test('Kimi uses the same exact artifact for its cross-platform native-TUI and re
   assert.match(workflow, /if: \$\{\{ inputs\.vendor == 'kimi' \}\}/);
   assert.match(workflow, /KIMI_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
-  assert.match(workflow, /@vibecook\/puppeteer-adapter-kimi test/);
+  assert.match(workflow, /@vibefield\/puppeteer-adapter-kimi test/);
   assert.match(live, /kimi-live:/);
   assert.match(live, /KIMI_LIVE: '1'/);
   assert.match(live, /PUPPETEER_KIMI_BIN: \$\{\{ vars\.KIMI_BIN \}\}/);
@@ -104,7 +104,7 @@ test('Codex promotion proves the exact private app-server and native TUI without
   assert.match(pinnedReal, /CODEX_NATIVE_TUI_LIVE: '1'/);
   assert.doesNotMatch(pinnedReal, /CODEX_LIVE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CODEX_BIN:/);
-  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-codex test/);
+  assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-codex test/);
   assert.match(live, /codex-live:/);
   assert.match(live, /CODEX_NATIVE_TUI_LIVE: '1'/);
   assert.match(live, /Run Codex native-TUI\/app-server\/resume proof/);
@@ -127,7 +127,7 @@ test('Claude promotion proves the exact native TUI, hooks, transcript, and resum
   assert.match(pinnedReal, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
   assert.doesNotMatch(pinnedReal, /PUPPETEER_REAL_CLAUDE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CLAUDE_BIN:/);
-  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-claude test/);
+  assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-claude test/);
   assert.match(live, /claude-live:/);
   assert.match(live, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
   assert.match(live, /Run Claude native-TUI\/hooks\/transcript\/resume proof/);
@@ -158,7 +158,7 @@ test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapt
   assert.match(workflow, /Grok pinned-real native-TUI\/resume lane/);
   assert.match(workflow, /GROK_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_GROK_BIN:/);
-  assert.match(workflow, /@vibecook\/puppeteer-adapter-grok test/);
+  assert.match(workflow, /@vibefield\/puppeteer-adapter-grok test/);
   assert.match(live, /grok-live:/);
   assert.match(live, /if: \$\{\{ vars\.GROK_LIVE_ENABLED == 'true' \}\}/);
   assert.match(live, /GROK_LIVE: '1'/);
@@ -206,7 +206,7 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(pinnedReal, /HERMES_PYTHON:/);
   assert.match(pinnedReal, /HERMES_TUI_DIR:/);
   assert.match(pinnedReal, /Hermes pinned-real native-TUI\/resume lane/);
-  assert.match(pinnedReal, /@vibecook\/puppeteer-adapter-hermes test/);
+  assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-hermes test/);
   assert.doesNotMatch(pinnedReal, /\$AGENT_/);
   assert.match(live, /hermes-surface:/);
   assert.match(live, /if: \$\{\{ vars\.HERMES_LIVE_ENABLED == 'true' \}\}/);

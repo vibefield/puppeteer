@@ -15,9 +15,15 @@ import {
   safeParseAgentEvent,
   type AdapterEventCandidate,
   type TerminalAutomationOperation,
-} from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { attachClaudeTuiSession, createClaudeSession, prepareClaudeTuiSession, type ClaudeSession } from './driver.js';
+} from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import {
+  attachClaudeTuiSession,
+  createClaudeSession,
+  prepareClaudeTuiSession,
+  type ClaudeSession,
+  type ClaudeSessionPorts,
+} from './driver.js';
 import type { PreparedClaudeSession } from './launch/prepare.js';
 import { cleanupClaudeSession } from './launch/prepare.js';
 import type { ClaudeHookDiagnostic } from './normalization/index.js';
@@ -1223,6 +1229,26 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(
       historyEvents.some(({ event }) => event.type.startsWith('turn:') || event.type.startsWith('conversation:')),
     ).toBe(false);
+  });
+
+  it('refuses a host’s own spawn whose person’s settings switch every hook off, launching nothing', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'driver-hooks-off-cwd-'));
+    const configDir = mkdtempSync(join(tmpdir(), 'driver-hooks-off-config-'));
+    writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ disableAllHooks: true }));
+    const spawn = vi.fn(async () => ({ runtimeSessionId: 'rt-hooks' }));
+    const ports: ClaudeSessionPorts = { spawn, automate: async () => ({ accepted: true }) };
+
+    await expect(createClaudeSession({ cwd, configDir, ports })).rejects.toMatchObject({
+      name: 'ClaudeHooksOffError',
+      code: 'CLAUDE_HOOKS_OFF',
+      source: 'user',
+    });
+    expect(spawn).not.toHaveBeenCalled();
+
+    // Hooks on: the same spawn launches as it always has.
+    writeFileSync(join(configDir, 'settings.json'), JSON.stringify({ disableAllHooks: false }));
+    sessions.push(await createClaudeSession({ cwd, configDir, ports }));
+    expect(spawn).toHaveBeenCalledTimes(1);
   });
 
   it('delivers live hooks during resume while the first durable read is still pending', async () => {

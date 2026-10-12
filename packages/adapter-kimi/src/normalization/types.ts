@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentEventConfidence, AgentEventSource, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { AgentEvent, AgentEventConfidence, AgentEventSource, ToolPresentation } from '@vibefield/puppeteer-core';
 
 export interface KimiWireRecord {
   type?: unknown;

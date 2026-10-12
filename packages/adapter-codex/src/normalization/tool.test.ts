@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventType, safeParseAgentEvent } from '@vibecook/puppeteer-core';
+import { agentEventType, safeParseAgentEvent } from '@vibefield/puppeteer-core';
 import { CodexToolNormalizer } from './tool.js';
 
 describe('CodexToolNormalizer', () => {
