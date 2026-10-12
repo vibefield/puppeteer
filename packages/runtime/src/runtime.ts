@@ -489,6 +489,11 @@ function preparationFailure(
   };
 }
 
+/** A provider's private options as a record a resume's model choice can be laid over. */
+function isOptionRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * What an error a provider threw while preparing or creating a session says in
  * the failure a caller reads. Only the adapter's own refusal carries words: its
@@ -496,10 +501,6 @@ function preparationFailure(
  * Any other error's text (a path, a token, a stack) is the reporter's alone,
  * and the failure says `generic`.
  */
-function isOptionRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function providerError(
   thrown: unknown,
   agent: string,
