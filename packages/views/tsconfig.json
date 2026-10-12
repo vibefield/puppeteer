@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["@webgpu/types"],
+    "types": ["@webgpu/types", "node"],
     "jsx": "react-jsx"
   },
   "include": ["src"]

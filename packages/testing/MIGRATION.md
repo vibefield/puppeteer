@@ -2,6 +2,10 @@
 
 ## Next
 
+Testing and conformance helpers require Vitest 4.1.11 or newer within Vitest 4.
+Upgrade the test runner before adopting these packages. The View SDK's optional
+Vitest peer uses the same supported range.
+
 Adapter handles no longer expose reducer state or a separate monitor callback.
 Use `projectAgentEvents(binding)` in low-level adapter tests to consume the one
 normalized event stream and inspect its derived `state`, `states`, `envelopes`,

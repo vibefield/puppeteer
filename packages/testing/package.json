@@ -55,9 +55,9 @@
     "@vibefield/puppeteer-core": "workspace:*"
   },
   "peerDependencies": {
-    "vitest": ">=3 <4"
+    "vitest": ">=4.1.11 <5"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }

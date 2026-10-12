@@ -47,6 +47,6 @@
     "@vibefield/puppeteer-view-sdk": "workspace:*"
   },
   "devDependencies": {
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   }
 }
