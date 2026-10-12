@@ -1,0 +1,105 @@
+{
+  "probedAt": "2026-10-12T21:08:18.394Z",
+  "codex": "codex-cli 0.162.1",
+  "started": {
+    "model": "gpt-6.1-sol"
+  },
+  "asked": {
+    "model": "gpt-6-astra",
+    "effort": "ultra"
+  },
+  "thread/start": {
+    "model": "gpt-6.1-sol",
+    "modelProvider": "openai",
+    "serviceTier": null,
+    "disabledPluginIds": [],
+    "cwd": "<scratch>/workspace",
+    "runtimeWorkspaceRoots": [
+      "<scratch>/workspace"
+    ],
+    "instructionSources": [],
+    "approvalPolicy": "on-request",
+    "approvalsReviewer": "user",
+    "sandbox": {
+      "type": "readOnly",
+      "networkAccess": false
+    },
+    "activePermissionProfile": {
+      "id": ":read-only",
+      "extends": null
+    },
+    "reasoningEffort": null,
+    "multiAgentMode": "explicitRequestOnly",
+    "threadId": "01a131f1-da5f-7832-893f-69f7a81c2ab3"
+  },
+  "thread/resume with overrides": {
+    "model": "gpt-6-astra",
+    "modelProvider": "openai",
+    "serviceTier": null,
+    "disabledPluginIds": [],
+    "cwd": "<scratch>/workspace",
+    "runtimeWorkspaceRoots": [
+      "<scratch>/workspace"
+    ],
+    "instructionSources": [],
+    "approvalPolicy": "on-request",
+    "approvalsReviewer": "user",
+    "sandbox": {
+      "type": "readOnly",
+      "networkAccess": false
+    },
+    "activePermissionProfile": {
+      "id": ":read-only",
+      "extends": null
+    },
+    "reasoningEffort": "ultra",
+    "collaborationMode": {
+      "mode": "default",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "ultra",
+        "developer_instructions": null
+      }
+    },
+    "multiAgentMode": "explicitRequestOnly",
+    "initialTurnsPage": null,
+    "turnsBackwardsCursor": null,
+    "itemsBackwardsCursor": null,
+    "threadId": "01a131f1-da5f-7832-893f-69f7a81c2ab3"
+  },
+  "thread/resume without overrides (fresh server)": {
+    "model": "gpt-6-astra",
+    "modelProvider": "openai",
+    "serviceTier": null,
+    "disabledPluginIds": [],
+    "cwd": "<scratch>/workspace",
+    "runtimeWorkspaceRoots": [
+      "<scratch>/workspace"
+    ],
+    "instructionSources": [],
+    "approvalPolicy": "on-request",
+    "approvalsReviewer": "user",
+    "sandbox": {
+      "type": "readOnly",
+      "networkAccess": false
+    },
+    "activePermissionProfile": {
+      "id": ":read-only",
+      "extends": null
+    },
+    "reasoningEffort": "ultra",
+    "collaborationMode": {
+      "mode": "default",
+      "settings": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "ultra",
+        "developer_instructions": null
+      }
+    },
+    "multiAgentMode": "explicitRequestOnly",
+    "initialTurnsPage": null,
+    "turnsBackwardsCursor": null,
+    "itemsBackwardsCursor": null,
+    "threadId": "01a131f1-da5f-7832-893f-69f7a81c2ab3"
+  }
+}

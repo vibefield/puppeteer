@@ -463,6 +463,33 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  it('threadId: a resume at a chosen model and effort asks every thread/resume attempt for them', async () => {
+    const t = controllable(1);
+    const obs = await createCodexObserver({
+      transport: t.transport,
+      threadId: 'th-resume-me',
+      resumeOverrides: { model: 'chosen-model', effort: 'high' },
+    });
+    const projection = projectAgentEvents(obs);
+    try {
+      const resumes = t.calls().filter((call) => call.method === 'thread/resume');
+      expect(resumes).toHaveLength(2);
+      for (const call of resumes) {
+        expect(call.params).toEqual({
+          threadId: 'th-resume-me',
+          model: 'chosen-model',
+          config: { model_reasoning_effort: 'high' },
+        });
+      }
+      expect(projection.monitorBatches.flatMap((batch) => batch.updates)).toContainEqual(
+        expect.objectContaining({ family: 'effort', value: { kind: 'effort', value: 'high', intent: 'configured' } }),
+      );
+    } finally {
+      projection.dispose();
+      await obs.dispose();
+    }
+  });
+
   it('replays completed resume history to the first subscriber', async () => {
     const t = controllable(0, {
       thread: {

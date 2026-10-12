@@ -116,6 +116,9 @@ function scriptedAppServer(opts?: {
           emit({ jsonrpc: '2.0', id: m.id, result: { thread } });
           emit({ jsonrpc: '2.0', method: 'thread/started', params: { thread } });
           break;
+        case 'thread/resume':
+          emit({ jsonrpc: '2.0', id: m.id, result: { thread } });
+          break;
         case 'turn/start':
           if (opts?.turnStartError) {
             emit({ jsonrpc: '2.0', id: m.id, error: opts.turnStartError });
@@ -190,6 +193,27 @@ describe('createCodexSession', () => {
     expect(monitorBatches.every(({ phase }) => phase === 'bootstrap')).toBe(true);
     projection.dispose();
     await session.dispose();
+  });
+
+  it('resumes a thread at the chosen model and effort, and asks nothing of a resume without them', async () => {
+    const s = scriptedAppServer();
+    const session = await createCodexSession({
+      cwd: '/x',
+      transport: s.transport,
+      resume: THREAD,
+      model: 'gpt-5.6-sol',
+      effort: 'high',
+    });
+    expect(s.sent.find((message) => message.method === 'thread/resume')?.params).toEqual({
+      threadId: THREAD,
+      model: 'gpt-5.6-sol',
+      config: { model_reasoning_effort: 'high' },
+    });
+    await session.dispose();
+    const plain = scriptedAppServer();
+    const inherited = await createCodexSession({ cwd: '/x', transport: plain.transport, resume: THREAD });
+    expect(plain.sent.find((message) => message.method === 'thread/resume')?.params).toEqual({ threadId: THREAD });
+    await inherited.dispose();
   });
 
   it('submitPrompt drives a turn and reduces to a coherent state', async () => {

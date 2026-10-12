@@ -59,6 +59,14 @@ export interface CreateCodexObserverOptions {
    */
   threadId?: string | undefined;
   /**
+   * The model and effort a resume of {@link threadId} starts at. They ride every
+   * `thread/resume` this connection sends for it: the app-server applies a
+   * resume's overrides when it loads a thread it does not yet hold, and a TUI
+   * that joins it later adopts the thread's settings, never its own (C7). Omit
+   * to keep the thread's own.
+   */
+  resumeOverrides?: { model?: string | undefined; effort?: string | undefined } | undefined;
+  /**
    * Create + materialize a fresh thread on this connection so the session is
    * ready before any TUI attaches. Mutually exclusive with {@link threadId}.
    */
@@ -260,12 +268,26 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
    * still writing it). Controller-owned mode materializes first so this is a
    * single success.
    */
-  async function attach(threadId: string, thread: Record<string, unknown> | undefined, fresh = false): Promise<void> {
+  async function attach(
+    threadId: string,
+    thread: Record<string, unknown> | undefined,
+    fresh = false,
+    overrides: CreateCodexObserverOptions['resumeOverrides'] = undefined,
+  ): Promise<void> {
     if (attached || attaching) return;
     attaching = true;
     sessionId = threadId;
     threadPath = str(thread?.path) ?? threadPath;
     if (thread) applyEnvironmentFromResponse({ thread });
+    const resumeParams = {
+      threadId,
+      ...(overrides?.model ? { model: overrides.model } : {}),
+      ...(overrides?.effort ? { config: { model_reasoning_effort: overrides.effort } } : {}),
+    };
+    const configured: CodexConfiguredIntent = {
+      ...(overrides?.model ? { model: overrides.model } : {}),
+      ...(overrides?.effort ? { effort: overrides.effort } : {}),
+    };
     // A thread isn't materializable until it has a rollout. Passive-created threads
     // only write one on the first user message; controller-owned threads write
     // one via empty inject_items before calling attach. Retry until it takes,
@@ -274,10 +296,10 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     let delay = 200;
     while (!attached && !disposed && !railClosed) {
       try {
-        const resumed = rec(await client.request('thread/resume', { threadId })); // opens the live stream
+        const resumed = rec(await client.request('thread/resume', resumeParams)); // opens the live stream
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
         let history = resumed;
-        applyEnvironmentFromResponse(resumed);
+        applyEnvironmentFromResponse(resumed, undefined, undefined, configured);
         if (!fresh) {
           try {
             history = rec(await client.request('thread/read', { threadId, includeTurns: true })) ?? resumed;
@@ -469,7 +491,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       true,
     );
   } else if (opts.threadId) {
-    await attach(opts.threadId, undefined);
+    await attach(opts.threadId, undefined, false, opts.resumeOverrides);
     if (!attached) {
       await client.close();
       throw new Error(`codex observer failed to attach to thread ${opts.threadId}`);

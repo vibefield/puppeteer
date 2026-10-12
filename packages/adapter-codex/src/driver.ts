@@ -42,7 +42,7 @@ export interface CreateCodexSessionOptions {
   /** Transport override (tests). Defaults to spawning `codex app-server`. */
   transport?: Transport | undefined;
   executable?: string | undefined;
-  /** Model id applied when starting a fresh thread. */
+  /** Model id applied when starting a fresh thread or resuming one. */
   model?: string | undefined;
   /** Per-thread reasoning effort; omission inherits the native configuration. */
   effort?: string | undefined;
@@ -184,7 +184,11 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     }
 
     const startResult = options.resume
-      ? await client.request('thread/resume', { threadId: options.resume })
+      ? await client.request('thread/resume', {
+          threadId: options.resume,
+          ...(options.model ? { model: options.model } : {}),
+          ...(options.effort ? { config: { model_reasoning_effort: options.effort } } : {}),
+        })
       : await client.request('thread/start', {
           cwd: options.cwd,
           model: options.model,
