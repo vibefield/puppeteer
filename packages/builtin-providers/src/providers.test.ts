@@ -5,8 +5,8 @@ import {
   type AgentAdapterBinding,
   type AgentHost,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
-import type { AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+} from '@vibefield/puppeteer-core';
+import type { AcpConnector } from '@vibefield/puppeteer-adapter-acp';
 
 const adapters = vi.hoisted(() => {
   // Minimal valid provider-scoped capabilities so composition passes runtime schema checks.
@@ -148,7 +148,7 @@ const adapters = vi.hoisted(() => {
   };
 });
 
-vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
+vi.mock('@vibefield/puppeteer-adapter-acp', () => ({
   createAcpModelService: () => ({
     provider: { id: 'acp', label: 'Acp', discovery: 'session' },
     discover: vi.fn(),
@@ -157,7 +157,7 @@ vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
   createAcpSession: adapters.createAcpSession,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
+vi.mock('@vibefield/puppeteer-adapter-antigravity', () => ({
   createAntigravityModelService: () => ({
     provider: { id: 'antigravity', label: 'Antigravity', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -174,14 +174,14 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
   restoreAntigravityContinuationState: adapters.restoreAntigravityContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
+vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
   createClaudeModelService: () => ({
     provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch' },
     discover: vi.fn(),
     toAgentOptions: vi.fn(),
   }),
   // The adapter's own list, so the allow-list pin below reads what the adapter declares.
-  CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibecook/puppeteer-adapter-claude')>())
+  CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-claude')>())
     .CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeDistributionService: adapters.createClaudeDistributionService,
   createClaudeProfileService: adapters.createClaudeProfileService,
@@ -198,7 +198,7 @@ vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
   restoreClaudeContinuationState: adapters.restoreClaudeContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
+vi.mock('@vibefield/puppeteer-adapter-codex', () => ({
   createCodexModelService: () => ({
     provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -217,7 +217,7 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
   restoreCodexContinuationState: adapters.restoreCodexContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
+vi.mock('@vibefield/puppeteer-adapter-copilot', () => ({
   createCopilotModelService: () => ({
     provider: { id: 'copilot', label: 'Copilot', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -232,7 +232,7 @@ vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
   restoreCopilotContinuationState: adapters.restoreCopilotContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
+vi.mock('@vibefield/puppeteer-adapter-grok', () => ({
   createGrokModelService: () => ({
     provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -249,7 +249,7 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
   restoreGrokContinuationState: adapters.restoreGrokContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
+vi.mock('@vibefield/puppeteer-adapter-kimi', () => ({
   createKimiModelService: () => ({
     provider: { id: 'kimi', label: 'Kimi', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -266,7 +266,7 @@ vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
   restoreKimiContinuationState: adapters.restoreKimiContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
+vi.mock('@vibefield/puppeteer-adapter-opencode', () => ({
   createOpenCodeModelService: () => ({
     provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -282,7 +282,7 @@ vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
   restoreOpenCodeContinuationState: adapters.restoreOpenCodeContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
+vi.mock('@vibefield/puppeteer-adapter-hermes', () => ({
   createHermesModelService: () => ({
     provider: { id: 'hermes', label: 'Hermes', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -298,7 +298,7 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
   restoreHermesContinuationState: adapters.restoreHermesContinuationState,
 }));
 
-vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
+vi.mock('@vibefield/puppeteer-adapter-pi', () => ({
   createPiModelService: () => ({
     provider: { id: 'pi', label: 'Pi', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -836,8 +836,8 @@ describe('createBuiltinProviders launch options', () => {
   });
 
   it('carries the Claude adapter’s refusal through the provider and the runtime to the failure a host reads', async () => {
-    const { ClaudeHooksOffError } = await vi.importActual<typeof import('@vibecook/puppeteer-adapter-claude')>(
-      '@vibecook/puppeteer-adapter-claude',
+    const { ClaudeHooksOffError } = await vi.importActual<typeof import('@vibefield/puppeteer-adapter-claude')>(
+      '@vibefield/puppeteer-adapter-claude',
     );
     adapters.prepareClaudeTuiSession.mockRejectedValueOnce(
       new ClaudeHooksOffError('user', '/home/someone/.claude/settings.json'),

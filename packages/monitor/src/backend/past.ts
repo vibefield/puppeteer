@@ -5,7 +5,7 @@ import type {
   MonitorPastSnapshot,
   MonitorPastSpan,
   MonitorPastSpanKind,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import { folderName } from './derive.js';
 import type {
   MonitorPastWindow,

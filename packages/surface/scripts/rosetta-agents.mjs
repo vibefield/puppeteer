@@ -1,6 +1,6 @@
 /** Rosetta-backed Surface acquisition and model configuration. */
 
-import { extendRules } from '@vibecook/puppeteer-surface/sanitize';
+import { extendRules } from '@vibefield/puppeteer-surface/sanitize';
 
 export const ROSETTA_AGENT_CONFIGS = Object.freeze({
   antigravity: Object.freeze({

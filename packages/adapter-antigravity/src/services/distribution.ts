@@ -17,7 +17,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parseAntigravityVersion } from '../detection.js';
 
 const ANTIGRAVITY_COMMANDS = ['agy', 'antigravity'];

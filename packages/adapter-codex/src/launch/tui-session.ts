@@ -27,7 +27,7 @@ import type {
   PromptReceipt,
   PromptSubmission,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { createCodexObserver } from '../observation/observer.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';

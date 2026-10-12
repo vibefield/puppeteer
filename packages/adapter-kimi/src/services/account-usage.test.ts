@@ -1,7 +1,11 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AccountUsageFetchResultSchema, AccountUsageSnapshotSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import {
+  AccountUsageFetchResultSchema,
+  AccountUsageSnapshotSchema,
+  type AgentProfile,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   KIMI_USAGE_ENDPOINT,

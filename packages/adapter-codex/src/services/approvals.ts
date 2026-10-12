@@ -20,7 +20,7 @@
  * is settled here.
  */
 
-import type { InteractionEvent } from '@vibecook/puppeteer-core';
+import type { InteractionEvent } from '@vibefield/puppeteer-core';
 
 export type CodexApprovalDecision = 'approved' | 'denied';
 

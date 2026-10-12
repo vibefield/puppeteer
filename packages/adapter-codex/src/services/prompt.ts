@@ -1,4 +1,4 @@
-import type { PromptReceipt, PromptSubmission } from '@vibecook/puppeteer-core';
+import type { PromptReceipt, PromptSubmission } from '@vibefield/puppeteer-core';
 import { AppServerRequestTimeoutError } from '../transport/app-server-client.js';
 
 interface PendingPrompt {

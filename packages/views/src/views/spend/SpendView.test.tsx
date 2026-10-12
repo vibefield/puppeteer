@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   countingCommands,
@@ -14,8 +14,8 @@ import {
   runConformance,
   type FixtureClock,
   type FrameDriver,
-} from '@vibecook/puppeteer-view-sdk/testing';
-import { formatClock, keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/testing';
+import { formatClock, keyLegend } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { SPEND_MANIFEST, SPEND_ROOT_CLASS, spendMonitorView } from './index.js';
 import { spendWorld } from './lab/spend-fixtures.js';
 import { SPEND_WINDOW_MS } from './spend-scale.js';

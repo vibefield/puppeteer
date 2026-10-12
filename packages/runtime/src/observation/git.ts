@@ -3,7 +3,7 @@ import { existsSync, watch, type FSWatcher } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { promisify } from 'node:util';
-import type { AgentGitState } from '@vibecook/puppeteer-core';
+import type { AgentGitState } from '@vibefield/puppeteer-core';
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_POLL_INTERVAL_MS = 30_000;

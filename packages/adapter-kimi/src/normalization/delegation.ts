@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { boundedKimiSetAdd, kimiRecord, kimiString } from './types.js';
 
 function taskId(info: Record<string, unknown> | undefined): string | undefined {

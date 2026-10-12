@@ -1,5 +1,5 @@
 /**
- * `@vibecook/puppeteer-view-sdk/host`: the shared view host (L6). Only hosts
+ * `@vibefield/puppeteer-view-sdk/host`: the shared view host (L6). Only hosts
  * import it; a view never does (L16, MV-W1).
  *
  * - `createViewSlot`: the framework-free core. One view in a host-owned

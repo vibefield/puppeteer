@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
-import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
+import { formatClock } from '@vibefield/puppeteer-view-sdk/toolkit';
 import {
   axisMoney,
   est,

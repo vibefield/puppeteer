@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 
 /** OpenCode text-part accumulation → canonical assistant-message event. */
 export function normalizeOpenCodeAssistantMessage(

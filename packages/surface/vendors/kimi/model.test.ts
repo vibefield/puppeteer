@@ -2,8 +2,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
-import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
+import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { kimiRules } from './sanitize-captures.mjs';
 
 const vendorRoot = dirname(fileURLToPath(import.meta.url));

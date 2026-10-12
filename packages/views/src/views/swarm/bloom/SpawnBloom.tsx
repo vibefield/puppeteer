@@ -10,7 +10,7 @@ import {
   type ReactElement,
   type RefObject,
 } from 'react';
-import { ProfileGlyph } from '@vibecook/puppeteer-view-sdk/react';
+import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import { BLOOM } from './constants.js';
 import type { BloomBox } from './geometry.js';
 import { bloomView, type BloomBudView, type BloomSay, type BloomState, type BloomView } from './model.js';

@@ -25,7 +25,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { runUpdateCommand, type UpdateCommandResult, type UpdateCommandRunner } from '../distribution/update.js';
 import { buildAgentEnvironment } from '../host/environment.js';
 import type { ExtensionCatalogReader } from './catalog.js';

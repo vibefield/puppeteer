@@ -1,6 +1,6 @@
 # The toolkit
 
-`@vibecook/puppeteer-view-sdk/toolkit` holds the presentation helpers a monitor view may use: the words it says,
+`@vibefield/puppeteer-view-sdk/toolkit` holds the presentation helpers a monitor view may use: the words it says,
 the numbers it prints, the colours and marks it draws, and the loops and canvases it draws with. A view imports
 the contract (`.`), the React adapter (`/react`) and this toolkit, and nothing else (L16, enforced by
 `scripts/check-view-wall.mjs`).
@@ -49,7 +49,7 @@ The ports keep a few differences in their signatures, so a ported view prints ex
   keeps its own `Math.round`.
 - `profileGlyphSvg` writes the same element `/react`'s `ProfileGlyph` renders, as markup. The React components
   themselves (`AgentIcon`, `ProfileGlyph`) are not in the toolkit, because it is framework-free: since MV-4 they are
-  `@vibecook/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
+  `@vibefield/puppeteer-view-sdk/react`'s (M6), drawn from these marks, and the views' copies are gone.
 - `sizeCanvas` follows the timeline: it rounds the CSS size and the backing size, and writes the backing size only
   when it changes. The rain floored its backing size and wrote it on every resize. Pass `{ pixels: 'floor' }` to
   keep the rain's pixels; with integer `clientWidth` and an integer ratio the two agree anyway.
@@ -99,7 +99,7 @@ const driver = createWorkerDriver<Command, Message>({
 const stop = driver.observeMode((physics) => commands.report({ physics }));
 
 // views/swarm/physics/swarm-physics.worker.ts: the worker entry, beside it
-import { serveWorker } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { serveWorker } from '@vibefield/puppeteer-view-sdk/toolkit';
 const end = serveWorker<Command>((command) => host.handle(command)); // after every import: `ready` is honest
 // …and on `dispose`: end.close();
 ```
@@ -142,8 +142,8 @@ inline, honestly.
 ### Running the proof
 
 ```sh
-pnpm --filter @vibecook/puppeteer-view-sdk verify:worker-bundling            # this workspace's Vite
-pnpm --filter @vibecook/puppeteer-view-sdk verify:worker-bundling -- --vite <path to another vite package>
+pnpm --filter @vibefield/puppeteer-view-sdk verify:worker-bundling            # this workspace's Vite
+pnpm --filter @vibefield/puppeteer-view-sdk verify:worker-bundling -- --vite <path to another vite package>
 ```
 
 It is not part of `pnpm test`, because it starts Electron (hidden windows only, no input). It runs one Electron

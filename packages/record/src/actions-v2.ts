@@ -7,7 +7,7 @@ import type {
   ProcessExitReason,
   RuntimeRunId,
   WorkspaceInstanceId,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export const OWN_ACTION_SCHEMA_VERSION = 2 as const;
 export const MAX_PERSISTED_PROMPT_BODY_BYTES = 1024 * 1024;

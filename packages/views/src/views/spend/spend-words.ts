@@ -1,5 +1,5 @@
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { detailLine, formatClock, formatShort, formatUsd, projectName } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { detailLine, formatClock, formatShort, formatUsd, projectName } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // What the spend view says in words: money as the swarm prints it (`~$1.84`,
 // `+` when partial, `—` unpriced), the burn by the hour, each row's name and

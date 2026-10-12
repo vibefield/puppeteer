@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
-import type { MonitorPalette as SdkPalette } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorPalette as SdkPalette } from '@vibefield/puppeteer-view-sdk';
 import { readMonitorPalette } from './palette.js';
 
 const TOKENS: Readonly<Record<string, string>> = {

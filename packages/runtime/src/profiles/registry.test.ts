@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentProfile, ProfileProvider, ProfileService } from '@vibecook/puppeteer-core';
+import type { AgentProfile, ProfileProvider, ProfileService } from '@vibefield/puppeteer-core';
 import type { ProfileRegistrySnapshot } from '../types.js';
 import {
   createFileProfileStore,

@@ -1,4 +1,4 @@
-import type { MonitorParameterGroup } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorParameterGroup } from '@vibefield/puppeteer-view-sdk';
 
 // The spend view's tunables: few on purpose. The colours, the scale and the
 // motion are DESIGN §8's and are not offered; what is left is how heavy the

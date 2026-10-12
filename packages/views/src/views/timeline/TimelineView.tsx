@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react';
-import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   canvasRatio,
   createMotionLoop,
@@ -19,7 +19,7 @@ import {
   keyLegend,
   sizeCanvas,
   type MotionLoop,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { pulseMap, pulsePastFor, pulseRowsFor, PULSE_GEOMETRY } from './pulse-map.js';
 import { css, resolveTimelineInks, type TimelineInks } from './timeline-inks.js';
 import {

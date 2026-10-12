@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-adapter-claude — Claude Code native adapter
+ * @vibefield/puppeteer-adapter-claude — Claude Code native adapter
  * (DESIGN §16): hook-event registry, loopback hook bridge, and the
  * hook → AgentEvent normalizer. Detection, settings generation, and the
  * native driver build on these.

@@ -7,8 +7,8 @@ import {
   type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { startOpenCodeBackend, type OpenCodeBackend } from './launch/backend.js';
 import {
   OpenCodeClient,

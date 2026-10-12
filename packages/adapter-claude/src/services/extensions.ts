@@ -75,7 +75,7 @@ import {
   type PluginItem,
   type PluginParts,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveClaudeExecutable } from '../detection.js';
 import { CLAUDE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 

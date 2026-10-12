@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
 import { connectAgentMonitorStore, createAgentMonitorStore } from '../store.js';
 import { runtimeRunSource, type MonitorRuntimeSource } from './runtime-source.js';
 

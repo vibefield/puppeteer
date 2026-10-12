@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { MonitorSpawnDevice, MonitorSpawnMenu, MonitorSpawnProfile } from '@vibecook/puppeteer-view-sdk';
-import { fixtureInput, parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
-import { menuOf, type BloomOpenMenu } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { MonitorSpawnDevice, MonitorSpawnMenu, MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
+import { fixtureInput, parameterDefaults } from '@vibefield/puppeteer-view-sdk/testing';
+import { menuOf, type BloomOpenMenu } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { AgentList } from './AgentList.js';
 import { LIST_MANIFEST } from './index.js';
 import { ListSpawnMenu, menuDefaultIndex, menuProfiles } from './ListSpawnMenu.js';

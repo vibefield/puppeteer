@@ -15,8 +15,8 @@ import {
   safeParseAgentEvent,
   type AdapterEventCandidate,
   type TerminalAutomationOperation,
-} from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import {
   attachClaudeTuiSession,
   createClaudeSession,

@@ -1,4 +1,4 @@
-import type { EnvironmentEvent } from '@vibecook/puppeteer-core';
+import type { EnvironmentEvent } from '@vibefield/puppeteer-core';
 import type { ClaudeHookPayload } from './types.js';
 import { claudeString } from './wire.js';
 

@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "pi",
-  "adapterPackage": "@vibecook/puppeteer-adapter-pi",
+  "adapterPackage": "@vibefield/puppeteer-adapter-pi",
   "groundTruth": "packages/surface/vendors/pi/groundtruth.json",
   "groundTruthSha256": "47b6eaf893037278acff5269bf0781b0e449e3da03ac093cf7b929ff9dd6cf17",
   "semanticEvents": [

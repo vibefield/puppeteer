@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
-import type { AgentStatus, AgentView, MonitorSpawnTarget, MonitorViewCommands } from '@vibecook/puppeteer-view-sdk';
-import { AgentIcon, type ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import type { AgentStatus, AgentView, MonitorSpawnTarget, MonitorViewCommands } from '@vibefield/puppeteer-view-sdk';
+import { AgentIcon, type ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   detailLine,
   deviceWord,
@@ -12,7 +12,7 @@ import {
   modelWord,
   projectName,
   spawnTargetFor,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { normalizeListParameters } from './list-parameters.js';
 import { ListSpawnMenu } from './ListSpawnMenu.js';
 

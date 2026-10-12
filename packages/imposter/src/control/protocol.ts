@@ -19,7 +19,7 @@ import type {
   SurfaceBehaviorRelationKind,
   SurfaceConfidence,
   SurfaceModel,
-} from '@vibecook/puppeteer-surface';
+} from '@vibefield/puppeteer-surface';
 import type { Persona } from '../persona/types.ts';
 import type { RunflowDescriptor } from '../persona/types.ts';
 export type { RunflowDescriptor } from '../persona/types.ts';

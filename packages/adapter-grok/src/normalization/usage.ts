@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
+import type { MonitorFamilyUpdate } from '@vibefield/puppeteer-core/monitor-spi';
 
 interface Usage {
   inputTokens?: number | undefined;

@@ -13,8 +13,8 @@ import {
   type AgentEventSource,
   type ObservationLevel,
   type PromptSubmission,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type {
   Agent,

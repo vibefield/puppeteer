@@ -8,7 +8,7 @@ import {
   ProfileIdentitySchema,
   ProfileProviderSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ANTIGRAVITY_PROFILE_ROOT_VARIABLE, createAntigravityProfileService } from './profiles.js';
 

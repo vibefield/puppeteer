@@ -3,7 +3,7 @@ import {
   AgentNativeInvocationIntentSchema,
   type AgentNativeInvocationIntent,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 /**
  * The spawn-through wire (docs/guides/spawn-through-hosts.md): one JSON line

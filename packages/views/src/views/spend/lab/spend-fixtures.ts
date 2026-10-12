@@ -5,13 +5,13 @@ import type {
   MonitorDeviceRef,
   MonitorWait,
   ProjectTint,
-} from '@vibecook/puppeteer-view-sdk';
+} from '@vibefield/puppeteer-view-sdk';
 import {
   AGENT_MARK_PROVIDERS,
   DEFAULT_PROJECT_TINT,
   paneColour,
   projectColour,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // The spend lab's afternoon, as a host's replica hands the rows over — runtime
 // only: each priced row's `MonitorCost`, its meter (`usd`) and Core's last ten

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 import { readCodexInvocation, type CodexOptionUse, type CodexSessionReading } from './invocation-grammar.js';
 import type { CreateCodexTuiSessionOptions } from './tui-session.js';
 

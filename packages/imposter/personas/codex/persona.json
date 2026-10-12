@@ -1,7 +1,7 @@
 {
   "vendor": "codex",
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/codex"
   },
   "shimNames": ["codex"],

@@ -1,4 +1,4 @@
-import { defineModelService, type AgentModelService } from '@vibecook/puppeteer-core';
+import { defineModelService, type AgentModelService } from '@vibefield/puppeteer-core';
 
 /** ACP's configOptions belong to a session and are optional; discovery must not silently create one. */
 export function createAcpModelService(): AgentModelService {

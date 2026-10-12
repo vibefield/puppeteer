@@ -1,15 +1,15 @@
 // @vitest-environment happy-dom
 import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch } from '@vibefield/puppeteer-core';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import type { AccountUsagePort } from './account-usage-port.js';
 import { UsageColumn } from './UsageColumn.js';
 
 const draws = vi.hoisted(() => vi.fn());
-vi.mock('@vibecook/puppeteer-view-sdk/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@vibecook/puppeteer-view-sdk/react')>();
+vi.mock('@vibefield/puppeteer-view-sdk/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@vibefield/puppeteer-view-sdk/react')>();
   return {
     ...actual,
     AgentIcon(props: ComponentProps<typeof actual.AgentIcon>) {

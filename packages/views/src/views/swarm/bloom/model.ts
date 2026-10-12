@@ -14,7 +14,7 @@ import type {
   MonitorSpawnDevice,
   MonitorSpawnMenu,
   MonitorSpawnProfile,
-} from '@vibecook/puppeteer-view-sdk';
+} from '@vibefield/puppeteer-view-sdk';
 import type { SwarmClearing } from '../gpu/swarm-renderer.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import {

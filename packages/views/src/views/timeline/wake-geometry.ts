@@ -1,4 +1,4 @@
-import type { MonitorPastSpan, MonitorPastSpanKind } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorPastSpan, MonitorPastSpanKind } from '@vibefield/puppeteer-view-sdk';
 import { spanIndexAt, type LaneStatus, type TimelineLane, type TimelineLaneKind } from './timeline-lanes.js';
 
 // A lane's wake: one closed, variable-width outline that swells into work and

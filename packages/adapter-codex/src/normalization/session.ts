@@ -1,4 +1,4 @@
-import type { SessionEvent } from '@vibecook/puppeteer-core';
+import type { SessionEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str } from './types.js';
 
 /** Codex thread lifecycle -> Core session events. */

@@ -20,10 +20,10 @@ import {
   type AgentAdapterBinding,
   type ObservationLevel,
   type ProfileService,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
-import { createActionRecorder, isOwnActionV2 } from '@vibecook/puppeteer-record';
-import { createWorkspace } from '@vibecook/puppeteer-workspaces';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
+import { createActionRecorder, isOwnActionV2 } from '@vibefield/puppeteer-record';
+import { createWorkspace } from '@vibefield/puppeteer-workspaces';
 import { createFileCreationRequestRegistry, type CreationRequestRegistry } from './identity/creation-registry.js';
 import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';

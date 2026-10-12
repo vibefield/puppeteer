@@ -1,4 +1,4 @@
-import type { ReasoningEvent } from '@vibecook/puppeteer-core';
+import type { ReasoningEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str } from './types.js';
 
 /** Codex reasoning items and deltas -> Core reasoning events. */

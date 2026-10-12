@@ -38,17 +38,17 @@ test('the layered dependency checker rejects upward and concrete-provider edges'
   assert.deepEqual(
     architectureDependencyIssues(
       new Map([
-        ['packages/core', ['@vibecook/puppeteer-runtime']],
-        ['packages/runtime', ['@vibecook/puppeteer-adapter-claude']],
-        ['packages/imposter', ['@vibecook/puppeteer-core']],
-        ['packages/react', ['@vibecook/puppeteer-runtime']],
+        ['packages/core', ['@vibefield/puppeteer-runtime']],
+        ['packages/runtime', ['@vibefield/puppeteer-adapter-claude']],
+        ['packages/imposter', ['@vibefield/puppeteer-core']],
+        ['packages/react', ['@vibefield/puppeteer-runtime']],
       ]),
     ),
     [
-      'packages/core production dependency @vibecook/puppeteer-runtime violates the layered architecture',
-      'packages/runtime production dependency @vibecook/puppeteer-adapter-claude violates the layered architecture',
-      'packages/imposter production dependency @vibecook/puppeteer-core violates the layered architecture',
-      'packages/react production dependency @vibecook/puppeteer-runtime violates the layered architecture',
+      'packages/core production dependency @vibefield/puppeteer-runtime violates the layered architecture',
+      'packages/runtime production dependency @vibefield/puppeteer-adapter-claude violates the layered architecture',
+      'packages/imposter production dependency @vibefield/puppeteer-core violates the layered architecture',
+      'packages/react production dependency @vibefield/puppeteer-runtime violates the layered architecture',
     ],
   );
 });
@@ -57,8 +57,8 @@ test('the account-usage consumer boundary rejects provider quirks', () => {
   assert.deepEqual(
     accountUsageConsumerBoundaryIssues(
       new Map([
-        ['generic.ts', "import type { AccountUsageMetric } from '@vibecook/puppeteer-core';"],
-        ['adapter.ts', "import { value } from '@vibecook/puppeteer-adapter-claude';"],
+        ['generic.ts', "import type { AccountUsageMetric } from '@vibefield/puppeteer-core';"],
+        ['adapter.ts', "import { value } from '@vibefield/puppeteer-adapter-claude';"],
         ['bucket.ts', "if (window.id === 'five_hour') return '5H';"],
       ]),
     ),
@@ -98,7 +98,7 @@ test('the launch host may brand providers but rejects private adapter recipes', 
     launchHostBoundaryIssues(
       new Map([
         ['main.ts', "if (agent === 'codex') renderBrand();"],
-        ['adapter.ts', "import { prepare } from '@vibecook/puppeteer-adapter-codex';"],
+        ['adapter.ts', "import { prepare } from '@vibefield/puppeteer-adapter-codex';"],
         ['transport.ts', 'const appServerEnv = {};'],
         ['options.ts', 'const agentOptions = restore.launch;'],
       ]),
@@ -115,12 +115,12 @@ test('the full Godview boundary isolates branding and rejects provider-native be
   assert.deepEqual(
     godviewConsumerBoundaryIssues(
       new Map([
-        ['apps/godview/src/main/main.ts', "import { create } from '@vibecook/puppeteer-builtin-providers';"],
+        ['apps/godview/src/main/main.ts', "import { create } from '@vibefield/puppeteer-builtin-providers';"],
         ['packages/views/src/icons/service-marks.ts', "if (providerId === 'codex') return <svg />;"],
         ['apps/godview/src/renderer/view.tsx', "if (agent === 'claude') send('/compact');"],
         ['apps/godview/src/main/transport.ts', 'const hook_event_name = nativeEvent;'],
-        ['apps/godview/src/main/adapter.ts', "import { driver } from '@vibecook/puppeteer-adapter-codex';"],
-        ['apps/godview/src/renderer/catalog.ts', "import { all } from '@vibecook/puppeteer-builtin-providers';"],
+        ['apps/godview/src/main/adapter.ts', "import { driver } from '@vibefield/puppeteer-adapter-codex';"],
+        ['apps/godview/src/renderer/catalog.ts', "import { all } from '@vibefield/puppeteer-builtin-providers';"],
         ['apps/godview/src/renderer/math.ts', 'const angle = Math.PI * 2;'],
         ['apps/godview/src/renderer/pi.ts', "if (providerId === 'pi') render();"],
       ]),

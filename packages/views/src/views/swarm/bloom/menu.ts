@@ -7,7 +7,7 @@
 // reads the same tree and a ported view imports only the SDK, so it moved there
 // with identical output. The bloom keeps its own bud word for a desktop.
 
-import type { MonitorSpawnDevice } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorSpawnDevice } from '@vibefield/puppeteer-view-sdk';
 
 export {
   blooms,
@@ -28,7 +28,7 @@ export {
   type BloomMenuItem,
   type BloomOpenMenu,
   type BloomProfileItem,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 
 /** A desktop's name, as its bud and the words say it. */
 export function deviceWord(device: MonitorSpawnDevice): string {

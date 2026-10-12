@@ -64,6 +64,8 @@ jobs:
         with:
           node-version: 22.18.0
           cache: pnpm
+      - name: Build the pinned Ghosttea SDK used by local development
+        run: node scripts/prepare-ghosttea-ci.mjs
       - run: pnpm install --frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'

@@ -67,7 +67,7 @@ import {
   type McpTransport,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveHermesExecutable } from '../detection.js';
 import { hermesCheckoutFromWrapper, readHermesWrapper, type HermesWrapperRead } from './distribution.js';
 import { HERMES_PROFILE_ROOT_VARIABLE } from './profiles.js';

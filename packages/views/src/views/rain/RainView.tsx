@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
-import type { AgentStatus, AgentView, MonitorPalette } from '@vibecook/puppeteer-view-sdk';
-import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import type { AgentStatus, AgentView, MonitorPalette } from '@vibefield/puppeteer-view-sdk';
+import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   approachRecede,
   createMotionLoop,
@@ -10,7 +10,7 @@ import {
   projectName,
   recedeTarget,
   type MotionLoop,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { normalizeRainParameters, type RainParameters } from './rain-parameters.js';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
 

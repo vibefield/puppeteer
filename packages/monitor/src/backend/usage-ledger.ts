@@ -1,5 +1,5 @@
-import type { MonitorCostBucket, MonitorUsageState } from '@vibecook/puppeteer-core';
-import type { CostCoverage } from '@vibecook/puppeteer-view-sdk/model';
+import type { MonitorCostBucket, MonitorUsageState } from '@vibefield/puppeteer-core';
+import type { CostCoverage } from '@vibefield/puppeteer-view-sdk/model';
 import { deepEqual } from './equal.js';
 
 // The usage ledger, ported from the window's former `views/monitor/usage-ledger.ts`

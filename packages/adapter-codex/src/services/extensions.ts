@@ -156,7 +156,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveCodexExecutable } from '../detection.js';
 import { AppServerClient, spawnAppServerTransport, type Transport } from '../transport/app-server-client.js';
 import { codexProfileBinding } from './profiles.js';

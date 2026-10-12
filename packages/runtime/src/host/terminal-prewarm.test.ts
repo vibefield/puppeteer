@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider, AgentProfile } from '@vibefield/puppeteer-core';
 import { prewarmTerminalAgents } from '../index.js';
 
 function setup() {

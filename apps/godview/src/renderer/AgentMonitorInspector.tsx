@@ -3,8 +3,8 @@ import {
   monitorBlockerDetail,
   type AgentMonitorState,
   type MonitorMetricFamily,
-} from '@vibecook/puppeteer-core';
-import { formatUsd } from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-core';
+import { formatUsd } from '@vibefield/puppeteer-views';
 
 const DETAIL_FAMILIES: readonly MonitorMetricFamily[] = [
   'status',

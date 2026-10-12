@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { VERSION } from './census/harness.mjs';
 import { antigravityRules } from './privacy.mjs';
 import { sanitizeAntigravityCaptureSet } from './sanitize-captures.mjs';

@@ -20,7 +20,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parseHermesVersion } from '../detection.js';
 import { HERMES_VERSION_FLAG } from '../generated/detection.js';
 

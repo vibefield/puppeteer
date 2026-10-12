@@ -1,5 +1,5 @@
 /** Conservative Hermes CLI / TUI-gateway / hook privacy rules. */
-import { defaultRules, extendRules } from '@vibecook/puppeteer-surface/sanitize';
+import { defaultRules, extendRules } from '@vibefield/puppeteer-surface/sanitize';
 
 const extended = extendRules(
   {

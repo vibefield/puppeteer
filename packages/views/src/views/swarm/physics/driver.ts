@@ -1,4 +1,4 @@
-import { createWorkerDriver, type WorkerDriverMode } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { createWorkerDriver, type WorkerDriverMode } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { createSwarmPhysicsHost, type SwarmPhysicsHost } from './host.js';
 import {
   isSwarmFrame,

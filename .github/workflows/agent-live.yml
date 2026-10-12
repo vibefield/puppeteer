@@ -36,7 +36,7 @@ jobs:
         env:
           CLAUDE_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CLAUDE_BIN: ${{ vars.CLAUDE_BIN }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-claude test
+        run: pnpm --filter @vibefield/puppeteer-adapter-claude test
 
   codex-live:
     if: ${{ vars.CODEX_LIVE_ENABLED == 'true' }}
@@ -58,7 +58,7 @@ jobs:
         env:
           CODEX_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ vars.CODEX_BIN }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-codex test
+        run: pnpm --filter @vibefield/puppeteer-adapter-codex test
 
   grok-live:
     if: ${{ vars.GROK_LIVE_ENABLED == 'true' }}
@@ -80,7 +80,7 @@ jobs:
         env:
           GROK_LIVE: '1'
           PUPPETEER_GROK_BIN: ${{ vars.GROK_BIN }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-grok test
+        run: pnpm --filter @vibefield/puppeteer-adapter-grok test
 
   hermes-surface:
     if: ${{ vars.HERMES_LIVE_ENABLED == 'true' }}
@@ -119,7 +119,7 @@ jobs:
           PUPPETEER_HERMES_BIN: ${{ vars.HERMES_BIN }}
           HERMES_PYTHON: ${{ vars.HERMES_PYTHON }}
           HERMES_TUI_DIR: ${{ vars.HERMES_TUI_DIR }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-hermes test
+        run: pnpm --filter @vibefield/puppeteer-adapter-hermes test
 
   kimi-live:
     if: ${{ vars.KIMI_LIVE_ENABLED == 'true' }}
@@ -150,7 +150,7 @@ jobs:
         env:
           KIMI_LIVE: '1'
           PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-kimi test
+        run: pnpm --filter @vibefield/puppeteer-adapter-kimi test
 
   opencode-live:
     if: ${{ vars.OPENCODE_LIVE_ENABLED == 'true' }}
@@ -172,4 +172,4 @@ jobs:
         env:
           OPENCODE_LIVE: '1'
           PUPPETEER_OPENCODE_BIN: ${{ vars.OPENCODE_BIN }}
-        run: pnpm --filter @vibecook/puppeteer-adapter-opencode test
+        run: pnpm --filter @vibefield/puppeteer-adapter-opencode test

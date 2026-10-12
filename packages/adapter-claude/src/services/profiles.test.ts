@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
 import { CLAUDE_PROFILE_ROOT_VARIABLE, claudeProfileIdentityFrom, createClaudeProfileService } from './profiles.js';
 
 const HOME = '/Users/test';

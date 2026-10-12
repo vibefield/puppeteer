@@ -1,4 +1,4 @@
-import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibecook/puppeteer-core';
+import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibefield/puppeteer-core';
 import type { AntigravityToolFact } from './tool.js';
 import { antigravityRecord, antigravityString } from './types.js';
 function change(fact: AntigravityToolFact): WorkspaceFileChange | undefined {

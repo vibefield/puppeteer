@@ -1,4 +1,4 @@
-import type { TurnEvent } from '@vibecook/puppeteer-core';
+import type { TurnEvent } from '@vibefield/puppeteer-core';
 import { hermesString } from './types.js';
 
 /** Owns Hermes turn identity and lifecycle independently from message text. */

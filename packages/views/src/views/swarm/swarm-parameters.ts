@@ -1,4 +1,4 @@
-import type { MonitorParameterGroup } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorParameterGroup } from '@vibefield/puppeteer-view-sdk';
 import { FRICTION_AIR_CEILING, PHYSICS_HZ_FLOOR } from './physics/world.js';
 
 export interface SwarmParameters {

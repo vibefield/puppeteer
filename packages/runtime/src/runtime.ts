@@ -54,7 +54,7 @@ import {
   type ProcessExitReason,
   type SessionRuntimeState,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   createOwnActionRecordId,
   type ActionRecorderStatus,
@@ -62,7 +62,7 @@ import {
   type OwnActionV2InputFor,
   type WorkspaceCleanupOutcomeV2,
   type WorkspaceFinalizationTriggerV2,
-} from '@vibecook/puppeteer-record';
+} from '@vibefield/puppeteer-record';
 import {
   createWorkspace,
   workspaceIdentity,
@@ -73,8 +73,8 @@ import {
   type WorkspaceRequest,
   type WorkspaceFinalizationRecord,
   type WorkspaceSessionMetadata,
-} from '@vibecook/puppeteer-workspaces';
-import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-workspaces';
+import { liveUsageOrigin, type MonitorWorkspaceProvenanceState } from '@vibefield/puppeteer-core/monitor-spi';
 import type {
   MonitorRemoval,
   AdoptPreparedSessionOptions,

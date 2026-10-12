@@ -36,8 +36,8 @@ import {
   InstrumentBar,
   type AccountUsagePort,
   type HistoryPort,
-} from '@vibecook/puppeteer-views';
-import { UsageColumn } from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
+import { UsageColumn } from '@vibefield/puppeteer-views';
 import { useAgentProfiles } from './agent-profiles.js';
 import {
   TweakPanel,
@@ -46,19 +46,19 @@ import {
   type GodviewTuning,
   type TweakSection,
 } from './TweakPanel.js';
-import { MONITOR_STAGE_CLASS } from '@vibecook/puppeteer-views';
-import { useMonitorPalette } from '@vibecook/puppeteer-views';
+import { MONITOR_STAGE_CLASS } from '@vibefield/puppeteer-views';
+import { useMonitorPalette } from '@vibefield/puppeteer-views';
 import {
   loadMonitorParameters,
   monitorParameterDefaults,
   normalizeMonitorParameters,
   saveMonitorParameters,
   type MonitorParameters,
-} from '@vibecook/puppeteer-views';
-import { MONITOR_VIEWS, monitorViewFor } from '@vibecook/puppeteer-views';
-import type { MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import { frameScheduler, keepStage, MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
-import type { MonitorViewEntry } from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
+import { MONITOR_VIEWS, monitorViewFor } from '@vibefield/puppeteer-views';
+import type { MonitorTheme, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import { frameScheduler, keepStage, MonitorViewHost } from '@vibefield/puppeteer-view-sdk/host';
+import type { MonitorViewEntry } from '@vibefield/puppeteer-views';
 import {
   SAFE_AREA_BOTTOM_KEY,
   SAFE_AREA_LEFT_KEY,
@@ -70,11 +70,11 @@ import {
   STAGE_PARAMETER_GROUPS,
   VIGNETTE_OPACITY_KEY,
 } from './monitor/stage-parameters.js';
-import { FindSheet } from '@vibecook/puppeteer-views';
+import { FindSheet } from '@vibefield/puppeteer-views';
 import { usePerfHistory } from './monitor/perf-history.js';
 import { useMonitorAgents } from './monitor/useMonitorAgents.js';
 import { buildPaneAttachments } from './pane-attachments.js';
-import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibecook/puppeteer-views';
+import { dealPaneColours, EMPTY_PANE_COLOUR_LEDGER, paneColours } from '@vibefield/puppeteer-views';
 import { paneSessionLaunchSource } from './pane-session.js';
 import {
   DECK_FRAMED_CLASS,
@@ -82,7 +82,7 @@ import {
   UnusedPaneSessions,
   useDeckZoom,
   zoomLayoutApplied,
-} from '@vibecook/puppeteer-views';
+} from '@vibefield/puppeteer-views';
 import { AppPaneFrame, useAppPaneFrameVerbs } from './deck/pane-frame-host.js';
 import { AppDeckLaunchers, recordBornShell, usePaneSessionUsed } from './deck/launcher-host.js';
 import { launcherSessionUsed } from './deck/launcher-fresh.js';
@@ -93,9 +93,9 @@ import '@vibecook/ghosttea-react/styles.css';
 import '@vibecook/ghosttea-react/workspace.css';
 import './styles/tokens.css';
 import './styles/godview.css';
-import '@vibecook/puppeteer-views/styles/views.css';
-import '@vibecook/puppeteer-views/styles/deck-frame.css';
-import '@vibecook/puppeteer-views/styles/pane-launcher.css';
+import '@vibefield/puppeteer-views/styles/views.css';
+import '@vibefield/puppeteer-views/styles/deck-frame.css';
+import '@vibefield/puppeteer-views/styles/pane-launcher.css';
 import './styles/agents-drawer.css';
 
 GHOSTTY_COLOR_THEMES.splice(0, GHOSTTY_COLOR_THEMES.length, ...withGodviewTerminalThemes(GHOSTTY_COLOR_THEMES));
@@ -586,7 +586,7 @@ function Godview() {
   }, []);
 
   // Only the pane's own colour: the badge and the rest of the frame are the
-  // package's (`@vibecook/puppeteer-views` DeckFrames, PU-14), drawn into the
+  // package's (`@vibefield/puppeteer-views` DeckFrames, PU-14), drawn into the
   // pane Ghosttea lays out.
   const decoratePane = useCallback(
     (_session: SessionSummary, paneId: string): GhostteaWorkspacePaneDecoration => {

@@ -1,11 +1,11 @@
-import type { MonitorPalette } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorPalette } from '@vibefield/puppeteer-view-sdk';
 import {
   isLightTheme,
   readableColour,
   resolveCssColor,
   rgbaCss as css,
   type Rgba,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { SpendStateKey } from './spend-words.js';
 
 // The spend view's canvas: the grid, the lines, the heads at now, the hair at a

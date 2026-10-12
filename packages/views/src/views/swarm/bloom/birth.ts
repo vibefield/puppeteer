@@ -5,7 +5,7 @@
 // row in time, shrinks away (M4). Pure: AgentSwarm keeps the birth and its
 // clock; this decides what it is and when it is done.
 
-import type { AgentView, MonitorSpawnMenu } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, MonitorSpawnMenu } from '@vibefield/puppeteer-view-sdk';
 import { bodyIdOf } from '../body-id.js';
 import { clampSpawnPosition } from '../physics/spawn-clamp.js';
 import { selfDevice } from './menu.js';

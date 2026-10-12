@@ -16,7 +16,7 @@ import {
   loadModel,
   validatePayload,
   type PayloadSchema,
-} from '@vibecook/puppeteer-surface';
+} from '@vibefield/puppeteer-surface';
 import {
   OP_NAMES,
   RUNFLOW_DANGERS,

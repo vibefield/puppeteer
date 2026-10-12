@@ -171,7 +171,7 @@ export interface AgentNativeInvocationNormalizer<Options = unknown> {
 }
 
 // A registered symbol: every copy of this package that an adapter or a runtime loads reads the same one.
-const AGENT_LAUNCH_REFUSED = Symbol.for('@vibecook/puppeteer-core/agent-launch-refused');
+const AGENT_LAUNCH_REFUSED = Symbol.for('@vibefield/puppeteer-core/agent-launch-refused');
 const AGENT_LAUNCH_REFUSAL_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
 
 /**

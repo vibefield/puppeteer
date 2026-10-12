@@ -57,8 +57,8 @@ import type {
   RuntimeRunId,
   SessionRuntimeState,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import type { ActionRecorder, ActionRecorderStatus } from '@vibecook/puppeteer-record';
+} from '@vibefield/puppeteer-core';
+import type { ActionRecorder, ActionRecorderStatus } from '@vibefield/puppeteer-record';
 import type {
   WorkspaceDiff,
   WorkspaceErrorCode,
@@ -66,7 +66,7 @@ import type {
   WorkspaceMode,
   Workspace,
   WorkspaceSessionMetadata,
-} from '@vibecook/puppeteer-workspaces';
+} from '@vibefield/puppeteer-workspaces';
 import type {
   CreationRequestClaimRef,
   CreationRequestRegistry,

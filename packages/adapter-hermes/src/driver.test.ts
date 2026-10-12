@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
 

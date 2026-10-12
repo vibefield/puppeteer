@@ -7,6 +7,7 @@ import {
   buildGroundTruth,
   CLAIM_ADDRESSABLE_ASM_VERSIONS,
   diffModelVsReport,
+  eventDocumentPath,
   isClaimAddressableAsmVersion,
   loadGroundTruth,
   loadModel as loadCanonicalModel,
@@ -176,7 +177,7 @@ function writeModel(modelDir: string, events: Record<string, unknown>[]): void {
     }),
   );
   for (const event of events) {
-    const eventPath = join(modelDir, 'events', `${event.event as string}.json`);
+    const eventPath = join(modelDir, 'events', eventDocumentPath(event.event as string));
     mkdirSync(dirname(eventPath), { recursive: true });
     writeFileSync(eventPath, JSON.stringify(event));
   }
@@ -265,6 +266,25 @@ function eventDocumentPaths(modelDir: string): string[] {
 }
 
 describe('loadModel', () => {
+  it('round-trips native event identities through portable authoring paths', () => {
+    const paths = {
+      'thread/started': 'thread/started.json',
+      'trace:raw': 'trace%3Araw.json',
+      'history:<dynamic>': 'history%3A%3Cdynamic%3E.json',
+      'literal%3A*': 'literal%253A%2A.json',
+      CON: '%43ON.json',
+      'thread/NUL': 'thread/%4EUL.json',
+      'trailing.': 'trailing%2E.json',
+    };
+    for (const [event, path] of Object.entries(paths)) expect(eventDocumentPath(event)).toBe(path);
+    writeModel(
+      dir,
+      Object.keys(paths).map((event) => eventFile({ event })),
+    );
+    expect(loadModel(dir).events.map(({ event }) => event)).toEqual(Object.keys(paths).sort());
+    expect(() => eventDocumentPath('thread//started')).toThrow(/nonempty path segments/);
+  });
+
   it('loads a model dir with events sorted by name', () => {
     writeModel(dir, [eventFile({ event: 'Stop' }), eventFile({ event: 'SessionStart' })]);
     const model = loadModel(dir);

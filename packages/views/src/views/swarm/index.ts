@@ -1,6 +1,6 @@
-import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
-import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
-import { MARK_VIEW_BOX, ringOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibefield/puppeteer-view-sdk';
+import { reactMonitorView } from '@vibefield/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, ringOutline } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { AgentSwarm } from './AgentSwarm.js';
 import { SWARM_PARAMETER_GROUPS } from './swarm-parameters.js';
 // The view's own stylesheets (L18): the entry module brings them, and no host imports them.

@@ -10,7 +10,7 @@ import type {
   ProfileService,
   ProfileSupport,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { ProfileRegistrySnapshot, ProfileSetInfo } from '../types.js';
 import { createProfileOnboarding } from './onboarding.js';
 import {

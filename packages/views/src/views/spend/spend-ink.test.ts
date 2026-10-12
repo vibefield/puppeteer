@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PROJECT_TINT, parseCssColor, projectColour } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { DEFAULT_PROJECT_TINT, parseCssColor, projectColour } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { liftedFill, rgbToOklch, siblingIndex, siblingTone } from './spend-ink.js';
 
 const rosetta = parseCssColor(projectColour(1, DEFAULT_PROJECT_TINT.light))!;

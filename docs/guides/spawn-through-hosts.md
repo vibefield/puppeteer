@@ -7,7 +7,7 @@ person types in one of them to start as a managed Puppeteer session
 
 **Companions:** `docs/rfcs/004-layered-agent-runtime.md` defines the launch boundary (`launchProviders()` →
 `prepareInvocation()` → `adoptPrepared()`, with `classifyInvocation()` to ask first what an invocation is); the kit
-lives in `packages/runtime/src/host/spawn-through/` and is exported as `@vibecook/puppeteer-runtime/spawn-through`;
+lives in `packages/runtime/src/host/spawn-through/` and is exported as `@vibefield/puppeteer-runtime/spawn-through`;
 Godview (`apps/godview`) is the reference host.
 
 A person types `<name> …` in a shell your application gave them. With spawn-through, that command becomes a managed
@@ -420,14 +420,14 @@ recipe of the run it asked for, and nothing of any other run.
 
 ## 9. What a host does itself
 
-**Bundle the shim.** The entry is `@vibecook/puppeteer-runtime/spawn-through/shim`; importing it runs it. Bundle it into
+**Bundle the shim.** The entry is `@vibefield/puppeteer-runtime/spawn-through/shim`; importing it runs it. Bundle it into
 one CommonJS file and hand the file to `materializeShims`:
 
 ```ts
 import { build } from 'esbuild';
 
 await build({
-  stdin: { contents: "import '@vibecook/puppeteer-runtime/spawn-through/shim';", resolveDir: hostRoot },
+  stdin: { contents: "import '@vibefield/puppeteer-runtime/spawn-through/shim';", resolveDir: hostRoot },
   outfile: join(dist, 'agent-shim.cjs'),
   bundle: true,
   platform: 'node',
@@ -452,7 +452,7 @@ import {
   writeRendezvous,
   writeTerminals,
   type SpawnThroughHost,
-} from '@vibecook/puppeteer-runtime/spawn-through';
+} from '@vibefield/puppeteer-runtime/spawn-through';
 
 const strict = true;
 const hostLabel = '<label>';
@@ -534,7 +534,7 @@ The duties, one by one:
 
 ### Background cache prewarming
 
-`prewarmTerminalAgents` is exported from `@vibecook/puppeteer-runtime`. Both terminal hosts use this
+`prewarmTerminalAgents` is exported from `@vibefield/puppeteer-runtime`. Both terminal hosts use this
 helper; provider-specific cache work remains in adapters. Call it without awaiting it on the pane's
 creation path, once launchers are available and when a new terminal opens. Hosts may pass an already
 filtered `providers` list so an installed but unoffered agent is never warmed.
@@ -568,7 +568,7 @@ CODEX_STARTUP_SAMPLES=12 \
 CODEX_STARTUP_BASELINE=<commit-before-change> \
 CODEX_STARTUP_CACHE=prewarmed \
 CODEX_STARTUP_OUT=/absolute/path/startup.json \
-pnpm --filter @vibecook/puppeteer-adapter-codex bench:startup
+pnpm --filter @vibefield/puppeteer-adapter-codex bench:startup
 ```
 
 This uses the installed CLI and its native account/cache. Each sample creates an empty thread,
@@ -602,6 +602,10 @@ control, so it was not retained.
 
 - **POSIX only.** The shim needs `execve`; a Windows host does not intercept. The shim's own walk needs a `ps` that
   prints `lstart` (procps and the BSDs do; BusyBox does not — there the walk finds no shell, and the launch runs).
+- **Exec failure recovery depends on the host's runtime.** The shim checks that the executable exists, is a file,
+  and has execute permission before calling `execve`, so it can report those failures and fall back or refuse.
+  Node 22.18 aborts on a failure inside the system call, including an invalid binary or a filesystem race after those
+  checks. [Node 26.1 changed those failures to catchable exceptions](https://nodejs.org/api/process.html#processexecvefile-args-env).
 - **zsh only**, for now (§6).
 - **Strict needs adapters that classify** (§7). An agent whose adapter does not gets no launcher from a strict host.
 - **A strict host that is down still refuses in its own terminals.** The shim cannot ask an adapter what an invocation

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-surface",
+  "name": "@vibefield/puppeteer-surface",
   "version": "0.1.8",
   "type": "module",
   "description": "Vendor-neutral evidence and Agent Surface Model (ASM) runtime for captured coding-agent behavior.",

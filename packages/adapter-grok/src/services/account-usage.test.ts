@@ -1,4 +1,4 @@
-import { AccountUsageSnapshotSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import { AccountUsageSnapshotSchema, type AgentProfile } from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   createGrokAccountUsageService,

@@ -5,7 +5,7 @@ import type {
   ToolCallStatus,
   ToolKind,
 } from '@agentclientprotocol/sdk';
-import type { WorkspaceEvent, WorkspaceFileChange } from '@vibecook/puppeteer-core';
+import type { WorkspaceEvent, WorkspaceFileChange } from '@vibefield/puppeteer-core';
 
 interface AcpWorkspaceOperation {
   kind?: ToolKind | null;

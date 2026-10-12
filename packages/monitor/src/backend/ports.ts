@@ -7,7 +7,7 @@ import type {
   MonitorPastSnapshot,
   MonitorSpawnDevice,
   MonitorSpawnTarget,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import type { AgentMonitorSource } from '../store.js';
 
 /** The runtime's door into the backend: the store's source, plus the one verb the runtime answers (M3). */

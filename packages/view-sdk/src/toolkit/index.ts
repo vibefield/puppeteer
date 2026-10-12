@@ -1,4 +1,4 @@
-// THE TOOLKIT (`@vibecook/puppeteer-view-sdk/toolkit`): presentation helpers a
+// THE TOOLKIT (`@vibefield/puppeteer-view-sdk/toolkit`): presentation helpers a
 // view may use, and nothing that computes a business fact — those arrive in
 // the row, computed once by the backend. Framework-free and DOM-light, so a
 // view drawn with React, a canvas or plain DOM uses the same words, numbers,

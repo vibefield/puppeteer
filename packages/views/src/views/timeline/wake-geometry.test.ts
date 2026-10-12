@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import type { MonitorPastSpan } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import { historyLanes, laneFor, type TimelineLane } from './timeline-lanes.js';
 import {
   capsRun,

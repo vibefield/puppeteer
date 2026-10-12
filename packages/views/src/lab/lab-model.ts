@@ -1,5 +1,11 @@
-import { presentAgentMonitorHeadline } from '@vibecook/puppeteer-core';
-import type { AgentView, MonitorCost, MonitorDeviceRef, MonitorModel, MonitorWait } from '@vibecook/puppeteer-view-sdk';
+import { presentAgentMonitorHeadline } from '@vibefield/puppeteer-core';
+import type {
+  AgentView,
+  MonitorCost,
+  MonitorDeviceRef,
+  MonitorModel,
+  MonitorWait,
+} from '@vibefield/puppeteer-view-sdk';
 import type { MonitorAgent } from '../monitor/types.js';
 import type { LabAgent } from '../views/swarm/lab/fixtures.js';
 import { labWorld, type LabWorldOptions } from './lab-world.js';

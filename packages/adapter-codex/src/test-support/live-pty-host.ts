@@ -1,5 +1,5 @@
 import { stripVTControlCharacters } from 'node:util';
-import type { AgentHost, TerminalAutomationOperation, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentHost, TerminalAutomationOperation, TerminalSpec } from '@vibefield/puppeteer-core';
 import { spawn, type IPty } from 'node-pty';
 
 interface PtyRecord {

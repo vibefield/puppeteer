@@ -1,7 +1,7 @@
 import { createElement, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { AgentView, ModelChanges, MonitorModel, MonitorTheme, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
+import type { AgentView, ModelChanges, MonitorModel, MonitorTheme, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibefield/puppeteer-view-sdk/host';
 import { mountViewLab } from '../../../lab/lab-stage.js';
 import { useMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults } from '../../../monitor/parameters.js';

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { AgentNativeInvocation, NativeInvocationOption } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, NativeInvocationOption } from '@vibefield/puppeteer-core';
 import { INVOCATION_GRAMMAR, INVOCATION_GRAMMAR_VERSION } from './invocation-grammar.js';
 import { normalizeAntigravityNativeInvocation as normalize } from './native-invocation.js';
 

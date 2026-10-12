@@ -13,8 +13,8 @@ import {
 } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import type { ProjectIdentityStore } from '@vibecook/puppeteer-monitor';
-import { workspaceIdentity } from '@vibecook/puppeteer-workspaces';
+import type { ProjectIdentityStore } from '@vibefield/puppeteer-monitor';
+import { workspaceIdentity } from '@vibefield/puppeteer-workspaces';
 import type { AgentProjectRef } from '../protocol.js';
 
 /**

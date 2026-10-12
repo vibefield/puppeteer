@@ -1,9 +1,9 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron';
-import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
-import { isOwnActionV2, type OwnActionRecord } from '@vibecook/puppeteer-record';
-import type { AgentRuntime, ResumeAgentOptions } from '@vibecook/puppeteer-runtime';
+import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibefield/puppeteer-core';
+import { isOwnActionV2, type OwnActionRecord } from '@vibefield/puppeteer-record';
+import type { AgentRuntime, ResumeAgentOptions } from '@vibefield/puppeteer-runtime';
 import type {
   CreateAgentSessionResult,
   HistorySearchHit,

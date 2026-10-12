@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentNativeInvocation } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import {
   captureKimiContinuationState,
   normalizeKimiNativeInvocation,

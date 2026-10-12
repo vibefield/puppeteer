@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 export const PI_CONTRACT = 'pi-session@3+surface@0.84.3';
 export const PI_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
+import { parameterDefaults } from '@vibefield/puppeteer-view-sdk/testing';
 import { SPEND_MANIFEST } from './index.js';
 import { paintSpend, type Rgba, type SpendInks, type SpendScene } from './spend-paint.js';
 import {

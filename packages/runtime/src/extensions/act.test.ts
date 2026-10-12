@@ -18,7 +18,7 @@ import {
   type PluginItem,
   type SkillItem,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { UpdateCommandRequest } from '../distribution/update.js';
 import { createExtensionActRunner } from './act.js';
 import { createExtensionCatalogReader } from './catalog.js';

@@ -3,7 +3,7 @@ import {
   isNewerMonitorRevision,
   type AgentMonitorState,
   type MonitorNotification,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface AgentMonitorRemoval {
   runtimeRunId: string;

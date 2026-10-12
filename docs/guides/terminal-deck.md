@@ -1,6 +1,6 @@
 # Shared terminal deck interactions
 
-Godview and VibeField use `@vibecook/puppeteer-views/deck` for pane chrome and
+Godview and VibeField use `@vibefield/puppeteer-views/deck` for pane chrome and
 fullscreen choreography. Import `styles/deck-frame.css`, give the deck wrapper
 `vf-deck-zoom`, and pass `useDeckZoom(...).toggle` to both the frame's zoom verb
 and `GhostteaWorkspace.onTogglePaneZoom`. Ghosttea owns configured shortcuts;

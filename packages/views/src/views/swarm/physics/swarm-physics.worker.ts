@@ -1,4 +1,4 @@
-import { serveWorker } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { serveWorker } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { createSwarmPhysicsHost } from './host.js';
 import type { SwarmPhysicsCommand } from './protocol.js';
 

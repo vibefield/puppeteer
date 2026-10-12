@@ -2,7 +2,7 @@ import {
   readNativeInvocationArguments,
   type NativeInvocationGrammar,
   type NativeInvocationOptionValue,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 function classifyOptions(options: readonly NativeInvocationOptionValue[]) {
   const finalOptions = [...options].reverse();

@@ -5,7 +5,7 @@ import {
   fetchCodexAccountUsageForProfile,
   normalizeCodexAccountUsage,
 } from './account-usage.js';
-import type { AgentProfile } from '@vibecook/puppeteer-core';
+import type { AgentProfile } from '@vibefield/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
 
 const fixture = {

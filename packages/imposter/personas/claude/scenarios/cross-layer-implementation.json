@@ -160,7 +160,7 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.claude" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.claude" },
             "tool_use_id": "$uuid:baseline-test"
           }
         }
@@ -174,7 +174,7 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.claude" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.claude" },
             "tool_use_id": "$uuid:baseline-test",
             "error": "Expected long-form runflow contract is not implemented yet.",
             "duration_ms": 195,
@@ -229,7 +229,7 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.claude" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.claude" },
             "tool_use_id": "$uuid:approved-test"
           }
         }
@@ -243,7 +243,7 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.claude" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.claude" },
             "permission_suggestions": [{ "type": "addRules", "destination": "session" }]
           }
         }
@@ -257,7 +257,7 @@
           "with": {
             "prompt_id": "$uuid:prompt",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.claude" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.claude" },
             "tool_response": { "output": "All Claude persona scenario tests passed.", "exitCode": 0 },
             "tool_use_id": "$uuid:approved-test",
             "duration_ms": 265
@@ -309,7 +309,7 @@
             "agent_id": "implementation-tests",
             "agent_type": "test-runner",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter typecheck" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter typecheck" },
             "tool_use_id": "$uuid:typecheck"
           }
         }
@@ -325,7 +325,7 @@
             "agent_id": "implementation-tests",
             "agent_type": "test-runner",
             "tool_name": "Bash",
-            "tool_input": { "command": "pnpm --filter @vibecook/puppeteer-imposter typecheck" },
+            "tool_input": { "command": "pnpm --filter @vibefield/puppeteer-imposter typecheck" },
             "tool_response": { "output": "Typecheck passed.", "exitCode": 0 },
             "tool_use_id": "$uuid:typecheck",
             "duration_ms": 190

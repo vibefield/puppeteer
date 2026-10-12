@@ -4,7 +4,7 @@
  *
  * This module is SELF-CONTAINED by design: no relative imports, erasable
  * syntax only. Surface-owned audit scripts and adapter projection generators
- * import it as `@vibecook/puppeteer-surface`, which node (≥22.18, type
+ * import it as `@vibefield/puppeteer-surface`, which node (≥22.18, type
  * stripping) can execute — node does not remap the repo's `.js`-suffixed
  * relative imports, so anything reachable from those scripts must live in
  * this one file. It is therefore the package root export, not a barrel.
@@ -1682,22 +1682,32 @@ function validateBehavior(
   return behavior as unknown as SurfaceBehavior;
 }
 
-/**
- * Event documents, with the event name each one must declare.
- *
- * The tree mirrors the vendor's own namespace: `events/thread/started.json` is
- * `thread/started`. Flat vendors are the degenerate case, so claude's
- * `events/Stop.json` is unaffected. This exists because JSON-RPC families name
- * their methods with `/` — `item/commandExecution/requestApproval` cannot be a
- * filename, and encoding the slash away would put a name in the model that the
- * vendor never uses.
- */
+/** A portable authoring path; event identities keep the vendor's exact spelling. */
+export function eventDocumentPath(event: string): string {
+  const segments = event.split('/');
+  if (segments.some((segment) => !segment)) throw new Error('ASM: event names need nonempty path segments');
+  const escape = (character: string): string =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`;
+  return `${segments
+    .map((segment) => {
+      let encoded = segment.replace(/[%<>:"\\|?*\u0000-\u001f]/g, escape);
+      if (/^(?:con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³]|conin\$|conout\$)(?:\.|$)/i.test(encoded)) {
+        encoded = escape(encoded[0]!) + encoded.slice(1);
+      }
+      return encoded.replace(/[ .]+$/g, (suffix) => [...suffix].map(escape).join(''));
+    })
+    .join('/')}.json`;
+}
+
+/** Namespaces use directories; percent escapes preserve names Windows cannot store. */
 function eventDocumentFiles(dir: string, prefix = ''): Array<{ path: string; name: string }> {
   const found: Array<{ path: string; name: string }> = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...eventDocumentFiles(path, `${prefix}${entry.name}/`));
-    else if (entry.name.endsWith('.json')) found.push({ path, name: `${prefix}${basename(entry.name, '.json')}` });
+    else if (entry.name.endsWith('.json')) {
+      found.push({ path, name: decodeURIComponent(`${prefix}${basename(entry.name, '.json')}`) });
+    }
   }
   return found;
 }

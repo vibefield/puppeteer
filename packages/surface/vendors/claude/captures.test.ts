@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validatePayload } from '@vibecook/puppeteer-surface';
+import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 
 interface CapturedHookRecord {

@@ -1,5 +1,5 @@
-import type { AgentView, EndedLaneView, MonitorHistory, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
-import { laneWaitWords, stateTone } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { AgentView, EndedLaneView, MonitorHistory, MonitorPastSpan } from '@vibefield/puppeteer-view-sdk';
+import { laneWaitWords, stateTone } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { TIMELINE_HORIZON_MS } from './timeline-scale.js';
 
 // The timeline's lanes: the rows it is handed, and the record's past when the

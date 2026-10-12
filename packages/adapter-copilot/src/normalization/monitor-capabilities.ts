@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 export const COPILOT_CONTRACT = 'copilot-session-events@1.0.80';
 export const COPILOT_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
   {

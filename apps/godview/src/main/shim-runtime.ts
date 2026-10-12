@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { delimiter, dirname, resolve } from 'node:path';
-import type { SpawnThroughShimRuntime } from '@vibecook/puppeteer-runtime/spawn-through';
+import type { SpawnThroughShimRuntime } from '@vibefield/puppeteer-runtime/spawn-through';
 
 export type ShimRuntimeChoice =
   | { kind: 'node'; runtime: SpawnThroughShimRuntime; command: string; version: string }

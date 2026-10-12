@@ -4,7 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
 import { auditEvidence } from '../packages/surface/scripts/check-evidence.mjs';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 import { replayAgentSurface } from './replay-agent-surface.mjs';
@@ -132,11 +132,11 @@ export function verifyAgentSurface({
     ? {
         surface: runGate(
           'pnpm',
-          ['--filter', '@vibecook/puppeteer-surface', 'run', `surface:audit:${vendor}`],
+          ['--filter', '@vibefield/puppeteer-surface', 'run', `surface:audit:${vendor}`],
           repoRoot,
         ),
-        adapter: runGate('pnpm', ['--filter', `@vibecook/puppeteer-adapter-${vendor}`, 'test'], repoRoot),
-        imposter: runGate('pnpm', ['--filter', '@vibecook/puppeteer-imposter', 'test'], repoRoot),
+        adapter: runGate('pnpm', ['--filter', `@vibefield/puppeteer-adapter-${vendor}`, 'test'], repoRoot),
+        imposter: runGate('pnpm', ['--filter', '@vibefield/puppeteer-imposter', 'test'], repoRoot),
         packages: runGate('pnpm', ['packages:check'], repoRoot),
         pack: runGate('pnpm', ['pack:check'], repoRoot),
         docs: runGate('pnpm', ['support:check'], repoRoot),

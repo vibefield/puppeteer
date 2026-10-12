@@ -1,7 +1,7 @@
 import { open, readdir, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { captureJsonlBoundary } from '@vibecook/puppeteer-native-observation';
+import { captureJsonlBoundary } from '@vibefield/puppeteer-native-observation';
 import { antigravityPrompt, antigravityRecord } from '../normalization/types.js';
 export interface AntigravitySessionLocation {
   sessionId: string;

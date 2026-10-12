@@ -2,8 +2,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { loadModel, validateSanitizedPayload } from '@vibecook/puppeteer-surface';
-import { checkCaptureDirectory, defaultRules } from '@vibecook/puppeteer-surface/sanitize';
+import { loadModel, validateSanitizedPayload } from '@vibefield/puppeteer-surface';
+import { checkCaptureDirectory, defaultRules } from '@vibefield/puppeteer-surface/sanitize';
 import { opencodeRules } from './privacy.mjs';
 
 const VERSION = '1.18.16';

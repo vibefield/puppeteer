@@ -5,8 +5,8 @@ import {
   type AdapterEventCandidate,
   type AgentHost,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createOpenCodeTuiSession, type OpenCodeTuiSession } from './driver.js';
 import { createOpenCodeImposterFixture } from './test-support/imposter.js';
 

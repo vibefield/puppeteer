@@ -19,8 +19,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
-import { prepareCodexTuiSession } from '@vibecook/puppeteer-adapter-codex';
+import type { AgentHost, TerminalSpec } from '@vibefield/puppeteer-core';
+import { prepareCodexTuiSession } from '@vibefield/puppeteer-adapter-codex';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 

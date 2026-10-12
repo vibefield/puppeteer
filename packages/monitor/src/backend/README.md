@@ -2,7 +2,7 @@
 
 `createMonitorBackend({ runs, host, identity, clock?, scheduler?, sink, ... })` computes every business fact about
 this desktop's agents once, beside the runtime, and emits the contract's `MonitorModelSnapshot` / `MonitorModelChange`
-(`@vibecook/puppeteer-view-sdk/model`, types only — L3). Node-safe, no DOM, no React, no `node:` import either: the
+(`@vibefield/puppeteer-view-sdk/model`, types only — L3). Node-safe, no DOM, no React, no `node:` import either: the
 same code runs in fieldd and in puppeteer Godview's Electron main. Peers' rows are NOT assembled here: each agent is
 computed at its home desktop (MV-D22) and the sync plane carries them (L8); the replica merges by id.
 

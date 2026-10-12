@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-runtime",
+  "name": "@vibefield/puppeteer-runtime",
   "version": "0.1.8",
   "type": "module",
   "description": "Unified Puppeteer agent runtime: provider registry, session lifecycle, workspace isolation, events, and action recording.",
@@ -50,9 +50,9 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-record": "workspace:*",
-    "@vibecook/puppeteer-workspaces": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-record": "workspace:*",
+    "@vibefield/puppeteer-workspaces": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {

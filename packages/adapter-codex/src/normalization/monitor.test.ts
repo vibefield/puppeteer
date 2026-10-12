@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibefield/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { CodexMonitorEvidence } from './monitor.js';
 import { CodexNotificationNormalizer } from './pipeline.js';
 

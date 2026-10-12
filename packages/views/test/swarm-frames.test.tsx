@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MonitorModel, MonitorViewInput, MonitorViewInstance, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import { countingCommands, parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
+import type { MonitorModel, MonitorViewInput, MonitorViewInstance, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import { countingCommands, parameterDefaults } from '@vibefield/puppeteer-view-sdk/testing';
 import { labModel } from '../src/lab/lab-model.js';
 import { LAB_NOW_MS, seededRandom } from '../src/lab/lab-world.js';
 import { readMonitorPalette } from '../src/monitor/palette.js';

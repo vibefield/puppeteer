@@ -96,7 +96,7 @@ import {
   type McpTransport,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveGrokExecutable } from '../detection.js';
 import { GROK_PROFILE_ROOT_VARIABLE } from './profiles.js';
 

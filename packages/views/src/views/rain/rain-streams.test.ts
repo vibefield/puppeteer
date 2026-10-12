@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import { rainDataString, rainTailLength, reconcileRainColumns, type RainDrop } from './rain-streams.js';
 
 const row = (overrides: AgentViewFixturePartial): AgentView =>

@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { KIMI_MONITOR_CAPABILITIES, KimiMonitorEvidence } from './monitor.js';
 import type { KimiObservedRecord } from '../observation/session-observer.js';
 

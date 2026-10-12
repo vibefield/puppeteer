@@ -1,7 +1,7 @@
 {
   "vendor": "opencode",
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/opencode"
   },
   "shimNames": ["opencode"],

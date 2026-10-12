@@ -43,7 +43,7 @@ import type {
   ProfileSignIn,
   SignInService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolvePiExecutable } from '../detection.js';
 
 /** Pi's native root variable; also a provider launch allow-list entry. */

@@ -9,9 +9,9 @@ import type {
   MonitorPastSpan,
   MonitorView,
   ProjectTint,
-} from '@vibecook/puppeteer-view-sdk';
-import { lendHistory, viewWantsHistory } from '@vibecook/puppeteer-view-sdk/host';
-import { projectColourFor } from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk';
+import { lendHistory, viewWantsHistory } from '@vibefield/puppeteer-view-sdk/host';
+import { projectColourFor } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // THE PERF HARNESS'S HISTORY (TLV). Godview has no record of its own, so it lends a view no history (MV-D4; the v2
 // shapes, item 9). The paired harness (`perf/harness.mjs --history-ended <n>`) sets `window.__gvPerfHistory` before

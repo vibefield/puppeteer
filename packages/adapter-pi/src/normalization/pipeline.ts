@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { normalizePiNative } from './adapter.js';
 import { normalizePiCompaction } from './compaction.js';
 import { normalizePiAssistantMessage } from './conversation.js';

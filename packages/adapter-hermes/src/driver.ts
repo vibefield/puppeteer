@@ -8,8 +8,8 @@ import {
   type AgentAdapterBinding,
   type AgentTuiSessionOptions,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { HERMES_ADAPTER_CAPABILITIES } from './detection.js';
 import { startHermesGatewayHost, type HermesGatewayHost } from './launch/gateway-host.js';
 import { buildHermesAttachLaunch } from './launch/recipe.js';

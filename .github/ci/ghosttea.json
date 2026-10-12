@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/vibecook-dev/ghosttea.git",
+  "revision": "a0d657d0037317f3c91d34db958020d597f11141",
+  "sdkSourceRevision": "10d0b17bbc14e06d0bae8a752ac444cbb5aee286",
+  "patch": "ghosttea-sdk.patch",
+  "patchSha256": "315c0f88e783ef530e556bfd90b1cfbc9193c79275b6200afc61ce1654216ca4"
+}

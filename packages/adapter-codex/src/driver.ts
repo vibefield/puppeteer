@@ -24,8 +24,8 @@ import {
   type AgentAdapterBinding,
   type ObservationLevel,
   type PromptSubmission,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch } from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { AppServerClient, spawnAppServerTransport, type Transport } from './transport/app-server-client.js';
 import { CodexNotificationNormalizer } from './normalization/pipeline.js';
 import { CodexMonitorEvidence } from './normalization/monitor.js';

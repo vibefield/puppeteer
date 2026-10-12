@@ -6,9 +6,9 @@ import type {
   AgentProfile,
   AgentProviderDescriptor,
   ProfileService,
-} from '@vibecook/puppeteer-core';
-import type { AgentProvider } from '@vibecook/puppeteer-runtime';
-import { createAcpModelService, createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+} from '@vibefield/puppeteer-core';
+import type { AgentProvider } from '@vibefield/puppeteer-runtime';
+import { createAcpModelService, createAcpSession, type AcpConnector } from '@vibefield/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
   createAntigravityAccountUsageService,
@@ -22,7 +22,7 @@ import {
   restoreAntigravityContinuationState,
   type AntigravityNativeInvocationOptions,
   type CreateAntigravityTuiSessionOptions,
-} from '@vibecook/puppeteer-adapter-antigravity';
+} from '@vibefield/puppeteer-adapter-antigravity';
 import {
   CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeAccountUsageService,
@@ -38,7 +38,7 @@ import {
   prepareClaudeTuiSession,
   restoreClaudeContinuationState,
   type ClaudeNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-claude';
+} from '@vibefield/puppeteer-adapter-claude';
 import {
   createCodexAccountUsageService,
   createCodexDistributionService,
@@ -52,7 +52,7 @@ import {
   prewarmCodex,
   restoreCodexContinuationState,
   type CodexNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-codex';
+} from '@vibefield/puppeteer-adapter-codex';
 import {
   captureCopilotContinuationState,
   createCopilotDistributionService,
@@ -64,7 +64,7 @@ import {
   restoreCopilotContinuationState,
   type CopilotNativeInvocationOptions,
   type CreateCopilotTuiSessionOptions,
-} from '@vibecook/puppeteer-adapter-copilot';
+} from '@vibefield/puppeteer-adapter-copilot';
 import {
   captureGrokContinuationState,
   createGrokDistributionService,
@@ -77,7 +77,7 @@ import {
   restoreGrokContinuationState,
   type GrokBackend,
   type GrokNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-grok';
+} from '@vibefield/puppeteer-adapter-grok';
 import {
   captureKimiContinuationState,
   createKimiAccountUsageService,
@@ -91,7 +91,7 @@ import {
   restoreKimiContinuationState,
   type CreateKimiTuiSessionOptions,
   type KimiNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-kimi';
+} from '@vibefield/puppeteer-adapter-kimi';
 import {
   captureOpenCodeContinuationState,
   createOpenCodeDistributionService,
@@ -104,7 +104,7 @@ import {
   restoreOpenCodeContinuationState,
   type CreateOpenCodeTuiSessionOptions,
   type OpenCodeNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-opencode';
+} from '@vibefield/puppeteer-adapter-opencode';
 import {
   captureHermesContinuationState,
   createHermesDistributionService,
@@ -117,7 +117,7 @@ import {
   restoreHermesContinuationState,
   type CreateHermesTuiSessionOptions,
   type HermesNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-hermes';
+} from '@vibefield/puppeteer-adapter-hermes';
 import {
   capturePiContinuationState,
   createPiDistributionService,
@@ -130,7 +130,7 @@ import {
   restorePiContinuationState,
   type CreatePiTuiSessionOptions,
   type PiNativeInvocationOptions,
-} from '@vibecook/puppeteer-adapter-pi';
+} from '@vibefield/puppeteer-adapter-pi';
 import type {
   AcpAgentOptions,
   AntigravityAgentOptions,

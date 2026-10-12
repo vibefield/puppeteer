@@ -59,7 +59,7 @@ Run the narrow checks while iterating, then the repository gate:
 
 ```sh
 pnpm surface:audit
-pnpm --filter @vibecook/puppeteer-surface surface:workflow:check
+pnpm --filter @vibefield/puppeteer-surface surface:workflow:check
 pnpm surface:groundtruth:check
 pnpm groundtruth:mapping:check
 pnpm support:check
@@ -69,7 +69,7 @@ pnpm test
 Generate the vendor ASM first, then rebuild/check the canonical artifacts:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-surface run surface:model:<vendor>
+pnpm --filter @vibefield/puppeteer-surface run surface:model:<vendor>
 pnpm surface:groundtruth:write -- packages/surface/vendors/<vendor>/model/<vendor>@<version>
 pnpm groundtruth:mapping:write
 pnpm support:write

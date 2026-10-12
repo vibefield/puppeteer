@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture } from '@vibefield/puppeteer-view-sdk/testing';
 import { SPEND_STEP_MS, SPEND_WINDOW_MS } from './spend-scale.js';
 import {
   lineAt,

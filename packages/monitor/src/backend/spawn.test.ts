@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorAgentRow } from '@vibecook/puppeteer-view-sdk/model';
+import type { MonitorAgentRow } from '@vibefield/puppeteer-view-sdk/model';
 import type { MonitorHostProfileSet } from './ports.js';
 import { blockedProfileSets, signedInLabels, spawnMenuOf } from './spawn.js';
 import { DEVICE, T0 } from './testing/fixtures.js';

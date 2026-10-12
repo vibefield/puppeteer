@@ -8,7 +8,7 @@ import {
   watchDrawnSessions,
   type LauncherOutcome,
   type LauncherPort,
-} from '@vibecook/puppeteer-views/launcher';
+} from '@vibefield/puppeteer-views/launcher';
 import type { CreateAgentSessionResult, LauncherAgentRow } from '../../protocol.js';
 import type { MonitorAgent } from '../monitor/types.js';
 import {

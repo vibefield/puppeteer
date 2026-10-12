@@ -27,7 +27,7 @@ import type {
   InstallCandidate,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { parseKimiVersion } from '../detection.js';
 
 /** `~/.kimi-code/bin/kimi`; the capture is the Kimi home that owns the install. */

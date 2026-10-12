@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-claude",
+  "name": "@vibefield/puppeteer-adapter-claude",
   "version": "0.1.8",
   "type": "module",
   "description": "Claude Code native adapter: hook registry, loopback hook bridge, event normalizer, settings generation.",
@@ -44,13 +44,13 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
     "zod": "^4.4.3",
-    "@vibecook/puppeteer-native-observation": "workspace:*"
+    "@vibefield/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-surface": "workspace:*",
-    "@vibecook/puppeteer-testing": "workspace:*",
+    "@vibefield/puppeteer-surface": "workspace:*",
+    "@vibefield/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15"
   }
 }

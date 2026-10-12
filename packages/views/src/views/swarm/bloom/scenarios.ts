@@ -1,7 +1,7 @@
 // The prototype's scenarios (draft/spawn-bloom/data.js) as spawn menus: the
 // trees the design was audited on, for tests, the lab and a host's catalog.
 
-import type { MonitorSpawnDevice, MonitorSpawnMenu, MonitorSpawnProfile } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorSpawnDevice, MonitorSpawnMenu, MonitorSpawnProfile } from '@vibefield/puppeteer-view-sdk';
 
 const NATIVE: MonitorSpawnProfile = {
   id: 'native',

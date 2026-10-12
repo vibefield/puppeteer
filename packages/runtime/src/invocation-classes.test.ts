@@ -5,7 +5,7 @@ import {
   type AgentHost,
   type AgentNativeInvocation,
   type AgentNativeInvocationResolution,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';
 

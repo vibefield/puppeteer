@@ -1,4 +1,4 @@
-import type { CompactionCompletedEvent, CompactionStartedEvent } from '@vibecook/puppeteer-core';
+import type { CompactionCompletedEvent, CompactionStartedEvent } from '@vibefield/puppeteer-core';
 
 export function normalizeClaudeCompactionStarted(compactionId: string, trigger?: string): CompactionStartedEvent {
   return { type: 'compaction:started', compactionId, trigger };

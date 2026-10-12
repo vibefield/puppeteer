@@ -6,7 +6,7 @@ import {
   type MonitorModelChange,
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import {
   createMonitorReplica,
   DEFAULT_GAP_BUFFER,

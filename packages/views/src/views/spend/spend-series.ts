@@ -1,4 +1,4 @@
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
 
 // The spend view's lines ("Where the Money Went", SV; design B, Watchlist,
 // `draft/godview-spend/` §B′). Runtime only (James, 2026-10-03): a line is

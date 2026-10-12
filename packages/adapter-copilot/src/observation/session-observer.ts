@@ -1,5 +1,10 @@
-import { createAppendOnlyJsonlTail } from '@vibecook/puppeteer-native-observation';
-import type { AgentEvent, AgentEventConfidence, AgentEventSource, AgentEventSourceRef } from '@vibecook/puppeteer-core';
+import { createAppendOnlyJsonlTail } from '@vibefield/puppeteer-native-observation';
+import type {
+  AgentEvent,
+  AgentEventConfidence,
+  AgentEventSource,
+  AgentEventSourceRef,
+} from '@vibefield/puppeteer-core';
 import { CopilotSessionNormalizer } from '../normalization/pipeline.js';
 import { copilotRecord, copilotSourceRef } from '../normalization/types.js';
 import type { CopilotSessionLocation } from './session-store.js';

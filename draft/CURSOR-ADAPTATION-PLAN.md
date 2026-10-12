@@ -184,7 +184,7 @@ Closest implementation precedents:
 | Display name | Cursor Agent |
 | User-facing command | `agent` (primary); `cursor-agent` is the legacy shim |
 | TUI launch | `agent` with no subcommand |
-| Adapter package | `@vibecook/puppeteer-adapter-cursor` |
+| Adapter package | `@vibefield/puppeteer-adapter-cursor` |
 | Adapter directory | `packages/adapter-cursor` |
 | Surface directory | `packages/surface/vendors/cursor` |
 | Imposter persona | `packages/imposter/personas/cursor` |

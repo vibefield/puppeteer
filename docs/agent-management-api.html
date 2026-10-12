@@ -1227,8 +1227,8 @@
               Both createAgentRuntime() and createBuiltinAgentRuntime() expose the same management methods. Capability
               lists identify which composed providers support each family.
             </p>
-            <pre><code>import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+            <pre><code>import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
 
 declare const host: AgentHost; // Supplied by the application.
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
@@ -1248,8 +1248,8 @@ for (const account of accounts) {
 
 await runtime.dispose();</code></pre>
             <p>
-              Management DTOs are exported from <code>@vibecook/puppeteer-core</code>; runtime request/configuration
-              types are exported from <code>@vibecook/puppeteer-runtime</code>. Provider IDs are opaque outside the
+              Management DTOs are exported from <code>@vibefield/puppeteer-core</code>; runtime request/configuration
+              types are exported from <code>@vibefield/puppeteer-runtime</code>. Provider IDs are opaque outside the
               adapter. A profile uses <code>provider</code>; management requests commonly use <code>providerId</code>.
             </p>
           </section>
@@ -2417,7 +2417,7 @@ interface DistributionRuntimeOptions {
   /** PATH-style list searched for candidates; defaults to process.env.PATH. */
   searchPath?: string;
 }</code></pre>
-            <pre><code>import type { AgentRuntimeOptions } from '@vibecook/puppeteer-runtime';
+            <pre><code>import type { AgentRuntimeOptions } from '@vibefield/puppeteer-runtime';
 
 // The same options are accepted by createBuiltinAgentRuntime().
 type ManagementRuntimeOptions = Pick&lt;AgentRuntimeOptions, 'profiles' | 'distribution'&gt;;</code></pre>

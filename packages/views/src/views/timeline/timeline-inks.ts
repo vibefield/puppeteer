@@ -1,4 +1,4 @@
-import type { MonitorPalette } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorPalette } from '@vibefield/puppeteer-view-sdk';
 import {
   isLightTheme,
   readableColour,
@@ -6,7 +6,7 @@ import {
   stateGround,
   vividColour,
   type Rgba,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // The palette resolved to the numbers a 2D context wants, once per theme. The
 // timeline's bodies are lit as the swarm lights them (DESIGN §8): the state
@@ -17,7 +17,7 @@ import {
 
 export type { Rgba };
 /** A colour as a 2D context's `rgba()` (the toolkit's `rgbaCss`). */
-export { rgbaCss as css } from '@vibecook/puppeteer-view-sdk/toolkit';
+export { rgbaCss as css } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 /** The palette resolved to the numbers a 2D context wants, once per theme. */
 export interface TimelineInks {

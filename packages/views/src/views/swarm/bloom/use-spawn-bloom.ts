@@ -9,7 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
-import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibefield/puppeteer-view-sdk';
 import { approximateBloomMeasure, canvasBloomMeasure } from './canvas-measure.js';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import type { BloomPoint, BloomRect, BloomSize } from './geometry.js';

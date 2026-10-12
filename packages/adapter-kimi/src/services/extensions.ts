@@ -57,7 +57,7 @@ import {
   type McpTransport,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { kimiCredentialRoot } from './profiles.js';
 
 export interface KimiExtensionOptions {

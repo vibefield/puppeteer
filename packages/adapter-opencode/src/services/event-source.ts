@@ -4,7 +4,7 @@ import {
   createAdapterEventCandidate,
   type AdapterEventCandidate,
   type AgentEvent,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { OpenCodeNormalizedEvent } from '../normalization/pipeline.js';
 
 export interface OpenCodeEventSourceOptions {

@@ -3,10 +3,10 @@ import type {
   AgentAdapterBinding,
   MonitorNotification,
   ObservationLevel,
-} from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibecook/puppeteer-core/monitor-spi';
-import { agentEventCategory, type AgentEvent } from '@vibecook/puppeteer-core';
-import * as monitorProjection from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch, MonitorFamilyUpdate } from '@vibefield/puppeteer-core/monitor-spi';
+import { agentEventCategory, type AgentEvent } from '@vibefield/puppeteer-core';
+import * as monitorProjection from '@vibefield/puppeteer-core/monitor-spi';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RuntimeAgentEventEnvelope } from '../types.js';
 import type { MonitorClock, MonitorScheduledTask } from '../monitor/clock.js';

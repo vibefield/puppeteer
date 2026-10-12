@@ -1,4 +1,4 @@
-import { defineModelService, type AgentModelChoice, type AgentModelService } from '@vibecook/puppeteer-core';
+import { defineModelService, type AgentModelChoice, type AgentModelService } from '@vibefield/puppeteer-core';
 import {
   createNativeRpc,
   nativeArray,
@@ -8,7 +8,7 @@ import {
   nativeProbeOptions,
   nativeModelEnvironment,
   type NativeModelProbeOptions,
-} from '@vibecook/puppeteer-native-observation';
+} from '@vibefield/puppeteer-native-observation';
 import { resolveClaudeExecutable } from '../detection.js';
 import { createClaudeProfileService, CLAUDE_PROFILE_ROOT_VARIABLE } from './profiles.js';
 

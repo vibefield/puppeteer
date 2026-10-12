@@ -38,8 +38,8 @@ import {
   type EmittedEntry,
   type Peer,
   type SessionView,
-} from '@vibecook/puppeteer-imposter/control';
-import { describeScenarioDriver } from '@vibecook/puppeteer-imposter/scenario-driver';
+} from '@vibefield/puppeteer-imposter/control';
+import { describeScenarioDriver } from '@vibefield/puppeteer-imposter/scenario-driver';
 
 /** A connection that has not introduced itself by then is not an imposter. */
 const HELLO_GRACE_MS = 5_000;

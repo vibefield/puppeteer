@@ -124,7 +124,7 @@ Choose these once and use them consistently:
 | `<vendor>`          | lowercase letters, digits, and hyphens; stable product identity | `claude`, `codex`, `grok`          |
 | `<version>`         | exact normalized vendor artifact version                        | `2.1.226`                          |
 | display name        | user-facing vendor/product name                                 | `Claude Code`                      |
-| adapter package     | `@vibecook/puppeteer-adapter-<vendor>`                          | `@vibecook/puppeteer-adapter-grok` |
+| adapter package     | `@vibefield/puppeteer-adapter-<vendor>`                          | `@vibefield/puppeteer-adapter-grok` |
 | executable override | `PUPPETEER_<VENDOR>_BIN`                                        | `PUPPETEER_GROK_BIN`               |
 | persona selector    | `ai --<vendor>` and a vendor-named shim                         | `ai --codex`                       |
 
@@ -289,7 +289,7 @@ packages/surface/vendors/<vendor>/
 
 The wildcard for `captures-raw` is already in `.gitignore`. Never commit prompts, responses, account identifiers, home paths, repository contents, bearer tokens, API keys, or raw authenticated state.
 
-Use the shared sanitizer in `@vibecook/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. For native JSON carriers, replace sensitive values in place: preserve every key, container, primitive type, identifier format, record order, and cross-record correlation. A fixture whose request and response IDs no longer join is not useful evidence.
+Use the shared sanitizer in `@vibefield/puppeteer-surface/sanitize` and extend its rules for vendor-specific fields. Redaction and leak detection must remain paired. For native JSON carriers, replace sensitive values in place: preserve every key, container, primitive type, identifier format, record order, and cross-record correlation. A fixture whose request and response IDs no longer join is not useful evidence.
 
 Every capture set must include `capture-fidelity.json` using `puppeteer-capture-fidelity/1`:
 
@@ -452,7 +452,7 @@ Runtime capture and binary probe claims include the record, artifact, platform, 
 The model generator must write all authoring files, compute record digests after those writes, and regenerate the vendor-root canonical JSON/HTML. Refresh historical or externally attached record digests only after the tracked model/capture content is final:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
+pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
 ```
 
 Do not use that command to legitimize an unexplained change. Review the changed tree first, then refresh its digest.
@@ -491,10 +491,10 @@ Add `surface:model:<vendor>`, `surface:audit:<vendor>`, `surface:sanitize:<vendo
 Run:
 
 ```sh
-pnpm --filter @vibecook/puppeteer-surface typecheck
-pnpm --filter @vibecook/puppeteer-surface test
-pnpm --filter @vibecook/puppeteer-surface surface:workflow:check
-pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>
+pnpm --filter @vibefield/puppeteer-surface typecheck
+pnpm --filter @vibefield/puppeteer-surface test
+pnpm --filter @vibefield/puppeteer-surface surface:workflow:check
+pnpm --filter @vibefield/puppeteer-surface run surface:audit:<vendor>
 pnpm surface:audit
 ```
 
@@ -540,7 +540,7 @@ The persona points to Surface; it does not copy the model:
 {
   "vendor": "<vendor>",
   "asm": {
-    "package": "@vibecook/puppeteer-surface",
+    "package": "@vibefield/puppeteer-surface",
     "path": "vendors/<vendor>"
   },
   "shimNames": ["<vendor-binary>"],
@@ -665,8 +665,8 @@ Run:
 
 ```sh
 node packages/imposter/bin/ai.mjs --<vendor> --version
-pnpm --filter @vibecook/puppeteer-imposter typecheck
-pnpm --filter @vibecook/puppeteer-imposter test
+pnpm --filter @vibefield/puppeteer-imposter typecheck
+pnpm --filter @vibefield/puppeteer-imposter test
 pnpm surface:replay --vendor <vendor> --ground-truth packages/surface/vendors/<vendor>/groundtruth.json
 pnpm agent-devkit
 ```
@@ -996,7 +996,7 @@ executables, raw environment maps, app-server wiring, native resume argv, or pro
 
 Runtime registration makes provider-neutral identity and launch capability available to consumers. Godview discovers
 provider ids and display labels through `providers()` and `launchProviders()`, and builds its terminal host on the
-spawn-through kit (`@vibecook/puppeteer-runtime/spawn-through`, [the host guide](spawn-through-hosts.md)): the kit
+spawn-through kit (`@vibefield/puppeteer-runtime/spawn-through`, [the host guide](spawn-through-hosts.md)): the kit
 creates shims from declared commands, forwards only declared environment names, authenticates, asks
 `classifyInvocation()` what the intent is before it hands a session to `prepareInvocation()`, and adopts, falls back or
 `exec`s; Godview supplies PID-to-terminal matching, its records and the exit report. Neither parses vendor argv, chooses
@@ -1045,7 +1045,7 @@ For a new vendor, update the hard-coded orchestration seams:
 Add the vendor to `.github/workflows/agent-surface-promotion.yml` only after every declared platform has a real
 adapter-through-native-agent lane. That lane must launch the exact artifact supplied through
 `PUPPETEER_LIVE_ARTIFACT` and, after its behavioral assertions pass, emit the write-once artifact-bound receipt through
-`@vibecook/puppeteer-testing/live-attestation`. A skipped, unit-only, census-only, or different-binary test is not a
+`@vibefield/puppeteer-testing/live-attestation`. A skipped, unit-only, census-only, or different-binary test is not a
 promotion lane.
 
 The scheduled upstream detector discovers `upstream.json` definitions, but promotion dispatch choices and pinned-real
@@ -1078,7 +1078,7 @@ For the first vendor, add a reviewed entry to `support/agents.json`:
   "id": "<vendor>",
   "displayName": "<Display Name>",
   "kind": "vendor",
-  "adapterPackage": "@vibecook/puppeteer-adapter-<vendor>",
+  "adapterPackage": "@vibefield/puppeteer-adapter-<vendor>",
   "persona": "<vendor>",
   "groundTruth": "packages/surface/vendors/<vendor>/groundtruth.json",
   "candidateVersion": "<version>",
@@ -1105,7 +1105,7 @@ Once all reviewed platform artifacts have been acquired:
 
 ```sh
 pnpm surface:evidence:artifacts --ground-truth <ground-truth> --artifacts <acquisition.json>
-pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
+pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
 pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>
 pnpm surface:reconcile --vendor <vendor> --ground-truth <ground-truth> --artifacts <acquisition.json>
 ```
@@ -1192,13 +1192,13 @@ Run targeted checks while iterating, then the full matrix before review.
 | Area                | Command                                                                         | What it proves                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Detector config     | `pnpm upstream:check`                                                           | every `upstream.json` satisfies policy                                                          |
-| Surface types/tests | `pnpm --filter @vibecook/puppeteer-surface typecheck` and `test`                | model/sanitizer runtime and vendor fixtures are sound                                           |
-| Vendor audit        | `pnpm --filter @vibecook/puppeteer-surface run surface:audit:<vendor>`          | selected candidate matches evidence and vendor-specific checks                                  |
+| Surface types/tests | `pnpm --filter @vibefield/puppeteer-surface typecheck` and `test`                | model/sanitizer runtime and vendor fixtures are sound                                           |
+| Vendor audit        | `pnpm --filter @vibefield/puppeteer-surface run surface:audit:<vendor>`          | selected candidate matches evidence and vendor-specific checks                                  |
 | All Surface         | `pnpm surface:audit`                                                            | every current/candidate surface remains clean                                                   |
 | Exact replay        | `pnpm surface:replay --vendor <vendor> --ground-truth <ground-truth>`           | captures, model, persona, carriers, directions, and results agree pre-normalization             |
-| Adapter             | `pnpm --filter @vibecook/puppeteer-adapter-<vendor> typecheck` and `test`       | normalization, driver, transport, and shared conformance pass                                   |
-| Imposter            | `pnpm --filter @vibecook/puppeteer-imposter typecheck` and `test`               | persona/scenarios and adapter-against-Imposter pass                                             |
-| Runtime             | `pnpm --filter @vibecook/puppeteer-runtime typecheck` and `test`                | provider and typed options are integrated                                                       |
+| Adapter             | `pnpm --filter @vibefield/puppeteer-adapter-<vendor> typecheck` and `test`       | normalization, driver, transport, and shared conformance pass                                   |
+| Imposter            | `pnpm --filter @vibefield/puppeteer-imposter typecheck` and `test`               | persona/scenarios and adapter-against-Imposter pass                                             |
+| Runtime             | `pnpm --filter @vibefield/puppeteer-runtime typecheck` and `test`                | provider and typed options are integrated                                                       |
 | Devkit              | `pnpm --filter imposter-control typecheck`, `test`, and `bundle`                | spawner, native plane, projection, and browser bundle agree                                     |
 | Devkit smoke        | `pnpm agent-devkit:smoke`                                                       | Electron main process starts and shuts down correctly                                           |
 | Godview, when wired | `pnpm godview:typecheck`, `godview:test`, `godview:bundle`, and `godview:smoke` | built-in selection, shim/spawn-through, restore, renderer, bundle, and native launch are usable |

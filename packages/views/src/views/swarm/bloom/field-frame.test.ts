@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentViewFixture } from '@vibecook/puppeteer-view-sdk/testing';
+import { agentViewFixture } from '@vibefield/puppeteer-view-sdk/testing';
 import { approximateBloomMeasure } from './canvas-measure.js';
 import { BLOOM } from './constants.js';
 import {

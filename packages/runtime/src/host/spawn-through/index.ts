@@ -1,5 +1,5 @@
 /**
- * `@vibecook/puppeteer-runtime/spawn-through` — the host kit that turns a
+ * `@vibefield/puppeteer-runtime/spawn-through` — the host kit that turns a
  * command typed in a host's terminal into a managed session
  * (docs/guides/spawn-through-hosts.md). The shim itself is the separate
  * `./spawn-through/shim` entry: hosts bundle it, and importing it runs it.

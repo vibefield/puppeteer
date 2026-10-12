@@ -10,7 +10,7 @@ import {
   type ExtensionKindSupport,
   type ExtensionProvider,
   type ExtensionService,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 /**
  * RFC 006 C1: each agent's plugins, marketplaces, MCP servers and skills, read

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture } from '@vibefield/puppeteer-view-sdk/testing';
 import { FRAME_HEADER_FLOATS, frameFloatsFor, SwarmPhysics } from '../physics/world.js';
 import {
   BIRTH_GIVE_UP_MS,

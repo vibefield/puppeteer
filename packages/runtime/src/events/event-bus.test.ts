@@ -1,4 +1,4 @@
-import { createEnvelopeStamper, type AgentEvent, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { createEnvelopeStamper, type AgentEvent, type AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import { describe, expect, it, vi } from 'vitest';
 import { AgentEventBus } from './event-bus.js';
 

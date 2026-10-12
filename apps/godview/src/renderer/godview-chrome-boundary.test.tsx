@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { createElement, type ComponentProps } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MonitorAgentRow, MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
-import { agentViewsFixture } from '@vibecook/puppeteer-view-sdk/testing';
+import type { MonitorAgentRow, MonitorModelChange, MonitorModelSnapshot } from '@vibefield/puppeteer-view-sdk/model';
+import { agentViewsFixture } from '@vibefield/puppeteer-view-sdk/testing';
 
 // THE WITNESS FOR M176 ITEM 1, AT GODVIEW'S LEVEL: the real entry (`main.tsx`) mounts the real Godview into `#root`,
 // with the usage column, the piece inside the ResizeObserver'd chrome, throwing on every render. Then the window is
@@ -16,8 +16,8 @@ import { agentViewsFixture } from '@vibecook/puppeteer-view-sdk/testing';
 
 const witness = vi.hoisted(() => ({ usageRenders: 0, godviewRenders: 0 }));
 
-vi.mock('@vibecook/puppeteer-views', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@vibecook/puppeteer-views')>();
+vi.mock('@vibefield/puppeteer-views', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@vibefield/puppeteer-views')>();
   return {
     ...actual,
     // A persistent bad read in the piece that sits in the observed chrome.

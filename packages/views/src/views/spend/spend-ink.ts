@@ -1,4 +1,4 @@
-import { oklchToHex, parseCssColor, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { oklchToHex, parseCssColor, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // Two inks the spend view derives from a row's project colour, so nothing new
 // crosses the seam (SV-D4): a sibling's TONE — the second agent born in a

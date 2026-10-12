@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { EmulatorSpawner } from './plane.js';
-import { createPersonaLaunchSpec, createPersonaSessionId } from '@vibecook/puppeteer-imposter';
+import { createPersonaLaunchSpec, createPersonaSessionId } from '@vibefield/puppeteer-imposter';
 
 export interface PersonaSpawnerOptions {
   /** Test overrides for the control channel the imposter dials. */
@@ -22,7 +22,7 @@ export interface PersonaSpawnerOptions {
 
 export function imposterBin(): string {
   const require = createRequire(import.meta.url);
-  return join(dirname(require.resolve('@vibecook/puppeteer-imposter/package.json')), 'bin', 'ai.mjs');
+  return join(dirname(require.resolve('@vibefield/puppeteer-imposter/package.json')), 'bin', 'ai.mjs');
 }
 
 /** Spawn one persona directly, preserving the native plane's boundary. */

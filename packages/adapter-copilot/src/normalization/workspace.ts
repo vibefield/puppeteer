@@ -1,4 +1,4 @@
-import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibecook/puppeteer-core';
+import type { WorkspaceFileChange, WorkspaceFileOperationEvent } from '@vibefield/puppeteer-core';
 import type { CopilotToolFact } from './tool.js';
 import { copilotRecord, copilotString } from './types.js';
 

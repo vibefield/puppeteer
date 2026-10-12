@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-copilot",
+  "name": "@vibefield/puppeteer-adapter-copilot",
   "version": "0.1.8",
   "type": "module",
   "description": "GitHub Copilot CLI adapter for Puppeteer: native TUI launch and durable session-event normalization.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/adapter-copilot"
   },
   "main": "./src/index.ts",
@@ -17,7 +17,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -41,12 +40,12 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-native-observation": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-native-observation": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-testing": "workspace:*",
+    "@vibefield/puppeteer-testing": "workspace:*",
     "vitest": "^3.0.0"
   }
 }

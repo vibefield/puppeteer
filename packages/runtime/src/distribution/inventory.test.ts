@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, realpath, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import type { DistributionProvider, DistributionService, InstallCandidate } from '@vibecook/puppeteer-core';
+import type { DistributionProvider, DistributionService, InstallCandidate } from '@vibefield/puppeteer-core';
 import { createInstallationInventory, searchPathDirectories } from './inventory.js';
 
 const descriptor: DistributionProvider = {

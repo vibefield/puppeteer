@@ -1,0 +1,4154 @@
+diff --git a/packages/ghosttea-frame/src/index.test.ts b/packages/ghosttea-frame/src/index.test.ts
+index 346acc2..b82ec94 100644
+--- a/packages/ghosttea-frame/src/index.test.ts
++++ b/packages/ghosttea-frame/src/index.test.ts
+@@ -1,3 +1,6 @@
++/// <reference types="node" />
++
++import { Buffer } from "node:buffer";
+ import { describe, expect, it } from "vitest";
+ import {
+   decodeAccessibilityRows,
+@@ -39,6 +42,20 @@ function fixture(): ArrayBuffer {
+ }
+ 
+ describe("decodeFrame", () => {
++  it("decodes only a bounded frame view without copying its sections", () => {
++    const packet = new Uint8Array(fixture());
++    const envelope = new Uint8Array(packet.length + 23);
++    envelope.set(packet, 11);
++    const payload = envelope.subarray(11, 11 + packet.length);
++    const frame = decodeFrame(payload);
++    expect(decodeAccessibilityRows(frame.sections[0]!)).toEqual([{ row: 0, text: "hello" }]);
++    expect(frame.sections[0]!.bytes.buffer).toBe(envelope.buffer);
++    expect(frame.sections[0]!.bytes.byteOffset).toBe(11 + FRAME_HEADER_BYTES + SECTION_HEADER_BYTES);
++    // Bytes after the payload belong to the envelope, not to this frame.
++    new DataView(payload.buffer, payload.byteOffset).setUint32(72, packet.length, true);
++    expect(() => decodeFrame(payload)).toThrow(/section out of bounds/);
++  });
++
+   it("decodes a strict absolute text snapshot", () => {
+     const frame = decodeFrame(fixture());
+     expect(frame.sessionHandle).toBe(7n);
+@@ -159,6 +176,54 @@ describe("decodeFrame", () => {
+     ]);
+   });
+ 
++  it.each(["Uint8Array", "Buffer"])("owns glyph pixels decoded from a bounded %s frame", (kind) => {
++    const payloadBytes = 4 + 20 + 4;
++    const frameBytes = FRAME_HEADER_BYTES + SECTION_HEADER_BYTES + payloadBytes;
++    const envelope = kind === "Buffer" ? Buffer.alloc(frameBytes + 23) : new Uint8Array(frameBytes + 23);
++    const payload = envelope.subarray(11, 11 + frameBytes);
++    const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
++    view.setUint32(0, FRAME_MAGIC, true);
++    view.setUint16(4, FRAME_PROTOCOL_VERSION, true);
++    view.setUint16(60, 1, true);
++    view.setUint16(64, SectionKind.GlyphDefinitions, true);
++    view.setUint32(68, 80, true);
++    view.setUint32(72, payloadBytes, true);
++    view.setUint32(76, 1, true);
++    view.setUint32(80, 1, true);
++    view.setUint32(84, 12, true);
++    view.setUint16(88, 2, true);
++    view.setUint16(90, 2, true);
++    view.setUint32(100, 4, true);
++    payload.set([0, 64, 128, 255], 104);
++
++    const section = decodeFrame(payload).sections[0]!;
++    expect(section.bytes.buffer).toBe(envelope.buffer);
++    expect(section.bytes.byteOffset).toBe(payload.byteOffset + 80);
++    expect(section.bytes.byteLength).toBe(payloadBytes);
++    expect(section.bytes.constructor).toBe(Uint8Array);
++    const glyph = decodeGlyphDefinitions(section)[0]!;
++    expect(glyph.pixels.buffer).not.toBe(envelope.buffer);
++    expect(glyph.pixels.buffer.byteLength).toBe(4);
++    payload.fill(123, 104);
++    expect(glyph.pixels).toEqual(new Uint8Array([0, 64, 128, 255]));
++    view.setUint32(72, payloadBytes + 1, true);
++    expect(() => decodeFrame(payload)).toThrow(/section out of bounds/);
++  });
++
++  it("owns glyph pixels when a caller supplies a Buffer section directly", () => {
++    const bytes = Buffer.alloc(28);
++    bytes.writeUInt32LE(1, 0);
++    bytes.writeUInt32LE(12, 4);
++    bytes.writeUInt16LE(2, 8);
++    bytes.writeUInt16LE(2, 10);
++    bytes.writeUInt32LE(4, 20);
++    bytes.set([0, 64, 128, 255], 24);
++    const [glyph] = decodeGlyphDefinitions({ kind: SectionKind.GlyphDefinitions, flags: 0, itemCount: 1, bytes });
++    bytes.fill(123, 24);
++    expect(glyph!.pixels).toEqual(new Uint8Array([0, 64, 128, 255]));
++    expect(glyph!.pixels.buffer).not.toBe(bytes.buffer);
++  });
++
+   it("rejects invalid section bounds", () => {
+     const buffer = fixture();
+     new DataView(buffer).setUint32(68, 0xfffffff0, true);
+diff --git a/packages/ghosttea-frame/src/index.ts b/packages/ghosttea-frame/src/index.ts
+index 4cb152d..56c88c1 100644
+--- a/packages/ghosttea-frame/src/index.ts
++++ b/packages/ghosttea-frame/src/index.ts
+@@ -126,16 +126,22 @@ function assertRange(condition: boolean, message: string): asserts condition {
+   if (!condition) throw new RangeError(`Invalid terminal frame: ${message}`);
+ }
+ 
+-export function decodeFrame(buffer: ArrayBuffer): TerminalFrame {
+-  assertRange(buffer.byteLength >= FRAME_HEADER_BYTES, "truncated header");
+-  assertRange(buffer.byteLength <= MAX_FRAME_BYTES, "packet exceeds limit");
+-  const view = new DataView(buffer);
++export function decodeFrame(buffer: ArrayBuffer | Uint8Array): TerminalFrame {
++  // Normalize subclasses (notably Node Buffer) without copying the frame.
++  // Sections borrow this bounded view; retained glyph pixels must still copy.
++  const bytes =
++    buffer instanceof Uint8Array
++      ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
++      : new Uint8Array(buffer);
++  assertRange(bytes.byteLength >= FRAME_HEADER_BYTES, "truncated header");
++  assertRange(bytes.byteLength <= MAX_FRAME_BYTES, "packet exceeds limit");
++  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+   assertRange(view.getUint32(0, true) === FRAME_MAGIC, "bad magic");
+   assertRange(view.getUint16(4, true) === FRAME_PROTOCOL_VERSION, "unsupported protocol version");
+ 
+   const sectionCount = view.getUint16(60, true);
+   const tableEnd = FRAME_HEADER_BYTES + sectionCount * SECTION_HEADER_BYTES;
+-  assertRange(tableEnd <= buffer.byteLength, "truncated section table");
++  assertRange(tableEnd <= bytes.byteLength, "truncated section table");
+ 
+   const sections: FrameSection[] = [];
+   for (let index = 0; index < sectionCount; index += 1) {
+@@ -146,8 +152,8 @@ export function decodeFrame(buffer: ArrayBuffer): TerminalFrame {
+     const length = view.getUint32(base + 8, true);
+     const itemCount = view.getUint32(base + 12, true);
+     const end = offset + length;
+-    assertRange(end >= offset && offset >= tableEnd && end <= buffer.byteLength, "section out of bounds");
+-    sections.push({ kind, flags, itemCount, bytes: new Uint8Array(buffer, offset, length) });
++    assertRange(end >= offset && offset >= tableEnd && end <= bytes.byteLength, "section out of bounds");
++    sections.push({ kind, flags, itemCount, bytes: bytes.subarray(offset, end) });
+   }
+ 
+   return {
+@@ -267,7 +273,7 @@ export function decodeGlyphDefinitions(section: FrameSection): GlyphDefinition[]
+       bearingX: view.getInt16(offset - 12, true),
+       bearingY: view.getInt16(offset - 10, true),
+       format,
+-      pixels: section.bytes.slice(offset, offset + pixelLength),
++      pixels: new Uint8Array(section.bytes.subarray(offset, offset + pixelLength)),
+     });
+     offset += pixelLength;
+   }
+diff --git a/packages/ghosttea-react/README.md b/packages/ghosttea-react/README.md
+index 085b7f6..97587da 100644
+--- a/packages/ghosttea-react/README.md
++++ b/packages/ghosttea-react/README.md
+@@ -111,6 +111,12 @@ semantics. An optional sidebar component receives the active session plus
+ `addSession`/`activateSession` actions, so application UI can sit beside the
+ terminal without creating a parallel terminal layout or transport.
+ 
++The context's `replaceSession(expectedId, replacement)` atomically replaces every
++current attachment of an expected session, preserving pane IDs, split geometry,
++focus and zoom. It returns `false` if the session is no longer attached, so hosts
++can release a shell born after its target pane closed or changed. Unlike
++`mountSession`, it never selects or replaces the active pane implicitly.
++
+ The workspace entry point also exports the versioned, UI-independent pane and
+ tab reducers used for cross-platform restoration and conformance. Their JSON
+ documents contain only stable layout IDs and opaque session IDs; resolve those
+@@ -198,3 +204,22 @@ Architecture:
+ **⌘⇧O** (`super+shift+o`) is a Ghosttea product extension (remote sessions) and is kept outside Ghostty defaults.
+ 
+ Open / deferred Ghostty UX work (font-size protocol, search, undo, jump_to_prompt, mouse goldens, etc.) is tracked in the monorepo at [`bench/ghostty-ux/OPEN-ITEMS.md`](../../bench/ghostty-ux/OPEN-ITEMS.md).
++
++### Pane geometry and host fullscreen
++
++`splitSizing="equal"` equalizes the affected row or column after both insertion
++and removal, preserving perpendicular split groups. Hosts can supply
++`onTogglePaneZoom(paneId)` to own fullscreen presentation while Ghosttea still
++resolves the user's configured shortcut. The normal zoom remains the default.
++
++`TerminalSurface` observes its container. The canvas displays its intrinsic
++worker bitmap at device-pixel scale, clipped to that container, so an old bitmap
++cannot stretch during a resize. Mount messages include initial pixel geometry
++before a cached scene can draw; a zero-size view waits for a real size. Direct
++`runtime.mount` users can pass `{ width, height, dpr }` as the fifth argument
++when their canvas's intrinsic size differs from its intended viewport.
++
++`runtime.sessionHasInput(id)` records input attempts across view remounts in
++this renderer. It is a conservative local-lifetime signal, not proof that an
++externally created or restored session is unused. Hosts retain authority over
++session termination through `onPaneClose`.
+diff --git a/packages/ghosttea-react/src/TerminalSurface.tsx b/packages/ghosttea-react/src/TerminalSurface.tsx
+index d2f0d9c..ff0273e 100644
+--- a/packages/ghosttea-react/src/TerminalSurface.tsx
++++ b/packages/ghosttea-react/src/TerminalSurface.tsx
+@@ -1,6 +1,6 @@
+ import { useTerminalLinks } from "./use-terminal-links.js";
+ import { useCallback, useEffect, useRef, useState } from "react";
+-import type { ClipboardEvent, KeyboardEvent, PointerEvent, WheelEvent } from "react";
++import type { ClipboardEvent, CSSProperties, KeyboardEvent, PointerEvent, WheelEvent } from "react";
+ import type { SessionSummary, TerminalKeyEvent, TerminalScrollbarState } from "@vibecook/ghosttea-protocol";
+ import { useGhostteaRuntime } from "./context.js";
+ import { terminalKeyboardLayout, terminalKeyDown, terminalKeyUp } from "./keyboard-input.js";
+@@ -323,13 +323,22 @@ function TerminalSurfaceSession({
+ 
+   useEffect(() => {
+     const canvas = canvasRef.current;
+-    if (!canvas) return;
+-    const handle = terminalRuntime.mount(session.id, session.handle, viewId, canvas);
++    const surface = canvas?.parentElement;
++    if (!canvas || !surface) return;
++    const dpr = window.devicePixelRatio || 1;
++    canvas.style.setProperty("--ghosttea-canvas-scale", `${1 / dpr}`);
++    const handle = terminalRuntime.mount(session.id, session.handle, viewId, canvas, {
++      width: surface.clientWidth,
++      height: surface.clientHeight,
++      dpr,
++    });
+     terminalRuntime.setViewInputPolicy(viewId, clientReadWriteRef.current);
+     let { cols, rows } = gridRef.current;
+     const observer = new ResizeObserver(([entry]) => {
+-      if (!entry) return;
+-      handle.resize(entry.contentRect.width, entry.contentRect.height, window.devicePixelRatio);
++      if (!entry || entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
++      const dpr = window.devicePixelRatio || 1;
++      canvas.style.setProperty("--ghosttea-canvas-scale", `${1 / dpr}`);
++      handle.resize(entry.contentRect.width, entry.contentRect.height, dpr);
+       const nextCols = Math.max(2, Math.floor((entry.contentRect.width - ORIGIN_X * 2) / CELL_WIDTH));
+       const nextRows = Math.max(1, Math.floor((entry.contentRect.height - ORIGIN_Y * 2) / LINE_HEIGHT));
+       if (nextCols !== cols || nextRows !== rows) {
+@@ -339,7 +348,7 @@ function TerminalSurfaceSession({
+         if (controlsResizeRef.current) terminalRuntime.resize(session.id, viewId, cols, rows);
+       }
+     });
+-    observer.observe(canvas);
++    observer.observe(surface);
+     return () => {
+       observer.disconnect();
+       handle.dispose();
+@@ -740,7 +749,15 @@ function TerminalSurfaceSession({
+ 
+   return (
+     <div className="terminal-surface">
+-      <canvas ref={canvasRef} aria-label={`Terminal session ${session.id}`} />
++      <canvas
++        ref={canvasRef}
++        aria-label={`Terminal session ${session.id}`}
++        style={
++          {
++            "--ghosttea-canvas-scale": 1 / (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1),
++          } as CSSProperties
++        }
++      />
+       <textarea
+         ref={inputRef}
+         className="terminal-input"
+diff --git a/packages/ghosttea-react/src/catalog-budget.ts b/packages/ghosttea-react/src/catalog-budget.ts
+index eff9631..fc3ca21 100644
+--- a/packages/ghosttea-react/src/catalog-budget.ts
++++ b/packages/ghosttea-react/src/catalog-budget.ts
+@@ -22,13 +22,14 @@ interface GlyphLike {
+   pixels: { byteLength: number };
+ }
+ 
+-export function glyphCatalogFits<T extends GlyphLike>(
++export function glyphCatalogFits<T extends GlyphLike, K = number>(
+   sessionDefinitions: ReadonlyMap<number, T>,
+   sessionPixelBytes: number,
+-  sharedDefinitions: ReadonlyMap<number, { definition: T }>,
++  sharedDefinitions: ReadonlyMap<K, { definition: T }>,
+   sharedPixelBytes: number,
+   definitions: readonly T[],
+   budget: GlyphCatalogBudget,
++  sharedKey: (id: number) => K = (id: number) => id as K,
+ ): boolean {
+   if (definitions.length === 0) return true;
+   let nextDefinitionCount = sessionDefinitions.size;
+@@ -39,7 +40,7 @@ export function glyphCatalogFits<T extends GlyphLike>(
+   for (const definition of definitions) {
+     if (sessionDefinitions.has(definition.id) || pending.has(definition.id)) continue;
+     pending.add(definition.id);
+-    const shared = sharedDefinitions.get(definition.id);
++    const shared = sharedDefinitions.get(sharedKey(definition.id));
+     const pixelBytes = shared?.definition.pixels.byteLength ?? definition.pixels.byteLength;
+     nextDefinitionCount += 1;
+     nextSessionPixelBytes += pixelBytes;
+diff --git a/packages/ghosttea-react/src/index.ts b/packages/ghosttea-react/src/index.ts
+index 551b7fe..3c6d29b 100644
+--- a/packages/ghosttea-react/src/index.ts
++++ b/packages/ghosttea-react/src/index.ts
+@@ -37,8 +37,12 @@ export {
+   type TerminalMount,
+ } from "./runtime.js";
+ export {
++  CELL_WIDTH,
+   DEFAULT_EFFECTS,
+   DEFAULT_THEME,
++  LINE_HEIGHT,
++  ORIGIN_X,
++  ORIGIN_Y,
+   type CellPoint,
+   type CellSelection,
+   type TerminalEffects,
+diff --git a/packages/ghosttea-react/src/renderers/glyph-atlas.test.ts b/packages/ghosttea-react/src/renderers/glyph-atlas.test.ts
+new file mode 100644
+index 0000000..5fa9be1
+--- /dev/null
++++ b/packages/ghosttea-react/src/renderers/glyph-atlas.test.ts
+@@ -0,0 +1,124 @@
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { AtlasBatchFullError, AtlasCapacityError, GlyphAtlasPages } from "./glyph-atlas.js";
++
++function fixture(maxPages = 2) {
++  vi.stubGlobal("GPUTextureUsage", { TEXTURE_BINDING: 1, COPY_DST: 2 });
++  const textures: Array<{ createView: () => object; destroy: ReturnType<typeof vi.fn> }> = [];
++  const device = {
++    createSampler: () => ({}),
++    createBindGroup: (descriptor: object) => descriptor,
++    createTexture: () => {
++      const texture = { createView: () => ({ texture }), destroy: vi.fn() };
++      textures.push(texture);
++      return texture;
++    },
++  } as unknown as GPUDevice;
++  return {
++    atlas: new GlyphAtlasPages<string>(device, {} as GPUBindGroupLayout, "test", "r8unorm", maxPages, 8),
++    textures,
++  };
++}
++
++const glyph = (key: string, size = 2) => ({ key, width: size, height: size });
++const fill = (atlas: GlyphAtlasPages<string>, keys: string[], size = 2) => {
++  atlas.prepare(keys.map((key) => glyph(key, size)));
++  for (const key of keys) if (!atlas.get(key)) atlas.insert(key, size, size, 1);
++  atlas.pin();
++  return atlas.generation;
++};
++
++afterEach(() => vi.unstubAllGlobals());
++
++describe("bounded glyph atlas pages", () => {
++  it("allocates nothing until a format has visible glyphs", () => {
++    const { atlas, textures } = fixture();
++    atlas.prepare([]);
++    expect(textures).toHaveLength(0);
++    expect(atlas.generation).toBe(0);
++  });
++
++  it("keeps disjoint pane working sets resident and returns to their stable locations", () => {
++    const { atlas, textures } = fixture();
++    const first = fill(atlas, ["a", "b", "c"]);
++    const location = atlas.get("b");
++    const second = fill(atlas, ["d", "e", "f"]);
++    expect(second).not.toBe(first);
++    atlas.releaseBatch();
++    expect(fill(atlas, ["a", "b", "c"])).toBe(first);
++    expect(atlas.get("b")).toBe(location);
++    expect(fill(atlas, ["d", "e", "f"])).toBe(second);
++    expect(textures).toHaveLength(2);
++    expect(textures.every((texture) => texture.destroy.mock.calls.length === 0)).toBe(true);
++  });
++
++  it("requires a submission boundary before replacing a referenced page", () => {
++    const { atlas, textures } = fixture(1);
++    const first = fill(atlas, ["a"], 4);
++    expect(() => atlas.prepare([glyph("b", 4)])).toThrow(AtlasBatchFullError);
++    expect(textures[0]!.destroy).not.toHaveBeenCalled();
++    expect(atlas.get("a")).toBeDefined();
++    atlas.releaseBatch();
++    const next = fill(atlas, ["b"], 4);
++    expect(next).not.toBe(first);
++    expect(textures[0]!.destroy).toHaveBeenCalledOnce();
++    expect(textures).toHaveLength(2);
++    expect(atlas.get("a")).toBeUndefined();
++  });
++
++  it("can append into unoccupied texels while a page is pinned", () => {
++    const { atlas, textures } = fixture(1);
++    const first = fill(atlas, ["a"]);
++    const original = atlas.get("a");
++    expect(fill(atlas, ["b"])).toBe(first);
++    expect(atlas.get("a")).toBe(original);
++    expect(atlas.get("b")).not.toEqual(original);
++    expect(textures).toHaveLength(1);
++  });
++
++  it("rejects an oversized pane without allocating, evicting or pinning its page", () => {
++    const { atlas, textures } = fixture(1);
++    fill(atlas, ["a"], 4);
++    atlas.releaseBatch();
++    expect(() => atlas.prepare([glyph("b", 4), glyph("c", 4)])).toThrow(AtlasCapacityError);
++    expect(textures).toHaveLength(1);
++    expect(textures[0]!.destroy).not.toHaveBeenCalled();
++    fill(atlas, ["d"], 4);
++    expect(atlas.get("d")).toBeDefined();
++  });
++
++  it.each([
++    ["b", "c", "d"],
++    ["d", "c", "b"],
++    ["c", "a", "d", "b"],
++  ])("keeps prepared positions when glyphs are skipped or reordered: %s %s %s", (...order) => {
++    const { atlas, textures } = fixture(1);
++    const glyphs = [
++      { key: "a", width: 1, height: 1 },
++      { key: "b", width: 1, height: 1 },
++      { key: "c", width: 4, height: 2 },
++      { key: "d", width: 1, height: 4 },
++    ];
++    // Packing a,b,c,d fits. Repacking b,c,d after concealing a would overflow.
++    atlas.prepare(glyphs);
++    const generation = atlas.generation;
++    const origins: Record<string, [number, number]> = { a: [1, 1], b: [3, 1], c: [1, 3], d: [6, 3] };
++    const inserted = new Map<string, [number, number]>();
++    for (const key of order) {
++      const { width, height } = glyphs.find((glyph) => glyph.key === key)!;
++      inserted.set(key, atlas.insert(key, width, height, 1).origin);
++    }
++    for (const key of order) expect(inserted.get(key)).toEqual(origins[key]);
++    atlas.pin();
++    atlas.releaseBatch();
++    const oldB = atlas.get("b");
++    // A reserved but unuploaded glyph can appear in a later frame, without
++    // consuming another slot or moving any already uploaded glyph.
++    atlas.prepare(glyphs);
++    for (const { key, width, height } of glyphs) {
++      if (!atlas.get(key)) expect(atlas.insert(key, width, height, 1).origin).toEqual(origins[key]);
++    }
++    expect(atlas.get("b")).toBe(oldB);
++    expect(atlas.generation).toBe(generation);
++    expect(textures).toHaveLength(1);
++  });
++});
+diff --git a/packages/ghosttea-react/src/renderers/glyph-atlas.ts b/packages/ghosttea-react/src/renderers/glyph-atlas.ts
+new file mode 100644
+index 0000000..ec4030f
+--- /dev/null
++++ b/packages/ghosttea-react/src/renderers/glyph-atlas.ts
+@@ -0,0 +1,209 @@
++export class AtlasCapacityError extends Error {}
++
++/** The current batch must submit before an atlas page can be recycled. */
++export class AtlasBatchFullError extends Error {}
++
++export interface AtlasGlyph<K> {
++  key: K;
++  width: number;
++  height: number;
++}
++
++export interface GlyphLocation {
++  u0: number;
++  v0: number;
++  u1: number;
++  v1: number;
++  cells: number;
++}
++
++interface GlyphSlot {
++  origin: [number, number];
++  width: number;
++  height: number;
++}
++
++interface PackingPlan<K> {
++  slots: Map<K, GlyphSlot>;
++  x: number;
++  y: number;
++  rowHeight: number;
++}
++
++interface Page<K> extends PackingPlan<K> {
++  texture: GPUTexture;
++  bindGroup: GPUBindGroup;
++  cache: Map<K, GlyphLocation>;
++  generation: number;
++  used: number;
++  pinned: boolean;
++}
++
++/** Lazy, bounded atlas pages. A page used by an unsubmitted draw cannot be
++ * recycled. Appending into its unused space is safe. Each pane uses one page
++ * per glyph format, preserving instanced draws without per-glyph bind changes. */
++export class GlyphAtlasPages<K> {
++  readonly #pages: Page<K>[] = [];
++  readonly #sampler: GPUSampler;
++  #current: Page<K> | undefined;
++  #generation = 0;
++  #clock = 0;
++
++  constructor(
++    readonly device: GPUDevice,
++    readonly layout: GPUBindGroupLayout,
++    readonly label: string,
++    readonly format: "r8unorm" | "rgba8unorm",
++    readonly maxPages: number,
++    readonly size = 2048,
++  ) {
++    this.#sampler = device.createSampler({ minFilter: "linear", magFilter: "linear" });
++  }
++
++  get generation(): number {
++    return this.#current?.generation ?? 0;
++  }
++
++  get bindGroup(): GPUBindGroup {
++    if (!this.#current) throw new Error(`${this.label} has not been prepared`);
++    return this.#current.bindGroup;
++  }
++
++  prepare(input: Iterable<AtlasGlyph<K>>): void {
++    const glyphs = new Map<K, AtlasGlyph<K>>();
++    for (const glyph of input) glyphs.set(glyph.key, glyph);
++    if (glyphs.size === 0) return;
++    let selected: Page<K> | undefined;
++    let selectedPlan: PackingPlan<K> | undefined;
++    let bestHits = -1;
++    for (const page of this.#pages) {
++      const plan = this.#plan(glyphs.values(), page);
++      if (!plan) continue;
++      let hits = 0;
++      for (const key of glyphs.keys()) if (page.cache.has(key)) hits += 1;
++      if (hits > bestHits || (hits === bestHits && page.used > (selected?.used ?? -1))) {
++        selected = page;
++        selectedPlan = plan;
++        bestHits = hits;
++      }
++    }
++    if (!selected) {
++      selectedPlan = this.#plan(glyphs.values());
++      if (!selectedPlan) {
++        throw new AtlasCapacityError(`${this.label} cannot fit the glyphs visible in one frame`);
++      }
++      if (this.#pages.length === this.maxPages) {
++        const recyclable = this.#pages.filter((page) => !page.pinned).sort((a, b) => a.used - b.used)[0];
++        if (!recyclable) throw new AtlasBatchFullError(this.label);
++        // A new texture also restores zero gutters; old texels must not bleed
++        // around smaller replacement glyphs under linear filtering.
++        recyclable.texture.destroy();
++        this.#pages.splice(this.#pages.indexOf(recyclable), 1);
++      }
++      const texture = this.device.createTexture({
++        label: this.label,
++        size: [this.size, this.size],
++        format: this.format,
++        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
++      });
++      selected = {
++        texture,
++        bindGroup: this.device.createBindGroup({
++          label: `${this.label} bindings`,
++          layout: this.layout,
++          entries: [
++            { binding: 0, resource: texture.createView() },
++            { binding: 1, resource: this.#sampler },
++          ],
++        }),
++        cache: new Map(),
++        slots: new Map(),
++        generation: ++this.#generation,
++        used: 0,
++        pinned: false,
++        x: 1,
++        y: 1,
++        rowHeight: 0,
++      };
++      this.#pages.push(selected);
++    }
++    // Commit preflight's exact positions, including glyphs geometry may skip.
++    // Removing/reordering shelf-packed rectangles can change row breaks and
++    // overflow even when the original sequence fit. Upload remains lazy.
++    const plan = selectedPlan!;
++    for (const [key, slot] of plan.slots) selected.slots.set(key, slot);
++    selected.x = plan.x;
++    selected.y = plan.y;
++    selected.rowHeight = plan.rowHeight;
++    selected.used = ++this.#clock;
++    this.#current = selected;
++  }
++
++  pin(): void {
++    if (this.#current) this.#current.pinned = true;
++  }
++
++  #plan(glyphs: Iterable<AtlasGlyph<K>>, page?: Page<K>): PackingPlan<K> | undefined {
++    const slots = new Map<K, GlyphSlot>();
++    let x = page?.x ?? 1;
++    let y = page?.y ?? 1;
++    let rowHeight = page?.rowHeight ?? 0;
++    for (const { key, width, height } of glyphs) {
++      if (page?.slots.has(key)) continue;
++      if (width + 2 > this.size || height + 2 > this.size) return undefined;
++      if (x + width + 1 > this.size) {
++        x = 1;
++        y += rowHeight + 1;
++        rowHeight = 0;
++      }
++      if (y + height + 1 > this.size) return undefined;
++      slots.set(key, { origin: [x, y], width, height });
++      x += width + 1;
++      rowHeight = Math.max(rowHeight, height);
++    }
++    return { slots, x, y, rowHeight };
++  }
++
++  get(key: K): GlyphLocation | undefined {
++    return this.#current?.cache.get(key);
++  }
++
++  insert(
++    key: K,
++    width: number,
++    height: number,
++    cells: number,
++  ): {
++    location: GlyphLocation;
++    texture: GPUTexture;
++    origin: [number, number];
++  } {
++    const page = this.#current;
++    if (!page) throw new Error(`${this.label} has not been prepared`);
++    const slot = page.slots.get(key);
++    if (!slot || slot.width !== width || slot.height !== height) {
++      throw new Error(`${this.label} glyph does not match its prepared reservation`);
++    }
++    const origin = slot.origin;
++    const [x, y] = origin;
++    const location = {
++      u0: x / this.size,
++      v0: y / this.size,
++      u1: (x + width) / this.size,
++      v1: (y + height) / this.size,
++      cells,
++    };
++    page.cache.set(key, location);
++    return { location, texture: page.texture, origin };
++  }
++
++  releaseBatch(): void {
++    for (const page of this.#pages) page.pinned = false;
++  }
++
++  destroy(): void {
++    for (const page of this.#pages) page.texture.destroy();
++    this.#pages.length = 0;
++    this.#current = undefined;
++  }
++}
+diff --git a/packages/ghosttea-react/src/renderers/types.ts b/packages/ghosttea-react/src/renderers/types.ts
+index f156116..5e53422 100644
+--- a/packages/ghosttea-react/src/renderers/types.ts
++++ b/packages/ghosttea-react/src/renderers/types.ts
+@@ -76,6 +76,8 @@ export interface RenderDamage {
+   full: boolean;
+   rows: ReadonlySet<number>;
+   geometryChanged: boolean;
++  /** Positive moves old rows upward. Accumulated since the last submitted scene. */
++  scrollRows?: number;
+ }
+ 
+ export function effectiveCursorStyle(view: RenderView): CursorStyle | null {
+@@ -103,6 +105,12 @@ export function renderedSizeChanged(current: PixelSize, next: PixelSize): boolea
+   );
+ }
+ 
++export interface RenderSubmission {
++  queueSubmits: number;
++  /** Submitted surfaces, including effects-only presentations. Not display timestamps. */
++  surfaceIds: readonly string[];
++}
++
+ export interface TerminalRenderer {
+   readonly kind: "webgpu" | "canvas2d";
+   mount(id: string, canvas: OffscreenCanvas): void;
+@@ -111,6 +119,8 @@ export interface TerminalRenderer {
+   render(id: string, view: RenderView): TerminalRenderMetrics | undefined;
+   renderBatch?(entries: ReadonlyArray<{ id: string; view: RenderView }>): Array<TerminalRenderMetrics | undefined>;
+   setPerformanceMeasurementEnabled?(enabled: boolean): void;
++  /** Cheap accounting for the most recent render/renderBatch, independent of profiling. */
++  submission?(): RenderSubmission;
+   settle?(): Promise<void>;
+ }
+ 
+diff --git a/packages/ghosttea-react/src/renderers/webgpu-renderer.ts b/packages/ghosttea-react/src/renderers/webgpu-renderer.ts
+index 291ac3f..4a3c8f4 100644
+--- a/packages/ghosttea-react/src/renderers/webgpu-renderer.ts
++++ b/packages/ghosttea-react/src/renderers/webgpu-renderer.ts
+@@ -22,7 +22,7 @@ import { backgroundRunBounds } from "./background-geometry.js";
+ import { rowsForDamage } from "./render-damage.js";
+ import { SHADER_EFFECT_WGSL } from "./shader-effects.js";
+ 
+-const ATLAS_SIZE = 2048;
++import { AtlasBatchFullError, AtlasCapacityError, GlyphAtlasPages, type GlyphLocation } from "./glyph-atlas.js";
+ const GEOMETRY_CACHE_LIMIT = 8;
+ const FONT_STACK = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+ 
+@@ -204,88 +204,37 @@ class DynamicVertexBuffer {
+   }
+ }
+ 
+-interface GlyphLocation {
+-  u0: number;
+-  v0: number;
+-  u1: number;
+-  v1: number;
+-  cells: number;
+-}
+-
+ class FallbackGlyphAtlas {
+-  readonly #texture: GPUTexture;
+-  readonly #sampler: GPUSampler;
+-  readonly #bindGroup: GPUBindGroup;
+-  readonly #cache = new Map<string, GlyphLocation>();
++  readonly pages: GlyphAtlasPages<string>;
+   readonly #scratch = new OffscreenCanvas(1, 1);
+-  #x = 1;
+-  #y = 1;
+-  #rowHeight = 0;
+   #uploadBytes = 0;
+   #uploadCalls = 0;
+-  #generation = 0;
+ 
+   constructor(
+     readonly device: GPUDevice,
+     bindGroupLayout: GPUBindGroupLayout,
+   ) {
+-    this.#texture = device.createTexture({
+-      label: "terminal glyph atlas",
+-      size: [ATLAS_SIZE, ATLAS_SIZE],
+-      format: "rgba8unorm",
+-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+-    });
+-    this.#sampler = device.createSampler({ minFilter: "linear", magFilter: "linear" });
+-    this.#bindGroup = device.createBindGroup({
+-      label: "terminal glyph atlas bindings",
+-      layout: bindGroupLayout,
+-      entries: [
+-        { binding: 0, resource: this.#texture.createView() },
+-        { binding: 1, resource: this.#sampler },
+-      ],
+-    });
++    this.pages = new GlyphAtlasPages(device, bindGroupLayout, "terminal diagnostic glyph atlas", "rgba8unorm", 1);
+   }
+ 
+   get bindGroup(): GPUBindGroup {
+-    return this.#bindGroup;
++    return this.pages.bindGroup;
+   }
+-
+   get generation(): number {
+-    return this.#generation;
++    return this.pages.generation;
+   }
+ 
+   prepare(values: Iterable<string>, dpr: number): void {
+     const scale = Math.max(1, Math.min(3, dpr));
+-    const all = [...new Set(values)].filter((value) => value.trim().length > 0);
+-    const missing = all.filter((value) => !this.#cache.has(`${scale.toFixed(2)}:${value}`));
+-    if (this.#fits(missing, scale, this.#x, this.#y, this.#rowHeight)) return;
+-    this.#cache.clear();
+-    this.#generation += 1;
+-    this.#x = 1;
+-    this.#y = 1;
+-    this.#rowHeight = 0;
+-    if (!this.#fits(all, scale, this.#x, this.#y, this.#rowHeight)) {
+-      throw new Error("The diagnostic glyph atlas cannot fit the text visible in one frame");
+-    }
+-  }
+-
+-  #fits(values: Iterable<string>, scale: number, startX: number, startY: number, startRowHeight: number): boolean {
+-    let x = startX;
+-    let y = startY;
+-    let rowHeight = startRowHeight;
+-    for (const value of values) {
+-      const width = Math.max(1, Math.ceil(CELL_WIDTH * graphemeCellWidth(value) * scale));
+-      const height = Math.max(1, Math.ceil(LINE_HEIGHT * scale));
+-      if (x + width + 1 > ATLAS_SIZE) {
+-        x = 1;
+-        y += rowHeight + 1;
+-        rowHeight = 0;
+-      }
+-      if (y + height + 1 > ATLAS_SIZE) return false;
+-      x += width + 1;
+-      rowHeight = Math.max(rowHeight, height);
+-    }
+-    return true;
++    this.pages.prepare(
++      [...new Set(values)]
++        .filter((value) => value.trim().length > 0)
++        .map((value) => ({
++          key: `${scale.toFixed(2)}:${value}`,
++          width: Math.max(1, Math.ceil(CELL_WIDTH * graphemeCellWidth(value) * scale)),
++          height: Math.max(1, Math.ceil(LINE_HEIGHT * scale)),
++        })),
++    );
+   }
+ 
+   glyph(grapheme: string, dpr: number): GlyphLocation | undefined {
+@@ -293,20 +242,10 @@ class FallbackGlyphAtlas {
+     const scale = Math.max(1, Math.min(3, dpr));
+     const cells = graphemeCellWidth(grapheme);
+     const key = `${scale.toFixed(2)}:${grapheme}`;
+-    const cached = this.#cache.get(key);
++    const cached = this.pages.get(key);
+     if (cached) return cached;
+-
+     const width = Math.max(1, Math.ceil(CELL_WIDTH * cells * scale));
+     const height = Math.max(1, Math.ceil(LINE_HEIGHT * scale));
+-    if (this.#x + width + 1 > ATLAS_SIZE) {
+-      this.#x = 1;
+-      this.#y += this.#rowHeight + 1;
+-      this.#rowHeight = 0;
+-    }
+-    if (this.#y + height + 1 > ATLAS_SIZE) {
+-      throw new Error("Temporary glyph atlas exhausted");
+-    }
+-
+     this.#scratch.width = width;
+     this.#scratch.height = height;
+     const context = this.#scratch.getContext("2d", { willReadFrequently: true });
+@@ -317,47 +256,28 @@ class FallbackGlyphAtlas {
+     context.textBaseline = "top";
+     context.fillText(grapheme, 0, Math.max(0, Math.floor((height - 15 * scale) / 2)));
+     const image = context.getImageData(0, 0, width, height);
+-    this.device.queue.writeTexture(
+-      { texture: this.#texture, origin: [this.#x, this.#y] },
+-      image.data,
+-      { bytesPerRow: width * 4, rowsPerImage: height },
+-      [width, height],
+-    );
++    const { location, texture, origin } = this.pages.insert(key, width, height, cells);
++    this.device.queue.writeTexture({ texture, origin }, image.data, { bytesPerRow: width * 4, rowsPerImage: height }, [
++      width,
++      height,
++    ]);
+     this.#uploadBytes += image.data.byteLength;
+     this.#uploadCalls += 1;
+-    const location: GlyphLocation = {
+-      u0: this.#x / ATLAS_SIZE,
+-      v0: this.#y / ATLAS_SIZE,
+-      u1: (this.#x + width) / ATLAS_SIZE,
+-      v1: (this.#y + height) / ATLAS_SIZE,
+-      cells,
+-    };
+-    this.#cache.set(key, location);
+-    this.#x += width + 1;
+-    this.#rowHeight = Math.max(this.#rowHeight, height);
+     return location;
+   }
+ 
+   destroy(): void {
+-    this.#texture.destroy();
++    this.pages.destroy();
+   }
+-
+   uploadMetrics(): { bytes: number; calls: number } {
+     return { bytes: this.#uploadBytes, calls: this.#uploadCalls };
+   }
+ }
+ 
+ class NativeGlyphAtlas {
+-  readonly #texture: GPUTexture;
+-  readonly #sampler: GPUSampler;
+-  readonly #bindGroup: GPUBindGroup;
+-  readonly #cache = new Map<number, GlyphLocation>();
+-  #x = 1;
+-  #y = 1;
+-  #rowHeight = 0;
++  readonly pages: GlyphAtlasPages<number>;
+   #uploadBytes = 0;
+   #uploadCalls = 0;
+-  #generation = 0;
+ 
+   constructor(
+     readonly device: GPUDevice,
+@@ -365,104 +285,48 @@ class NativeGlyphAtlas {
+     readonly label: string,
+     readonly format: "r8unorm" | "rgba8unorm",
+   ) {
+-    this.#texture = device.createTexture({
+-      label,
+-      size: [ATLAS_SIZE, ATLAS_SIZE],
+-      format,
+-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+-    });
+-    this.#sampler = device.createSampler({ minFilter: "linear", magFilter: "linear" });
+-    this.#bindGroup = device.createBindGroup({
+-      label: `${label} bindings`,
+-      layout: bindGroupLayout,
+-      entries: [
+-        { binding: 0, resource: this.#texture.createView() },
+-        { binding: 1, resource: this.#sampler },
+-      ],
+-    });
++    // At most 16 MiB mono + 32 MiB color + 16 MiB diagnostic pages. Empty
++    // formats allocate no textures. The ordinary ASCII working set uses 4 MiB.
++    this.pages = new GlyphAtlasPages(device, bindGroupLayout, label, format, format === "r8unorm" ? 4 : 2);
+   }
+ 
+   get bindGroup(): GPUBindGroup {
+-    return this.#bindGroup;
++    return this.pages.bindGroup;
+   }
+-
+   get generation(): number {
+-    return this.#generation;
++    return this.pages.generation;
+   }
+ 
+   prepare(definitions: Iterable<GlyphDefinition>): void {
+-    const all = new Map<number, GlyphDefinition>();
+-    const missing = new Map<number, GlyphDefinition>();
+-    for (const definition of definitions) {
+-      all.set(definition.id, definition);
+-      if (!this.#cache.has(definition.id)) missing.set(definition.id, definition);
+-    }
+-    if (this.#fits(missing.values(), this.#x, this.#y, this.#rowHeight)) return;
+-    this.#cache.clear();
+-    this.#generation += 1;
+-    this.#x = 1;
+-    this.#y = 1;
+-    this.#rowHeight = 0;
+-    if (!this.#fits(all.values(), this.#x, this.#y, this.#rowHeight)) {
+-      throw new Error(`${this.label} cannot fit the glyphs visible in one frame`);
+-    }
+-  }
+-
+-  #fits(definitions: Iterable<GlyphDefinition>, startX: number, startY: number, startRowHeight: number): boolean {
+-    let x = startX;
+-    let y = startY;
+-    let rowHeight = startRowHeight;
+-    for (const { width, height } of definitions) {
+-      if (width + 2 > ATLAS_SIZE || height + 2 > ATLAS_SIZE) return false;
+-      if (x + width + 1 > ATLAS_SIZE) {
+-        x = 1;
+-        y += rowHeight + 1;
+-        rowHeight = 0;
+-      }
+-      if (y + height + 1 > ATLAS_SIZE) return false;
+-      x += width + 1;
+-      rowHeight = Math.max(rowHeight, height);
+-    }
+-    return true;
++    this.pages.prepare(
++      Array.from(definitions, (definition) => ({
++        key: definition.id,
++        width: definition.width,
++        height: definition.height,
++      })),
++    );
+   }
+ 
+   glyph(definition: GlyphDefinition): GlyphLocation {
+-    const cached = this.#cache.get(definition.id);
++    const cached = this.pages.get(definition.id);
+     if (cached) return cached;
+     const { width, height } = definition;
+-    if (this.#x + width + 1 > ATLAS_SIZE) {
+-      this.#x = 1;
+-      this.#y += this.#rowHeight + 1;
+-      this.#rowHeight = 0;
+-    }
+-    if (this.#y + height + 1 > ATLAS_SIZE) throw new Error(`${this.label} exhausted`);
+-    const pixels = definition.pixels;
++    const { location, texture, origin } = this.pages.insert(definition.id, width, height, 0);
+     const bytesPerPixel = this.format === "r8unorm" ? 1 : 4;
+     this.device.queue.writeTexture(
+-      { texture: this.#texture, origin: [this.#x, this.#y] },
+-      pixels,
++      { texture, origin },
++      definition.pixels,
+       { bytesPerRow: width * bytesPerPixel, rowsPerImage: height },
+       [width, height],
+     );
+-    this.#uploadBytes += pixels.byteLength;
++    this.#uploadBytes += definition.pixels.byteLength;
+     this.#uploadCalls += 1;
+-    const location: GlyphLocation = {
+-      u0: this.#x / ATLAS_SIZE,
+-      v0: this.#y / ATLAS_SIZE,
+-      u1: (this.#x + width) / ATLAS_SIZE,
+-      v1: (this.#y + height) / ATLAS_SIZE,
+-      cells: 0,
+-    };
+-    this.#cache.set(definition.id, location);
+-    this.#x += width + 1;
+-    this.#rowHeight = Math.max(this.#rowHeight, height);
+     return location;
+   }
+ 
+   destroy(): void {
+-    this.#texture.destroy();
++    this.pages.destroy();
+   }
+-
+   uploadMetrics(): { bytes: number; calls: number } {
+     return { bytes: this.#uploadBytes, calls: this.#uploadCalls };
+   }
+@@ -485,6 +349,9 @@ interface WebGpuSurface extends PixelSize {
+   geometryCache: Map<string, CachedGeometry>;
+   geometryCandidates: Map<string, true>;
+   sceneValid: boolean;
++  sceneHadSelection: boolean;
++  sceneHadOverhang: boolean;
++  sceneCursorRow: number | null;
+ }
+ 
+ interface EffectPass {
+@@ -1040,6 +907,8 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+   readonly #colorAtlas: NativeGlyphAtlas;
+   readonly #fallbackAtlas: FallbackGlyphAtlas;
+   #performanceMeasurementEnabled = false;
++  #submission: { queueSubmits: number; surfaceIds: string[] } = { queueSubmits: 0, surfaceIds: [] };
++  #scrollScratch: GPUTexture | undefined;
+ 
+   private constructor(
+     readonly device: GPUDevice,
+@@ -1249,6 +1118,9 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+       geometryCache: new Map(),
+       geometryCandidates: new Map(),
+       sceneValid: false,
++      sceneHadSelection: false,
++      sceneHadOverhang: false,
++      sceneCursorRow: null,
+     };
+     this.#surfaces.set(id, surface);
+     this.#configure(surface);
+@@ -1268,6 +1140,10 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+     surface.cursorBuffer.destroy();
+     clearGeometryCache(surface);
+     this.#surfaces.delete(id);
++    if (this.#surfaces.size === 0) {
++      this.#scrollScratch?.destroy();
++      this.#scrollScratch = undefined;
++    }
+   }
+ 
+   resize(id: string, size: PixelSize): void {
+@@ -1299,7 +1175,11 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+       label: "terminal scene before Ghostty custom shaders",
+       size: [Math.max(1, width), Math.max(1, height)],
+       format: this.format,
+-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
++      usage:
++        GPUTextureUsage.RENDER_ATTACHMENT |
++        GPUTextureUsage.TEXTURE_BINDING |
++        GPUTextureUsage.COPY_SRC |
++        GPUTextureUsage.COPY_DST,
+     });
+   }
+ 
+@@ -1422,35 +1302,204 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+     };
+   }
+ 
++  submission(): { queueSubmits: number; surfaceIds: readonly string[] } {
++    return this.#submission;
++  }
++
++  #releaseAtlasBatch(): void {
++    this.#monoAtlas.pages.releaseBatch();
++    this.#colorAtlas.pages.releaseBatch();
++    this.#fallbackAtlas.pages.releaseBatch();
++  }
++
++  #prepareAtlases(view: RenderView, renderRows: readonly number[], dpr: number): void {
++    const mono = new Map<number, GlyphDefinition>();
++    const color = new Map<number, GlyphDefinition>();
++    for (const row of renderRows) {
++      for (const glyph of view.nativeRows[row] ?? []) {
++        const definition = view.glyphDefinitions.get(glyph.glyphId);
++        if (definition) (definition.format === GlyphFormat.Alpha8 ? mono : color).set(definition.id, definition);
++      }
++    }
++    this.#monoAtlas.prepare(mono.values());
++    this.#colorAtlas.prepare(color.values());
++    const fallback = !view.nativeRows.some((row) => row.length > 0);
++    if (fallback) {
++      this.#fallbackAtlas.prepare(
++        renderRows.flatMap((row) => splitGraphemes(view.rows[row] ?? "")),
++        dpr,
++      );
++    }
++    // Pin only after every format fits, so a rejected pane cannot occupy the
++    // batch budget with pages that no pending draw actually references.
++    if (mono.size > 0) this.#monoAtlas.pages.pin();
++    if (color.size > 0) this.#colorAtlas.pages.pin();
++    if (fallback && renderRows.length > 0) this.#fallbackAtlas.pages.pin();
++  }
++
+   render(id: string, view: RenderView): TerminalRenderMetrics | undefined {
+-    const surface = this.#surfaces.get(id);
+-    if (!surface) return;
+-    const encoder = this.device.createCommandEncoder({ label: `terminal frame ${id}` });
+-    const metrics =
+-      view.damage?.geometryChanged === false
+-        ? this.#encodeCachedRender(id, view, encoder)
+-        : this.#encodeRender(id, view, encoder);
+-    this.device.queue.submit([encoder.finish()]);
+-    if (metrics) metrics.queueSubmits = 1;
+-    return metrics;
++    return this.renderBatch([{ id, view }])[0];
++  }
++
++  #canCopyScroll(surface: WebGpuSurface, view: RenderView): boolean {
++    const shift = view.damage?.scrollRows ?? 0;
++    const top = ORIGIN_Y * surface.dpr;
++    const line = LINE_HEIGHT * surface.dpr;
++    const count = view.rows.length;
++    return (
++      surface.sceneValid &&
++      !view.damage?.full &&
++      Number.isSafeInteger(shift) &&
++      shift !== 0 &&
++      Math.abs(shift) < count &&
++      !view.selection &&
++      !surface.sceneHadSelection &&
++      Number.isInteger(top) &&
++      Number.isInteger(line) &&
++      top + count * line <= surface.canvas.height
++    );
++  }
++
++  #prepareScrollScratch(entries: ReadonlyArray<{ id: string; view: RenderView }>): boolean {
++    let width = 0,
++      height = 0;
++    for (const { id, view } of entries) {
++      const surface = this.#surfaces.get(id);
++      if (!surface || !this.#canCopyScroll(surface, view)) continue;
++      width = Math.max(width, surface.canvas.width);
++      height = Math.max(height, view.rows.length * LINE_HEIGHT * surface.dpr);
++    }
++    if (width === 0) return false;
++    // One shared staging texture, never one per pane. Fall back to redraw if
++    // the batch's maximum extent would exceed this fixed memory ceiling.
++    if (width * height * 4 > 64 * 1024 * 1024) return false;
++    if (!this.#scrollScratch || this.#scrollScratch.width < width || this.#scrollScratch.height < height) {
++      this.#scrollScratch?.destroy();
++      this.#scrollScratch = this.device.createTexture({
++        label: "terminal shared scroll staging",
++        size: [width, height],
++        format: this.format,
++        usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST,
++      });
++    }
++    return true;
++  }
++
++  #copyScroll(surface: WebGpuSurface, view: RenderView, encoder: GPUCommandEncoder): void {
++    const dy = view.damage!.scrollRows! * LINE_HEIGHT * surface.dpr;
++    const top = ORIGIN_Y * surface.dpr;
++    const size = [surface.canvas.width, view.rows.length * LINE_HEIGHT * surface.dpr - Math.abs(dy)];
++    // A texture cannot copy overlapping regions to itself. Encoder ordering
++    // lets all panes safely share this scratch texture, even within one batch.
++    encoder.copyTextureToTexture(
++      { texture: surface.sceneTexture, origin: [0, top + Math.max(0, dy)] },
++      { texture: this.#scrollScratch! },
++      size,
++    );
++    encoder.copyTextureToTexture(
++      { texture: this.#scrollScratch! },
++      { texture: surface.sceneTexture, origin: [0, top + Math.max(0, -dy)] },
++      size,
++    );
+   }
+ 
+   renderBatch(entries: ReadonlyArray<{ id: string; view: RenderView }>): Array<TerminalRenderMetrics | undefined> {
+-    const active = entries.filter(({ id }) => this.#surfaces.has(id));
+-    if (active.length === 0) return entries.map(() => undefined);
+-    const encoder = this.device.createCommandEncoder({ label: `terminal frame batch (${active.length} panes)` });
++    this.#submission = { queueSubmits: 0, surfaceIds: [] };
++    this.#releaseAtlasBatch();
++    const prepared = entries.map(({ id, view }) => {
++      const surface = this.#surfaces.get(id);
++      const overhang =
++        view.damage?.geometryChanged === false && surface?.sceneValid
++          ? surface.sceneHadOverhang
++          : view.nativeRows.some((row) => row.some((glyph) => glyph.y < 0 || glyph.y + glyph.height > LINE_HEIGHT));
++      // Row clears cannot reconstruct cross-row alpha composition at the
++      // repair boundary. Preserve those glyphs with a complete scene redraw.
++      if (
++        view.damage &&
++        !view.damage.full &&
++        (view.damage.scrollRows || view.damage.rows.size > 0) &&
++        (overhang || surface?.sceneHadOverhang)
++      ) {
++        view = { ...view, damage: { full: true, rows: new Set(), geometryChanged: true } };
++      }
++      return { id, view, overhang };
++    });
++    const canStageScroll = this.#prepareScrollScratch(prepared);
++    let encoder: GPUCommandEncoder | undefined;
++    let pendingIds: string[] = [];
+     const byId = new Map<string, TerminalRenderMetrics | undefined>();
+-    for (const { id, view } of active) {
+-      byId.set(
+-        id,
+-        view.damage?.geometryChanged === false
+-          ? this.#encodeCachedRender(id, view, encoder)
+-          : this.#encodeRender(id, view, encoder),
+-      );
++    const submit = (): void => {
++      if (encoder && pendingIds.length > 0) {
++        this.device.queue.submit([encoder.finish()]);
++        this.#submission.queueSubmits += 1;
++        this.#submission.surfaceIds.push(...pendingIds);
++        const first = pendingIds.map((id) => byId.get(id)).find((metric) => metric !== undefined);
++        if (first) first.queueSubmits += 1;
++      }
++      encoder = undefined;
++      pendingIds = [];
++      this.#releaseAtlasBatch();
++    };
++    try {
++      for (const { id, view: originalView, overhang } of prepared) {
++        const surface = this.#surfaces.get(id);
++        if (!surface) continue;
++        let view = originalView;
++        const copyScroll = canStageScroll && this.#canCopyScroll(surface, view);
++        if (view.damage?.scrollRows) {
++          if (copyScroll) {
++            const rows = new Set(view.damage.rows);
++            const shift = view.damage.scrollRows;
++            // Repaint exposed rows, the two clipped edges and the cursor
++            // baked into the last submitted scene (possibly several frames ago).
++            rows.add(0);
++            rows.add(view.rows.length - 1);
++            for (let row = 0; row < view.rows.length; row++) {
++              if (row + shift < 0 || row + shift >= view.rows.length) rows.add(row);
++            }
++            if (surface.sceneCursorRow !== null) rows.add(surface.sceneCursorRow - shift);
++            if (effectiveCursorStyle(view) !== null) rows.add(view.cursor.y);
++            view = { ...view, damage: { ...view.damage, rows, geometryChanged: true } };
++          } else {
++            view = { ...view, damage: { full: true, rows: new Set(), geometryChanged: true } };
++          }
++        }
++        const count = Math.max(view.rows.length, view.nativeRows.length, view.nativeStyleRows.length);
++        const { rows } = rowsForDamage(count, view.damage, surface.sceneValid);
++        try {
++          try {
++            this.#prepareAtlases(view, rows, surface.dpr);
++          } catch (error) {
++            if (!(error instanceof AtlasBatchFullError) || pendingIds.length === 0) throw error;
++            // All recyclable pages are referenced by pending draws. Submit
++            // them before overwriting any texels, then retry this pane once.
++            submit();
++            this.#prepareAtlases(view, rows, surface.dpr);
++          }
++        } catch (error) {
++          if (!(error instanceof AtlasCapacityError)) throw error;
++          // Capacity failure is isolated to this pane and preserves its old
++          // scene. Other panes still submit; new content/resize can retry it.
++          console.error(`[terminal-renderer] cannot render ${id}`, error);
++          continue;
++        }
++        encoder ??= this.device.createCommandEncoder({ label: "terminal frame batch" });
++        if (copyScroll) this.#copyScroll(surface, view, encoder);
++        byId.set(
++          id,
++          view.damage?.geometryChanged === false
++            ? this.#encodeCachedRender(id, view, encoder)
++            : this.#encodeRender(id, view, encoder),
++        );
++        surface.sceneHadSelection = view.selection !== null;
++        surface.sceneHadOverhang = overhang;
++        surface.sceneCursorRow = effectiveCursorStyle(view) === null ? null : view.cursor.y;
++        pendingIds.push(id);
++      }
++      submit();
++    } finally {
++      this.#releaseAtlasBatch();
+     }
+-    this.device.queue.submit([encoder.finish()]);
+-    const firstMetrics = [...byId.values()].find((metrics) => metrics !== undefined);
+-    if (firstMetrics) firstMetrics.queueSubmits = 1;
+     return entries.map(({ id }) => byId.get(id));
+   }
+ 
+@@ -1476,20 +1525,6 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+       resolvedStyles.set(styleId, resolved);
+       return resolved;
+     };
+-    const monoDefinitions = new Map<number, GlyphDefinition>();
+-    const colorDefinitions = new Map<number, GlyphDefinition>();
+-    for (const row of renderRows) {
+-      for (const glyph of view.nativeRows[row] ?? []) {
+-        const definition = view.glyphDefinitions.get(glyph.glyphId);
+-        if (!definition) continue;
+-        (definition.format === GlyphFormat.Rgba8Premultiplied ? colorDefinitions : monoDefinitions).set(
+-          definition.id,
+-          definition,
+-        );
+-      }
+-    }
+-    this.#monoAtlas.prepare(monoDefinitions.values());
+-    this.#colorAtlas.prepare(colorDefinitions.values());
+ 
+     if (!fullRedraw) {
+       for (const row of renderRows) {
+@@ -1554,12 +1589,6 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+     pushBlockCursorBackground(rectangleVertices, view, renderRows, scale, viewportWidth, viewportHeight);
+     const selectionInstanceCount = rectangleVertices.length / 10 - backgroundInstanceCount;
+ 
+-    if (!hasNativeRows) {
+-      this.#fallbackAtlas.prepare(
+-        renderRows.flatMap((row) => splitGraphemes(view.rows[row] ?? "")),
+-        scale,
+-      );
+-    }
+     if (hasNativeRows) {
+       for (const row of renderRows) {
+         const { box: boxCells, block: blockCells } = specialDrawingCells(view.rows[row] ?? "");
+@@ -1731,20 +1760,6 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+       resolvedStyles.set(styleId, resolved);
+       return resolved;
+     };
+-    const monoDefinitions = new Map<number, GlyphDefinition>();
+-    const colorDefinitions = new Map<number, GlyphDefinition>();
+-    for (const row of renderRows) {
+-      for (const glyph of view.nativeRows[row] ?? []) {
+-        const definition = view.glyphDefinitions.get(glyph.glyphId);
+-        if (!definition) continue;
+-        (definition.format === GlyphFormat.Rgba8Premultiplied ? colorDefinitions : monoDefinitions).set(
+-          definition.id,
+-          definition,
+-        );
+-      }
+-    }
+-    this.#monoAtlas.prepare(monoDefinitions.values());
+-    this.#colorAtlas.prepare(colorDefinitions.values());
+ 
+     if (!fullRedraw) {
+       for (const row of renderRows) {
+@@ -1810,12 +1825,6 @@ export class WebGpuTerminalRenderer implements TerminalRenderer {
+     const selectionInstanceCount = rectangleVertices.length / 10 - backgroundInstanceCount;
+ 
+     const hasNativeRows = view.nativeRows.some((row) => row.length > 0);
+-    if (!hasNativeRows) {
+-      this.#fallbackAtlas.prepare(
+-        renderRows.flatMap((row) => splitGraphemes(view.rows[row] ?? "")),
+-        scale,
+-      );
+-    }
+     if (hasNativeRows) {
+       for (const row of renderRows) {
+         const { box: boxCells, block: blockCells } = specialDrawingCells(view.rows[row] ?? "");
+diff --git a/packages/ghosttea-react/src/routed-control.test.ts b/packages/ghosttea-react/src/routed-control.test.ts
+index 42b8e82..c2b3922 100644
+--- a/packages/ghosttea-react/src/routed-control.test.ts
++++ b/packages/ghosttea-react/src/routed-control.test.ts
+@@ -88,6 +88,209 @@ function attach(transport: RoutedControlTransport): void {
+ }
+ 
+ describe("main-thread routed control transport", () => {
++  function replacementFixture() {
++    const sockets: FakeSocket[] = [];
++    const events: RoutedControlTransportEvent[] = [];
++    const transport = new RoutedControlTransport({
++      socketFactory: () => {
++        const socket = new FakeSocket();
++        sockets.push(socket);
++        return socket as unknown as WebSocket;
++      },
++      emit: (event) => events.push(event),
++    });
++    let generation = 0;
++    const open = (activationId: string) => {
++      transport.attach({
++        cellBootId,
++        controlUrl: "ws://127.0.0.1/control",
++        transportGrant,
++        attachGrant: {
++          ...attachGrant,
++          claims: { ...attachGrant.claims, grantGeneration: ++generation, expiresAt: Date.now() + 60_000 },
++        },
++        activationId,
++        replacePreviousActivation: true,
++        initialDemand: { mode: "live" },
++      });
++    };
++    const connect = () => {
++      const socket = sockets.at(-1)!;
++      socket.open();
++      socket.receive(
++        encodeRoutedMessage("ConnectionAccepted", {
++          selectedProtocolVersion: { major: 1, minor: 0 },
++          connectionSetId: "set-a",
++          channel: "control",
++          legGeneration: sockets.length,
++          heartbeatTtlMs: 15_000,
++          protocolLimits: DEFAULT_ROUTED_PROTOCOL_LIMITS,
++          capabilities: ["resume"],
++        }),
++      );
++      return socket;
++    };
++    const accepted = (socket: FakeSocket, activationId: string, grantGenerationAccepted: number) => {
++      socket.receive(
++        encodeRoutedMessage("ControlLegAttached", {
++          sessionId: "session-a",
++          activationId,
++          grantGenerationAccepted,
++          rights: ["input", "read"],
++        }),
++      );
++    };
++    const attaches = (socket: FakeSocket) =>
++      socket.sent.map((line) => JSON.parse(line)).filter((m) => m.type === "AttachControlLeg");
++    return { transport, events, open, connect, accepted, attaches };
++  }
++
++  it("replaces the native attachment after the last local view detached", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.accepted(socket, "old", 1);
++      h.transport.detach("old");
++      h.open("new");
++      expect(h.attaches(socket).at(-1)).toMatchObject({ activationId: "new", replacesActivationId: "old" });
++      h.accepted(socket, "new", 2);
++      h.transport.detach("new");
++      h.open("third");
++      expect(h.attaches(socket).at(-1)).toMatchObject({ activationId: "third", replacesActivationId: "new" });
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("waits for a detached pending attach before replacing its accepted identity", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.transport.detach("old");
++      h.open("new");
++      expect(h.attaches(socket)).toHaveLength(1);
++      h.accepted(socket, "old", 1);
++      expect(h.attaches(socket).at(-1)).toMatchObject({ activationId: "new", replacesActivationId: "old" });
++      expect(h.events.filter((event) => event.type === "control-attached")).toHaveLength(0);
++      h.accepted(socket, "new", 2);
++      expect(h.events.at(-1)).toMatchObject({ type: "control-attached", attached: { activationId: "new" } });
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("keeps the admitted predecessor after a replacement was refused", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.accepted(socket, "old", 1);
++      h.transport.detach("old");
++      h.open("refused");
++      h.transport.detach("refused");
++      h.open("retry");
++      socket.receive(
++        encodeRoutedMessage("AttachRefused", { activationId: "refused", code: "CAPACITY", retryable: true }),
++      );
++      expect(h.attaches(socket).at(-1)).toMatchObject({ activationId: "retry", replacesActivationId: "old" });
++      h.accepted(socket, "retry", 3);
++      expect(socket.readyState).toBe(1);
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("coalesces queued remounts and keeps their demand local until the attach is sent", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.transport.detach("old");
++      h.open("skipped");
++      h.transport.detach("skipped");
++      h.open("latest");
++      const sent = socket.sent.length;
++      expect(h.transport.declareDemand("latest", { mode: "none" })).toBeUndefined();
++      expect(socket.sent).toHaveLength(sent);
++      h.accepted(socket, "old", 1);
++      expect(h.attaches(socket)).toHaveLength(2);
++      expect(h.attaches(socket).at(-1)).toMatchObject({
++        activationId: "latest",
++        replacesActivationId: "old",
++        initialDemand: { mode: "none" },
++      });
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("forgets a detached predecessor when the cell revokes it", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.accepted(socket, "old", 1);
++      h.transport.detach("old");
++      socket.receive(
++        encodeRoutedMessage("CellActivationStatus", {
++          sessionId: "session-a",
++          activationId: "old",
++          cellStatusSequence: 2,
++          leaseTtlMs: 1,
++          presentation: { state: "revoked", reason: "leg-dead" },
++          input: { state: "revoked", reason: "leg-dead" },
++        }),
++      );
++      h.open("fresh");
++      expect(h.attaches(socket).at(-1)).toMatchObject({ activationId: "fresh" });
++      expect(h.attaches(socket).at(-1).replacesActivationId).toBeUndefined();
++      expect(h.events.filter((event) => event.type === "cell-status")).toHaveLength(0);
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("serializes renewal against the grant actually sent before a late attach reply", () => {
++    const h = replacementFixture();
++    try {
++      h.open("old");
++      const socket = h.connect();
++      h.transport.renew("old", { ...attachGrant, claims: { ...attachGrant.claims, grantGeneration: 2 } });
++      expect(h.attaches(socket)).toHaveLength(1);
++      h.accepted(socket, "old", 1);
++      expect(socket.readyState).toBe(1);
++      expect(h.attaches(socket)).toHaveLength(2);
++      expect(h.attaches(socket)[1].attachGrant.claims.grantGeneration).toBe(2);
++      expect(h.attaches(socket)[1].replacesActivationId).toBeUndefined();
++      h.accepted(socket, "old", 2);
++      expect(h.events.filter((event) => event.type === "control-attached")).toHaveLength(2);
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
++  it("does not replace an attach that never reached the socket or a dead connection", () => {
++    const h = replacementFixture();
++    try {
++      h.open("never-sent");
++      h.transport.detach("never-sent");
++      h.open("first");
++      const socket = h.connect();
++      expect(h.attaches(socket)).toHaveLength(1);
++      expect(h.attaches(socket)[0].replacesActivationId).toBeUndefined();
++      h.accepted(socket, "first", 2);
++      h.transport.detach("first");
++      socket.close();
++      h.open("fresh");
++      const next = h.connect();
++      expect(h.attaches(next)[0].replacesActivationId).toBeUndefined();
++    } finally {
++      h.transport.dispose();
++    }
++  });
++
+   it("delivers unknown authenticated control messages only when extension ingress is enabled", () => {
+     const socket = new FakeSocket();
+     const events: RoutedControlTransportEvent[] = [];
+diff --git a/packages/ghosttea-react/src/routed-control.ts b/packages/ghosttea-react/src/routed-control.ts
+index 4e963dc..01c1671 100644
+--- a/packages/ghosttea-react/src/routed-control.ts
++++ b/packages/ghosttea-react/src/routed-control.ts
+@@ -27,6 +27,9 @@ export interface RoutedControlAttachRequest {
+   attachGrant: RoutedSessionAttachGrant;
+   activationId: string;
+   replacesActivationId?: string;
++  /** Replace this connection's last admitted activation for the session.
++   * A pending predecessor is resolved first, including after local detach. */
++  replacePreviousActivation?: boolean;
+   initialDemand: RoutedSourceDemand;
+   capabilities?: string[];
+ }
+@@ -75,6 +78,7 @@ interface ControlConnection {
+   accepted?: RoutedConnectionAccepted;
+   activationIds: Set<string>;
+   pendingGeometry: string[];
++  replacements: Map<string, ControlReplacement>;
+   heartbeatSequence: number;
+   heartbeatAckSequence: number;
+   heartbeatTimer?: number;
+@@ -82,6 +86,14 @@ interface ControlConnection {
+   refusal?: RoutedConnectionRefused;
+ }
+ 
++/** One cell-side identity per session, not a history of DOM mounts. Retained
++ * after demand-none until replacement, cell revocation, or connection death. */
++interface ControlReplacement {
++  admitted?: string;
++  pending?: RoutedControlAttachRequest;
++  queued?: ControlActivation;
++}
++
+ const socketOpen = 1;
+ const socketClosing = 2;
+ 
+@@ -137,10 +149,17 @@ export class RoutedControlTransport {
+   declareDemand(activationId: string, demand: RoutedSourceDemand): number | undefined {
+     const activation = this.#activations.get(activationId);
+     if (!activation) return undefined;
++    activation.lastDemand = demand;
+     const connection = this.#connections.get(activation.request.cellBootId);
+     if (!connection?.accepted) return undefined;
++    const replacement = connection.replacements.get(activation.request.attachGrant.claims.sessionId);
++    if (
++      activation.request.replacePreviousActivation &&
++      replacement?.pending?.activationId !== activationId &&
++      replacement?.admitted !== activationId
++    )
++      return undefined;
+     activation.demandSequence += 1;
+-    activation.lastDemand = demand;
+     const body: RoutedDeclareDemand = {
+       sessionId: activation.request.attachGrant.claims.sessionId,
+       activationId,
+@@ -184,7 +203,10 @@ export class RoutedControlTransport {
+     if (!activation) return;
+     this.declareDemand(activationId, { mode: "none" });
+     this.#activations.delete(activationId);
+-    this.#connections.get(activation.request.cellBootId)?.activationIds.delete(activationId);
++    const connection = this.#connections.get(activation.request.cellBootId);
++    connection?.activationIds.delete(activationId);
++    const replacement = connection?.replacements.get(activation.request.attachGrant.claims.sessionId);
++    if (replacement?.queued === activation) delete replacement.queued;
+   }
+ 
+   dispose(): void {
+@@ -219,6 +241,7 @@ export class RoutedControlTransport {
+       socket,
+       activationIds: new Set(),
+       pendingGeometry: [],
++      replacements: new Map(),
+       heartbeatSequence: 0,
+       heartbeatAckSequence: 0,
+     };
+@@ -315,6 +338,26 @@ export class RoutedControlTransport {
+       return;
+     }
+     if (message.type === "ControlLegAttached") {
++      const replacement = connection.replacements.get(message.sessionId);
++      const pending = replacement?.pending;
++      if (replacement && pending?.activationId === message.activationId) {
++        if (
++          message.grantGenerationAccepted !== pending.attachGrant.claims.grantGeneration ||
++          message.rights.some((right) => !pending.attachGrant.claims.rights.includes(right))
++        ) {
++          this.#closeConnection(connection, ROUTED_CLOSE_CODES.PROTOCOL, "control attach binding mismatch", true);
++          return;
++        }
++        replacement.admitted = message.activationId;
++        delete replacement.pending;
++        // Detach retires the UI consumer, not the cell's identity. A late ACK
++        // still resolves a queued replacement, but must not resurrect a view.
++        if (connection.activationIds.has(message.activationId)) {
++          this.#emit({ type: "control-attached", attached: message });
++        }
++        this.#drainReplacement(connection, message.sessionId, replacement);
++        return;
++      }
+       const activation = this.#activations.get(message.activationId);
+       if (!connection.activationIds.has(message.activationId) && !activation) return;
+       if (
+@@ -331,6 +374,22 @@ export class RoutedControlTransport {
+       return;
+     }
+     if (message.type === "AttachRefused") {
++      for (const [sessionId, replacement] of connection.replacements) {
++        if (message.activationId === undefined || replacement.pending?.activationId !== message.activationId) continue;
++        // A refused attempt never became the native predecessor. Keep the
++        // admitted id, even if this reply arrives after that attempt detached.
++        delete replacement.pending;
++        if (connection.activationIds.has(message.activationId)) {
++          this.#emit({
++            type: "attach-refused",
++            activationId: message.activationId,
++            code: message.code,
++            retryable: message.retryable,
++          });
++        }
++        this.#drainReplacement(connection, sessionId, replacement);
++        return;
++      }
+       if (message.activationId !== undefined && !connection.activationIds.has(message.activationId)) {
+         if (!this.#activations.has(message.activationId)) return;
+         this.#closeConnection(connection, ROUTED_CLOSE_CODES.PROTOCOL, "attach refusal binding mismatch", true);
+@@ -345,6 +404,11 @@ export class RoutedControlTransport {
+       return;
+     }
+     if (message.type === "CellActivationStatus") {
++      const replacement = connection.replacements.get(message.sessionId);
++      if (replacement?.admitted === message.activationId && message.presentation.state === "revoked") {
++        delete replacement.admitted;
++        if (!replacement.pending && !replacement.queued) connection.replacements.delete(message.sessionId);
++      }
+       const activation = this.#activations.get(message.activationId);
+       if (!connection.activationIds.has(message.activationId) && !activation) return;
+       if (
+@@ -396,19 +460,46 @@ export class RoutedControlTransport {
+   }
+ 
+   #sendAttach(connection: ControlConnection, activation: ControlActivation): void {
++    let replacesActivationId = activation.request.replacesActivationId;
++    if (activation.request.replacePreviousActivation) {
++      const sessionId = activation.request.attachGrant.claims.sessionId;
++      let replacement = connection.replacements.get(sessionId);
++      if (!replacement) {
++        replacement = {};
++        connection.replacements.set(sessionId, replacement);
++      }
++      if (replacement.pending) {
++        replacement.queued = activation;
++        return;
++      }
++      replacement.pending = activation.request;
++      replacesActivationId =
++        replacement.admitted === activation.request.activationId ? undefined : replacement.admitted;
++    }
+     this.#send(
+       connection,
+       encodeRoutedMessage("AttachControlLeg", {
+         activationId: activation.request.activationId,
+         attachGrant: activation.request.attachGrant,
+-        ...(activation.request.replacesActivationId === undefined
+-          ? {}
+-          : { replacesActivationId: activation.request.replacesActivationId }),
++        ...(replacesActivationId === undefined ? {} : { replacesActivationId }),
+         initialDemand: activation.lastDemand,
+       }),
+     );
+   }
+ 
++  #drainReplacement(connection: ControlConnection, sessionId: string, replacement: ControlReplacement): void {
++    const queued = replacement.queued;
++    delete replacement.queued;
++    if (
++      queued &&
++      this.#connections.get(connection.cellBootId) === connection &&
++      this.#activations.get(queued.request.activationId) === queued
++    ) {
++      this.#sendAttach(connection, queued);
++    }
++    if (!replacement.admitted && !replacement.pending && !replacement.queued) connection.replacements.delete(sessionId);
++  }
++
+   #sendActivation(activationId: string, text: string): boolean {
+     const activation = this.#activations.get(activationId);
+     if (!activation) return false;
+diff --git a/packages/ghosttea-react/src/routed-frames.ts b/packages/ghosttea-react/src/routed-frames.ts
+index b869b1f..775149c 100644
+--- a/packages/ghosttea-react/src/routed-frames.ts
++++ b/packages/ghosttea-react/src/routed-frames.ts
+@@ -76,9 +76,10 @@ export interface RoutedExpectedLayout {
+ export interface RoutedFramesTransportOptions {
+   socketFactory?: (url: string) => WebSocket;
+   applyFrame: (
+-    packet: ArrayBuffer,
++    packet: ArrayBuffer | Uint8Array,
+     identity: RoutedTrfIdentity,
+     expectedLayout?: RoutedExpectedLayout,
++    glyphNamespace?: string,
+   ) => RoutedAppliedFrame;
+   emit: (event: RoutedFramesTransportEvent) => void;
+   creditReturned?: (bytes: number) => void;
+@@ -140,11 +141,6 @@ function exactStamp(left: RoutedSceneContentStamp | undefined, right: RoutedScen
+   return left !== undefined && compareRoutedSceneContent(left, right) === 0;
+ }
+ 
+-function copyArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+-  const copy = bytes.slice();
+-  return copy.buffer as ArrayBuffer;
+-}
+-
+ function capacitiesFitWithin(accepted: RoutedReceiverCapacities, advertised: RoutedReceiverCapacities): boolean {
+   return (
+     accepted.connectionCreditBytes <= advertised.connectionCreditBytes &&
+@@ -524,7 +520,7 @@ export class RoutedFramesTransport {
+     chargedBytes: number,
+   ): void {
+     if (
+-      payload.byteLength > connection.accepted!.protocolLimits.maxPresentationChunkBytes ||
++      payload.byteLength > connection.accepted!.protocolLimits.maxUrgentPresentationUnitBytes ||
+       !header.resultContent ||
+       header.baseContent === undefined ||
+       (header.baseContent !== null && !exactStamp(activation.appliedContent, header.baseContent))
+@@ -534,7 +530,7 @@ export class RoutedFramesTransport {
+     }
+     try {
+       this.#emit({ type: "frames-state", activationId: header.activationId, state: "applying" });
+-      this.#applyFrame(copyArrayBuffer(payload), activation.identity!);
++      this.#applyFrame(payload, activation.identity!, undefined, header.resultContent.sceneEpoch.cellBootId);
+       activation.appliedContent = header.resultContent;
+       this.#returnCredit(connection, header.activationId, chargedBytes);
+       this.#sceneApplied(connection, activation);
+@@ -662,7 +658,12 @@ export class RoutedFramesTransport {
+     }
+     try {
+       this.#emit({ type: "frames-state", activationId: header.activationId, state: "applying" });
+-      this.#applyFrame(staging.bytes.buffer as ArrayBuffer, activation.identity!, staging.targetLayout);
++      this.#applyFrame(
++        staging.bytes.buffer as ArrayBuffer,
++        activation.identity!,
++        staging.targetLayout,
++        staging.resultContent.sceneEpoch.cellBootId,
++      );
+       activation.appliedContent = staging.resultContent;
+       this.#releaseTransfer(activation);
+       this.#sceneApplied(connection, activation);
+diff --git a/packages/ghosttea-react/src/routed-runtime.test.ts b/packages/ghosttea-react/src/routed-runtime.test.ts
+index a01aeae..4f22cdb 100644
+--- a/packages/ghosttea-react/src/routed-runtime.test.ts
++++ b/packages/ghosttea-react/src/routed-runtime.test.ts
+@@ -140,6 +140,359 @@ async function flush(): Promise<void> {
+ }
+ 
+ describe("routed terminal runtime", () => {
++  function inputFixture(openTicket?: GhostteaRoutedHost["openTicket"]) {
++    vi.useFakeTimers();
++    vi.stubGlobal("window", globalThis);
++    const worker = new FakeWorker();
++    const socket = new FakeSocket();
++    const first = session("session-a", "11");
++    let generation = 0;
++    const runtime = new GhostteaTerminalRuntime({
++      transport: "routed",
++      host: {
++        openTicket:
++          openTicket ??
++          (async () => {
++            const result = ticket("cell-a", first.id, "set-a");
++            result.attachGrant.claims.grantGeneration = ++generation;
++            return result;
++          }),
++        encodeInput: (context) => ({ type: "TerminalInput", ...context }),
++      },
++      platform: {
++        writeClipboard: () => undefined,
++        forceCanvasFallback: () => false,
++        setForceCanvasFallback: () => undefined,
++        reload: () => undefined,
++      },
++      websocketFactory: () => socket as unknown as WebSocket,
++      workerFactory: () => worker as unknown as Worker,
++    });
++    runtime.registerSession(first);
++    const mount = (viewId: string) => runtime.mount(first.id, first.handle, viewId, canvas());
++    const attaches = () => socket.sent.map((line) => JSON.parse(line)).filter((m) => m.type === "AttachControlLeg");
++    const framesAttaches = () => worker.messages.filter((m) => (m as { type: string }).type === "routed-frames-attach");
++    const connect = async () => {
++      await flush();
++      socket.open();
++      socket.receive(
++        encodeRoutedMessage("ConnectionAccepted", {
++          selectedProtocolVersion: { major: 1, minor: 0 },
++          connectionSetId: "set-a",
++          channel: "control",
++          legGeneration: 1,
++          heartbeatTtlMs: 15_000,
++          protocolLimits: DEFAULT_ROUTED_PROTOCOL_LIMITS,
++          capabilities: ["resume"],
++        }),
++      );
++    };
++    const accept = (activationId: string, grantGenerationAccepted: number) => {
++      socket.receive(
++        encodeRoutedMessage("ControlLegAttached", {
++          sessionId: first.id,
++          activationId,
++          grantGenerationAccepted,
++          rights: ["geometry", "input", "read"],
++        }),
++      );
++    };
++    const present = (activationId: string) => {
++      const stamp = { sceneEpoch: { cellBootId: "cell-a", modelGeneration: 1 }, sceneRevision: 1 };
++      worker.emit({
++        type: "routed-frames-event",
++        event: {
++          type: "frames-attached",
++          attached: {
++            sessionId: first.id,
++            activationId,
++            resumeToken: "resume",
++            trfIdentity: { sessionHandle: "11", viewHandle: "12" },
++            outcome: { kind: "seed-required", reason: "no-cursor" },
++          },
++        },
++      });
++      worker.emit({
++        type: "routed-frames-event",
++        event: { type: "frames-state", activationId, state: "active", appliedContent: stamp },
++      });
++      worker.emit({
++        type: "routed-frames-event",
++        event: {
++          type: "presentation-status",
++          status: {
++            activationId,
++            workerStatusSequence: 1,
++            state: "active",
++            sceneContent: stamp,
++            leaseTtlMs: 10_000,
++          },
++        },
++      });
++      socket.receive(
++        encodeRoutedMessage("CellActivationStatus", {
++          sessionId: first.id,
++          activationId,
++          cellStatusSequence: 1,
++          leaseTtlMs: 10_000,
++          acceptedContent: stamp,
++          presentation: { state: "presenting" },
++          input: { state: "allowed" },
++        }),
++      );
++    };
++    const dispose = () => {
++      runtime.dispose();
++      vi.useRealTimers();
++      vi.unstubAllGlobals();
++    };
++    return { runtime, worker, socket, first, mount, attaches, framesAttaches, connect, accept, present, dispose };
++  }
++
++  it("restores input after repeated last-pane detach and reattach with a fresh presentation lease", async () => {
++    const h = inputFixture();
++    try {
++      let mounted = h.mount("view-0");
++      await h.connect();
++      let previous: string | undefined;
++      for (let index = 0; index < 10; index++) {
++        const attach = h.attaches().at(-1)!;
++        expect(attach.replacesActivationId).toBe(previous);
++        expect(h.framesAttaches()).toHaveLength(index);
++        expect(h.runtime.routedViewInputAllowed(`view-${index}`)).toBe(false);
++        h.accept(attach.activationId, index + 1);
++        h.accept(attach.activationId, index + 1); // a duplicate ACK must not attach frames twice
++        expect(h.framesAttaches()).toHaveLength(index + 1);
++        expect(h.runtime.routedViewInputAllowed(`view-${index}`)).toBe(false);
++        if (previous) {
++          h.present(previous); // old leases cannot admit input on the replacement
++          expect(h.runtime.routedViewInputAllowed(`view-${index}`)).toBe(false);
++        }
++        h.present(attach.activationId);
++        expect(h.runtime.routedViewInputAllowed(`view-${index}`)).toBe(true);
++        h.runtime.sendText(h.first.id, `view-${index}`, "probe");
++        expect(JSON.parse(h.socket.sent.at(-1)!)).toMatchObject({
++          type: "TerminalInput",
++          activationId: attach.activationId,
++        });
++        if (index === 9) break;
++        previous = attach.activationId;
++        mounted.dispose();
++        await vi.advanceTimersByTimeAsync(1);
++        mounted = h.mount(`view-${index + 1}`);
++        await flush();
++      }
++      const retained = h.mount("second-pane");
++      await flush();
++      mounted.dispose();
++      await vi.advanceTimersByTimeAsync(1);
++      expect(h.runtime.routedViewInputAllowed("second-pane")).toBe(true);
++      expect(h.attaches()).toHaveLength(10);
++      retained.dispose();
++    } finally {
++      h.dispose();
++    }
++  });
++
++  it("recovers a replacement refusal against the admitted identity instead of the refused attempt", async () => {
++    const h = inputFixture();
++    try {
++      const mounted = h.mount("old-view");
++      await h.connect();
++      const old = h.attaches().at(-1)!.activationId;
++      h.accept(old, 1);
++      h.present(old);
++      mounted.dispose();
++      await vi.advanceTimersByTimeAsync(1);
++      h.mount("new-view");
++      await flush();
++      const refused = h.attaches().at(-1)!.activationId;
++      h.socket.receive(
++        encodeRoutedMessage("AttachRefused", { activationId: refused, code: "CAPACITY", retryable: true }),
++      );
++      await vi.advanceTimersByTimeAsync(100);
++      const retry = h.attaches().at(-1)!;
++      expect(retry.activationId).not.toBe(refused);
++      expect(retry.replacesActivationId).toBe(old);
++      expect(h.framesAttaches()).toHaveLength(1);
++      h.accept(retry.activationId, 3);
++      h.present(retry.activationId);
++      expect(h.runtime.routedViewInputAllowed("new-view")).toBe(true);
++    } finally {
++      h.dispose();
++    }
++  });
++
++  it("does not start frames for a pane detached before its control reply", async () => {
++    const h = inputFixture();
++    try {
++      const mounted = h.mount("old-view");
++      await h.connect();
++      const old = h.attaches().at(-1)!.activationId;
++      mounted.dispose();
++      await vi.advanceTimersByTimeAsync(1);
++      h.mount("new-view");
++      await flush();
++      expect(h.attaches()).toHaveLength(1);
++      h.accept(old, 1);
++      expect(h.framesAttaches()).toHaveLength(0);
++      const next = h.attaches().at(-1)!;
++      expect(next.replacesActivationId).toBe(old);
++      h.accept(next.activationId, 2);
++      h.present(next.activationId);
++      expect(h.framesAttaches()).toHaveLength(1);
++      expect(h.runtime.routedViewInputAllowed("new-view")).toBe(true);
++    } finally {
++      h.dispose();
++    }
++  });
++
++  it.each(["resolve", "reject"] as const)(
++    "ignores a retired pane's open ticket that settles late (%s)",
++    async (settlement) => {
++      let resolve!: (value: RoutedTerminalOpenTicket) => void;
++      let reject!: (reason: Error) => void;
++      const pending = new Promise<RoutedTerminalOpenTicket>((yes, no) => {
++        resolve = yes;
++        reject = no;
++      });
++      const openTicket = vi
++        .fn<GhostteaRoutedHost["openTicket"]>()
++        .mockReturnValueOnce(pending)
++        .mockResolvedValue(ticket("cell-a", "session-a", "set-a"));
++      const h = inputFixture(openTicket);
++      try {
++        const old = h.mount("old-view");
++        await flush();
++        old.dispose();
++        await vi.advanceTimersByTimeAsync(1);
++        h.mount("new-view");
++        await h.connect();
++        const current = h.attaches().at(-1)!;
++        h.accept(current.activationId, 1);
++        h.present(current.activationId);
++        if (settlement === "resolve") resolve(ticket("cell-a", "session-a", "set-a"));
++        else reject(new Error("old ticket failed"));
++        await flush();
++        expect(h.attaches()).toHaveLength(1);
++        expect(h.framesAttaches()).toHaveLength(1);
++        expect(h.runtime.routedViewInputAllowed("new-view")).toBe(true);
++      } finally {
++        h.dispose();
++      }
++    },
++  );
++
++  it("bounds lease timers and does not renew leases for stale status messages", async () => {
++    vi.useFakeTimers();
++    vi.stubGlobal("window", globalThis);
++    const worker = new FakeWorker();
++    const socket = new FakeSocket();
++    const runtime = new GhostteaTerminalRuntime({
++      transport: "routed",
++      host: { openTicket: async () => ticket("cell-a", "session-a", "set-a") },
++      platform: {
++        writeClipboard: () => undefined,
++        forceCanvasFallback: () => false,
++        setForceCanvasFallback: () => undefined,
++        reload: () => undefined,
++      },
++      websocketFactory: () => socket as unknown as WebSocket,
++      workerFactory: () => worker as unknown as Worker,
++    });
++    try {
++      const first = session("session-a", "11");
++      runtime.registerSession(first);
++      runtime.mount(first.id, first.handle, "view-a", canvas());
++      await flush();
++      socket.open();
++      socket.receive(
++        encodeRoutedMessage("ConnectionAccepted", {
++          selectedProtocolVersion: { major: 1, minor: 0 },
++          connectionSetId: "set-a",
++          channel: "control",
++          legGeneration: 1,
++          heartbeatTtlMs: 15_000,
++          protocolLimits: DEFAULT_ROUTED_PROTOCOL_LIMITS,
++          capabilities: ["resume"],
++        }),
++      );
++      const { activationId } = JSON.parse(socket.sent.at(-1)!);
++      socket.receive(
++        encodeRoutedMessage("ControlLegAttached", {
++          sessionId: first.id,
++          activationId,
++          grantGenerationAccepted: 1,
++          rights: ["read"],
++        }),
++      );
++      const stamp = { sceneEpoch: { cellBootId: "cell-a", modelGeneration: 1 }, sceneRevision: 1 };
++      worker.emit({
++        type: "routed-frames-event",
++        event: {
++          type: "frames-attached",
++          attached: {
++            sessionId: first.id,
++            activationId,
++            resumeToken: "resume-a",
++            trfIdentity: { sessionHandle: "11", viewHandle: "12" },
++            outcome: { kind: "seed-required", reason: "no-cursor" },
++          },
++        },
++      });
++      worker.emit({
++        type: "routed-frames-event",
++        event: {
++          type: "frames-state",
++          activationId,
++          state: "active",
++          appliedContent: stamp,
++        },
++      });
++      const sendStatus = (sequence: number) => {
++        socket.receive(
++          encodeRoutedMessage("CellActivationStatus", {
++            sessionId: first.id,
++            activationId,
++            cellStatusSequence: sequence,
++            leaseTtlMs: 1_000,
++            acceptedContent: stamp,
++            presentation: { state: "presenting" },
++            input: { state: "allowed" },
++          }),
++        );
++        worker.emit({
++          type: "routed-frames-event",
++          event: {
++            type: "presentation-status",
++            status: {
++              activationId,
++              workerStatusSequence: sequence,
++              state: "active",
++              sceneContent: stamp,
++              leaseTtlMs: 1_000,
++            },
++          },
++        });
++      };
++      sendStatus(1);
++      expect(runtime.routedActivation(first.id)?.presentationReady).toBe(true);
++      const timerCount = vi.getTimerCount();
++      for (let sequence = 2; sequence <= 200; sequence++) sendStatus(sequence);
++      expect(vi.getTimerCount()).toBe(timerCount);
++      await vi.advanceTimersByTimeAsync(900);
++      sendStatus(200);
++      sendStatus(199);
++      await vi.advanceTimersByTimeAsync(100);
++      expect(runtime.routedActivation(first.id)?.cellLeaseDeadline).toBe(0);
++      expect(runtime.routedActivation(first.id)?.workerLeaseDeadline).toBe(0);
++      expect(runtime.routedActivation(first.id)?.presentationReady).toBe(false);
++    } finally {
++      runtime.dispose();
++      vi.useRealTimers();
++    }
++  });
++
+   it("refreshes registered metadata 200ms after a routed frame commit", async () => {
+     vi.useFakeTimers();
+     vi.stubGlobal("window", globalThis);
+@@ -787,7 +1140,7 @@ describe("routed terminal runtime", () => {
+             (message as { type?: string }).type === "routed-frames-attach",
+         )
+         .map((message) => message.request.cellBootId),
+-    ).toEqual(["cell-a", "cell-b"]);
++    ).toEqual([]); // the native control attachment must exist before frames starts
+     for (const socket of sockets) socket.open();
+     const helloA = JSON.parse(sockets[0]!.sent[0]!) as Record<string, unknown>;
+     const helloB = JSON.parse(sockets[1]!.sent[0]!) as Record<string, unknown>;
+@@ -818,6 +1171,9 @@ describe("routed terminal runtime", () => {
+         rights: ["geometry", "input", "read"],
+       }),
+     );
++    expect(
++      worker.messages.filter((message) => (message as { type: string }).type === "routed-frames-attach"),
++    ).toHaveLength(1);
+     expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toMatchObject({
+       type: "ClaimGeometry",
+       activationId: attachA.activationId,
+diff --git a/packages/ghosttea-react/src/row-damage.test.ts b/packages/ghosttea-react/src/row-damage.test.ts
+new file mode 100644
+index 0000000..54cfe14
+--- /dev/null
++++ b/packages/ghosttea-react/src/row-damage.test.ts
+@@ -0,0 +1,40 @@
++import { describe, expect, it } from "vitest";
++import { rowDamage, selectionDamageRows, shiftDamage } from "./row-damage.js";
++
++const screen = (rows: string[]) => ({ rows, nativeRows: rows.map(() => []), nativeStyleRows: rows.map(() => []) });
++
++describe("exact row damage", () => {
++  it("reuses shifted rows while repainting exposed and overwritten rows", () => {
++    expect(rowDamage(screen(["a", "b", "c", "d", "e"]), screen(["b", "c", "changed", "e", "f"]))).toEqual({
++      scrollRows: 1,
++      rows: [2, 4],
++    });
++    expect(rowDamage(screen(["b", "c", "d"]), screen(["a", "b", "c"]))).toEqual({ scrollRows: -1, rows: [0] });
++  });
++  it("repaints glyph/style changes even when the text did not change", () => {
++    const before = {
++      ...screen(["a", "b", "c"]),
++      nativeStyleRows: [[{ styleId: 1, cellStart: 0, cellSpan: 1 }], [], []],
++    };
++    expect(rowDamage(before, screen(["a", "b", "c"]))).toEqual({ scrollRows: 0, rows: [0] });
++  });
++  it("does not infer motion from a screen of repeated lines", () => {
++    expect(rowDamage(screen(["x", "x", "x"]), screen(["x", "x", "x"]))).toEqual({ scrollRows: 0, rows: [] });
++    expect(rowDamage(screen(["a", "b", "c"]), screen(["z", "a", "y"]))).toEqual({ scrollRows: 0, rows: [0, 1, 2] });
++  });
++  it("translates pending damage through multiple arrivals before a paint", () => {
++    const rows = new Set([1, 4]);
++    shiftDamage(rows, 1, 5);
++    rows.add(4);
++    shiftDamage(rows, 1, 5);
++    rows.add(4);
++    expect([...rows]).toEqual([2, 3, 4]);
++  });
++  it("bounds selection damage and includes the erased selection", () => {
++    const selection = { anchor: { row: 2, column: 0 }, focus: { row: 3, column: 8 } };
++    expect(selectionDamageRows(selection, null, 40)).toEqual([2, 3]);
++    expect(selectionDamageRows(null, { anchor: { row: -5, column: 0 }, focus: { row: 100, column: 0 } }, 3)).toEqual([
++      0, 1, 2,
++    ]);
++  });
++});
+diff --git a/packages/ghosttea-react/src/row-damage.ts b/packages/ghosttea-react/src/row-damage.ts
+new file mode 100644
+index 0000000..3c09647
+--- /dev/null
++++ b/packages/ghosttea-react/src/row-damage.ts
+@@ -0,0 +1,93 @@
++import type { GlyphInstance, StyleRun } from "@vibecook/ghosttea-frame";
++import type { CellSelection } from "./renderers/types.js";
++
++interface Rows {
++  rows: readonly string[];
++  nativeRows: readonly (readonly GlyphInstance[])[];
++  nativeStyleRows: readonly (readonly StyleRun[])[];
++}
++
++function sameRow(before: Rows, from: number, after: Rows, to: number): boolean {
++  if (from < 0 || from >= before.rows.length || before.rows[from] !== after.rows[to]) return false;
++  const a = before.nativeRows[from] ?? [],
++    b = after.nativeRows[to] ?? [];
++  if (a.length !== b.length) return false;
++  for (let i = 0; i < a.length; i++) {
++    const x = a[i]!,
++      y = b[i]!;
++    if (
++      x.glyphId !== y.glyphId ||
++      x.styleId !== y.styleId ||
++      x.x !== y.x ||
++      x.y !== y.y ||
++      x.width !== y.width ||
++      x.height !== y.height ||
++      x.cellStart !== y.cellStart ||
++      x.cellSpan !== y.cellSpan
++    )
++      return false;
++  }
++  const as = before.nativeStyleRows[from] ?? [],
++    bs = after.nativeStyleRows[to] ?? [];
++  if (as.length !== bs.length) return false;
++  return as.every(
++    (x, i) => x.styleId === bs[i]!.styleId && x.cellStart === bs[i]!.cellStart && x.cellSpan === bs[i]!.cellSpan,
++  );
++}
++
++/** Infer scrolling only from exact row content, never from a matching text
++ * label alone. Unique text anchors keep candidate discovery linear even on a
++ * screen full of repeated/blank lines. The final comparison includes geometry
++ * and style. Callers fence catalog, layout and style-definition changes. */
++export function rowDamage(before: Rows, after: Rows): { scrollRows: number; rows: number[] } {
++  const positions = new Map<string, number>();
++  for (let row = 0; row < before.rows.length; row++) {
++    const text = before.rows[row]!;
++    positions.set(text, positions.has(text) ? -1 : row);
++  }
++  const votes = new Map<number, number>();
++  for (let row = 0; row < after.rows.length; row++) {
++    const from = positions.get(after.rows[row]!);
++    if (from !== undefined && from >= 0) {
++      const delta = from - row;
++      votes.set(delta, (votes.get(delta) ?? 0) + 1);
++    }
++  }
++  let scrollRows = 0,
++    best = votes.get(0) ?? 0;
++  for (const [delta, count] of votes)
++    if (count > best) {
++      best = count;
++      scrollRows = delta;
++    }
++  const changed = (delta: number): number[] =>
++    after.rows.flatMap((_, row) => (sameRow(before, row + delta, after, row) ? [] : [row]));
++  if (scrollRows !== 0) {
++    const rows = changed(scrollRows);
++    if (after.rows.length - rows.length >= Math.ceil(after.rows.length / 2)) return { scrollRows, rows };
++  }
++  return { scrollRows: 0, rows: changed(0) };
++}
++
++/** Compose shifts before the next paint, moving pending damage with the rows.
++ * No intermediate decoded scene has been painted yet. */
++export function shiftDamage(rows: Set<number>, shift: number, rowCount: number): void {
++  const moved = [...rows].map((row) => row - shift).filter((row) => row >= 0 && row < rowCount);
++  rows.clear();
++  for (const row of moved) rows.add(row);
++}
++
++export function selectionDamageRows(
++  before: CellSelection | null,
++  after: CellSelection | null,
++  count: number,
++): number[] {
++  const rows = new Set<number>();
++  for (const selection of [before, after]) {
++    if (!selection) continue;
++    const start = Math.max(0, Math.min(selection.anchor.row, selection.focus.row));
++    const end = Math.min(count - 1, Math.max(selection.anchor.row, selection.focus.row));
++    for (let row = start; row <= end; row++) rows.add(row);
++  }
++  return [...rows];
++}
+diff --git a/packages/ghosttea-react/src/runtime.test.ts b/packages/ghosttea-react/src/runtime.test.ts
+index 66d6b13..33ad531 100644
+--- a/packages/ghosttea-react/src/runtime.test.ts
++++ b/packages/ghosttea-react/src/runtime.test.ts
+@@ -359,6 +359,89 @@ afterEach(() => {
+ });
+ 
+ describe("GhostteaTerminalRuntime mount ownership", () => {
++  it("publishes a session's first drawn frame once, by session id, and remembers it", () => {
++    vi.stubGlobal("window", globalThis);
++    const worker = new FakeWorker();
++    const runtime = new GhostteaTerminalRuntime({
++      ports: { control: new FakePort() as unknown as MessagePort, frames: new FakePort() as unknown as MessagePort },
++      platform: {
++        writeClipboard: () => undefined,
++        forceCanvasFallback: () => false,
++        setForceCanvasFallback: () => undefined,
++        reload: () => undefined,
++      },
++      workerFactory: () => worker as unknown as Worker,
++    });
++    const drawn: unknown[] = [];
++    runtime.addEventListener("session-drawn", (event) => drawn.push((event as CustomEvent).detail));
++    runtime.registerSession(session);
++    expect(runtime.sessionHasDrawn(session.id)).toBe(false);
++    // A handle this renderer never registered names no session.
++    worker.dispatchEvent(new MessageEvent("message", { data: { type: "session-drawn", sessionHandle: "stranger" } }));
++    expect(drawn).toEqual([]);
++    worker.dispatchEvent(new MessageEvent("message", { data: { type: "session-drawn", sessionHandle: session.handle } }));
++    worker.dispatchEvent(new MessageEvent("message", { data: { type: "session-drawn", sessionHandle: session.handle } }));
++    expect(drawn).toEqual([{ sessionId: session.id }]);
++    expect(runtime.sessionHasDrawn(session.id)).toBe(true);
++    expect(runtime.sessionHasDrawn("unknown")).toBe(false);
++    // Unregistered, the session is forgotten on both sides (the worker drops the
++    // handle's snapshot and its first frame with it); registered again, it announces again.
++    runtime.unregisterSession(session.id);
++    expect(worker.messages).toContainEqual({ type: "drop-session", sessionHandle: session.handle });
++    expect(runtime.sessionHasDrawn(session.id)).toBe(false);
++    runtime.registerSession(session);
++    worker.dispatchEvent(new MessageEvent("message", { data: { type: "session-drawn", sessionHandle: session.handle } }));
++    expect(drawn).toEqual([{ sessionId: session.id }, { sessionId: session.id }]);
++    expect(runtime.sessionHasDrawn(session.id)).toBe(true);
++    runtime.dispose();
++  });
++
++  it.each(["ports", "routed"] as const)(
++    "records only local births on %s, not registered or listed sessions",
++    async (transport) => {
++      vi.stubGlobal("window", globalThis);
++      const control = new FakePort();
++      const runtime = new GhostteaTerminalRuntime({
++        ...(transport === "routed"
++          ? {
++              transport: "routed" as const,
++              host: {
++                openTicket: async () => {
++                  throw new Error("not mounting");
++                },
++                createSession: async () => session,
++                listSessions: async () => [session],
++              },
++            }
++          : {
++              ports: { control: control as unknown as MessagePort, frames: new FakePort() as unknown as MessagePort },
++            }),
++        platform: {
++          writeClipboard: () => undefined,
++          forceCanvasFallback: () => false,
++          setForceCanvasFallback: () => undefined,
++          reload: () => undefined,
++        },
++        workerFactory: () => new FakeWorker() as unknown as Worker,
++      });
++      runtime.registerSession(session);
++      await runtime.listSessions();
++      expect(runtime.sessionCreatedHere(session.id)).toBe(false);
++      const created = await runtime.createSession({
++        executable: "/bin/sh",
++        args: [],
++        cols: 80,
++        rows: 24,
++        persistence: "keep-until-exit",
++      });
++      expect(runtime.sessionCreatedHere(created.id)).toBe(true);
++      expect(runtime.sessionCreatedHere("unknown")).toBe(false);
++      runtime.unregisterSession(created.id);
++      expect(runtime.sessionCreatedHere(created.id)).toBe(true);
++      runtime.dispose();
++    },
++  );
++
+   it("refuses scrollback overrides before 1.15 and validates them before send", async () => {
+     vi.stubGlobal("window", globalThis);
+     const control = new FakePort();
+@@ -2312,9 +2395,20 @@ describe("GhostteaTerminalRuntime mount ownership", () => {
+     });
+     await runtime.connect();
+ 
+-    const first = runtime.mount("session", "handle", "view-1", canvas());
++    const firstCanvas = Object.assign(canvas(), { clientWidth: 642, clientHeight: 418 });
++    const first = runtime.mount("session", "handle", "view-1", firstCanvas);
++    expect(worker.messages).toContainEqual(
++      expect.objectContaining({
++        type: "mount",
++        surfaceId: "view-1",
++        size: { width: 642, height: 418, dpr: 1 },
++      }),
++    );
++    expect(runtime.sessionHasInput("session")).toBe(false);
++    runtime.paste("session", "view-1", "echo hello");
+     first.dispose();
+     const second = runtime.mount("session", "handle", "view-2", canvas());
++    expect(runtime.sessionHasInput("session")).toBe(true);
+     await new Promise((resolve) => setTimeout(resolve, 5));
+ 
+     expect(control.messages).toContainEqual({
+diff --git a/packages/ghosttea-react/src/runtime.ts b/packages/ghosttea-react/src/runtime.ts
+index 3bbd33a..c374314 100644
+--- a/packages/ghosttea-react/src/runtime.ts
++++ b/packages/ghosttea-react/src/runtime.ts
+@@ -31,7 +31,7 @@ import {
+   type TerminationSource,
+ } from "@vibecook/ghosttea-protocol";
+ import { FRAME_MAGIC, FrameFlag } from "@vibecook/ghosttea-frame";
+-import type { CellSelection, TerminalEffects, TerminalTheme } from "./renderers/types.js";
++import type { CellSelection, PixelSize, TerminalEffects, TerminalTheme } from "./renderers/types.js";
+ import type { TerminalRenderCounterSnapshot, TerminalRenderPerformanceSnapshot } from "./performance.js";
+ import { FrameResyncController } from "./frame-resync.js";
+ import type { RendererToWorkerMessage, WorkerToRendererMessage } from "./worker-messages.js";
+@@ -258,7 +258,10 @@ interface RoutedActivationRuntime {
+   start?: Promise<void>;
+   attachTimer?: number;
+   renewalTimer?: number;
++  cellLeaseTimer?: number;
++  workerLeaseTimer?: number;
+   framesResume?: Promise<void>;
++  framesAttachStarted?: boolean;
+   recoveryAttempts: number;
+   preAuthRemints: { control: number; frames: number };
+   protocolFailures: { control: number; frames: number };
+@@ -301,6 +304,10 @@ export function waitForGhostteaRendererPorts(timeoutMs = 10_000): Promise<Ghostt
+ 
+ export class GhostteaTerminalRuntime extends EventTarget {
+   readonly #worker: Worker;
++  readonly #sessionsCreatedHere = new Set<string>();
++  readonly #sessionsWithInput = new Set<string>();
++  readonly #sessionsDrawn = new Set<string>();
++
+   readonly #ports: Promise<GhostteaRendererPorts> | undefined;
+   readonly #routedHost: GhostteaRoutedHost | undefined;
+   readonly #routedReceiverCapacities: RoutedReceiverCapacities | undefined;
+@@ -442,6 +449,8 @@ export class GhostteaTerminalRuntime extends EventTarget {
+       } else if (data.type === "frame-committed") {
+         if (this.#routedHost?.getSession) this.#scheduleMetadataRefresh(data.sessionHandle);
+         this.#recordCommittedFrame(data.sessionHandle, data.fullSnapshot);
++      } else if (data.type === "session-drawn") {
++        this.#recordSessionDrawn(data.sessionHandle);
+       } else if (data.type === "catalog-pressure") {
+         console.warn(
+           `[terminal-runtime] native text catalog budget exceeded for ${data.sessionHandle}; using bounded fallback text`,
+@@ -478,6 +487,29 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     this.#worker.postMessage(message, transfer);
+   }
+ 
++  /** Whether this renderer has attempted terminal input during this session's lifetime.
++   * Restored or externally created sessions must never be treated as unused from this alone. */
++  sessionHasInput(sessionId: string): boolean {
++    return this.#sessionsWithInput.has(sessionId);
++  }
++
++  /**
++   * Whether a committed frame of this session has put something on screen in
++   * this renderer: what a host that just started a program waits for before it
++   * reveals the terminal. Once true it stays true while the session is
++   * registered here (a restart in place is the same session and does not draw
++   * "first" again); a `session-drawn` event (`detail: { sessionId }`) announces
++   * the change, and a session registered again announces again.
++   */
++  sessionHasDrawn(sessionId: string): boolean {
++    return this.#sessionsDrawn.has(sessionId);
++  }
++
++  /** A local birth receipt, never inferred from registration or an empty input history. */
++  sessionCreatedHere(sessionId: string): boolean {
++    return this.#sessionsCreatedHere.has(sessionId);
++  }
++
+   get rendererBackend(): string {
+     return this.#rendererBackend;
+   }
+@@ -1103,6 +1135,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     if (this.#routedHost) {
+       if (!this.#routedHost.createSession) throw new Error("The routed host does not provide session creation");
+       const session = await this.#routedHost.createSession(options);
++      this.#sessionsCreatedHere.add(session.id);
+       this.registerSession(session);
+       return session;
+     }
+@@ -1121,6 +1154,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+       options: { ...options, ...(this.#sessionOwnerId ? { ownerId: this.#sessionOwnerId } : {}) },
+     });
+     if (response.type !== "session-created") throw new Error("ghosttead returned an unexpected response");
++    this.#sessionsCreatedHere.add(response.session.id);
+     this.registerSession(response.session);
+     console.info(`[terminal-runtime] created session ${response.session.id}`);
+     return response.session;
+@@ -1281,9 +1315,15 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     if (response.type !== "ok") throw new Error("ghosttead rejected frame resynchronization");
+   }
+ 
+-  mount(sessionId: string, sessionHandle: string, viewId: string, canvas: HTMLCanvasElement): TerminalMount {
++  mount(
++    sessionId: string,
++    sessionHandle: string,
++    viewId: string,
++    canvas: HTMLCanvasElement,
++    initialSize?: PixelSize,
++  ): TerminalMount {
+     if (this.#disposed) throw new Error("Cannot mount a disposed terminal runtime");
+-    if (this.#routedHost) return this.#mountRouted(sessionId, sessionHandle, viewId, canvas);
++    if (this.#routedHost) return this.#mountRouted(sessionId, sessionHandle, viewId, canvas, initialSize);
+     const mounted = this.#mountedCanvases.get(canvas);
+     if (mounted) {
+       if (!mounted.active) throw new Error("A released terminal canvas cannot be remounted");
+@@ -1298,11 +1338,20 @@ export class GhostteaTerminalRuntime extends EventTarget {
+       return this.#createMountLease(mounted);
+     }
+ 
++    const size: PixelSize = initialSize ?? {
++      width: canvas.clientWidth || 0,
++      height: canvas.clientHeight || 0,
++      dpr: window.devicePixelRatio || 1,
++    };
++    // Allocate the first render target at its actual size, too: the backend
++    // must not build a default 300x150 scene texture and immediately replace it.
++    canvas.width = Math.max(1, Math.round(size.width * size.dpr));
++    canvas.height = Math.max(1, Math.round(size.height * size.dpr));
+     const offscreen = canvas.transferControlToOffscreen();
+     const subscription = this.#retainFrameSubscription(sessionHandle);
+     const generation = (this.#mountGenerationBySurface.get(viewId) ?? 0) + 1;
+     this.#mountGenerationBySurface.set(viewId, generation);
+-    this.#postWorker({ type: "mount", surfaceId: viewId, sessionHandle, canvas: offscreen }, [offscreen]);
++    this.#postWorker({ type: "mount", surfaceId: viewId, sessionHandle, canvas: offscreen, size }, [offscreen]);
+     const entry: MountedCanvas = {
+       canvas,
+       sessionHandle,
+@@ -1388,7 +1437,13 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     return this.#createMountLease(entry);
+   }
+ 
+-  #mountRouted(sessionId: string, sessionHandle: string, viewId: string, canvas: HTMLCanvasElement): TerminalMount {
++  #mountRouted(
++    sessionId: string,
++    sessionHandle: string,
++    viewId: string,
++    canvas: HTMLCanvasElement,
++    initialSize?: PixelSize,
++  ): TerminalMount {
+     const mounted = this.#mountedCanvases.get(canvas);
+     if (mounted) {
+       if (!mounted.active) throw new Error("A released terminal canvas cannot be remounted");
+@@ -1402,10 +1457,19 @@ export class GhostteaTerminalRuntime extends EventTarget {
+       }
+       return this.#createMountLease(mounted);
+     }
++    const size: PixelSize = initialSize ?? {
++      width: canvas.clientWidth || 0,
++      height: canvas.clientHeight || 0,
++      dpr: window.devicePixelRatio || 1,
++    };
++    // Allocate the first render target at its actual size, too: the backend
++    // must not build a default 300x150 scene texture and immediately replace it.
++    canvas.width = Math.max(1, Math.round(size.width * size.dpr));
++    canvas.height = Math.max(1, Math.round(size.height * size.dpr));
+     const offscreen = canvas.transferControlToOffscreen();
+     const generation = (this.#mountGenerationBySurface.get(viewId) ?? 0) + 1;
+     this.#mountGenerationBySurface.set(viewId, generation);
+-    this.#postWorker({ type: "mount", surfaceId: viewId, sessionHandle, canvas: offscreen }, [offscreen]);
++    this.#postWorker({ type: "mount", surfaceId: viewId, sessionHandle, canvas: offscreen, size }, [offscreen]);
+     const entry: MountedCanvas = {
+       canvas,
+       sessionHandle,
+@@ -1529,14 +1593,21 @@ export class GhostteaTerminalRuntime extends EventTarget {
+   ): Promise<void> {
+     const host = this.#routedHost;
+     if (!host || this.#disposed || entry.viewIds.size === 0) return;
++    const activationId = entry.state.activationId;
++    const isCurrent = () =>
++      !this.#disposed &&
++      entry.viewIds.size > 0 &&
++      entry.state.activationId === activationId &&
++      this.#routedByActivation.get(activationId) === entry &&
++      this.#routedBySession.get(entry.sessionId) === entry;
+     let ticket: RoutedTerminalOpenTicket;
+     try {
+       ticket = await host.openTicket(entry.sessionId, { reason });
+     } catch (error) {
+-      this.#transitionRouted(entry, { type: "no-route", reason: String(error) });
++      if (isCurrent()) this.#transitionRouted(entry, { type: "no-route", reason: String(error) });
+       return;
+     }
+-    if (this.#routedBySession.get(entry.sessionId) !== entry || this.#disposed) return;
++    if (!isCurrent()) return;
+     if (!this.#routedTicketMatches(entry, ticket)) {
+       this.#transitionRouted(entry, { type: "no-route", reason: "ticket-binding-mismatch" });
+       return;
+@@ -1551,10 +1622,26 @@ export class GhostteaTerminalRuntime extends EventTarget {
+       transportGrant: ticket.transportGrant,
+       attachGrant: ticket.attachGrant,
+       activationId: entry.state.activationId,
++      replacePreviousActivation: true,
+       ...(entry.replacesActivationId === undefined ? {} : { replacesActivationId: entry.replacesActivationId }),
+       initialDemand: this.#routedDemand(entry),
+       capabilities: this.#routedCapabilities,
+     });
++    this.#armRoutedAttachDeadline(
++      entry,
++      this.#routedAttachDeadlineByCell.get(ticket.route.cellBootId) ??
++        DEFAULT_ROUTED_PROTOCOL_LIMITS.activationAttachDeadlineMs,
++    );
++    this.#scheduleRoutedRenewal(entry);
++  }
++
++  #startRoutedFrames(entry: RoutedActivationRuntime): void {
++    const ticket = entry.ticket;
++    if (!ticket?.endpoints || !entry.state.controlAttached || entry.framesAttachStarted || entry.viewIds.size === 0)
++      return;
++    // Control creates the native activation. The frames socket may already be
++    // warm; sending on both legs at once races that creation on every remount.
++    entry.framesAttachStarted = true;
+     this.#postWorker({
+       type: "routed-frames-attach",
+       request: {
+@@ -1569,21 +1656,20 @@ export class GhostteaTerminalRuntime extends EventTarget {
+         capabilities: this.#routedCapabilities,
+       },
+     });
+-    this.#armRoutedAttachDeadline(
+-      entry,
+-      this.#routedAttachDeadlineByCell.get(ticket.route.cellBootId) ??
+-        DEFAULT_ROUTED_PROTOCOL_LIMITS.activationAttachDeadlineMs,
+-    );
+-    this.#scheduleRoutedRenewal(entry);
+   }
+ 
+   #stopRoutedActivation(entry: RoutedActivationRuntime): void {
+     this.#routedControl?.detach(entry.state.activationId);
+     this.#postWorker({ type: "routed-frames-detach", activationId: entry.state.activationId });
++    delete entry.framesAttachStarted;
+     if (entry.attachTimer !== undefined) window.clearTimeout(entry.attachTimer);
+     delete entry.attachTimer;
+     if (entry.renewalTimer !== undefined) window.clearTimeout(entry.renewalTimer);
+     delete entry.renewalTimer;
++    if (entry.cellLeaseTimer !== undefined) window.clearTimeout(entry.cellLeaseTimer);
++    delete entry.cellLeaseTimer;
++    if (entry.workerLeaseTimer !== undefined) window.clearTimeout(entry.workerLeaseTimer);
++    delete entry.workerLeaseTimer;
+     delete entry.ticket;
+   }
+ 
+@@ -1658,6 +1744,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+         grantGeneration: event.attached.grantGenerationAccepted,
+         rights: event.attached.rights,
+       });
++      this.#startRoutedFrames(entry);
+       const previousGeometry = this.#routedGeometry.get(entry.sessionId);
+       if (
+         !event.attached.rights.includes("geometry") &&
+@@ -1701,9 +1788,13 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     if (event.type === "cell-status") {
+       const entry = this.#routedByActivation.get(event.status.activationId);
+       if (!entry || event.status.sessionId !== entry.sessionId) return;
++      const previousSequence = entry.state.lastCellStatusSequence;
+       this.#transitionRouted(entry, { type: "cell-status", status: event.status, now: performance.now() });
+       const sequence = entry.state.lastCellStatusSequence;
+-      window.setTimeout(() => {
++      if (sequence === previousSequence) return;
++      if (entry.cellLeaseTimer !== undefined) window.clearTimeout(entry.cellLeaseTimer);
++      entry.cellLeaseTimer = window.setTimeout(() => {
++        delete entry.cellLeaseTimer;
+         if (entry.state.lastCellStatusSequence !== sequence) return;
+         this.#transitionRouted(entry, { type: "cell-lease-expired" });
+       }, event.status.leaseTtlMs);
+@@ -1842,9 +1933,13 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     if (event.type === "presentation-status") {
+       const entry = this.#routedByActivation.get(event.status.activationId);
+       if (!entry) return;
++      const previousSequence = entry.state.lastWorkerStatusSequence;
+       this.#transitionRouted(entry, { type: "presentation-status", status: event.status, now: performance.now() });
+       const sequence = entry.state.lastWorkerStatusSequence;
+-      window.setTimeout(() => {
++      if (sequence === previousSequence) return;
++      if (entry.workerLeaseTimer !== undefined) window.clearTimeout(entry.workerLeaseTimer);
++      entry.workerLeaseTimer = window.setTimeout(() => {
++        delete entry.workerLeaseTimer;
+         if (entry.state.lastWorkerStatusSequence !== sequence) return;
+         this.#transitionRouted(entry, { type: "worker-lease-expired" });
+       }, event.status.leaseTtlMs);
+@@ -2010,6 +2105,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     const previousActivationId = entry.state.activationId;
+     this.#routedControl?.detach(previousActivationId);
+     this.#postWorker({ type: "routed-frames-detach", activationId: previousActivationId });
++    delete entry.framesAttachStarted;
+     this.#routedByActivation.delete(previousActivationId);
+     const nextActivationId = crypto.randomUUID();
+     entry.replacesActivationId = previousActivationId;
+@@ -2032,6 +2128,10 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     delete entry.attachTimer;
+     if (entry.renewalTimer !== undefined) window.clearTimeout(entry.renewalTimer);
+     delete entry.renewalTimer;
++    if (entry.cellLeaseTimer !== undefined) window.clearTimeout(entry.cellLeaseTimer);
++    delete entry.cellLeaseTimer;
++    if (entry.workerLeaseTimer !== undefined) window.clearTimeout(entry.workerLeaseTimer);
++    delete entry.workerLeaseTimer;
+     delete entry.ticket;
+     const delay = Math.min(2_000, 100 * 2 ** Math.max(0, entry.recoveryAttempts - 1));
+     window.setTimeout(() => {
+@@ -2385,6 +2485,13 @@ export class GhostteaTerminalRuntime extends EventTarget {
+    * screen: a partial update repaints part of the stale one, which is exactly
+    * what would thaw a pane too early.
+    */
++  #recordSessionDrawn(sessionHandle: string): void {
++    const sessionId = this.#sessionByHandle.get(sessionHandle)?.id;
++    if (sessionId === undefined || this.#sessionsDrawn.has(sessionId)) return;
++    this.#sessionsDrawn.add(sessionId);
++    this.dispatchEvent(new CustomEvent("session-drawn", { detail: { sessionId } }));
++  }
++
+   #recordCommittedFrame(sessionHandle: string, fullSnapshot: boolean): void {
+     if (!fullSnapshot) return;
+     const sessionId = this.#sessionByHandle.get(sessionHandle)?.id;
+@@ -2559,6 +2666,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+   }
+ 
+   sendText(sessionId: string, viewId: string, text: string): void {
++    if (text.length > 0) this.#sessionsWithInput.add(sessionId);
+     if (this.#routedHost) {
+       this.#sendRoutedInput(sessionId, viewId, { kind: "text", text });
+       return;
+@@ -2571,6 +2679,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+   }
+ 
+   paste(sessionId: string, viewId: string, text: string): void {
++    if (text.length > 0) this.#sessionsWithInput.add(sessionId);
+     if (this.#routedHost) {
+       this.#sendRoutedInput(sessionId, viewId, { kind: "paste", text });
+       return;
+@@ -2583,6 +2692,8 @@ export class GhostteaTerminalRuntime extends EventTarget {
+   }
+ 
+   sendKey(sessionId: string, viewId: string, event: TerminalKeyEvent): void {
++    if (event.type === "down" && !["Shift", "Control", "Alt", "Meta"].includes(event.key))
++      this.#sessionsWithInput.add(sessionId);
+     if (this.#routedHost) {
+       this.#sendRoutedInput(sessionId, viewId, { kind: "key", event });
+       return;
+@@ -2875,6 +2986,7 @@ export class GhostteaTerminalRuntime extends EventTarget {
+   }
+ 
+   interrupt(sessionId: string, viewId: string): void {
++    this.#sessionsWithInput.add(sessionId);
+     if (this.#routedHost) {
+       this.#sendRoutedInput(sessionId, viewId, { kind: "interrupt" });
+       return;
+@@ -2930,6 +3042,8 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     this.#remoteSessions.delete(sessionId);
+     this.#controlBySession.delete(sessionId);
+     this.#recoveredSessions.delete(sessionId);
++    // The worker forgets the handle's first frame with its snapshot (`drop-session`).
++    this.#sessionsDrawn.delete(sessionId);
+     if (subscriptionChanged) {
+       this.#frameSubscriptionVersion += 1;
+       this.#syncFrameSubscriptionsInBackground();
+@@ -3042,6 +3156,8 @@ export class GhostteaTerminalRuntime extends EventTarget {
+     for (const entry of this.#routedBySession.values()) {
+       if (entry.attachTimer !== undefined) window.clearTimeout(entry.attachTimer);
+       if (entry.renewalTimer !== undefined) window.clearTimeout(entry.renewalTimer);
++      if (entry.cellLeaseTimer !== undefined) window.clearTimeout(entry.cellLeaseTimer);
++      if (entry.workerLeaseTimer !== undefined) window.clearTimeout(entry.workerLeaseTimer);
+     }
+     this.#routedBySession.clear();
+     this.#routedByActivation.clear();
+diff --git a/packages/ghosttea-react/src/styles.css b/packages/ghosttea-react/src/styles.css
+index 0ab4f33..da4b705 100644
+--- a/packages/ghosttea-react/src/styles.css
++++ b/packages/ghosttea-react/src/styles.css
+@@ -9,10 +9,21 @@
+ .terminal-surface {
+   position: relative;
+   cursor: text;
++  overflow: hidden;
+ }
+ 
+ .terminal-surface canvas {
+   display: block;
++  position: absolute;
++  top: 0;
++  left: 0;
++  /* OffscreenCanvas updates the placeholder's intrinsic dimensions with its
++     bitmap. A CSS 100% size would stretch the previous bitmap while resize is
++     in flight. Keep bitmap pixels at device-pixel scale and clip at the surface. */
++  width: auto;
++  height: auto;
++  transform: scale(var(--ghosttea-canvas-scale, 1));
++  transform-origin: top left;
+   pointer-events: none;
+ }
+ 
+diff --git a/packages/ghosttea-react/src/terminal-render.worker.test.ts b/packages/ghosttea-react/src/terminal-render.worker.test.ts
+index 42083e0..96611c9 100644
+--- a/packages/ghosttea-react/src/terminal-render.worker.test.ts
++++ b/packages/ghosttea-react/src/terminal-render.worker.test.ts
+@@ -105,6 +105,69 @@ function minimalFullFrame(sessionHandle: bigint, viewHandle: bigint): ArrayBuffe
+   return buffer;
+ }
+ 
++function oneGlyphFrame(handle: bigint, pixel: number): ArrayBuffer {
++  const base = minimalFullFrame(handle, handle);
++  const old = new DataView(base);
++  const buffer = new ArrayBuffer(base.byteLength + 16 + 25);
++  const view = new DataView(buffer);
++  new Uint8Array(buffer).set(new Uint8Array(base, 0, FRAME_HEADER_BYTES + 48));
++  view.setUint16(6, FrameFlag.FullSnapshot | FrameFlag.CatalogReset, true);
++  view.setUint16(60, 4, true);
++  for (let section = 0; section < 3; section++) {
++    const offset = FRAME_HEADER_BYTES + section * 16 + 4;
++    view.setUint32(offset, old.getUint32(offset, true) + 16, true);
++  }
++  new Uint8Array(buffer).set(new Uint8Array(base, FRAME_HEADER_BYTES + 48), FRAME_HEADER_BYTES + 64);
++  const descriptor = FRAME_HEADER_BYTES + 48;
++  const payload = base.byteLength + 16;
++  view.setUint16(descriptor, SectionKind.GlyphDefinitions, true);
++  view.setUint32(descriptor + 4, payload, true);
++  view.setUint32(descriptor + 8, 25, true);
++  view.setUint32(descriptor + 12, 1, true);
++  view.setUint32(payload, 1, true);
++  view.setUint32(payload + 4, 1, true);
++  view.setUint16(payload + 8, 1, true);
++  view.setUint16(payload + 10, 1, true);
++  view.setUint32(payload + 20, 1, true);
++  view.setUint8(payload + 24, pixel);
++  return buffer;
++}
++
++function textFrame(lines: string[], sequence: bigint, reset = false): ArrayBuffer {
++  const texts = lines.map((line) => new TextEncoder().encode(line));
++  const offset = FRAME_HEADER_BYTES + 32;
++  const rowBytes = 2 + texts.reduce((sum, text) => sum + 18 + text.length, 0);
++  const buffer = new ArrayBuffer(offset + rowBytes + 8);
++  const v = new DataView(buffer);
++  v.setUint32(0, FRAME_MAGIC, true);
++  v.setUint16(4, FRAME_PROTOCOL_VERSION, true);
++  v.setUint16(6, FrameFlag.FullSnapshot | (reset ? FrameFlag.CatalogReset : 0), true);
++  for (const at of [8, 16, 24, 32, 48]) v.setBigUint64(at, 1n, true);
++  v.setBigUint64(40, sequence, true);
++  v.setUint16(56, 80, true);
++  v.setUint16(58, lines.length, true);
++  v.setUint16(60, 2, true);
++  v.setUint16(FRAME_HEADER_BYTES, SectionKind.RowReplacements, true);
++  v.setUint16(FRAME_HEADER_BYTES + 2, 1, true);
++  v.setUint32(FRAME_HEADER_BYTES + 4, offset, true);
++  v.setUint32(FRAME_HEADER_BYTES + 8, rowBytes, true);
++  v.setUint32(FRAME_HEADER_BYTES + 12, lines.length, true);
++  v.setUint16(FRAME_HEADER_BYTES + 16, SectionKind.CursorState, true);
++  v.setUint32(FRAME_HEADER_BYTES + 20, offset + rowBytes, true);
++  v.setUint32(FRAME_HEADER_BYTES + 24, 8, true);
++  v.setUint32(FRAME_HEADER_BYTES + 28, 1, true);
++  v.setUint16(offset, lines.length, true);
++  let at = offset + 2;
++  for (const [row, text] of texts.entries()) {
++    v.setUint16(at, row, true);
++    v.setBigUint64(at + 2, sequence, true);
++    v.setUint32(at + 10, text.length, true);
++    new Uint8Array(buffer).set(text, at + 18);
++    at += 18 + text.length;
++  }
++  return buffer;
++}
++
+ vi.mock("./renderers/canvas-renderer.js", () => ({
+   CanvasTerminalRenderer: class {
+     readonly kind = "canvas2d" as const;
+@@ -141,6 +204,365 @@ describe("terminal render worker surfaces", () => {
+ 
+   afterEach(() => vi.unstubAllGlobals());
+ 
++  it("says once per handle when a committed frame first puts something on screen", async () => {
++    const postMessage = vi.fn();
++    vi.stubGlobal("self", { postMessage, requestAnimationFrame: (_cb: FrameRequestCallback) => 1 });
++    await import("./terminal-render.worker.js");
++    const dispatch = (data: unknown) => self.onmessage!({ data } as MessageEvent);
++    const drawn = () => postMessage.mock.calls.filter(([message]) => message?.type === "session-drawn");
++    // A blank screen (empty and all-space rows) is committed, but has not drawn.
++    dispatch({ type: "frame", packet: textFrame(["", "   "], 1n) });
++    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: "frame-committed", sessionHandle: "1" }));
++    expect(drawn()).toEqual([]);
++    dispatch({ type: "frame", packet: textFrame(["╭─ Codex", ""], 2n) });
++    dispatch({ type: "frame", packet: textFrame(["╭─ Codex", "› "], 3n) });
++    expect(drawn()).toEqual([[{ type: "session-drawn", sessionHandle: "1" }]]);
++    // Dropped and seen again, the handle can announce its first paint again.
++    dispatch({ type: "drop-session", sessionHandle: "1" });
++    dispatch({ type: "frame", packet: textFrame(["again"], 4n) });
++    expect(drawn()).toHaveLength(2);
++  });
++
++  it("paints a cached session at its mount geometry and waits for a nonzero hidden-pane size", async () => {
++    const raf: FrameRequestCallback[] = [];
++    vi.stubGlobal("self", { postMessage: vi.fn(), requestAnimationFrame: (cb: FrameRequestCallback) => raf.push(cb) });
++    await import("./terminal-render.worker.js");
++    const dispatch = (data: unknown) => self.onmessage!({ data } as MessageEvent);
++    const settle = async () => {
++      for (let i = 0; i < 20; i += 1) await Promise.resolve();
++    };
++    dispatch({ type: "renderer-config", forceCanvasFallback: true });
++    dispatch({ type: "frame", packet: textFrame(["cached"], 1n) });
++    dispatch({
++      type: "mount",
++      surfaceId: "fresh",
++      sessionHandle: "1",
++      canvas: {},
++      size: { width: 643, height: 417, dpr: 2 },
++    });
++    dispatch({
++      type: "mount",
++      surfaceId: "hidden",
++      sessionHandle: "1",
++      canvas: {},
++      size: { width: 0, height: 0, dpr: 2 },
++    });
++    await settle();
++    raf.splice(0).forEach((cb) => cb(0));
++    await settle();
++    expect(renderer.resize).toHaveBeenCalledWith("fresh", { width: 643, height: 417, dpr: 2 });
++    const painted = () => renderer.renderBatch.mock.calls.flatMap(([entries]) => entries.map(({ id }) => id));
++    expect(painted()).toContain("fresh");
++    expect(painted()).not.toContain("hidden");
++    dispatch({ type: "resize", surfaceId: "hidden", width: 643, height: 417, dpr: 2 });
++    raf.splice(0).forEach((cb) => cb(0));
++    await settle();
++    expect(painted()).toContain("hidden");
++  });
++
++  it("composes scrolling before a paint and fences reset, layout and selection changes", async () => {
++    const raf: FrameRequestCallback[] = [];
++    const scope = {
++      onmessage: null as ((event: MessageEvent) => void) | null,
++      postMessage: vi.fn(),
++      requestAnimationFrame: (callback: FrameRequestCallback) => raf.push(callback),
++    };
++    vi.stubGlobal("self", scope);
++    await import("./terminal-render.worker.js");
++    const dispatch = (data: unknown) => scope.onmessage?.({ data } as MessageEvent);
++    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
++    const paints: Array<{ full: boolean; rows: number[]; scrollRows?: number }> = [];
++    renderer.renderBatch.mockImplementation((entries) => {
++      for (const { view } of entries) {
++        const damage = (view as unknown as import("./renderers/types.js").RenderView).damage!;
++        paints.push({ ...damage, rows: [...damage.rows] });
++      }
++      return [];
++    });
++    const paint = async () => {
++      raf.splice(0).forEach((callback) => callback(0));
++      await settle();
++      return paints.at(-1)!;
++    };
++    dispatch({ type: "renderer-config", forceCanvasFallback: true });
++    dispatch({
++      type: "mount",
++      surfaceId: "a",
++      sessionHandle: "1",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    await settle();
++    dispatch({ type: "frame", packet: textFrame(["a", "b", "c", "d", "e"], 1n) });
++    expect((await paint()).full).toBe(true);
++    dispatch({ type: "frame", packet: textFrame(["b", "c", "d", "e", "f"], 2n) });
++    dispatch({ type: "frame", packet: textFrame(["c", "d", "e", "f", "g"], 3n) });
++    expect(await paint()).toMatchObject({ full: false, scrollRows: 2 });
++    expect(paints.at(-1)!.rows).toEqual(expect.arrayContaining([3, 4]));
++    dispatch({
++      type: "selection",
++      sessionHandle: "1",
++      surfaceId: "a",
++      selection: { anchor: { row: 2, column: 0 }, focus: { row: 3, column: 4 } },
++    });
++    expect(await paint()).toMatchObject({ full: false, rows: [2, 3] });
++    dispatch({ type: "frame", packet: textFrame(["d", "e", "f", "g", "h"], 4n) });
++    expect((await paint()).full).toBe(true);
++    dispatch({ type: "selection", sessionHandle: "1", surfaceId: "a", selection: null });
++    await paint();
++    dispatch({ type: "frame", packet: textFrame(["e", "f", "g", "h", "i"], 5n, true) });
++    expect((await paint()).full).toBe(true);
++    const layout = textFrame(["f", "g", "h", "i", "j"], 6n);
++    new DataView(layout).setBigUint64(32, 2n, true);
++    dispatch({ type: "frame", packet: layout });
++    expect((await paint()).full).toBe(true);
++    renderer.renderBatch.mockImplementation(() => []);
++  });
++
++  it("isolates glyph pixels and GPU IDs across engines and a dropped session", async () => {
++    const scope = {
++      onmessage: null as ((event: MessageEvent) => void) | null,
++      postMessage: vi.fn(),
++      requestAnimationFrame: (callback: FrameRequestCallback): number => {
++        callback(performance.now());
++        return 1;
++      },
++    };
++    vi.stubGlobal("self", scope);
++    await import("./terminal-render.worker.js");
++    const dispatch = (data: unknown): void => scope.onmessage?.({ data } as MessageEvent);
++    dispatch({ type: "renderer-config", forceCanvasFallback: true });
++    for (const handle of ["1", "2"])
++      dispatch({
++        type: "mount",
++        surfaceId: handle,
++        sessionHandle: handle,
++        canvas: {},
++        size: { width: 800, height: 600, dpr: 2 },
++      });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    dispatch({ type: "frame", packet: oneGlyphFrame(1n, 17) });
++    dispatch({ type: "frame", packet: oneGlyphFrame(2n, 231) });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    const glyph = (id: string) => {
++      const calls = renderer.renderBatch.mock.calls.flatMap(([entries]) => entries);
++      const entry = calls.reverse().find((entry) => entry.id === id)!;
++      return (
++        entry.view as unknown as { glyphDefinitions: Map<number, { id: number; pixels: Uint8Array }> }
++      ).glyphDefinitions.get(1)!;
++    };
++    const first = glyph("1");
++    const second = glyph("2");
++    expect(first.pixels[0]).toBe(17);
++    expect(second.pixels[0]).toBe(231);
++    expect(first.id).not.toBe(second.id);
++    dispatch({ type: "drop-session", sessionHandle: "1" });
++    dispatch({
++      type: "mount",
++      surfaceId: "1",
++      sessionHandle: "1",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    dispatch({ type: "frame", packet: oneGlyphFrame(1n, 99) });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    expect(glyph("1").pixels[0]).toBe(99);
++    expect(glyph("1").id).not.toBe(first.id);
++  });
++
++  it.each(["catalog reset", "resync"])(
++    "reuses GPU IDs through a direct %s and releases removed glyphs",
++    async (kind) => {
++      const scope = {
++        onmessage: null as ((event: MessageEvent) => void) | null,
++        postMessage: vi.fn(),
++        requestAnimationFrame: (callback: FrameRequestCallback): number => {
++          callback(performance.now());
++          return 1;
++        },
++      };
++      vi.stubGlobal("self", scope);
++      await import("./terminal-render.worker.js");
++      const dispatch = (data: unknown): void => scope.onmessage?.({ data } as MessageEvent);
++      const settle = (): Promise<unknown> => new Promise((resolve) => setTimeout(resolve, 0));
++      const definitions = () => {
++        const entry = renderer.renderBatch.mock.calls.flatMap(([entries]) => entries).at(-1)!;
++        return (entry.view as unknown as { glyphDefinitions: Map<number, { id: number }> }).glyphDefinitions;
++      };
++      const send = async (sequence: bigint, withGlyph = true, epoch = 1n) => {
++        const packet = withGlyph ? oneGlyphFrame(11n, 17) : minimalFullFrame(11n, 11n);
++        const view = new DataView(packet);
++        view.setUint16(6, FrameFlag.FullSnapshot | (kind === "catalog reset" ? FrameFlag.CatalogReset : 0), true);
++        view.setBigUint64(24, epoch, true);
++        view.setBigUint64(40, sequence, true);
++        if (kind === "resync") dispatch({ type: "expect-full", sessionHandle: "11" });
++        dispatch({ type: "frame", packet });
++        await settle();
++      };
++      dispatch({ type: "renderer-config", forceCanvasFallback: true });
++      dispatch({
++        type: "mount",
++        surfaceId: "11",
++        sessionHandle: "11",
++        canvas: {},
++        size: { width: 800, height: 600, dpr: 2 },
++      });
++      await settle();
++      await send(1n);
++      const firstId = definitions().get(1)!.id;
++      for (let sequence = 2n; sequence <= 5n; sequence++) {
++        await send(sequence);
++        expect(definitions().get(1)!.id).toBe(firstId);
++      }
++      await send(6n, false);
++      expect(definitions().size).toBe(0);
++      await send(7n);
++      const reintroducedId = definitions().get(1)!.id;
++      expect(reintroducedId).not.toBe(firstId);
++      // Reusing a handle with a new engine epoch must not reuse its GPU identity.
++      await send(1n, true, 2n);
++      expect(definitions().get(1)!.id).not.toBe(reintroducedId);
++    },
++  );
++
++  it("keeps native glyph identity stable across full frames from the same cell", async () => {
++    const scope = {
++      onmessage: null as ((event: MessageEvent) => void) | null,
++      postMessage: vi.fn(),
++      requestAnimationFrame: (callback: FrameRequestCallback): number => {
++        callback(performance.now());
++        return 1;
++      },
++    };
++    const sockets: FakeRoutedSocket[] = [];
++    vi.stubGlobal("self", scope);
++    vi.stubGlobal(
++      "WebSocket",
++      class extends FakeRoutedSocket {
++        constructor(_url: string) {
++          super();
++          sockets.push(this);
++        }
++      },
++    );
++    await import("./terminal-render.worker.js");
++    const dispatch = (data: unknown): void => scope.onmessage?.({ data } as MessageEvent);
++    dispatch({ type: "renderer-config", forceCanvasFallback: true });
++    dispatch({
++      type: "mount",
++      surfaceId: "11",
++      sessionHandle: "11",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    const protectedBase = {
++      v: 1 as const,
++      iss: "fieldd" as const,
++      alg: "HS256" as const,
++      kid: { cellBootId: "cell-a", keyGeneration: 1 },
++    };
++    const transportGrant = {
++      protected: { ...protectedBase, typ: "CellTransportGrant" as const },
++      claims: {
++        audienceCellBootId: "cell-a",
++        clientId: "window-a",
++        connectionSetId: "set-a",
++        allowedChannels: ["control", "frames"] as const,
++        transportGrantGeneration: 1,
++        issuedAt: 1,
++        expiresAt: 2,
++        nonce: "nonce-a",
++      },
++      mac: "opaque",
++    };
++    const attachGrant = {
++      protected: { ...protectedBase, typ: "SessionAttachGrant" as const },
++      claims: {
++        audienceCellBootId: "cell-a",
++        clientId: "window-a",
++        sessionId: "session-a",
++        leaseEpoch: 4,
++        routeRevision: 1,
++        grantGeneration: 1,
++        rights: ["input", "read"] as const,
++        issuedAt: 1,
++        expiresAt: 2,
++      },
++      mac: "opaque",
++    };
++
++    dispatch({
++      type: "routed-frames-attach",
++      request: {
++        cellBootId: "cell-a",
++        sessionHandle: "11",
++        framesUrl: "ws://127.0.0.1/frames",
++        transportGrant,
++        attachGrant,
++        activationId: "activation-a",
++        capabilities: ["resume"],
++      },
++    });
++    const socket = sockets[0]!;
++    socket.open();
++    socket.receive(
++      encodeRoutedMessage("ConnectionAccepted", {
++        selectedProtocolVersion: { major: 1, minor: 0 },
++        connectionSetId: "set-a",
++        channel: "frames",
++        legGeneration: 1,
++        heartbeatTtlMs: 15_000,
++        creditEpoch: 1,
++        initialWindows: DEFAULT_ROUTED_RECEIVER_CAPACITIES,
++        protocolLimits: DEFAULT_ROUTED_PROTOCOL_LIMITS,
++        capabilities: ["resume"],
++      }),
++    );
++    socket.receive(
++      encodeRoutedMessage("FramesLegAttached", {
++        sessionId: "session-a",
++        activationId: "activation-a",
++        resumeToken: "resume-a",
++        trfIdentity: { sessionHandle: "11", viewHandle: "11" },
++        outcome: { kind: "seed-required", reason: "no-cursor" },
++      }),
++    );
++
++    const ids: number[] = [];
++    const stamp = (seq: number) => ({ sceneEpoch: { cellBootId: "cell-a", modelGeneration: 1 }, sceneRevision: seq });
++    for (let seq = 1; seq <= 5; seq++) {
++      const packet = oneGlyphFrame(11n, 17);
++      new DataView(packet).setBigUint64(40, BigInt(seq), true);
++      socket.receive(
++        encodeRoutedPresentationEnvelope(
++          {
++            creditEpoch: 1,
++            activationSequence: seq,
++            sessionId: "session-a",
++            activationId: "activation-a",
++            leaseEpoch: 4,
++            kind: "trf1-frame",
++            baseContent: seq === 1 ? null : stamp(seq - 1),
++            resultContent: stamp(seq),
++          },
++          new Uint8Array(packet),
++        ).buffer as ArrayBuffer,
++      );
++      await new Promise((resolve) => setTimeout(resolve, 0));
++      const entry = renderer.renderBatch.mock.calls
++        .flatMap(([entries]) => entries)
++        .reverse()
++        .find((entry) => entry.id === "11")!;
++      const defs = (entry.view as unknown as { glyphDefinitions: Map<number, { id: number }> }).glyphDefinitions;
++      ids.push(defs.get(1)!.id);
++    }
++    socket.close();
++    await new Promise((resolve) => setTimeout(resolve, 20));
++    expect(new Set(ids).size).toBe(1);
++  });
++
+   it("mounts and redraws multiple surfaces backed by one session snapshot", async () => {
+     const workerScope = {
+       onmessage: null as ((event: MessageEvent) => void) | null,
+@@ -155,8 +577,20 @@ describe("terminal render worker surfaces", () => {
+     const dispatch = (data: unknown): void => workerScope.onmessage?.({ data } as MessageEvent);
+ 
+     dispatch({ type: "renderer-config", forceCanvasFallback: true });
+-    dispatch({ type: "mount", surfaceId: "view-a", sessionHandle: "session", canvas: {} });
+-    dispatch({ type: "mount", surfaceId: "view-b", sessionHandle: "session", canvas: {} });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-a",
++      sessionHandle: "session",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-b",
++      sessionHandle: "session",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
+     await new Promise((resolve) => setTimeout(resolve, 0));
+     dispatch({ type: "force-full-redraw", sessionHandle: "session" });
+     await new Promise((resolve) => setTimeout(resolve, 0));
+@@ -187,6 +621,7 @@ describe("terminal render worker surfaces", () => {
+       surfaceId: "view-a",
+       sessionHandle: "11",
+       canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
+     });
+     await settle();
+     dispatch({ type: "frame", packet: minimalFullFrame(11n, 12n) });
+@@ -251,8 +686,20 @@ describe("terminal render worker surfaces", () => {
+     } as const;
+ 
+     dispatch({ type: "renderer-config", forceCanvasFallback: true });
+-    dispatch({ type: "mount", surfaceId: "view-local", sessionHandle: "session", canvas: {} });
+-    dispatch({ type: "mount", surfaceId: "view-config", sessionHandle: "session", canvas: {} });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-local",
++      sessionHandle: "session",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-config",
++      sessionHandle: "session",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
+     await settle();
+     dispatch({ type: "effects", surfaceId: "view-local", sessionHandle: "session", effects: localEffects });
+     dispatch({ type: "effects", surfaceId: "view-config", sessionHandle: "session", effects: configEffects });
+@@ -286,7 +733,13 @@ describe("terminal render worker surfaces", () => {
+     const settle = (): Promise<unknown> => new Promise((resolve) => setTimeout(resolve, 0));
+ 
+     dispatch({ type: "renderer-config", forceCanvasFallback: false });
+-    dispatch({ type: "mount", surfaceId: "hidden-view", sessionHandle: "session", canvas: {} });
++    dispatch({
++      type: "mount",
++      surfaceId: "hidden-view",
++      sessionHandle: "session",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
+     await settle();
+     expect(workerScope.postMessage).toHaveBeenCalledWith({ type: "renderer-status", backend: "webgpu" });
+     while (animationFrames.length > 0) animationFrames.shift()!(performance.now());
+@@ -321,9 +774,27 @@ describe("terminal render worker surfaces", () => {
+     const settle = (): Promise<unknown> => new Promise((resolve) => setTimeout(resolve, 0));
+ 
+     dispatch({ type: "renderer-config", forceCanvasFallback: true });
+-    dispatch({ type: "mount", surfaceId: "view-a", sessionHandle: "session-a", canvas: {} });
+-    dispatch({ type: "mount", surfaceId: "view-b", sessionHandle: "session-a", canvas: {} });
+-    dispatch({ type: "mount", surfaceId: "view-c", sessionHandle: "session-b", canvas: {} });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-a",
++      sessionHandle: "session-a",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-b",
++      sessionHandle: "session-a",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
++    dispatch({
++      type: "mount",
++      surfaceId: "view-c",
++      sessionHandle: "session-b",
++      canvas: {},
++      size: { width: 800, height: 600, dpr: 2 },
++    });
+     await settle();
+     renderer.renderBatch.mockClear();
+ 
+diff --git a/packages/ghosttea-react/src/terminal-render.worker.ts b/packages/ghosttea-react/src/terminal-render.worker.ts
+index 824a37b..cbfc04a 100644
+--- a/packages/ghosttea-react/src/terminal-render.worker.ts
++++ b/packages/ghosttea-react/src/terminal-render.worker.ts
+@@ -35,6 +35,7 @@ import {
+ import { WebGpuTerminalRenderer } from "./renderers/webgpu-renderer.js";
+ import { classifyFrame } from "./frame-sequence.js";
+ import { cursorActivityChangesPixels } from "./cursor-invalidation.js";
++import { rowDamage, selectionDamageRows, shiftDamage } from "./row-damage.js";
+ import {
+   emptyRenderMetrics,
+   type TerminalRenderCounterSnapshot,
+@@ -50,6 +51,7 @@ interface SessionSnapshot {
+   nativeRows: GlyphInstance[][];
+   nativeStyleRows: StyleRun[][];
+   glyphDefinitions: Map<number, GlyphDefinition>;
++  glyphNamespace: string;
+   glyphPixelBytes: number;
+   styleDefinitions: Map<number, StyleDefinition>;
+   rowRevisions: bigint[];
+@@ -70,7 +72,7 @@ interface SurfaceSnapshot {
+   selection: CellSelection | null;
+   theme: TerminalTheme;
+   effects: TerminalEffects;
+-  damage: { full: boolean; rows: Set<number>; geometryChanged: boolean };
++  damage: { full: boolean; rows: Set<number>; geometryChanged: boolean; scrollRows?: number };
+ }
+ 
+ interface MountedCanvas {
+@@ -106,7 +108,15 @@ const MAX_PERFORMANCE_SAMPLES = 100_000;
+ const FRAME_CREDIT_BATCH_BYTES = 4 * 1024 * 1024;
+ const FRAME_CREDIT_MAX_DELAY_MS = 8;
+ const snapshots = new Map<string, SessionSnapshot>();
+-const sharedGlyphDefinitions = new Map<number, { definition: GlyphDefinition; references: number }>();
++/**
++ * Handles whose committed frames have put something on screen. A host that just
++ * started a program waits for this before revealing its terminal; checked only
++ * until a handle has drawn once, and forgotten with its snapshot.
++ */
++const drawnSessions = new Set<string>();
++const sharedGlyphDefinitions = new Map<string, { definition: GlyphDefinition; references: number }>();
++// Renderer IDs never repeat while the GPU atlas survives, even after a cell restart.
++let nextRendererGlyphId = 1;
+ let sharedGlyphPixelBytes = 0;
+ let retainedStyleDefinitions = 0;
+ const surfaces = new Map<string, SurfaceSnapshot>();
+@@ -335,6 +345,7 @@ function emptySessionSnapshot(): SessionSnapshot {
+     nativeRows: [],
+     nativeStyleRows: [],
+     glyphDefinitions: new Map(),
++    glyphNamespace: "",
+     glyphPixelBytes: 0,
+     styleDefinitions: new Map(),
+     rowRevisions: [],
+@@ -360,30 +371,39 @@ function snapshot(sessionHandle: string): SessionSnapshot {
+ 
+ function clearSessionCatalog(session: SessionSnapshot): void {
+   for (const glyphId of session.glyphDefinitions.keys()) {
+-    const shared = sharedGlyphDefinitions.get(glyphId);
++    const key = `${session.glyphNamespace}:${glyphId}`;
++    const shared = sharedGlyphDefinitions.get(key);
+     if (!shared) continue;
+     shared.references -= 1;
+     if (shared.references <= 0) {
+-      sharedGlyphDefinitions.delete(glyphId);
++      sharedGlyphDefinitions.delete(key);
+       sharedGlyphPixelBytes -= shared.definition.pixels.byteLength;
+     }
+   }
+-  session.glyphDefinitions.clear();
++  session.glyphDefinitions = new Map();
+   session.glyphPixelBytes = 0;
+   retainedStyleDefinitions -= session.styleDefinitions.size;
+   session.styleDefinitions.clear();
+ }
+ 
+-function installGlyphDefinitions(session: SessionSnapshot, definitions: readonly GlyphDefinition[]): void {
++function installGlyphDefinitions(
++  session: SessionSnapshot,
++  definitions: readonly GlyphDefinition[],
++  previousDefinitions?: ReadonlyMap<number, GlyphDefinition>,
++): void {
+   for (const decoded of definitions) {
+     if (session.glyphDefinitions.has(decoded.id)) continue;
+-    let shared = sharedGlyphDefinitions.get(decoded.id);
++    const key = `${session.glyphNamespace}:${decoded.id}`;
++    let shared = sharedGlyphDefinitions.get(key);
+     const pixelBytes = shared?.definition.pixels.byteLength ?? decoded.pixels.byteLength;
+     if (shared) {
+       shared.references += 1;
+     } else {
+-      shared = { definition: decoded, references: 1 };
+-      sharedGlyphDefinitions.set(decoded.id, shared);
++      shared = {
++        definition: { ...decoded, id: previousDefinitions?.get(decoded.id)?.id ?? nextRendererGlyphId++ },
++        references: 1,
++      };
++      sharedGlyphDefinitions.set(key, shared);
+       sharedGlyphPixelBytes += decoded.pixels.byteLength;
+     }
+     session.glyphDefinitions.set(decoded.id, shared.definition);
+@@ -403,6 +423,12 @@ function dropSessionSnapshot(sessionHandle: string): void {
+   const session = snapshots.get(sessionHandle);
+   if (session) clearSessionCatalog(session);
+   snapshots.delete(sessionHandle);
++  drawnSessions.delete(sessionHandle);
++}
++
++/** A row replacement that shows something: a glyph to rasterize, or text that is not blank. */
++function rowShowsContent(row: { text: string; glyphs: readonly unknown[] }): boolean {
++  return row.glyphs.length > 0 || /\S/.test(row.text);
+ }
+ 
+ function defaults(sessionHandle: string): SessionPresentationDefaults {
+@@ -549,6 +575,7 @@ async function recoverDevice(info: GPUDeviceLostInfo): Promise<void> {
+   try {
+     const next = await rendererPromise;
+     renderer = next;
++    next.setPerformanceMeasurementEnabled?.(performanceMeasurement !== undefined);
+     recoveryAttempts = 0;
+     recovering = false;
+     for (const [id, mount] of mounts) {
+@@ -612,7 +639,10 @@ function scheduleShaderAnimation(): void {
+ 
+ async function flush(): Promise<void> {
+   const backend = await ensureRenderer();
+-  const ids = [...dirty].filter((id) => !occluded.has(id));
++  const ids = [...dirty].filter((id) => {
++    const size = mounts.get(id)?.size;
++    return !occluded.has(id) && size !== undefined && size.width > 0 && size.height > 0;
++  });
+   if (performanceMeasurement && ids.length > 0) {
+     performanceMeasurement.scheduling.flushes += 1;
+     appendPerformanceSample(performanceMeasurement.scheduling.panesPerFlush, ids.length);
+@@ -634,14 +664,23 @@ async function flush(): Promise<void> {
+       const metrics = backend.renderBatch
+         ? backend.renderBatch(entries)
+         : entries.map(({ id, view }) => backend.render(id, view));
+-      for (const metric of metrics) recordLifetimeRenderMetrics(metric ?? emptyRenderMetrics());
++      const submission = backend.submission?.();
++      if (submission) {
++        lifetimeRenderer.queueSubmits += submission.queueSubmits;
++        lifetimeRenderer.presents += submission.surfaceIds.length;
++      } else {
++        for (const metric of metrics) recordLifetimeRenderMetrics(metric ?? emptyRenderMetrics());
++      }
++      const submitted = submission ? new Set(submission.surfaceIds) : undefined;
+       const renderedAt = active ? performance.now() : 0;
+       for (const { id } of entries) {
++        if (submitted && !submitted.has(id)) continue;
+         const damage = surfaces.get(id)?.damage;
+         if (!damage) continue;
+         damage.full = false;
+         damage.rows.clear();
+         damage.geometryChanged = false;
++        delete damage.scrollRows;
+       }
+       if (active && performanceMeasurement === active) {
+         active.scheduling.renderCalls += entries.length;
+@@ -682,6 +721,7 @@ function invalidateFull(id: string): void {
+   damage.full = true;
+   damage.rows.clear();
+   damage.geometryChanged = true;
++  delete damage.scrollRows;
+   markDirty(id);
+ }
+ 
+@@ -706,16 +746,50 @@ function invalidateSessionFull(sessionHandle: string): void {
+   for (const surfaceId of surfaceIdsForSession(sessionHandle)) invalidateFull(surfaceId);
+ }
+ 
++function invalidateScroll(id: string, shift: number, rows: number[], rowCount: number): void {
++  const value = surfaces.get(id);
++  if (!value) return;
++  const damage = value.damage;
++  if (
++    !partialRenderingEnabled ||
++    damage.full ||
++    value.selection ||
++    Math.abs((damage.scrollRows ?? 0) + shift) >= rowCount
++  ) {
++    invalidateFull(id);
++    return;
++  }
++  shiftDamage(damage.rows, shift, rowCount);
++  damage.scrollRows = (damage.scrollRows ?? 0) + shift;
++  invalidateRows(id, rows, true);
++}
++
++function changeSelection(id: string, selection: CellSelection | null): void {
++  const value = surfaces.get(id);
++  if (!value || (value.selection === null && selection === null)) return;
++  const rows = selectionDamageRows(value.selection, selection, snapshots.get(value.sessionHandle)?.rows.length ?? 0);
++  value.selection = selection;
++  // Selection is anchored to the viewport, whereas pending text moves with a
++  // scroll. Avoid composing these two coordinate spaces before a paint.
++  if (value.damage.scrollRows) invalidateFull(id);
++  else invalidateRows(id, rows, true);
++}
++
+ function invalidateSessionRows(sessionHandle: string, rows: Iterable<number>, geometryChanged = false): void {
+   const damagedRows = [...rows];
+   for (const surfaceId of surfaceIdsForSession(sessionHandle)) invalidateRows(surfaceId, damagedRows, geometryChanged);
+ }
+ 
+-async function mount(surfaceId: string, sessionHandle: string, canvas: OffscreenCanvas): Promise<void> {
++async function mount(
++  surfaceId: string,
++  sessionHandle: string,
++  canvas: OffscreenCanvas,
++  size: PixelSize,
++): Promise<void> {
+   if (mounts.has(surfaceId)) renderer?.unmount(surfaceId);
+   snapshot(sessionHandle);
+   surface(surfaceId, sessionHandle);
+-  const entry: MountedCanvas = { canvas, size: { width: 1, height: 1, dpr: 1 }, sessionHandle };
++  const entry: MountedCanvas = { canvas, size, sessionHandle };
+   mounts.set(surfaceId, entry);
+   const backend = await ensureRenderer();
+   if (mounts.get(surfaceId) !== entry) return;
+@@ -726,9 +800,10 @@ async function mount(surfaceId: string, sessionHandle: string, canvas: Offscreen
+ }
+ 
+ function applyFrame(
+-  packet: ArrayBuffer,
++  packet: ArrayBuffer | Uint8Array,
+   expectedIdentity?: RoutedTrfIdentity,
+   expectedLayout?: RoutedExpectedLayout,
++  glyphNamespace?: string,
+ ): RoutedAppliedFrame | undefined {
+   const active = performanceMeasurement;
+   const applyStarted = active ? performance.now() : 0;
+@@ -835,6 +910,7 @@ function applyFrame(
+   for (const replacement of replacements) {
+     if (replacement.row >= frame.rows) throw new RangeError("Row replacement exceeds viewport");
+   }
++  const firstDrawn = !drawnSessions.has(id) && replacements.some(rowShowsContent);
+   const linkSection = frame.sections.find((candidate) => candidate.kind === SectionKind.LinkTargets);
+   const links = linkSection ? decodeLinkTargets(linkSection, frame.cols, frame.rows) : [];
+   const nextCursor = decodeCursorState(cursorSection);
+@@ -864,13 +940,33 @@ function applyFrame(
+     throw new Error("transfer scrollback layout does not match TRF1");
+   }
+   if (active) active.frames.glyphDefinitions += glyphDefinitions.length;
+-  const resetsCatalog = replacingScene || changedSession || completingResync || catalogReset;
++  // Routed frames name the process incarnation. Legacy/direct streams are
++  // isolated by session epoch because they cannot prove a shared engine.
++  const namespace = glyphNamespace === undefined ? `session:${id}:${frame.sessionEpoch}` : `cell:${glyphNamespace}`;
++  const resetsCatalog =
++    replacingScene || changedSession || completingResync || catalogReset || previous.glyphNamespace !== namespace;
++  const styleChanged = styleDefinitions.some((definition) => {
++    const old = previous.styleDefinitions.get(definition.id);
++    return old !== undefined && JSON.stringify(old) !== JSON.stringify(definition);
++  });
++  const canReuseRows =
++    !resetsCatalog &&
++    !styleChanged &&
++    previous.cols === frame.cols &&
++    previous.rows.length === frame.rows &&
++    previous.layoutEpoch === frame.layoutEpoch;
+   const wasCatalogFallback = previous.catalogFallback;
+   if (resetsCatalog) {
++    // A reset replaces the retained CPU catalog, not the engine's immutable
++    // glyph identities. Keep IDs for the overlap so the GPU can reuse its atlas.
++    // This map lives only for this replacement; removed glyphs retain no cache
++    // entry, and a new engine namespace can never inherit the old engine's IDs.
++    const previousDefinitions = previous.glyphNamespace === namespace ? previous.glyphDefinitions : undefined;
+     previous.rows = [];
+     previous.nativeRows = [];
+     previous.nativeStyleRows = [];
+     clearSessionCatalog(previous);
++    previous.glyphNamespace = namespace;
+     previous.rowRevisions = [];
+     const catalogFits =
+       glyphCatalogFits(
+@@ -880,6 +976,7 @@ function applyFrame(
+         sharedGlyphPixelBytes,
+         glyphDefinitions,
+         GLYPH_CATALOG_BUDGET,
++        (glyphId) => `${namespace}:${glyphId}`,
+       ) &&
+       definitionCatalogFits(
+         previous.styleDefinitions,
+@@ -891,7 +988,7 @@ function applyFrame(
+     const admission = catalogAdmission(true, wasCatalogFallback, catalogFits);
+     previous.catalogFallback = admission === "text-fallback";
+     if (admission === "install") {
+-      installGlyphDefinitions(previous, glyphDefinitions);
++      installGlyphDefinitions(previous, glyphDefinitions, previousDefinitions);
+       installStyleDefinitions(previous, styleDefinitions);
+     } else if (!wasCatalogFallback) {
+       postToRenderer({
+@@ -909,6 +1006,7 @@ function applyFrame(
+         sharedGlyphPixelBytes,
+         glyphDefinitions,
+         GLYPH_CATALOG_BUDGET,
++        (glyphId) => `${namespace}:${glyphId}`,
+       ) &&
+       definitionCatalogFits(
+         previous.styleDefinitions,
+@@ -959,7 +1057,7 @@ function applyFrame(
+     ? Array.from({ length: frame.rows }, () => [] as StyleRun[])
+     : previous.nativeStyleRows.slice();
+   const rowRevisions = fullRows ? Array<bigint>(frame.rows).fill(0n) : previous.rowRevisions.slice();
+-  const damagedRows: number[] = [];
++  let damagedRows: number[] = [];
+   if (active) active.frames.rowsDecoded += replacements.length;
+   for (const replacement of replacements) {
+     if (replacement.revision < (rowRevisions[replacement.row] ?? 0n)) continue;
+@@ -969,12 +1067,24 @@ function applyFrame(
+     rowRevisions[replacement.row] = replacement.revision;
+     damagedRows.push(replacement.row);
+   }
++  let scrollRows = 0;
++  if (fullRows && canReuseRows) {
++    const damage = rowDamage(previous, { rows, nativeRows, nativeStyleRows });
++    scrollRows = damage.scrollRows;
++    damagedRows = damage.rows;
++    const changed = new Set(damagedRows);
++    for (let row = 0; row < rows.length; row++) {
++      if (changed.has(row)) continue;
++      nativeRows[row] = previous.nativeRows[row + scrollRows]!;
++      nativeStyleRows[row] = previous.nativeStyleRows[row + scrollRows]!;
++    }
++  }
+   previous.cols = frame.cols;
+   previous.rows = rows;
+   previous.nativeRows = nativeRows;
+   previous.nativeStyleRows = nativeStyleRows;
+   previous.rowRevisions = rowRevisions;
+-  const geometryChanged = damagedRows.length > 0;
++  const geometryChanged = damagedRows.length > 0 || scrollRows !== 0;
+   const previousCursor = previous.cursor;
+   const cursorChanged =
+     nextCursor.x !== previousCursor.x ||
+@@ -999,12 +1109,14 @@ function applyFrame(
+   if (clipboardText !== undefined) postToRenderer({ type: "clipboard-write", text: clipboardText });
+   if (scrollbarChanged && scrollbar) postToRenderer({ type: "scrollbar-state", sessionHandle: id, scrollbar });
+   if (completingResync) postToRenderer({ type: "frame-resync-complete", sessionHandle: id });
+-  const requiresFullRedraw = fullRows || changedSession || completingResync;
+-  if (!requiresFullRedraw && cursorChanged) damagedRows.push(previousCursor.y, nextCursor.y);
++  const requiresFullRedraw = !canReuseRows;
++  if (!requiresFullRedraw && (cursorChanged || scrollRows !== 0))
++    damagedRows.push(previousCursor.y - scrollRows, nextCursor.y);
+   const hasRowDamage = damagedRows.length > 0;
+   for (const surfaceId of surfaceIdsForSession(id)) {
+     if (cursorChanged) scheduleCursorBlink(surfaceId, true);
+     if (requiresFullRedraw) invalidateFull(surfaceId);
++    else if (scrollRows !== 0) invalidateScroll(surfaceId, scrollRows, damagedRows, rows.length);
+     else if (hasRowDamage) invalidateRows(surfaceId, damagedRows, geometryChanged);
+   }
+   // Announced only once the frame is committed and its redraw scheduled, so a
+@@ -1019,6 +1131,10 @@ function applyFrame(
+     // recovered screen apart from a partial update of the stale one.
+     fullSnapshot: fullFrame,
+   });
++  if (firstDrawn) {
++    drawnSessions.add(id);
++    postToRenderer({ type: "session-drawn", sessionHandle: id });
++  }
+   lifetimeFrames.applies += 1;
+   counters.applies += 1;
+   if (active) appendPerformanceSample(active.samples.frameApplyMs, performance.now() - applyStarted);
+@@ -1031,8 +1147,8 @@ function applyFrame(
+ }
+ 
+ const routedFrames = new RoutedFramesTransport({
+-  applyFrame: (packet, identity, expectedLayout) => {
+-    const applied = applyFrame(packet, identity, expectedLayout);
++  applyFrame: (packet, identity, expectedLayout, glyphNamespace) => {
++    const applied = applyFrame(packet, identity, expectedLayout, glyphNamespace);
+     if (!applied) throw new Error("routed TRF1 frame was not applied");
+     return applied;
+   },
+@@ -1047,7 +1163,7 @@ self.onmessage = (event: MessageEvent<RendererToWorkerMessage>) => {
+   const message = event.data;
+   try {
+     if (message.type === "mount") {
+-      void mount(message.surfaceId, message.sessionHandle, message.canvas).catch((error) => {
++      void mount(message.surfaceId, message.sessionHandle, message.canvas, message.size).catch((error) => {
+         console.error("[terminal-renderer] mount failed", error);
+       });
+     } else if (message.type === "renderer-config") {
+@@ -1132,13 +1248,12 @@ self.onmessage = (event: MessageEvent<RendererToWorkerMessage>) => {
+       scheduleShaderAnimation();
+     } else if (message.type === "selection") {
+       if (message.surfaceId) {
+-        surface(message.surfaceId, message.sessionHandle).selection = message.selection;
+-        invalidateFull(message.surfaceId);
++        surface(message.surfaceId, message.sessionHandle);
++        changeSelection(message.surfaceId, message.selection);
+       } else {
+         defaults(message.sessionHandle).selection = message.selection;
+         for (const surfaceId of surfaceIdsForSession(message.sessionHandle)) {
+-          surfaces.get(surfaceId)!.selection = message.selection;
+-          invalidateFull(surfaceId);
++          changeSelection(surfaceId, message.selection);
+         }
+       }
+     } else if (message.type === "visibility") {
+diff --git a/packages/ghosttea-react/src/worker-messages.ts b/packages/ghosttea-react/src/worker-messages.ts
+index 249003d..ad5838d 100644
+--- a/packages/ghosttea-react/src/worker-messages.ts
++++ b/packages/ghosttea-react/src/worker-messages.ts
+@@ -1,5 +1,5 @@
+ import type { TerminalLink } from "@vibecook/ghosttea-frame";
+-import type { CellSelection, TerminalEffects, TerminalTheme } from "./renderers/types.js";
++import type { CellSelection, PixelSize, TerminalEffects, TerminalTheme } from "./renderers/types.js";
+ import type { TerminalScrollbarState } from "@vibecook/ghosttea-protocol";
+ import type { TerminalRenderCounterSnapshot, TerminalRenderPerformanceSnapshot } from "./performance.js";
+ import type { RoutedFramesAttachRequest, RoutedFramesTransportEvent } from "./routed-frames.js";
+@@ -7,7 +7,7 @@ import type { RoutedFramesAttachRequest, RoutedFramesTransportEvent } from "./ro
+ export type RendererToWorkerMessage =
+   | { type: "renderer-config"; forceCanvasFallback: boolean }
+   | { type: "partial-rendering"; enabled: boolean }
+-  | { type: "mount"; surfaceId: string; sessionHandle: string; canvas: OffscreenCanvas }
++  | { type: "mount"; surfaceId: string; sessionHandle: string; canvas: OffscreenCanvas; size: PixelSize }
+   | { type: "unmount"; surfaceId: string }
+   | { type: "drop-session"; sessionHandle: string }
+   | { type: "resize"; surfaceId: string; width: number; height: number; dpr: number }
+@@ -51,6 +51,12 @@ export type WorkerToRendererMessage =
+       frameSequence: bigint;
+       fullSnapshot: boolean;
+     }
++  /**
++   * The first committed frame of this handle that put something on screen (a
++   * glyph, or text that is not blank). Posted once per handle until the handle
++   * is dropped; the runtime publishes it per session as `session-drawn`.
++   */
++  | { type: "session-drawn"; sessionHandle: string }
+   | { type: "catalog-pressure"; sessionHandle: string; reason: "working-set-exceeds-budget" }
+   | { type: "frame-credit"; bytes: number }
+   | { type: "performance-started"; requestId: number }
+diff --git a/packages/ghosttea-react/src/workspace/Workspace.tsx b/packages/ghosttea-react/src/workspace/Workspace.tsx
+index 43736d8..f4af671 100644
+--- a/packages/ghosttea-react/src/workspace/Workspace.tsx
++++ b/packages/ghosttea-react/src/workspace/Workspace.tsx
+@@ -35,6 +35,7 @@ import {
+   pane,
+   persistedWorkspace,
+   removePane,
++  replaceSessionInPanes,
+   resizeForPane,
+   restoreNode,
+   updateSession,
+@@ -110,6 +111,9 @@ export interface GhostteaWorkspaceContext {
+   activateSession: (sessionId: string) => void;
+   mountSession: (session: SessionSummary) => void;
+   placeSession: (session: SessionSummary) => void;
++  /** Atomically replace an expected session's attachments without activating, splitting or unzooming.
++   * Returns false if it is no longer attached. Safe after an asynchronous session birth. */
++  replaceSession: (expectedId: string, session: SessionSummary) => boolean;
+   createSessionInActivePane: () => Promise<SessionSummary | undefined>;
+   splitActive: (axis?: SplitAxis) => Promise<SessionSummary | undefined>;
+ }
+@@ -176,12 +180,16 @@ export interface GhostteaWorkspaceProps {
+    * is host policy because the same PTY may be mirrored in another pane/window.
+    */
+   onPaneClose?: ((context: GhostteaPaneClose) => void) | undefined;
++  /** Override presentation while retaining the configured workspace zoom binding. */
++  onTogglePaneZoom?: (paneId: string) => void;
+   onActiveSessionChange?: (session: SessionSummary | undefined) => void;
+   createSplitSession?: (activeSession: SessionSummary, axis: SplitAxis) => Promise<SessionSummary>;
+-  /** Size new splits by halving the active pane (default) or equalizing its row/column. */
++  /** Size splits by halving the active pane (default) or equalizing its row/column after insertion and removal. */
+   splitSizing?: SplitSizing;
+   enableRemoteSessions?: boolean;
+   active?: boolean;
++  /** Host visibility without remounting panes or changing split geometry. */
++  paneVisibility?: Readonly<Record<string, boolean>> | undefined;
+   showTitlebar?: boolean;
+   claimExistingSessions?: boolean;
+   initialCwd?: string;
+@@ -400,7 +408,7 @@ function WorkspacePane({
+         active={active}
+         {...(platform.platform ? { platform: platform.platform } : {})}
+         visible={workspaceActive && !hiddenByZoom}
+-        controlsResize={!hiddenByZoom}
++        controlsResize={workspaceActive && !hiddenByZoom}
+         onActivate={onActivate}
+         readClipboard={platform.readClipboard}
+         {...(active && platform.setCanCopy ? { onCopyAvailabilityChange: platform.setCanCopy } : {})}
+@@ -418,6 +426,7 @@ interface SplitViewProps {
+   node: PaneNode;
+   activePaneId: string;
+   workspaceActive: boolean;
++  paneVisibility?: Readonly<Record<string, boolean>> | undefined;
+   zoomedPaneId: string | null;
+   platform: GhostteaWorkspacePlatform;
+   theme: TerminalTheme;
+@@ -435,6 +444,7 @@ function SplitView({
+   node,
+   activePaneId,
+   workspaceActive,
++  paneVisibility,
+   zoomedPaneId,
+   platform,
+   theme,
+@@ -471,7 +481,7 @@ function SplitView({
+         active={workspaceActive && node.id === activePaneId}
+         zoomed={node.id === zoomedPaneId}
+         hiddenByZoom={zoomedPaneId !== null && node.id !== zoomedPaneId}
+-        workspaceActive={workspaceActive}
++        workspaceActive={workspaceActive && paneVisibility?.[node.id] !== false}
+         platform={platform}
+         theme={theme}
+         effects={effects}
+@@ -551,6 +561,7 @@ function SplitView({
+           node: node.first,
+           activePaneId,
+           workspaceActive,
++          paneVisibility,
+           zoomedPaneId,
+           platform,
+           theme,
+@@ -595,6 +606,7 @@ function SplitView({
+           node: node.second,
+           activePaneId,
+           workspaceActive,
++          paneVisibility,
+           zoomedPaneId,
+           platform,
+           theme,
+@@ -622,11 +634,13 @@ export function GhostteaWorkspace({
+   paneMeta,
+   onRehydratePane,
+   onPaneClose,
++  onTogglePaneZoom,
+   onActiveSessionChange,
+   createSplitSession,
+   splitSizing = "halves",
+   enableRemoteSessions = true,
+   active = true,
++  paneVisibility,
+   showTitlebar = true,
+   claimExistingSessions = true,
+   initialCwd,
+@@ -635,6 +649,7 @@ export function GhostteaWorkspace({
+ }: GhostteaWorkspaceProps) {
+   const Sidebar = sidebar;
+   const terminalRuntime = useGhostteaRuntime();
++  const hostZoom = onTogglePaneZoom !== undefined;
+   const [config, setConfig] = useState<ConfigSnapshot | undefined>(terminalRuntime.configSnapshot);
+   const [configPreview, setConfigPreview] = useState<ConfigSnapshot>();
+   const [layout, setLayout] = useState<PaneNode>();
+@@ -714,7 +729,7 @@ export function GhostteaWorkspace({
+         if (!mounted) return;
+         setLayout(workspace.layout);
+         setActivePaneId(workspace.activePaneId);
+-        setZoomedPaneId(workspace.zoomedPaneId);
++        setZoomedPaneId(hostZoom ? null : workspace.zoomedPaneId);
+       },
+       (cause) => {
+         if (mounted) setError(cause instanceof Error ? cause.message : String(cause));
+@@ -724,7 +739,7 @@ export function GhostteaWorkspace({
+       mounted = false;
+       mountedRef.current = false;
+     };
+-  }, [claimExistingSessions, initialCwd, platform.defaultShell, rehydratePane, storageKey, terminalRuntime]);
++  }, [claimExistingSessions, hostZoom, initialCwd, platform.defaultShell, rehydratePane, storageKey, terminalRuntime]);
+ 
+   useEffect(() => {
+     layoutRef.current = layout;
+@@ -818,6 +833,20 @@ export function GhostteaWorkspace({
+   );
+   const placeSession = mountSession;
+ 
++  const replaceSession = useCallback(
++    (expectedId: string, session: SessionSummary): boolean => {
++      const current = layoutRef.current;
++      if (!mountedRef.current || !current) return false;
++      const updated = replaceSessionInPanes(current, expectedId, session);
++      if (updated === current) return false;
++      terminalRuntime.registerSession(session);
++      layoutRef.current = updated;
++      setLayout(updated);
++      return true;
++    },
++    [terminalRuntime],
++  );
++
+   const addSession = useCallback(
+     (session: SessionSummary, axis: SplitAxis = "horizontal"): void => {
+       terminalRuntime.registerSession(session);
+@@ -964,8 +993,9 @@ export function GhostteaWorkspace({
+       }
+       const index = panes.findIndex((candidate) => candidate.id === target.id);
+       const next = panes[index === panes.length - 1 ? index - 1 : index + 1]!;
+-      const remaining = removePane(current, target.id);
++      const remaining = removePane(current, target.id, splitSizing);
+       if (!remaining) return;
++      layoutRef.current = remaining;
+       setLayout(remaining);
+       setZoomedPaneId(null);
+       activatePane(next.id);
+@@ -975,7 +1005,7 @@ export function GhostteaWorkspace({
+         remainingSessionIds: [...new Set(leaves(remaining).map((pane) => pane.session.id))],
+       });
+     },
+-    [activatePane, onPaneClose, platform],
++    [activatePane, onPaneClose, platform, splitSizing],
+   );
+ 
+   const closeActivePane = useCallback((): void => {
+@@ -1049,12 +1079,14 @@ export function GhostteaWorkspace({
+       } else if (command.type === "equalize") {
+         setLayout((current) => (current ? equalize(current) : current));
+       } else if (command.type === "toggle-zoom") {
+-        setZoomedPaneId((current) => (current ? null : (activePaneId ?? null)));
++        if (onTogglePaneZoom && activePaneId) onTogglePaneZoom(activePaneId);
++        else setZoomedPaneId((current) => (current ? null : (activePaneId ?? null)));
+       } else if (command.type === "close-pane") {
+         closeActivePane();
+       }
+     },
+     [
++      onTogglePaneZoom,
+       activePane?.session.cwd,
+       activePaneId,
+       closeActivePane,
+@@ -1157,6 +1189,7 @@ export function GhostteaWorkspace({
+       activateSession,
+       mountSession,
+       placeSession,
++      replaceSession,
+       createSessionInActivePane,
+       splitActive: newSplit,
+     }),
+@@ -1170,6 +1203,7 @@ export function GhostteaWorkspace({
+       newSplit,
+       panes,
+       placeSession,
++      replaceSession,
+       sessions,
+     ],
+   );
+@@ -1213,6 +1247,7 @@ export function GhostteaWorkspace({
+               node={layout}
+               activePaneId={activePaneId}
+               workspaceActive={active}
++              paneVisibility={paneVisibility}
+               zoomedPaneId={zoomedPaneId}
+               platform={platform}
+               theme={resolvedTheme}
+diff --git a/packages/ghosttea-react/src/workspace/pane-layout.test.ts b/packages/ghosttea-react/src/workspace/pane-layout.test.ts
+index 0e2a382..a2a6c33 100644
+--- a/packages/ghosttea-react/src/workspace/pane-layout.test.ts
++++ b/packages/ghosttea-react/src/workspace/pane-layout.test.ts
+@@ -8,6 +8,8 @@ import {
+   pane,
+   persistedWorkspace,
+   restoreNode,
++  removePane,
++  replaceSessionInPanes,
+   updateSplit,
+   type PaneNode,
+   type SplitAxis,
+@@ -232,3 +234,82 @@ describe("pane meta and rehydration", () => {
+     expect(restoreNode(savedRoot, live)).toEqual(pane("pane-1", session("one")));
+   });
+ });
++
++describe("removing equally sized panes", () => {
++  it.each<SplitAxis>(["horizontal", "vertical"])("rebalances %s siblings regardless of which pane closes", (axis) => {
++    let root: PaneNode = pane("one", session("one"));
++    root = insertPane(root, pane("two", session("two")), "one", axis, "s1", "equal");
++    root = insertPane(root, pane("three", session("three")), "two", axis, "s2", "equal");
++    for (const id of ["one", "two", "three"]) {
++      const remaining = removePane(root, id, "equal")!;
++      expect(leaves(remaining)).toHaveLength(2);
++      for (const size of paneSizes(remaining))
++        expect(size[axis === "horizontal" ? "width" : "height"]).toBeCloseTo(0.5);
++    }
++    expect(removePane(root, "absent", "equal")).toBe(root);
++  });
++
++  it("preserves perpendicular groups and manually sized unrelated columns", () => {
++    let root: PaneNode = insertPane(
++      pane("a", session("a")),
++      pane("b", session("b")),
++      "a",
++      "horizontal",
++      "columns",
++      "equal",
++    );
++    root = insertPane(root, pane("c", session("c")), "b", "vertical", "rows", "equal");
++    root = insertPane(root, pane("d", session("d")), "c", "vertical", "rows2", "equal");
++    root = updateSplit(root, "columns", (split) => ({ ...split, ratio: 0.3 }));
++    const remaining = removePane(root, "c", "equal")!;
++    expect(paneSizes(remaining)).toEqual([
++      { id: "a", width: 0.3, height: 1 },
++      { id: "b", width: 0.7, height: 0.5 },
++      { id: "d", width: 0.7, height: 0.5 },
++    ]);
++  });
++
++  it("retains the existing close behavior for halves sizing", () => {
++    let root: PaneNode = insertPane(pane("a", session("a")), pane("b", session("b")), "a", "horizontal", "s1", "equal");
++    root = insertPane(root, pane("c", session("c")), "b", "horizontal", "s2", "equal");
++    const remaining = removePane(root, "c")!;
++    expect(paneSizes(remaining)[0]!.width).toBeCloseTo(1 / 3);
++  });
++});
++
++describe("conditional session replacement", () => {
++  it("replaces mirrored attachments without changing pane ids, split ratios, or siblings", () => {
++    const old = session("ended");
++    const other = pane("other", session("working"));
++    const root = {
++      kind: "split" as const,
++      id: "outer",
++      axis: "horizontal" as const,
++      ratio: 0.3,
++      first: pane("one", old),
++      second: {
++        kind: "split" as const,
++        id: "inner",
++        axis: "vertical" as const,
++        ratio: 0.7,
++        first: other,
++        second: pane("mirror", old),
++      },
++    };
++    const shell = session("fresh");
++    const next = replaceSessionInPanes(root, "ended", shell);
++    expect(next).toEqual({
++      ...root,
++      first: pane("one", shell),
++      second: { ...root.second, second: pane("mirror", shell) },
++    });
++    if (next.kind !== "split" || next.second.kind !== "split") throw new Error("lost layout");
++    expect(next.second.first).toBe(other);
++    expect(replaceSessionInPanes(next, "ended", session("too-late"))).toBe(next);
++  });
++
++  it("does not overwrite a pane reassigned while the replacement was being born", () => {
++    const root = pane("same-pane", session("newly-selected-agent"));
++    expect(replaceSessionInPanes(root, "ended", session("fresh"))).toBe(root);
++  });
++});
+diff --git a/packages/ghosttea-react/src/workspace/pane-layout.ts b/packages/ghosttea-react/src/workspace/pane-layout.ts
+index e8cfdee..6d5a367 100644
+--- a/packages/ghosttea-react/src/workspace/pane-layout.ts
++++ b/packages/ghosttea-react/src/workspace/pane-layout.ts
+@@ -156,6 +156,14 @@ export function mountSessionInPane(root: PaneNode, paneId: string, session: Sess
+   return replacePane(root, target.id, { ...target, session });
+ }
+ 
++/** Replace only current attachments of an expected session, preserving mirrors and geometry. */
++export function replaceSessionInPanes(node: PaneNode, expectedId: string, session: SessionSummary): PaneNode {
++  if (node.kind === "pane") return node.session.id === expectedId ? { ...node, session } : node;
++  const first = replaceSessionInPanes(node.first, expectedId, session);
++  const second = replaceSessionInPanes(node.second, expectedId, session);
++  return first === node.first && second === node.second ? node : { ...node, first, second };
++}
++
+ /** @deprecated Use mountSessionInPane; panes no longer own or move sessions. */
+ export const placeSessionInPane = mountSessionInPane;
+ 
+@@ -164,13 +172,17 @@ export function updateSession(node: PaneNode, session: SessionSummary): PaneNode
+   return { ...node, first: updateSession(node.first, session), second: updateSession(node.second, session) };
+ }
+ 
+-export function removePane(node: PaneNode, paneId: string): PaneNode | null {
++export function removePane(node: PaneNode, paneId: string, sizing: SplitSizing = "halves"): PaneNode | null {
+   if (node.kind === "pane") return node.id === paneId ? null : node;
+-  const first = removePane(node.first, paneId);
+-  const second = removePane(node.second, paneId);
++  const first = removePane(node.first, paneId, sizing);
++  const second = removePane(node.second, paneId, sizing);
+   if (!first) return second;
+   if (!second) return first;
+-  return { ...node, first, second };
++  if (first === node.first && second === node.second) return node;
++  const updated = { ...node, first, second };
++  const count = (child: PaneNode): number =>
++    child.kind === "split" && child.axis === node.axis ? count(child.first) + count(child.second) : 1;
++  return sizing === "equal" && count(updated) !== count(node) ? equalizeSplitGroup(updated)[0] : updated;
+ }
+ 
+ export function updateSplit(node: PaneNode, splitId: string, update: (split: PaneSplit) => PaneSplit): PaneNode {

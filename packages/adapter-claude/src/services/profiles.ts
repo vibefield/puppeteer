@@ -30,7 +30,7 @@ import type {
   ProfileProvider,
   ProfileService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveClaudeExecutable } from '../detection.js';
 
 /** Root variable Claude Code reads for its config directory. */

@@ -1,5 +1,5 @@
 import type { CSSProperties, RefObject } from 'react';
-import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
+import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
 import {
   LAUNCH_MARK_SIZE,
   launchAnnouncement,

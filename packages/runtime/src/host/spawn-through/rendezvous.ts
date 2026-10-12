@@ -1,7 +1,7 @@
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { AgentLaunchProviderSchema, type AgentLaunchProvider } from '@vibecook/puppeteer-core';
+import { AgentLaunchProviderSchema, type AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import { ensurePrivateDirectory, publishFile } from './files.js';
 import { isSpawnThroughHostLabel } from './protocol.js';
 

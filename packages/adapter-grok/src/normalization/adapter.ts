@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import type { GrokObservedEvent, GrokObservedFactory, GrokUpdate } from './types.js';
 
 const GROK_EXTENSION_UPDATES = new Set([

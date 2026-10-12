@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-testing",
+  "name": "@vibefield/puppeteer-testing",
   "version": "0.1.8",
   "type": "module",
   "description": "Vendor-neutral test harness and AgentAdapterBinding conformance suite for Puppeteer adapters.",
@@ -52,7 +52,7 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*"
+    "@vibefield/puppeteer-core": "workspace:*"
   },
   "peerDependencies": {
     "vitest": ">=3 <4"

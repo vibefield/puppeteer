@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 import type { ClaudeSettingSource } from '../observation/status-channel.js';
 import { CLAUDE_ENVIRONMENT_SWITCHES, readClaudeEnvironment, readClaudeInvocation } from './invocation-grammar.js';
 

@@ -2,7 +2,7 @@
 import { act, type ReactElement, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { MonitorViewHost } from '@vibecook/puppeteer-view-sdk/host';
+import { MonitorViewHost } from '@vibefield/puppeteer-view-sdk/host';
 import {
   agentViewsFixture,
   createFixtureReplica,
@@ -12,7 +12,7 @@ import {
   fixtureTheme,
   type FixtureReplica,
   type RecordingView,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { CHROME_RETRY_CAP_MS, CHROME_RETRY_FIRST_MS, ChromeBoundary } from './ChromeBoundary.js';
 
 // M49: a chrome reader's render error must not unmount the monitor and its views. The host here is Godview's shape:

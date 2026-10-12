@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorUsageState } from '@vibecook/puppeteer-core';
+import type { MonitorUsageState } from '@vibefield/puppeteer-core';
 import { USAGE_STEP_MS, UsageLedger } from './usage-ledger.js';
 
 // The window's former `views/monitor/usage-ledger.test.ts` (deleted at MV-8b), less the persistence it no longer has.

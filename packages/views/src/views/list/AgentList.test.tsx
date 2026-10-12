@@ -8,7 +8,7 @@ import type {
   MonitorSpawnProfile,
   MonitorViewInput,
   MonitorViewInstance,
-} from '@vibecook/puppeteer-view-sdk';
+} from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   countingCommands,
@@ -16,7 +16,7 @@ import {
   fixtureStage,
   parameterDefaults,
   runConformance,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { LIST_MANIFEST, LIST_ROOT_CLASS, listMonitorView } from './index.js';
 
 // The list on the SDK (MV-4): mounted as a host mounts it, through its own

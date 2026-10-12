@@ -1,4 +1,4 @@
-import type { WorkspaceEvent } from '@vibecook/puppeteer-core';
+import type { WorkspaceEvent } from '@vibefield/puppeteer-core';
 import { hermesRecord, hermesString } from './types.js';
 
 /**

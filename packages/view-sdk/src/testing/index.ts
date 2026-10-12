@@ -1,5 +1,5 @@
 /**
- * `@vibecook/puppeteer-view-sdk/testing`: what a view's tests (and a host's)
+ * `@vibefield/puppeteer-view-sdk/testing`: what a view's tests (and a host's)
  * may use (L16). Never imported by a view's own code.
  *
  * - Fixtures: deterministic agents, models, themes, stages and inputs; the

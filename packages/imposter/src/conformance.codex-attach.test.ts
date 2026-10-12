@@ -26,8 +26,8 @@ import {
   createCodexSession,
   spawnAppServer,
   type CodexSession,
-} from '@vibecook/puppeteer-adapter-codex';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-adapter-codex';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 

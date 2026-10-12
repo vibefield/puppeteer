@@ -1,20 +1,20 @@
-import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
-import type { CreateAntigravityTuiSessionOptions } from '@vibecook/puppeteer-adapter-antigravity';
-import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibecook/puppeteer-adapter-claude';
-import type { CreateCodexTuiSessionOptions } from '@vibecook/puppeteer-adapter-codex';
-import type { CreateCopilotTuiSessionOptions } from '@vibecook/puppeteer-adapter-copilot';
-import type { CreateGrokSessionOptions } from '@vibecook/puppeteer-adapter-grok';
-import type { CreateHermesTuiSessionOptions } from '@vibecook/puppeteer-adapter-hermes';
-import type { CreateKimiTuiSessionOptions } from '@vibecook/puppeteer-adapter-kimi';
-import type { CreateOpenCodeTuiSessionOptions } from '@vibecook/puppeteer-adapter-opencode';
-import type { CreatePiTuiSessionOptions } from '@vibecook/puppeteer-adapter-pi';
+import type { CreateAcpSessionOptions } from '@vibefield/puppeteer-adapter-acp';
+import type { CreateAntigravityTuiSessionOptions } from '@vibefield/puppeteer-adapter-antigravity';
+import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibefield/puppeteer-adapter-claude';
+import type { CreateCodexTuiSessionOptions } from '@vibefield/puppeteer-adapter-codex';
+import type { CreateCopilotTuiSessionOptions } from '@vibefield/puppeteer-adapter-copilot';
+import type { CreateGrokSessionOptions } from '@vibefield/puppeteer-adapter-grok';
+import type { CreateHermesTuiSessionOptions } from '@vibefield/puppeteer-adapter-hermes';
+import type { CreateKimiTuiSessionOptions } from '@vibefield/puppeteer-adapter-kimi';
+import type { CreateOpenCodeTuiSessionOptions } from '@vibefield/puppeteer-adapter-opencode';
+import type { CreatePiTuiSessionOptions } from '@vibefield/puppeteer-adapter-pi';
 import type {
   AgentRuntime,
   CreateAgentSessionResult,
   PrepareAgentSessionResult,
   SpawnAgentOptions,
   SpawnAgentResult,
-} from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-runtime';
 
 /** Provider ids bundled by the optional turn-key composition package. */
 export type BuiltinAgentKind =

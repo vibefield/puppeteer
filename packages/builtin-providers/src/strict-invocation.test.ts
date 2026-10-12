@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createAgentRuntime, type AgentRuntime } from '@vibecook/puppeteer-runtime';
-import { prepareSpawnThroughLaunch, type SpawnThroughLaunchRequest } from '@vibecook/puppeteer-runtime/spawn-through';
+import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createAgentRuntime, type AgentRuntime } from '@vibefield/puppeteer-runtime';
+import { prepareSpawnThroughLaunch, type SpawnThroughLaunchRequest } from '@vibefield/puppeteer-runtime/spawn-through';
 import { createBuiltinProviders } from './providers.js';
 
 const runtimes: AgentRuntime[] = [];

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-hermes",
+  "name": "@vibefield/puppeteer-adapter-hermes",
   "version": "0.1.8",
   "type": "module",
   "description": "Hermes Agent adapter for Puppeteer: owned tui_gateway WebSocket host, native --tui attach, and structured observation.",
@@ -41,13 +41,13 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
     "zod": "^4.4.3",
-    "@vibecook/puppeteer-native-observation": "workspace:*"
+    "@vibefield/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-surface": "workspace:*",
-    "@vibecook/puppeteer-testing": "workspace:*",
+    "@vibefield/puppeteer-surface": "workspace:*",
+    "@vibefield/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15",
     "vitest": "^3.0.0"
   }

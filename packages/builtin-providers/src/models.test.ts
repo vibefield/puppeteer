@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { AgentModelCatalogSchema, type AgentModelChoice, type AgentModelService } from '@vibecook/puppeteer-core';
-import { createAcpModelService } from '@vibecook/puppeteer-adapter-acp';
-import { createClaudeModelService, decodeClaudeModels } from '@vibecook/puppeteer-adapter-claude';
-import { createCodexModelService, decodeCodexModels } from '@vibecook/puppeteer-adapter-codex';
-import { createCopilotModelService, decodeCopilotModels } from '@vibecook/puppeteer-adapter-copilot';
-import { createGrokModelService, decodeGrokModels } from '@vibecook/puppeteer-adapter-grok';
-import { createKimiModelService, decodeKimiModels } from '@vibecook/puppeteer-adapter-kimi';
-import { createOpenCodeModelService, decodeOpenCodeModels } from '@vibecook/puppeteer-adapter-opencode';
-import { createHermesModelService, decodeHermesModels } from '@vibecook/puppeteer-adapter-hermes';
-import { createAntigravityModelService, decodeAntigravityModels } from '@vibecook/puppeteer-adapter-antigravity';
-import { createPiModelService, decodePiModels } from '@vibecook/puppeteer-adapter-pi';
+import { AgentModelCatalogSchema, type AgentModelChoice, type AgentModelService } from '@vibefield/puppeteer-core';
+import { createAcpModelService } from '@vibefield/puppeteer-adapter-acp';
+import { createClaudeModelService, decodeClaudeModels } from '@vibefield/puppeteer-adapter-claude';
+import { createCodexModelService, decodeCodexModels } from '@vibefield/puppeteer-adapter-codex';
+import { createCopilotModelService, decodeCopilotModels } from '@vibefield/puppeteer-adapter-copilot';
+import { createGrokModelService, decodeGrokModels } from '@vibefield/puppeteer-adapter-grok';
+import { createKimiModelService, decodeKimiModels } from '@vibefield/puppeteer-adapter-kimi';
+import { createOpenCodeModelService, decodeOpenCodeModels } from '@vibefield/puppeteer-adapter-opencode';
+import { createHermesModelService, decodeHermesModels } from '@vibefield/puppeteer-adapter-hermes';
+import { createAntigravityModelService, decodeAntigravityModels } from '@vibefield/puppeteer-adapter-antigravity';
+import { createPiModelService, decodePiModels } from '@vibefield/puppeteer-adapter-pi';
 
 function catalog(service: AgentModelService, models: AgentModelChoice[]) {
   return AgentModelCatalogSchema.parse({

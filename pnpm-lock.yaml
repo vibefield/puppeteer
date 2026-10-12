@@ -21,7 +21,7 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:packages/surface
       prettier:
@@ -54,31 +54,31 @@ importers:
       '@vibecook/ghosttead':
         specifier: link:../../../ghosttea-0.11.2/packages/ghosttead
         version: link:../../../ghosttea-0.11.2/packages/ghosttead
-      '@vibecook/puppeteer-builtin-providers':
+      '@vibefield/puppeteer-builtin-providers':
         specifier: workspace:*
         version: link:../../packages/builtin-providers
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@vibecook/puppeteer-monitor':
+      '@vibefield/puppeteer-monitor':
         specifier: workspace:*
         version: link:../../packages/monitor
-      '@vibecook/puppeteer-react':
+      '@vibefield/puppeteer-react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@vibecook/puppeteer-record':
+      '@vibefield/puppeteer-record':
         specifier: workspace:*
         version: link:../../packages/record
-      '@vibecook/puppeteer-runtime':
+      '@vibefield/puppeteer-runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@vibecook/puppeteer-view-sdk':
+      '@vibefield/puppeteer-view-sdk':
         specifier: workspace:*
         version: link:../../packages/view-sdk
-      '@vibecook/puppeteer-views':
+      '@vibefield/puppeteer-views':
         specifier: workspace:*
         version: link:../../packages/views
-      '@vibecook/puppeteer-workspaces':
+      '@vibefield/puppeteer-workspaces':
         specifier: workspace:*
         version: link:../../packages/workspaces
       matter-js:
@@ -127,34 +127,34 @@ importers:
       '@parcel/watcher':
         specifier: ^2.5.0
         version: 2.5.6
-      '@vibecook/puppeteer-adapter-antigravity':
+      '@vibefield/puppeteer-adapter-antigravity':
         specifier: workspace:*
         version: link:../../packages/adapter-antigravity
-      '@vibecook/puppeteer-adapter-claude':
+      '@vibefield/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../../packages/adapter-claude
-      '@vibecook/puppeteer-adapter-codex':
+      '@vibefield/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../../packages/adapter-codex
-      '@vibecook/puppeteer-adapter-copilot':
+      '@vibefield/puppeteer-adapter-copilot':
         specifier: workspace:*
         version: link:../../packages/adapter-copilot
-      '@vibecook/puppeteer-adapter-hermes':
+      '@vibefield/puppeteer-adapter-hermes':
         specifier: workspace:*
         version: link:../../packages/adapter-hermes
-      '@vibecook/puppeteer-adapter-kimi':
+      '@vibefield/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../../packages/adapter-kimi
-      '@vibecook/puppeteer-adapter-opencode':
+      '@vibefield/puppeteer-adapter-opencode':
         specifier: workspace:*
         version: link:../../packages/adapter-opencode
-      '@vibecook/puppeteer-adapter-pi':
+      '@vibefield/puppeteer-adapter-pi':
         specifier: workspace:*
         version: link:../../packages/adapter-pi
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@vibecook/puppeteer-imposter':
+      '@vibefield/puppeteer-imposter':
         specifier: workspace:*
         version: link:../../packages/imposter
       react:
@@ -188,27 +188,27 @@ importers:
       '@agentclientprotocol/sdk':
         specifier: 1.2.1
         version: 1.2.1(zod@4.4.3)
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/adapter-antigravity:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -217,20 +217,20 @@ importers:
 
   packages/adapter-claude:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -239,20 +239,20 @@ importers:
 
   packages/adapter-codex:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -261,17 +261,17 @@ importers:
 
   packages/adapter-copilot:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -280,20 +280,20 @@ importers:
 
   packages/adapter-grok:
     dependencies:
-      '@vibecook/puppeteer-adapter-acp':
+      '@vibefield/puppeteer-adapter-acp':
         specifier: workspace:*
         version: link:../adapter-acp
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -305,20 +305,20 @@ importers:
 
   packages/adapter-hermes:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -330,17 +330,17 @@ importers:
 
   packages/adapter-kimi:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -352,20 +352,20 @@ importers:
 
   packages/adapter-opencode:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       node-pty:
@@ -377,17 +377,17 @@ importers:
 
   packages/adapter-pi:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-native-observation':
+      '@vibefield/puppeteer-native-observation':
         specifier: workspace:*
         version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
       vitest:
@@ -396,40 +396,40 @@ importers:
 
   packages/builtin-providers:
     dependencies:
-      '@vibecook/puppeteer-adapter-acp':
+      '@vibefield/puppeteer-adapter-acp':
         specifier: workspace:*
         version: link:../adapter-acp
-      '@vibecook/puppeteer-adapter-antigravity':
+      '@vibefield/puppeteer-adapter-antigravity':
         specifier: workspace:*
         version: link:../adapter-antigravity
-      '@vibecook/puppeteer-adapter-claude':
+      '@vibefield/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../adapter-claude
-      '@vibecook/puppeteer-adapter-codex':
+      '@vibefield/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../adapter-codex
-      '@vibecook/puppeteer-adapter-copilot':
+      '@vibefield/puppeteer-adapter-copilot':
         specifier: workspace:*
         version: link:../adapter-copilot
-      '@vibecook/puppeteer-adapter-grok':
+      '@vibefield/puppeteer-adapter-grok':
         specifier: workspace:*
         version: link:../adapter-grok
-      '@vibecook/puppeteer-adapter-hermes':
+      '@vibefield/puppeteer-adapter-hermes':
         specifier: workspace:*
         version: link:../adapter-hermes
-      '@vibecook/puppeteer-adapter-kimi':
+      '@vibefield/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi
-      '@vibecook/puppeteer-adapter-opencode':
+      '@vibefield/puppeteer-adapter-opencode':
         specifier: workspace:*
         version: link:../adapter-opencode
-      '@vibecook/puppeteer-adapter-pi':
+      '@vibefield/puppeteer-adapter-pi':
         specifier: workspace:*
         version: link:../adapter-pi
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-runtime':
+      '@vibefield/puppeteer-runtime':
         specifier: workspace:*
         version: link:../runtime
     devDependencies:
@@ -449,7 +449,7 @@ importers:
 
   packages/imposter:
     dependencies:
-      '@vibecook/puppeteer-surface':
+      '@vibefield/puppeteer-surface':
         specifier: workspace:*
         version: link:../surface
       ink:
@@ -465,31 +465,31 @@ importers:
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
-      '@vibecook/puppeteer-adapter-claude':
+      '@vibefield/puppeteer-adapter-claude':
         specifier: workspace:*
         version: link:../adapter-claude
-      '@vibecook/puppeteer-adapter-codex':
+      '@vibefield/puppeteer-adapter-codex':
         specifier: workspace:*
         version: link:../adapter-codex
-      '@vibecook/puppeteer-adapter-grok':
+      '@vibefield/puppeteer-adapter-grok':
         specifier: workspace:*
         version: link:../adapter-grok
-      '@vibecook/puppeteer-adapter-kimi':
+      '@vibefield/puppeteer-adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-testing':
+      '@vibefield/puppeteer-testing':
         specifier: workspace:*
         version: link:../testing
 
   packages/monitor:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-view-sdk':
+      '@vibefield/puppeteer-view-sdk':
         specifier: workspace:*
         version: link:../view-sdk
     devDependencies:
@@ -505,10 +505,10 @@ importers:
 
   packages/react:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-monitor':
+      '@vibefield/puppeteer-monitor':
         specifier: workspace:*
         version: link:../monitor
     devDependencies:
@@ -524,19 +524,19 @@ importers:
 
   packages/record:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
 
   packages/runtime:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-record':
+      '@vibefield/puppeteer-record':
         specifier: workspace:*
         version: link:../record
-      '@vibecook/puppeteer-workspaces':
+      '@vibefield/puppeteer-workspaces':
         specifier: workspace:*
         version: link:../workspaces
       zod:
@@ -554,7 +554,7 @@ importers:
 
   packages/testing:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -585,13 +585,13 @@ importers:
 
   packages/views:
     dependencies:
-      '@vibecook/puppeteer-core':
+      '@vibefield/puppeteer-core':
         specifier: workspace:*
         version: link:../core
-      '@vibecook/puppeteer-react':
+      '@vibefield/puppeteer-react':
         specifier: workspace:*
         version: link:../react
-      '@vibecook/puppeteer-view-sdk':
+      '@vibefield/puppeteer-view-sdk':
         specifier: workspace:*
         version: link:../view-sdk
       '@webgpu/types':

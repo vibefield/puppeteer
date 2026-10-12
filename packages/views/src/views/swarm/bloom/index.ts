@@ -4,7 +4,7 @@
 export * from './constants.js';
 export * from './geometry.js';
 // The menu's own word only: its reading of the tree is the SDK toolkit's (`menuOf`, `blooms`, …), which a host imports
-// from `@vibecook/puppeteer-view-sdk/toolkit` (M54: the views index forwards no SDK name).
+// from `@vibefield/puppeteer-view-sdk/toolkit` (M54: the views index forwards no SDK name).
 export { deviceWord } from './menu.js';
 export * from './targeting.js';
 export * from './words.js';

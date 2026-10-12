@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { AgentView, MonitorSpawnMenu } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, MonitorSpawnMenu } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   countingCommands,
@@ -10,7 +10,7 @@ import {
   fixtureTheme,
   parameterDefaults,
   runConformance,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { AgentSwarm } from './AgentSwarm.js';
 import { BLOOM_SCENARIOS } from './bloom/scenarios.js';
 import { SWARM_MANIFEST, swarmMonitorView } from './index.js';

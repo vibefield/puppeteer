@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { normalizeCopilotNative } from './adapter.js';
 import { normalizeCopilotCompaction } from './compaction.js';
 import { normalizeCopilotAssistantMessage } from './conversation.js';

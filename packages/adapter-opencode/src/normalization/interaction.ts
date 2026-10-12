@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import type { OpenCodeSseRecord } from '../transport/event-stream.js';
 import { openCodeStructuredQuestions } from './monitor.js';
 import { boundedOpenCodeMapSet, isOpenCodeRecord, openCodeText } from './wire.js';

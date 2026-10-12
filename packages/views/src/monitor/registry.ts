@@ -1,4 +1,4 @@
-import type { MonitorView } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorView } from '@vibefield/puppeteer-view-sdk';
 import { listMonitorView } from '../views/list/index.js';
 import { rainMonitorView } from '../views/rain/index.js';
 import { spendMonitorView } from '../views/spend/index.js';

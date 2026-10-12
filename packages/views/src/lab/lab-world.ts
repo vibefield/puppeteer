@@ -3,7 +3,7 @@ import {
   type AgentMonitorState,
   type MonitorActivityKind,
   type MonitorBlocker,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { DEFAULT_PROJECT_TINT, paneTint, projectTint, type ProjectTint } from '../colour/project-tint.js';
 import { formatUsd } from '../monitor/cost-format.js';
 import { folderName } from '../monitor/folder-name.js';

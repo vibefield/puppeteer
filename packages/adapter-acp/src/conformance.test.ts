@@ -2,7 +2,7 @@ import {
   runAgentMonitorConformance,
   runAgentAdapterConformance,
   type AgentAdapterHarness,
-} from '@vibecook/puppeteer-testing/conformance';
+} from '@vibefield/puppeteer-testing/conformance';
 import { createAcpSession } from './driver.js';
 import { scriptedAcpConnector } from './test-support/scripted-connector.js';
 import type { AcpConnector } from './transport/connection.js';

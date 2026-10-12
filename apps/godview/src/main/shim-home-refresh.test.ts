@@ -8,7 +8,7 @@ import {
   readRendezvous,
   spawnThroughLayout,
   writeRendezvous,
-} from '@vibecook/puppeteer-runtime/spawn-through';
+} from '@vibefield/puppeteer-runtime/spawn-through';
 import {
   describeShimHomeRefresh,
   refreshShimHome,

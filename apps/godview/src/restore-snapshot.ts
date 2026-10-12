@@ -1,5 +1,5 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import { AgentContinuationSchema, type AgentContinuation } from '@vibecook/puppeteer-core';
+import { AgentContinuationSchema, type AgentContinuation } from '@vibefield/puppeteer-core';
 import type { AgentSessionInfo } from './protocol.js';
 
 export const RESTORE_SNAPSHOT_VERSION = 3 as const;
@@ -134,7 +134,7 @@ function usable(value: unknown): string | undefined {
   return normalized && normalized.length <= MAX_RESTORE_STRING ? normalized : undefined;
 }
 
-// Mirrors AgentProfileIdSchema in @vibecook/puppeteer-core. A persisted id is
+// Mirrors AgentProfileIdSchema in @vibefield/puppeteer-core. A persisted id is
 // handed back to the runtime on resume, so a malformed one is dropped here
 // rather than carried forward as an unresolvable account reference.
 const PROFILE_ID = /^[A-Za-z0-9][A-Za-z0-9:._-]{0,127}$/u;

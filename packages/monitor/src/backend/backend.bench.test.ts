@@ -1,6 +1,6 @@
 import { loadavg } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState } from '@vibefield/puppeteer-core';
 import { T0, facts, hostRun, iso, monitorState, testBackend } from './testing/fixtures.js';
 
 // The per-change cost bench (MV-1a step 11). Skipped unless MONITOR_BENCH=1:

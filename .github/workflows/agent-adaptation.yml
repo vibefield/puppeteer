@@ -217,11 +217,11 @@ jobs:
           --ground-truth "$AGENT_GROUND_TRUTH"
 
       - name: Refresh and audit immutable evidence
-        run: pnpm --filter @vibecook/puppeteer-surface surface:evidence:write
+        run: pnpm --filter @vibefield/puppeteer-surface surface:evidence:write
 
-      - run: pnpm --filter @vibecook/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
-      - run: pnpm --filter "@vibecook/puppeteer-adapter-${AGENT_VENDOR}" test
-      - run: pnpm --filter @vibecook/puppeteer-imposter test
+      - run: pnpm --filter @vibefield/puppeteer-surface run "surface:audit:${AGENT_VENDOR}"
+      - run: pnpm --filter "@vibefield/puppeteer-adapter-${AGENT_VENDOR}" test
+      - run: pnpm --filter @vibefield/puppeteer-imposter test
       - run: pnpm packages:check
       - run: pnpm support:check
 

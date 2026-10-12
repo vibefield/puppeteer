@@ -2,7 +2,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadModel } from '@vibecook/puppeteer-surface';
+import { loadModel } from '@vibefield/puppeteer-surface';
 
 const version = '0.20.0';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-core",
+  "name": "@vibefield/puppeteer-core",
   "version": "0.1.8",
   "type": "module",
   "description": "Core contracts for the puppeteer agent runtime: events, session state reducer, adapter interfaces. Zero I/O.",

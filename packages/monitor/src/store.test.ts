@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
 import {
   DEFAULT_MONITOR_SEAL_CAPACITY,
   connectAgentMonitorStore,

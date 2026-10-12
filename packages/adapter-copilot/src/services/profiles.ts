@@ -34,7 +34,7 @@ import type {
   ProfileProvider,
   ProfileService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveCopilotExecutable } from '../detection.js';
 import {
   CopilotServerClient,

@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from 'react';
-import { ProfileGlyph } from '@vibecook/puppeteer-view-sdk/react';
+import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import { Tip } from './InstrumentBar.js';
 
 // THE PROFILE TABS (the VibeField agents-settings record's T3, locked

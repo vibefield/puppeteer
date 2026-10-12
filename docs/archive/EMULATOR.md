@@ -18,7 +18,7 @@
 > | §4 — each adapter owns `surface/emulator/bin.mjs`          | One executable, `ai`, driven by a persona per vendor (IMPOSTER §3). The per-adapter bins are deleted.                              |
 > | §5 — scenarios live beside the bin                         | `packages/imposter/personas/<vendor>/scenarios/`                                                                                   |
 > | §6.1–§6.2 — a state file and a control server per emulator | One UDS the plane owns; imposters dial in and hold it (IMPOSTER §5). No state file, no per-imposter server, no `prune()`, no poll. |
-> | §8 — `packages/emulator` ships the engine                  | Deleted. The ASM runtime is `@vibecook/puppeteer-surface`; the engine is `@vibecook/puppeteer-imposter`.                         |
+> | §8 — `packages/emulator` ships the engine                  | Deleted. The ASM runtime is `@vibefield/puppeteer-surface`; the engine is `@vibefield/puppeteer-imposter`.                         |
 >
 > §6.3 and §6.4 still describe the shape of the thing; only the spawned process changed.
 
@@ -57,7 +57,7 @@ Corollaries (do not relitigate):
 
 ## 2. Agent Surface Model (ASM) — the formal contract
 
-The ASM is the canonical, machine-readable description of everything a vendor exposes that an adapter depends on. It lives in the neutral `@vibecook/puppeteer-surface` package, is **JSON canonical** (diffable, tool-consumable, no build step), and is **versioned per vendor version**.
+The ASM is the canonical, machine-readable description of everything a vendor exposes that an adapter depends on. It lives in the neutral `@vibefield/puppeteer-surface` package, is **JSON canonical** (diffable, tool-consumable, no build step), and is **versioned per vendor version**.
 
 ### 2.1 Layout
 

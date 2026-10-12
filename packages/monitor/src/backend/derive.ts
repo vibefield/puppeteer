@@ -3,7 +3,7 @@ import {
   presentAgentMonitorHeadline,
   type AgentMonitorState,
   type MonitorBlocker,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AgentStatus,
   MonitorActivity,
@@ -14,7 +14,7 @@ import type {
   MonitorReply,
   MonitorTokens,
   MonitorWait,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import { classifyTerminalStatus } from '../terminal-status.js';
 import type { MonitorHostProfileSet, MonitorHostRun, MonitorHostTerminal } from './ports.js';
 

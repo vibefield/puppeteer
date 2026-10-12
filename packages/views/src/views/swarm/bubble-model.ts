@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentView, MonitorWait } from '@vibecook/puppeteer-view-sdk';
+import type { AgentStatus, AgentView, MonitorWait } from '@vibefield/puppeteer-view-sdk';
 import {
   detailLine,
   formatElapsed,
@@ -15,7 +15,7 @@ import {
   waitBodyLine,
   waitMark,
   waitWord,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { bodyIdOf } from './body-id.js';
 import { radiusForStatus, type SwarmParameters } from './swarm-parameters.js';
 import type { CopyLead, CopyLine, CopyTone, TextStyle } from './text-layout.js';

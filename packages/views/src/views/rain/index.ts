@@ -1,6 +1,6 @@
-import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
-import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
-import { MARK_VIEW_BOX, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibefield/puppeteer-view-sdk';
+import { reactMonitorView } from '@vibefield/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, strokesOutline } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { RAIN_PARAMETER_GROUPS } from './rain-parameters.js';
 import { RainView } from './RainView.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.

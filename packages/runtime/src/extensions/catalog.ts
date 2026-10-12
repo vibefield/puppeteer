@@ -5,7 +5,7 @@ import {
   type ExtensionCatalog,
   type ExtensionFailure,
   type ExtensionProvider,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { ExtensionProviderEntry } from './inventory.js';
 
 /**

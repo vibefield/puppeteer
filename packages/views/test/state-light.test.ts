@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorPalette } from '@vibecook/puppeteer-view-sdk';
-import { fixtureTheme } from '@vibecook/puppeteer-view-sdk/testing';
-import { DEFAULT_STATE_LIGHT } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { MonitorPalette } from '@vibefield/puppeteer-view-sdk';
+import { fixtureTheme } from '@vibefield/puppeteer-view-sdk/testing';
+import { DEFAULT_STATE_LIGHT } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { DEFAULT_SWARM_PARAMETERS } from '../src/views/swarm/swarm-parameters.js';
 import { resolveSwarmTheme } from '../src/views/swarm/swarm-theme.js';
 import { resolveTimelineInks } from '../src/views/timeline/timeline-inks.js';

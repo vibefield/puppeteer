@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentView, MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
+import type { AgentView, MonitorAgentRow, MonitorModel } from '@vibefield/puppeteer-view-sdk/model';
 import { buildPaneAttachments } from '../pane-attachments.js';
 import {
   agentSessionsByRow,

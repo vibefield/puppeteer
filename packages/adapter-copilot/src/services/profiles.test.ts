@@ -3,7 +3,7 @@ import {
   ProfileIdentitySchema,
   ProfileProviderSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import type { CopilotServerTransport } from '../transport/server-client.js';
 import {

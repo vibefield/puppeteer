@@ -1,4 +1,4 @@
-import type { AgentStatus } from '@vibecook/puppeteer-view-sdk/model';
+import type { AgentStatus } from '@vibefield/puppeteer-view-sdk/model';
 
 /**
  * Which agents finished something the user has not looked at — the window's former `views/monitor/unread.ts`,

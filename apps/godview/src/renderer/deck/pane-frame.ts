@@ -1,8 +1,8 @@
-import type { PaneFrameAgent } from '@vibecook/puppeteer-views';
+import type { PaneFrameAgent } from '@vibefield/puppeteer-views';
 import type { MonitorAgent } from '../monitor/types.js';
 
 /**
- * The frame itself lives in `@vibecook/puppeteer-views` since PU-14 (design-
+ * The frame itself lives in `@vibefield/puppeteer-views` since PU-14 (design-
  * system record §07); what stays here is the seam — this host's monitor facet
  * projected into the facts the frame reads.
  */

@@ -1,4 +1,4 @@
-import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { AgentEvent, ToolActivityKind, ToolPresentation } from '@vibefield/puppeteer-core';
 import { antigravityErrorText, antigravityRecord, antigravityString } from './types.js';
 export interface AntigravityToolFact {
   id: string;

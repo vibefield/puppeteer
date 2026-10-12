@@ -60,7 +60,7 @@ import {
   type ExtensionService,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolvePiExecutable } from '../detection.js';
 import { PI_PROFILE_ROOT_VARIABLE, piAgentDir } from './profiles.js';
 

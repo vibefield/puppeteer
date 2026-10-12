@@ -8,14 +8,14 @@ import type {
   MonitorPastSpan,
   MonitorWait,
   ProjectTint,
-} from '@vibecook/puppeteer-view-sdk';
-import { lendHistory } from '@vibecook/puppeteer-view-sdk/host';
+} from '@vibefield/puppeteer-view-sdk';
+import { lendHistory } from '@vibefield/puppeteer-view-sdk/host';
 import {
   AGENT_MARK_PROVIDERS,
   DEFAULT_PROJECT_TINT,
   paneColour,
   projectColour,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { seededRandom } from '../../../lab/lab-world.js';
 
 // The timeline's example afternoon: the prototype's world

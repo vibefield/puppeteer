@@ -1,4 +1,4 @@
-import type { ConversationEvent } from '@vibecook/puppeteer-core';
+import type { ConversationEvent } from '@vibefield/puppeteer-core';
 import { hermesString } from './types.js';
 
 /** Owns only Hermes streamed assistant conversation text. */

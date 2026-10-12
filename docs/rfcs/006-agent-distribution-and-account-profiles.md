@@ -274,7 +274,7 @@ it is the registry's.
   default) and `retiredAt`. The glyph is an open token the views resolve (`ProfileGlyph` in `packages/views`: eleven
   monoline symbols and the laptop for the native set, filled for the default) — open, so a glyph a newer build draws
   never makes an older build's registry unreadable. *(2026-10-05, MV-4: `ProfileGlyph` is the view SDK's now,
-  `@vibecook/puppeteer-view-sdk/react`, drawing the toolkit's `PROFILE_GLYPH_SHAPES`; the views package forwards it.)*
+  `@vibefield/puppeteer-view-sdk/react`, drawing the toolkit's `PROFILE_GLYPH_SHAPES`; the views package forwards it.)*
 - **The native set is synthetic**: the providers' own roots, never stored, renamed or removed. Every host sees it,
   whatever it named its own sets.
 - **Folders.** A managed set owns one directory, `<rootsDirectory>/<id>/`, the id made once from its first name

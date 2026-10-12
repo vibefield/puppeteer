@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadGroundTruth } from '@vibecook/puppeteer-surface';
+import { loadGroundTruth } from '@vibefield/puppeteer-surface';
 import { canonicalJson, checkGroundTruth, discoverGroundTruthRoots, renderGroundTruth } from './groundtruth.mjs';
 
 describe('canonical Surface ground truth', () => {
   it('keeps exactly one canonical result at each agent root', () => {
     const roots = discoverGroundTruthRoots();
-    expect(roots.map((root) => root.split('/').at(-1))).toEqual([
+    expect(roots.map((root) => basename(root))).toEqual([
       'synthetic',
       'antigravity',
       'claude',
@@ -36,7 +36,7 @@ describe('canonical Surface ground truth', () => {
   });
 
   it('renders ASM v3 fidelity, refinements, and immutable source provenance', () => {
-    const root = discoverGroundTruthRoots().find((candidate) => candidate.endsWith('/kimi'));
+    const root = discoverGroundTruthRoots().find((candidate) => basename(candidate) === 'kimi');
     const html = renderGroundTruth(loadGroundTruth(join(root, 'groundtruth.json')));
     expect(html).toContain('Schema fidelity');
     expect(html).toContain('evidence-bound payload refinements');
@@ -44,7 +44,7 @@ describe('canonical Surface ground truth', () => {
   });
 
   it('does not promote Rosetta writer-only contracts into runtime verification', () => {
-    const roots = new Map(discoverGroundTruthRoots().map((root) => [root.split('/').at(-1), root]));
+    const roots = new Map(discoverGroundTruthRoots().map((root) => [basename(root), root]));
     const event = (vendor, name) =>
       loadGroundTruth(join(roots.get(vendor), 'groundtruth.json')).events.find((candidate) => candidate.event === name);
 

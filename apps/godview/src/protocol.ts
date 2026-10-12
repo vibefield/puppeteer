@@ -1,13 +1,13 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch } from '@vibefield/puppeteer-core';
 import type {
   HistorySearchRequest,
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-} from '@vibecook/puppeteer-views';
-import type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
-import type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-views';
+import type { MonitorHostTerminal } from '@vibefield/puppeteer-monitor';
+import type { MonitorModelChange, MonitorModelSnapshot } from '@vibefield/puppeteer-view-sdk/model';
 import type {
   LauncherAgent,
   LauncherHistoryStatus,
@@ -15,7 +15,7 @@ import type {
   LauncherSession,
   LauncherWordHit,
   LauncherWordsRequest,
-} from '@vibecook/puppeteer-views/launcher';
+} from '@vibefield/puppeteer-views/launcher';
 import type {
   AgentInstallation,
   AgentProfile,
@@ -26,7 +26,7 @@ import type {
   ProfileProvider,
   PromptReceipt as CorePromptReceipt,
   UpdateReceipt,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AgentSessionFailure as RuntimeAgentSessionFailure,
   AgentSessionInfo as RuntimeAgentSessionInfo,
@@ -34,15 +34,15 @@ import type {
   AgentWorkspaceInfo,
   ProfileLoginResult,
   ReleaseCheckResult,
-} from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-runtime';
 import type {
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
   AgentMonitorStateMessage,
 } from './main/monitor-ipc.js';
-import type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
+import type { WorkspaceDiff } from '@vibefield/puppeteer-workspaces';
 
-export type { WorkspaceDiff } from '@vibecook/puppeteer-workspaces';
+export type { WorkspaceDiff } from '@vibefield/puppeteer-workspaces';
 export type AgentKind = AgentProviderDescriptor['id'];
 export type WorkspaceInfo = AgentWorkspaceInfo;
 export type PromptReceipt = CorePromptReceipt;
@@ -60,10 +60,10 @@ export type {
   ProfileIdentity,
   ProfileProvider,
   UpdateReceipt,
-} from '@vibecook/puppeteer-core';
-export type { ProfileLoginResult, ReleaseCheckResult } from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-core';
+export type { ProfileLoginResult, ReleaseCheckResult } from '@vibefield/puppeteer-runtime';
 
-export type { AccountUsageBatch, AccountUsageEntry } from '@vibecook/puppeteer-core';
+export type { AccountUsageBatch, AccountUsageEntry } from '@vibefield/puppeteer-core';
 
 /** One inspection of every executable the host can find, with the descriptors that name them. */
 export interface AgentInstallationsSnapshot {
@@ -179,7 +179,7 @@ export interface TerminalSessionHandoff {
 }
 
 /* Transcript history (RFC 007): the shapes live with the views that read them
-   (`@vibecook/puppeteer-views`) and are re-exported here for the main process
+   (`@vibefield/puppeteer-views`) and are re-exported here for the main process
    and the preload. (The UI's usage ledger records went with L11; the backend
    holds the cost window in memory.) */
 export type {
@@ -190,19 +190,19 @@ export type {
   HistorySearchResponse,
   HistorySearchStatus,
   HistorySessionFacts,
-} from '@vibecook/puppeteer-views';
-export type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
-export type { MonitorModelChange, MonitorModelSnapshot } from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-views';
+export type { MonitorHostTerminal } from '@vibefield/puppeteer-monitor';
+export type { MonitorModelChange, MonitorModelSnapshot } from '@vibefield/puppeteer-view-sdk/model';
 
 /* The empty pane launcher (QL-1): the port's questions as main answers them.
-   The shapes are the launcher's own (`@vibecook/puppeteer-views/launcher`);
+   The shapes are the launcher's own (`@vibefield/puppeteer-views/launcher`);
    a row may carry the profile id main matched, which only this host reads. */
 export type {
   LauncherHistoryStatus,
   LauncherRecentRequest,
   LauncherWordHit,
   LauncherWordsRequest,
-} from '@vibecook/puppeteer-views/launcher';
+} from '@vibefield/puppeteer-views/launcher';
 
 /** A launcher row with the profile a launch runs under: the provider's persisted default. */
 export interface LauncherAgentRow extends LauncherAgent {

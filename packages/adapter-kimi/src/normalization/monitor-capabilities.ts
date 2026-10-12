@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 export const KIMI_CONTRACT = 'kimi-wire@1.5+surface@0.34.0';
 

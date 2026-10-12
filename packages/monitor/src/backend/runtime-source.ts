@@ -1,4 +1,4 @@
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
 import type { AgentMonitorRemoval } from '../store.js';
 import type { MonitorRunSource } from './ports.js';
 

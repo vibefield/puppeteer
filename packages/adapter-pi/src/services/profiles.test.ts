@@ -7,7 +7,7 @@ import {
   ProfileProviderSchema,
   SignInServiceSchema,
   type AgentProfile,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { normalizePiNativeInvocation } from '../launch/native-invocation.js';
 import { resolvePiAgentDir } from '../observation/session-store.js';

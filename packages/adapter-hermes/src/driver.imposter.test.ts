@@ -1,8 +1,8 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AdapterEventCandidate, AgentHost } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
-import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
+import type { AdapterEventCandidate, AgentHost } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibefield/puppeteer-testing/conformance';
 import { createHermesTuiSession, type HermesTuiSession } from './driver.js';
 import { createHermesImposterFixture, type HermesImposterLocation } from './test-support/imposter.js';
 import type { HermesStdioClient } from './transport/stdio.js';

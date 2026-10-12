@@ -1,7 +1,7 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { MonitorHostTerminal } from '@vibecook/puppeteer-monitor';
-import type { MonitorReplicaAttachment, MonitorReplicaLocal } from '@vibecook/puppeteer-monitor/replica';
-import type { MonitorAgentRow, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
+import type { MonitorHostTerminal } from '@vibefield/puppeteer-monitor';
+import type { MonitorReplicaAttachment, MonitorReplicaLocal } from '@vibefield/puppeteer-monitor/replica';
+import type { MonitorAgentRow, MonitorModel } from '@vibefield/puppeteer-view-sdk/model';
 import type { PaneAttachment } from '../pane-attachments.js';
 
 /**

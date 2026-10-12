@@ -5,9 +5,10 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync }
 import { createRequire } from 'node:module';
 import { basename, dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
-import { projectJsonSchema } from '@vibecook/puppeteer-surface';
+import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 
 const VERSION = '0.34.0';
 
@@ -274,7 +275,7 @@ function writeEvent(name, document) {
       'The release source projection preserves recursive declared structure but intentionally leaves custom/unknown values unconstrained; runtime-only file schemas describe captured instances.',
     ],
   };
-  writeJson(join(eventsRoot, `${name}.json`), {
+  writeJson(join(eventsRoot, eventDocumentPath(name)), {
     surface: 'kimi',
     surfaceVersion: VERSION,
     event: name,

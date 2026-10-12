@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROFILE_GLYPH_SHAPES, profileGlyphMarkup, type ProfileMarkName } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { PROFILE_GLYPH_SHAPES, profileGlyphMarkup, type ProfileMarkName } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { profileIcon } from '../bubble-model.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
 

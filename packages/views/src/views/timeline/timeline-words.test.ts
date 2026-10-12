@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView, EndedLaneView } from '@vibecook/puppeteer-view-sdk';
-import { formatClock } from '@vibecook/puppeteer-view-sdk/toolkit';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView, EndedLaneView } from '@vibefield/puppeteer-view-sdk';
+import { formatClock } from '@vibefield/puppeteer-view-sdk/toolkit';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import { historyLanes, laneFor, stateAt, type TimelineLane } from './timeline-lanes.js';
 import { BOUNDS_WORDS, endedName, laneLabel, laneName, laneSubLine, readoutAt, recordState } from './timeline-words.js';
 

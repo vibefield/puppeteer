@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView, MonitorViewInput, MonitorViewInstance } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   countingCommands,
@@ -12,7 +12,7 @@ import {
   parameterDefaults,
   runConformance,
   type FrameDriver,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { RAIN_MANIFEST, RAIN_ROOT_CLASS, rainMonitorView } from './index.js';
 
 // The rain on the SDK (MV-4), mounted as a host mounts it. happy-dom has no 2D

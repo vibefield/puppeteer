@@ -9,7 +9,7 @@ import {
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
   type MonitorActivity,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import { classifyTerminalStatus } from '../terminal-status.js';
 import { freezeJson, sameJson } from './json.js';
 

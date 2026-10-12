@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
 import { useRemoteSessionLifecycle } from '@vibecook/ghosttea-react/workspace';
-import { PaneFrame, type DeckFrameSlotProps, type PaneFrameVerbs } from '@vibecook/puppeteer-views';
+import { PaneFrame, type DeckFrameSlotProps, type PaneFrameVerbs } from '@vibefield/puppeteer-views';
 import type { MonitorAgent } from '../monitor/types.js';
 
 /**
- * The app's frame is the package's (`@vibecook/puppeteer-views`, PU-14) with
+ * The app's frame is the package's (`@vibefield/puppeteer-views`, PU-14) with
  * the one fact only this host can add: the device a remote session lives on,
  * read from Ghosttea's own lifecycle for the pane's session.
  */

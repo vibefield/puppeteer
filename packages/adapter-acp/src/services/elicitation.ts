@@ -1,4 +1,4 @@
-import type { AgentEvent, AgentStructuredQuestion } from '@vibecook/puppeteer-core';
+import type { AgentEvent, AgentStructuredQuestion } from '@vibefield/puppeteer-core';
 import type { CreateElicitationRequest, CreateElicitationResponse } from '@agentclientprotocol/sdk';
 import { acpElicitationQuestions } from '../normalization/interaction.js';
 

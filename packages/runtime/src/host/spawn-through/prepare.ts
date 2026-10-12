@@ -4,7 +4,7 @@ import {
   type AgentNativeInvocationIntent,
   type ExternalRef,
   type HostIngress,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AdoptPreparedSessionResult,
   AgentRuntime,

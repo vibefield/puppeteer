@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MonitorViewInstance } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorViewInstance } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   countingCommands,
@@ -9,7 +9,7 @@ import {
   fixtureModel,
   fixtureTheme,
   parameterDefaults,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { LIST_MANIFEST, listMonitorView } from './index.js';
 
 // MV-D21 in the list: an unchanged `AgentView` costs no render. Each row draws
@@ -17,8 +17,8 @@ import { LIST_MANIFEST, listMonitorView } from './index.js';
 // `detailLine` counts row renders.
 
 const words = vi.hoisted(() => ({ detailLine: vi.fn() }));
-vi.mock('@vibecook/puppeteer-view-sdk/toolkit', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@vibecook/puppeteer-view-sdk/toolkit')>();
+vi.mock('@vibefield/puppeteer-view-sdk/toolkit', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@vibefield/puppeteer-view-sdk/toolkit')>();
   words.detailLine.mockImplementation(original.detailLine);
   return { ...original, detailLine: words.detailLine };
 });

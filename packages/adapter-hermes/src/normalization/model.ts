@@ -1,4 +1,4 @@
-import type { ModelEvent } from '@vibecook/puppeteer-core';
+import type { ModelEvent } from '@vibefield/puppeteer-core';
 import { hermesString } from './types.js';
 
 /** Hermes session.info -> model event. */

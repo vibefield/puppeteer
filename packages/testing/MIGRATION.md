@@ -14,7 +14,7 @@ exactly once.
 
 ## 0.2.0
 
-`@vibecook/puppeteer-testing` is now provider-neutral. The following
+`@vibefield/puppeteer-testing` is now provider-neutral. The following
 Claude-specific exports from 0.1.8 are removed:
 
 - `hookFixturesDir`
@@ -34,7 +34,7 @@ package.
 
 Synthetic Claude payload construction is adapter-specific. Keep a small local
 builder in Claude adapter test support. The provider-neutral `fakeAgentBin` and
-the `@vibecook/puppeteer-testing/conformance` export path are unchanged. The
+the `@vibefield/puppeteer-testing/conformance` export path are unchanged. The
 provider-neutral harness names use adapter-binding terminology.
 
 The `AgentAdapterHarness` accepted by that conformance export now includes

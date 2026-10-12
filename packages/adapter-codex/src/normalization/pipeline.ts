@@ -6,7 +6,7 @@
  * order when one native notification produces several categories.
  */
 
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { CodexAdapterFallbackNormalizer } from './adapter.js';
 import { CodexContextWindowNormalizer } from './context-window.js';
 import { CodexConversationNormalizer } from './conversation.js';

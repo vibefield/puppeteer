@@ -78,7 +78,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveOpenCodeExecutable } from '../detection.js';
 import { OPENCODE_PROFILE_ROOT_VARIABLE, openCodeDataHome } from './profiles.js';
 

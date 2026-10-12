@@ -33,7 +33,7 @@ import type {
   ProfileProvider,
   ProfileService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveKimiExecutable } from '../detection.js';
 import {
   getKimiCodeDocument,

@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "copilot",
-  "adapterPackage": "@vibecook/puppeteer-adapter-copilot",
+  "adapterPackage": "@vibefield/puppeteer-adapter-copilot",
   "groundTruth": "packages/surface/vendors/copilot/groundtruth.json",
   "groundTruthSha256": "2a662b7173f50379af5eb0c182abb530e48887b5693489f88a7bf843b4251afc",
   "semanticEvents": [

@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MonitorSpawnMenu, MonitorViewInstance, StageGeometry } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorSpawnMenu, MonitorViewInstance, StageGeometry } from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewsFixture,
   countingCommands,
   fixtureModel,
   fixtureTheme,
   parameterDefaults,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { BLOOM_SCENARIOS } from './bloom/scenarios.js';
 import { SWARM_MANIFEST, swarmMonitorView } from './index.js';
 

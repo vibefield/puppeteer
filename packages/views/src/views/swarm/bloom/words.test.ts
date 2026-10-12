@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorSpawnDevice } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorSpawnDevice } from '@vibefield/puppeteer-view-sdk';
 import type { BloomTextMeasure } from './constants.js';
 import { menuOf, type BloomDeviceItem, type BloomOpenMenu, type BloomProfileItem } from './menu.js';
 import { BLOOM_SCENARIOS } from './scenarios.js';

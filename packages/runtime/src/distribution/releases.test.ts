@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentInstallation, DistributionProvider, DistributionService } from '@vibecook/puppeteer-core';
+import type { AgentInstallation, DistributionProvider, DistributionService } from '@vibefield/puppeteer-core';
 import { availableUpdate, checkProviderReleases, compareVersions, createReleaseEtagCache } from './releases.js';
 
 const installed: AgentInstallation = {

@@ -136,7 +136,7 @@ The closest implementation precedents are:
 | Vendor ID | `antigravity` |
 | Display name | `Antigravity` |
 | User-facing command | `agy` |
-| Adapter package | `@vibecook/puppeteer-adapter-antigravity` |
+| Adapter package | `@vibefield/puppeteer-adapter-antigravity` |
 | Adapter directory | `packages/adapter-antigravity` |
 | Surface directory | `packages/surface/vendors/antigravity` |
 | Imposter persona | `packages/imposter/personas/antigravity` |

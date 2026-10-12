@@ -1,4 +1,4 @@
-import type { EffortEvent } from '@vibecook/puppeteer-core';
+import type { EffortEvent } from '@vibefield/puppeteer-core';
 import { kimiString } from './types.js';
 
 /** Kimi profile/request effort facts -> Core effort events. */

@@ -12,7 +12,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildReport, diffModelVsReport, loadModel } from '@vibecook/puppeteer-surface';
+import { buildReport, diffModelVsReport, loadModel } from '@vibefield/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
 import { checkCaptureDirectory } from './sanitize-captures.mjs';
 

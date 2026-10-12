@@ -1,6 +1,6 @@
 import { cp, lstat, mkdir, readlink, rename, rm, stat, symlink, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { describeFileSteps, type ExtensionFileStep } from '@vibecook/puppeteer-core';
+import { describeFileSteps, type ExtensionFileStep } from '@vibefield/puppeteer-core';
 
 /**
  * RFC 006 C2: a skill's folder placed where an agent looks for skills, or

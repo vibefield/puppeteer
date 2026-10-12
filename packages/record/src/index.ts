@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-record — the own-action record (DESIGN §22.1):
+ * @vibefield/puppeteer-record — the own-action record (DESIGN §22.1):
  * an append-only JSONL log of what the runtime itself did. Not a mirror of
  * agent history; external history indexers can consume agent files, while
  * this package holds only Puppeteer's own actions.

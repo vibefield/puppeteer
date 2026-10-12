@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { arch, platform } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { CLAUDE_HOOK_EVENTS } from './harness.mjs';
@@ -743,7 +744,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     const payloadSchema = eventSchema(event, spec);
     const callbackSchema = resultSchema(event, spec);
     const sourceAndRuntime = captured ? [DOCS_CLAIM, RUNTIME_CLAIM] : [DOCS_CLAIM];
-    writeJson(join(modelRoot, 'events', `${event}.json`), {
+    writeJson(join(modelRoot, 'events', eventDocumentPath(event)), {
       surface: 'claude',
       surfaceVersion: version,
       event,

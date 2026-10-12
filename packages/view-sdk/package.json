@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-view-sdk",
+  "name": "@vibefield/puppeteer-view-sdk",
   "version": "0.1.8",
   "type": "module",
   "description": "The monitor-view contract: the model a Godview view receives, the three commands it may call, and nothing else.",
@@ -7,7 +7,7 @@
   "author": "James Yong",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibecook-dev/puppeteer.git",
+    "url": "git+https://github.com/vibefield/puppeteer.git",
     "directory": "packages/view-sdk"
   },
   "main": "./src/index.ts",
@@ -22,7 +22,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {

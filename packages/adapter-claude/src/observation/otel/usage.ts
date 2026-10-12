@@ -1,4 +1,4 @@
-import type { TokensUsedEvent } from '@vibecook/puppeteer-core';
+import type { TokensUsedEvent } from '@vibefield/puppeteer-core';
 import { claudeOtelActor, type ClaudeOtelActorAttribution } from './actor.js';
 import { claudeOtelEventTimestamp, otelNonNegativeNumber, otelString, type ClaudeOtelLogRecord } from './wire.js';
 

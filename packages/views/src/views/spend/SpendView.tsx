@@ -10,15 +10,15 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react';
-import type { AgentView, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import type { AgentView, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   createMotionLoop,
   formatClock,
   keyLegend,
   sizeCanvas,
   type MotionLoop,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { liftedFill, siblingIndex, siblingTone } from './spend-ink.js';
 import { fitList, listOrder, moreWords } from './spend-list.js';
 import {

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibecook/puppeteer-core';
+import { safeParseAgentEvent, type AdapterEventCandidate, type AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
   translateAgentEventEnvelope,
-} from '@vibecook/puppeteer-core/monitor-spi';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core/monitor-spi';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';

@@ -3,7 +3,7 @@ import {
   PUPPETEER_VERSION,
   type AgentModelChoice,
   type AgentModelService,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   createNativeRpc,
   NativeProbeError,
@@ -13,7 +13,7 @@ import {
   nativeProbeOptions,
   nativeModelEnvironment,
   type NativeModelProbeOptions,
-} from '@vibecook/puppeteer-native-observation';
+} from '@vibefield/puppeteer-native-observation';
 import { resolveCodexExecutable } from '../detection.js';
 import { createCodexProfileService, CODEX_PROFILE_ROOT_VARIABLE } from './profiles.js';
 

@@ -2,7 +2,7 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexModelService } from '../services/models.js';
 import { prepareCodexTuiSession } from './tui-session.js';
 

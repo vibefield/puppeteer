@@ -1323,7 +1323,7 @@
               <div class="layer-body">
                 <h3>Core: the provider-neutral language</h3>
                 <p class="section-note">
-                  <span class="mono">@vibecook/puppeteer-core</span> contains contracts and pure logic only. It does not
+                  <span class="mono">@vibefield/puppeteer-core</span> contains contracts and pure logic only. It does not
                   open files, spawn processes, contact providers, or know which official adapters exist.
                 </p>
                 <div class="cards">
@@ -1384,7 +1384,7 @@
               <div class="layer-body">
                 <h3>Ground truth: what the provider actually does</h3>
                 <p class="section-note">
-                  <span class="mono">@vibecook/puppeteer-surface</span> owns captured native reality. Every real vendor
+                  <span class="mono">@vibefield/puppeteer-surface</span> owns captured native reality. Every real vendor
                   has one stable runtime authority at
                   <span class="mono">packages/surface/vendors/&lt;vendor&gt;/groundtruth.json</span>. Its embedded
                   manifest selects the active native version; Git history records how that one file evolves.
@@ -1464,7 +1464,7 @@
               <div class="layer-body">
                 <h3>Imposter: native-compatible behavior without the vendor</h3>
                 <p class="section-note">
-                  <span class="mono">@vibecook/puppeteer-imposter</span> is one executable that can stand in for every
+                  <span class="mono">@vibefield/puppeteer-imposter</span> is one executable that can stand in for every
                   modeled coding agent. It speaks the vendor's actual machine surfaces—hooks, JSONL, JSON-RPC, HTTP/SSE,
                   status lines, sockets, and leader channels—so adapters are tested against native-shaped behavior.
                 </p>
@@ -1599,7 +1599,7 @@
               <div class="layer-body">
                 <h3>Runtime ingress and event bus: one ordered truth rail</h3>
                 <p class="section-note">
-                  Layer 3 lives inside <span class="mono">@vibecook/puppeteer-runtime</span>. It accepts normalized but
+                  Layer 3 lives inside <span class="mono">@vibefield/puppeteer-runtime</span>. It accepts normalized but
                   unstamped adapter candidates, creates public envelopes, updates projections, and publishes on a
                   private bus owned by one Agent controller.
                 </p>
@@ -1723,8 +1723,8 @@
                 <h3>Presentation: portable monitor state before product UI</h3>
                 <p class="section-note">
                   Layer 5 separates monitoring delivery from any renderer. Core defines the serializable state;
-                  <span class="mono">@vibecook/puppeteer-monitor</span> stores it;
-                  <span class="mono">@vibecook/puppeteer-react</span> binds it to React; products decide how to display
+                  <span class="mono">@vibefield/puppeteer-monitor</span> stores it;
+                  <span class="mono">@vibefield/puppeteer-react</span> binds it to React; products decide how to display
                   and interact with it.
                 </p>
                 <div class="cards">
@@ -2173,10 +2173,10 @@
 
             <h3>1. Product application: built-in Runtime → Agent</h3>
             <p class="section-note">
-              <span class="mono">@vibecook/puppeteer-builtin-providers</span> is the normal composition root. It
+              <span class="mono">@vibefield/puppeteer-builtin-providers</span> is the normal composition root. It
               supplies every official provider behind a discriminator-narrowed Runtime facade.
             </p>
-            <pre><code>import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+            <pre><code>import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
 
 const runtime = createBuiltinAgentRuntime({
   host,                         <span class="comment">// application-owned AgentHost</span>
@@ -2311,10 +2311,10 @@ await runtime.dispose();</code></pre>
 
             <h3>2. Custom composition: Runtime + AgentProvider + AgentHost</h3>
             <p class="section-note">
-              Use <span class="mono">@vibecook/puppeteer-runtime</span> directly when an application supplies a custom
+              Use <span class="mono">@vibefield/puppeteer-runtime</span> directly when an application supplies a custom
               provider set. Runtime remains provider-agnostic; provider-specific assembly happens outside it.
             </p>
-            <pre><code>import { createAgentRuntime } from '@vibecook/puppeteer-runtime';
+            <pre><code>import { createAgentRuntime } from '@vibefield/puppeteer-runtime';
 
 const runtime = createAgentRuntime({
   host,
@@ -2413,8 +2413,8 @@ interface AgentProviderLaunchService {
             </div>
 
             <h3>4. Monitor transport and React presentation</h3>
-            <pre><code>import { createAgentMonitorStore, connectAgentMonitorStore } from '@vibecook/puppeteer-monitor';
-import { useAgentMonitor, type AgentMonitorViewDefinition } from '@vibecook/puppeteer-react';
+            <pre><code>import { createAgentMonitorStore, connectAgentMonitorStore } from '@vibefield/puppeteer-monitor';
+import { useAgentMonitor, type AgentMonitorViewDefinition } from '@vibefield/puppeteer-react';
 
 const store = createAgentMonitorStore({ notificationCapacity: 4 });
 const connection = connectAgentMonitorStore(store, source);
@@ -2531,8 +2531,8 @@ provider response evidence returns independently through the observation flow</c
   → per-Agent monitor accumulator
   → immutable AgentMonitorState revisions + notifications
   → Runtime monitor source / IPC bridge
-  → @vibecook/puppeteer-monitor store
-  → @vibecook/puppeteer-react hooks
+  → @vibefield/puppeteer-monitor store
+  → @vibefield/puppeteer-react hooks
   → portable view definition
   → product-specific layout, panes, and actions</code></pre>
 

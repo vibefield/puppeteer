@@ -7,8 +7,8 @@ import type {
   MonitorModel,
   MonitorTheme,
   StageGeometry,
-} from '@vibecook/puppeteer-view-sdk';
-import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibecook/puppeteer-view-sdk/host';
+} from '@vibefield/puppeteer-view-sdk';
+import { MonitorViewHost, type MonitorReplicaLike, type ViewSlotCommands } from '@vibefield/puppeteer-view-sdk/host';
 import { mountViewLab, type LabCapabilityContext } from '../../../lab/lab-stage.js';
 import { useMonitorPalette } from '../../../monitor/palette.js';
 import { monitorParameterDefaults } from '../../../monitor/parameters.js';

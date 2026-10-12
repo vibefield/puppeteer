@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 import type { KimiPermissionMode } from '../driver.js';
 
 const SESSION_FLAGS = new Set(['--session']);

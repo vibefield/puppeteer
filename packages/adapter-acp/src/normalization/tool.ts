@@ -1,5 +1,5 @@
 import type { SessionUpdate } from '@agentclientprotocol/sdk';
-import type { ToolActivityKind, ToolPresentation } from '@vibecook/puppeteer-core';
+import type { ToolActivityKind, ToolPresentation } from '@vibefield/puppeteer-core';
 import type { AcpEventOfType } from './types.js';
 
 type AcpToolEvent = AcpEventOfType<'tool:started' | 'tool:completed' | 'tool:failed'>;

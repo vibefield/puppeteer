@@ -3,7 +3,7 @@ import type {
   MonitorSpawnDevice,
   MonitorSpawnMenu,
   MonitorSpawnProfile,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import type { MonitorHostFacts, MonitorHostProfileSet } from './ports.js';
 
 // The spawn menu (SB-D9), ported from VibeField's `godview/monitor/spawn-menu.ts`

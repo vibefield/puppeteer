@@ -1,4 +1,4 @@
-import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import type { AgentRuntime } from '../types.js';
 
 export interface TerminalAgentPrewarmOptions {

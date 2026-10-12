@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentHost, AgentProfile, ProfileService } from '@vibecook/puppeteer-core';
+import type { AgentHost, AgentProfile, ProfileService } from '@vibefield/puppeteer-core';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider } from './types.js';

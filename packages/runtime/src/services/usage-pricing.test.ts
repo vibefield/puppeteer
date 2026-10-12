@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MonitorUsageFamilyValue } from '@vibecook/puppeteer-core/monitor-spi';
+import type { MonitorUsageFamilyValue } from '@vibefield/puppeteer-core/monitor-spi';
 import { priceUsage } from './usage-pricing.js';
 import { USAGE_PRICE_SNAPSHOT } from './usage-prices.js';
 

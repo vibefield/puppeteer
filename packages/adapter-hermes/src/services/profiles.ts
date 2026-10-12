@@ -45,8 +45,8 @@ import type {
   ProfileSignIn,
   SignInService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import { SignInServiceIdSchema } from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
+import { SignInServiceIdSchema } from '@vibefield/puppeteer-core';
 import { resolveHermesExecutable } from '../detection.js';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
 import { hermesPythonFromWrapper, readHermesWrapper, type HermesWrapperRead } from './distribution.js';

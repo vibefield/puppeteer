@@ -1,4 +1,4 @@
-import type { SwarmPalette } from '@vibecook/puppeteer-view-sdk';
+import type { SwarmPalette } from '@vibefield/puppeteer-view-sdk';
 import {
   isLightTheme,
   readableColour,
@@ -8,7 +8,7 @@ import {
   vividColour,
   type Rgba,
   type StateLightTuning,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { DEFAULT_SWARM_PARAMETERS, type SwarmParameters } from './swarm-parameters.js';
 import type { SwarmTheme } from './gpu/swarm-renderer.js';
 

@@ -1,4 +1,4 @@
-import type { ModelEvent } from '@vibecook/puppeteer-core';
+import type { ModelEvent } from '@vibefield/puppeteer-core';
 import { kimiString } from './types.js';
 
 /** Kimi profile/request model facts -> Core model events. */

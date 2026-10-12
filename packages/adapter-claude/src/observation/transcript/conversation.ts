@@ -1,4 +1,4 @@
-import type { AgentEvent, AssistantMessageEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent, AssistantMessageEvent } from '@vibefield/puppeteer-core';
 import type { SemanticObservationEvent } from '../semantic-provider.js';
 import {
   safeTranscriptEvidence,

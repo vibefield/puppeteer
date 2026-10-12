@@ -22,3 +22,6 @@
 *.jpg binary
 *.ico binary
 *.node binary
+
+# Unified patches use a single space as the context marker for blank lines.
+.github/ci/*.patch whitespace=-blank-at-eol

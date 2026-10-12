@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-workspaces",
+  "name": "@vibefield/puppeteer-workspaces",
   "version": "0.1.8",
   "type": "module",
   "description": "Workspace modes for puppeteer sessions: direct, exclusive, git-worktree, and copy providers with final metadata.",

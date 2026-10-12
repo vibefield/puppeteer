@@ -1,6 +1,6 @@
-// @vibecook/puppeteer-views — Godview's monitor views and the chrome around them,
+// @vibefield/puppeteer-views — Godview's monitor views and the chrome around them,
 // as a package (VibeField's AR-5, PU-5). Every view is an SDK view
-// (`@vibecook/puppeteer-view-sdk`) over the backend's `AgentView` rows, the
+// (`@vibefield/puppeteer-view-sdk`) over the backend's `AgentView` rows, the
 // parameters and the palette, behind the wall (`scripts/check-view-wall.mjs`).
 // The chrome (the bar, Find, the usage column, the deck's frames and launchers)
 // reaches what needs a process through a port the host injects (`HistoryPort`,
@@ -25,7 +25,7 @@ export * from './monitor/remote-write.js';
 export * from './monitor/folder-name.js';
 export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';
-// The marks are the SDK's (M6): AgentIcon and ProfileGlyph are `@vibecook/puppeteer-view-sdk/react`'s and the
+// The marks are the SDK's (M6): AgentIcon and ProfileGlyph are `@vibefield/puppeteer-view-sdk/react`'s and the
 // shapes `/toolkit`'s. This index forwards none of them (M54, MV-8): a host imports them from the SDK.
 export * from './icons/profile-glyph-suggest.js';
 export * from './icons/ServiceMark.js';

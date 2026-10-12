@@ -1,4 +1,4 @@
-import type { WorkspaceEvent, WorkspaceFileChange } from '@vibecook/puppeteer-core';
+import type { WorkspaceEvent, WorkspaceFileChange } from '@vibefield/puppeteer-core';
 import type { ClaudeHookPayload } from './types.js';
 import { claudeBoolean, claudeRecord, claudeString } from './wire.js';
 

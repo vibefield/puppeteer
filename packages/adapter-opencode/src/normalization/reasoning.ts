@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 
 export function normalizeOpenCodeReasoningStarted(reasoningId: string): AgentEvent {
   return { type: 'reasoning:started', reasoningId };

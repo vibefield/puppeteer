@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { access } from 'node:fs/promises';
-import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { AgentAdapterBinding, AgentEvent, AgentTuiSessionOptions, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveAntigravityExecutable } from './detection.js';
 import { antigravityCapabilitiesBatch, antigravityObservationDegradedBatch } from './normalization/monitor.js';
 import { createAntigravitySessionObserver } from './observation/session-observer.js';

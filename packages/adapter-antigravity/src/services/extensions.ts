@@ -65,7 +65,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { resolveAntigravityExecutable } from '../detection.js';
 import { ANTIGRAVITY_PROFILE_ROOT_VARIABLE } from './profiles.js';
 

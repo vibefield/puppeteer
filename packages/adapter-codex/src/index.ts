@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-adapter-codex — Codex native adapter.
+ * @vibefield/puppeteer-adapter-codex — Codex native adapter.
  *
  * Codex's native surface is a structured JSON-RPC `app-server` protocol (M5;
  * packages/surface/vendors/codex/findings.md), so this adapter is a structured driver, not

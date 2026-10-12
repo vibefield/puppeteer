@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibecook/puppeteer-core';
-import type { AccountUsageEntry } from '@vibecook/puppeteer-core';
+import type { AccountUsageFetchResult, AccountUsageProvider } from '@vibefield/puppeteer-core';
+import type { AccountUsageEntry } from '@vibefield/puppeteer-core';
 import { accountUsageView, accountUsageViews, formatUsageAge, formatUsageReset, usageTiles } from './account-usage.js';
 
 const NOW = Date.parse('2026-07-23T20:00:00.000Z');

@@ -136,7 +136,7 @@ provider topology remains opaque. Terminal hosts use the separate `launchProvide
 `prepareInvocation()` → `adoptPrepared()` SPI, with `classifyInvocation()` to ask first what an invocation is. The
 host authenticates requests, finds the containing terminal, resolves trusted executables/state roots, and performs
 `exec`; the adapter parses argv and chooses hooks, app servers, ACP, sockets, durable logs, private HTTP/SSE services,
-or gateway attachment. A host builds that path from the `@vibecook/puppeteer-runtime/spawn-through` kit — the shim,
+or gateway attachment. A host builds that path from the `@vibefield/puppeteer-runtime/spawn-through` kit — the shim,
 its launchers and shell integration, the rendezvous and the loopback gateway — and supplies only its terminals,
 runtime and records (`docs/guides/spawn-through-hosts.md`).
 
@@ -158,7 +158,7 @@ main-process composition root.
 
 ## Runtime and Agent ownership
 
-Runtime is provider-agnostic. It has no concrete adapter dependencies; `@vibecook/puppeteer-builtin-providers` is the optional composition root that imports official adapters and Runtime.
+Runtime is provider-agnostic. It has no concrete adapter dependencies; `@vibefield/puppeteer-builtin-providers` is the optional composition root that imports official adapters and Runtime.
 
 For each accepted candidate, Runtime performs this order:
 
@@ -186,7 +186,7 @@ The eight-state session lifecycle is not collapsed into the three-state operatio
 
 ## Presentation boundary
 
-`@vibecook/puppeteer-monitor` owns transport-neutral epoch/revision ordering, removal tombstones, bounded notification retention, and external-store snapshots. `@vibecook/puppeteer-react` supplies `useSyncExternalStore` hooks and the generic `AgentMonitorViewDefinition` contract.
+`@vibefield/puppeteer-monitor` owns transport-neutral epoch/revision ordering, removal tombstones, bounded notification retention, and external-store snapshots. `@vibefield/puppeteer-react` supplies `useSyncExternalStore` hooks and the generic `AgentMonitorViewDefinition` contract.
 
 Products may add terminal, pane, layout, and interaction facets, but a view receives projected data and actions only. It never imports adapters, opens provider files, or infers semantics from terminal text.
 

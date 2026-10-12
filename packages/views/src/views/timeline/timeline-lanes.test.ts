@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView, EndedLaneView, MonitorHistory, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView, EndedLaneView, MonitorHistory, MonitorPastSpan } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import {
   dayStart,
   earliestHead,

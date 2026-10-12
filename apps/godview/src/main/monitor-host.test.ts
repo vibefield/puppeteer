@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
+import type { AgentMonitorState } from '@vibefield/puppeteer-core';
 import {
   createMemoryProjectIdentityStore,
   createMonitorBackend,
   type MonitorRunSource,
-} from '@vibecook/puppeteer-monitor';
+} from '@vibefield/puppeteer-monitor';
 import type { AgentSessionInfo } from '../protocol.js';
 import {
   createGodviewMonitorHost,

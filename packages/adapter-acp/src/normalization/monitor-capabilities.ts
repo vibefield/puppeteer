@@ -1,4 +1,4 @@
-import type { ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 export const ACP_CONTRACT = 'acp@1.2.1';
 

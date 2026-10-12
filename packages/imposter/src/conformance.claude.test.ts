@@ -18,10 +18,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
-import { createClaudeSession, type ClaudeSession } from '@vibecook/puppeteer-adapter-claude';
-import { projectAgentEvents, type TestAgentProjection } from '@vibecook/puppeteer-testing';
-import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibecook/puppeteer-testing/conformance';
+import type { AdapterEventCandidate } from '@vibefield/puppeteer-core';
+import { createClaudeSession, type ClaudeSession } from '@vibefield/puppeteer-adapter-claude';
+import { projectAgentEvents, type TestAgentProjection } from '@vibefield/puppeteer-testing';
+import { runAgentAdapterConformance, type AgentAdapterHarness } from '@vibefield/puppeteer-testing/conformance';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const AI = join(packageRoot, 'bin', 'ai.mjs');

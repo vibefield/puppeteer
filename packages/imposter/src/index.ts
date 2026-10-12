@@ -1,5 +1,5 @@
 /**
- * @vibecook/puppeteer-imposter — one executable that impersonates every
+ * @vibefield/puppeteer-imposter — one executable that impersonates every
  * coding agent (docs/archive/IMPOSTER.md).
  *
  * The imposter speaks each vendor's real machine surfaces — hooks, transcript

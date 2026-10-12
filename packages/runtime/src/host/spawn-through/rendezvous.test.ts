@@ -2,7 +2,7 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'n
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import {
   DEFAULT_RETRY_MS,
   LAUNCH_PROVIDERS_FILE,

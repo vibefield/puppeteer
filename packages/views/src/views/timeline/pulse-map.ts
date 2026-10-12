@@ -1,4 +1,4 @@
-import type { MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorPastSpan } from '@vibefield/puppeteer-view-sdk';
 import type { LaneStatus, LiveLane, TimelineLane } from './timeline-lanes.js';
 
 // The map of the day, drawn as Pulse (TL-D15): the whole field summed into one

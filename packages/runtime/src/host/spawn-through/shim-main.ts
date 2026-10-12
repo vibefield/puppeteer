@@ -19,7 +19,7 @@ import { accessSync, constants, realpathSync, statSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
 import { isatty } from 'node:tty';
-import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import { spawnThroughLayout } from './layout.js';
 import {
   SPAWN_THROUGH_EXIT_REFUSED,
@@ -191,6 +191,13 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
     const environment = environmentFor(recipe);
     const executable = isAbsolute(command) ? command : (onPath(command, environment.PATH ?? '') ?? command);
     process.chdir(cwd);
+    // Node 22 aborts on a failed execve instead of throwing. Catch missing or
+    // non-executable recipes while we can still notify the host and fall back.
+    // A kernel failure after these checks still follows the runtime's execve behavior.
+    accessSync(executable, constants.X_OK);
+    if (!statSync(executable).isFile()) {
+      throw Object.assign(new Error('EACCES: executable is not a regular file'), { code: 'EACCES' });
+    }
     return execve(executable, [executable, ...args], environment);
   };
 

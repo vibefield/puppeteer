@@ -289,7 +289,7 @@ side effect of detection.
 - whether `--in <dir>` appears on this exact CLI.
 
 The stdio event map is modeled in `model/hermes@0.20.0/` (28 events).
-`@vibecook/puppeteer-adapter-hermes` now owns a TUI-gateway client, a
+`@vibefield/puppeteer-adapter-hermes` now owns a TUI-gateway client, a
 stateful normalizer, a private event fan-out host, and an attach recipe
 (`hermes --tui` + `HERMES_TUI_GATEWAY_URL`). Approvals stay `native-tui`.
 Prompt receipts confirm only a following `message.start` on that live session;

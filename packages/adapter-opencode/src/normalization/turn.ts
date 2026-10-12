@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 
 export function normalizeOpenCodeTurnStarted(turnID: string): AgentEvent {
   return { type: 'turn:started', turnId: turnID };

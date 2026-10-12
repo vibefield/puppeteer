@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-views",
+  "name": "@vibefield/puppeteer-views",
   "version": "0.1.8",
   "type": "module",
   "description": "Godview's monitor views for Puppeteer agents: the swarm on WebGPU, the list, the rain, the timeline, the instrument bar, the usage column and the find sheet, host-agnostic behind injected ports.",
@@ -30,7 +30,6 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": true,
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
@@ -74,9 +73,9 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
-    "@vibecook/puppeteer-react": "workspace:*",
-    "@vibecook/puppeteer-view-sdk": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-react": "workspace:*",
+    "@vibefield/puppeteer-view-sdk": "workspace:*",
     "@webgpu/types": "0.1.72",
     "matter-js": "0.19.0"
   },

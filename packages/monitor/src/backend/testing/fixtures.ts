@@ -1,5 +1,5 @@
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
-import type { MonitorAgentRow, MonitorDeviceRef, MonitorModelChange } from '@vibecook/puppeteer-view-sdk/model';
+import type { AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
+import type { MonitorAgentRow, MonitorDeviceRef, MonitorModelChange } from '@vibefield/puppeteer-view-sdk/model';
 import type { AgentMonitorRemoval } from '../../store.js';
 import { createMonitorBackend } from '../backend.js';
 import { createMemoryProjectIdentityStore } from '../identity.js';

@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { captureJsonlBoundary } from '@vibecook/puppeteer-native-observation';
+import { captureJsonlBoundary } from '@vibefield/puppeteer-native-observation';
 
 export interface CopilotSessionLocation {
   sessionId: string;

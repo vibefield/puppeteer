@@ -21,14 +21,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { AdapterEventCandidate } from '@vibecook/puppeteer-core';
+import type { AdapterEventCandidate } from '@vibefield/puppeteer-core';
 import {
   connectAppServerEndpoint,
   createCodexSession,
   spawnAppServer,
   type AppServerHandle,
   type CodexSession,
-} from '@vibecook/puppeteer-adapter-codex';
+} from '@vibefield/puppeteer-adapter-codex';
 
 const AI = join(dirname(dirname(fileURLToPath(import.meta.url))), 'bin', 'ai.mjs');
 

@@ -3,7 +3,7 @@ import type {
   MonitorHostPort,
   MonitorHostRun,
   MonitorHostTerminal,
-} from '@vibecook/puppeteer-monitor';
+} from '@vibefield/puppeteer-monitor';
 import type { AgentSessionInfo } from '../protocol.js';
 import { isOpaqueMonitorIdentifier } from './monitor-ipc.js';
 

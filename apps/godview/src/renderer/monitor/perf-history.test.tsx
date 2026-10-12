@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { MonitorModel, MonitorView } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, fixtureModel } from '@vibecook/puppeteer-view-sdk/testing';
-import { MONITOR_VIEWS } from '@vibecook/puppeteer-views';
+import type { MonitorModel, MonitorView } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, fixtureModel } from '@vibefield/puppeteer-view-sdk/testing';
+import { MONITOR_VIEWS } from '@vibefield/puppeteer-views';
 import { perfHistory, usePerfHistory } from './perf-history.js';
 
 const NOW = Date.UTC(2026, 9, 9, 15, 0, 0);

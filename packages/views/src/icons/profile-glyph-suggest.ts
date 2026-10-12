@@ -1,4 +1,4 @@
-import { PROFILE_GLYPHS, type ProfileGlyphName } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { PROFILE_GLYPHS, type ProfileGlyphName } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // The glyph a new Agent Profile set is offered (RFC 006 "Profile sets"): a
 // host's settings suggest one from the set's name. No monitor view draws a

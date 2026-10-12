@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibecook/puppeteer-core';
+import type { AccountUsageFetchResult, AccountUsageProvider, AccountUsageSource } from '@vibefield/puppeteer-core';
 import {
   accountUsageEntryKey,
   createAccountUsageMonitor,

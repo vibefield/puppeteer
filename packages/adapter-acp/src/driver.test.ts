@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+import { safeParseAgentEvent, type AdapterEventCandidate } from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type { Agent, Client, ClientCapabilities, RequestPermissionResponse } from '@agentclientprotocol/sdk';
 import type { AcpConnector } from './transport/connection.js';

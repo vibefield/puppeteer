@@ -25,7 +25,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { createClaudeExtensionService } from './extensions.js';
 
 const now = () => new Date('2026-09-25T09:00:00.000Z');

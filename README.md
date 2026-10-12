@@ -66,28 +66,28 @@ update the support ledger and these badges.
 
 ## Packages
 
-- `@vibecook/puppeteer-runtime` — provider-neutral Agent lifecycle, ingress,
+- `@vibefield/puppeteer-runtime` — provider-neutral Agent lifecycle, ingress,
   projections, and private per-Agent event bus.
-- `@vibecook/puppeteer-builtin-providers` — optional composition root for the
+- `@vibefield/puppeteer-builtin-providers` — optional composition root for the
   official Antigravity, Claude, Codex, GitHub Copilot CLI, ACP, Grok, Hermes,
   Kimi, OpenCode, and Pi adapters.
-- `@vibecook/puppeteer-core` — zero-I/O event, state, session, and host
+- `@vibefield/puppeteer-core` — zero-I/O event, state, session, and host
   contracts.
-- `@vibecook/puppeteer-workspaces` — direct, exclusive, worktree, and copy
+- `@vibefield/puppeteer-workspaces` — direct, exclusive, worktree, and copy
   workspace modes.
-- `@vibecook/puppeteer-adapter-{antigravity,claude,codex,copilot,acp,grok,hermes,kimi,opencode,pi}`
+- `@vibefield/puppeteer-adapter-{antigravity,claude,codex,copilot,acp,grok,hermes,kimi,opencode,pi}`
   — provider-specific observation and control.
-- `@vibecook/puppeteer-native-observation` — bounded append-only JSONL
+- `@vibefield/puppeteer-native-observation` — bounded append-only JSONL
   observation shared by durable-session adapters.
-- `@vibecook/puppeteer-record` — append-only records of runtime-owned actions.
-- `@vibecook/puppeteer-surface` — promoted vendor evidence models and their
+- `@vibefield/puppeteer-record` — append-only records of runtime-owned actions.
+- `@vibefield/puppeteer-surface` — promoted vendor evidence models and their
   validation/diff runtime.
-- `@vibecook/puppeteer-imposter` — local replacement-agent personas and
+- `@vibefield/puppeteer-imposter` — local replacement-agent personas and
   scenario engine.
-- `@vibecook/puppeteer-testing` — vendor-neutral fake agent and adapter
+- `@vibefield/puppeteer-testing` — vendor-neutral fake agent and adapter
   conformance helpers.
-- `@vibecook/puppeteer-monitor` — transport-neutral monitor external store.
-- `@vibecook/puppeteer-react` — React monitor hooks and portable view contract.
+- `@vibefield/puppeteer-monitor` — transport-neutral monitor external store.
+- `@vibefield/puppeteer-react` — React monitor hooks and portable view contract.
 
 The private Electron applications are development tools, not part of the
 published package graph. Consumers supply an `AgentHost` backed by their own
@@ -95,9 +95,13 @@ terminal service.
 
 ## Install
 
+<!-- x-release-please-start-version -->
+
 ```sh
-pnpm add @vibecook/puppeteer-runtime@0.1.8 @vibecook/puppeteer-builtin-providers@0.1.8
+pnpm add @vibefield/puppeteer-runtime@0.1.8 @vibefield/puppeteer-builtin-providers@0.1.8
 ```
+
+<!-- x-release-please-end -->
 
 Node.js 22.18 or newer is required.
 
@@ -108,7 +112,7 @@ State, context-window, conversation, usage, environment, workspace, process,
 notification, monitor, and adapter events share that agent's typed event bus:
 
 ```ts
-import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
+import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
 
 const runtime = createBuiltinAgentRuntime({ host, defaultCwd: process.cwd() });
 const onApproval = async () => 'denied' as const;
@@ -251,7 +255,7 @@ Live adapter proofs are opt-in with `CLAUDE_NATIVE_TUI_LIVE=1`,
 
 All public Puppeteer packages release in lockstep. Internal `workspace:*`
 dependencies are rewritten by pnpm to that exact version in published
-tarballs. Applications should pin `@vibecook/puppeteer-runtime` exactly and
+tarballs. Applications should pin `@vibefield/puppeteer-runtime` exactly and
 upgrade it as a deliberate integration event.
 
 The initial `0.1.0` publication is bootstrapped from the tagged release commit:

@@ -2,7 +2,7 @@
 
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { writeCaptureFidelity } from './capture-fidelity.mjs';
 import { rosettaAgentConfig } from './rosetta-agents.mjs';
 

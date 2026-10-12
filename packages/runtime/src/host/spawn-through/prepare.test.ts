@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AgentLaunchProvider, AgentNativeInvocation } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider, AgentNativeInvocation } from '@vibefield/puppeteer-core';
 import type { ClassifyAgentInvocationResult, PreparationFailure } from '../../types.js';
 import { prepareSpawnThroughLaunch, type SpawnThroughHost, type SpawnThroughRefusal } from './prepare.js';
 import {

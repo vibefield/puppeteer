@@ -8,7 +8,7 @@ import {
   type AgentProfile,
   type ProfileFailure,
   type ProfileIdentity,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   CreateProfileOptions,
   CreateProfileSetOptions,

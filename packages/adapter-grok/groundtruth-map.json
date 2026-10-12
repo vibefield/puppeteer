@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-adapter-groundtruth-map/1",
   "provider": "grok",
-  "adapterPackage": "@vibecook/puppeteer-adapter-grok",
+  "adapterPackage": "@vibefield/puppeteer-adapter-grok",
   "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
   "groundTruthSha256": "fcb786f619dc08a80d8db5480a0b85586ddfef5e409d4eba38d998dcc4f28203",
   "semanticEvents": [

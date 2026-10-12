@@ -1,4 +1,4 @@
-import type { EndedLaneView, MonitorPastSpan } from '@vibecook/puppeteer-view-sdk';
+import type { EndedLaneView, MonitorPastSpan } from '@vibefield/puppeteer-view-sdk';
 import {
   formatClock,
   formatElapsed,
@@ -9,7 +9,7 @@ import {
   STATE_WORDS,
   statusWord,
   waitWord,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { LaneSpan, TimelineLane, TimelineMoment } from './timeline-lanes.js';
 
 // What the timeline says in words: each body's readout at the head's moment,

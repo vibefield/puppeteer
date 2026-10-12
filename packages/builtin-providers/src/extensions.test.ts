@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createAgentRuntime, type AgentRuntime } from '@vibecook/puppeteer-runtime';
+import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createAgentRuntime, type AgentRuntime } from '@vibefield/puppeteer-runtime';
 import { createBuiltinProviders } from './providers.js';
 
 /** Reading an inventory never spawns: a host that is asked to is a failure. */

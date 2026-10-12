@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, ReleaseSnapshotSchema, type InstallCandidate } from '@vibecook/puppeteer-core';
+import { InstalledAgentSchema, ReleaseSnapshotSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import { classifyGrokCandidate, createGrokDistributionService, GROK_DISTRIBUTION_PROVIDER } from './distribution.js';
 

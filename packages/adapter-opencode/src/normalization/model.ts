@@ -1,4 +1,4 @@
-import type { ModelEvent } from '@vibecook/puppeteer-core';
+import type { ModelEvent } from '@vibefield/puppeteer-core';
 import { isOpenCodeRecord, openCodeText } from './wire.js';
 
 /** OpenCode model snapshots -> deduplicated Core model events. */

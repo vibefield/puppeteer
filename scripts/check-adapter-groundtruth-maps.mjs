@@ -50,7 +50,7 @@ export function buildAdapterGroundTruthMap(root, provider) {
   if (new Set(events).size !== events.length) throw new Error(`${groundTruth} contains duplicate event names`);
 
   const sources = filesUnder(join(adapterDirectory, 'src')).map((path) => ({
-    path: relative(adapterDirectory, path),
+    path: relative(adapterDirectory, path).replaceAll('\\', '/'),
     source: readFileSync(path, 'utf8'),
   }));
   const semanticSources = sources.filter(
@@ -67,7 +67,7 @@ export function buildAdapterGroundTruthMap(root, provider) {
   return {
     format: 'puppeteer-adapter-groundtruth-map/1',
     provider,
-    adapterPackage: `@vibecook/puppeteer-adapter-${provider}`,
+    adapterPackage: `@vibefield/puppeteer-adapter-${provider}`,
     groundTruth,
     groundTruthSha256: sha256(rawGroundTruth),
     semanticEvents,

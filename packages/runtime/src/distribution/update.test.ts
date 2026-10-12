@@ -8,7 +8,7 @@ import type {
   DistributionService,
   InstalledAgent,
   UpdateRecipe,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import {
   planInstallationUpdate,
   recipeArgv,

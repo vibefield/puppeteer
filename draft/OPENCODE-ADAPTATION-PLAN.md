@@ -46,7 +46,7 @@ Use these identities consistently:
 | -------------------------- | --------------------------------------- |
 | Provider/vendor key        | `opencode`                              |
 | Display name               | `OpenCode`                              |
-| Adapter package            | `@vibecook/puppeteer-adapter-opencode` |
+| Adapter package            | `@vibefield/puppeteer-adapter-opencode` |
 | Binary override            | `PUPPETEER_OPENCODE_BIN`               |
 | Candidate version override | `PUPPETEER_OPENCODE_VERSION`           |
 | Live-test opt-in           | `OPENCODE_LIVE=1`                       |
@@ -506,7 +506,7 @@ Run proportionally after each slice:
 
 ```text
 node --check packages/surface/vendors/opencode/census/harness.mjs
-pnpm --filter @vibecook/puppeteer-surface exec vitest run \
+pnpm --filter @vibefield/puppeteer-surface exec vitest run \
   vendors/opencode/privacy.test.mjs vendors/opencode/captures.test.ts
 node packages/surface/vendors/opencode/census/sanitize.mjs \
   --version 1.18.16 --check-only

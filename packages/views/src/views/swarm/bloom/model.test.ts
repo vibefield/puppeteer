@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import { BLOOM, type BloomTextMeasure } from './constants.js';
 import { polar, type BloomPoint } from './geometry.js';
 import {

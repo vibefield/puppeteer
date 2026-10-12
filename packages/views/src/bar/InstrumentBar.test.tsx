@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MONITOR_VIEWS } from '../monitor/registry.js';
-import { keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { keyLegend } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { InstrumentBar, ViewMark, type InstrumentBarView } from './InstrumentBar.js';
 
 const NOOP = () => undefined;

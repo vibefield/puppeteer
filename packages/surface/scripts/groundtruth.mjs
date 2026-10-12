@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildGroundTruth, loadGroundTruth } from '@vibecook/puppeteer-surface';
+import { buildGroundTruth, loadGroundTruth } from '@vibefield/puppeteer-surface';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const repositoryRoot = dirname(dirname(packageRoot));
@@ -265,7 +265,7 @@ export function renderGroundTruth(model) {
   const evidence = model.evidenceIndex ?? model.legacyEvidenceIndex;
   const channelCount = Object.keys(model.channels.channels).length;
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibecook/puppeteer-surface groundtruth" /><title>${escapeHtml(
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><meta name="generator" content="@vibefield/puppeteer-surface groundtruth" /><title>${escapeHtml(
     `${model.manifest.vendor}@${model.manifest.vendorVersion} ground truth`,
   )}</title><style>${CSS}</style></head><body><main class="shell"><header class="hero"><div class="hero-row"><div><span class="eyebrow">Agent surface ground truth</span><h1>${escapeHtml(
     model.manifest.vendor,

@@ -1,4 +1,8 @@
-import { AccountUsageFetchResultSchema, AccountUsageSnapshotSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import {
+  AccountUsageFetchResultSchema,
+  AccountUsageSnapshotSchema,
+  type AgentProfile,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   antigravityAccountUsageFromStatusLine,

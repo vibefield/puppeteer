@@ -7,7 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
 import type { HistoryPort, HistorySearchHit, HistorySearchStatus, HistorySessionFacts } from './history-port.js';
-import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
+import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
 import type { FindAgent } from './find-agent.js';
 import {
   FIND_DEBOUNCE_MS,

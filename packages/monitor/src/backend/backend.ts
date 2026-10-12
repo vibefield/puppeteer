@@ -1,4 +1,4 @@
-import { DEFAULT_MONITOR_FRESHNESS_POLICY, type AgentMonitorState } from '@vibecook/puppeteer-core';
+import { DEFAULT_MONITOR_FRESHNESS_POLICY, type AgentMonitorState } from '@vibefield/puppeteer-core';
 import {
   compareMonitorRows,
   type AgentStatus,
@@ -8,7 +8,7 @@ import {
   type MonitorModelChange,
   type MonitorModelSnapshot,
   type MonitorSpawnMenu,
-} from '@vibecook/puppeteer-view-sdk/model';
+} from '@vibefield/puppeteer-view-sdk/model';
 import { createAgentMonitorStore } from '../store.js';
 import {
   agentStatus,

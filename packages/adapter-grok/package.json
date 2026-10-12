@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-grok",
+  "name": "@vibefield/puppeteer-adapter-grok",
   "version": "0.1.8",
   "type": "module",
   "description": "Grok adapter for Puppeteer: native TUI, shared leader lifecycle, and ACP control composition.",
@@ -40,13 +40,13 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-adapter-acp": "workspace:*",
-    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-adapter-acp": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
     "zod": "^4.4.3",
-    "@vibecook/puppeteer-native-observation": "workspace:*"
+    "@vibefield/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-testing": "workspace:*",
+    "@vibefield/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15",
     "vitest": "^3.0.0"
   }

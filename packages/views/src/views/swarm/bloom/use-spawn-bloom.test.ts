@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
+import type { MonitorCreateAnswer, MonitorSpawnMenu, MonitorSpawnTarget } from '@vibefield/puppeteer-view-sdk';
 import { BLOOM } from './constants.js';
 import type { BloomPoint } from './geometry.js';
 import type { BloomChoice, BloomState } from './model.js';

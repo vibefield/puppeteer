@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parameterDefaults } from '@vibecook/puppeteer-view-sdk/testing';
+import { parameterDefaults } from '@vibefield/puppeteer-view-sdk/testing';
 import {
   DEFAULT_SWARM_PARAMETERS,
   SWARM_PARAMETER_GROUPS,

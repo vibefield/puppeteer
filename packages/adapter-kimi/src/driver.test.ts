@@ -7,8 +7,8 @@ import {
   type AdapterEventCandidate,
   type AgentHost,
   type TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import { projectAgentEvents } from '@vibecook/puppeteer-testing';
+} from '@vibefield/puppeteer-core';
+import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { encodeKimiWorkDirKey, kimiMainWirePath } from './observation/session-store.js';
 import { buildKimiTuiArgs, createKimiTuiSession, prepareKimiTuiSession } from './driver.js';
 

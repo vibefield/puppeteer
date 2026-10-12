@@ -8,7 +8,7 @@ import {
   type AgentModelDiscoveryContext,
   type AgentAdapterBinding,
   type ProfileService,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { createAgentRuntime } from './runtime.js';
 import type { AgentProvider, AgentRuntime, ProfileRegistrySnapshot } from './types.js';
 

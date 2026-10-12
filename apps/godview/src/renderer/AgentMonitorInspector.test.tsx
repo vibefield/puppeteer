@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibefield/puppeteer-core';
 import { AgentMonitorInspector } from './AgentMonitorInspector.js';
 
 const OBSERVED_AT = '2026-08-17T00:00:00.000Z';

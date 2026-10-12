@@ -6,7 +6,7 @@ import type {
   ContextWindowUpdatedEvent,
   MonitorMetricFamily,
   UsagePricing,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type {
   AdapterMonitorObservationBatch,
   EvidenceRef,
@@ -14,7 +14,7 @@ import type {
   MonitorFamilyValueMap,
   ObservationCapability,
   ObservationCoverage,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import type { CodexServerNotification } from './types.js';
 import { CODEX_CONTRACT, CODEX_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 import { codexUsageCounter, codexUsagePricing, type CodexUsageCounter } from './usage.js';

@@ -1,4 +1,4 @@
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
 
 /**
  * The body a row is drawn as: its spatial identity where the window carries

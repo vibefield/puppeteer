@@ -1,5 +1,5 @@
 // What the view labs' build scripts share (list-lab.mjs, rain-lab.mjs, timeline-lab.mjs): find a lab entry in
-// @vibecook/puppeteer-views, bundle it, inline the Godview skin and the views' whole stylesheet so
+// @vibefield/puppeteer-views, bundle it, inline the Godview skin and the views' whole stylesheet so
 // every token resolves as in the app, and write one self-contained page under dist/.
 
 import { build } from 'esbuild';
@@ -14,7 +14,7 @@ export const dist = join(root, 'dist');
 const renderer = join(root, 'src/renderer');
 // The package exports its swarm lab entry, not its package.json; the views' source root is walked
 // up from it (`.ts` in-repo, `.js` once published), and every lab sits beside the swarm's.
-const swarmLab = createRequire(import.meta.url).resolve('@vibecook/puppeteer-views/lab');
+const swarmLab = createRequire(import.meta.url).resolve('@vibefield/puppeteer-views/lab');
 export const views = join(dirname(swarmLab), '../../..');
 
 /** `views/<name>/lab/main.(ts|js)`. */

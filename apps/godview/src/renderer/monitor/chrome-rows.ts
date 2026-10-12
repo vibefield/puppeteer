@@ -1,6 +1,6 @@
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentView, MonitorModel } from '@vibecook/puppeteer-view-sdk/model';
-import { formatUsd } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { AgentView, MonitorModel } from '@vibefield/puppeteer-view-sdk/model';
+import { formatUsd } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { AgentMonitorStateMessage, AgentSessionInfo } from '../../protocol.js';
 import type { PaneAttachment } from '../pane-attachments.js';
 import type { MonitorAgent } from './types.js';

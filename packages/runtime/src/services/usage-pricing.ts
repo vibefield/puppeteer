@@ -1,9 +1,9 @@
-import type { UsageCostEstimate } from '@vibecook/puppeteer-core';
+import type { UsageCostEstimate } from '@vibefield/puppeteer-core';
 import {
   permitsLiveUsage,
   type MonitorFamilyUpdate,
   type MonitorUsageFamilyValue,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { USAGE_PRICES, USAGE_PRICE_SNAPSHOT } from './usage-prices.js';
 
 interface Rates {

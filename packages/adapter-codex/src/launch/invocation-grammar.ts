@@ -17,7 +17,7 @@
  * that compared the typed command with the managed recipe at the model's request.
  */
 
-import type { AgentNativeInvocationPassthroughKind } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocationPassthroughKind } from '@vibefield/puppeteer-core';
 
 /** The codex release whose help the table and its census fixtures were captured from. */
 export const CODEX_GRAMMAR_VERSION = '0.157.1';

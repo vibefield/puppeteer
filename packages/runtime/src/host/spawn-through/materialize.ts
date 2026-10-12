@@ -29,7 +29,7 @@ export interface MaterializeShimsOptions {
   home: string;
   /** Command names to intercept; launchers for any other name are removed. */
   names: readonly string[];
-  /** The bundled shim (`@vibecook/puppeteer-runtime/spawn-through/shim`, one CommonJS file), copied into the home. */
+  /** The bundled shim (`@vibefield/puppeteer-runtime/spawn-through/shim`, one CommonJS file), copied into the home. */
   script: string;
   runtime: SpawnThroughShimRuntime;
   /**

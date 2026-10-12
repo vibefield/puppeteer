@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentHost } from '@vibecook/puppeteer-core';
+import type { AgentHost } from '@vibefield/puppeteer-core';
 
 const fakes = vi.hoisted(() => ({
   createObserver: vi.fn(),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibecook/puppeteer-core';
+import { AgentProfileSchema, ProfileProviderSchema, type AgentProfile } from '@vibefield/puppeteer-core';
 import { CODEX_PROFILE_ROOT_VARIABLE, codexProfileIdentityFrom, createCodexProfileService } from './profiles.js';
 import type { Transport } from '../transport/app-server-client.js';
 

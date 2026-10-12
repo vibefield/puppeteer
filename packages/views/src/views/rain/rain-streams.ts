@@ -1,5 +1,5 @@
-import type { AgentView } from '@vibecook/puppeteer-view-sdk';
-import { modelWord, projectName } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { AgentView } from '@vibefield/puppeteer-view-sdk';
+import { modelWord, projectName } from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // The rain's column bookkeeping, ported from vibe-field's views/rain/rain-streams.ts.
 

@@ -1,5 +1,5 @@
-import type { CreateAcpSessionOptions } from '@vibecook/puppeteer-adapter-acp';
-import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibecook/puppeteer-core';
+import type { CreateAcpSessionOptions } from '@vibefield/puppeteer-adapter-acp';
+import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibefield/puppeteer-core';
 
 export interface CreateGrokBackendOptions {
   /** Grok executable (default `grok`). */

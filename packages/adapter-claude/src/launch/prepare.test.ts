@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { isAgentLaunchRefusedError } from '@vibecook/puppeteer-core';
+import { isAgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import {
   ClaudeHooksOffError,
   cleanupClaudeSession,

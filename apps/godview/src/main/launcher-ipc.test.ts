@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync }
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibecook/puppeteer-core';
-import type { OwnActionRecord } from '@vibecook/puppeteer-record';
+import type { AgentInstallation, AgentLaunchProvider, AgentProfile } from '@vibefield/puppeteer-core';
+import type { OwnActionRecord } from '@vibefield/puppeteer-record';
 import type { HistorySearchStatus } from '../protocol.js';
 import type { HistoryListedSession, HistoryProject, HistorySearchService } from './history-search.js';
 import {

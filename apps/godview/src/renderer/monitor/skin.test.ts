@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MONITOR_SKIN } from '@vibecook/puppeteer-view-sdk';
+import { MONITOR_SKIN } from '@vibefield/puppeteer-view-sdk';
 
 // L18: every host defines the skin on its stage, so a view's stylesheet can read it and nothing else of the host's.
 // Godview's stage sits inside `.vf-godview`, whose theme classes carry the instrument skin's colours (godview.css);

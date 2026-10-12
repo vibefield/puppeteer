@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@vibecook/puppeteer-core';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
 import { copilotString } from './types.js';
 
 export function normalizeCopilotMode(type: string, data: Record<string, unknown>): AgentEvent[] | undefined {

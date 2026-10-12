@@ -1,4 +1,4 @@
-import type { AgentStatus } from '@vibecook/puppeteer-view-sdk/model';
+import type { AgentStatus } from '@vibefield/puppeteer-view-sdk/model';
 
 /**
  * A terminal no agent has claimed: working while a foreground job runs, idle otherwise. The ONE rule, shared by the

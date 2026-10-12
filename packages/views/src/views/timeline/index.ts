@@ -1,6 +1,6 @@
-import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibecook/puppeteer-view-sdk';
-import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
-import { MARK_VIEW_BOX, strokeOutline, strokesOutline } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { MONITOR_VIEW_SDK_MAJOR, type MonitorViewManifest } from '@vibefield/puppeteer-view-sdk';
+import { reactMonitorView } from '@vibefield/puppeteer-view-sdk/react';
+import { MARK_VIEW_BOX, strokeOutline, strokesOutline } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { TIMELINE_PARAMETER_GROUPS } from './timeline-parameters.js';
 import { NOW_KEY, TimelineView } from './TimelineView.js';
 // The view's own stylesheet (L18): the entry module brings it, and no host imports it.

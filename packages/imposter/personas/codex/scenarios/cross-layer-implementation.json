@@ -281,13 +281,13 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:baseline-test",
-              "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex",
+              "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.codex",
               "cwd": "$threadCwd",
               "status": "inProgress",
               "commandActions": [
                 {
                   "type": "unknown",
-                  "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex"
+                  "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.codex"
                 }
               ]
             }
@@ -307,13 +307,13 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:baseline-test",
-              "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex",
+              "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.codex",
               "cwd": "$threadCwd",
               "status": "failed",
               "commandActions": [
                 {
                   "type": "unknown",
-                  "command": "pnpm --filter @vibecook/puppeteer-imposter test -- scenarios.codex"
+                  "command": "pnpm --filter @vibefield/puppeteer-imposter test -- scenarios.codex"
                 }
               ],
               "aggregatedOutput": "Expected long-form runflow contract is not implemented yet.",
@@ -394,13 +394,13 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:approved-test",
-              "command": "pnpm --filter @vibecook/puppeteer-imposter test",
+              "command": "pnpm --filter @vibefield/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "inProgress",
               "commandActions": [
                 {
                   "type": "unknown",
-                  "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+                  "command": "pnpm --filter @vibefield/puppeteer-imposter test"
                 }
               ]
             }
@@ -419,12 +419,12 @@
             "turnId": "$uuid:turn",
             "itemId": "$uuid:approved-test",
             "startedAtMs": "$nowMs",
-            "command": "pnpm --filter @vibecook/puppeteer-imposter test",
+            "command": "pnpm --filter @vibefield/puppeteer-imposter test",
             "cwd": "$threadCwd",
             "commandActions": [
               {
                 "type": "unknown",
-                "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+                "command": "pnpm --filter @vibefield/puppeteer-imposter test"
               }
             ],
             "availableDecisions": ["accept", "cancel"]
@@ -444,13 +444,13 @@
             "item": {
               "type": "commandExecution",
               "id": "$uuid:approved-test",
-              "command": "pnpm --filter @vibecook/puppeteer-imposter test",
+              "command": "pnpm --filter @vibefield/puppeteer-imposter test",
               "cwd": "$threadCwd",
               "status": "completed",
               "commandActions": [
                 {
                   "type": "unknown",
-                  "command": "pnpm --filter @vibecook/puppeteer-imposter test"
+                  "command": "pnpm --filter @vibefield/puppeteer-imposter test"
                 }
               ],
               "aggregatedOutput": "Scenario, normalizer, and control-plane tests passed.",

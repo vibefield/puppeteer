@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import * as react from '@vibecook/puppeteer-view-sdk/react';
-import * as toolkit from '@vibecook/puppeteer-view-sdk/toolkit';
+import * as react from '@vibefield/puppeteer-view-sdk/react';
+import * as toolkit from '@vibefield/puppeteer-view-sdk/toolkit';
 import * as views from '../src/index.js';
 
 // THE VIEWS INDEX FORWARDS NO SDK NAME (M54, MV-8). AgentIcon, ProfileGlyph and the mark tables moved into the SDK

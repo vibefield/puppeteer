@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROFILE_GLYPHS } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { PROFILE_GLYPHS } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { suggestProfileGlyph } from './profile-glyph-suggest.js';
 
 describe('the glyph a new set is offered', () => {

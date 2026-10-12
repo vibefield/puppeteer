@@ -5,7 +5,7 @@ import {
   writeRendezvous,
   type MaterializeShimsOptions,
   type WriteRendezvousOptions,
-} from '@vibecook/puppeteer-runtime/spawn-through';
+} from '@vibefield/puppeteer-runtime/spawn-through';
 
 /**
  * How often a running Godview publishes its shim home again. The home is under

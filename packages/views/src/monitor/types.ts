@@ -1,5 +1,5 @@
-import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
-import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibecook/puppeteer-core';
+import type { MonitorView, MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
+import type { AgentMonitorState, MonitorContextState, MonitorRecency } from '@vibefield/puppeteer-core';
 import type { AgentVisualStatus } from './agent-status.js';
 import type { MonitorParameterGroup } from './parameters.js';
 
@@ -196,7 +196,7 @@ export interface MonitorSpawnTarget {
 
 /**
  * A way of looking at the running agents, as the registry lists it: an SDK view (`view`), mounted by the view host
- * (`@vibecook/puppeteer-view-sdk/host`), with the face the host's chrome reads read from its manifest: the id, the
+ * (`@vibefield/puppeteer-view-sdk/host`), with the face the host's chrome reads read from its manifest: the id, the
  * label, the mark the bar draws (MV-D6), the keys it prints (MV-D8), the parameter groups the tweak panel offers and
  * the revision they are stored under. Adding one is a folder under `views/` and a line in the registry.
  */

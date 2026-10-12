@@ -9,7 +9,7 @@ import {
   type AgentProfile,
   type ProfileIdentity,
   type ProfileService,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { normalizeOpenCodeNativeInvocation } from '../launch/native-invocation.js';
 import {

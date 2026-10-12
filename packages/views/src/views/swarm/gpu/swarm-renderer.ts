@@ -1,5 +1,5 @@
 /// <reference types="@webgpu/types" />
-import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { SwarmBubbleModel } from '../bubble-model.js';
 import {
   layoutCopy,

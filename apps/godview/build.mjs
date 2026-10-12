@@ -49,7 +49,7 @@ try {
 // which esbuild leaves as written and never emits, so the host builds the entry beside its chunks — as it copies
 // ghosttea's terminal-render worker below. The views' source root is walked up from the lab entry the package
 // exports (`.ts` in-repo, `.js` once published).
-const viewsRoot = resolve(dirname(requireFromGodview.resolve('@vibecook/puppeteer-views/lab')), '../../..');
+const viewsRoot = resolve(dirname(requireFromGodview.resolve('@vibefield/puppeteer-views/lab')), '../../..');
 const swarmWorkerEntry = ['ts', 'js']
   .map((extension) => join(viewsRoot, `views/swarm/physics/swarm-physics.worker.${extension}`))
   .find((path) => existsSync(path));
@@ -103,7 +103,7 @@ await Promise.all([
   // execs the runtime Godview names on it.
   build({
     ...shared,
-    entryPoints: [requireFromGodview.resolve('@vibecook/puppeteer-runtime/spawn-through/shim')],
+    entryPoints: [requireFromGodview.resolve('@vibefield/puppeteer-runtime/spawn-through/shim')],
     outfile: join(dist, 'agent-shim.cjs'),
     platform: 'node',
     format: 'cjs',

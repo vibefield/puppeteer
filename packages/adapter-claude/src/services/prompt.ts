@@ -27,7 +27,7 @@ import type {
   PromptReceipt,
   TerminalAutomationOperation,
   TerminalAutomationResult,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 export type { PromptSubmission, PromptReceipt };
 
 export interface PromptInjectorOptions {

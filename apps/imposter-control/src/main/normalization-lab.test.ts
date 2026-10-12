@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { EmittedEntry, SessionView } from '@vibecook/puppeteer-imposter/control';
+import type { EmittedEntry, SessionView } from '@vibefield/puppeteer-imposter/control';
 import { IDLE_SCENARIO_DRIVER } from './testing.js';
 import {
   createNormalizationLab,

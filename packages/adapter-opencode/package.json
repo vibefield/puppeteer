@@ -1,5 +1,5 @@
 {
-  "name": "@vibecook/puppeteer-adapter-opencode",
+  "name": "@vibefield/puppeteer-adapter-opencode",
   "version": "0.1.8",
   "type": "module",
   "description": "OpenCode adapter for Puppeteer: private serve backend, HTTP/SSE observation and control, and exact-session native TUI attach.",
@@ -40,13 +40,13 @@
     "node": ">=22.18.0"
   },
   "dependencies": {
-    "@vibecook/puppeteer-core": "workspace:*",
+    "@vibefield/puppeteer-core": "workspace:*",
     "zod": "^4.4.3",
-    "@vibecook/puppeteer-native-observation": "workspace:*"
+    "@vibefield/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
-    "@vibecook/puppeteer-surface": "workspace:*",
-    "@vibecook/puppeteer-testing": "workspace:*",
+    "@vibefield/puppeteer-surface": "workspace:*",
+    "@vibefield/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15",
     "vitest": "^3.0.0"
   }

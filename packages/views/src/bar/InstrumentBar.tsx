@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type FocusEvent, type ReactElement, type ReactNode } from 'react';
-import type { MonitorViewKey, MonitorViewMark } from '@vibecook/puppeteer-view-sdk';
-import { keyLegend } from '@vibecook/puppeteer-view-sdk/toolkit';
+import type { MonitorViewKey, MonitorViewMark } from '@vibefield/puppeteer-view-sdk';
+import { keyLegend } from '@vibefield/puppeteer-view-sdk/toolkit';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 import type { MonitorTheme } from '../monitor/types.js';
 

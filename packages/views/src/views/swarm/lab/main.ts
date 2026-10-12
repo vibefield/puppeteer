@@ -1,4 +1,4 @@
-import { AGENT_MARK_CANDIDATES, resolveCssColor, type Rgba } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { AGENT_MARK_CANDIDATES, resolveCssColor, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { labAgentView } from '../../../lab/lab-model.js';
 import { mountViewLab } from '../../../lab/lab-stage.js';
 import { readMonitorPalette } from '../../../monitor/palette.js';

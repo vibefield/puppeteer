@@ -8,13 +8,13 @@ import type {
   MonitorTheme as SdkTheme,
   MonitorView,
   StageGeometry,
-} from '@vibecook/puppeteer-view-sdk';
+} from '@vibefield/puppeteer-view-sdk';
 import {
   keepStage,
   MonitorViewHost,
   type MonitorReplicaLike,
   type ViewSlotCommands,
-} from '@vibecook/puppeteer-view-sdk/host';
+} from '@vibefield/puppeteer-view-sdk/host';
 import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import { useMonitorPalette } from '../monitor/palette.js';
 import type { MonitorParameters } from '../monitor/parameters.js';

@@ -4,7 +4,7 @@ import {
   type AgentMonitorHandle,
   type AgentMonitorState,
   type MonitorNotification,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface AgentMonitorStateMessage {
   runtimeRunId: string;

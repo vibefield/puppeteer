@@ -1,4 +1,4 @@
-import type { AgentModelIdentity, ModelEvent } from '@vibecook/puppeteer-core';
+import type { AgentModelIdentity, ModelEvent } from '@vibefield/puppeteer-core';
 import { type CategoryNormalization, type CodexNormalizationInput, rec, str } from './types.js';
 
 /** Codex model evidence normalized exclusively for the Core model service. */

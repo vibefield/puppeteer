@@ -28,10 +28,10 @@ import {
   type SessionExitedEvent,
 } from '@vibecook/ghosttea-electron/main';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentHost } from '@vibecook/puppeteer-core';
-import { createMonitorBackend, runtimeRunSource } from '@vibecook/puppeteer-monitor';
-import { createBuiltinAgentRuntime } from '@vibecook/puppeteer-builtin-providers';
-import { createActionRecorder } from '@vibecook/puppeteer-record';
+import type { AgentHost } from '@vibefield/puppeteer-core';
+import { createMonitorBackend, runtimeRunSource } from '@vibefield/puppeteer-monitor';
+import { createBuiltinAgentRuntime } from '@vibefield/puppeteer-builtin-providers';
+import { createActionRecorder } from '@vibefield/puppeteer-record';
 import type { GodviewTheme } from '../appearance-themes.js';
 import {
   buildAgentEnvironment,
@@ -42,7 +42,7 @@ import {
   type AgentWorkspaceRequest,
   type ResumeAgentOptions,
   type SpawnAgentResult,
-} from '@vibecook/puppeteer-runtime';
+} from '@vibefield/puppeteer-runtime';
 import type {
   AccountUsageBatch,
   AgentInstallationsSnapshot,
@@ -70,7 +70,7 @@ import type {
   AgentInterruptResult,
   UpdateInstallationRequest,
 } from '../protocol.js';
-import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibecook/puppeteer-runtime';
+import { createAccountUsageMonitor, type AccountUsageProfileRef } from '@vibefield/puppeteer-runtime';
 import { createProfileDefaultsStore, profileDefaultIds, retainKnownProfileDefaults } from './agent-profile-defaults.js';
 import { createProjectRegistry, projectIdentityStore } from './project-registry.js';
 import {
@@ -130,7 +130,7 @@ import {
   type SpawnThroughGateway,
   type SpawnThroughRequest,
   type SpawnThroughResponse,
-} from '@vibecook/puppeteer-runtime/spawn-through';
+} from '@vibefield/puppeteer-runtime/spawn-through';
 import { containingTerminalSession } from './containing-terminal.js';
 import {
   describeShimHomeRefresh,

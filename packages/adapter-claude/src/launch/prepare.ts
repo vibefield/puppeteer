@@ -18,7 +18,7 @@ import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
-import { AgentLaunchRefusedError } from '@vibecook/puppeteer-core';
+import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
 import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
 import {

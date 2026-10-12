@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { readInvocation } from './invocation-grammar.js';
 import { z } from 'zod';
-import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibecook/puppeteer-core';
+import type { AgentNativeInvocation, AgentNativeInvocationResolution } from '@vibefield/puppeteer-core';
 
 const SAFE_NATIVE_SESSION_ID = /^[A-Za-z0-9._-]+$/u;
 const ContinuationPathSchema = z.string().trim().min(1).max(8_192);

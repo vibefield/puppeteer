@@ -16,7 +16,7 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibecook/puppeteer-surface/sanitize';
+import { checkCaptureDirectory, sanitizeCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { writeCaptureFidelity } from '../../../scripts/capture-fidelity.mjs';
 import { opencodeRules } from '../privacy.mjs';
 

@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
 import { RELEASE_TAG, SOURCE_REVISION, VERSION } from './harness.mjs';
@@ -91,7 +92,7 @@ function writeEvent(name, document) {
     transport: normalized.transport,
     direction: normalized.direction,
   });
-  writeJson(join(eventsRoot, `${name}.json`), {
+  writeJson(join(eventsRoot, eventDocumentPath(name)), {
     surface: 'hermes',
     surfaceVersion: VERSION,
     event: name,

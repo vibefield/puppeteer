@@ -20,7 +20,7 @@ import {
   type McpServerItem,
   type PluginItem,
   type SkillItem,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import type { Transport } from '../transport/app-server-client.js';
 import { createCodexExtensionService, parseCodexConfig, type CodexExtensionOptions } from './extensions.js';
 

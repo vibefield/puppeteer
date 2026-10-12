@@ -1,4 +1,4 @@
-import type { ModelUpdatedEvent } from '@vibecook/puppeteer-core';
+import type { ModelUpdatedEvent } from '@vibefield/puppeteer-core';
 import { claudeOtelActor, type ClaudeOtelActorAttribution } from './actor.js';
 import { claudeOtelEventTimestamp, otelString, type ClaudeOtelLogRecord } from './wire.js';
 

@@ -17,8 +17,8 @@ import type {
   AccountUsageService,
   AccountUsageSnapshot,
   AgentProfile,
-} from '@vibecook/puppeteer-core';
-import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
+import { PUPPETEER_VERSION } from '@vibefield/puppeteer-core';
 import {
   GROK_BILLING_ACP_METHOD,
   GrokAcpClient,

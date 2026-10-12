@@ -1,4 +1,4 @@
-import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibecook/puppeteer-core';
+import { readNativeInvocationArguments, type NativeInvocationGrammar } from '@vibefield/puppeteer-core';
 
 /** Native help and parser evidence: __fixtures__/README.md. Unknown arity is a refusal. */
 export const INVOCATION_GRAMMAR_VERSION = '2.0.2';

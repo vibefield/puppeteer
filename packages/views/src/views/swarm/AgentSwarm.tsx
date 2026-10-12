@@ -10,8 +10,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react';
-import type { AgentView, StageGeometry } from '@vibecook/puppeteer-view-sdk';
-import type { ReactMonitorViewProps } from '@vibecook/puppeteer-view-sdk/react';
+import type { AgentView, StageGeometry } from '@vibefield/puppeteer-view-sdk';
+import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
   approachRecede,
   createMotionLoop,
@@ -20,7 +20,7 @@ import {
   resolveCssColor,
   type MotionLoop,
   type Rgba,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 import { birthAgent, birthOf, birthOverdue, birthRow, profileLineFor, type BloomBirth } from './bloom/birth.js';
 import { BLOOM } from './bloom/constants.js';
 import {

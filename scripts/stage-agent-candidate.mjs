@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isClaimAddressableAsmVersion, loadModel } from '@vibecook/puppeteer-surface';
+import { isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -22,7 +22,7 @@ export function stageCandidateDocuments({ ledger, persona, vendor, groundTruthRe
     throw new Error('current support cannot also be staged as a candidate');
   agent.groundTruth = groundTruthRelative;
   agent.candidateVersion = candidateVersion;
-  persona.asm = { package: '@vibecook/puppeteer-surface', path: `vendors/${vendor}` };
+  persona.asm = { package: '@vibefield/puppeteer-surface', path: `vendors/${vendor}` };
   return { ledger, persona, agent };
 }
 

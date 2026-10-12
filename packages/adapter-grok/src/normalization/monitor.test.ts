@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventType, type AdapterEventCandidate, type AgentEvent } from '@vibecook/puppeteer-core';
+import { agentEventType, type AdapterEventCandidate, type AgentEvent } from '@vibefield/puppeteer-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor.js';
 import type { GrokObservedEvent } from './types.js';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
-} from '@vibecook/puppeteer-core/monitor-spi';
+} from '@vibefield/puppeteer-core/monitor-spi';
 
 const SESSION = 'grok-session';
 const AT = '2026-08-08T00:00:00.000Z';

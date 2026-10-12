@@ -5,8 +5,8 @@
  * optional correction-aware monitor batches and capabilities cross this boundary.
  */
 
-import type { AgentEvent } from '@vibecook/puppeteer-core';
-import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibecook/puppeteer-core/monitor-spi';
+import type { AgentEvent } from '@vibefield/puppeteer-core';
+import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
 export interface SemanticObservationPollHint {
   hookEventName?: string | undefined;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentView, MonitorCost } from '@vibecook/puppeteer-view-sdk';
-import { agentViewFixture, type AgentViewFixturePartial } from '@vibecook/puppeteer-view-sdk/testing';
+import type { AgentView, MonitorCost } from '@vibefield/puppeteer-view-sdk';
+import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
 import { OPENING_QUIET_MS, bubbleModel, workingShares } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { SWARM_WEIGHT } from './weight.js';

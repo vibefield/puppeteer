@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import type { MonitorPastSnapshot, MonitorPastSpanKind } from '@vibecook/puppeteer-view-sdk/model';
+import type { MonitorPastSnapshot, MonitorPastSpanKind } from '@vibefield/puppeteer-view-sdk/model';
 import { createMemoryProjectIdentityStore } from './identity.js';
 import {
   clampPastWindow,

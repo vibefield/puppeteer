@@ -56,7 +56,7 @@ function registry(entries) {
 /** A view module with a manifest, the way the views write one. */
 function viewModule(id, extra = '') {
   const name = `${id.replace(/-/g, '_').toUpperCase()}_MANIFEST`;
-  return `import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
+  return `import { reactMonitorView } from '@vibefield/puppeteer-view-sdk/react';
 import './${id}.css';
 export const ${name} = { sdk: 1, id: '${id}', label: '${id.toUpperCase()}', mark: { viewBox: '0 0 24 24', paths: [] }, parameters: [] };
 export const ${id.replace(/-/g, '_')}MonitorView = reactMonitorView(${name}, () => null, { rootClass: 'mv-${id}' });
@@ -71,9 +71,9 @@ function found(report, name) {
 
 const CLEAN_VIEW = {
   'views/clean/index.tsx': `
-import { defineMonitorView, type MonitorView } from '@vibecook/puppeteer-view-sdk';
-import { reactMonitorView } from '@vibecook/puppeteer-view-sdk/react';
-import { createMotionLoop, sizeCanvas } from '@vibecook/puppeteer-view-sdk/toolkit';
+import { defineMonitorView, type MonitorView } from '@vibefield/puppeteer-view-sdk';
+import { reactMonitorView } from '@vibefield/puppeteer-view-sdk/react';
+import { createMotionLoop, sizeCanvas } from '@vibefield/puppeteer-view-sdk/toolkit';
 import { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Row } from './row.js';
@@ -104,7 +104,7 @@ export type Used = MonitorView;
 `,
   'views/clean/clean.test.tsx': `
 import { describe } from 'vitest';
-import { fixtureReplica } from '@vibecook/puppeteer-view-sdk/testing';
+import { fixtureReplica } from '@vibefield/puppeteer-view-sdk/testing';
 document.body.append(document.createElement('div'));
 describe('clean', () => fixtureReplica);
 `,
@@ -121,10 +121,10 @@ test('MV-W1 reports every import that leaves the SDK or the folder, types and re
   const report = wall({
     'views/leaky/index.ts': `
 import { agents } from '../../monitor/agents.js';
-import type { Core } from '@vibecook/puppeteer-core';
-import { mountView } from '@vibecook/puppeteer-view-sdk/host';
-import { fixtureReplica } from '@vibecook/puppeteer-view-sdk/testing';
-import type { MonitorAgentRow } from '@vibecook/puppeteer-view-sdk/model';
+import type { Core } from '@vibefield/puppeteer-core';
+import { mountView } from '@vibefield/puppeteer-view-sdk/host';
+import { fixtureReplica } from '@vibefield/puppeteer-view-sdk/testing';
+import type { MonitorAgentRow } from '@vibefield/puppeteer-view-sdk/model';
 export * from '../shared.js';
 export type Other = import('../other/types.js').Other;
 export const worker = new URL('../other/x.worker.js', import.meta.url);
@@ -141,10 +141,10 @@ export type Used = Core | MonitorAgentRow;
       "MV-W1 imports ../../monitor/y.js, outside the view's folder",
       "MV-W1 imports ../other/types.js, outside the view's folder",
       "MV-W1 imports ../shared.js, outside the view's folder",
-      'MV-W1 imports @vibecook/puppeteer-core, which is not the SDK',
-      'MV-W1 imports @vibecook/puppeteer-view-sdk/host, which only hosts may (L16)',
-      "MV-W1 imports @vibecook/puppeteer-view-sdk/model, not a view's subpath (L16)",
-      'MV-W1 imports @vibecook/puppeteer-view-sdk/testing outside a test (L16)',
+      'MV-W1 imports @vibefield/puppeteer-core, which is not the SDK',
+      'MV-W1 imports @vibefield/puppeteer-view-sdk/host, which only hosts may (L16)',
+      "MV-W1 imports @vibefield/puppeteer-view-sdk/model, not a view's subpath (L16)",
+      'MV-W1 imports @vibefield/puppeteer-view-sdk/testing outside a test (L16)',
       "MV-W1 refers to ../../styles/base.css, outside the view's folder",
       "MV-W1 refers to ../other/x.worker.js, outside the view's folder",
     ].sort(),
@@ -153,7 +153,7 @@ export type Used = Core | MonitorAgentRow;
 
 test('the import rule lets a test import the testing kit and its runner, and nothing else extra', () => {
   const view = '/repo/views/a';
-  assert.equal(importBreach('@vibecook/puppeteer-view-sdk/testing', `${view}/a.test.ts`, view, true), undefined);
+  assert.equal(importBreach('@vibefield/puppeteer-view-sdk/testing', `${view}/a.test.ts`, view, true), undefined);
   assert.equal(importBreach('vitest', `${view}/a.test.ts`, view, true), undefined);
   assert.equal(importBreach('vitest', `${view}/a.ts`, view, false), 'imports vitest, which is not the SDK');
   assert.equal(importBreach('react-dom/server', `${view}/a.ts`, view, false), undefined);

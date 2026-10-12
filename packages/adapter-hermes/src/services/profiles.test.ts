@@ -9,7 +9,7 @@ import {
   type AgentProfile,
   type ProfileFailure,
   type ProfileIdentity,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { HermesWrapperRead } from './distribution.js';
 import {

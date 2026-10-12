@@ -9,9 +9,9 @@ import {
   type FocusEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import type { AccountUsageBatch } from '@vibecook/puppeteer-core';
+import type { AccountUsageBatch } from '@vibefield/puppeteer-core';
 import type { AccountUsagePort } from './account-usage-port.js';
-import { AgentIcon } from '@vibecook/puppeteer-view-sdk/react';
+import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
 import { MONITOR_STAGE_CLASS } from '../chrome/stage.js';
 import { usageTiles, type UsageTile, type UsageWindowView } from './account-usage.js';
 

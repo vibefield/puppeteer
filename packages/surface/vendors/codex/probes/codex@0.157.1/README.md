@@ -84,7 +84,7 @@ What a session means is read from the request that reaches the loopback model: `
 whether the prompt arrived; and from the PTY, whether the alternate screen was entered. The harness's raw
 output stays with the prober; `live-results.json` is a whitelisted digest of it — screens, directories and
 prompts dropped, thread ids and every other UUID redacted (UUIDv7 encodes the capture time), the worktree path
-scrubbed — and every file here passes `checkCaptureFile` from `@vibecook/puppeteer-surface/sanitize` with no
+scrubbed — and every file here passes `checkCaptureFile` from `@vibefield/puppeteer-surface/sanitize` with no
 issue. `live-cases.json` is the case list as run, prompts redacted the same way. From S24 on, each request also
 records `permissionsDigest` and `filesystemDigest`: the first 16 hex of the sha256 of the exact
 `<permissions instructions>` and `<filesystem>` blocks codex writes for the model (the case directory replaced

@@ -27,7 +27,7 @@
 // What a view may do beyond that is named per view in `VIEW_RUNTIME_IMPORTS`,
 // the one allow-list (M59.2), never special-cased in a rule.
 //
-// MV-W4 (conformance) is a test suite in `@vibecook/puppeteer-view-sdk/testing`,
+// MV-W4 (conformance) is a test suite in `@vibefield/puppeteer-view-sdk/testing`,
 // not a reading of source. The checker FAILS: it exits 1 when any registered
 // view breaches, when a folder under the views directory is no registered
 // view's, or when the registry cannot be read, so a new view enters failing and
@@ -45,12 +45,12 @@ const scriptRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** L16: what a view may import from the SDK. */
 export const VIEW_SDK_IMPORTS = [
-  '@vibecook/puppeteer-view-sdk',
-  '@vibecook/puppeteer-view-sdk/react',
-  '@vibecook/puppeteer-view-sdk/toolkit',
+  '@vibefield/puppeteer-view-sdk',
+  '@vibefield/puppeteer-view-sdk/react',
+  '@vibefield/puppeteer-view-sdk/toolkit',
 ];
 /** L16: what a view's tests may import besides. */
-export const VIEW_TEST_IMPORTS = ['@vibecook/puppeteer-view-sdk/testing', 'vitest'];
+export const VIEW_TEST_IMPORTS = ['@vibefield/puppeteer-view-sdk/testing', 'vitest'];
 /**
  * THE ONE ALLOW-LIST (M59.2): what a view may reach beyond the wall, named per view, each entry a lead decision.
  * - A module specifier: a dependency the view bundles into itself (MV-5, the swarm's physics engine), a pure library
@@ -149,9 +149,9 @@ export function importBreach(specifier, file, viewDirectory, test, runtime = [])
   }
   if (VIEW_SDK_IMPORTS.includes(specifier) || FRAMEWORK_IMPORT.test(specifier)) return undefined;
   if (test && VIEW_TEST_IMPORTS.includes(specifier)) return undefined;
-  if (specifier === '@vibecook/puppeteer-view-sdk/host') return `imports ${specifier}, which only hosts may (L16)`;
-  if (specifier === '@vibecook/puppeteer-view-sdk/testing') return `imports ${specifier} outside a test (L16)`;
-  if (specifier.startsWith('@vibecook/puppeteer-view-sdk/')) return `imports ${specifier}, not a view's subpath (L16)`;
+  if (specifier === '@vibefield/puppeteer-view-sdk/host') return `imports ${specifier}, which only hosts may (L16)`;
+  if (specifier === '@vibefield/puppeteer-view-sdk/testing') return `imports ${specifier} outside a test (L16)`;
+  if (specifier.startsWith('@vibefield/puppeteer-view-sdk/')) return `imports ${specifier}, not a view's subpath (L16)`;
   return `imports ${specifier}, which is not the SDK`;
 }
 

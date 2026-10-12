@@ -8,8 +8,8 @@ import {
   type ReactElement,
   type RefObject,
 } from 'react';
-import type { MonitorSpawnDevice, MonitorSpawnProfile, MonitorSpawnTarget } from '@vibecook/puppeteer-view-sdk';
-import { ProfileGlyph } from '@vibecook/puppeteer-view-sdk/react';
+import type { MonitorSpawnDevice, MonitorSpawnProfile, MonitorSpawnTarget } from '@vibefield/puppeteer-view-sdk';
+import { ProfileGlyph } from '@vibefield/puppeteer-view-sdk/react';
 import {
   blooms,
   budSub,
@@ -21,7 +21,7 @@ import {
   ready,
   spawnTargetFor,
   type BloomOpenMenu,
-} from '@vibecook/puppeteer-view-sdk/toolkit';
+} from '@vibefield/puppeteer-view-sdk/toolkit';
 
 // The list view's door to the spawn bloom's tree (SB-D11): not a bloom — the
 // list is the view without a field — but the same two steps as a menu under

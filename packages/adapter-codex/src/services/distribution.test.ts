@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibecook/puppeteer-core';
+import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
 import { CODEX_DISTRIBUTION_PROVIDER, createCodexDistributionService } from './distribution.js';
 
 const BANNER = 'codex-cli 0.153.4\n';
@@ -35,7 +35,7 @@ describe('Codex distribution provider', () => {
 
   it('mirrors the Surface-declared release detectors without drift', () => {
     const require = createRequire(import.meta.url);
-    const surfaceRoot = dirname(require.resolve('@vibecook/puppeteer-surface/package.json'));
+    const surfaceRoot = dirname(require.resolve('@vibefield/puppeteer-surface/package.json'));
     const upstream = JSON.parse(readFileSync(join(surfaceRoot, 'vendors', 'codex', 'upstream.json'), 'utf8')) as {
       detectors: Array<Record<string, unknown>>;
     };

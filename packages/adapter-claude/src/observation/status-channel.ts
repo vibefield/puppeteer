@@ -9,7 +9,7 @@ import type {
   EffortEvent,
   EnvironmentEvent,
   ModelEvent,
-} from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
 
 export interface ClaudeStatusLineConfig {
   type: 'command';

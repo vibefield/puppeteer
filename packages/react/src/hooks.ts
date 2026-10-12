@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { AgentMonitorState, MonitorNotification } from '@vibecook/puppeteer-core';
-import type { AgentMonitorStore, AgentMonitorStoreSnapshot } from '@vibecook/puppeteer-monitor';
+import type { AgentMonitorState, MonitorNotification } from '@vibefield/puppeteer-core';
+import type { AgentMonitorStore, AgentMonitorStoreSnapshot } from '@vibefield/puppeteer-monitor';
 
 /** Subscribe to the complete, referentially stable monitor-store snapshot. */
 export function useAgentMonitorStore(store: AgentMonitorStore): AgentMonitorStoreSnapshot {

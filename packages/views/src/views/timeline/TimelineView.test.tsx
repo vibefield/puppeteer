@@ -8,7 +8,7 @@ import type {
   MonitorHistory,
   MonitorViewInput,
   MonitorViewInstance,
-} from '@vibecook/puppeteer-view-sdk';
+} from '@vibefield/puppeteer-view-sdk';
 import {
   agentViewFixture,
   agentViewsFixture,
@@ -23,7 +23,7 @@ import {
   runConformance,
   type FixtureClock,
   type FrameDriver,
-} from '@vibecook/puppeteer-view-sdk/testing';
+} from '@vibefield/puppeteer-view-sdk/testing';
 import { TIMELINE_MANIFEST, TIMELINE_ROOT_CLASS, timelineMonitorView } from './index.js';
 import { timelineWorld } from './lab/timeline-fixtures.js';
 import { laneLabel, laneSubLine, OPENS_IN_HISTORY } from './timeline-words.js';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '@vibecook/ghosttea-protocol';
-import type { AgentMonitorState } from '@vibecook/puppeteer-core';
-import { paneFrameModel } from '@vibecook/puppeteer-views';
+import type { AgentMonitorState } from '@vibefield/puppeteer-core';
+import { paneFrameModel } from '@vibefield/puppeteer-views';
 import type { MonitorAgent, MonitorAgentFacet } from '../monitor/types.js';
 import { paneFallbackCwds, paneFrameAgent, paneFrameAgents } from './pane-frame.js';
 

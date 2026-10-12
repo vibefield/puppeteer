@@ -7,7 +7,7 @@ import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { AgentLaunchProvider } from '@vibecook/puppeteer-core';
+import type { AgentLaunchProvider } from '@vibefield/puppeteer-core';
 import { startSpawnThroughGateway, type SpawnThroughGateway } from './gateway.js';
 import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
@@ -728,37 +728,47 @@ describe('the shim, end to end (bundled, run through its launcher)', { timeout: 
     });
   });
 
-  it('reports exec-failed when the recipe cannot run, then falls back — or refuses when strict', async () => {
-    for (const strict of [false, true]) {
-      const requests = await gatewayAnswering(
-        home,
-        (request) =>
-          request.type === 'exec-failed'
-            ? { action: 'ack' }
-            : {
-                action: 'exec',
-                preparationId: 'p-3',
-                launch: { command: join(root, 'no-such-agent'), args: [], cwd: root, env: { RECIPE_TOKEN: SECRET } },
-              },
-        { strict },
-      );
-      const ran = await launch(home, 'example', ['x']);
-
-      expect(requests.map((request) => request.type)).toEqual(['launch', 'exec-failed']);
-      expect(requests[1]).toMatchObject({ type: 'exec-failed', token: TOKEN, preparationId: 'p-3' });
-      expect((requests[1] as { message: string }).message).toMatch(/ENOENT/u);
-      expect(`${ran.stdout}${ran.stderr}`).not.toContain(SECRET);
-      if (strict) {
-        expect(ran.code).toBe(75);
-        expect(ran.stdout).toBe('');
-      } else {
-        expect(ran.code).toBe(0);
-        expect(ran.lines('REAL ')).toEqual(['example']);
-        expect(ran.lines('ARG ')).toEqual(['x']);
+  it.each(['missing', 'not-executable', 'directory'] as const)(
+    'reports exec-failed for a %s recipe, then falls back — or refuses when strict',
+    async (kind) => {
+      const command = join(root, `invalid-agent-${kind}`);
+      if (kind === 'not-executable') {
+        await writeFile(command, '#!/bin/sh\nexit 1\n');
+        await chmod(command, 0o644);
+      } else if (kind === 'directory') {
+        await mkdir(command);
       }
-      for (const gateway of gateways.splice(0)) await gateway.close();
-    }
-  });
+      for (const strict of [false, true]) {
+        const requests = await gatewayAnswering(
+          home,
+          (request) =>
+            request.type === 'exec-failed'
+              ? { action: 'ack' }
+              : {
+                  action: 'exec',
+                  preparationId: 'p-3',
+                  launch: { command, args: [], cwd: root, env: { RECIPE_TOKEN: SECRET } },
+                },
+          { strict },
+        );
+        const ran = await launch(home, 'example', ['x']);
+
+        expect(requests.map((request) => request.type)).toEqual(['launch', 'exec-failed']);
+        expect(requests[1]).toMatchObject({ type: 'exec-failed', token: TOKEN, preparationId: 'p-3' });
+        expect((requests[1] as { message: string }).message).toContain(kind === 'missing' ? 'ENOENT' : 'EACCES');
+        expect(`${ran.stdout}${ran.stderr}`).not.toContain(SECRET);
+        if (strict) {
+          expect(ran.code).toBe(75);
+          expect(ran.stdout).toBe('');
+        } else {
+          expect(ran.code).toBe(0);
+          expect(ran.lines('REAL ')).toEqual(['example']);
+          expect(ran.lines('ARG ')).toEqual(['x']);
+        }
+        for (const gateway of gateways.splice(0)) await gateway.close();
+      }
+    },
+  );
 
   it('falls back without asking when the name has no provider row', async () => {
     const requests = await gatewayAnswering(home, () => ({

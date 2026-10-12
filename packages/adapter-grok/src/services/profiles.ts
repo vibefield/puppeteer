@@ -32,8 +32,8 @@ import type {
   ProfileProvider,
   ProfileService,
   TerminalSpec,
-} from '@vibecook/puppeteer-core';
-import { PUPPETEER_VERSION } from '@vibecook/puppeteer-core';
+} from '@vibefield/puppeteer-core';
+import { PUPPETEER_VERSION } from '@vibefield/puppeteer-core';
 import { resolveGrokExecutable } from '../detection.js';
 import {
   GROK_AUTH_INFO_ACP_METHOD,

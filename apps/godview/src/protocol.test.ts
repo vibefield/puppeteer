@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibecook/puppeteer-core';
+import { AGENT_MONITOR_SCHEMA_VERSION, type AgentMonitorState } from '@vibefield/puppeteer-core';
 import type {
   AgentMonitorNotificationMessage,
   AgentMonitorRemovedMessage,
