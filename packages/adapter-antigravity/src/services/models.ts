@@ -25,7 +25,8 @@ export function decodeAntigravityModels(output: string): AgentModelChoice[] {
 export function createAntigravityModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createAntigravityProfileService(options);
   return defineModelService({
-    provider: { id: 'antigravity', label: 'Antigravity', discovery: 'prelaunch' },
+    // A resume is `--conversation <id>` with the launch's --model, "for the current CLI session" (1.2.12 help).
+    provider: { id: 'antigravity', label: 'Antigravity', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         {

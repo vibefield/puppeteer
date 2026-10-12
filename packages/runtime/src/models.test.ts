@@ -54,12 +54,10 @@ async function setup(options: { resumeSelection?: boolean } = {}) {
     },
     async dispose() {},
   });
-  const discover = vi.fn(
-    async (context: AgentModelDiscoveryContext): Promise<AgentModelDiscoveryResult> => ({
-      status: 'available',
-      catalog: catalog(context),
-    }),
-  );
+  const discover = vi.fn(async (context: AgentModelDiscoveryContext): Promise<AgentModelDiscoveryResult> => ({
+    status: 'available',
+    catalog: catalog(context),
+  }));
   const create = vi.fn(async (_options: Parameters<AgentProvider['createSession']>[0]) => binding());
   const prepare = vi.fn(async (options: { cwd: string }) => ({
     sessionId: 'prepared-native',
@@ -345,9 +343,7 @@ describe('resume starts at the session’s own launch selection', () => {
   it('refuses a stale or invalid selection and a failed discovery after discovering again, before the provider launches', async () => {
     const { runtime, discover, create } = await setup({ resumeSelection: true });
     for (const stale of [{ modelId: 'removed' }, { modelId: 'native-choice', controls: { effort: 'max' } }]) {
-      expect(
-        await runtime.resume({ continuation: continuation('/roots/work'), modelSelection: stale }),
-      ).toMatchObject({
+      expect(await runtime.resume({ continuation: continuation('/roots/work'), modelSelection: stale })).toMatchObject({
         error: { code: 'AGENT_LAUNCH_REFUSED', refusal: { code: 'INVALID_MODEL_SELECTION' } },
       });
     }

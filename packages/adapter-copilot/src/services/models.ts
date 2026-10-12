@@ -29,7 +29,8 @@ export function decodeCopilotModels(value: unknown): AgentModelChoice[] {
 export function createCopilotModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createCopilotProfileService(options);
   return defineModelService({
-    provider: { id: 'copilot', label: 'GitHub Copilot', discovery: 'prelaunch' },
+    // A resume is `--resume=<id>` with the launch's --model and --reasoning-effort (1.0.88 help).
+    provider: { id: 'copilot', label: 'GitHub Copilot', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         { ...(options.env ?? process.env), ...(options.home ? { HOME: options.home } : {}) },
