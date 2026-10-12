@@ -1715,7 +1715,7 @@ describe('Grok marketplaces', () => {
     expect(inventory.unread).toEqual([
       {
         kind: 'marketplace',
-        message: '~/.claude/plugins/known_marketplaces.json could not be read'.replaceAll('/', sep),
+        message: '~/.claude/plugins/known_marketplaces.json could not be read',
       },
     ]);
   });
@@ -1731,7 +1731,7 @@ describe('Grok marketplaces', () => {
         ['ssh', 'ssh://deploy:hunter2@git.example.com/team/x.git'],
         ['local', resolve('/Users/test/repos/market.git')],
       ]
-        .map(([name, git]) => `[[marketplace.sources]]\nname = "${name}"\ngit = "${git}"\n`)
+        .map(([name, git]) => `[[marketplace.sources]]\nname = "${name}"\ngit = ${JSON.stringify(git)}\n`)
         .join('\n'),
     );
     const inventory = ExtensionInventorySchema.parse(
@@ -1774,7 +1774,7 @@ describe('Grok marketplaces', () => {
         ['long-path', 'path', `/${long}`],
         ['northlight', 'path', market],
       ]
-        .map(([name, key, value]) => `[[marketplace.sources]]\nname = "${name}"\n${key} = "${value}"\n`)
+        .map(([name, key, value]) => `[[marketplace.sources]]\nname = "${name}"\n${key} = ${JSON.stringify(value)}\n`)
         .join('\n'),
     );
     await write(join(market, '.grok-plugin', 'marketplace.json'), {

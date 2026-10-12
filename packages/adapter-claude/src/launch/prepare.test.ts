@@ -18,6 +18,9 @@ import { readClaudeInvocation } from './invocation-grammar.js';
 import { normalizeClaudeNativeInvocation } from './native-invocation.js';
 import { createHookBridge } from '../observation/hook-bridge.js';
 
+// Windows starts PowerShell as well as Node; cold startup on hosted runners can exceed the usual test budget.
+const statusLineTestTimeout = process.platform === 'win32' ? 45_000 : 10_000;
+
 function runStatusLine(command: string, input: string, env: Record<string, string>): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, { shell: true, env: { ...process.env, ...env }, stdio: ['pipe', 'pipe', 'pipe'] });
@@ -579,95 +582,103 @@ describe('prepareClaudeSession', () => {
     },
   );
 
-  it('multiplexes context telemetry while preserving the existing status-line output and presentation', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'prepare-statusline-'));
-    const delegatePath = join(dir, 'delegate.mjs');
-    writeFileSync(
-      delegatePath,
-      "let input=''; for await (const chunk of process.stdin) input += chunk; console.log('original:' + JSON.parse(input).session_id);",
-    );
-    const delegate = `node ${JSON.stringify(delegatePath)}`;
-    const p = await prepare({
-      settingsDir: dir,
-      statusLineEndpoint: 'http://127.0.0.1:1/statusline',
-      existingStatusLine: {
+  it(
+    'multiplexes context telemetry while preserving the existing status-line output and presentation',
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-statusline-'));
+      const delegatePath = join(dir, 'delegate.mjs');
+      writeFileSync(
+        delegatePath,
+        "let input=''; for await (const chunk of process.stdin) input += chunk; console.log('original:' + JSON.parse(input).session_id);",
+      );
+      const delegate = `node ${JSON.stringify(delegatePath)}`;
+      const p = await prepare({
+        settingsDir: dir,
+        statusLineEndpoint: 'http://127.0.0.1:1/statusline',
+        existingStatusLine: {
+          type: 'command',
+          command: delegate,
+          padding: 2,
+          refreshInterval: 3,
+          hideVimModeIndicator: true,
+        },
+      });
+      const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+        statusLine: {
+          type: string;
+          command: string;
+          padding?: number;
+          refreshInterval?: number;
+          hideVimModeIndicator?: boolean;
+        };
+      };
+
+      expect(p.statusLineForwarderPath).toBeDefined();
+      expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
+      expect(settings.statusLine).toMatchObject({
         type: 'command',
-        command: delegate,
         padding: 2,
         refreshInterval: 3,
         hideVimModeIndicator: true,
-      },
-    });
-    const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
-      statusLine: {
-        type: string;
-        command: string;
-        padding?: number;
-        refreshInterval?: number;
-        hideVimModeIndicator?: boolean;
-      };
-    };
-
-    expect(p.statusLineForwarderPath).toBeDefined();
-    expect(existsSync(p.statusLineForwarderPath!)).toBe(true);
-    expect(settings.statusLine).toMatchObject({
-      type: 'command',
-      padding: 2,
-      refreshInterval: 3,
-      hideVimModeIndicator: true,
-    });
-    expect(settings.statusLine.command).not.toContain(delegate);
-    expect(p.env).toMatchObject({
-      PUPPETEER_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
-      PUPPETEER_STATUSLINE_DELEGATE: delegate,
-      PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
-    });
-    expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
-
-    await expect(
-      runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),
-    ).resolves.toBe('original:session-42\n');
-  });
-
-  it('multiplexes root and child commands independently and forwards the original child payload', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'prepare-child-statusline-'));
-    const childDelegatePath = join(dir, 'child-delegate.mjs');
-    writeFileSync(
-      childDelegatePath,
-      "let input=''; for await (const chunk of process.stdin) input += chunk; for (const task of JSON.parse(input).tasks) console.log(JSON.stringify({id: task.id, content: 'original:' + task.id}));",
-    );
-    const childDelegate = `node ${JSON.stringify(childDelegatePath)}`;
-    const bridge = createHookBridge({ token: BASE.token, allowSession: () => true });
-    await bridge.start();
-    const childPayload = new Promise<unknown>((resolve) => {
-      bridge.onSubagentStatusLine((envelope) => resolve(envelope.body));
-    });
-    try {
-      const p = await prepare({
-        settingsDir: dir,
-        statusLineEndpoint: bridge.statusLineEndpoint(),
-        subagentStatusLineEndpoint: bridge.subagentStatusLineEndpoint(),
-        existingStatusLine: { type: 'command', command: `${process.execPath} -e "process.exit(7)"` },
-        existingSubagentStatusLine: { type: 'command', command: childDelegate },
       });
-      const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
-        statusLine: { command: string };
-        subagentStatusLine: { command: string };
-      };
-      await expect(
-        runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: p.sessionId }), p.env),
-      ).rejects.toThrow();
+      expect(settings.statusLine.command).not.toContain(delegate);
+      expect(p.env).toMatchObject({
+        PUPPETEER_STATUSLINE_ENDPOINT: 'http://127.0.0.1:1/statusline',
+        PUPPETEER_STATUSLINE_DELEGATE: delegate,
+        PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: BASE.tokenEnvVar,
+      });
+      expect(readFileSync(p.statusLineForwarderPath!, 'utf8')).not.toContain(BASE.token);
 
-      const payload = { session_id: p.sessionId, tasks: [{ id: 'task-1' }] };
       await expect(
-        runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), {
-          ...p.env,
-          PUPPETEER_STATUSLINE_TIMEOUT_MS: '5000',
-        }),
-      ).resolves.toBe(`${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`);
-      await expect(childPayload).resolves.toEqual(payload);
-    } finally {
-      await bridge.dispose();
-    }
-  }, 10_000);
+        runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: 'session-42' }), p.env),
+      ).resolves.toBe('original:session-42\n');
+    },
+    statusLineTestTimeout,
+  );
+
+  it(
+    'multiplexes root and child commands independently and forwards the original child payload',
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'prepare-child-statusline-'));
+      const childDelegatePath = join(dir, 'child-delegate.mjs');
+      writeFileSync(
+        childDelegatePath,
+        "let input=''; for await (const chunk of process.stdin) input += chunk; for (const task of JSON.parse(input).tasks) console.log(JSON.stringify({id: task.id, content: 'original:' + task.id}));",
+      );
+      const childDelegate = `node ${JSON.stringify(childDelegatePath)}`;
+      const bridge = createHookBridge({ token: BASE.token, allowSession: () => true });
+      await bridge.start();
+      const childPayload = new Promise<unknown>((resolve) => {
+        bridge.onSubagentStatusLine((envelope) => resolve(envelope.body));
+      });
+      try {
+        const p = await prepare({
+          settingsDir: dir,
+          statusLineEndpoint: bridge.statusLineEndpoint(),
+          subagentStatusLineEndpoint: bridge.subagentStatusLineEndpoint(),
+          existingStatusLine: { type: 'command', command: `${process.execPath} -e "process.exit(7)"` },
+          existingSubagentStatusLine: { type: 'command', command: childDelegate },
+        });
+        const settings = JSON.parse(readFileSync(p.settingsPath, 'utf8')) as {
+          statusLine: { command: string };
+          subagentStatusLine: { command: string };
+        };
+        await expect(
+          runStatusLine(settings.statusLine.command, JSON.stringify({ session_id: p.sessionId }), p.env),
+        ).rejects.toThrow();
+
+        const payload = { session_id: p.sessionId, tasks: [{ id: 'task-1' }] };
+        await expect(
+          runStatusLine(settings.subagentStatusLine.command, JSON.stringify(payload), {
+            ...p.env,
+            PUPPETEER_STATUSLINE_TIMEOUT_MS: '5000',
+          }),
+        ).resolves.toBe(`${JSON.stringify({ id: 'task-1', content: 'original:task-1' })}\n`);
+        await expect(childPayload).resolves.toEqual(payload);
+      } finally {
+        await bridge.dispose();
+      }
+    },
+    statusLineTestTimeout,
+  );
 });

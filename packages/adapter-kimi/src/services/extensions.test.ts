@@ -567,7 +567,7 @@ describe('Kimi installs and marketplaces', () => {
       { keepIn: resolve('/Users/test/kept/elsewhere') },
     ];
     for (const profile of [
-      actProfile('managed', '/p'),
+      actProfile('managed', resolve('/p')),
       actProfile('native-default', resolve('/Users/test/.kimi-code')),
     ]) {
       for (const item of items) {
@@ -648,11 +648,14 @@ describe('Kimi skills placed', () => {
     });
     const moved = createKimiExtensionService({
       home: resolve('/Users/test'),
-      env: { KIMI_CODE_HOME: '/Volumes/work/kimi' },
+      env: { KIMI_CODE_HOME: resolve('/Volumes/work/kimi') },
     });
     expect(moved.plan!(native, placed('release-notes', kept), 'add')).toMatchObject({
-      runs: { kind: 'files', steps: [{ op: 'link', path: '/Volumes/work/kimi/skills/release-notes', target: kept }] },
-      display: 'link ~/kept/release-notes → /Volumes/work/kimi/skills/release-notes'.replaceAll('/', sep),
+      runs: {
+        kind: 'files',
+        steps: [{ op: 'link', path: resolve('/Volumes/work/kimi/skills/release-notes'), target: kept }],
+      },
+      display: `link ${join('~', 'kept', 'release-notes')} → ${resolve('/Volumes/work/kimi/skills/release-notes')}`,
     });
 
     expect(plain.plan!(native, placed('release-notes'), 'add')).toEqual({

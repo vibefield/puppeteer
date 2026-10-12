@@ -898,7 +898,8 @@ describe('Pi installs', () => {
   });
 
   it('says it holds a package by the identity Pi keys it with, whatever version or spelling the source gives', () => {
-    const holds = ['npm:@acme/pi-tools', 'git:github.com/northlight/pi-review', 'local:/Users/test/packs/local-pack'];
+    const localId = `local:${resolve('/Users/test/packs/local-pack')}`;
+    const holds = ['npm:@acme/pi-tools', 'git:github.com/northlight/pi-review', localId];
     for (const [source, id] of [
       ['npm:@acme/pi-tools@2.0.0', 'npm:@acme/pi-tools'],
       ['git:github.com/northlight/pi-review@v3', 'git:github.com/northlight/pi-review'],
@@ -917,7 +918,7 @@ describe('Pi installs', () => {
     expect(install('~/packs/local-pack', holds)).toMatchObject({
       available: false,
       reason: 'held',
-      message: 'Pi already has local:/Users/test/packs/local-pack, and loads it where it is',
+      message: `Pi already has ${localId}, and loads it where it is`,
     });
     // Another package of the same scope, or another repository of the same owner, is not held.
     expect(install('npm:@acme/pi-lint', holds)).toMatchObject({ available: true });

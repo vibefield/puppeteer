@@ -201,7 +201,7 @@ describe('Claude Code extensions', () => {
       location: join(home, '.claude.json'),
     });
     expect(find(inventory, 'mcp-server', 'skipped')).toBeUndefined();
-    expect(find(inventory, 'mcp-server', 'project:/Users/test/billing:sentry')).toMatchObject({
+    expect(find(inventory, 'mcp-server', `project:${resolve('/Users/test/billing')}:sentry`)).toMatchObject({
       origin: 'project',
       project: resolve('/Users/test/billing'),
       enabled: false,

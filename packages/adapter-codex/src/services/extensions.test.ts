@@ -1832,10 +1832,7 @@ describe('Codex marketplaces and catalogs', () => {
     expect(inventory.unread).toEqual([
       {
         kind: 'marketplace',
-        message: 'config.toml could not be read; ~/.agents/plugins/marketplace.json could not be read'.replaceAll(
-          '/',
-          sep,
-        ),
+        message: 'config.toml could not be read; ~/.agents/plugins/marketplace.json could not be read',
       },
     ]);
     // the curated catalog is no entry of the config
