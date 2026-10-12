@@ -2225,7 +2225,9 @@ await runtime.dispose();</code></pre>
                 <div class="signature">Promise&lt;Agent | AgentSessionFailure&gt;</div>
                 <p>
                   Resumes one opaque AgentContinuation. Runtime preserves only the generic native-versus-Imposter
-                  identity; adapters restore their own executable, profile, store, and transport topology.
+                  identity; adapters restore their own executable, profile, store, and transport topology. A
+                  modelSelection passed beside it starts the resumed session at that model, where the agent's resume
+                  can.
                 </p>
               </article>
               <article class="api-card">
@@ -2255,8 +2257,9 @@ await runtime.dispose();</code></pre>
                 <h3>runtime.modelProviders() / discoverModels()</h3>
                 <div class="signature">AgentModelProvider[] / Promise&lt;AgentModelDiscoveryResult&gt;</div>
                 <p>
-                  Profile-bound native model catalogs and model-specific controls. New launches validate a public
-                  modelSelection against fresh discovery; adapters translate it into private native options. See the
+                  Profile-bound native model catalogs and model-specific controls. Launches, and resumes where the
+                  agent's resume can take one (resumeSelection), validate a public modelSelection against fresh
+                  discovery; adapters translate it into private native options. See the
                   <a href="agent-management-api.html#models">model discovery contract</a>.
                 </p>
               </article>

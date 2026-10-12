@@ -2097,6 +2097,7 @@ if (result.status === 'available') {
                     <th>Agent</th>
                     <th>Native source</th>
                     <th>Scope and controls</th>
+                    <th>Resume at a selection</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2104,31 +2105,37 @@ if (result.status === 'available') {
                     <td>Claude</td>
                     <td>Stream JSON initialize</td>
                     <td>Native choices and per-model effort levels.</td>
+                    <td>Yes: <code>--resume</code> with <code>--model</code> and <code>--effort</code>.</td>
                   </tr>
                   <tr>
                     <td>Codex</td>
                     <td>App-server model/list, all pages</td>
                     <td>Native choices, per-model effort levels and advertised defaults.</td>
+                    <td>Yes: the resume request carries the model and effort; the joining TUI adopts them.</td>
                   </tr>
                   <tr>
                     <td>Copilot</td>
                     <td>SDK models.list</td>
                     <td>Native choices and per-model effort levels when supplied.</td>
+                    <td>Yes: <code>--resume</code> with <code>--model</code> and <code>--reasoning-effort</code>.</td>
                   </tr>
                   <tr>
                     <td>Grok</td>
                     <td>models command</td>
                     <td>Native choices; diagnostics make the result partial and stale.</td>
+                    <td>Yes: every managed TUI joins through <code>--resume</code> with <code>--model</code>.</td>
                   </tr>
                   <tr>
                     <td>Kimi</td>
                     <td>provider list --json</td>
                     <td>Configured model aliases; credentials are excluded.</td>
+                    <td>Yes: <code>--session</code> with <code>--model</code>.</td>
                   </tr>
                   <tr>
                     <td>OpenCode</td>
                     <td>Private backend /provider</td>
                     <td>Connected providers only, with native variants. Partial because plugins are disabled.</td>
+                    <td>No: the server sets a session’s model only when it creates the session.</td>
                   </tr>
                   <tr>
                     <td>Hermes</td>
@@ -2137,21 +2144,25 @@ if (result.status === 'available') {
                       Configured providers and cached choices. Partial; no invented effort levels. Unrecognized
                       installations report unsupported.
                     </td>
+                    <td>No: the gateway’s <code>session.resume</code> takes no model, provider or effort.</td>
                   </tr>
                   <tr>
                     <td>Antigravity</td>
                     <td>models command</td>
                     <td>Combined model/effort IDs remain single choices.</td>
+                    <td>Yes: <code>--conversation</code> with <code>--model</code>.</td>
                   </tr>
                   <tr>
                     <td>Pi</td>
                     <td>RPC get_available_models</td>
                     <td>Configured providers, per-model thinking maps. Cached and partial with extensions disabled.</td>
+                    <td>Yes: <code>--session</code> with <code>--provider</code>, <code>--model</code> and <code>--thinking</code>.</td>
                   </tr>
                   <tr>
                     <td>ACP</td>
                     <td>Session config options</td>
                     <td>Reports requires-session; prelaunch discovery never creates a hidden session.</td>
+                    <td>No: a selection needs a session.</td>
                   </tr>
                 </tbody>
               </table>
@@ -2168,10 +2179,35 @@ if (result.status === 'available') {
               workspace, validates the selection, and asks the adapter to translate it into private native options.
               Stale or invalid selections return <code>AGENT_LAUNCH_REFUSED</code> with refusal code
               <code>INVALID_MODEL_SELECTION</code>; failed discovery uses <code>MODEL_DISCOVERY_UNAVAILABLE</code>.
-              <code>modelSelection</code> and <code>agentOptions</code> are mutually exclusive. Selections apply only to
-              new sessions; resume keeps its existing continuation semantics. The lower-level
+              <code>modelSelection</code> and <code>agentOptions</code> are mutually exclusive. The lower-level
               <code>createSession</code>/<code>prepareSession</code> APIs retain their native-default account behavior,
               so hosts using them must name the account explicitly when previewing a managed profile's catalog.
+            </p>
+            <h3>Resume at the session's own selection</h3>
+            <p>
+              A resume starts at a model selection when the host passes one: keep the selection a session was launched
+              with beside its continuation and profile, and hand all three back.
+            </p>
+            <pre><code>const saved = { continuation: started.info.continuation, profileId: started.info.profileId, modelSelection };
+const resumed = await runtime.resume({
+  continuation: saved.continuation,
+  profile: saved.profileId,
+  modelSelection: saved.modelSelection,
+});
+// Omit modelSelection to continue at the native session's own settings.
+</code></pre>
+            <p>
+              The runtime treats it as it treats a launch's: it discovers again in the account the resume names
+              (<code>profile</code>; a resume never consults the default set) and in the resumed workspace, validates
+              the selection, and asks the adapter to translate it. The translation is laid over the private options the
+              continuation restores, so the session keeps its account root and implementation and starts at the chosen
+              model. The refusals are the launch's: <code>INVALID_MODEL_SELECTION</code> for a stale or invalid choice,
+              <code>MODEL_DISCOVERY_UNAVAILABLE</code> for a failed discovery. A resume carries a selection only where the
+              agent's native resume takes the options it translates to; <code>modelProviders()</code> marks those with
+              <code>resumeSelection: true</code>. Elsewhere, a resume that carries one is refused with
+              <code>INVALID_MODEL_SELECTION</code> before discovery and before anything starts, and never resumed
+              without it. The lower-level <code>createSession</code>/<code>prepareSession</code> with <code>resume</code>
+              follow the same rule, and there too a selection beside <code>agentOptions</code> is refused.
             </p>
             <p>
               <code>AgentModelService</code>, catalog/selection schemas, and validation are exported from Core. Each
