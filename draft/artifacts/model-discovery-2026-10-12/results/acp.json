@@ -1,0 +1,105 @@
+{
+  "probe": "acp",
+  "observedAt": "2026-10-12T18:12:14.867Z",
+  "method": "ACP initialize + session/new, no session/prompt",
+  "server": "Kimi 2.0.2, temporary home and synthetic configured model",
+  "protocolVersion": 1,
+  "initializeKeys": [
+    "protocolVersion",
+    "agentCapabilities",
+    "authMethods",
+    "agentInfo"
+  ],
+  "agentCapabilities": {
+    "loadSession": true,
+    "promptCapabilities": {
+      "image": true,
+      "audio": false,
+      "embeddedContext": true
+    },
+    "sessionCapabilities": {
+      "list": {},
+      "resume": {},
+      "close": {},
+      "delete": {},
+      "fork": {},
+      "additionalDirectories": {}
+    },
+    "mcpCapabilities": {
+      "http": true,
+      "sse": true
+    },
+    "auth": {
+      "logout": {}
+    }
+  },
+  "sessionKeys": [
+    "sessionId",
+    "configOptions",
+    "modes"
+  ],
+  "models": [],
+  "configOptions": [
+    {
+      "id": "model",
+      "name": "Model",
+      "category": "model",
+      "type": "select",
+      "currentValue": "__kimi_env_model__",
+      "options": [
+        {
+          "value": "__kimi_env_model__",
+          "name": "catalog-probe"
+        }
+      ]
+    },
+    {
+      "id": "thinking",
+      "name": "Thinking",
+      "category": "thought_level",
+      "type": "select",
+      "currentValue": "on",
+      "options": [
+        {
+          "value": "off",
+          "name": "Thinking Off"
+        },
+        {
+          "value": "on",
+          "name": "Thinking On"
+        }
+      ]
+    },
+    {
+      "id": "mode",
+      "name": "Mode",
+      "category": "mode",
+      "type": "select",
+      "currentValue": "default",
+      "options": [
+        {
+          "value": "default",
+          "name": "Default",
+          "description": "Manual approvals; tools execute normally."
+        },
+        {
+          "value": "plan",
+          "name": "Plan",
+          "description": "Read-only planning; no tool execution."
+        },
+        {
+          "value": "auto",
+          "name": "Auto",
+          "description": "Auto-approve safe operations."
+        },
+        {
+          "value": "yolo",
+          "name": "YOLO",
+          "description": "Auto-approve everything."
+        }
+      ]
+    }
+  ],
+  "diagnostics": "",
+  "durationMs": 901
+}

@@ -32,7 +32,7 @@ export interface ClaudeAgentOptions {
 
 export type CodexAgentOptions = Pick<
   CreateCodexTuiSessionOptions,
-  'model' | 'sandbox' | 'approvalPolicy' | 'onApproval'
+  'model' | 'effort' | 'sandbox' | 'approvalPolicy' | 'onApproval'
 >;
 
 export type AcpAgentOptions = Omit<CreateAcpSessionOptions, 'cwd' | 'resume' | 'connector'> & {
@@ -52,7 +52,10 @@ export type OpenCodeAgentOptions = Pick<
   CreateOpenCodeTuiSessionOptions,
   'agent' | 'model' | 'permission' | 'contextWindowCapacityTokens' | 'promptConfirmationTimeoutMs'
 >;
-export type HermesAgentOptions = Pick<CreateHermesTuiSessionOptions, 'yolo' | 'promptConfirmationTimeoutMs'>;
+export type HermesAgentOptions = Pick<
+  CreateHermesTuiSessionOptions,
+  'model' | 'provider' | 'effort' | 'yolo' | 'promptConfirmationTimeoutMs'
+>;
 export type AntigravityAgentOptions = Pick<
   CreateAntigravityTuiSessionOptions,
   | 'model'

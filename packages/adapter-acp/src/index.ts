@@ -12,3 +12,4 @@
 export * from './normalization/index.js';
 export * from './transport/connection.js';
 export * from './driver.js';
+export * from './services/models.js';

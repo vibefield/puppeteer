@@ -44,6 +44,8 @@ export interface CreateCodexSessionOptions {
   executable?: string | undefined;
   /** Model id applied when starting a fresh thread. */
   model?: string | undefined;
+  /** Per-thread reasoning effort; omission inherits the native configuration. */
+  effort?: string | undefined;
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
   approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
   /** Resume an existing thread by id (`thread/resume`) instead of starting fresh. */
@@ -186,6 +188,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
       : await client.request('thread/start', {
           cwd: options.cwd,
           model: options.model,
+          ...(options.effort ? { config: { model_reasoning_effort: options.effort } } : {}),
           sandbox: options.sandbox ?? 'workspace-write',
           approvalPolicy: options.approvalPolicy ?? 'on-request',
         });
@@ -207,6 +210,7 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
         options.resume ? 'thread/resume' : 'thread/start',
         {
           ...(options.model ? { model: options.model } : {}),
+          ...(options.effort ? { effort: options.effort } : {}),
           approvalPolicy: options.approvalPolicy ?? 'on-request',
           sandboxPolicy: options.sandbox ?? 'workspace-write',
         },

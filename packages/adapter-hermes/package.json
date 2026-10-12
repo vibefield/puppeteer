@@ -42,7 +42,8 @@
   },
   "dependencies": {
     "@vibecook/puppeteer-core": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@vibecook/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
     "@vibecook/puppeteer-surface": "workspace:*",

@@ -1,4 +1,8 @@
 import type {
+  AgentModelProvider,
+  AgentModelService,
+  AgentModelSelection,
+  AgentModelDiscoveryResult,
   AccountUsageFetchResult,
   AccountUsageProvider,
   AccountUsageService,
@@ -154,6 +158,8 @@ export interface AgentProvider {
   readonly distribution?: DistributionService;
   /** Adapter-owned account-profile binding, login, and identity verification. */
   readonly profiles?: ProfileService;
+  /** Native model picker metadata, independent of a run. */
+  readonly models?: AgentModelService;
   /** Adapter-owned inventory of the agent's plugins, marketplaces, MCP servers and skills per profile. */
   readonly extensions?: ExtensionService;
   /** Adapter-owned CLI grammar, transport topology, and continuation semantics. */
@@ -209,6 +215,8 @@ export interface CreateAgentSessionOptions {
   workspace?: AgentWorkspaceRequest | undefined;
   /** Opaque to the runtime; interpreted only by the selected provider. */
   agentOptions?: unknown;
+  /** Validated public model choice. Omit to inherit native settings; mutually exclusive with agentOptions. */
+  modelSelection?: AgentModelSelection | undefined;
   /** Registered profile id; the runtime resolves it and hands the provider the profile. */
   profile?: string | undefined;
   /**
@@ -225,6 +233,16 @@ export interface CreateAgentSessionOptions {
 
 /** Consumer-facing spawn request. Native resume identity is accepted only through resume(). */
 export type SpawnAgentOptions = Omit<CreateAgentSessionOptions, 'resume'>;
+
+export interface DiscoverAgentModelsOptions {
+  agent: string;
+  cwd?: string | undefined;
+  /** Same account choice as spawn, including its default profile set. Use profileSet: 'native' for the native default. */
+  profile?: string | undefined;
+  profileSet?: string | undefined;
+  signal?: AbortSignal | undefined;
+  timeoutMs?: number | undefined;
+}
 
 /** Consumer-facing resume request: no provider argv, environment, or transport knobs. */
 export interface ResumeAgentOptions {
@@ -793,6 +811,10 @@ export interface AgentRuntime {
   accountUsage(providerId: string, profileId?: string): Promise<AccountUsageFetchResult>;
   /** Enumerate adapter-declared launch capabilities for terminal hosts and product discovery. */
   launchProviders(): readonly AgentLaunchProvider[];
+  /** Model metadata capabilities; no processes are started by this enumeration. */
+  modelProviders(): readonly AgentModelProvider[];
+  /** A fresh native read, scoped like spawn. Native caches may still be stale; see catalog.source. */
+  discoverModels(options: DiscoverAgentModelsOptions): Promise<AgentModelDiscoveryResult>;
   /** Warm native caches; unsupported providers are a no-op. Omit the account for the
    * managed-spawn default, or pass null for the native invocation environment. */
   prewarm(providerId: string, profileId?: string | null): Promise<void>;

@@ -1,0 +1,85 @@
+{
+  "provider": "claude",
+  "observedAt": "2026-10-12T18:07:17.797Z",
+  "method": "stream-json initialize",
+  "models": [
+    {
+      "value": "default",
+      "displayName": "Default (recommended)",
+      "resolvedModel": "claude-opus-5-5",
+      "description": "Use the default model (currently Opus 5.5) · $4/$20 per Mtok",
+      "supportedEffortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "supportsEffort": true,
+      "supportsAdaptiveThinking": true
+    },
+    {
+      "value": "opus",
+      "displayName": "Opus",
+      "resolvedModel": "claude-opus-5-5",
+      "description": "Opus 5.5 · Best for everyday, complex tasks · $4/$20 per Mtok",
+      "supportedEffortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "supportsEffort": true,
+      "supportsAdaptiveThinking": true
+    },
+    {
+      "value": "fable",
+      "displayName": "Fable",
+      "resolvedModel": "claude-fable-5-1",
+      "description": "Fable 5.1 · Most capable for your hardest and longest-running tasks",
+      "supportedEffortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "supportsEffort": true,
+      "supportsAdaptiveThinking": true
+    },
+    {
+      "value": "sonnet",
+      "displayName": "Sonnet",
+      "resolvedModel": "claude-sonnet-5-5",
+      "description": "Sonnet 5.5 · Efficient for routine tasks · $2/$10 per Mtok",
+      "supportedEffortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "supportsEffort": true,
+      "supportsAdaptiveThinking": true
+    },
+    {
+      "value": "haiku",
+      "displayName": "Haiku",
+      "resolvedModel": "claude-haiku-5-5",
+      "description": "Haiku 5.5 · Fastest for quick answers · $0.10/$0.50 per Mtok ($0.50/$2.50 for prompts over 100k)",
+      "supportedEffortLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "supportsEffort": true,
+      "supportsAdaptiveThinking": true
+    }
+  ],
+  "nativeVersion": "2.1.296",
+  "notifications": [],
+  "durationMs": 2469
+}

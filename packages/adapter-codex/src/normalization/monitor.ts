@@ -110,6 +110,7 @@ export interface CodexMonitorEvidenceOptions {
 
 export interface CodexConfiguredIntent {
   model?: string;
+  effort?: string;
   approvalPolicy?: unknown;
   sandboxPolicy?: unknown;
 }
@@ -299,6 +300,9 @@ export class CodexMonitorEvidence {
           intent: 'configured',
         }),
       );
+    }
+    if (configured.effort && root) {
+      updates.push(upsert('effort', 'configured', { kind: 'effort', value: configured.effort, intent: 'configured' }));
     }
     const modelId = str(response?.model);
     if (threadId) {

@@ -66,6 +66,7 @@ export interface CreateCodexObserverOptions {
     | {
         cwd: string;
         model?: string | undefined;
+        effort?: string | undefined;
         sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
         approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
         /**
@@ -435,6 +436,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     const startResult = await client.request('thread/start', {
       cwd: opts.start.cwd,
       model: opts.start.model,
+      ...(opts.start.effort === undefined ? {} : { config: { model_reasoning_effort: opts.start.effort } }),
       ...(sandbox ? { sandbox } : {}),
       ...(approvalPolicy ? { approvalPolicy } : {}),
     });
@@ -460,6 +462,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       opts.start.model,
       {
         ...(opts.start.model ? { model: opts.start.model } : {}),
+        ...(opts.start.effort ? { effort: opts.start.effort } : {}),
         ...(approvalPolicy ? { approvalPolicy } : {}),
         ...(sandbox ? { sandboxPolicy: sandbox } : {}),
       },

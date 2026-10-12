@@ -1,10 +1,18 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { resolve as resolvePath } from 'node:path';
 import {
   AccountUsageFetchResultSchema,
   AccountUsageProviderSchema,
   AgentContinuationSchema,
   AgentLaunchProviderSchema,
+  AgentLaunchRefusedError,
+  AgentModelProviderSchema,
+  AgentModelDiscoveryResultSchema,
+  AgentModelSelectionSchema,
+  validateModelSelection,
+  type AgentModelDiscoveryContext,
+  type AgentModelDiscoveryResult,
   AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
@@ -648,6 +656,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const inflightCreations = new Map<string, InflightCreation>();
   const pendingCreations = new Set<Promise<CreateAgentSessionResult | PrepareAgentSessionResult>>();
   const prewarmAbort = new AbortController();
+  const modelDiscoveryAbort = new AbortController();
+  const pendingModelDiscoveries = new Set<Promise<AgentModelDiscoveryResult>>();
   const pendingPrewarms = new Map<string, Promise<void>>();
   const warmedAt = new Map<string, number>();
   const claims = new Map<string, Map<symbol, 'direct' | 'exclusive'>>();
@@ -857,6 +867,77 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       report(error);
       return undefined;
     }
+  }
+
+  async function readModelCatalog(
+    provider: AgentProvider,
+    context: AgentModelDiscoveryContext,
+  ): Promise<AgentModelDiscoveryResult> {
+    const id = provider.descriptor.id;
+    if (!provider.models)
+      return {
+        status: 'unsupported',
+        provider: id,
+        code: 'unsupported',
+        message: 'This provider does not expose model discovery.',
+      };
+    const signal = AbortSignal.any([modelDiscoveryAbort.signal, ...(context.signal ? [context.signal] : [])]);
+    if (signal.aborted)
+      return { status: 'cancelled', provider: id, code: 'cancelled', message: 'Model discovery was cancelled.' };
+    const operation = Promise.resolve().then(async (): Promise<AgentModelDiscoveryResult> => {
+      try {
+        const result = AgentModelDiscoveryResultSchema.parse(await provider.models!.discover({ ...context, signal }));
+        if (signal.aborted)
+          return { status: 'cancelled', provider: id, code: 'cancelled', message: 'Model discovery was cancelled.' };
+        if (result.status === 'available') {
+          if (
+            result.catalog.provider !== id ||
+            result.catalog.cwd !== context.cwd ||
+            result.catalog.profileId !== context.profile?.id
+          )
+            throw new Error('model discovery context mismatch');
+        } else if (result.provider !== id) throw new Error('foreign model discovery result');
+        return result;
+      } catch {
+        return {
+          status: signal.aborted ? 'cancelled' : 'error',
+          provider: id,
+          code: signal.aborted ? 'cancelled' : 'invalid-response',
+          message: signal.aborted
+            ? 'Model discovery was cancelled.'
+            : 'The provider did not return a valid model catalog.',
+        };
+      }
+    });
+    pendingModelDiscoveries.add(operation);
+    try {
+      return await operation;
+    } finally {
+      pendingModelDiscoveries.delete(operation);
+    }
+  }
+
+  async function selectedModelOptions(
+    provider: AgentProvider,
+    request: CreateAgentSessionOptions,
+    cwd: string,
+    profile: AgentProfile | undefined,
+  ): Promise<unknown> {
+    if (request.modelSelection === undefined) return request.agentOptions;
+    if (request.resume !== undefined)
+      throw new AgentLaunchRefusedError('INVALID_MODEL_SELECTION', 'Model selections apply to new sessions only.');
+    if (request.agentOptions !== undefined)
+      throw new AgentLaunchRefusedError(
+        'INVALID_MODEL_SELECTION',
+        'Choose either a model selection or provider-native launch options.',
+      );
+    const parsed = AgentModelSelectionSchema.safeParse(request.modelSelection);
+    if (!parsed.success)
+      throw new AgentLaunchRefusedError('INVALID_MODEL_SELECTION', 'The model selection is malformed.');
+    const selection = parsed.data;
+    const result = await readModelCatalog(provider, { cwd, ...(profile ? { profile } : {}) });
+    if (result.status !== 'available') throw new AgentLaunchRefusedError('MODEL_DISCOVERY_UNAVAILABLE', result.message);
+    return provider.models!.toAgentOptions(validateModelSelection(result.catalog, selection), result.catalog);
   }
 
   /**
@@ -1412,6 +1493,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.resume === undefined ? {} : { resume: request.resume }),
       ...(request.title === undefined ? {} : { title: request.title }),
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+      ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
       ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
@@ -2529,6 +2611,66 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       return launchProviders.map(cloneLaunchProvider);
     },
 
+    modelProviders() {
+      return [...providers.values()].flatMap((provider) => {
+        if (!provider.models) return [];
+        const descriptor = AgentModelProviderSchema.parse(provider.models.provider);
+        if (descriptor.id !== provider.descriptor.id) throw new Error('Model service provider mismatch.');
+        return [descriptor];
+      });
+    },
+
+    async discoverModels(request) {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const provider = providers.get(request.agent);
+      if (!provider)
+        return {
+          status: 'unsupported',
+          provider: request.agent,
+          code: 'unsupported',
+          message: 'Unknown agent provider.',
+        };
+      if (!provider.models)
+        return {
+          status: 'unsupported',
+          provider: request.agent,
+          code: 'unsupported',
+          message: 'This provider does not expose model discovery.',
+        };
+      if (request.signal?.aborted)
+        return {
+          status: 'cancelled',
+          provider: request.agent,
+          code: 'cancelled',
+          message: 'Model discovery was cancelled.',
+        };
+      if (
+        request.timeoutMs !== undefined &&
+        (!Number.isInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 120_000)
+      )
+        return {
+          status: 'error',
+          provider: request.agent,
+          code: 'invalid-context',
+          message: 'Model discovery timeout must be between 1 and 120000 milliseconds.',
+        };
+      const choiceRequest: CreateAgentSessionOptions = {
+        agent: request.agent,
+        profile: request.profile,
+        profileSet: request.profileSet,
+      };
+      if (request.profile === undefined && request.profileSet === undefined) defaultedSpawns.add(choiceRequest);
+      const choice = await resolveProfileChoice(choiceRequest);
+      if ('error' in choice)
+        return { status: 'error', provider: request.agent, code: 'invalid-context', message: choice.error };
+      return readModelCatalog(provider, {
+        cwd: resolvePath(request.cwd ?? options.defaultCwd),
+        ...(choice.profile ? { profile: choice.profile } : {}),
+        signal: request.signal,
+        timeoutMs: request.timeoutMs,
+      });
+    },
+
     async prewarm(providerId, profileId) {
       if (disposed) throw new Error('agent runtime is disposed');
       const provider = providers.get(providerId);
@@ -2952,6 +3094,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         };
         let session: AgentAdapterBinding;
         try {
+          providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
           session = await provider.createSession(providerOptions);
         } catch (error) {
@@ -3095,6 +3238,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         };
         let prepared: PreparedProviderSession;
         try {
+          providerOptions.agentOptions = await selectedModelOptions(provider, request, lease.workspace.root, profile);
           captureContinuationState(provider, providerOptions, run);
           prepared = await provider.prepareSession(providerOptions);
         } catch (error) {
@@ -3734,6 +3878,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       disposed = true;
       const detach = disposeOptions?.detach === true;
       prewarmAbort.abort();
+      modelDiscoveryAbort.abort();
+      await Promise.allSettled([...pendingModelDiscoveries]);
       await Promise.allSettled([...pendingPrewarms.values()]);
       await Promise.allSettled([...pendingCreations]);
       const pendingAdoptions = [...preparations.values()]

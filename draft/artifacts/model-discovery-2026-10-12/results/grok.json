@@ -1,0 +1,9 @@
+{
+  "provider": "grok",
+  "observedAt": "2026-10-12T18:07:41.128Z",
+  "method": "models command",
+  "code": 0,
+  "output": "You are logged in with grok.com.\n\nDefault model: grok-4.7\n\nAvailable models:\n  * grok-4.7 (default)\n  - grok-4.7-build-fast\n  - grok-4.6\n  - grok-4.5\n",
+  "diagnostics": "",
+  "durationMs": 393
+}

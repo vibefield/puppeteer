@@ -1,0 +1,167 @@
+{
+  "probe": "hermes_rpc",
+  "observedAt": "2026-10-12T18:13:24.992Z",
+  "method": "native stdio gateway model.options",
+  "context": "Temporary HERMES_HOME; no session created",
+  "responseKeys": [
+    "providers",
+    "model",
+    "provider"
+  ],
+  "models": [
+    {
+      "id": "default",
+      "provider": "moa",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-5.4",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-5-mini",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-5.3-codex",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-5.2-codex",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-4.1",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-4o",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gpt-4o-mini",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": true,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "claude-sonnet-4.6",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "claude-sonnet-4",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "claude-sonnet-4.5",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "claude-haiku-4.5",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gemini-3.1-pro-preview",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gemini-3-pro-preview",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gemini-3-flash-preview",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "provider": "copilot",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    },
+    {
+      "id": "copilot-acp",
+      "provider": "copilot-acp",
+      "capabilities": {
+        "fast": false,
+        "reasoning": true
+      }
+    }
+  ],
+  "diagnostics": "",
+  "durationMs": 2356
+}

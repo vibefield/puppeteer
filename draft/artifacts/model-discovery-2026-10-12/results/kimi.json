@@ -1,0 +1,64 @@
+{
+  "provider": "kimi",
+  "observedAt": "2026-10-12T18:07:23.334Z",
+  "method": "provider list --json",
+  "keys": [
+    "providers",
+    "models"
+  ],
+  "models": [
+    {
+      "id": "kimi-code/kimi-for-coding",
+      "model": "kimi-for-coding",
+      "provider": "managed:kimi-code",
+      "displayName": "K2.7 Coding",
+      "capabilities": [
+        "thinking",
+        "always_thinking",
+        "image_in",
+        "video_in",
+        "tool_use"
+      ]
+    },
+    {
+      "id": "kimi-code/kimi-for-coding-highspeed",
+      "model": "kimi-for-coding-highspeed",
+      "provider": "managed:kimi-code",
+      "displayName": "K2.7 Coding Highspeed",
+      "capabilities": [
+        "thinking",
+        "always_thinking",
+        "image_in",
+        "video_in",
+        "tool_use"
+      ]
+    },
+    {
+      "id": "kimi-code/k3",
+      "model": "k3",
+      "provider": "managed:kimi-code",
+      "displayName": "K3",
+      "capabilities": [
+        "thinking",
+        "always_thinking",
+        "image_in",
+        "video_in",
+        "tool_use"
+      ]
+    },
+    {
+      "id": "kimi-code/k3-256k",
+      "model": "k3-256k",
+      "provider": "managed:kimi-code",
+      "displayName": "K3-256k",
+      "capabilities": [
+        "thinking",
+        "always_thinking",
+        "image_in",
+        "tool_use"
+      ]
+    }
+  ],
+  "providerCount": 1,
+  "durationMs": 902
+}

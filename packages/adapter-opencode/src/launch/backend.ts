@@ -5,8 +5,12 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { OPENCODE_LAUNCH_FLAGS, resolveOpenCodeExecutable } from '../detection.js';
 
 export interface StartOpenCodeBackendOptions {
+  cwd?: string | undefined;
+  signal?: AbortSignal | undefined;
   executable?: string | undefined;
   env?: Record<string, string> | undefined;
+  /** False when the caller has already constructed a complete, profile-bound environment. */
+  inheritEnvironment?: boolean | undefined;
   hostname?: string | undefined;
   startupTimeoutMs?: number | undefined;
   shutdownTimeoutMs?: number | undefined;
@@ -42,7 +46,7 @@ function readinessOrigin(line: string, requestedHostname: string): string | unde
 }
 
 async function terminateChild(child: ChildProcess, timeoutMs: number): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
   try {
     child.kill('SIGTERM');
@@ -70,6 +74,7 @@ async function terminateChild(child: ChildProcess, timeoutMs: number): Promise<v
  * process, the child environment, and the caller-owned TUI launch recipe.
  */
 export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions = {}): Promise<OpenCodeBackend> {
+  options.signal?.throwIfAborted();
   const executable = resolveOpenCodeExecutable(options.executable);
   const hostname = options.hostname ?? '127.0.0.1';
   if (!LOOPBACK_HOSTS.has(hostname)) {
@@ -92,9 +97,10 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
       OPENCODE_LAUNCH_FLAGS.pure,
     ],
     {
+      cwd: options.cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
-        ...process.env,
+        ...(options.inheritEnvironment === false ? {} : process.env),
         ...options.env,
         ...(nodeScript && process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
         OPENCODE_SERVER_USERNAME: username,
@@ -118,6 +124,7 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         child.stdout?.resume();
         child.off('error', onError);
         child.off('exit', onExit);
+        options.signal?.removeEventListener('abort', onAbort);
         if (error) reject(error);
         else resolve(readyOrigin!);
       };
@@ -138,6 +145,10 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
         }
       };
       const onError = (error: Error): void => finish(error);
+      const onAbort = (): void =>
+        finish(
+          options.signal?.reason instanceof Error ? options.signal.reason : new Error('OpenCode startup cancelled'),
+        );
       const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
         const detail = code === null ? `signal ${signal ?? 'unknown'}` : `exit ${code}`;
         finish(new Error(`OpenCode backend stopped before readiness (${detail})`));
@@ -149,6 +160,11 @@ export async function startOpenCodeBackend(options: StartOpenCodeBackendOptions 
       child.stderr?.resume();
       child.once('error', onError);
       child.once('exit', onExit);
+      options.signal?.addEventListener('abort', onAbort, { once: true });
+      if (options.signal?.aborted) {
+        onAbort();
+        return;
+      }
       timeout = setTimeout(
         () => finish(new Error(`OpenCode backend did not become ready within ${startupTimeoutMs}ms`)),
         startupTimeoutMs,

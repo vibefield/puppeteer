@@ -9,3 +9,4 @@ export * from './services/distribution.js';
 export * from './services/extensions.js';
 export * from './services/profiles.js';
 export * from './transport/managed-platform.js';
+export * from './services/models.js';

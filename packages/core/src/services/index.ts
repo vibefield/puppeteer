@@ -8,3 +8,4 @@ export * from './distribution.js';
 export * from './profiles.js';
 export * from './profile-plans.js';
 export * from './extensions.js';
+export * from './models.js';

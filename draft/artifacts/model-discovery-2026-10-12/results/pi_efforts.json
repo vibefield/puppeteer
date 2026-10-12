@@ -1,0 +1,49 @@
+{
+  "probe": "pi_efforts",
+  "observedAt": "2026-10-12T18:14:14.405Z",
+  "method": "set_model + get_available_thinking_levels, temporary profile only",
+  "context": "Metadata from the real catalog; dummy authentication, offline, no inference",
+  "models": [
+    {
+      "id": "grok-4.3",
+      "provider": "xai",
+      "supportedThinkingLevels": [
+        "off",
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    {
+      "id": "grok-4.5",
+      "provider": "xai",
+      "supportedThinkingLevels": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    {
+      "id": "grok-4.6",
+      "provider": "xai",
+      "supportedThinkingLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "grok-4.7",
+      "provider": "xai",
+      "supportedThinkingLevels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    }
+  ],
+  "diagnostics": "",
+  "durationMs": 203
+}

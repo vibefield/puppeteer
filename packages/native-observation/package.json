@@ -2,7 +2,7 @@
   "name": "@vibecook/puppeteer-native-observation",
   "version": "0.1.8",
   "type": "module",
-  "description": "Bounded, append-safe native file observation primitives for Puppeteer agent adapters.",
+  "description": "Bounded native file observation and metadata subprocess primitives for Puppeteer agent adapters.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {

@@ -79,6 +79,7 @@ describe('Codex TUI preparation', () => {
       executable: '/opt/codex',
       host: terminalHost,
       model: 'gpt-test',
+      effort: 'high',
       sandbox: 'read-only',
       approvalPolicy: 'never',
       onApproval,
@@ -95,7 +96,12 @@ describe('Codex TUI preparation', () => {
     });
     expect(fakes.createObserver).toHaveBeenCalledWith(
       expect.objectContaining({
-        start: expect.objectContaining({ model: 'gpt-test', sandbox: 'read-only', approvalPolicy: 'never' }),
+        start: expect.objectContaining({
+          model: 'gpt-test',
+          effort: 'high',
+          sandbox: 'read-only',
+          approvalPolicy: 'never',
+        }),
         onApproval,
       }),
     );

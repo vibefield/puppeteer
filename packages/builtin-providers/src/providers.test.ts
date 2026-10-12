@@ -149,10 +149,20 @@ const adapters = vi.hoisted(() => {
 });
 
 vi.mock('@vibecook/puppeteer-adapter-acp', () => ({
+  createAcpModelService: () => ({
+    provider: { id: 'acp', label: 'Acp', discovery: 'session' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createAcpSession: adapters.createAcpSession,
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
+  createAntigravityModelService: () => ({
+    provider: { id: 'antigravity', label: 'Antigravity', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createAntigravityDistributionService: adapters.createAntigravityDistributionService,
   createAntigravityProfileService: adapters.createAntigravityProfileService,
   createAntigravityExtensionService: adapters.createAntigravityExtensionService,
@@ -165,6 +175,11 @@ vi.mock('@vibecook/puppeteer-adapter-antigravity', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
+  createClaudeModelService: () => ({
+    provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   // The adapter's own list, so the allow-list pin below reads what the adapter declares.
   CLAUDE_INVOCATION_ENVIRONMENT: (await importOriginal<typeof import('@vibecook/puppeteer-adapter-claude')>())
     .CLAUDE_INVOCATION_ENVIRONMENT,
@@ -184,6 +199,11 @@ vi.mock('@vibecook/puppeteer-adapter-claude', async (importOriginal) => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
+  createCodexModelService: () => ({
+    provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createCodexDistributionService: adapters.createCodexDistributionService,
   createCodexProfileService: adapters.createCodexProfileService,
   createCodexExtensionService: adapters.createCodexExtensionService,
@@ -198,6 +218,11 @@ vi.mock('@vibecook/puppeteer-adapter-codex', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
+  createCopilotModelService: () => ({
+    provider: { id: 'copilot', label: 'Copilot', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createCopilotDistributionService: adapters.createCopilotDistributionService,
   createCopilotProfileService: adapters.createCopilotProfileService,
   createCopilotTuiSession: adapters.createCopilotTuiSession,
@@ -208,6 +233,11 @@ vi.mock('@vibecook/puppeteer-adapter-copilot', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
+  createGrokModelService: () => ({
+    provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createGrokDistributionService: adapters.createGrokDistributionService,
   createGrokProfileService: adapters.createGrokProfileService,
   createGrokExtensionService: adapters.createGrokExtensionService,
@@ -220,6 +250,11 @@ vi.mock('@vibecook/puppeteer-adapter-grok', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
+  createKimiModelService: () => ({
+    provider: { id: 'kimi', label: 'Kimi', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createKimiDistributionService: adapters.createKimiDistributionService,
   createKimiProfileService: adapters.createKimiProfileService,
   createKimiExtensionService: adapters.createKimiExtensionService,
@@ -232,6 +267,11 @@ vi.mock('@vibecook/puppeteer-adapter-kimi', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
+  createOpenCodeModelService: () => ({
+    provider: { id: 'opencode', label: 'OpenCode', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createOpenCodeDistributionService: adapters.createOpenCodeDistributionService,
   createOpenCodeProfileService: adapters.createOpenCodeProfileService,
   createOpenCodeExtensionService: adapters.createOpenCodeExtensionService,
@@ -243,6 +283,11 @@ vi.mock('@vibecook/puppeteer-adapter-opencode', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
+  createHermesModelService: () => ({
+    provider: { id: 'hermes', label: 'Hermes', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createHermesDistributionService: adapters.createHermesDistributionService,
   createHermesProfileService: adapters.createHermesProfileService,
   createHermesExtensionService: adapters.createHermesExtensionService,
@@ -254,6 +299,11 @@ vi.mock('@vibecook/puppeteer-adapter-hermes', () => ({
 }));
 
 vi.mock('@vibecook/puppeteer-adapter-pi', () => ({
+  createPiModelService: () => ({
+    provider: { id: 'pi', label: 'Pi', discovery: 'prelaunch' },
+    discover: vi.fn(),
+    toAgentOptions: vi.fn(),
+  }),
   createPiDistributionService: adapters.createPiDistributionService,
   createPiProfileService: adapters.createPiProfileService,
   createPiExtensionService: adapters.createPiExtensionService,

@@ -151,6 +151,35 @@ describe('createCodexObserver attach resilience', () => {
 });
 
 describe('createCodexObserver controller-owned bootstrap', () => {
+  it('applies requested model and effort when creating the native thread, without changing profile defaults', async () => {
+    const t = controllable(0);
+    const obs = await createCodexObserver({
+      transport: t.transport,
+      start: { cwd: '/tmp/ws', model: 'chosen-model', effort: 'high' },
+    });
+    const projection = projectAgentEvents(obs);
+    try {
+      expect(t.calls().find((call) => call.method === 'thread/start')?.params).toMatchObject({
+        model: 'chosen-model',
+        config: { model_reasoning_effort: 'high' },
+      });
+      expect(t.calls().some((call) => call.method?.startsWith('config/'))).toBe(false);
+      expect(projection.monitorBatches.flatMap((batch) => batch.updates)).toContainEqual(
+        expect.objectContaining({ family: 'effort', value: { kind: 'effort', value: 'high', intent: 'configured' } }),
+      );
+    } finally {
+      projection.dispose();
+      await obs.dispose();
+    }
+    const defaults = controllable(0);
+    const inherited = await createCodexObserver({ transport: defaults.transport, start: { cwd: '/tmp/ws' } });
+    try {
+      expect(defaults.calls().find((call) => call.method === 'thread/start')?.params).not.toHaveProperty('config');
+    } finally {
+      await inherited.dispose();
+    }
+  });
+
   it('publishes the native-TUI observer rail as catalog-routed candidates', async () => {
     const t = controllable(0);
     const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });

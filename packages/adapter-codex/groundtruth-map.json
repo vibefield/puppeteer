@@ -19,6 +19,7 @@
     "item/started",
     "mcpServer/oauthLogin/completed",
     "mcpServer/startupStatus/updated",
+    "model/list",
     "model/rerouted",
     "remoteControl/status/changed",
     "skills/changed",
@@ -49,7 +50,6 @@
     "item/tool/call",
     "item/tool/requestUserInput",
     "mcpServer/elicitation/request",
-    "model/list",
     "plugin/installed",
     "plugin/read",
     "skills/config/write",
@@ -67,7 +67,7 @@
   },
   "totals": {
     "groundTruth": 244,
-    "semantic": 25,
-    "observedOrControlled": 27
+    "semantic": 26,
+    "observedOrControlled": 26
   }
 }

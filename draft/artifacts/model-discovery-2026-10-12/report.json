@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-12T18:15:42.865Z",
+  "platform": "darwin-arm64",
+  "repositoryCommit": "dce6adba8b1f4f5bf4797dfddc8df645729ba762",
+  "scope": "Native model/effort metadata discovery for nine builtin executables and one ACP implementation. No inference prompts were sent.",
+  "verdict": "All nine installed native agents have a working model discovery route. Generic ACP discovery is session-dependent and optional.",
+  "limitation": "This proves discovery on the installed versions and tested profiles, not successful inference for every model, end-to-end Puppeteer integration, or promotion of repository support baselines.",
+  "agents": [
+    {
+      "id": "claude",
+      "versionOutput": "2.1.296 (Claude Code)",
+      "verdict": "native-discovery-verified",
+      "route": "stream-json initialize",
+      "format": "structured",
+      "choiceCount": 5,
+      "effort": "per-model supportedEffortLevels",
+      "observedAt": "2026-10-12T18:07:17.797Z",
+      "evidence": "results/claude.json",
+      "repositorySupport": {
+        "status": "legacy-verified",
+        "currentVersion": "2.1.207",
+        "candidateVersion": "2.1.226"
+      },
+      "notes": [
+        "Five picker choices include both default and opus resolving to the same model: count choices, not distinct underlying models.",
+        "Native default alias is not an instruction to inherit a saved profile setting. Inherit by omitting the override.",
+        "Catalog reflects native settings/policy. Returned choices do not prove inference entitlement."
+      ]
+    },
+    {
+      "id": "codex",
+      "versionOutput": "codex-cli 0.162.1",
+      "verdict": "native-discovery-verified",
+      "route": "app-server model/list",
+      "format": "structured",
+      "choiceCount": 7,
+      "effort": "per-model supportedReasoningEfforts and defaultReasoningEffort",
+      "observedAt": "2026-10-12T18:07:38.255Z",
+      "evidence": "results/codex.json",
+      "repositorySupport": {
+        "status": "legacy-verified",
+        "currentVersion": "0.147.0",
+        "candidateVersion": "0.150.0"
+      },
+      "notes": [
+        "All pages consumed; no thread/start or turn/start sent. The Puppeteer typed launch options currently lack effort."
+      ]
+    },
+    {
+      "id": "copilot",
+      "versionOutput": "GitHub Copilot CLI 1.0.88.\nRun 'copilot update' to check for updates.",
+      "verdict": "native-discovery-verified",
+      "route": "SDK models.list over Content-Length JSON-RPC",
+      "format": "structured",
+      "choiceCount": 17,
+      "effort": "per-model supportedReasoningEfforts where present",
+      "observedAt": "2026-10-12T18:07:38.263Z",
+      "evidence": "results/copilot.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "1.0.80"
+      },
+      "notes": [
+        "Used the existing native login. A sandboxed run incorrectly appeared unauthenticated; normal native access returned 17 choices.",
+        "auto and models with no effort metadata must not acquire fabricated effort choices."
+      ]
+    },
+    {
+      "id": "grok",
+      "versionOutput": "grok 1.0.50 (c58f321264ba) [stable]",
+      "verdict": "native-discovery-verified",
+      "route": "grok models",
+      "format": "text",
+      "choiceCount": 4,
+      "effort": "not enumerated by this command",
+      "observedAt": "2026-10-12T18:07:41.128Z",
+      "evidence": "results/grok.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "1.0.0"
+      },
+      "notes": [
+        "A sandboxed run returned a stale two-model fallback with a settings-fetch warning; normal access returned four models and no warning.",
+        "Explicit models command output is parsed; no interactive terminal screen scraping.",
+        "ACP initialize succeeded but returned no top-level model catalog. No Grok ACP session was created."
+      ]
+    },
+    {
+      "id": "kimi",
+      "versionOutput": "2.0.2",
+      "verdict": "native-discovery-verified",
+      "route": "kimi provider list --json",
+      "format": "structured",
+      "choiceCount": 4,
+      "effort": "thinking capability; no per-model effort enum in this response",
+      "observedAt": "2026-10-12T18:07:23.334Z",
+      "evidence": "results/kimi.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "0.34.0"
+      },
+      "notes": [
+        "This is the configured-model catalog, not an exhaustive account entitlement list.",
+        "Installed 2.0.2 is much newer than the repository support candidate 0.34.0; this does not validate the older release."
+      ]
+    },
+    {
+      "id": "opencode",
+      "versionOutput": "1.18.34",
+      "verdict": "native-discovery-verified",
+      "route": "serve --pure, GET /provider, filter connected",
+      "format": "structured",
+      "choiceCount": 10,
+      "effort": "per-model native variant IDs",
+      "observedAt": "2026-10-12T18:12:14.867Z",
+      "evidence": "results/opencode.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "1.18.16"
+      },
+      "notes": [
+        "Only connected providers belong in an immediately selectable picker.",
+        "The probe disables external plugins with --pure; plugin-provided models were not exercised.",
+        "Provider options/authentication documents were not persisted."
+      ]
+    },
+    {
+      "id": "hermes",
+      "versionOutput": "Hermes Agent v0.21.4 (2026.9.21) · upstream c0d72947\nInstall directory: <home>/.hermes/hermes-agent\nInstall method: git\nPython: 3.11.16\nOpenAI SDK: 2.24.0\nUpdate available: 11079 commits behind — run 'hermes update'",
+      "verdict": "native-discovery-verified",
+      "route": "native inventory helper; model.options RPC also verified",
+      "format": "structured",
+      "choiceCount": 19,
+      "effort": "capability hints only; helper deliberately omits supported_efforts",
+      "observedAt": "2026-10-12T18:12:14.865Z",
+      "evidence": "results/hermes.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "0.20.0"
+      },
+      "notes": [
+        "The real profile helper returned 19 choices across moa, copilot, and copilot-acp. Native stdio model.options returned 19 in a temporary HERMES_HOME.",
+        "Native inventory uses cache/fallback data and credential-presence hints; its authenticated flag is not proof of a successful inference request.",
+        "The helper defaults reasoning capability to true when metadata is missing; this is not an authoritative effort enum.",
+        "The Puppeteer typed launch options currently expose neither model nor effort."
+      ]
+    },
+    {
+      "id": "antigravity",
+      "versionOutput": "1.3.3",
+      "verdict": "native-discovery-verified",
+      "route": "agy models",
+      "format": "tab-separated text",
+      "choiceCount": 18,
+      "effort": "named variants; separate per-model effort enum not exposed",
+      "observedAt": "2026-10-12T18:07:41.126Z",
+      "evidence": "results/antigravity.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "1.1.20"
+      },
+      "notes": [
+        "Treat native model IDs as opaque; do not derive independent effort compatibility by splitting the ID.",
+        "agy --print /model --output-format json returned the CURRENT selection, not the model list. It reported num_turns=0 and total_tokens=0."
+      ]
+    },
+    {
+      "id": "pi",
+      "versionOutput": "0.87.1",
+      "verdict": "native-discovery-verified",
+      "route": "RPC get_available_models",
+      "format": "structured",
+      "choiceCount": 4,
+      "effort": "thinkingLevelMap; per-model get_available_thinking_levels verified",
+      "observedAt": "2026-10-12T18:14:10.300Z",
+      "evidence": "results/pi.json",
+      "repositorySupport": {
+        "status": "baseline-pending",
+        "candidateVersion": "0.84.3"
+      },
+      "notes": [
+        "Used --offline, disabled extensions/skills/tools/context loading, and queried native configured availability.",
+        "Per-model thinking queries used a temporary profile containing the captured metadata including thinkingLevelMap and dummy auth; no inference.",
+        "The real saved default model was not changed."
+      ]
+    }
+  ],
+  "acp": {
+    "verdict": "conditional",
+    "server": "Kimi 2.0.2, temporary home and synthetic configured model",
+    "route": "initialize then session/new; no session/prompt",
+    "evidence": "results/acp.json",
+    "observedModelChoices": 1,
+    "thinkingChoices": [
+      "off",
+      "on"
+    ],
+    "notes": [
+      "The observed server returns configOptions only after creating a session.",
+      "The configured probe model was synthetic and isolated, so this tests protocol behavior, not account access.",
+      "ACP permits servers to omit configOptions; do not promise universal prelaunch discovery."
+    ]
+  },
+  "importantBoundaries": {
+    "opencode": {
+      "catalogProviderCount": 226,
+      "allCatalogModelCount": 8373,
+      "connectedProviders": [
+        "opencode"
+      ],
+      "selectableCatalogCount": 10
+    },
+    "piThinkingByModel": [
+      {
+        "id": "grok-4.3",
+        "provider": "xai",
+        "supportedThinkingLevels": [
+          "off",
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      {
+        "id": "grok-4.5",
+        "provider": "xai",
+        "supportedThinkingLevels": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      {
+        "id": "grok-4.6",
+        "provider": "xai",
+        "supportedThinkingLevels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ]
+      },
+      {
+        "id": "grok-4.7",
+        "provider": "xai",
+        "supportedThinkingLevels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ]
+      }
+    ],
+    "antigravityCurrentSelection": {
+      "id": "gemini-3.8-flash-high",
+      "label": "Gemini 3.8 Flash (High)",
+      "effort": "high",
+      "is_default": false
+    }
+  },
+  "recommendedQ1Solution": [
+    "Add an asynchronous, adapter-owned discovery service scoped to executable/version, profile, cwd, and effective configuration.",
+    "Use native structured catalogs first. For Grok and Antigravity, use their explicit model-list utility with version-tested parsers.",
+    "Return choices with opaque native IDs, display labels, source/freshness, availability status, completeness, and optional per-model controls.",
+    "Preserve per-model effort/variant domains. Missing metadata must not become a fabricated universal effort list.",
+    "Distinguish connected/configured choices from an unconfigured catalog and from cached suggestions.",
+    "Represent inherit-agent-settings by omission, separately from a native model ID named default.",
+    "For ACP, advertise requiresSession/unsupported explicitly; obtain configOptions during a prepared session where the backend supports it.",
+    "Translate and validate public launch selections inside the adapter/runtime, retaining private provider-native options.",
+    "Expose stale/auth-required/error outcomes without turning failures into successful empty catalogs. Allow custom IDs only when supported by that adapter.",
+    "Wire the missing launch controls (notably Codex effort and Hermes model/effort) and verify launch application separately before claiming PJ-6 end-to-end support."
+  ],
+  "validation": {
+    "nativeCatalogs": 9,
+    "acpImplementations": 1,
+    "nonemptyUniqueIdentities": true,
+    "codexPaginationComplete": true,
+    "opencodeConnectedFilter": true,
+    "piThinkingMapMatchesNativeQueries": true,
+    "hermesNativeRpc": true,
+    "antigravityCurrentModelCommandZeroTurns": true
+  },
+  "sources": [
+    "https://learn.chatgpt.com/docs/app-server#list-models-modellist",
+    "https://code.claude.com/docs/en/model-config",
+    "https://raw.githubusercontent.com/github/copilot-sdk/main/nodejs/src/client.ts",
+    "https://opencode.ai/docs/server/",
+    "https://agentclientprotocol.com/protocol/v1/session-config-options",
+    "https://antigravity.google/docs/cli/headless/",
+    "Installed native CLI help and the installed Hermes/Pi implementation source"
+  ],
+  "reproduce": [
+    "node draft/artifacts/model-discovery-2026-10-12/probe.mjs",
+    "node draft/artifacts/model-discovery-2026-10-12/probe-extra.mjs",
+    "node draft/artifacts/model-discovery-2026-10-12/summarize.mjs"
+  ]
+}

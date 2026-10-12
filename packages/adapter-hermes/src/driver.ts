@@ -30,6 +30,9 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   hermesHome?: string | undefined;
   env?: Record<string, string> | undefined;
   yolo?: boolean | undefined;
+  model?: string | undefined;
+  provider?: string | undefined;
+  effort?: string | undefined;
   /** Connect to an already running owned gateway. Tests inject this. */
   gatewayUrl?: string | undefined;
   transport?: HermesGatewayTransport | undefined;
@@ -110,7 +113,13 @@ export async function prepareHermesTuiSession(
           session_id: options.resume,
           cwd: options.cwd,
         })) as HermesSessionResult)
-      : ((await transport.request('session.create', { cwd: options.cwd, source: 'tui' })) as HermesSessionResult);
+      : ((await transport.request('session.create', {
+          cwd: options.cwd,
+          source: 'tui',
+          ...(options.model === undefined ? {} : { model: options.model }),
+          ...(options.provider === undefined ? {} : { provider: options.provider }),
+          ...(options.effort === undefined ? {} : { reasoning_effort: options.effort }),
+        })) as HermesSessionResult);
 
     if (!(await waitForEvent('gateway.ready', 15_000))) {
       throw new Error('Hermes gateway.ready timed out');
@@ -180,7 +189,12 @@ export async function prepareHermesTuiSession(
         emitMonitorBatch(capabilitiesBatch);
         emitMonitorBatch(
           monitorEvidence.configuredBatch(
-            { cwd: options.cwd, ...(options.yolo !== undefined ? { yolo: options.yolo } : {}) },
+            {
+              cwd: options.cwd,
+              ...(options.yolo !== undefined ? { yolo: options.yolo } : {}),
+              ...(!options.resume && options.model ? { model: options.model } : {}),
+              ...(!options.resume && options.effort ? { effort: options.effort } : {}),
+            },
             new Date().toISOString(),
           ),
         );

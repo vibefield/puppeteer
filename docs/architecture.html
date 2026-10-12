@@ -1780,7 +1780,7 @@
     surface/                     <span class="comment"># native evidence and canonical ground truth</span>
     imposter/                    <span class="comment"># native-compatible synthetic agent executable</span>
     adapter-{acp,claude,...}/    <span class="comment"># provider/protocol bridges</span>
-    native-observation/          <span class="comment"># bounded append-only native-file observation</span>
+    native-observation/          <span class="comment"># bounded native-file observation and metadata processes</span>
     runtime/                     <span class="comment"># ingress, Agent, lifecycle, identity, projections</span>
     builtin-providers/           <span class="comment"># official adapters + Runtime composition root</span>
     workspaces/                  <span class="comment"># direct, exclusive, worktree, copy ownership</span>
@@ -1892,7 +1892,9 @@
                   </tr>
                   <tr>
                     <td class="route">native-observation</td>
-                    <td><p>Bounded, append-safe JSONL tailing and source-generation tracking for native stores.</p></td>
+                    <td>
+                      <p>Bounded native-store tailing and metadata subprocess/RPC lifecycle. No provider policy.</p>
+                    </td>
                     <td class="native-type">none</td>
                   </tr>
                   <tr>
@@ -1905,14 +1907,14 @@
                   <tr>
                     <td class="route">adapter-claude</td>
                     <td><p>Claude hooks, transcript/status observation, settings, prompt and usage services.</p></td>
-                    <td class="native-type">core</td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-codex</td>
                     <td>
                       <p>Codex app-server JSON-RPC, rollout observation, approvals, and native TUI composition.</p>
                     </td>
-                    <td class="native-type">core</td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-copilot</td>
@@ -1926,24 +1928,24 @@
                   <tr>
                     <td class="route">adapter-grok</td>
                     <td><p>Grok native TUI, shared leader lifecycle, session observation, and ACP control.</p></td>
-                    <td class="native-type">core · adapter-acp</td>
+                    <td class="native-type">core · adapter-acp · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-hermes</td>
                     <td><p>Hermes gateway host, WebSocket/JSON-RPC transport, native attach, and normalization.</p></td>
-                    <td class="native-type">core</td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-kimi</td>
                     <td>
                       <p>Kimi native TUI, durable session-store observation, prompt service, and normalization.</p>
                     </td>
-                    <td class="native-type">core</td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-opencode</td>
                     <td><p>Private backend, HTTP/SSE observation and control, exact-session TUI attach.</p></td>
-                    <td class="native-type">core</td>
+                    <td class="native-type">core · native-observation</td>
                   </tr>
                   <tr>
                     <td class="route">adapter-pi</td>
@@ -2250,6 +2252,15 @@ await runtime.dispose();</code></pre>
                 <p>Descriptor-driven command, environment allow-list, resume, and conformant Imposter discovery.</p>
               </article>
               <article class="api-card">
+                <h3>runtime.modelProviders() / discoverModels()</h3>
+                <div class="signature">AgentModelProvider[] / Promise&lt;AgentModelDiscoveryResult&gt;</div>
+                <p>
+                  Profile-bound native model catalogs and model-specific controls. New launches validate a public
+                  modelSelection against fresh discovery; adapters translate it into private native options. See the
+                  <a href="agent-management-api.html#models">model discovery contract</a>.
+                </p>
+              </article>
+              <article class="api-card">
                 <h3>runtime.accountUsageProviders()</h3>
                 <div class="signature">readonly AccountUsageProvider[]</div>
                 <p>
@@ -2320,6 +2331,7 @@ interface AgentProvider {
   prepareSession?(options: AgentProviderSessionOptions): Promise&lt;PreparedProviderSession&gt;;
   readonly launch?: AgentProviderLaunchService;
   readonly accountUsage?: AccountUsageService;
+  readonly models?: AgentModelService;
   readonly distribution?: DistributionService;
   readonly profiles?: ProfileService;
   prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;

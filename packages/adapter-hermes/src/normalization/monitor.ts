@@ -108,6 +108,8 @@ interface ChildIdentity {
 
 export interface HermesConfiguredIntent {
   cwd: string;
+  model?: string;
+  effort?: string;
   yolo?: boolean;
 }
 
@@ -250,6 +252,12 @@ export class HermesMonitorEvidence {
     const updates: MonitorFamilyUpdate[] = [
       upsert('environment', 'root', { kind: 'environment', cwd: configured.cwd }),
     ];
+    if (configured.model)
+      updates.push(
+        upsert('model', 'configured', { kind: 'model', providerModelId: configured.model, intent: 'configured' }),
+      );
+    if (configured.effort)
+      updates.push(upsert('effort', 'configured', { kind: 'effort', value: configured.effort, intent: 'configured' }));
     if (configured.yolo === true) {
       updates.push(
         upsert('mode', 'provider-permission-configured', {

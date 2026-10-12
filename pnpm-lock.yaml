@@ -220,6 +220,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -239,6 +242,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -280,6 +286,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -299,6 +308,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -321,6 +333,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -340,6 +355,9 @@ importers:
       '@vibecook/puppeteer-core':
         specifier: workspace:*
         version: link:../core
+      '@vibecook/puppeteer-native-observation':
+        specifier: workspace:*
+        version: link:../native-observation
       zod:
         specifier: ^4.4.3
         version: 4.4.3

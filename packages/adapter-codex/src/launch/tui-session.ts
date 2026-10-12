@@ -58,6 +58,8 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   selectThread?: ((threadId: string) => boolean) | undefined;
   /** Model id applied when starting a fresh thread. */
   model?: string | undefined;
+  /** Model-specific reasoning effort; native configuration remains authoritative when omitted. */
+  effort?: string | undefined;
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access' | undefined;
   approvalPolicy?: 'never' | 'on-request' | 'untrusted' | undefined;
   /**
@@ -155,6 +157,7 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
               start: {
                 cwd: opts.cwd,
                 model: opts.model,
+                effort: opts.effort,
                 sandbox: opts.sandbox,
                 approvalPolicy: opts.approvalPolicy,
                 permissionDefaults: opts.permissionDefaults,

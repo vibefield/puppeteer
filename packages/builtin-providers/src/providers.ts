@@ -8,13 +8,14 @@ import type {
   ProfileService,
 } from '@vibecook/puppeteer-core';
 import type { AgentProvider } from '@vibecook/puppeteer-runtime';
-import { createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
+import { createAcpModelService, createAcpSession, type AcpConnector } from '@vibecook/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
   createAntigravityAccountUsageService,
   createAntigravityDistributionService,
   createAntigravityExtensionService,
   createAntigravityProfileService,
+  createAntigravityModelService,
   createAntigravityTuiSession,
   normalizeAntigravityNativeInvocation,
   prepareAntigravityTuiSession,
@@ -28,6 +29,7 @@ import {
   createClaudeDistributionService,
   createClaudeExtensionService,
   createClaudeProfileService,
+  createClaudeModelService,
   captureClaudeContinuationState,
   attachClaudeTuiSession,
   createClaudeSession,
@@ -42,6 +44,7 @@ import {
   createCodexDistributionService,
   createCodexExtensionService,
   createCodexProfileService,
+  createCodexModelService,
   captureCodexContinuationState,
   createCodexTuiSession,
   normalizeCodexNativeInvocation,
@@ -54,6 +57,7 @@ import {
   captureCopilotContinuationState,
   createCopilotDistributionService,
   createCopilotProfileService,
+  createCopilotModelService,
   createCopilotTuiSession,
   normalizeCopilotNativeInvocation,
   prepareCopilotTuiSession,
@@ -66,6 +70,7 @@ import {
   createGrokDistributionService,
   createGrokExtensionService,
   createGrokProfileService,
+  createGrokModelService,
   createGrokAccountUsageService,
   createGrokBackend,
   normalizeGrokNativeInvocation,
@@ -79,6 +84,7 @@ import {
   createKimiDistributionService,
   createKimiExtensionService,
   createKimiProfileService,
+  createKimiModelService,
   createKimiTuiSession,
   normalizeKimiNativeInvocation,
   prepareKimiTuiSession,
@@ -91,6 +97,7 @@ import {
   createOpenCodeDistributionService,
   createOpenCodeExtensionService,
   createOpenCodeProfileService,
+  createOpenCodeModelService,
   createOpenCodeTuiSession,
   normalizeOpenCodeNativeInvocation,
   prepareOpenCodeTuiSession,
@@ -103,6 +110,7 @@ import {
   createHermesDistributionService,
   createHermesExtensionService,
   createHermesProfileService,
+  createHermesModelService,
   createHermesTuiSession,
   normalizeHermesNativeInvocation,
   prepareHermesTuiSession,
@@ -115,6 +123,7 @@ import {
   createPiDistributionService,
   createPiExtensionService,
   createPiProfileService,
+  createPiModelService,
   createPiTuiSession,
   normalizePiNativeInvocation,
   preparePiTuiSession,
@@ -374,6 +383,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.claude.distribution,
       profiles: services.claude.profiles,
+      models: createClaudeModelService({ ...chosen(resolved.claude), ...homeOption }),
       extensions: services.claude.extensions,
       accountUsage: createClaudeAccountUsageService(),
       launch: {
@@ -516,6 +526,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.codex.distribution,
       profiles: services.codex.profiles,
+      models: createCodexModelService({ ...chosen(resolved.codex), ...homeOption }),
       extensions: services.codex.extensions,
       accountUsage: createCodexAccountUsageService({ executable: resolved.codex }),
       prewarm: ({ profile, signal }) =>
@@ -563,6 +574,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           host,
           env: launch?.env,
           model: launch?.model,
+          effort: launch?.effort,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
           onApproval: launch?.onApproval,
@@ -590,6 +602,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           host,
           env: launch?.env,
           model: launch?.model,
+          effort: launch?.effort,
           sandbox: launch?.sandbox,
           approvalPolicy: launch?.approvalPolicy,
           // The launch's own word only: a profile binding normalizes an empty argv as
@@ -606,6 +619,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     },
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.acp,
+      models: createAcpModelService(),
       executionMode: 'acp',
       launch: { provider: { ...BUILTIN_PROVIDER_DESCRIPTORS.acp, resume: true } },
       createSession: ({ cwd, resume, agentOptions }) => {
@@ -629,6 +643,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.grok.distribution,
       profiles: services.grok.profiles,
+      models: createGrokModelService({ ...chosen(resolved.grok), ...homeOption }),
       extensions: services.grok.extensions,
       accountUsage: createGrokAccountUsageService({ executable: resolved.grok }),
       launch: {
@@ -706,6 +721,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.kimi.distribution,
       profiles: services.kimi.profiles,
+      models: createKimiModelService({ ...chosen(resolved.kimi), ...homeOption }),
       extensions: services.kimi.extensions,
       accountUsage: createKimiAccountUsageService(),
       launch: {
@@ -791,6 +807,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.opencode.distribution,
       profiles: services.opencode.profiles,
+      models: createOpenCodeModelService({ ...chosen(resolved.opencode), ...homeOption }),
       extensions: services.opencode.extensions,
       launch: {
         provider: {
@@ -874,6 +891,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.antigravity.distribution,
       profiles: services.antigravity.profiles,
+      models: createAntigravityModelService({ ...chosen(resolved.antigravity), ...homeOption }),
       extensions: services.antigravity.extensions,
       accountUsage: createAntigravityAccountUsageService({ executable: resolved.antigravity }),
       launch: {
@@ -969,6 +987,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.copilot.distribution,
       profiles: services.copilot.profiles,
+      models: createCopilotModelService({ ...chosen(resolved.copilot), ...homeOption }),
       launch: {
         provider: {
           ...BUILTIN_PROVIDER_DESCRIPTORS.copilot,
@@ -1055,6 +1074,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.pi.distribution,
       profiles: services.pi.profiles,
+      models: createPiModelService({ ...chosen(resolved.pi), ...homeOption }),
       extensions: services.pi.extensions,
       launch: {
         provider: {
@@ -1135,6 +1155,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       executionMode: 'native-tui',
       distribution: services.hermes.distribution,
       profiles: services.hermes.profiles,
+      models: createHermesModelService({ ...chosen(resolved.hermes), ...homeOption }),
       extensions: services.hermes.extensions,
       launch: {
         provider: {
@@ -1178,6 +1199,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           hermesHome: launch?.hermesHome,
           env: launch?.env,
           yolo: launch?.yolo,
+          model: launch?.model,
+          provider: launch?.provider,
+          effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
@@ -1200,6 +1224,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           hermesHome: launch?.hermesHome,
           env: launch?.env,
           yolo: launch?.yolo,
+          model: launch?.model,
+          provider: launch?.provider,
+          effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
