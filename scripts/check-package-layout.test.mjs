@@ -10,7 +10,21 @@ import {
   godviewConsumerBoundaryIssues,
   launchConsumerBoundaryIssues,
   launchHostBoundaryIssues,
+  readmeInstallIssues,
 } from './check-package-layout.mjs';
+
+test('the install example keeps every pin current and independently updatable by Release Please', () => {
+  const block = (command) => `<!-- x-release-please-start-version -->\n${command}\n<!-- x-release-please-end -->`;
+  const runtime = 'pnpm add @vibefield/puppeteer-runtime@1.2.3';
+  const providers = '@vibefield/puppeteer-builtin-providers@1.2.3';
+  assert.deepEqual(readmeInstallIssues(block(`${runtime} \\\n  ${providers}`), '1.2.3'), []);
+  assert.match(readmeInstallIssues(block(`${runtime} ${providers}`), '1.2.3').join('\n'), /separate line/);
+  assert.match(
+    readmeInstallIssues(block(`${runtime}\n${providers.replace('1.2.3', '1.2.2')}`), '1.2.3').join('\n'),
+    /must include @vibefield\/puppeteer-builtin-providers@1\.2\.3/,
+  );
+  assert.match(readmeInstallIssues(`${runtime}\n${providers}`, '1.2.3').join('\n'), /version block/);
+});
 
 test('the repository package layout satisfies its declared boundaries', () => {
   assert.deepEqual(auditPackageLayout(), []);
