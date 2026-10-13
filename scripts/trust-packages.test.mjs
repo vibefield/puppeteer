@@ -42,7 +42,7 @@ function fakeNpm(trustFor, calls, { missing = false, login = true } = {}) {
     assert.ok(args.includes('--registry=https://registry.npmjs.org/'));
     if (args[0] === '--version') return { status: 0, stdout: '12.0.1\n' };
     if (args[0] === 'whoami') return login ? ok('maintainer') : npmError('E401');
-    if (args[0] === 'view') return missing ? npmError('E404') : ok(args[1]);
+    if (args[0] === 'view') return missing ? npmError('E404') : ok([args[1]]);
     if (args[1] === 'list') return ok(trustFor(args[2]));
     if (args[1] === 'github') return { status: 0 };
     throw new Error(`Unexpected npm invocation ${args.join(' ')}`);

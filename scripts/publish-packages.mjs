@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { spawnPackageManager } from './package-manager.mjs';
+import { parseNpmViewJson, spawnPackageManager } from './package-manager.mjs';
 import { npmRegistry, packReleasePackages, readReleasePackages } from './release-packages.mjs';
 
-export function assertReleaseCheckout(root, version) {
+export function assertReleaseCheckout(root, version, { provenance = false, environment = process.env } = {}) {
   const git = (args) =>
     execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   if (git(['status', '--porcelain', '--untracked-files=normal'])) {
@@ -23,6 +23,14 @@ export function assertReleaseCheckout(root, version) {
     throw new Error(`Missing ${tag}; Release Please must create the release tag before publication`);
   }
   if (tagCommit !== git(['rev-parse', 'HEAD'])) throw new Error(`Publishing requires HEAD to be exactly ${tag}`);
+  if (
+    provenance &&
+    (environment.GITHUB_ACTIONS !== 'true' ||
+      environment.GITHUB_REF !== `refs/tags/${tag}` ||
+      environment.GITHUB_SHA !== tagCommit)
+  ) {
+    throw new Error('Provenance requires a GitHub workflow run from the matching release tag and commit');
+  }
 }
 
 export function publicationProvenance(environment = process.env) {
@@ -52,7 +60,7 @@ export function registryHasVersion(name, version, { root, run = spawnPackageMana
   );
   let data;
   try {
-    data = JSON.parse(result.stdout);
+    data = parseNpmViewJson(result.stdout);
   } catch {
     /* A failed process may have no JSON response. */
   }
@@ -81,7 +89,7 @@ function assertLatestWillNotRegress(pkg, root, run) {
   );
   let data;
   try {
-    data = JSON.parse(result.stdout);
+    data = parseNpmViewJson(result.stdout);
   } catch {
     /* Fail closed on unexpected registry output. */
   }
@@ -108,7 +116,8 @@ export async function publishReleasePackages(
     run = spawnPackageManager,
     provenance = publicationProvenance(),
     wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-    attempts = 10,
+    verificationTimeoutMs = 10 * 60_000,
+    now = Date.now,
     log = console.log,
   } = {},
 ) {
@@ -116,6 +125,25 @@ export async function publishReleasePackages(
   // package must not cause an avoidable partial release.
   const plan = packed.map((pkg) => ({ ...pkg, published: registryHasVersion(pkg.name, pkg.version, { root, run }) }));
   for (const pkg of plan.filter((pkg) => !pkg.published)) assertLatestWillNotRegress(pkg, root, run);
+  const verifyVisible = async (packages) => {
+    const deadline = now() + verificationTimeoutMs;
+    let pending = packages;
+    while (pending.length) {
+      pending = pending.filter((pkg) => {
+        if (!registryHasVersion(pkg.name, pkg.version, { root, run })) return true;
+        log(`${pkg.name}@${pkg.version} verified on npm`);
+        return false;
+      });
+      if (!pending.length) return;
+      if (now() >= deadline) {
+        throw new Error(
+          `Versions not visible on npm: ${pending.map((pkg) => `${pkg.name}@${pkg.version}`).join(', ')}; retry this same release after npm finishes processing or the error is resolved`,
+        );
+      }
+      await wait(Math.min(5000, Math.max(0, deadline - now())));
+    }
+  };
+  const accepted = [];
   for (const pkg of plan) {
     const spec = `${pkg.name}@${pkg.version}`;
     if (pkg.published) {
@@ -137,22 +165,18 @@ export async function publishReleasePackages(
       ],
       { cwd: root, stdio: 'inherit' },
     );
-    // A publish can succeed server-side and lose its response. Verify both
-    // successful and ambiguous results before advancing to dependent packages.
-    let visible = false;
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
-      if (registryHasVersion(pkg.name, pkg.version, { root, run })) {
-        visible = true;
-        break;
-      }
-      if (attempt + 1 < attempts) await wait(3000);
+    if (result.status !== 0) {
+      // A publish can succeed server-side and lose its response. Resolve that
+      // ambiguity before submitting any further packages, without uploading twice.
+      await verifyVisible([pkg]);
+    } else {
+      // npm can accept uploads asynchronously. Submit the train while the 2FA
+      // approval is valid, then require every accepted version to become visible.
+      accepted.push(pkg);
+      log(`${spec} accepted by npm; awaiting registry processing`);
     }
-    if (!visible)
-      throw new Error(
-        `${spec} publish returned ${result.status ?? 'no status'} and is not visible on npm; retry this same release after resolving the error`,
-      );
-    log(`${spec} verified on npm`);
   }
+  await verifyVisible(accepted);
 }
 
 export async function main(
@@ -164,7 +188,7 @@ export async function main(
   const descriptors = readReleasePackages(root);
   const version = descriptors[0].version;
   const provenance = dryRun ? false : publicationProvenance(environment);
-  if (!dryRun) assertReleaseCheckout(root, version);
+  if (!dryRun) assertReleaseCheckout(root, version, { provenance, environment });
   const destination = mkdtempSync(join(tmpdir(), 'puppeteer-publish-'));
   try {
     const packed = packReleasePackages(root, destination, descriptors, run);
@@ -172,7 +196,7 @@ export async function main(
       console.log(`Dry run: validated ${packed.length} tarballs for v${version}; no registry requests or uploads`);
       return;
     }
-    assertReleaseCheckout(root, version);
+    assertReleaseCheckout(root, version, { provenance, environment });
     await publishReleasePackages(packed, { root, provenance, run });
   } finally {
     rmSync(destination, { recursive: true, force: true });

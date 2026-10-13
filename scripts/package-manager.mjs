@@ -85,3 +85,10 @@ export function spawnPackageManager(manager, args, options = {}) {
   const invocation = packageManagerInvocation(manager);
   return spawnSync(invocation.command, [...invocation.prefixArgs, ...args], { ...options, shell: false });
 }
+
+// npm 12 wraps even a single scalar `npm view --json` result in an array.
+// Keep empty or multiple results intact so callers can reject ambiguous data.
+export function parseNpmViewJson(stdout) {
+  const data = JSON.parse(stdout);
+  return Array.isArray(data) && data.length === 1 ? data[0] : data;
+}

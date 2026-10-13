@@ -33,9 +33,6 @@ jobs:
       pull-requests: write
       issues: write
       actions: write
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Ignore superseded main commits
         id: current
@@ -64,13 +61,25 @@ jobs:
                   !pr.labels.some(label => label.name === 'autorelease: pending')) continue;
               await github.rest.actions.createWorkflowDispatch({ ...context.repo, workflow_id: 'ci.yml', ref: pr.head.ref });
             }
+      - name: Dispatch publication from the release tag
+        if: steps.release.outputs.release_created == 'true' && vars.NPM_PUBLISH_ENABLED == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag)) throw new Error('Expected a stable release tag');
+            await github.rest.actions.createWorkflowDispatch({
+              ...context.repo, workflow_id: 'release.yml', ref: tag, inputs: { tag },
+            });
 
   publish:
     needs: release-please
     if: >-
-      always() && !cancelled() && github.ref == 'refs/heads/main' &&
-      vars.NPM_PUBLISH_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created == 'true')
+      always() && !cancelled() && vars.NPM_PUBLISH_ENABLED == 'true' &&
+      github.event_name == 'workflow_dispatch' &&
+      (github.ref == 'refs/heads/main' || github.ref == format('refs/tags/{0}', inputs.tag))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -80,24 +89,28 @@ jobs:
     steps:
       - name: Validate tag input
         env:
-          RELEASE_TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected a stable vX.Y.Z tag'; exit 1; }
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+          ref: ${{ inputs.tag }}
       - name: Verify tag, version, main ancestry, and successful CI
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           test "$RELEASE_TAG" = "v$VERSION"
           git merge-base --is-ancestor HEAD origin/main
           SHA=$(git rev-parse HEAD)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+            test "$GITHUB_SHA" = "$SHA"
+          fi
           PASSED=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main&event=push&status=success" --jq '.total_count')
           test "$PASSED" -gt 0 || { echo 'No successful main CI for this exact release commit'; exit 1; }
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
@@ -110,7 +123,11 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Install npm with trusted-publishing support
-        run: npm install --global npm@12.0.1
+        # Keep the bundled npm intact while installing the CLI used for publication.
+        run: |
+          npm install --prefix "$RUNNER_TEMP/puppeteer-npm" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund npm@12.0.1
+          echo "PUPPETEER_NPM_CLI=$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" --version
       - run: pnpm install --frozen-lockfile --filter './packages/**'
       - run: pnpm packages:check
       - name: Test release automation
@@ -119,6 +136,11 @@ jobs:
       - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000
       - name: Publish lockstep package train
         env:
-          # npm provenance is supported only for public source repositories.
-          NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
+          # npm attests the workflow's ref and SHA, so provenance requires a tag run.
+          # Historical retries from main still use OIDC, without misattributing source.
+          NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false && github.ref == format('refs/tags/{0}', inputs.tag) }}
         run: node scripts/publish-packages.mjs
+      - name: Verify the published packages in a clean npm consumer
+        # A retry checks out the original tag, which may predate this verifier.
+        if: ${{ hashFiles('scripts/verify-published-packages.mjs') != '' }}
+        run: node scripts/verify-published-packages.mjs

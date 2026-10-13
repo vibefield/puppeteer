@@ -45,8 +45,25 @@ jobs:
       # Process-backed adapter tests need enough CPU for their own deadlines.
       # Real Git/process integration tests need a larger budget on hosted runners.
       - run: pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000
+      # All platform tests use the minimum supported Node. Linux then matches
+      # the release runtime to verify clean npm consumers as well as tarball contents.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: runner.os == 'Linux'
+        with:
+          node-version: 22.22.2
+          package-manager-cache: false
+      - name: Install the release npm CLI in an isolated directory
+        if: runner.os == 'Linux'
+        # npm 10 cannot safely replace its own files while upgrading itself to npm 12.
+        run: |
+          npm install --prefix "$RUNNER_TEMP/puppeteer-npm" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund npm@12.0.1
+          echo "PUPPETEER_NPM_CLI=$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" --version
+      - run: node scripts/pack-check.mjs --consumer
+        if: runner.os == 'Linux'
       # Packing runs every public package's prepack build and validates its output.
       - run: node scripts/pack-check.mjs
+        if: runner.os != 'Linux'
 
   apps:
     timeout-minutes: 25
