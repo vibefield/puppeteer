@@ -28,12 +28,15 @@ const packed = ['one', 'two'].map((name) => ({
 
 test('only an explicit npm 404 means a version is unpublished', () => {
   assert.equal(registryHasVersion('pkg', '1.2.3', { run: () => ok('1.2.3') }), true);
+  assert.equal(registryHasVersion('pkg', '1.2.3', { run: () => ok(['1.2.3']) }), true);
   assert.equal(registryHasVersion('pkg', '1.2.3', { run: () => npmError('E404') }), false);
   for (const result of [
     npmError('E401'),
     npmError('E403'),
     npmError('E500'),
     ok('1.2.2'),
+    ok([]),
+    ok(['1.2.3', '1.2.4']),
     { status: null, error: { code: 'ETIMEDOUT' } },
     { status: 1, stdout: 'unavailable' },
   ]) {
@@ -165,7 +168,7 @@ test('retrying an older incomplete release cannot move latest backwards', async 
       provenance: false,
       run: (_manager, args) => {
         calls.push(args[0]);
-        return args[2] === 'dist-tags.latest' ? ok('2.0.0') : npmError('E404');
+        return args[2] === 'dist-tags.latest' ? ok(['2.0.0']) : npmError('E404');
       },
     }),
     /refusing to replace it with older/,

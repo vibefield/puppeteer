@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { spawnPackageManager } from './package-manager.mjs';
+import { parseNpmViewJson, spawnPackageManager } from './package-manager.mjs';
 import { npmRegistry, readReleasePackages, releaseRepository, releaseWorkflow } from './release-packages.mjs';
 
 // npm 12 emits one JSON object per trust record, rather than one JSON array.
@@ -85,7 +85,7 @@ export async function configureTrust({
     });
     let data;
     try {
-      data = JSON.parse(result.stdout);
+      data = parseNpmViewJson(result.stdout);
     } catch {
       /* Report malformed or failed registry responses below. */
     }

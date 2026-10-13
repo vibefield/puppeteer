@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { spawnPackageManager } from './package-manager.mjs';
+import { parseNpmViewJson, spawnPackageManager } from './package-manager.mjs';
 import { npmRegistry, packReleasePackages, readReleasePackages } from './release-packages.mjs';
 
 export function assertReleaseCheckout(root, version, { provenance = false, environment = process.env } = {}) {
@@ -60,7 +60,7 @@ export function registryHasVersion(name, version, { root, run = spawnPackageMana
   );
   let data;
   try {
-    data = JSON.parse(result.stdout);
+    data = parseNpmViewJson(result.stdout);
   } catch {
     /* A failed process may have no JSON response. */
   }
@@ -89,7 +89,7 @@ function assertLatestWillNotRegress(pkg, root, run) {
   );
   let data;
   try {
-    data = JSON.parse(result.stdout);
+    data = parseNpmViewJson(result.stdout);
   } catch {
     /* Fail closed on unexpected registry output. */
   }
