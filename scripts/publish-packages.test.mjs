@@ -161,6 +161,33 @@ test('a later invalid tarball aborts the release before any npm request', async 
   assert.deepEqual(managers, ['pnpm', 'pnpm']);
 });
 
+test('provenance must attest the actual release tag and commit before any build or upload', async (t) => {
+  const root = releaseFixture(t);
+  tagFixture(root);
+  const environment = {
+    GITHUB_ACTIONS: 'true',
+    GITHUB_REF: 'refs/tags/v1.2.3',
+    GITHUB_SHA: git(root, 'rev-parse', 'HEAD'),
+    NPM_CONFIG_PROVENANCE: 'true',
+  };
+  assert.doesNotThrow(() => assertReleaseCheckout(root, '1.2.3', { provenance: true, environment }));
+  for (const mismatch of [{ GITHUB_REF: 'refs/heads/main' }, { GITHUB_SHA: '0'.repeat(40) }]) {
+    let commands = 0;
+    await assert.rejects(
+      main([], {
+        root,
+        environment: { ...environment, ...mismatch },
+        run: () => {
+          commands += 1;
+          throw new Error('No package-manager command should run');
+        },
+      }),
+      /Provenance requires a GitHub workflow run from the matching release tag and commit/,
+    );
+    assert.equal(commands, 0);
+  }
+});
+
 test('dry run validates untagged source and performs no npm operations', async (t) => {
   const root = releaseFixture(t);
   let packs = 0;

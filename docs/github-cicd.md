@@ -56,11 +56,14 @@ bot branch using `GITHUB_TOKEN`, avoiding a long-lived PAT and the bot-PR approv
 trigger limitation. Maintainers merge the release PR after its checks pass.
 
 The subsequent successful main CI permits Release Please to create the tag and
-GitHub release. The publish job verifies that:
+GitHub release. When publishing is enabled, it dispatches the same Release
+workflow from that tag so GitHub's run identity and npm provenance identify the
+actual published source. The publish job verifies that:
 
 - the tag is a stable `vX.Y.Z` matching the package version;
 - the tagged commit is on `main`;
 - the exact tagged commit has a successful main-push CI run;
+- a tag-triggered run's ref and commit match the checked-out release;
 - `NPM_PUBLISH_ENABLED` is `true`.
 
 It packs and validates the entire package train before uploading anything, then
@@ -148,19 +151,24 @@ Use npm 12 for this check (on Node 22, version 22.22.2 or newer), matching the
 release workflow; npm 10 can fail while resolving Vitest's optional peers.
 
 The public source repository supports npm provenance. The workflow enables it
-for GitHub Actions publications; the initial local bootstrap has no provenance.
+for publications dispatched from the matching release tag; the publisher rejects
+a provenance request if the GitHub run ref or commit differs from that tag.
+The initial local bootstrap has no provenance.
 If the source repository becomes private, the workflow disables provenance while
 retaining OIDC authentication. Package manifests must not set
 `publishConfig.provenance`; the publisher passes the workflow's choice explicitly
 on npm's command line, along with the public registry, access level, and dist-tag.
 
-To retry a partial publication, dispatch Release **from main**, using an existing
-tag whose exact commit passed main CI:
+To retry a partial publication, dispatch Release **from the release tag** whose
+exact commit passed main CI:
 
 ```sh
-gh workflow run release.yml --repo vibefield/puppeteer --ref main -f tag=vX.Y.Z
+gh workflow run release.yml --repo vibefield/puppeteer --ref vX.Y.Z -f tag=vX.Y.Z
 ```
 
+For older tags whose workflow only accepts main-branch dispatches, use `--ref main`
+with the same tag input. This fallback uses OIDC but explicitly disables provenance
+because the workflow's identity describes main rather than the checked-out tag.
 Retries use the original tagged source and release tooling. Tags whose package
 metadata still names the old organization must not be retried through the new
 publisher; cut a new version with the corrected metadata instead.

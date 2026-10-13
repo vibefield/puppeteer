@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnPackageManager } from './package-manager.mjs';
 import { npmRegistry, packReleasePackages, readReleasePackages } from './release-packages.mjs';
 
-export function assertReleaseCheckout(root, version) {
+export function assertReleaseCheckout(root, version, { provenance = false, environment = process.env } = {}) {
   const git = (args) =>
     execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   if (git(['status', '--porcelain', '--untracked-files=normal'])) {
@@ -23,6 +23,14 @@ export function assertReleaseCheckout(root, version) {
     throw new Error(`Missing ${tag}; Release Please must create the release tag before publication`);
   }
   if (tagCommit !== git(['rev-parse', 'HEAD'])) throw new Error(`Publishing requires HEAD to be exactly ${tag}`);
+  if (
+    provenance &&
+    (environment.GITHUB_ACTIONS !== 'true' ||
+      environment.GITHUB_REF !== `refs/tags/${tag}` ||
+      environment.GITHUB_SHA !== tagCommit)
+  ) {
+    throw new Error('Provenance requires a GitHub workflow run from the matching release tag and commit');
+  }
 }
 
 export function publicationProvenance(environment = process.env) {
@@ -164,7 +172,7 @@ export async function main(
   const descriptors = readReleasePackages(root);
   const version = descriptors[0].version;
   const provenance = dryRun ? false : publicationProvenance(environment);
-  if (!dryRun) assertReleaseCheckout(root, version);
+  if (!dryRun) assertReleaseCheckout(root, version, { provenance, environment });
   const destination = mkdtempSync(join(tmpdir(), 'puppeteer-publish-'));
   try {
     const packed = packReleasePackages(root, destination, descriptors, run);
@@ -172,7 +180,7 @@ export async function main(
       console.log(`Dry run: validated ${packed.length} tarballs for v${version}; no registry requests or uploads`);
       return;
     }
-    assertReleaseCheckout(root, version);
+    assertReleaseCheckout(root, version, { provenance, environment });
     await publishReleasePackages(packed, { root, provenance, run });
   } finally {
     rmSync(destination, { recursive: true, force: true });
