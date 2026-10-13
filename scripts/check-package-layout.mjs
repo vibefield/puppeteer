@@ -487,6 +487,24 @@ function cycleIssues(edges, nameToDirectory) {
   return issues;
 }
 
+export function readmeInstallIssues(readme, version) {
+  const block = readme.match(/<!-- x-release-please-start-version -->([\s\S]*?)<!-- x-release-please-end -->/)?.[1];
+  if (!block) return ['README install command must be inside a release-please version block'];
+  const issues = [];
+  if (!block.includes('pnpm add ')) issues.push('README release-please block must contain the pnpm install command');
+  const specs = block.match(/@vibefield\/puppeteer-[\w-]+@[^\s\\`]+/gu) ?? [];
+  for (const name of ['@vibefield/puppeteer-runtime', '@vibefield/puppeteer-builtin-providers']) {
+    if (!specs.includes(`${name}@${version}`)) {
+      issues.push(`README install command must include ${name}@${version}`);
+    }
+  }
+  // Release Please's generic updater replaces only the first version on each line.
+  if (block.split(/\r?\n/u).some((line) => (line.match(/\d+\.\d+\.\d+/gu) ?? []).length > 1)) {
+    issues.push('README release-please block must put each package version on a separate line');
+  }
+  return issues;
+}
+
 export function auditPackageLayout(root = scriptRoot) {
   const issues = [];
   const rootManifest = json(join(root, 'package.json'));
@@ -648,17 +666,8 @@ export function auditPackageLayout(root = scriptRoot) {
   const readmePath = join(root, 'README.md');
   if (!existsSync(readmePath)) {
     issues.push('README.md is missing');
-  } else if (
-    !readFileSync(readmePath, 'utf8').includes(`pnpm add @vibefield/puppeteer-runtime@${rootManifest.version}`)
-  ) {
-    issues.push(`README install command does not match root version ${rootManifest.version}`);
-  }
-  if (existsSync(readmePath)) {
-    const readme = readFileSync(readmePath, 'utf8');
-    const installBlock = readme.match(/<!-- x-release-please-start-version -->([\s\S]*?)<!-- x-release-please-end -->/);
-    if (!installBlock?.[1].includes(`pnpm add @vibefield/puppeteer-runtime@${rootManifest.version}`)) {
-      issues.push('README install command must be inside a release-please version block');
-    }
+  } else {
+    issues.push(...readmeInstallIssues(readFileSync(readmePath, 'utf8'), rootManifest.version));
   }
 
   const allManifests = new Map([...manifests, ...applicationManifests]);

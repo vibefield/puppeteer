@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-builtin-providers",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
   "description": "Optional turn-key composition of the Puppeteer runtime and official agent adapters.",
   "license": "MIT",
@@ -26,7 +26,9 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "pnpm clean && tsc -p tsconfig.build.json",
