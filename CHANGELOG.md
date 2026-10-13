@@ -1,5 +1,122 @@
 # Changelog
 
+## [0.2.0](https://github.com/vibefield/puppeteer/compare/v0.1.8...v0.2.0) (2026-10-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **release:** public packages now use @vibefield/puppeteer-* names. Testing helpers require Vitest >=4.1.11 <5; the View SDK uses the same optional Vitest peer range.
+* **profiles:** @vibecook/puppeteer-adapter-kimi no longer exports findKimiAccessToken, resolveKimiAccessToken, kimiCredentialsPath, kimiUsageUrl or KimiCredentialOptions, and its usage options take `root` in place of `credentialsPath`. @vibecook/puppeteer-adapter-grok's GrokBillingTransport is now GrokAgentTransport, exported from transport/agent-client.
+* **types:** adopt exactOptionalPropertyTypes and noUncheckedIndexedAccess across the workspace
+* **monitor:** Remove planning:updated and delegation:task-* events, SessionRuntimeState.tasks, and monitor task/plan fields, notifications, bounds, and planning freshness. Monitor snapshots now use schema version 2.
+* rename project to puppeteer
+
+### Features
+
+* **adapters:** support Antigravity Copilot and Pi ([adfe2ec](https://github.com/vibefield/puppeteer/commit/adfe2ec1d185736922a2ab18b01ab4f521c6ff92))
+* add agent distribution and account profiles (RFC 006 phase 1) ([b5de1f7](https://github.com/vibefield/puppeteer/commit/b5de1f75da9b24353d23a058fd3540d354e554b6))
+* add Kimi and Grok account usage limits ([3944e17](https://github.com/vibefield/puppeteer/commit/3944e17ae779818273247ab145e910fcde371fff))
+* **antigravity:** add print-mode account usage limits ([2beb0c2](https://github.com/vibefield/puppeteer/commit/2beb0c23a3e6235f763ee051bd4843e18a946b28))
+* **core:** carry the root agent's last reply and split usage samples by side ([3e70222](https://github.com/vibefield/puppeteer/commit/3e70222ad19689b32c7f41f90470954c2c92753c))
+* **events:** normalize workspace file activity ([cd7520a](https://github.com/vibefield/puppeteer/commit/cd7520a9c1429d4b71c4489413ad6196aec431d5))
+* **extensions:** a server's sign-in and sign-out — the agent's own login in a terminal the person answers, its own logout as an act ([1def18f](https://github.com/vibefield/puppeteer/commit/1def18f039c5e186a22c0291db2f326209f0182c))
+* **extensions:** acts — a server or skill an agent holds turned on, off or out through its own command or protocol ([7926ca9](https://github.com/vibefield/puppeteer/commit/7926ca9cd648014eb0bce2d49032efd65bd0e85f))
+* **extensions:** every agent's plugins, marketplaces, MCP servers and skills, read per profile from its own stores ([63bf175](https://github.com/vibefield/puppeteer/commit/63bf175da25f3ad70101cadb792e4440fb9aa097))
+* **godview:** add the Agents drawer, profile-bound terminals, and account usage per profile ([97c0c72](https://github.com/vibefield/puppeteer/commit/97c0c72a313ba50633ae0373283e041b2261cdea))
+* **godview:** deal each project one colour and let panes borrow it ([b23247f](https://github.com/vibefield/puppeteer/commit/b23247f390518155300ec994f74faa61fbca25be))
+* **godview:** display and persist observed USD costs ([a7a0c4e](https://github.com/vibefield/puppeteer/commit/a7a0c4e456eac91a8388bdb420a4823cf20ae94c))
+* **godview:** draw the deck's minimal pane frame ([3e199ac](https://github.com/vibefield/puppeteer/commit/3e199acfd4e913da887713bff08cbdfe09783d19))
+* **godview:** enable Command-click terminal links ([1f2916b](https://github.com/vibefield/puppeteer/commit/1f2916b05d4b4fbdceff535595d4871f503fd5a8))
+* **godview:** find an agent by what was said, through the history daemon ([d41a400](https://github.com/vibefield/puppeteer/commit/d41a4006b22e6a67ce4e5e5f9dcefd0498640fa8))
+* **godview:** give each pane its own colour and mark the project with a bar ([f0d61ac](https://github.com/vibefield/puppeteer/commit/f0d61acc775a1c21490f9506a00f973152c0fbf9))
+* **godview:** keep each conversation's usage ledger in the app cache ([5ca3c4b](https://github.com/vibefield/puppeteer/commit/5ca3c4b52adca917f842554b86611beb2c0b5848))
+* **godview:** keep the UI's own token ledger and draw the burn from it ([8001bf9](https://github.com/vibefield/puppeteer/commit/8001bf93e4f9b6de24c1c8578a23560c01f15508))
+* **godview:** move settings button to app header ([8a42202](https://github.com/vibefield/puppeteer/commit/8a42202ab3ea68529c37f69400696c9fb3e171cf))
+* **godview:** port the vibe-field skin, draw the swarm on WebGPU, and add the bar, usage column and rain view ([28b6d70](https://github.com/vibefield/puppeteer/commit/28b6d701a670840f0afda709be8d81e112df7cfa))
+* **godview:** split terminal panes evenly ([a572235](https://github.com/vibefield/puppeteer/commit/a572235fc23860599f74c2fcd2ac6fff65f767f4))
+* **godview:** tune the terminal safe area per side from the system control panel ([4f208fa](https://github.com/vibefield/puppeteer/commit/4f208fa0d250115489760f0b83a080f534a11840))
+* **imposter:** emulate Rosetta-backed agents ([62baf22](https://github.com/vibefield/puppeteer/commit/62baf22b1da8e55bf14d2011453e41648c4cc379))
+* **profiles:** plans — what a profile set runs on, read from its sign-ins, and each company's mark to draw it ([74dc03a](https://github.com/vibefield/puppeteer/commit/74dc03acb1d9a43d7d0e583fdabda09eaa0047a0))
+* **profiles:** sign-ins and the services they bill — every agent says who is signed in, and harnesses list what they hold ([16493b4](https://github.com/vibefield/puppeteer/commit/16493b434338c8bf83f13cc33521b045883c2fff))
+* **profiles:** the observation root — where a profile's history lives, adapter-owned ([719d98d](https://github.com/vibefield/puppeteer/commit/719d98d9ba49b070020c16535e1e456159ccb12f))
+* **release:** move public packages to [@vibefield](https://github.com/vibefield) ([5abe8f7](https://github.com/vibefield/puppeteer/commit/5abe8f75d4b370db4cd8d2418a55fcc971680fb8))
+* **runtime:** estimate USD costs from native usage ([81d2a28](https://github.com/vibefield/puppeteer/commit/81d2a28ba2f8d21e1ade1ed3f0814a23c17fdf67))
+* **runtime:** plan an update before it runs, and say which release an install would take ([ea90c34](https://github.com/vibefield/puppeteer/commit/ea90c34bfd697abf470d6e830fdc8b97a0e92256))
+* **runtime:** profile sets — named places for accounts, one default, and a sign-out that waits for its sessions ([50ac021](https://github.com/vibefield/puppeteer/commit/50ac021183a67619a635e945c6095b31bb5a0329))
+* **runtime:** stable ingress — host-pinnable bridge, attach to a running session, detaching dispose ([d013fef](https://github.com/vibefield/puppeteer/commit/d013fef8af613ed0dfb8645dc45107c81ad06237))
+* **runtime:** updates run unattended, can be stopped, and never claim a currency they did not see ([497de8e](https://github.com/vibefield/puppeteer/commit/497de8ee7a1a2ae5447a0593eaadb449958ab8f3))
+* **surface:** acquire source-installed agent artifacts ([9520880](https://github.com/vibefield/puppeteer/commit/9520880357550808a2a56c839149248eaf47a022))
+* **surface:** add canonical ground truth layer ([b37ee73](https://github.com/vibefield/puppeteer/commit/b37ee736e53da3f1916d7df6f6fdcb222e01e7bb))
+* **surface:** attest locked installed consoles ([009cc0d](https://github.com/vibefield/puppeteer/commit/009cc0d63628c087ae27d3ce83ba1c63381d9902))
+* **surface:** attest source-built runtime bundles ([0a8a5a7](https://github.com/vibefield/puppeteer/commit/0a8a5a77af4af275e2f364829154c066b4ec27e0))
+* **surface:** enforce fidelity-aware agent ground truth ([3d90bb3](https://github.com/vibefield/puppeteer/commit/3d90bb3a7ab192565fd173134aaa9831ad40877e))
+* **surface:** import Rosetta truth for three agents ([9e71121](https://github.com/vibefield/puppeteer/commit/9e7112198774e1832ddd5719f136bf18e1b79ee3))
+* **surface:** verify installed-console reconstruction ([ba3b8ca](https://github.com/vibefield/puppeteer/commit/ba3b8ca87639e685c401b14055c845d4cd02ccfe))
+* **usage:** groups — each meter names the part of the plan it measures, and a reserve waits in standby ([2c874bf](https://github.com/vibefield/puppeteer/commit/2c874bf58a514f14baf8c2d4f904b922fd851c0c))
+* **usage:** isolate live accounting from transcripts ([2ea46c7](https://github.com/vibefield/puppeteer/commit/2ea46c78c77e3c158f6c4c5f72d7251e9bf62697))
+* **views:** a peer's session says its host — the name first, the write policy both ways ([5389449](https://github.com/vibefield/puppeteer/commit/5389449e5f021b8ceb20beec6e89be113612a182))
+* **views:** profile tabs — a sliding segment of Agent Profiles for the instrument bar, and rows a host recedes in every view ([bf57141](https://github.com/vibefield/puppeteer/commit/bf57141ce900e5772b5f8ccb050f850a53d3071f))
+* **views:** the Godview views become a package — the swarm on WebGPU, the list, the rain, the bar, the usage column and the find sheet behind injected ports ([f33da93](https://github.com/vibefield/puppeteer/commit/f33da9364b8343596e0d5b8e4f3f9c224c9ad02e))
+* **views:** the palette reads from the Godview root it is given ([77f24fd](https://github.com/vibefield/puppeteer/commit/77f24fd99d2405fbd6d5f0d79ea7b37c59389acb))
+* **views:** the pane frame becomes the package's — the badge, the readout, the meter and the verbs behind a port ([aa34eb1](https://github.com/vibefield/puppeteer/commit/aa34eb1b5605eb7d6fb30db8bd28855fe37c8f1a))
+* **views:** the swarm body says one thing at a time — cost, state, identity and one ink ([29ce206](https://github.com/vibefield/puppeteer/commit/29ce2063631a65974cff2370825358cc73e6076f))
+
+
+### Bug Fixes
+
+* **adapter-claude:** tolerate status telemetry load ([6130c67](https://github.com/vibefield/puppeteer/commit/6130c6776d28d1f3f0021d8c7f01424a551c672c))
+* **adapter-hermes:** give the updater the budget its gateway drain needs ([2cba428](https://github.com/vibefield/puppeteer/commit/2cba4289bb285f9cbcb2884d96151abed69445f4))
+* **adapter-kimi:** update a native-installer install by running Kimi's install script again ([ddb6e34](https://github.com/vibefield/puppeteer/commit/ddb6e34aae604e9c27e54c84f8ef3ea001c0175c))
+* **adapters:** harden resume and resource conformance ([e8260af](https://github.com/vibefield/puppeteer/commit/e8260af68d6449d60496f490b88cd937eba770ce))
+* **claude:** bind a native resume to the session Claude announces ([83a5b2b](https://github.com/vibefield/puppeteer/commit/83a5b2bf480e871271c3a79066747844e8d819c4))
+* **claude:** name and deduplicate account usage limits ([bb2720c](https://github.com/vibefield/puppeteer/commit/bb2720c0ccbfc010a8f712254eecc6542ae566fa))
+* **claude:** prevent Godview freezes when resuming sessions ([0296565](https://github.com/vibefield/puppeteer/commit/02965650fb60e28d6482b27b8211d0a6413accd0))
+* **claude:** refuse to resume a conversation that is not on disk ([2791f4f](https://github.com/vibefield/puppeteer/commit/2791f4f3ce184a4af9ed3bb3e5a36adca47e4179))
+* **claude:** replay transcripts in causal order ([09c8d7a](https://github.com/vibefield/puppeteer/commit/09c8d7aafe996323295518bed630c6b897d5f055))
+* **codex:** distinguish model-specific usage windows ([97b1a39](https://github.com/vibefield/puppeteer/commit/97b1a3969467cad96fa10bd867d4531e12bc4dfe))
+* **codex:** finish normalized endpoint migration ([45afc87](https://github.com/vibefield/puppeteer/commit/45afc87810b86092906a97f4697514d972592e7a))
+* **codex:** normalize app-server endpoints ([a8c3d38](https://github.com/vibefield/puppeteer/commit/a8c3d3880c32b9ced830dd285619f6cfc4c6b278))
+* **codex:** restore accurate monitor state after resume ([4ddb9c4](https://github.com/vibefield/puppeteer/commit/4ddb9c4eee4319a45f15fd567d71e3a08f45be42))
+* **godview:** one monitor row per identity after a crashed agent's handoff ([9e2ffda](https://github.com/vibefield/puppeteer/commit/9e2ffdaf3aceeadd171cac9e6056f67369306d82))
+* **godview:** refresh monitor folder from live terminal cwd ([3e37813](https://github.com/vibefield/puppeteer/commit/3e3781304262901610d169bdc254e3ade445801b))
+* **godview:** restore Rosetta search compatibility ([226faa2](https://github.com/vibefield/puppeteer/commit/226faa2e32ce234f7810f914861c25c3c08a0ca9))
+* **godview:** the control reset weighs nothing — the instrument bar draws at §04's 9px 700 ([e447d00](https://github.com/vibefield/puppeteer/commit/e447d0084f97fd455ca359b8e94b63bdeb06933a))
+* **godview:** the swarm lab builds again, and hands its controls to the page ([3e5f6a8](https://github.com/vibefield/puppeteer/commit/3e5f6a8d37efe5e799031e2852c97cc29cd5239a))
+* **grok:** report live token usage and context metrics ([948bd9d](https://github.com/vibefield/puppeteer/commit/948bd9defd38a494b8443be9eb2856917c021793))
+* **hermes:** bundle gateway host in published adapter ([84a7a33](https://github.com/vibefield/puppeteer/commit/84a7a33597a516ce7d74cfb263ebcefb47ad1812))
+* **hermes:** share exact native TUI event rail ([0135ed1](https://github.com/vibefield/puppeteer/commit/0135ed1aa5e961c0daa049ee7d2fc7ca87d69447))
+* **hermes:** unblock private native TUI startup ([486127e](https://github.com/vibefield/puppeteer/commit/486127e55af08415dad3d1682d14715b8b222a83))
+* isolate agent observation and await launch cleanup ([9d70d35](https://github.com/vibefield/puppeteer/commit/9d70d35f389d4941f075b7b195ca6bdd8047d52d))
+* **kimi:** keep live harness unpublished ([34c5651](https://github.com/vibefield/puppeteer/commit/34c5651afe7b44442f2e89164bcce0e660815c45))
+* make session reattachment safe and restore verification ([d2b0600](https://github.com/vibefield/puppeteer/commit/d2b060042253eea3f033efb10ed65a499e346427))
+* **runtime, adapter-claude:** stable ingress hardened — a release keeps the process's files, attach validates before it binds, a live claim survives a failed bind, a missed /clear is followed ([8402184](https://github.com/vibefield/puppeteer/commit/84021840c6d75816bd6c0f7c08ef4384261c2160))
+* **runtime:** profile sets after review — writes that never lag the file, spawns an unreadable registry cannot stop, and sign-outs that claim no more than they did ([4240196](https://github.com/vibefield/puppeteer/commit/4240196e7a43b0a5a23c1e8070c97367fd2d928d))
+* **surface:** keep source archives out of executable lanes ([8631c9c](https://github.com/vibefield/puppeteer/commit/8631c9c645749a77575063b90ea36bc51e6b11a4))
+* **surface:** require artifact-bound live promotion proof ([b961eda](https://github.com/vibefield/puppeteer/commit/b961edacd0f3597bfa19a90271022f19b8ce7de7))
+* **usage:** support scoped refresh with cooldown and backoff ([0e48233](https://github.com/vibefield/puppeteer/commit/0e48233e64dadd463c1a0b1cc22e9908607c1a7f))
+* **views:** a facet may precede its first monitor state; the swarm names its renderer; the lab fixtures are exported ([b9a0ce9](https://github.com/vibefield/puppeteer/commit/b9a0ce973638471ae859c4f80ca7a92ff2843740))
+* **views:** the find sheet gives focus back; a swarm body names its source ([8af9df9](https://github.com/vibefield/puppeteer/commit/8af9df9e45a9eab2fa106d1069d11ce00f19c409))
+* **views:** the frame keeps a fresh split's folder, draws the line for a bare shell, and names its seams once ([73b2d64](https://github.com/vibefield/puppeteer/commit/73b2d646e19880ec192947031903ca349380ded2))
+* **views:** the physics provider stays exported from the main entry ([b0f08ec](https://github.com/vibefield/puppeteer/commit/b0f08ec8f856ca1aa04f60970e0e70fa9137a3db))
+* **views:** the review's findings — the column follows its port, a hit's root is never a guess, the physics subpath carries no React, the emitted types name their dependency ([4d734c9](https://github.com/vibefield/puppeteer/commit/4d734c93b8ba90d1248b71f8dfa129898fee6a8c))
+
+
+### Performance Improvements
+
+* **godview:** answer a keystroke with two daemon calls, not three ([b3019bd](https://github.com/vibefield/puppeteer/commit/b3019bd974c10f7bf712f7f805f5827ea440bd22))
+* **godview:** prewarm Codex model cache ([99cf5fd](https://github.com/vibefield/puppeteer/commit/99cf5fd96527df8b85ce4b02e7db0579b8c53627))
+
+
+### Miscellaneous Chores
+
+* **types:** adopt exactOptionalPropertyTypes and noUncheckedIndexedAccess across the workspace ([0a9eb8f](https://github.com/vibefield/puppeteer/commit/0a9eb8f10c0977a21e8deb6d2b8275f5d10070d2))
+
+
+### Code Refactoring
+
+* **monitor:** remove todo, task, and plan tracking ([d44bcf9](https://github.com/vibefield/puppeteer/commit/d44bcf9277d212ef87e804923d98eef6f8904fb0))
+* rename project to puppeteer ([6d3dc78](https://github.com/vibefield/puppeteer/commit/6d3dc78e4f08124e23935e530ad104e8896f048c))
+
 ## [0.1.8](https://github.com/vibecook-dev/puppeteer/compare/v0.1.7...v0.1.8) (2026-08-03)
 
 

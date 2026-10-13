@@ -1,8 +1,8 @@
 {
   "name": "@vibefield/puppeteer-adapter-codex",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Codex native adapter: app-server (JSON-RPC) structured driver \u2014 notification normalizer, session driver, structured injection.",
+  "description": "Codex native adapter: app-server (JSON-RPC) structured driver — notification normalizer, session driver, structured injection.",
   "license": "MIT",
   "author": "James Yong",
   "repository": {

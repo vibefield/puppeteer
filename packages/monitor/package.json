@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-monitor",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
   "description": "Transport-neutral external store for Puppeteer agent monitor snapshots and notifications.",
   "license": "MIT",
@@ -31,7 +31,9 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "pnpm clean && tsc -p tsconfig.build.json",

@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-antigravity",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
   "description": "Antigravity adapter for Puppeteer: native TUI launch and durable transcript normalization.",
   "license": "MIT",

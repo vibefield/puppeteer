@@ -98,7 +98,7 @@ terminal service.
 <!-- x-release-please-start-version -->
 
 ```sh
-pnpm add @vibefield/puppeteer-runtime@0.1.8 @vibefield/puppeteer-builtin-providers@0.1.8
+pnpm add @vibefield/puppeteer-runtime@0.2.0 @vibefield/puppeteer-builtin-providers@0.1.8
 ```
 
 <!-- x-release-please-end -->

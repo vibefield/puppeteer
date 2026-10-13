@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-hermes",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
   "description": "Hermes Agent adapter for Puppeteer: owned tui_gateway WebSocket host, native --tui attach, and structured observation.",
   "license": "MIT",
