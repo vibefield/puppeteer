@@ -80,18 +80,75 @@ test('retry skips existing versions and recovers a lost publish response without
   assert.ok(uploads[0].includes('--ignore-scripts'));
 });
 
-test('a successful command without registry visibility stops dependent uploads', async () => {
+test('accepted uploads are submitted together and tolerate asynchronous npm processing', async () => {
+  const uploads = [];
+  let time = 0;
+  await publishReleasePackages(packed, {
+    provenance: false,
+    verificationTimeoutMs: 90_000,
+    now: () => time,
+    wait: async (ms) => {
+      time += ms;
+    },
+    log: () => {},
+    run: (_manager, args) => {
+      if (args[0] === 'publish') {
+        uploads.push(args[1]);
+        return { status: 0 };
+      }
+      if (uploads.length) assert.equal(uploads.length, packed.length);
+      return uploads.length && time >= 65_000 ? ok('1.2.3') : npmError('E404');
+    },
+  });
+  assert.equal(time, 65_000);
+  assert.deepEqual(
+    uploads,
+    packed.map((pkg) => pkg.tarballPath),
+  );
+});
+
+test('accepted uploads must all become visible before the release succeeds', async () => {
   let uploads = 0;
+  let time = 0;
   await assert.rejects(
     publishReleasePackages(packed, {
       provenance: false,
-      attempts: 2,
-      wait: async () => {},
+      verificationTimeoutMs: 10_000,
+      now: () => time,
+      wait: async (ms) => {
+        time += ms;
+      },
       log: () => {},
       run: (_manager, args) => {
         if (args[0] === 'publish') {
           uploads += 1;
           return { status: 0 };
+        }
+        return npmError('E404');
+      },
+    }),
+    /not visible on npm/,
+  );
+  assert.equal(uploads, 2);
+  assert.equal(time, 10_000);
+});
+
+test('an ambiguous publish without registry visibility stops further uploads', async () => {
+  let uploads = 0;
+  let time = 0;
+  await assert.rejects(
+    publishReleasePackages(packed, {
+      provenance: false,
+      verificationTimeoutMs: 10_000,
+      now: () => time,
+      wait: async (ms) => {
+        time += ms;
+      },
+      log: () => {},
+      run: (_manager, args) => {
+        if (args[0] === 'publish') {
+          uploads += 1;
+          return { status: 1 };
         }
         return npmError('E404');
       },

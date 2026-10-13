@@ -70,8 +70,12 @@ It packs and validates the entire package train before uploading anything, then
 publishes those same tarballs in dependency order. CI and the publisher share the
 metadata, entry-point, dependency-version, and package-content checks. Registry
 authentication errors and outages stop publication; only an explicit npm 404
-means a version is missing. Retries skip published versions, verify registry
-visibility before advancing to dependents, and refuse to move `latest` backwards.
+means a version is missing. Retries skip published versions and refuse to move
+`latest` backwards. npm may accept uploads before making them available: the
+publisher submits accepted uploads in dependency order, then allows up to ten
+minutes for all of them to become visible before declaring success. An ambiguous
+publish response must be resolved through registry visibility before any further
+uploads; a failed or delayed upload is never blindly submitted twice.
 The publisher requires a clean checkout at the exact release tag, including after
 prepack scripts finish. Release Please owns package versions, the protocol version,
 and the README install example; never hand-bump them.
