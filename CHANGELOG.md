@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/vibefield/puppeteer/compare/v0.2.0...v0.2.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **release:** verify npm consumers and harden trusted publishing ([#34](https://github.com/vibefield/puppeteer/issues/34)) ([85aa968](https://github.com/vibefield/puppeteer/commit/85aa968d2adb5dbc103cfc2756c6d396f371fa75))
+
 ## [0.2.0](https://github.com/vibefield/puppeteer/compare/v0.1.8...v0.2.0) (2026-10-13)
 
 

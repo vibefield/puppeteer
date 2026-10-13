@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-monitor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Transport-neutral external store for Puppeteer agent monitor snapshots and notifications.",
   "license": "MIT",
