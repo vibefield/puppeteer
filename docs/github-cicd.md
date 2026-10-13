@@ -1,7 +1,7 @@
 # GitHub repository and CI/CD
 
 The canonical repository is [vibefield/puppeteer](https://github.com/vibefield/puppeteer).
-It is private; public npm packages use the `@vibefield/puppeteer-*` names.
+It is public; npm packages use the `@vibefield/puppeteer-*` names.
 The private Electron apps are development tools. CD publishes the public library
 packages to npm; it does not distribute signed desktop installers.
 
@@ -105,7 +105,7 @@ npm login --registry=https://registry.npmjs.org/
 pnpm release:publish
 ```
 
-The local publisher defaults provenance to false for this private repository.
+The local bootstrap publisher disables provenance because it runs outside CI.
 Complete npm's browser/2FA prompt when requested. A failed partial publication is
 retriable from the same clean tag; do not change package contents under that version.
 
@@ -145,10 +145,10 @@ before retrying the same release.
 Use npm 12 for this check (on Node 22, version 22.22.2 or newer), matching the
 release workflow; npm 10 can fail while resolving Vitest's optional peers.
 
-Provenance is disabled for this private source repository. npm requires public
-source repositories for provenance, even for public npm packages. The workflow
-enables provenance automatically if the source repository later becomes public;
-OIDC publishing still works while it is private. Package manifests must not set
+The public source repository supports npm provenance. The workflow enables it
+for GitHub Actions publications; the initial local bootstrap has no provenance.
+If the source repository becomes private, the workflow disables provenance while
+retaining OIDC authentication. Package manifests must not set
 `publishConfig.provenance`; the publisher passes the workflow's choice explicitly
 on npm's command line, along with the public registry, access level, and dist-tag.
 
@@ -163,16 +163,10 @@ Retries use the original tagged source and release tooling. Tags whose package
 metadata still names the old organization must not be retried through the new
 publisher; cut a new version with the corrected metadata instead.
 
-## Branch protection and organization plan
+## Branch protection
 
-As of 2026-09-07, `vibefield` uses GitHub Free. GitHub returns HTTP 403 for branch
-protection/rulesets on this private repository. The CI gate is configured but
-**GitHub cannot currently require it before a merge or prevent direct pushes**.
-Maintainers must wait for green CI and merge through PRs until the organization
-has a plan supporting private repository protection.
-
-After an organization owner upgrades to GitHub Team, apply the checked-in
-configuration:
+Main-branch protection is enabled for this public repository, including for
+administrators. The checked-in configuration can be reapplied with:
 
 ```sh
 gh api --method PUT repos/vibefield/puppeteer/branches/main/protection \
