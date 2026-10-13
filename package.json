@@ -60,6 +60,7 @@
     "release:trust": "node scripts/trust-packages.mjs",
     "release:trust:check": "node scripts/trust-packages.mjs --check",
     "release:verify": "node scripts/verify-published-packages.mjs",
+    "release:verify:packed": "node scripts/pack-check.mjs --consumer",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\""
   },

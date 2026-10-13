@@ -10,6 +10,13 @@ import { npmRegistry, readReleasePackages } from './release-packages.mjs';
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
+export function assertConsumerNpmVersion() {
+  const npmVersion = spawnPackageManager('npm', ['--version'], { encoding: 'utf8', timeout: 10_000 });
+  if (npmVersion.status !== 0 || Number(/^(\d+)\./u.exec(npmVersion.stdout ?? '')?.[1] ?? 0) < 12) {
+    throw new Error('Consumer verification requires npm 12 or newer; on Node 22, use Node 22.22.2 or newer');
+  }
+}
+
 // Local tarballs exercise this same consumer check before the first registry publication.
 export function verifyPublishedPackages({ root = repositoryRoot, tarballs } = {}) {
   const packages = readReleasePackages(root);
@@ -22,10 +29,7 @@ export function verifyPublishedPackages({ root = repositoryRoot, tarballs } = {}
       return [name, pathToFileURL(packed.tarballPath).href];
     }),
   );
-  const npmVersion = spawnPackageManager('npm', ['--version'], { encoding: 'utf8', timeout: 10_000 });
-  if (npmVersion.status !== 0 || Number(/^(\d+)\./u.exec(npmVersion.stdout ?? '')?.[1] ?? 0) < 12) {
-    throw new Error('Consumer verification requires npm 12 or newer; on Node 22, use Node 22.22.2 or newer');
-  }
+  assertConsumerNpmVersion();
   const consumer = mkdtempSync(join(tmpdir(), 'puppeteer-registry-consumer-'));
   try {
     writeFileSync(

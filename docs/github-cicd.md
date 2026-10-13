@@ -132,6 +132,9 @@ expires it. Configure trust when the next release is ready. Retrying a version
 already published locally only skips packages and does not validate the OIDC
 exchange. New packages joining the train need the same bootstrap procedure.
 
+Before publication, `pnpm release:verify:packed` builds the tarballs and installs
+them into a fresh npm project. Linux CI runs this check after testing the minimum
+supported Node version, using the same Node and npm versions as the release job.
 After publication, `pnpm release:verify` installs every package at the release
 version in a fresh npm project. It verifies ordinary Node imports, testing
 exports under Vitest, the Views browser bundle and CSS, and the Imposter CLI.
