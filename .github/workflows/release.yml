@@ -122,3 +122,5 @@ jobs:
           # npm provenance is supported only for public source repositories.
           NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
         run: node scripts/publish-packages.mjs
+      - name: Verify the published packages in a clean npm consumer
+        run: pnpm release:verify

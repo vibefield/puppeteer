@@ -59,6 +59,7 @@
     "release:publish": "pnpm packages:check && pnpm -r --filter './packages/**' typecheck && pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000 && node scripts/publish-packages.mjs",
     "release:trust": "node scripts/trust-packages.mjs",
     "release:trust:check": "node scripts/trust-packages.mjs --check",
+    "release:verify": "node scripts/verify-published-packages.mjs",
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx}\" \"packages/*/scripts/**/*.{ts,tsx,mjs}\" \"apps/*/src/**/*.{ts,tsx}\" \"apps/*/*.{ts,mjs}\" \"scripts/**/*.mjs\""
   },

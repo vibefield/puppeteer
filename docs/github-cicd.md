@@ -132,6 +132,15 @@ expires it. Configure trust when the next release is ready. Retrying a version
 already published locally only skips packages and does not validate the OIDC
 exchange. New packages joining the train need the same bootstrap procedure.
 
+After publication, `pnpm release:verify` installs every package at the release
+version in a fresh npm project. It verifies ordinary Node imports, testing
+exports under Vitest, the Views browser bundle and CSS, and the Imposter CLI.
+The workflow runs this check after every publication; it also runs when a retry
+skips packages already present on npm. A verification failure does not unpublish
+packages. Diagnose the consumer error before retrying the same release.
+Use npm 12 for this check (on Node 22, version 22.22.2 or newer), matching the
+release workflow; npm 10 can fail while resolving Vitest's optional peers.
+
 Provenance is disabled for this private source repository. npm requires public
 source repositories for provenance, even for public npm packages. The workflow
 enables provenance automatically if the source repository later becomes public;
