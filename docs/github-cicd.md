@@ -138,9 +138,10 @@ supported Node version, using the same Node and npm versions as the release job.
 After publication, `pnpm release:verify` installs every package at the release
 version in a fresh npm project. It verifies ordinary Node imports, testing
 exports under Vitest, the Views browser bundle and CSS, and the Imposter CLI.
-The workflow runs this check after every publication; it also runs when a retry
-skips packages already present on npm. A verification failure does not unpublish
-packages. Diagnose the consumer error before retrying the same release.
+The workflow runs this check for tags that include it; it also runs when a retry
+skips packages already present on npm. Older tags retain their original checks.
+A verification failure does not unpublish packages. Diagnose the consumer error
+before retrying the same release.
 Use npm 12 for this check (on Node 22, version 22.22.2 or newer), matching the
 release workflow; npm 10 can fail while resolving Vitest's optional peers.
 

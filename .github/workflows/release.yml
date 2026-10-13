@@ -123,4 +123,6 @@ jobs:
           NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
         run: node scripts/publish-packages.mjs
       - name: Verify the published packages in a clean npm consumer
-        run: pnpm release:verify
+        # A retry checks out the original tag, which may predate this verifier.
+        if: ${{ hashFiles('scripts/verify-published-packages.mjs') != '' }}
+        run: node scripts/verify-published-packages.mjs
