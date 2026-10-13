@@ -110,7 +110,11 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Install npm with trusted-publishing support
-        run: npm install --global npm@12.0.1
+        # Keep the bundled npm intact while installing the CLI used for publication.
+        run: |
+          npm install --prefix "$RUNNER_TEMP/puppeteer-npm" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund npm@12.0.1
+          echo "PUPPETEER_NPM_CLI=$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" >> "$GITHUB_ENV"
+          node "$RUNNER_TEMP/puppeteer-npm/node_modules/npm/bin/npm-cli.js" --version
       - run: pnpm install --frozen-lockfile --filter './packages/**'
       - run: pnpm packages:check
       - name: Test release automation

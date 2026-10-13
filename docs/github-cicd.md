@@ -75,6 +75,8 @@ and the README install example; never hand-bump them.
 
 Only the publish job has OIDC permission. It uses Node 22.22.2 to satisfy
 npm 12.0.1's engine requirement, while CI tests the library's Node 22.18.0 minimum.
+CI and Release install npm in a temporary tool directory and select its CLI with
+`PUPPETEER_NPM_CLI`, avoiding failures when npm 10 replaces itself during an upgrade.
 Publication jobs are serialized and are never cancelled by a newer release.
 
 Validate a proposed release locally, after installing dependencies:
