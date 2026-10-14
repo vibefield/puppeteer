@@ -108,7 +108,10 @@ export interface MonitorTheme {
   readonly scheme: 'light' | 'dark';
   readonly tokens: MonitorPalette;
   readonly reducedMotion: boolean;
-  /** The host's animations switch (the lab's and the catalog's). Off: no loop runs. */
+  /**
+   * The host's animations switch (the lab's and the catalog's). Off: no loop runs, and the view holds still: nothing
+   * is simulated (the swarm's physics solve nothing), and a row that arrives is drawn where it spawns, at its size.
+   */
   readonly animations: boolean;
 }
 
