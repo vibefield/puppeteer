@@ -46,11 +46,11 @@ export const SWARM_FIT = Object.freeze({
    * ρ: the densest packing of collision discs that settles clean. Measured (SWF, 2026-10-13) with this view's own
    * physics, headless, default parameters, 8 s settled, on 1164 × 288 under a 56 px head, 1164 × 520, and 600 × 288
    * under the head, at 8, 20, 27 and 40 of the lab world's bodies: no body crosses an edge or enters the padded head
-   * by more than 2 px. Without the grid the tightest case above the floor (40 bodies on 1164 × 520) is clean at 0.45
-   * and not at 0.46 (3 seeds); with it, every case above the floor is clean up to 0.52 on 8 seeds, with the first
-   * reds at 0.56. A crowd at the floor may spill, as ruled.
+   * by more than 2 px. 0.31 is the least of the twelve cases' largest clean packings (3 seeds, k unclamped): every
+   * case is clean at it, a crowd at the floor included where the floor lets it be. A crowd at the floor may spill,
+   * as ruled.
    */
-  packing: 0.45,
+  packing: 0.31,
   /** No body is solved or drawn below this radius, in CSS px. */
   floorRadius: 28,
   /** k moves in steps of this, 1/25: 0.56 (the floor at today's sizes) and 1 are both on the grid. */
