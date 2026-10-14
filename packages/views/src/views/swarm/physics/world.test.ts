@@ -436,6 +436,23 @@ describe('the pull takes the free region’s shape (SWF)', () => {
     expect(physics.pullShare.x).toBeCloseTo(((400 - 63) / 800) ** 2, 12);
   });
 
+  it('pulls a square field exactly as the radial pull did (James: "a square field behaves exactly as today")', () => {
+    const settled = (radial: boolean): number[] => {
+      const physics = new SwarmPhysics({
+        parameters: PARAMETERS,
+        bounds: { width: 600, height: 600 },
+        agents: [50, 60, 73, 50, 80, 50, 66, 50].map((radius, index) => ({ id: `b${index}`, radius })),
+        random: sequence(1),
+      });
+      if (radial) (physics as unknown as { pull: { x: number; y: number } }).pull = { x: 1, y: 1 };
+      drive(physics, 480, 1000 / 60);
+      const frame = positions(physics);
+      physics.dispose();
+      return frame;
+    };
+    expect(settled(false)).toEqual(settled(true));
+  });
+
   it('leaves a lone body at the centre where it is', () => {
     const physics = new SwarmPhysics({
       parameters: PARAMETERS,
