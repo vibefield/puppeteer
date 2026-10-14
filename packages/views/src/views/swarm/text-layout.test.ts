@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { chordWidth, fitText, layoutCopy, type CopyLine, type TextMeasure, type TextStyle } from './text-layout.js';
+import {
+  chordWidth,
+  fitText,
+  ladderCopy,
+  layoutCopy,
+  legible,
+  type CopyLine,
+  type PlacedLine,
+  type TextMeasure,
+  type TextStyle,
+} from './text-layout.js';
 
 // A monospace stand-in: every character is 0.6 em wide, plus the letter spacing.
 const measure: TextMeasure = (text, style) =>
@@ -103,5 +113,80 @@ describe('layoutCopy', () => {
       { radius: 40, measure, maxWidthRatio: 0.84 },
     );
     expect(layout.lines[0]!.width).toBe(14);
+  });
+});
+
+describe('legible', () => {
+  const line: CopyLine = { key: 'name', text: 'puppeteer', style: name, opacity: 1, tone: 'ink' };
+  const placed = (text: string): PlacedLine => ({ ...line, text, width: 0, textWidth: 0, y: 0, height: 0 });
+
+  it('reads a whole line, and a cut that keeps three glyphs before its ellipsis', () => {
+    expect(legible(placed('puppeteer'), line)).toBe(true);
+    expect(legible(placed('pup…'), line)).toBe(true);
+  });
+
+  it('does not read a cut to fewer, the ellipsis alone, or nothing', () => {
+    expect(legible(placed('pu…'), line)).toBe(false);
+    expect(legible(placed('…'), line)).toBe(false);
+    expect(legible(placed(''), line)).toBe(false);
+  });
+
+  it('asks a short line for all of itself', () => {
+    const short: CopyLine = { ...line, key: 'elapsed', text: '4:39' };
+    expect(legible({ ...placed('4:39'), key: 'elapsed' }, short)).toBe(true);
+    expect(legible({ ...placed('4:…'), key: 'elapsed' }, short)).toBe(false);
+    const two: CopyLine = { ...line, text: 'ok' };
+    expect(legible(placed('o…'), two)).toBe(false);
+  });
+
+  it('compares against the line as drawn, its case transform applied', () => {
+    const upper: CopyLine = { ...line, text: 'empty', style: label };
+    expect(legible(placed('EMPTY'), upper)).toBe(true);
+  });
+});
+
+describe('ladderCopy: the words step down', () => {
+  const small: TextStyle = { size: 7, weight: 800 };
+  const lines: CopyLine[] = [
+    { key: 'branch', text: 'swarm-fit', style: small, opacity: 0.6, tone: 'ink' },
+    { key: 'name', text: 'puppeteer', style: name, opacity: 1, tone: 'ink', gapBefore: 1 },
+    { key: 'state', text: 'Allow Bash: pnpm test', style: name, opacity: 1, tone: 'ink', gapBefore: 2 },
+    { key: 'model', text: 'fable 5.1 · high', style: small, opacity: 0.6, tone: 'ink', gapBefore: 3 },
+  ];
+  const order = ['branch', 'model', 'state'];
+  const keys = (radius: number) =>
+    ladderCopy(lines, { radius, measure, maxWidthRatio: 0.84, order }).lines.map((line) => line.key);
+
+  it('lays out exactly as layoutCopy where every line reads', () => {
+    expect(ladderCopy(lines, { radius: 60, measure, maxWidthRatio: 0.84, order })).toEqual(
+      layoutCopy(lines, { radius: 60, measure, maxWidthRatio: 0.84 }),
+    );
+  });
+
+  it('drops lines in its order, first to go first, and recentres what is left', () => {
+    const seen = new Set<string>();
+    for (let radius = 60; radius >= 12; radius -= 1) seen.add(keys(radius).join('+'));
+    // Full, then without the branch, then the name and the state, then the name alone: never another order.
+    expect([...seen]).toEqual(['branch+name+state+model', 'name+state+model', 'name+state', 'name']);
+  });
+
+  it('keeps every line it keeps legible, down to where only the name is left', () => {
+    for (let radius = 60; radius >= 12; radius -= 0.5) {
+      const layout = ladderCopy(lines, { radius, measure, maxWidthRatio: 0.84, order });
+      const kept = layout.lines.map((placed) => lines.find((line) => line.key === placed.key)!);
+      if (kept.length > 1) layout.lines.forEach((placed, index) => expect(legible(placed, kept[index]!)).toBe(true));
+    }
+  });
+
+  it('never drops a line its order does not name', () => {
+    expect(keys(8)).toEqual(['name']);
+  });
+
+  it('takes nothing for a name no drop could rescue', () => {
+    // So wide a name is cut short even alone on the centre line: the others stay rather than go for nothing.
+    const wide: CopyLine[] = [{ ...lines[1]!, style: { size: 30, weight: 800 } }, lines[3]!];
+    const layout = ladderCopy(wide, { radius: 30, measure, maxWidthRatio: 0.84, order });
+    expect(layout.lines.map((line) => line.key)).toEqual(['name', 'model']);
+    expect(legible(layout.lines[0]!, wide[0]!)).toBe(false);
   });
 });
