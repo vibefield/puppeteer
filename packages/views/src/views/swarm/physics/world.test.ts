@@ -413,6 +413,73 @@ describe('spawns keep clear of the chrome (SWF)', () => {
   });
 });
 
+describe('the pull takes the free region’s shape (SWF)', () => {
+  const HEAD = (width: number) => ({ x: 0, y: 0, width, height: 56 });
+
+  it('weakens the pull along the free region’s long side by (short / long)²', () => {
+    const at = (width: number, height: number, obstacles: { x: number; y: number; width: number; height: number }[]) =>
+      new SwarmPhysics({ parameters: PARAMETERS, bounds: { width, height }, obstacles }).pullShare;
+    expect(at(400, 400, [])).toEqual({ x: 1, y: 1 });
+    // VibeField's stage: the head's padded band (63 tall) spans it, so the free region is 1164 × 225.
+    expect(at(1164, 288, [HEAD(1164)]).x).toBeCloseTo(((288 - 56 - CHROME_OBSTACLE_PADDING) / 1164) ** 2, 12);
+    expect(at(1164, 288, [HEAD(1164)]).y).toBe(1);
+    // Godview's usage column does not span the stage, so the free region is the stage.
+    expect(at(1180, 252, [{ x: 13, y: 11, width: 46, height: 235 }]).x).toBeCloseTo((252 / 1180) ** 2, 12);
+    expect(at(300, 900, [])).toEqual({ x: 1, y: (300 / 900) ** 2 });
+  });
+
+  it('follows the field and its chrome', () => {
+    const physics = new SwarmPhysics({ parameters: PARAMETERS, bounds: { width: 400, height: 400 } });
+    physics.setBounds({ width: 800, height: 400 });
+    expect(physics.pullShare.x).toBeCloseTo(0.25, 12);
+    physics.setObstacles([HEAD(800)]);
+    expect(physics.pullShare.x).toBeCloseTo(((400 - 63) / 800) ** 2, 12);
+  });
+
+  it('leaves a lone body at the centre where it is', () => {
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds: { width: 1164, height: 288 },
+      obstacles: [{ x: 13, y: 11, width: 46, height: 266 }],
+      agents: [{ id: 'a', radius: 60 }],
+    });
+    drive(physics, 120, 1000 / 60);
+    const frame = positions(physics);
+    expect(frame[FRAME_HEADER_FLOATS]).toBeCloseTo(582, 6);
+    expect(frame[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(144, 6);
+    physics.dispose();
+  });
+
+  it('settles a fitted crowd clear of the head’s band, where a radial pull pressed it in', () => {
+    // VibeField's twenty agents at the fit's scale for its stage (0.68): idle and blocked at 50, working 60 to 80.
+    const radii = [80, 60, 50, 50, 50, 60, 73, 50, 60, 50, 50, 50, 50, 50, 60, 50, 50, 50, 66, 60];
+    const deepest = (radial: boolean): number => {
+      const physics = new SwarmPhysics({
+        parameters: PARAMETERS,
+        bounds: { width: 1164, height: 288 },
+        obstacles: [HEAD(1164)],
+        agents: radii.map((radius, index) => ({ id: `b${index}`, radius: radius * 0.68 })),
+        random: sequence(1),
+      });
+      if (radial) (physics as unknown as { pull: { x: number; y: number } }).pull = { x: 1, y: 1 };
+      drive(physics, 480, 1000 / 60);
+      const frame = positions(physics);
+      let worst = Number.NEGATIVE_INFINITY;
+      for (let index = 0; index < radii.length; index += 1) {
+        const at = FRAME_HEADER_FLOATS + index * FRAME_STRIDE;
+        const y = frame[at + 1]!;
+        const r = frame[at + 2]!;
+        // How far the drawn disc reaches into the padded band (56 + 7), or past the floor.
+        worst = Math.max(worst, 56 + CHROME_OBSTACLE_PADDING - (y - r), y + r - 288);
+      }
+      physics.dispose();
+      return worst;
+    };
+    expect(deepest(false)).toBeLessThanOrEqual(2);
+    expect(deepest(true)).toBeGreaterThan(2);
+  });
+});
+
 describe('the frame buffer', () => {
   it('writes a header and then x, y, radius per body in table order', () => {
     const physics = build({ gravityPull: 0 }, [
