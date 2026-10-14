@@ -51,9 +51,12 @@ credentials.
 ## Releases
 
 A successful CI run for a push to the current `main` commit triggers Release.
-Release Please opens or updates a release PR. It explicitly dispatches CI for that
-bot branch using `GITHUB_TOKEN`, avoiding a long-lived PAT and the bot-PR approval
-trigger limitation. Maintainers merge the release PR after its checks pass.
+Release Please opens or updates a release PR using `GITHUB_TOKEN`, without a
+long-lived PAT. GitHub holds the bot-created PR's workflow for approval. A
+maintainer reviews the release diff, selects **Approve workflows to run** on the
+PR, and waits for every required CI check before merging. A separate manual CI
+dispatch does not clear this PR approval gate, so the release workflow does not
+start a duplicate run.
 
 The subsequent successful main CI permits Release Please to create the tag and
 GitHub release. When publishing is enabled, it dispatches the same Release

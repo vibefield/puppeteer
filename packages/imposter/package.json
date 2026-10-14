@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-imposter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "One executable that impersonates every coding agent from versioned Surface models and vendor-native channels.",
   "license": "MIT",

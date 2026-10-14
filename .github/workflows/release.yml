@@ -47,20 +47,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target-branch: main
-      # GITHUB_TOKEN-created PRs can require approval before their PR event runs.
-      # Explicit dispatch runs read-only CI on the bot branch without a PAT.
-      - name: Run CI for the release PR
-        if: steps.current.outputs.matches == 'true'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const { data: prs } = await github.rest.pulls.list({ ...context.repo, state: 'open', base: 'main' });
-            for (const pr of prs) {
-              if (pr.head.repo?.full_name !== process.env.GITHUB_REPOSITORY ||
-                  !pr.head.ref.startsWith('release-please--branches--main') ||
-                  !pr.labels.some(label => label.name === 'autorelease: pending')) continue;
-              await github.rest.actions.createWorkflowDispatch({ ...context.repo, workflow_id: 'ci.yml', ref: pr.head.ref });
-            }
       - name: Dispatch publication from the release tag
         if: steps.release.outputs.release_created == 'true' && vars.NPM_PUBLISH_ENABLED == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8

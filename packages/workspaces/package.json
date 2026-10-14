@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-workspaces",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Workspace modes for puppeteer sessions: direct, exclusive, git-worktree, and copy providers with final metadata.",
   "license": "MIT",
