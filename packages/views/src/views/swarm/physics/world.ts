@@ -1,5 +1,5 @@
 import Matter from 'matter-js';
-import { clampSpawnPosition, PHYSICAL_GAP } from './spawn-clamp.js';
+import { CHROME_OBSTACLE_PADDING, clampSpawnPosition, PHYSICAL_GAP } from './spawn-clamp.js';
 
 // THE SWARM'S PHYSICS, with no view attached (GT-3c, GT-D16).
 //
@@ -55,8 +55,6 @@ export const PHYSICS_HZ_FLOOR = 15;
  */
 export const FRICTION_AIR_CEILING = 0.2;
 
-/** How far a chrome obstacle's body overhangs the element it stands for. */
-const CHROME_OBSTACLE_PADDING = 7;
 const DRAG_STIFFNESS = 0.2;
 const WALL_THICKNESS = 5000;
 const SPAWN_CLEARANCE = 12;
@@ -344,16 +342,24 @@ export class SwarmPhysics {
     return changed;
   }
 
+  /**
+   * Where a new body opens: the first candidate on a golden-angle spiral out
+   * from the centre that keeps clear of every body, and never inside the
+   * chrome while any candidate is clear of it (SWF). A body born in the head's
+   * band is pushed out by the band's contacts, which yield under a crowd's
+   * pressure; one born clear never has to be.
+   */
   private findSpawnPosition(width: number, height: number, radius: number): SwarmPoint {
     const wrappers = [...this.bodies.values()];
     const center = { x: width / 2, y: height / 2 };
-    if (wrappers.length === 0) return center;
-
     const collisionRadius = radius + PHYSICAL_GAP;
+    if (wrappers.length === 0 && this.obstacleClearance(center, collisionRadius) >= 0) return center;
+
     const horizontalReach = Math.max(0, Math.min(width * 0.28, width / 2 - collisionRadius - SPAWN_CLEARANCE));
     const verticalReach = Math.max(0, Math.min(height * 0.28, height / 2 - collisionRadius - SPAWN_CLEARANCE));
     const phase = this.random() * Math.PI * 2;
     let bestPosition = center;
+    let bestClearOfChrome = false;
     let bestClearance = Number.NEGATIVE_INFINITY;
 
     for (let index = 0; index < SPAWN_CANDIDATES; index += 1) {
@@ -363,6 +369,7 @@ export class SwarmPhysics {
         x: center.x + Math.cos(angle) * horizontalReach * progress,
         y: center.y + Math.sin(angle) * verticalReach * progress,
       };
+      const clearOfChrome = this.obstacleClearance(candidate, collisionRadius) >= 0;
       let clearance = Number.POSITIVE_INFINITY;
       for (const wrapper of wrappers) {
         const distance = Math.hypot(candidate.x - wrapper.body.position.x, candidate.y - wrapper.body.position.y);
@@ -371,14 +378,27 @@ export class SwarmPhysics {
           distance - (collisionRadius + wrapper.currentRadius + PHYSICAL_GAP + SPAWN_CLEARANCE),
         );
       }
-      if (clearance > bestClearance) {
+      // Clear of the chrome outranks any clearance from the bodies: a crowd can make room, a band cannot.
+      if ((clearOfChrome && !bestClearOfChrome) || (clearOfChrome === bestClearOfChrome && clearance > bestClearance)) {
         bestPosition = candidate;
+        bestClearOfChrome = clearOfChrome;
         bestClearance = clearance;
       }
-      if (clearance >= 0) return candidate;
+      if (clearOfChrome && clearance >= 0) return candidate;
     }
 
     return bestPosition;
+  }
+
+  /** How far a disc of `collisionRadius` at `point` stands clear of the nearest padded obstacle: negative overlaps it. */
+  private obstacleClearance(point: SwarmPoint, collisionRadius: number): number {
+    let clearance = Number.POSITIVE_INFINITY;
+    for (const obstacle of this.obstacles) {
+      const dx = Math.max(0, Math.abs(point.x - obstacle.body.position.x) - obstacle.width / 2);
+      const dy = Math.max(0, Math.abs(point.y - obstacle.body.position.y) - obstacle.height / 2);
+      clearance = Math.min(clearance, Math.hypot(dx, dy) - collisionRadius);
+    }
+    return clearance;
   }
 
   /**

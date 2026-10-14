@@ -6,6 +6,10 @@
 /** Space between a bubble's drawn edge and its collision edge. */
 export const PHYSICAL_GAP = 4;
 
+/** How far a chrome obstacle's body overhangs the element it stands for. Here, beside the gap, so the swarm's fit
+ * (`fit.ts`) can read the field the physics leaves free without importing matter. */
+export const CHROME_OBSTACLE_PADDING = 7;
+
 /** A spawn position moved inside the field the way the physics moves it. */
 export function clampSpawnPosition(
   width: number,
