@@ -1,14 +1,8 @@
 /// <reference types="@webgpu/types" />
 import { AGENT_MARK_ATLAS, agentMarkSvg, agentMarkTile, type Rgba } from '@vibefield/puppeteer-view-sdk/toolkit';
+import { bodyLayout, burnFlamesDrawn, FIGURE_STYLE, FLAME_GAP, FLAME_SIZE, type BodyLayout } from '../body-layout.js';
 import type { SwarmBubbleModel } from '../bubble-model.js';
-import {
-  layoutCopy,
-  leadAdvance,
-  type CopyLayout,
-  type CopyLead,
-  type CopyTone,
-  type TextStyle,
-} from '../text-layout.js';
+import { leadAdvance, type CopyLead, type CopyTone, type TextStyle } from '../text-layout.js';
 import { FRAME_FLOATS, FRAME_LAYOUT, packFrame, writeRgba } from './frame-layout.js';
 import { GlyphAtlas } from './glyph-atlas.js';
 import { PROFILE_ICON_PREFIX, profileIconSvg } from './profile-icons.js';
@@ -165,13 +159,6 @@ const GLYPH_FLOATS = 16;
 const INITIAL_BODIES = 32;
 const INITIAL_GLYPHS = 2048;
 
-/** The context figure and the total: one size, the same margin in from the rim. */
-const FIGURE_STYLE: TextStyle = { size: 10.5, weight: 800, letterSpacing: 0.02 };
-const FIGURE_MARGIN = 7;
-/** The burn row keeps this much clear of the model line above and of the total below. */
-const BAND_MARGIN_TOP = 4;
-const BAND_MARGIN_BOTTOM = 8;
-
 // Stroke icons, 24-box, from the proposals record.
 const ICON_SVG: Record<string, string> = {
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
@@ -212,10 +199,6 @@ const FLAME_PATH =
   'M12.2 1.8C14.6 5.6 18 8.6 18 13.4a6 6 0 0 1-12 0c0-2.7 1.1-4.5 2.5-5.8.2 1.8 1 2.9 2.1 3.3C9.3 7.5 10.1 4.1 12.2 1.8z';
 const FLAME_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${FLAME_PATH}" fill="currentColor"/></svg>`;
 const FLAME_HOLLOW_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${FLAME_PATH}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
-
-/** The ladder's own geometry: four marks, the gap between them, and the alphas. */
-const FLAME_SIZE = 13;
-const FLAME_GAP = 3;
 
 const DOT_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="currentColor"/></svg>';
@@ -595,23 +578,21 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     }
   };
 
-  const copyLayoutOf = (body: RenderBody): CopyLayout =>
-    layoutCopy(body.model.copy, {
-      radius: body.radius * body.scale,
-      measure: (text, style) => atlas.measure(text, style),
-      maxWidthRatio: body.model.copyMaxWidthRatio,
-    });
-
-  /** The burn row's centre, relative to the body's own centre: midway between a
-   * margin under the model line and a margin above the total figure, so the
-   * flames stand where the chart used to, whatever the radius. */
-  const burnRowOf = (body: RenderBody, layout: CopyLayout): number => {
-    const radius = body.radius * body.scale;
-    const modelLine = layout.lines.find((line) => line.key === 'model');
-    const under = modelLine ? modelLine.y + modelLine.height / 2 : layout.bottom;
-    const top = under + BAND_MARGIN_TOP;
-    const floor = Math.max(top + 4, radius - FIGURE_MARGIN - FIGURE_STYLE.size - BAND_MARGIN_BOTTOM);
-    return (top + floor) / 2;
+  // Each body's layout (what it keeps, and where: `body-layout.ts`), held while its model, its eased radius and
+  // its arrival scale all stand still. A settled body is laid out once per model, and models are rebuilt about
+  // once a second, so the ladder's extra layouts cost only bodies in motion, never a frame of a settled field.
+  const layouts = new Map<string, { model: SwarmBubbleModel; radius: number; scale: number; layout: BodyLayout }>();
+  const laidOutThisFrame = new Set<string>();
+  const measure = (text: string, style: TextStyle): number => atlas.measure(text, style);
+  const layoutOf = (body: RenderBody): BodyLayout => {
+    const id = body.model.id;
+    laidOutThisFrame.add(id);
+    const held = layouts.get(id);
+    if (held && held.model === body.model && held.radius === body.radius && held.scale === body.scale)
+      return held.layout;
+    const layout = bodyLayout(body.model, { radius: body.radius, scale: body.scale, measure });
+    layouts.set(id, { model: body.model, radius: body.radius, scale: body.scale, layout });
+    return layout;
   };
 
   /**
@@ -628,15 +609,14 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     ink: Rgba,
     time: number,
     motion: boolean,
-    layout: CopyLayout,
+    layout: BodyLayout,
     dim: number,
     rung: (weight: number) => number,
   ): void => {
     const burn = body.model.burn;
-    if (!burn) return;
-    const drawn = burn.priced ? burn.lit : 1;
-    if (drawn === 0) return;
-    const rowY = body.y + burnRowOf(body, layout);
+    const drawn = burnFlamesDrawn(body.model);
+    if (!burn || drawn === 0 || layout.burn === undefined) return;
+    const rowY = body.y + layout.burn;
     const span = drawn * FLAME_SIZE + (drawn - 1) * FLAME_GAP;
     const breath = motion ? 0.5 - 0.5 * Math.cos((time * 2 * Math.PI) / 1.6 + body.seed) : 0.5;
     for (let slot = 0; slot < drawn; slot += 1) {
@@ -665,7 +645,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     theme: SwarmTheme,
     time: number,
     motion: boolean,
-    layout: CopyLayout,
+    layout: BodyLayout,
   ): void => {
     const { model } = body;
     const radius = body.radius * body.scale;
@@ -675,10 +655,11 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
     if (radius < 12) return;
     if (model.watermark) {
       // The ignition's breath, kept from the DOM: a working mark swells from
-      // 0.92 to 1.08 and brightens from 8% to 24% every 1.5s.
+      // 0.92 to 1.08 and brightens from 8% to 24% every 1.5s. A small body, or
+      // one whose words have stepped down, wears the small mark.
       const breathing = motion && model.appearance === 'working';
       const k = breathing ? 0.5 - 0.5 * Math.cos((time * 2 * Math.PI) / 1.5 + body.seed) : 0.5;
-      const size = (radius <= 40 ? 46 : 58) * (breathing ? 0.92 + 0.16 * k : 1);
+      const size = layout.watermark * (breathing ? 0.92 + 0.16 * k : 1);
       const opacity = (breathing ? 0.08 + 0.16 * k : model.watermark.opacity) * dim;
       const cx = body.x;
       // Lifted above the copy's centre so the branch line clears its densest part.
@@ -695,7 +676,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
         );
       }
     }
-    for (const line of layout.lines) {
+    for (const line of layout.copy.lines) {
       const colour = toneColour(line.tone, body, ink, theme);
       const alpha = rung(line.opacity) * dim;
       const lineY = body.y + line.y;
@@ -740,10 +721,10 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       );
     };
     // The context figure on the top chord and the total on the bottom one,
-    // under the burn row, each the same distance in from the rim.
-    const figureInset = FIGURE_MARGIN + FIGURE_STYLE.size / 2;
-    if (model.figures?.top) figure(model.figures.top, body.y - radius + figureInset);
-    if (model.figures?.bottom) figure(model.figures.bottom, body.y + radius - figureInset);
+    // under the burn row, each the same distance in from the rim: where the
+    // body keeps them (clear of its copy, inside its circle).
+    if (model.figures?.top && layout.top !== undefined) figure(model.figures.top, body.y + layout.top);
+    if (model.figures?.bottom && layout.bottom !== undefined) figure(model.figures.bottom, body.y + layout.bottom);
     emitBurn(body, ink, time, motion, layout, dim, rung);
   };
 
@@ -839,6 +820,8 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
       if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
       atlas.setDpr(dpr);
+      // Glyph advances are measured at the device's pixels: a new ratio lays every body out afresh.
+      layouts.clear();
     },
     measure(text, style) {
       return atlas.measure(text, style);
@@ -860,7 +843,7 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       glyphCount = 0;
       let packed = 0;
       const pack = (body: RenderBody): void => {
-        const layout = copyLayoutOf(body);
+        const layout = layoutOf(body);
         const ink = packBody(packed, body, frame);
         emitBodyText(body, ink, theme, time, frame.motion, layout);
         packed += 1;
@@ -874,6 +857,9 @@ export async function createSwarmRenderer(canvas: HTMLCanvasElement): Promise<Sw
       // A body that stopped turning (or left) starts afresh if it turns again.
       for (const id of turnStarts.keys()) if (!turnedThisFrame.has(id)) turnStarts.delete(id);
       turnedThisFrame.clear();
+      // A body gone from the frame lets its layout go with it.
+      for (const id of layouts.keys()) if (!laidOutThisFrame.has(id)) layouts.delete(id);
+      laidOutThisFrame.clear();
 
       packFrame(frameData, frame, { width, height, dpr, time });
 
