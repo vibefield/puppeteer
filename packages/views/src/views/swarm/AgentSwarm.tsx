@@ -35,7 +35,8 @@ import type { BloomBody } from './bloom/model.js';
 import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom, type BloomFocusPlace } from './bloom/use-spawn-bloom.js';
 import { bodyIdOf } from './body-id.js';
-import { bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
+import { baseRadius, bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
+import { fitScale } from './fit.js';
 import {
   createSwarmRenderer,
   MAX_CLEARINGS,
@@ -79,6 +80,11 @@ import { resolveSwarmTheme } from './swarm-theme.js';
 // whether the physics steps at 15Hz or 120. Told to hold still (the host's
 // animations switch off, or motion reduced: MV-W4), the loop stops, the physics
 // pause with it, and the field is drawn once per change where it stands.
+//
+// The crowd fits its field (SWF, `fit.ts`): one shared scale multiplies every
+// body's size, refitted when the rows, the field's size or the chrome change
+// (never per frame). The physics and the drawing both take the scaled radius,
+// births and the bloom too; the visual eases to it on the same spring.
 
 /** What this thread keeps about one body beyond the physics' own frame. */
 interface BodyVisual {
@@ -284,6 +290,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   const initialisedRef = useRef(false);
   /** The stage whose obstacles the physics holds. */
   const stageSentRef = useRef<StageGeometry | undefined>(undefined);
+  /** The crowd's shared scale (`fit.ts`): every body is drawn and solved at its base size times this. */
+  const fitRef = useRef(1);
 
   // The spawn bloom (SB): with a spawn menu, a completed hold opens it instead of
   // creating at once; without one, the hold creates at once as it always has.
@@ -298,7 +306,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         scale: body.scale,
         agent: agentById(body.model.id),
       })),
-    idleRadius: () => parametersRef.current.radiusIdle,
+    idleRadius: () => parametersRef.current.radiusIdle * fitRef.current,
     motion: () => motionRef.current,
     focus: () => focusRef.current,
     createAt: (position, target) =>
@@ -310,7 +318,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           id: `spawn-bloom-birth-${birthSeqRef.current}`,
           choice,
           menu: spawnMenuRef.current,
-          idleRadius: parametersRef.current.radiusIdle,
+          idleRadius: parametersRef.current.radiusIdle * fitRef.current,
           field: {
             width: containerRef.current?.clientWidth ?? 0,
             height: containerRef.current?.clientHeight ?? 0,
@@ -449,8 +457,37 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     modelsRef.current.at = 0;
   }, [spawnMenu]);
 
-  /** The models every body draws from, rebuilt when the rows change or the clock says so. */
-  const refreshModels = (now: number): void => {
+  /**
+   * The scale the crowd would take now, from the scale it holds (`fit.ts`): the rows' base sizes against the field
+   * the physics bounds (the stage's box) less the chrome. The held scale until the stage has a size.
+   */
+  const fitNow = (): number => {
+    const container = containerRef.current;
+    const width = container?.clientWidth ?? 0;
+    const height = container?.clientHeight ?? 0;
+    if (width <= 0 || height <= 0) return fitRef.current;
+    const parameters = parametersRef.current;
+    const shares = workingShares(agentsRef.current);
+    return fitScale(
+      {
+        field: { width, height },
+        obstacles: stageRef.current.obstacles,
+        radii: agentsRef.current.map((agent) => baseRadius(agent, parameters, shares.get(agent.id) ?? 0)),
+        smallestBase: Math.min(parameters.radiusIdle, parameters.radiusWorking, parameters.radiusBlocked),
+      },
+      fitRef.current,
+    );
+  };
+
+  /**
+   * The models every body draws from, rebuilt when the rows change or the clock says so. With `refit` (the rows,
+   * the parameters, the field or its chrome changed; never the clock's own refresh, never a frame) the crowd is
+   * refitted first, and the physics told the new sizes when the fit moved.
+   */
+  const refreshModels = (now: number, refit = false): void => {
+    const scale = refit ? fitNow() : fitRef.current;
+    const refitted = scale !== fitRef.current;
+    fitRef.current = scale;
     const models = modelsRef.current;
     const nowMs = Date.now();
     const byId = new Map<string, SwarmBubbleModel>();
@@ -466,6 +503,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           nowMs,
           unread: agent.unread,
           workingShare: shares.get(agent.id) ?? 0,
+          scale,
           ...(runningSince === undefined ? {} : { runningSinceMs: runningSince }),
           ...(profile ? { profile } : {}),
         }),
@@ -474,6 +512,14 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     models.byId = byId;
     models.at = now;
     models.agents = agentsRef.current;
+    if (refitted && initialisedRef.current) driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });
+  };
+
+  /** The field or its chrome moved: refit, and where the scale moved, remodel (and redraw a field held still). */
+  const refitIfMoved = (): void => {
+    if (fitNow() === fitRef.current) return;
+    refreshModels(performance.now(), true);
+    stillDrawRef.current?.();
   };
 
   /** The agents as the physics needs them: a body, the size to grow toward, where a creation gesture happened. */
@@ -481,7 +527,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     agentsRef.current.map((agent) => {
       const id = bodyIdOf(agent);
       const model = modelsRef.current.byId.get(id);
-      const spec: SwarmAgentSpec = { id, radius: model?.radius ?? parametersRef.current.radiusIdle };
+      const spec: SwarmAgentSpec = {
+        id,
+        radius: model?.radius ?? parametersRef.current.radiusIdle * fitRef.current,
+      };
       if (agent.spawnHint) spec.spawnHint = agent.spawnHint;
       return spec;
     });
@@ -519,7 +568,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     driverRef.current = driver;
     // Where the simulation runs, to the host: `worker` or `inline`, and a demotion as it happens.
     const stopMode = driver.observeMode((physics) => commandsRef.current.report({ physics }));
-    refreshModels(performance.now());
+    refreshModels(performance.now(), true);
 
     // The first world waits for a measured stage: a spawn keeps clear of the
     // chrome (MV-D19), so the chrome's rectangles must be known when bodies are
@@ -527,6 +576,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     // effect below posts the world the moment they arrive.
     const init = (): void => {
       if (initialisedRef.current || !measured(stageRef.current)) return;
+      // The crowd is fitted to the measured stage before any body is placed: births take the fitted size.
+      refreshModels(performance.now(), true);
       initialisedRef.current = true;
       stageSentRef.current = stageRef.current;
       driver.post({
@@ -548,6 +599,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       height = container.clientHeight;
       rendererRef.current?.resize(width, height, window.devicePixelRatio || 1);
       driver.post({ type: 'updateBounds', bounds: { width, height } });
+      if (initialisedRef.current) refitIfMoved();
     };
     const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateBounds);
     resizeObserver?.observe(container);
@@ -573,7 +625,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         rendererRef.current?.resize(width, height, dpr);
       }
       const models = modelsRef.current;
-      if (models.agents !== agentsRef.current || time - models.at >= MODEL_REFRESH_MS) refreshModels(time);
+      if (models.agents !== agentsRef.current || time - models.at >= MODEL_REFRESH_MS)
+        refreshModels(time, models.agents !== agentsRef.current);
 
       // Age of the newest frame as a fraction of a step: the blend runs 0 → 1
       // across the interval before the next one is due and holds at 1 if it
@@ -699,6 +752,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           nowMs: Date.now(),
           unread: false,
           workingShare: 0,
+          scale: fitRef.current,
           opening: { sinceMs: birth.sinceMs, on: birth.on },
           ...(birth.profile ? { profile: birth.profile } : {}),
         });
@@ -835,7 +889,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       }
     }
     modelsRef.current.at = 0;
-    refreshModels(performance.now());
+    refreshModels(performance.now(), true);
     driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });
   }, [agents, swarm]);
 
@@ -851,6 +905,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     if (stageSentRef.current === stage) return;
     stageSentRef.current = stage;
     driver.post({ type: 'updateObstacles', obstacles: stage.obstacles });
+    refitIfMoved();
   }, [stage]);
 
   // The host's animations switch and the reduced-motion preference start or stop the loop (and the physics with
@@ -1045,6 +1100,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       nowMs: Date.now(),
       unread: agent.unread,
       workingShare: workingShares(agentsRef.current).get(agent.id) ?? 0,
+      scale: fitRef.current,
       ...(profile ? { profile } : {}),
     });
   };
