@@ -175,35 +175,19 @@ const PROJECT_ABOVE: TextStyle = { size: 7.5, weight: 800, letterSpacing: 0.02 }
 const STATE_LINE: TextStyle = { size: 9, weight: 600, letterSpacing: -0.02 };
 
 /**
- * The copy ladder's order (SWF, James 2026-10-13: "the words step down as
- * bodies shrink: full → name + tool → name only"): which line leaves a body
- * first when its circle cannot hold them all (`ladderCopy`). The name is not
- * here: it is who the body is, and it stays down to the floor. The rest go in
- * the order the rest of the body already says them:
+ * The one line a body keeps beside its name on the copy ladder's middle rung
+ * (SWF, James 2026-10-13: "the words step down as bodies shrink: full → name +
+ * tool → name only"; `body-layout.ts`), the first of these the body has:
  *
- * - the branch first: a detail of where the work is, and the one line set
- *   above the name;
- * - a terminal's clock and its profile next: the job's age and the profile it
- *   was born under say how, not what;
- * - the model line: the watermark beside it already names the provider;
- * - a terminal's empty / running: its rim says that again, with dashes or the
- *   comet;
- * - a peer's host after that: nothing else on the body says it is another
- *   desktop's (M41);
- * - the state line last: what a blocked body waits on, or the reply an unread
- *   one brought. It is the "tool" of "name + tool", the line no other mark can
- *   say.
+ * - the state line, the "tool" of "name + tool": what a blocked body waits on
+ *   (Bash · …, ? Should …, ! rate limited), or the reply an unread one brought
+ *   (Done — …);
+ * - else the model line: an idle or working agent's model and effort;
+ * - else a terminal's word: running, or empty (opening, for a birth).
+ *
+ * The name is kept on every rung down to the floor: it is who the body is.
  */
-export const COPY_LADDER: readonly string[] = [
-  'branch',
-  'elapsed',
-  'profile',
-  'model',
-  'command',
-  'sub',
-  'host',
-  'state',
-];
+export const COPY_ONE_LINE: readonly string[] = ['state', 'model', 'command', 'sub'];
 
 /**
  * The project's folder before its name, in the project's colour: the one place
