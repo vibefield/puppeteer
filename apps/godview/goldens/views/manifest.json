@@ -8,9 +8,9 @@
   "locale": "en-US",
   "animations": "per image",
   "environment": {
-    "electron": "43.1.0",
-    "chrome": "150.0.7871.47",
-    "node": "24.18.0",
+    "electron": "43.7.9",
+    "chrome": "150.0.7871.250",
+    "node": "24.21.0",
     "platform": "darwin",
     "arch": "arm64",
     "os": "25.5.0"
@@ -382,7 +382,7 @@
       "n": 20,
       "animations": "on",
       "stage": "680×170",
-      "sha256": "3786fa1853b61d6d2b92e5641d5f2f1fa26e9a41da5ce4bfe221411243007dd2"
+      "sha256": "5b5eef3f8265a9dc155d8a4b56493d69df8d42b196cb210754bc1baf5b11759a"
     },
     {
       "file": "swarm/dark-default-n1.png",
@@ -402,7 +402,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1180×252",
-      "sha256": "0da85d02da70bdd0c85f09ae2f48cad81c8e192dd3158b43c1cdb289d8f00614"
+      "sha256": "837a97dafc0c6931f07f64d8039330a6581bc01a27ddb425863fb993c85321a9"
     },
     {
       "file": "swarm/dark-wide-n1.png",
@@ -422,7 +422,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1728×378",
-      "sha256": "f6a090129fc8b8aa76fe82cece836f4e9d765b0a6c1ecbba5f2387df41c99af9"
+      "sha256": "274ddb58abfa318f37517a7c1b0aa83080d5378c42c8211c42aeec168711b1e2"
     },
     {
       "file": "swarm/light-compact-n1.png",
@@ -442,7 +442,7 @@
       "n": 20,
       "animations": "on",
       "stage": "680×170",
-      "sha256": "3980ed0163321f00396533bff71935c0e7b37033ffc3796ee1c64636bfb4d42f"
+      "sha256": "c113c6e9bb9f24158eb34de7cb5e4e04ea09fc3426747426fde9516e63b51639"
     },
     {
       "file": "swarm/light-default-n1.png",
@@ -462,7 +462,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1180×252",
-      "sha256": "ce12ba33204eac6370c47969bccd919174f1bd8850c97b2b6650052662a236d8"
+      "sha256": "ed4bfd8d600d8e8f58faa1c71cb169a8426b11ef9112900cdcc6b5bb5da63000"
     },
     {
       "file": "swarm/light-wide-n1.png",
@@ -482,7 +482,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1728×378",
-      "sha256": "103f650732b8db004862fc8631a67aa2d081a24893ccc13fe31781be761254a4"
+      "sha256": "fef79c92b19b0412d201f1e1bcf8971f1d7281fe28c20a261c3a71a7bf192f70"
     },
     {
       "file": "timeline/dark-compact-n1.png",
