@@ -140,22 +140,6 @@ export interface SwarmPhysicsInit {
   random?: () => number;
 }
 
-/** How much of [0, extent] a set of intervals covers, overlaps counted once. */
-function coveredLength(intervals: readonly (readonly [number, number])[], extent: number): number {
-  const clipped = intervals
-    .map(([from, to]) => [Math.max(0, from), Math.min(extent, to)] as const)
-    .filter(([from, to]) => to > from)
-    .sort((a, b) => a[0] - b[0]);
-  let covered = 0;
-  let reach = 0;
-  for (const [from, to] of clipped) {
-    if (to <= reach) continue;
-    covered += to - Math.max(from, reach);
-    reach = to;
-  }
-  return covered;
-}
-
 function clampHz(hz: number): number {
   return Number.isFinite(hz) ? Math.max(PHYSICS_HZ_FLOOR, hz) : PHYSICS_HZ_FLOOR;
 }
@@ -188,8 +172,6 @@ export class SwarmPhysics {
   private accumulator = 0;
   private previousTime: number | null = null;
   private readonly random: () => number;
-  /** The centre's pull on each axis, as a share of `gravityPull` (`sharePull`). */
-  private pull = { x: 1, y: 1 };
 
   constructor(init: SwarmPhysicsInit) {
     this.parameters = guardParameters(init.parameters);
@@ -212,7 +194,6 @@ export class SwarmPhysics {
     this.placeWalls();
 
     if (init.obstacles) this.setObstacles(init.obstacles);
-    this.sharePull();
     if (init.agents) this.syncAgents(init.agents);
   }
 
@@ -254,42 +235,6 @@ export class SwarmPhysics {
     this.width = bounds.width;
     this.height = bounds.height;
     this.placeWalls();
-    this.sharePull();
-  }
-
-  /** The centre's pull on each axis, as a share of `gravityPull`: for a fixture, and for the swarm's lab. */
-  get pullShare(): { readonly x: number; readonly y: number } {
-    return this.pull;
-  }
-
-  /**
-   * How the centre's pull is shared between the axes (SWF). A radial pull
-   * makes a crowd round whatever its field's shape: in a short, wide field it
-   * stands as a disc as tall as it is wide, pressed up into the head's band
-   * and down into the floor while the field's width stays empty (twenty bodies
-   * on 1164 × 288 spanned 381 px of it), and Matter's contacts yield under that
-   * pressure at any size. So the pull along the free region's long side is
-   * weakened by (short / long)²: its equipotentials are then ellipses of the
-   * free region's own shape, and the crowd settles into the field it has. The
-   * free region is the field less the obstacles that span it from side to side
-   * (a head or a foot band). The centre stays the field's: a body there feels
-   * no pull either way, as before.
-   */
-  private sharePull(): void {
-    const bands: [number, number][] = [];
-    const columns: [number, number][] = [];
-    for (const { body, width, height } of this.obstacles) {
-      const left = body.position.x - width / 2;
-      const right = body.position.x + width / 2;
-      const top = body.position.y - height / 2;
-      const bottom = body.position.y + height / 2;
-      if (left <= 0 && right >= this.width) bands.push([top, bottom]);
-      if (top <= 0 && bottom >= this.height) columns.push([left, right]);
-    }
-    const freeHeight = Math.max(1, this.height - coveredLength(bands, this.height));
-    const freeWidth = Math.max(1, this.width - coveredLength(columns, this.width));
-    const ratio = freeHeight / freeWidth;
-    this.pull = ratio < 1 ? { x: ratio * ratio, y: 1 } : { x: 1, y: 1 / (ratio * ratio) };
   }
 
   private placeWalls(): void {
@@ -341,7 +286,6 @@ export class SwarmPhysics {
         y: rect.y + rect.height / 2,
       });
     });
-    this.sharePull();
   }
 
   /**
@@ -491,8 +435,8 @@ export class SwarmPhysics {
       const { body } = wrapper;
       if (!wrapper.dragConstraint) {
         Matter.Body.applyForce(body, body.position, {
-          x: (this.width / 2 - body.position.x) * gravityPull * this.pull.x,
-          y: (this.height / 2 - body.position.y) * gravityPull * this.pull.y,
+          x: (this.width / 2 - body.position.x) * gravityPull,
+          y: (this.height / 2 - body.position.y) * gravityPull,
         });
       }
       if (Math.abs(wrapper.targetRadius - wrapper.currentRadius) > 0.5) {
