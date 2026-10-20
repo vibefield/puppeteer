@@ -16,7 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@parcel/watcher": "^2.5.0",
+    "@parcel/watcher": "^2.6.0",
     "@vibefield/puppeteer-adapter-antigravity": "workspace:*",
     "@vibefield/puppeteer-adapter-claude": "workspace:*",
     "@vibefield/puppeteer-adapter-codex": "workspace:*",
@@ -27,13 +27,13 @@
     "@vibefield/puppeteer-adapter-pi": "workspace:*",
     "@vibefield/puppeteer-core": "workspace:*",
     "@vibefield/puppeteer-imposter": "workspace:*",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "electron": "^43.5.0",
     "esbuild": "^0.28.2",
     "typescript": "^5.6.0"
