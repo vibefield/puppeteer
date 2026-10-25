@@ -7,7 +7,7 @@
  *   CODEX_NATIVE_TUI_LIVE=1 PUPPETEER_CODEX_BIN=/absolute/path/to/codex pnpm test
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
@@ -23,7 +23,7 @@ import {
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from './test-support/live-model.js';
-import { requireCodexLiveExecutable } from './test-support/live-profile.js';
+import { removeLiveRoot, requireCodexLiveExecutable } from './test-support/live-profile.js';
 import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
@@ -174,7 +174,9 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       await session?.dispose();
       await host.dispose();
       await provider.close();
-      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+      // The app-server's plugin sync outlives it (findings C8): stop it before removing the root, and on
+      // Windows never let a leftover handle replace this test's own result.
+      await removeLiveRoot(root);
     }
   }, 120_000);
 });

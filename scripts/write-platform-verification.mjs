@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** Emit one platform's immutable real-artifact result after its workflow steps pass. */
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
@@ -19,6 +20,25 @@ function safePath(path) {
   return absolute;
 }
 
+/** An x64 process on Apple silicon runs under Rosetta: it is not on a darwin-x64 machine. */
+function runningTranslated() {
+  if (process.platform !== 'darwin') return false;
+  const result = spawnSync('sysctl', ['-n', 'sysctl.proc_translated'], { encoding: 'utf8' });
+  return result.status === 0 && result.stdout.trim() === '1';
+}
+
+/**
+ * The promotion platform this process actually runs on, or undefined when it is none of them. A lane's
+ * report names its platform from the workflow matrix; this is what keeps a mislabeled runner from attesting
+ * a platform it is not.
+ */
+export function hostPlatform({ platform = process.platform, arch = process.arch, translated } = {}) {
+  const system = { darwin: 'darwin', linux: 'linux', win32: 'windows' }[platform];
+  if (!system || !['arm64', 'x64'].includes(arch)) return undefined;
+  if (translated ?? (platform === process.platform && runningTranslated())) return undefined;
+  return `${system}-${arch}`;
+}
+
 export function platformVerification({
   artifactReport,
   platform,
@@ -26,11 +46,12 @@ export function platformVerification({
   actualVersionOutput,
   adapterReceipt,
   checks,
+  host = hostPlatform(),
   environment = process.env,
 }) {
   const artifact = artifactReport.artifacts?.find((entry) => entry.platform === platform);
   if (!artifact) throw new Error(`artifact report has no ${platform}`);
-  const required = ['binaryVersion', 'surfaceAudit', 'adapterReal'];
+  const required = ['binaryVersion', 'hostPlatform', 'surfaceAudit', 'adapterReal'];
   const boundedVersion = typeof actualVersionOutput === 'string' ? actualVersionOutput.trim() : '';
   const binaryPassed =
     artifactSha256 === artifact.sha256 &&
@@ -50,6 +71,7 @@ export function platformVerification({
   const resolvedChecks = {
     ...checks,
     binaryVersion: binaryPassed ? 'passed' : 'failed',
+    hostPlatform: host === platform ? 'passed' : 'failed',
     adapterReal: adapterPassed ? 'passed' : 'failed',
   };
   const missing = required.filter((gate) => resolvedChecks?.[gate] !== 'passed');
@@ -58,6 +80,7 @@ export function platformVerification({
     vendor: artifactReport.vendor,
     vendorVersion: artifactReport.version,
     platform,
+    host: host ?? null,
     artifactSha256: artifactSha256 ?? null,
     versionOutput: boundedVersion,
     status: missing.length === 0 ? 'passed' : 'failed',

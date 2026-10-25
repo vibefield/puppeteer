@@ -1,6 +1,6 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { delimiter, join } from 'node:path';
+import { delimiter, join, win32 } from 'node:path';
 
 export const CLAUDE_LIVE_MODEL = 'claude-sonnet-4-5-20250929';
 export const CLAUDE_LIVE_RESPONSE_MARKER = 'SURFACE_CLAUDE_TUI_OK';
@@ -106,6 +106,36 @@ function jsonMessage(
   );
 }
 
+/**
+ * Every key Claude may look the workspace's trust record up under. Claude keys `projects` by the normalized
+ * working directory, and on Windows turns its backslashes into forward slashes first (2.1.308's project-path
+ * key), so a record under the native `C:\…` spelling is never found there and the TUI stops at its workspace
+ * trust prompt. `longName` is the same directory without 8.3 short names (a hosted runner's temp root is under
+ * `RUNNER~1`); Claude keys whichever spelling its working directory has, so both are trusted.
+ */
+export function claudeTrustedProjectKeys(
+  cwd: string,
+  platform: NodeJS.Platform = process.platform,
+  longName?: string,
+): string[] {
+  const spellings = longName && longName !== cwd ? [cwd, longName] : [cwd];
+  if (platform !== 'win32') return spellings;
+  const keys = spellings.flatMap((spelling) => {
+    const forward = win32.normalize(spelling).replaceAll('\\', '/');
+    const lowerDrive = forward.replace(/^[A-Z]:/u, (drive) => drive.toLowerCase());
+    return [spelling, forward, lowerDrive];
+  });
+  return [...new Set(keys)];
+}
+
+function longPathName(path: string): string | undefined {
+  try {
+    return realpathSync.native(path);
+  } catch {
+    return undefined;
+  }
+}
+
 /** Build an isolated Claude state root without copying user settings or credentials. */
 export function isolatedClaudeLiveEnvironment(
   root: string,
@@ -124,20 +154,21 @@ export function isolatedClaudeLiveEnvironment(
   writeFileSync(join(bin, 'security'), KEYCHAIN_STUB, { mode: 0o700 });
   mkdirSync(configDir, { recursive: true });
   mkdirSync(temporary, { recursive: true });
+  const trusted = {
+    hasTrustDialogAccepted: true,
+    allowedTools: [],
+    enabledMcpjsonServers: [],
+    disabledMcpjsonServers: [],
+    mcpContextUris: [],
+    mcpServers: {},
+  };
   writeFileSync(
     join(configDir, '.claude.json'),
     `${JSON.stringify({
       hasCompletedOnboarding: true,
-      projects: {
-        [cwd]: {
-          hasTrustDialogAccepted: true,
-          allowedTools: [],
-          enabledMcpjsonServers: [],
-          disabledMcpjsonServers: [],
-          mcpContextUris: [],
-          mcpServers: {},
-        },
-      },
+      projects: Object.fromEntries(
+        claudeTrustedProjectKeys(cwd, process.platform, longPathName(cwd)).map((key) => [key, trusted]),
+      ),
     })}\n`,
     { mode: 0o600 },
   );

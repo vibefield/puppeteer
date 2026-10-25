@@ -1151,36 +1151,75 @@ It cannot author vendor-specific census claims or modify hand-written adapter/ru
 
 ### 10.4 Run protected promotion
 
-After the candidate PR and all semantic/security review are complete, rehearse, then dispatch the protected workflow:
+After the candidate PR and all semantic/security review are complete, rehearse, then dispatch the protected workflow
+from the candidate branch (never the default branch, whose protection rejects the workflow's push):
 
 ```sh
 gh workflow run agent-surface-promotion.yml \
-  --ref <candidate-ref> \
+  --ref <candidate-branch> \
   -f vendor=<vendor> \
   -f version=<version> \
-  -f ground_truth=<ground-truth> \
-  -f confirm=rehearse   # every lane, never the promote job; then repeat with confirm=promote
+  -f ground_truth=packages/surface/vendors/<vendor>/groundtruth.json \
+  -f confirm=rehearse   # every lane on read-only tokens, never the promote job; then repeat with confirm=promote
 ```
 
 Promotion:
 
-1. reacquires the exact bytes on hosted runners;
-2. executes each platform artifact on a fresh GitHub-hosted runner for that platform (`macos-14`, `macos-15-intel`,
-   `ubuntu-24.04`, `windows-2025`). Isolation comes from the workflow: no secrets or repository variables, a read-only
-   job token, no persisted checkout credentials, and a loopback model provider in a disposable home;
-3. runs the vendor Surface audit and real adapter suite;
-4. requires the executed live test to bind its test id to the SHA-256 of the exact workflow artifact;
-5. creates per-platform verification reports from that receipt rather than a caller-supplied passing flag;
-6. verifies the complete declared platform matrix and repository gates;
-7. enters the protected `agent-surface-promotion` environment for human approval (create it in the repository
-   settings with required reviewers before the first promotion: a job that names a missing environment creates it
-   unprotected);
-8. atomically updates artifact evidence, `support/agents.json` (clearing candidate-only fields such as `blockers`), the
-   generated README badge, and the adapter's `docs/event-map.html` metadata, re-locks `groundtruth-map.json`, reruns
-   the repository gates on that tree, and commits only those files to the dispatched ref;
-9. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay digests, and artifact hashes.
+1. refuses, in its first `guard` job, any input that is not exactly the narrow form the lanes accept (the inputs are
+   substituted into the cross-platform `run:` lines), and a promotion dispatched from a tag, from the default branch,
+   or from a branch that has already moved past the dispatched commit;
+2. reacquires the exact bytes on hosted runners. A platform whose reviewed evidence already holds a verified digest
+   must reacquire those same bytes: different bytes under the same version stop the run as an incident
+   (`surface:evidence:artifacts`), and identical bytes keep their reviewed provenance (first acquisition time,
+   package and companion digests);
+3. executes each platform artifact on a fresh GitHub-hosted runner for that platform (`macos-14`, `macos-15-intel`,
+   `ubuntu-24.04`, `windows-2025`). The workflow references no secrets or repository variables, the job token is
+   read-only, checkout persists no credentials, no cache is saved or restored, and each lane is configured to give the
+   vendor binary only a loopback model provider in a disposable home. That is configuration, not a sandbox: a hosted
+   VM has open egress and passwordless sudo. So each platform's bytes and report are taken only from that platform's
+   own workflow artifact (by exact name, or refused beside any unexpected one), and no job restores a cache a lane
+   could have written;
+4. runs the vendor Surface audit and real adapter suite;
+5. requires the executed live test to bind its test id to the SHA-256 of the exact workflow artifact;
+6. creates per-platform verification reports from that receipt rather than a caller-supplied passing flag, from the
+   version the bytes print on the live runner itself, and only when the runner really is that platform
+   (`hostPlatform`: an x64 process under Rosetta is not `darwin-x64`);
+7. verifies the complete declared platform matrix and repository gates;
+8. runs the promotion transaction in a read-only `transaction` job: restores the attested artifact evidence, runs the
+   guarded `surface:promote` (which updates `support/agents.json`, clearing candidate-only fields such as `blockers`,
+   the generated README badge, and the adapter's `docs/event-map.html` metadata together, or none of them), re-locks
+   `groundtruth-map.json` (refusing a lock change beyond the ground-truth digest), stages the result, refuses anything
+   outside the allowlist (only the ledger, README, canonical ground truth and its HTML, the candidate's
+   `evidence.json`, and the adapter's lock and event map may be rewritten; no additions, deletions, renames, mode or
+   type changes), then runs the structural gates and CI's own package suites on that exact tree. It uploads the
+   change as the `promotion-transaction` artifact (patch plus run-attempt manifest) and puts its diffstat on the run
+   summary. A rehearsal of a staged candidate runs this job too, so the whole transaction is proven before anyone
+   approves a promotion;
+9. enters the protected `agent-surface-promotion` environment for human approval (create it in the repository settings
+   with required reviewers before the first promotion: a job that names a missing environment creates it
+   unprotected). Before approving, check the run's workflow ref and commit, its inputs, and the transaction's patch;
+10. in the `promote` job, the only job with `contents: write`, installs no packages and runs no tests: it checks that
+    the transaction was prepared in this run attempt on this commit, applies it, re-checks the allowlist before and
+    after `git commit` (hooks disabled), and hands the token to the push alone;
+11. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay
+    digests, and artifact hashes. On a first promotion `introducedInPuppeteer` is the repository version the
+    promotion lands on, so that support first ships in the release after it.
 
-Promotions of different vendors on one ref must run one after another: each pushes to the ref it was dispatched from.
+The environment protects against automated dispatch (the nightly job's token can dispatch the workflow, but not
+approve the job). It does not protect against people with write access, since the reviewer approves a run whose workflow
+file comes from the dispatched branch, and the environment holds no secrets. To narrow it further, restrict its
+deployment branches to the candidate naming pattern (for example `adapt/*`) in the repository settings.
+
+A workflow-token push starts no workflow runs, so after the promotion commit lands run `gh workflow run ci.yml --ref
+<candidate-branch>` (the run summary prints it) for the pull request's required checks. Merge the pull request with no
+further commits after the promotion commit: `verification.candidateCommit` names the candidate the lanes tested, and
+nothing re-checks a later change against it. Promotions of different vendors on one branch queue behind each other.
+Dispatch each one after the previous promotion commit has landed, from the new branch head; the guard refuses a
+dispatch whose branch has moved.
+
+Every report is bound to its run attempt. After a failure, use "Re-run all jobs". A partial re-run starts a new attempt
+whose lanes, verification, and transaction do not match, and is refused. The acquisition, verification, and
+transaction artifacts are kept for seven days, so an approval can wait that long.
 
 `pnpm surface:promote` is intentionally inert outside the exact attested GitHub Actions context. Local success is not authority to edit `currentVersion` manually.
 
@@ -1190,7 +1229,9 @@ After promotion:
 
 - the six-hour upstream watcher detects and debounces stable releases but never promotes them;
 - the nightly `agent-live.yml` rehearses the promotion lanes (`confirm=rehearse`) on GitHub-hosted runners for every
-  agent whose `<VENDOR>_LIVE_ENABLED` variable is `true`;
+  agent whose `<VENDOR>_LIVE_ENABLED` variable is `true`, for the version the ledger selects. For a promoted version,
+  staging is a no-op and there is nothing to transact; the rehearsal reacquires the bytes and fails if they differ
+  from the promoted evidence;
 - a new version starts again at Survey, using the promoted model as a diff baseline;
 - same-version artifact changes and stable-channel rollbacks are incidents, not normal updates to overwrite in place;
 - rollback rebuilds the canonical root from a retained verified authoring model, moves `currentVersion` through a protected transaction, and regenerates badges; it never deletes evidence or candidate history.

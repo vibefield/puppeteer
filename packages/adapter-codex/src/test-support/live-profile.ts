@@ -76,31 +76,85 @@ export function requireCodexLiveExecutable(flag: string, environment: NodeJS.Pro
   return executable;
 }
 
-/**
- * Processes still working under `root`, with their descendants. At startup the app-server syncs its
- * curated plugins with `git` into `CODEX_HOME/.tmp/plugins-clone-*` (findings C8); those helpers name the
- * directory on their command line, share the app-server's process group and outlive it, so removing the
- * home under a running `git fetch` or `index-pack` fails with ENOTEMPTY however often it is retried.
- */
-function processesUnder(root: string): number[] {
-  if (process.platform === 'win32') return [];
-  let table: string;
+export interface LiveProcess {
+  readonly pid: number;
+  readonly ppid: number;
+  readonly command: string;
+}
+
+/** `Get-CimInstance Win32_Process | ConvertTo-Json` rows: one object for a single process, else an array. */
+export function parseWindowsProcessTable(json: string): LiveProcess[] {
+  let parsed: unknown;
   try {
-    table = execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' });
+    parsed = JSON.parse(json);
   } catch {
     return [];
   }
-  const rows = table.split('\n').flatMap((line) => {
-    const match = /^\s*(\d+)\s+(\d+)\s(.*)$/u.exec(line);
-    return match ? [{ pid: Number(match[1]), ppid: Number(match[2]), command: match[3]! }] : [];
+  return (Array.isArray(parsed) ? parsed : [parsed]).flatMap((row) => {
+    const { ProcessId, ParentProcessId, CommandLine } = (row ?? {}) as Record<string, unknown>;
+    return typeof ProcessId === 'number'
+      ? [
+          {
+            pid: ProcessId,
+            ppid: typeof ParentProcessId === 'number' ? ParentProcessId : 0,
+            command: typeof CommandLine === 'string' ? CommandLine : '',
+          },
+        ]
+      : [];
   });
+}
+
+function processTable(): LiveProcess[] {
+  try {
+    if (process.platform === 'win32') {
+      return parseWindowsProcessTable(
+        execFileSync(
+          'powershell.exe',
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress',
+          ],
+          { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true },
+        ),
+      );
+    }
+    return execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' })
+      .split('\n')
+      .flatMap((line) => {
+        const match = /^\s*(\d+)\s+(\d+)\s(.*)$/u.exec(line);
+        return match ? [{ pid: Number(match[1]), ppid: Number(match[2]), command: match[3]! }] : [];
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The processes in `rows` whose command line names `root`, with their descendants. At startup the app-server
+ * syncs its curated plugins with `git` into `CODEX_HOME/.tmp/plugins-clone-*` (findings C8); those helpers
+ * name the directory on their command line, share the app-server's process group and outlive it, so removing
+ * the home under a running `git fetch` or `index-pack` fails (ENOTEMPTY on POSIX, EBUSY on Windows, where an
+ * open handle blocks the removal itself) however often it is retried. On Windows a helper may name the root
+ * under its long name or with forward slashes, and paths compare without case.
+ */
+export function processesUnderRoot(
+  rows: readonly LiveProcess[],
+  spellings: readonly string[],
+  { ownPid = process.pid, platform = process.platform }: { ownPid?: number; platform?: NodeJS.Platform } = {},
+): number[] {
+  const fold = (value: string): string => (platform === 'win32' ? value.replaceAll('\\', '/').toLowerCase() : value);
+  const needles = [...new Set(spellings.filter(Boolean).map(fold))];
   const found = new Set(
-    rows.filter((row) => row.pid !== process.pid && row.command.includes(root)).map((row) => row.pid),
+    rows
+      .filter((row) => row.pid !== ownPid && needles.some((needle) => fold(row.command).includes(needle)))
+      .map((row) => row.pid),
   );
   for (let grew = true; grew;) {
     grew = false;
     for (const row of rows) {
-      if (found.has(row.ppid) && !found.has(row.pid)) {
+      if (row.pid !== ownPid && found.has(row.ppid) && !found.has(row.pid)) {
         found.add(row.pid);
         grew = true;
       }
@@ -109,9 +163,21 @@ function processesUnder(root: string): number[] {
   return [...found];
 }
 
-async function stopProcessesUnder(root: string): Promise<void> {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    const survivors = processesUnder(root);
+function rootSpellings(root: string): string[] {
+  try {
+    return [root, realpathSync.native(root)];
+  } catch {
+    return [root];
+  }
+}
+
+/** Kill what still works under `root` (Windows: TerminateProcess) until nothing names it. */
+export async function stopProcessesUnder(root: string): Promise<void> {
+  const spellings = rootSpellings(root);
+  // Listing processes on Windows starts PowerShell, about a second each, so it is tried fewer times.
+  const attempts = process.platform === 'win32' ? 10 : 50;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const survivors = processesUnderRoot(processTable(), spellings);
     if (survivors.length === 0) return;
     for (const pid of survivors) {
       try {
@@ -122,6 +188,30 @@ async function stopProcessesUnder(root: string): Promise<void> {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
+}
+
+const REMOVAL_RETRIES = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM', 'EACCES', 'EMFILE', 'ENFILE']);
+
+/**
+ * Stop what still works under a live test's root, then remove it. On Windows a handle a vendor helper still
+ * holds can outlast every attempt; the root is a throwaway temp directory on a disposable runner, so there
+ * the leftover is reported instead of raised over the test's own result (and its attestation).
+ */
+export async function removeLiveRoot(root: string): Promise<void> {
+  let failure: unknown;
+  for (let attempt = 0; attempt < (process.platform === 'win32' ? 8 : 1); attempt += 1) {
+    await stopProcessesUnder(root);
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+      return;
+    } catch (error) {
+      failure = error;
+      if (!REMOVAL_RETRIES.has((error as NodeJS.ErrnoException).code ?? '')) break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  if (process.platform !== 'win32') throw failure;
+  console.warn(`codex live root left behind: ${failure instanceof Error ? failure.message : String(failure)}`);
 }
 
 export interface CodexLiveProfile {
@@ -150,7 +240,6 @@ export async function createCodexLiveProfile(
   const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), prefix)));
   const codexHome = join(root, 'codex-home');
   const cwd = join(root, 'workspace');
-  const remove = (): void => rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
   let provider: CodexLiveModelProvider | undefined;
   try {
     mkdirSync(codexHome, { recursive: true });
@@ -168,13 +257,12 @@ export async function createCodexLiveProfile(
       provider,
       async dispose() {
         await provider?.close();
-        await stopProcessesUnder(root);
-        remove();
+        await removeLiveRoot(root);
       },
     };
   } catch (error) {
     await provider?.close();
-    remove();
+    await removeLiveRoot(root);
     throw error;
   }
 }

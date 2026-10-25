@@ -112,7 +112,7 @@
     }
   ],
   "limitations": [
-    "Artifact integrity and the hermetic census are pinned for darwin-arm64; darwin-x64, linux-x64 and windows-x64 package artifacts still require independent acquisition and verification.",
+    "The hermetic census ran on darwin-arm64 only. darwin-x64, linux-x64 and windows-x64 are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes, not by census claims.",
     "The exec tool needs the package's codex-code-mode-host beside bin/codex. The artifact identity digests bin/codex; the companion digest is recorded here and in the census run, but the acquisition schema has no companion-file concept yet (findings C8).",
     "The reviewed 0.150.0 behavior graph is retained for established flows and extended with the file-change and history-hydration branches the 0.164.0 census observed; other schema-only methods remain unverified until dedicated runtime scenarios establish their ordering.",
     "History scenarios run on one connection with the thread loaded; a cold resume from the rollout after an app-server restart is not part of the census."

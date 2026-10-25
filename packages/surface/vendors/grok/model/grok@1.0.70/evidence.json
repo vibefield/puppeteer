@@ -162,7 +162,7 @@
   ],
   "limitations": [
     "The binary-reported source revision f50904eaee6c is absent from the public source mirror, so source-to-artifact equivalence is unverified; this model follows the binary-only evidence policy above.",
-    "Only darwin-arm64 has artifact integrity and census evidence; darwin-x64, linux-x64, and windows-x64 (named-pipe leader) are unverified for 1.0.70.",
+    "Census evidence covers only darwin-arm64. darwin-x64, linux-x64, and windows-x64 (named-pipe leader) are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes; their census-level behavior is unverified for 1.0.70.",
     "The hermetic census disables remote settings, announcements, the model catalog, MCP servers, memory, workflows, and the Responses-API model backend, so _x.ai/models|settings|announcements/update, _x.ai/mcp/init_progress, models_cache.json, _x.ai/billing, the memory socket, and response_completed signatures remain unverified.",
     "subagent_progress, workflow_updated, goal_updated, plan_*, auto_compact_started/failed/cancelled, session_status, served_model, turn_usage, memory_*, and the binary-only login_refused/backend_responsive/session_ended leads were not exercised.",
     "Captured values under id-shaped keys are aliases (permission optionIds, model ids, config option ids, auth method ids, xAI ag1./at1./aa1. ids); literal option ids are retained only in the census observations."

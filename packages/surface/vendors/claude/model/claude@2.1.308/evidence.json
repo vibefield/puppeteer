@@ -96,7 +96,7 @@
     }
   ],
   "limitations": [
-    "Artifact integrity and controlled runtime captures currently cover only darwin-arm64; protected promotion still requires every configured platform.",
+    "Controlled runtime captures cover only darwin-arm64. The other configured platforms are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes, not by census claims.",
     "No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
     "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
     "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
