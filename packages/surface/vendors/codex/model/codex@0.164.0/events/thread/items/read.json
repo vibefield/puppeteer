@@ -1,0 +1,111 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/items/read",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "description": "EXPERIMENTAL - retrieve a bounded set of persisted items from one turn.",
+    "properties": {
+      "itemIds": {
+        "description": "Item IDs to retrieve. Supply 1 to 100 IDs.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "itemIds",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/items/read"
+        ],
+        "title": "Thread/items/readRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadItemsReadParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/items/readRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadItemsReadParams": {
+        "description": "EXPERIMENTAL - retrieve a bounded set of persisted items from one turn.",
+        "properties": {
+          "itemIds": {
+            "description": "Item IDs to retrieve. Supply 1 to 100 IDs.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemIds",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

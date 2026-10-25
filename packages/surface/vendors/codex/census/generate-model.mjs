@@ -41,7 +41,7 @@ import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { projectJsonSchema } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
-import { CODEX_VERSION } from './harness.mjs';
+import { CODEX_VERSION, censusEnvironment } from './harness.mjs';
 
 const vendorRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const packageRoot = dirname(dirname(vendorRoot));
@@ -132,17 +132,27 @@ if (!schemaDir) {
   // C1b — so regenerating here rather than committing the vendor's 285 files
   // costs nothing in reproducibility.
   temporarySchema = mkdtempSync(join(tmpdir(), 'codex-schema-'));
+  // The binary runs with a throwaway HOME and CODEX_HOME (codex creates
+  // $CODEX_HOME/tmp at every start) and an allowlisted environment, never the
+  // caller's own: generation must not read or write anyone's real profile.
+  const scratchHome = mkdtempSync(join(tmpdir(), 'codex-schema-home-'));
+  const env = censusEnvironment(scratchHome);
+  mkdirSync(env.CODEX_HOME, { recursive: true });
   // `--experimental` is NOT merely additive — it also widens 25 shared
   // definitions. It is the right source anyway, because the runtime sends
   // fields the stable schema does not declare: `availableDecisions` is on
   // every approval request the census captured, yet stable declares 13
   // properties and experimental 15. A model built from stable would omit a
   // field the adapter is expected to read. Never mix the two variants (C1b).
-  execFileSync(
-    process.env.PUPPETEER_CODEX_BIN ?? 'codex',
-    ['app-server', 'generate-json-schema', '--experimental', '--out', temporarySchema],
-    { stdio: 'ignore' },
-  );
+  try {
+    execFileSync(
+      process.env.PUPPETEER_CODEX_BIN ?? 'codex',
+      ['app-server', 'generate-json-schema', '--experimental', '--out', temporarySchema],
+      { stdio: 'ignore', cwd: scratchHome, env },
+    );
+  } finally {
+    rmSync(scratchHome, { recursive: true, force: true });
+  }
   schemaDir = temporarySchema;
 }
 const capturesDir = flag('--captures') ?? join(vendorRoot, 'captures', `codex@${CODEX_VERSION}`);
@@ -181,6 +191,9 @@ const servedResponseFiles = new Map(
     'thread/start': 'v2/ThreadStartResponse.json',
     'thread/resume': 'v2/ThreadResumeResponse.json',
     'thread/read': 'v2/ThreadReadResponse.json',
+    // The paginated history the history-hydration census reads (C8); the
+    // replacement for full-history hydration on thread/resume and thread/read.
+    'thread/turns/list': 'v2/ThreadTurnsListResponse.json',
     'thread/inject_items': 'v2/ThreadInjectItemsResponse.json',
     'turn/start': 'v2/TurnStartResponse.json',
   }),

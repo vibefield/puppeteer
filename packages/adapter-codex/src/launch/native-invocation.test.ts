@@ -149,6 +149,7 @@ describe('Codex invocation classes', () => {
       ['unarchive', THREAD],
       ['delete', THREAD],
       ['migrate-rollouts'],
+      ['migrate-nfs-db', '--staging-dir', 'staging'],
       ['queue', '--thread', THREAD, '--message', 'hi'],
       ['help'],
       ['help', 'resume'],

@@ -1,0 +1,154 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "process/outputDelta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Stream base64-encoded stdout/stderr chunks for a running `process/spawn` session.",
+  "payloadSchema": {
+    "description": "Base64-encoded output chunk emitted for a streaming `process/spawn` request.",
+    "properties": {
+      "capReached": {
+        "description": "True on the final streamed chunk for this stream when output was truncated by `outputBytesCap`.",
+        "type": "boolean"
+      },
+      "deltaBase64": {
+        "description": "Base64-encoded output bytes.",
+        "type": "string"
+      },
+      "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+        "type": "string"
+      },
+      "stream": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/ProcessOutputStream"
+          }
+        ],
+        "description": "Output stream this chunk belongs to."
+      }
+    },
+    "required": [
+      "capReached",
+      "deltaBase64",
+      "processHandle",
+      "stream"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProcessOutputStream": {
+        "description": "Stream label for `process/outputDelta` notifications.",
+        "oneOf": [
+          {
+            "description": "stdout stream. PTY mode multiplexes terminal output here.",
+            "enum": [
+              "stdout"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "stderr stream.",
+            "enum": [
+              "stderr"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "description": "Stream base64-encoded stdout/stderr chunks for a running `process/spawn` session.",
+    "properties": {
+      "method": {
+        "enum": [
+          "process/outputDelta"
+        ],
+        "title": "Process/outputDeltaNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ProcessOutputDeltaNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Process/outputDeltaNotification",
+    "type": "object",
+    "$defs": {
+      "ProcessOutputDeltaNotification": {
+        "description": "Base64-encoded output chunk emitted for a streaming `process/spawn` request.",
+        "properties": {
+          "capReached": {
+            "description": "True on the final streamed chunk for this stream when output was truncated by `outputBytesCap`.",
+            "type": "boolean"
+          },
+          "deltaBase64": {
+            "description": "Base64-encoded output bytes.",
+            "type": "string"
+          },
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          },
+          "stream": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ProcessOutputStream"
+              }
+            ],
+            "description": "Output stream this chunk belongs to."
+          }
+        },
+        "required": [
+          "capReached",
+          "deltaBase64",
+          "processHandle",
+          "stream"
+        ],
+        "type": "object"
+      },
+      "ProcessOutputStream": {
+        "description": "Stream label for `process/outputDelta` notifications.",
+        "oneOf": [
+          {
+            "description": "stdout stream. PTY mode multiplexes terminal output here.",
+            "enum": [
+              "stdout"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "stderr stream.",
+            "enum": [
+              "stderr"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

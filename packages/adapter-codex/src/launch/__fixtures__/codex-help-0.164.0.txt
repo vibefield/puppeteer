@@ -29,6 +29,7 @@ Commands:
   archive           Archive a saved session by id or session name
   delete            Permanently delete a saved session by id or session name
   migrate-rollouts  Inspect or migrate legacy local sessions to paginated thread history
+  migrate-nfs-db    [experimental] Migrate configured SQLite databases to DELETE mode in place
   unarchive         Unarchive a saved session by id or session name
   fork              Fork a previous interactive session (picker by default; use --last to fork the
                     most recent)

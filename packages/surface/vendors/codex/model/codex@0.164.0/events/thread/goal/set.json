@@ -1,0 +1,193 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/goal/set",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "objective": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "origin": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ThreadGoalMutationOrigin"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Missing provenance does not supply user authorization."
+      },
+      "status": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ThreadGoalStatus"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "tokenBudget": {
+        "format": "int64",
+        "type": [
+          "integer",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "threadId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ThreadGoalMutationOrigin": {
+        "description": "Distinguishes explicit user actions from automatic goal lifecycle mutations.",
+        "enum": [
+          "user",
+          "automatic"
+        ],
+        "type": "string"
+      },
+      "ThreadGoalStatus": {
+        "enum": [
+          "active",
+          "paused",
+          "blocked",
+          "usageLimited",
+          "budgetLimited",
+          "complete"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/goal/set"
+        ],
+        "title": "Thread/goal/setRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadGoalSetParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/goal/setRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadGoalSetParams": {
+        "properties": {
+          "objective": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ThreadGoalMutationOrigin"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Missing provenance does not supply user authorization."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ThreadGoalStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "tokenBudget": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "ThreadGoalMutationOrigin": {
+        "description": "Distinguishes explicit user actions from automatic goal lifecycle mutations.",
+        "enum": [
+          "user",
+          "automatic"
+        ],
+        "type": "string"
+      },
+      "ThreadGoalStatus": {
+        "enum": [
+          "active",
+          "paused",
+          "blocked",
+          "usageLimited",
+          "budgetLimited",
+          "complete"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

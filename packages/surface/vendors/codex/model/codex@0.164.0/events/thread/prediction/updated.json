@@ -1,0 +1,172 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/prediction/updated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "result": {
+        "$ref": "#/$defs/ThreadPredictionResult"
+      },
+      "sourceTurnId": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "result",
+      "sourceTurnId",
+      "threadId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ThreadPredictionResult": {
+        "oneOf": [
+          {
+            "properties": {
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "enum": [
+                  "completed"
+                ],
+                "title": "CompletedThreadPredictionResultType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "CompletedThreadPredictionResult",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "failed"
+                ],
+                "title": "FailedThreadPredictionResultType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "FailedThreadPredictionResult",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/prediction/updated"
+        ],
+        "title": "Thread/prediction/updatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadPredictionUpdatedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/prediction/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadPredictionUpdatedNotification": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/ThreadPredictionResult"
+          },
+          "sourceTurnId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result",
+          "sourceTurnId",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "ThreadPredictionResult": {
+        "oneOf": [
+          {
+            "properties": {
+              "text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "type": {
+                "enum": [
+                  "completed"
+                ],
+                "title": "CompletedThreadPredictionResultType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "CompletedThreadPredictionResult",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "failed"
+                ],
+                "title": "FailedThreadPredictionResultType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "FailedThreadPredictionResult",
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

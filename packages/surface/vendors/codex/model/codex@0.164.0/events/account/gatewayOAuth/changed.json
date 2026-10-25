@@ -1,0 +1,124 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/gatewayOAuth/changed",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "authUrl": {
+        "description": "Authorization handoff, sent only to the connection that started login.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "providerId": {
+        "type": "string"
+      },
+      "status": {
+        "$ref": "#/$defs/GatewayOAuthStatus"
+      }
+    },
+    "required": [
+      "providerId",
+      "status"
+    ],
+    "type": "object",
+    "$defs": {
+      "GatewayOAuthStatus": {
+        "enum": [
+          "notReady",
+          "started",
+          "succeeded",
+          "failed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "account/gatewayOAuth/changed"
+        ],
+        "title": "Account/gatewayOAuth/changedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/GatewayOAuthChangedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Account/gatewayOAuth/changedNotification",
+    "type": "object",
+    "$defs": {
+      "GatewayOAuthChangedNotification": {
+        "properties": {
+          "authUrl": {
+            "description": "Authorization handoff, sent only to the connection that started login.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/$defs/GatewayOAuthStatus"
+          }
+        },
+        "required": [
+          "providerId",
+          "status"
+        ],
+        "type": "object"
+      },
+      "GatewayOAuthStatus": {
+        "enum": [
+          "notReady",
+          "started",
+          "succeeded",
+          "failed"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

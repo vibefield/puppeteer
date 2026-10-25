@@ -1,0 +1,106 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "mcpServer/event/stream/notification",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "notification": {
+        "$ref": "#/$defs/McpServerEventNotification"
+      },
+      "subscriptionId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "notification",
+      "subscriptionId"
+    ],
+    "type": "object",
+    "$defs": {
+      "McpServerEventNotification": {
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "params": {}
+        },
+        "required": [
+          "method",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "mcpServer/event/stream/notification"
+        ],
+        "title": "McpServer/event/stream/notificationNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/McpServerEventStreamNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "McpServer/event/stream/notificationNotification",
+    "type": "object",
+    "$defs": {
+      "McpServerEventStreamNotification": {
+        "properties": {
+          "notification": {
+            "$ref": "#/$defs/McpServerEventNotification"
+          },
+          "subscriptionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notification",
+          "subscriptionId"
+        ],
+        "type": "object"
+      },
+      "McpServerEventNotification": {
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "params": {}
+        },
+        "required": [
+          "method",
+          "params"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

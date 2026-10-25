@@ -74,6 +74,26 @@ describe('the codex ASM', () => {
     expect(Object.keys(approval?.payloadSchema?.properties ?? {})).toContain('availableDecisions');
   });
 
+  it('proves the paginated history path the observer must move to, and the notice full hydration earns', () => {
+    // Codex 0.158.0+ answers full-history hydration with a deprecationNotice
+    // (findings C8); the census runs the observer's own attach to prove it.
+    const turnsList = model.events.find((event) => event.event === 'thread/turns/list');
+    expect(turnsList?.resultSchema, 'thread/turns/list result must be modelled').toBeDefined();
+    expect(turnsList?.confidence).toBe('verified-headless');
+    expect(model.events.find((event) => event.event === 'deprecationNotice')?.confidence).toBe('verified-headless');
+    const relations = model.behavior.relations.map((relation) => `${relation.from}->${relation.to}`);
+    expect(relations).toEqual(
+      expect.arrayContaining([
+        'history-resume->deprecation-notice',
+        'history-read-full->deprecation-notice',
+        'history-resume-paged->history-turns-page',
+      ]),
+    );
+    expect(model.behavior.nodes.find((node) => node.id === 'history-resume-paged')?.match).toEqual({
+      excludeTurns: true,
+    });
+  });
+
   it('combines the generated file-change shape with exact kind-dependent source semantics', () => {
     const patch = model.events.find((event) => event.event === 'item/fileChange/patchUpdated')!;
     expect(patch).toMatchObject({

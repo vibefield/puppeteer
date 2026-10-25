@@ -1,0 +1,481 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/rateLimits/updated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "description": "Sparse rolling rate-limit update.\n\nClients should merge available values into the most recent `account/rateLimits/read` response or refetch that snapshot. Nullable account metadata may be unavailable in a rolling update and does not clear a previously observed value.",
+    "properties": {
+      "rateLimits": {
+        "$ref": "#/$defs/RateLimitSnapshot"
+      }
+    },
+    "required": [
+      "rateLimits"
+    ],
+    "type": "object",
+    "$defs": {
+      "RateLimitSnapshot": {
+        "properties": {
+          "credits": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreditsSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "individualLimit": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SpendControlLimitSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limitName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "normalModelSlug": {
+            "description": "Normal model whose display name and reasoning options describe this quota alias.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planType": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PlanType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "primary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rateLimitReachedType": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitReachedType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secondary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spendControlReached": {
+            "description": "Backend-reported spend-control state. `None` is unavailable, not a sparse-update recovery.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CreditsSnapshot": {
+        "properties": {
+          "balance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasCredits": {
+            "type": "boolean"
+          },
+          "unlimited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hasCredits",
+          "unlimited"
+        ],
+        "type": "object"
+      },
+      "SpendControlLimitSnapshot": {
+        "properties": {
+          "limit": {
+            "type": "string"
+          },
+          "remainingPercent": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "resetsAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "used": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "remainingPercent",
+          "resetsAt",
+          "used"
+        ],
+        "type": "object"
+      },
+      "PlanType": {
+        "enum": [
+          "free",
+          "go",
+          "plus",
+          "pro",
+          "prolite",
+          "promax",
+          "team",
+          "self_serve_business_prolite",
+          "self_serve_business_usage_based",
+          "business",
+          "ent26",
+          "enterprise_cbp_automation",
+          "enterprise_cbp_usage_based",
+          "enterprise",
+          "edu",
+          "edu_plus",
+          "edu_pro",
+          "sci",
+          "sci_plus",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "RateLimitWindow": {
+        "properties": {
+          "resetsAt": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "usedPercent": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "windowDurationMins": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "usedPercent"
+        ],
+        "type": "object"
+      },
+      "RateLimitReachedType": {
+        "enum": [
+          "rate_limit_reached",
+          "workspace_owner_credits_depleted",
+          "workspace_member_credits_depleted",
+          "workspace_owner_usage_limit_reached",
+          "workspace_member_usage_limit_reached"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "account/rateLimits/updated"
+        ],
+        "title": "Account/rateLimits/updatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/AccountRateLimitsUpdatedNotification"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ],
+    "title": "Account/rateLimits/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "AccountRateLimitsUpdatedNotification": {
+        "description": "Sparse rolling rate-limit update.\n\nClients should merge available values into the most recent `account/rateLimits/read` response or refetch that snapshot. Nullable account metadata may be unavailable in a rolling update and does not clear a previously observed value.",
+        "properties": {
+          "rateLimits": {
+            "$ref": "#/$defs/RateLimitSnapshot"
+          }
+        },
+        "required": [
+          "rateLimits"
+        ],
+        "type": "object"
+      },
+      "RateLimitSnapshot": {
+        "properties": {
+          "credits": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreditsSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "individualLimit": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SpendControlLimitSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limitName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "normalModelSlug": {
+            "description": "Normal model whose display name and reasoning options describe this quota alias.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planType": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PlanType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "primary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rateLimitReachedType": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitReachedType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secondary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RateLimitWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spendControlReached": {
+            "description": "Backend-reported spend-control state. `None` is unavailable, not a sparse-update recovery.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CreditsSnapshot": {
+        "properties": {
+          "balance": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasCredits": {
+            "type": "boolean"
+          },
+          "unlimited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hasCredits",
+          "unlimited"
+        ],
+        "type": "object"
+      },
+      "SpendControlLimitSnapshot": {
+        "properties": {
+          "limit": {
+            "type": "string"
+          },
+          "remainingPercent": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "resetsAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "used": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "remainingPercent",
+          "resetsAt",
+          "used"
+        ],
+        "type": "object"
+      },
+      "PlanType": {
+        "enum": [
+          "free",
+          "go",
+          "plus",
+          "pro",
+          "prolite",
+          "promax",
+          "team",
+          "self_serve_business_prolite",
+          "self_serve_business_usage_based",
+          "business",
+          "ent26",
+          "enterprise_cbp_automation",
+          "enterprise_cbp_usage_based",
+          "enterprise",
+          "edu",
+          "edu_plus",
+          "edu_pro",
+          "sci",
+          "sci_plus",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "RateLimitWindow": {
+        "properties": {
+          "resetsAt": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "usedPercent": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "windowDurationMins": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "usedPercent"
+        ],
+        "type": "object"
+      },
+      "RateLimitReachedType": {
+        "enum": [
+          "rate_limit_reached",
+          "workspace_owner_credits_depleted",
+          "workspace_member_credits_depleted",
+          "workspace_owner_usage_limit_reached",
+          "workspace_member_usage_limit_reached"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless",
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.164.0",
+  "lastVerified": "0.164.0",
+  "fixture": "captures/codex@0.164.0/approval-accept.jsonl"
+}

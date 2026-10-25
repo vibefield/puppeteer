@@ -1,0 +1,102 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "userVerification/cancel",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "additionalProperties": false,
+    "description": "Cancels a native verification RPC issued on this connection, not an elicitation. Use a fresh request ID for each operation and a distinct ID for this cancellation RPC.",
+    "properties": {
+      "requestId": {
+        "$ref": "#/$defs/RequestId"
+      }
+    },
+    "required": [
+      "requestId"
+    ],
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "userVerification/cancel"
+        ],
+        "title": "UserVerification/cancelRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/UserVerificationCancelParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "UserVerification/cancelRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "UserVerificationCancelParams": {
+        "additionalProperties": false,
+        "description": "Cancels a native verification RPC issued on this connection, not an elicitation. Use a fresh request ID for each operation and a distinct ID for this cancellation RPC.",
+        "properties": {
+          "requestId": {
+            "$ref": "#/$defs/RequestId"
+          }
+        },
+        "required": [
+          "requestId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

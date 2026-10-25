@@ -1,0 +1,113 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "serverRequest/resolved",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "requestId": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "requestId",
+      "threadId"
+    ],
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "serverRequest/resolved"
+        ],
+        "title": "ServerRequest/resolvedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ServerRequestResolvedNotification"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ],
+    "title": "ServerRequest/resolvedNotification",
+    "type": "object",
+    "$defs": {
+      "ServerRequestResolvedNotification": {
+        "properties": {
+          "requestId": {
+            "$ref": "#/$defs/RequestId"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestId",
+          "threadId"
+        ],
+        "type": "object"
+      },
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless",
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.164.0",
+  "lastVerified": "0.164.0",
+  "fixture": "captures/codex@0.164.0/approval-accept.jsonl"
+}

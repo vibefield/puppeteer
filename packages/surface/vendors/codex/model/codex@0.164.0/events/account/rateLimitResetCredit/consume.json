@@ -1,0 +1,101 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/rateLimitResetCredit/consume",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "creditId": {
+        "description": "Opaque reset-credit identifier to redeem. When omitted, the backend selects the next available credit.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "idempotencyKey": {
+        "description": "Identifies one logical reset attempt. A UUID is recommended; reuse the same value when retrying that attempt.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "idempotencyKey"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "account/rateLimitResetCredit/consume"
+        ],
+        "title": "Account/rateLimitResetCredit/consumeRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ConsumeAccountRateLimitResetCreditParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Account/rateLimitResetCredit/consumeRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ConsumeAccountRateLimitResetCreditParams": {
+        "properties": {
+          "creditId": {
+            "description": "Opaque reset-credit identifier to redeem. When omitted, the backend selects the next available credit.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "idempotencyKey": {
+            "description": "Identifies one logical reset attempt. A UUID is recommended; reuse the same value when retrying that attempt.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "idempotencyKey"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

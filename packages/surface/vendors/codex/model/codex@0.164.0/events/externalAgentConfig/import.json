@@ -1,0 +1,537 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "externalAgentConfig/import",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "migrationItems": {
+        "items": {
+          "$ref": "#/$defs/ExternalAgentConfigMigrationItem"
+        },
+        "type": "array"
+      },
+      "migrationSource": {
+        "description": "Migration-source selector used to produce the migration items. Pass the same value to detection and import; missing or unrecognized values use the default source.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "providerId": {
+        "description": "Opaque provider identifier supplied by the caller for analytics attribution and import history display. This does not select the migration source.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "source": {
+        "description": "Optional identifier for the product that initiated the import.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "migrationItems"
+    ],
+    "type": "object",
+    "$defs": {
+      "ExternalAgentConfigMigrationItem": {
+        "properties": {
+          "cwd": {
+            "description": "Null or empty means home-scoped migration; non-empty means repo-scoped migration.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MigrationDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          }
+        },
+        "required": [
+          "description",
+          "itemType"
+        ],
+        "type": "object"
+      },
+      "MigrationDetails": {
+        "properties": {
+          "commands": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/CommandMigration"
+            },
+            "type": "array"
+          },
+          "hooks": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/HookMigration"
+            },
+            "type": "array"
+          },
+          "mcpServers": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/McpServerMigration"
+            },
+            "type": "array"
+          },
+          "memory": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "plugins": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/PluginsMigration"
+            },
+            "type": "array"
+          },
+          "sessions": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SessionMigration"
+            },
+            "type": "array"
+          },
+          "skills": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SkillMigration"
+            },
+            "type": "array"
+          },
+          "subagents": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SubagentMigration"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ExternalAgentConfigMigrationItemType": {
+        "enum": [
+          "AGENTS_MD",
+          "CONFIG",
+          "SKILLS",
+          "PLUGINS",
+          "MCP_SERVER_CONFIG",
+          "SUBAGENTS",
+          "HOOKS",
+          "COMMANDS",
+          "MEMORY",
+          "SESSIONS"
+        ],
+        "type": "string"
+      },
+      "CommandMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "HookMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "McpServerMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PluginsMigration": {
+        "properties": {
+          "marketplaceName": {
+            "type": "string"
+          },
+          "pluginNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "marketplaceName",
+          "pluginNames"
+        ],
+        "type": "object"
+      },
+      "SessionMigration": {
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "cwd",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SkillMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "SubagentMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "externalAgentConfig/import"
+        ],
+        "title": "ExternalAgentConfig/importRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ExternalAgentConfigImportParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "ExternalAgentConfig/importRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ExternalAgentConfigImportParams": {
+        "properties": {
+          "migrationItems": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigMigrationItem"
+            },
+            "type": "array"
+          },
+          "migrationSource": {
+            "description": "Migration-source selector used to produce the migration items. Pass the same value to detection and import; missing or unrecognized values use the default source.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "providerId": {
+            "description": "Opaque provider identifier supplied by the caller for analytics attribution and import history display. This does not select the migration source.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "description": "Optional identifier for the product that initiated the import.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "migrationItems"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigMigrationItem": {
+        "properties": {
+          "cwd": {
+            "description": "Null or empty means home-scoped migration; non-empty means repo-scoped migration.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/MigrationDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          }
+        },
+        "required": [
+          "description",
+          "itemType"
+        ],
+        "type": "object"
+      },
+      "MigrationDetails": {
+        "properties": {
+          "commands": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/CommandMigration"
+            },
+            "type": "array"
+          },
+          "hooks": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/HookMigration"
+            },
+            "type": "array"
+          },
+          "mcpServers": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/McpServerMigration"
+            },
+            "type": "array"
+          },
+          "memory": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "plugins": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/PluginsMigration"
+            },
+            "type": "array"
+          },
+          "sessions": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SessionMigration"
+            },
+            "type": "array"
+          },
+          "skills": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SkillMigration"
+            },
+            "type": "array"
+          },
+          "subagents": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SubagentMigration"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ExternalAgentConfigMigrationItemType": {
+        "enum": [
+          "AGENTS_MD",
+          "CONFIG",
+          "SKILLS",
+          "PLUGINS",
+          "MCP_SERVER_CONFIG",
+          "SUBAGENTS",
+          "HOOKS",
+          "COMMANDS",
+          "MEMORY",
+          "SESSIONS"
+        ],
+        "type": "string"
+      },
+      "CommandMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "HookMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "McpServerMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PluginsMigration": {
+        "properties": {
+          "marketplaceName": {
+            "type": "string"
+          },
+          "pluginNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "marketplaceName",
+          "pluginNames"
+        ],
+        "type": "object"
+      },
+      "SessionMigration": {
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "cwd",
+          "path"
+        ],
+        "type": "object"
+      },
+      "SkillMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "SubagentMigration": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

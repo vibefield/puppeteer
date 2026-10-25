@@ -345,6 +345,7 @@ describe('the shipped codex serve table', () => {
       'thread/start',
       'thread/resume',
       'thread/read',
+      'thread/turns/list',
       'thread/inject_items',
       'turn/start',
     ]) {
@@ -415,6 +416,48 @@ describe('the shipped codex serve table', () => {
     });
     expect(bindings.$threadId).toBe('a5e5f8c8-0000-4000-8000-000000000001');
     expect(restored).toBe(true);
+  });
+
+  it('answers the paginated history read the observer makes on 0.151.0 and later, on the pinned model', async () => {
+    const persona = loadPersona('codex');
+    const threadId = 'a5e5f8c8-0000-4000-8000-000000000001';
+    const { send, written } = wire(
+      persona.serve!,
+      {
+        persona,
+        validateParams: (method, params) => persona.validate(method, params),
+        validateResult: (method, result) => persona.validateResult(method, result),
+      },
+      { restoreSession: async () => {} },
+      {
+        $vendorVersion: persona.version,
+        $threadModel: 'codex-imposter',
+        $threadModelProvider: 'imposter',
+        $threadApprovalPolicy: 'on-request',
+        $threadApprovalsReviewer: 'user',
+        $threadSandbox: {
+          type: 'workspaceWrite',
+          writableRoots: [],
+          networkAccess: false,
+          excludeTmpdirEnvVar: false,
+          excludeSlashTmp: false,
+        },
+        $threadCreatedAt: Math.floor(Date.now() / 1_000),
+        $threadUpdatedAt: Math.floor(Date.now() / 1_000),
+      },
+    );
+    send({ id: 1, method: 'initialize', params: { clientInfo: { name: 'test', version: '0.0.0' } } });
+    send({ id: 2, method: 'thread/resume', params: { threadId, excludeTurns: true } });
+    send({ id: 3, method: 'thread/turns/list', params: { threadId, itemsView: 'full', sortDirection: 'asc' } });
+    // The pinned params schema still refuses what the vendor refuses.
+    send({ id: 4, method: 'thread/turns/list', params: { threadId, itemsView: 'everything' } });
+    await settle();
+    // Replies are written as each request settles, so they are matched by id.
+    const reply = (id: number) => written.find((message) => message.id === id);
+    expect([1, 2, 3].map((id) => reply(id)?.error)).toEqual([undefined, undefined, undefined]);
+    expect(reply(2)).toMatchObject({ result: { thread: { id: threadId, turns: [] } } });
+    expect(reply(3)).toEqual({ id: 3, result: { data: [], nextCursor: null, backwardsCursor: null } });
+    expect(reply(4)).toMatchObject({ error: { code: -32602 } });
   });
 
   it('starts a thread on the cwd the client asked for', async () => {

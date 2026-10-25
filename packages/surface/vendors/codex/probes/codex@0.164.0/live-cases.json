@@ -1,0 +1,571 @@
+[
+  {
+    "id": "S1-managed-baseline",
+    "batch": "P1",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "paste": true
+  },
+  {
+    "id": "S2-control-bare",
+    "batch": "P1",
+    "mode": "control",
+    "typed": [],
+    "paste": true
+  },
+  {
+    "id": "S3-managed-start-model-sandbox-approval",
+    "batch": "P2",
+    "mode": "managed",
+    "start": {
+      "model": "probe-model-x",
+      "sandbox": "read-only",
+      "approvalPolicy": "never"
+    },
+    "afterRemote": [
+      "--no-alt-screen"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S4-control-model-sandbox-approval",
+    "batch": "P2",
+    "mode": "control",
+    "typed": [
+      "--no-daemon",
+      "-m",
+      "probe-model-x",
+      "-s",
+      "read-only",
+      "-a",
+      "never",
+      "--no-alt-screen"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S5-managed-tui-config-search-adddir",
+    "batch": "P2",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "dirs": [
+      "<root>/extra"
+    ],
+    "afterRemote": [
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--add-dir",
+      "<root>/extra"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S6-control-config-search-adddir",
+    "batch": "P2",
+    "mode": "control",
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "--no-daemon",
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--add-dir",
+      "<root>/extra"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S7-managed-tui-model-sandbox-approval",
+    "batch": "P2",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "afterRemote": [
+      "-m",
+      "probe-model-y",
+      "-s",
+      "read-only",
+      "-a",
+      "never"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S8-managed-prompt-image",
+    "batch": "P2",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "files": {
+      "pixel.png": "png"
+    },
+    "beforeRemote": [
+      "Reply with the single word ok."
+    ],
+    "afterRemote": [
+      "-i",
+      "<root>/workspace/pixel.png"
+    ]
+  },
+  {
+    "id": "S9-control-prompt-image",
+    "batch": "P2",
+    "mode": "control",
+    "files": {
+      "pixel.png": "png"
+    },
+    "typed": [
+      "--no-daemon",
+      "Reply with the single word ok.",
+      "-i",
+      "<root>/workspace/pixel.png"
+    ]
+  },
+  {
+    "id": "S10-managed-start-danger-never",
+    "batch": "P2",
+    "mode": "managed",
+    "start": {
+      "sandbox": "danger-full-access",
+      "approvalPolicy": "never"
+    },
+    "paste": true
+  },
+  {
+    "id": "S11-control-bypass",
+    "batch": "P2",
+    "mode": "control",
+    "typed": [
+      "--no-daemon",
+      "--dangerously-bypass-approvals-and-sandbox"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S12-typed-remote-config-search-adddir-disable",
+    "batch": "P3",
+    "mode": "typed-remote",
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "-C",
+      "<root>/workspace",
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--add-dir",
+      "<root>/extra",
+      "--disable",
+      "goals"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S13-managed-tui-config",
+    "batch": "P3",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "afterRemote": [
+      "-c",
+      "model_reasoning_effort=high"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S14-managed-tui-search",
+    "batch": "P3",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "afterRemote": [
+      "--search"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S15-managed-tui-adddir",
+    "batch": "P3",
+    "mode": "managed",
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "dirs": [
+      "<root>/extra"
+    ],
+    "afterRemote": [
+      "--add-dir",
+      "<root>/extra"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S16-managed-appserver-config-roots",
+    "batch": "P4",
+    "mode": "managed",
+    "dirs": [
+      "<root>/extra"
+    ],
+    "appServerArgs": [
+      "-c",
+      "model_reasoning_effort=high",
+      "-c",
+      "web_search=live",
+      "--disable",
+      "goals"
+    ],
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request",
+      "runtimeWorkspaceRoots": [
+        "<root>/workspace",
+        "<root>/extra"
+      ]
+    },
+    "afterRemote": [
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--disable",
+      "goals"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S17-control-config-search-adddir-disable",
+    "batch": "P4",
+    "mode": "control",
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "--no-daemon",
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--add-dir",
+      "<root>/extra",
+      "--disable",
+      "goals"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S18-typed-remote-config-search-disable",
+    "batch": "P4",
+    "mode": "typed-remote",
+    "typed": [
+      "-C",
+      "<root>/workspace",
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--disable",
+      "goals"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S19-managed-appserver-config-search-disable",
+    "batch": "P5",
+    "mode": "managed",
+    "appServerArgs": [
+      "-c",
+      "model_reasoning_effort=high",
+      "-c",
+      "web_search=live",
+      "--disable",
+      "goals"
+    ],
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "afterRemote": [
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--disable",
+      "goals"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S20-managed-image-no-prompt",
+    "batch": "P5",
+    "mode": "managed",
+    "files": {
+      "pixel.png": "png"
+    },
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "afterRemote": [
+      "--image=<root>/workspace/pixel.png"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S21-control-image-no-prompt",
+    "batch": "P5",
+    "mode": "control",
+    "files": {
+      "pixel.png": "png"
+    },
+    "typed": [
+      "--no-daemon",
+      "-i",
+      "<root>/workspace/pixel.png"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S22-recipe-everything-carried",
+    "batch": "P6",
+    "mode": "recipe",
+    "files": {
+      "pixel.png": "png"
+    },
+    "typed": [
+      "-m",
+      "probe-model-x",
+      "-s",
+      "read-only",
+      "-a",
+      "never",
+      "--no-alt-screen",
+      "-c",
+      "model_reasoning_effort=high",
+      "--search",
+      "--disable",
+      "goals",
+      "--enable",
+      "multi_agent_v2",
+      "-i",
+      "<root>/workspace/pixel.png",
+      "--",
+      "- Reply with the single word ok."
+    ]
+  },
+  {
+    "id": "S23-recipe-bypass-prompt",
+    "batch": "P6",
+    "mode": "recipe",
+    "typed": [
+      "--dangerously-bypass-approvals-and-sandbox",
+      "Reply with the single word ok."
+    ]
+  },
+  {
+    "id": "S24-control-configA",
+    "batch": "P7",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": [
+      "--no-daemon"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S25-managed-omitted-configA",
+    "batch": "P7",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "start": {},
+    "paste": true
+  },
+  {
+    "id": "S26-managed-explicit-configA",
+    "batch": "P7",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "start": {
+      "sandbox": "workspace-write",
+      "approvalPolicy": "on-request"
+    },
+    "paste": true
+  },
+  {
+    "id": "S27-control-configB",
+    "batch": "P7",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "--no-daemon"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S28-managed-omitted-configB",
+    "batch": "P7",
+    "mode": "managed",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "start": {},
+    "paste": true
+  },
+  {
+    "id": "S29-control-configB-a-never-c-sandbox",
+    "batch": "P8",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "--no-daemon",
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "id": "S30-recipe-configB-a-never-c-sandbox",
+    "batch": "P8",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "id": "S31-control-configB-s-ww-c-approval-ww",
+    "batch": "P8",
+    "mode": "control",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "--no-daemon",
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S32-recipe-configB-s-ww-c-approval-ww",
+    "batch": "P8",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
+  },
+  {
+    "id": "S33-recipe-configA-bare",
+    "batch": "P8",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": [],
+    "paste": true
+  },
+  {
+    "id": "S34-recipe-configB-a-never-c-sandbox-server-only",
+    "batch": "P9",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ],
+    "paste": true
+  },
+  {
+    "id": "S35-recipe-configB-s-ww-c-approval-ww-server-only",
+    "batch": "P9",
+    "mode": "recipe",
+    "config": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "dirs": [
+      "<root>/extra"
+    ],
+    "typed": [
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"<root>/extra\"]"
+    ],
+    "paste": true
+  }
+]

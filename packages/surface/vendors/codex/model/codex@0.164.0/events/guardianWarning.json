@@ -1,0 +1,82 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "guardianWarning",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "message": {
+        "description": "Concise guardian warning message for the user.",
+        "type": "string"
+      },
+      "threadId": {
+        "description": "Thread target for the guardian warning.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "message",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "guardianWarning"
+        ],
+        "title": "GuardianWarningNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/GuardianWarningNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "GuardianWarningNotification",
+    "type": "object",
+    "$defs": {
+      "GuardianWarningNotification": {
+        "properties": {
+          "message": {
+            "description": "Concise guardian warning message for the user.",
+            "type": "string"
+          },
+          "threadId": {
+            "description": "Thread target for the guardian warning.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

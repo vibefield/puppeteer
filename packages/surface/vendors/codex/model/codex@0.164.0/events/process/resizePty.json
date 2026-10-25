@@ -1,0 +1,155 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "process/resizePty",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Resize a running PTY-backed `process/spawn` session by client-supplied `processHandle`.",
+  "payloadSchema": {
+    "description": "Resize a running PTY-backed `process/spawn` session.",
+    "properties": {
+      "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+        "type": "string"
+      },
+      "size": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/ProcessTerminalSize"
+          }
+        ],
+        "description": "New PTY size in character cells."
+      }
+    },
+    "required": [
+      "processHandle",
+      "size"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProcessTerminalSize": {
+        "description": "PTY size in character cells for `process/spawn` PTY sessions.",
+        "properties": {
+          "cols": {
+            "description": "Terminal width in character cells.",
+            "format": "uint16",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rows": {
+            "description": "Terminal height in character cells.",
+            "format": "uint16",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cols",
+          "rows"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "description": "Resize a running PTY-backed `process/spawn` session by client-supplied `processHandle`.",
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "process/resizePty"
+        ],
+        "title": "Process/resizePtyRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ProcessResizePtyParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Process/resizePtyRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ProcessResizePtyParams": {
+        "description": "Resize a running PTY-backed `process/spawn` session.",
+        "properties": {
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          },
+          "size": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ProcessTerminalSize"
+              }
+            ],
+            "description": "New PTY size in character cells."
+          }
+        },
+        "required": [
+          "processHandle",
+          "size"
+        ],
+        "type": "object"
+      },
+      "ProcessTerminalSize": {
+        "description": "PTY size in character cells for `process/spawn` PTY sessions.",
+        "properties": {
+          "cols": {
+            "description": "Terminal width in character cells.",
+            "format": "uint16",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rows": {
+            "description": "Terminal height in character cells.",
+            "format": "uint16",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cols",
+          "rows"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

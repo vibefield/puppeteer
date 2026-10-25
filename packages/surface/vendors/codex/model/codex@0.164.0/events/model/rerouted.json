@@ -1,0 +1,116 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "model/rerouted",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "fromModel": {
+        "type": "string"
+      },
+      "reason": {
+        "$ref": "#/$defs/ModelRerouteReason"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "toModel": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "fromModel",
+      "reason",
+      "threadId",
+      "toModel",
+      "turnId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ModelRerouteReason": {
+        "enum": [
+          "highRiskCyberActivity"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "model/rerouted"
+        ],
+        "title": "Model/reroutedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ModelReroutedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Model/reroutedNotification",
+    "type": "object",
+    "$defs": {
+      "ModelReroutedNotification": {
+        "properties": {
+          "fromModel": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/$defs/ModelRerouteReason"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "toModel": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromModel",
+          "reason",
+          "threadId",
+          "toModel",
+          "turnId"
+        ],
+        "type": "object"
+      },
+      "ModelRerouteReason": {
+        "enum": [
+          "highRiskCyberActivity"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

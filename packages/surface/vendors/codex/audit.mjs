@@ -22,12 +22,13 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
+import { censusEnvironment } from './census/harness.mjs';
 import { codexRules } from './census/sanitize.mjs';
 
 const selected = resolveAgentModel({ vendor: 'codex' });
@@ -121,15 +122,24 @@ const schemaFlagIndex = argv.indexOf('--schema');
 let schemaDir = schemaFlagIndex >= 0 ? argv[schemaFlagIndex + 1] : undefined;
 let temporary;
 if (!schemaDir) {
+  // A throwaway HOME and CODEX_HOME and an allowlisted environment: the drift
+  // check must not read or write the caller's own codex profile.
+  const scratchHome = mkdtempSync(join(tmpdir(), 'codex-audit-home-'));
   try {
     temporary = mkdtempSync(join(tmpdir(), 'codex-audit-schema-'));
-    execFileSync(process.env.PUPPETEER_CODEX_BIN ?? 'codex', ['app-server', 'generate-json-schema', '--experimental', '--out', temporary], {
-      stdio: 'ignore',
-    });
+    const env = censusEnvironment(scratchHome);
+    mkdirSync(env.CODEX_HOME, { recursive: true });
+    execFileSync(
+      process.env.PUPPETEER_CODEX_BIN ?? 'codex',
+      ['app-server', 'generate-json-schema', '--experimental', '--out', temporary],
+      { stdio: 'ignore', cwd: scratchHome, env },
+    );
     schemaDir = temporary;
   } catch {
     rmSync(temporary ?? '', { recursive: true, force: true });
     schemaDir = undefined;
+  } finally {
+    rmSync(scratchHome, { recursive: true, force: true });
   }
 }
 

@@ -1,0 +1,175 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "config/batchWrite",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "edits": {
+        "items": {
+          "$ref": "#/$defs/ConfigEdit"
+        },
+        "type": "array"
+      },
+      "expectedVersion": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "filePath": {
+        "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reloadUserConfig": {
+        "description": "When true, hot-reload updated runtime settings into loaded threads after writing. Session-static model, reasoning-effort, Plan-mode reasoning-effort, and service-tier defaults are not reloaded. The deprecated personality setting is also not reloaded.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "edits"
+    ],
+    "type": "object",
+    "$defs": {
+      "ConfigEdit": {
+        "properties": {
+          "keyPath": {
+            "type": "string"
+          },
+          "mergeStrategy": {
+            "$ref": "#/$defs/MergeStrategy"
+          },
+          "value": {}
+        },
+        "required": [
+          "keyPath",
+          "mergeStrategy",
+          "value"
+        ],
+        "type": "object"
+      },
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "config/batchWrite"
+        ],
+        "title": "Config/batchWriteRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ConfigBatchWriteParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Config/batchWriteRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ConfigBatchWriteParams": {
+        "properties": {
+          "edits": {
+            "items": {
+              "$ref": "#/$defs/ConfigEdit"
+            },
+            "type": "array"
+          },
+          "expectedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePath": {
+            "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reloadUserConfig": {
+            "description": "When true, hot-reload updated runtime settings into loaded threads after writing. Session-static model, reasoning-effort, Plan-mode reasoning-effort, and service-tier defaults are not reloaded. The deprecated personality setting is also not reloaded.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edits"
+        ],
+        "type": "object"
+      },
+      "ConfigEdit": {
+        "properties": {
+          "keyPath": {
+            "type": "string"
+          },
+          "mergeStrategy": {
+            "$ref": "#/$defs/MergeStrategy"
+          },
+          "value": {}
+        },
+        "required": [
+          "keyPath",
+          "mergeStrategy",
+          "value"
+        ],
+        "type": "object"
+      },
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

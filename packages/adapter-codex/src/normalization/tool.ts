@@ -23,15 +23,21 @@ export class CodexToolNormalizer {
             presentation: toolPresentation('command', 'Running command', command),
           });
         } else {
-          const failed = item.status === 'failed' || (typeof item.exitCode === 'number' && item.exitCode !== 0);
+          // A command the person declined never ran: Codex completes it with status `declined` and a
+          // null exit code (census approval-decline, 0.150.0 and 0.164.0), so it is a failure, not a run.
+          const declined = item.status === 'declined';
+          const failed =
+            declined || item.status === 'failed' || (typeof item.exitCode === 'number' && item.exitCode !== 0);
           events.push(
             failed
               ? {
                   type: 'tool:failed',
                   toolCallId: itemId,
                   tool: 'command',
-                  error: `command exited with status ${String(item.status ?? item.exitCode)}`,
-                  presentation: toolPresentation('command', 'Command failed', command),
+                  error: declined
+                    ? 'command was declined'
+                    : `command exited with status ${String(item.status ?? item.exitCode)}`,
+                  presentation: toolPresentation('command', declined ? 'Command declined' : 'Command failed', command),
                 }
               : {
                   type: 'tool:completed',

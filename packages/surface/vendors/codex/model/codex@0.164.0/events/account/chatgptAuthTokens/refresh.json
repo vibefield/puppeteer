@@ -1,0 +1,150 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/chatgptAuthTokens/refresh",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "previousAccountId": {
+        "description": "Workspace/account identifier that Codex was previously using.\n\nClients that manage multiple accounts/workspaces can use this as a hint to refresh the token for the correct workspace.\n\nThis may be `null` when the prior auth state did not include a workspace identifier (`chatgpt_account_id`).",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "$ref": "#/$defs/ChatgptAuthTokensRefreshReason"
+      }
+    },
+    "required": [
+      "reason"
+    ],
+    "type": "object",
+    "$defs": {
+      "ChatgptAuthTokensRefreshReason": {
+        "oneOf": [
+          {
+            "description": "Codex attempted a backend request and received `401 Unauthorized`.",
+            "enum": [
+              "unauthorized"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "resultSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "accessToken": {
+        "type": "string"
+      },
+      "chatgptAccountId": {
+        "type": "string"
+      },
+      "chatgptPlanType": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "accessToken",
+      "chatgptAccountId"
+    ],
+    "title": "ChatgptAuthTokensRefreshResponse",
+    "type": "object"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "account/chatgptAuthTokens/refresh"
+        ],
+        "title": "Account/chatgptAuthTokens/refreshRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ChatgptAuthTokensRefreshParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Account/chatgptAuthTokens/refreshRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ChatgptAuthTokensRefreshParams": {
+        "properties": {
+          "previousAccountId": {
+            "description": "Workspace/account identifier that Codex was previously using.\n\nClients that manage multiple accounts/workspaces can use this as a hint to refresh the token for the correct workspace.\n\nThis may be `null` when the prior auth state did not include a workspace identifier (`chatgpt_account_id`).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "$ref": "#/$defs/ChatgptAuthTokensRefreshReason"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "ChatgptAuthTokensRefreshReason": {
+        "oneOf": [
+          {
+            "description": "Codex attempted a backend request and received `401 Unauthorized`.",
+            "enum": [
+              "unauthorized"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

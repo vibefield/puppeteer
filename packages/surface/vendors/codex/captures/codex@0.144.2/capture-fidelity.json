@@ -6,6 +6,7 @@
   "nativeArtifacts": ["*.jsonl", "*.json"],
   "limitations": [
     "The c1-appserver-capture JSONL wraps native app-server records in harness dt, dir, and msg fields; those wrapper fields are not Codex protocol fields.",
-    "This historical set is retained as evidence and is not the active canonical baseline."
+    "This historical set is retained as evidence and is not the active canonical baseline.",
+    "On 2026-10-24 the one runtimeWorkspaceRoots value (C1 line 6) was re-redacted to /workspace/redacted-file: it named a host temp directory that the shared detector did not yet recognize (findings C8). No other byte changed."
   ]
 }

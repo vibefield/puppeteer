@@ -107,6 +107,11 @@
     }
   },
 
+  "thread/turns/list": {
+    "$comment": "The paginated history the observer reads after `thread/resume {excludeTurns: true}` (0.164.0 census history-hydration; ASM binding v2/ThreadTurnsListResponse.json). Like thread/read's `turns: []`, it holds no turns: the imposter hands a resumed client its history by replaying the stored session on `thread/resume` (`restore`).",
+    "result": { "data": [], "nextCursor": null, "backwardsCursor": null }
+  },
+
   "thread/inject_items": {
     "result": {}
   },

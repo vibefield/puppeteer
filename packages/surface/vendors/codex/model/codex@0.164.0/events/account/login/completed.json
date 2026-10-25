@@ -1,0 +1,128 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/login/completed",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "loginId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "onboardingEntrypoint": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/DesktopOnboardingEntrypoint"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "success": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "success"
+    ],
+    "type": "object",
+    "$defs": {
+      "DesktopOnboardingEntrypoint": {
+        "enum": [
+          "life_sciences"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "account/login/completed"
+        ],
+        "title": "Account/login/completedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/AccountLoginCompletedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Account/login/completedNotification",
+    "type": "object",
+    "$defs": {
+      "AccountLoginCompletedNotification": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "loginId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "onboardingEntrypoint": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/DesktopOnboardingEntrypoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "type": "object"
+      },
+      "DesktopOnboardingEntrypoint": {
+        "enum": [
+          "life_sciences"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

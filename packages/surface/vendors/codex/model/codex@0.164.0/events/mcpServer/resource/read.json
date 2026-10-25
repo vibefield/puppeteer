@@ -1,0 +1,193 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "mcpServer/resource/read",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "connectorId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "originCallId": {
+        "description": "Originating MCP tool call used to select the resource's app.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "server": {
+        "type": "string"
+      },
+      "target": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/McpResourceReadTarget"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Explicit hosted app/account. Omit to retain legacy resource discovery."
+      },
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "uri": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "server",
+      "uri"
+    ],
+    "type": "object",
+    "$defs": {
+      "McpResourceReadTarget": {
+        "properties": {
+          "connectorId": {
+            "type": "string"
+          },
+          "linkId": {
+            "description": "Null explicitly requests no-auth access, subject to the app's resource policy.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "connectorId",
+          "linkId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "mcpServer/resource/read"
+        ],
+        "title": "McpServer/resource/readRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/McpResourceReadParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "McpServer/resource/readRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "McpResourceReadParams": {
+        "properties": {
+          "connectorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "originCallId": {
+            "description": "Originating MCP tool call used to select the resource's app.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "server": {
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpResourceReadTarget"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Explicit hosted app/account. Omit to retain legacy resource discovery."
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server",
+          "uri"
+        ],
+        "type": "object"
+      },
+      "McpResourceReadTarget": {
+        "properties": {
+          "connectorId": {
+            "type": "string"
+          },
+          "linkId": {
+            "description": "Null explicitly requests no-auth access, subject to the app's resource policy.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "connectorId",
+          "linkId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

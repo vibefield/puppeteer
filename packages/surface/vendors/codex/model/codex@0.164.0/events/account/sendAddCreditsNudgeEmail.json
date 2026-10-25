@@ -1,0 +1,101 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/sendAddCreditsNudgeEmail",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "creditType": {
+        "$ref": "#/$defs/AddCreditsNudgeCreditType"
+      }
+    },
+    "required": [
+      "creditType"
+    ],
+    "type": "object",
+    "$defs": {
+      "AddCreditsNudgeCreditType": {
+        "enum": [
+          "credits",
+          "usage_limit"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "account/sendAddCreditsNudgeEmail"
+        ],
+        "title": "Account/sendAddCreditsNudgeEmailRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/SendAddCreditsNudgeEmailParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Account/sendAddCreditsNudgeEmailRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "SendAddCreditsNudgeEmailParams": {
+        "properties": {
+          "creditType": {
+            "$ref": "#/$defs/AddCreditsNudgeCreditType"
+          }
+        },
+        "required": [
+          "creditType"
+        ],
+        "type": "object"
+      },
+      "AddCreditsNudgeCreditType": {
+        "enum": [
+          "credits",
+          "usage_limit"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -10,6 +10,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
@@ -26,6 +27,16 @@ import {
 import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
+
+/**
+ * Native events about a deprecated call. 0.158.0 and later answer every full-history hydration with
+ * one (findings C8); the observer reads history the paginated way, and an older app-server sends none.
+ */
+function nativeDeprecations(envelopes: readonly AgentEventEnvelope[]): string[] {
+  return envelopes.flatMap(({ event }) =>
+    event.type === 'adapter:native-event' && /deprecat/iu.test(event.nativeType ?? '') ? [event.nativeType ?? ''] : [],
+  );
+}
 
 function requestedAppServerTransport(): AppServerTransportKind | undefined {
   const value = process.env.CODEX_NATIVE_TUI_TRANSPORT;
@@ -110,6 +121,7 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       }
       expect(projection.state.lastAssistantMessage).toContain(CODEX_LIVE_RESPONSE_MARKER);
       expect(session.threadPath()).toContain(codexHome);
+      expect(nativeDeprecations(projection.envelopes)).toEqual([]);
 
       const originalRuntimeSessionId = session.runtimeSessionId;
       projection.dispose();
@@ -142,6 +154,13 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
         () => host.output(resumed!.runtimeSessionId).includes(CODEX_LIVE_RESPONSE_MARKER),
         'resumed history in the real native TUI',
       );
+      // The resumed answer is history the observer read and replayed, not a live event.
+      const replayed = resumedProjection.envelopes.find(
+        ({ event }) =>
+          event.type === 'conversation:assistant-message' && event.text.includes(CODEX_LIVE_RESPONSE_MARKER),
+      );
+      expect(replayed?.replay).toBe(true);
+      expect(nativeDeprecations(resumedProjection.envelopes)).toEqual([]);
 
       const turnRequests = provider.requests.filter(({ kind }) => kind === 'turn');
       expect(turnRequests, `unexpected loopback requests: ${JSON.stringify(provider.requests)}`).toHaveLength(1);

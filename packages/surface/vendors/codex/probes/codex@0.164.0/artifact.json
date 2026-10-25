@@ -1,0 +1,42 @@
+{
+  "codex": "0.164.0",
+  "platform": "darwin-arm64",
+  "release": {
+    "tag": "rust-v0.164.0",
+    "commit": "6aaac694803004a63c6f393d153c96d22521a6b9",
+    "publishedAt": "2026-10-23T04:48:10Z"
+  },
+  "package": {
+    "download": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-aarch64-apple-darwin.tar.gz",
+    "sha256": "dd99e9092270691a67bdde7be04ac283dea9da8e86cbde356c2cc851a79205fa",
+    "bytes": 136007998,
+    "releaseAssetDigest": "sha256:dd99e9092270691a67bdde7be04ac283dea9da8e86cbde356c2cc851a79205fa",
+    "layout": "codex-package.json layoutVersion 1, entrypoint bin/codex, target aarch64-apple-darwin"
+  },
+  "executable": {
+    "file": "bin/codex",
+    "sha256": "d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf",
+    "bytes": 260293200,
+    "versionOutput": "codex-cli 0.164.0"
+  },
+  "companions": [
+    {
+      "file": "bin/codex-code-mode-host",
+      "sha256": "416721e33af8822041dc650793512b3e58d43e0be4f3a5c6187eb4dfaad3148a",
+      "bytes": 68543072
+    }
+  ],
+  "standaloneAcquisition": "pnpm surface:download extracts bin/codex alone from the same tarball; its digest equals executable.sha256. Without the companion the exec tool fails (findings C8).",
+  "help": {
+    "root": {
+      "file": "codex-help.txt",
+      "sha256": "c45272069305746def807625680ee74891c9b367bff346ff776206b98c79331a",
+      "differsFrom": "0.157.1 by the migrate-nfs-db row only"
+    },
+    "resume": {
+      "file": "codex-resume-help.txt",
+      "sha256": "a69d53b274c25b7ca50fad2c5ed62bd538097033fa4092dc0b2587e8f0a50edb",
+      "identicalTo": "0.157.1"
+    }
+  }
+}
