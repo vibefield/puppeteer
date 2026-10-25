@@ -1723,7 +1723,8 @@ createGrokBackend → grok agent leader
   → GrokSessionObserver(updates.jsonl)
   → observer active ⇒ ACP allowlist only:
       interaction:* · context-window:* · environment:updated · session:started (once)
-  → ACP frames under another sessionId (a subagent child) ⇒ raw native events only, no state or usage
+  → ACP frames under another sessionId (a subagent child) ⇒ raw native events only, no root state;
+      a spawned child's usage and running turn ⇒ its subagent actor (monitor, by child_session_id)
   → ACP frames with _meta.isReplay (session/load history) ⇒ published as replay
   → log owns turns/tools/messages/lifecycle
   → observationLevel: native-log</pre>
@@ -1762,6 +1763,16 @@ createGrokBackend → grok agent leader
             <li>
               Durable <code>timestamp</code> is Unix seconds; <code>signals.json</code> is written asynchronously after the
               prompt result, so a context sample can trail <code>turn:completed</code>.
+            </li>
+            <li>
+              Live <code>response_completed</code> carries no signature or <code>_meta.eventId</code>. Each response is
+              identified by its session, the running native prompt (<code>_x.ai/queue/changed</code>
+              <code>runningPromptId</code>, or the turn&rsquo;s <code>_meta.promptId</code>), and its ordinal within that
+              prompt; <code>turn_completed</code> reconciles the turn total. A response, signed or not, counts on its own
+              only under such a native prompt; otherwise its <code>turn_completed</code> carries the whole total. A
+              subagent child&rsquo;s response and turn usage, which the leader forwards under the child sessionId, is
+              attributed to the actor
+              <code>subagent_spawned</code> names for that <code>child_session_id</code>.
             </li>
           </ul>
           <div class="scroll">

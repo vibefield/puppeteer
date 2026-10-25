@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { agentEventType, type AdapterEventCandidate, type AgentEvent } from '@vibefield/puppeteer-core';
+import {
+  agentEventType,
+  type AdapterEventCandidate,
+  type AgentEvent,
+  type AgentEventSource,
+} from '@vibefield/puppeteer-core';
 import { GROK_MONITOR_CAPABILITIES, GrokMonitorEvidence } from './monitor.js';
 import type { GrokObservedEvent } from './types.js';
 import {
   createMonitorAccumulatorState,
   projectAgentMonitorState,
   reduceMonitorAccumulator,
+  type AdapterMonitorObservationBatch,
 } from '@vibefield/puppeteer-core/monitor-spi';
 
 const SESSION = 'grok-session';
@@ -50,7 +56,317 @@ function candidate(update: Record<string, unknown>, event?: AgentEvent): Adapter
   } as AdapterEventCandidate;
 }
 
+/** A live control candidate as adapter-acp publishes it, carrying the exact ACP frame. */
+function frame(
+  nativeEvent: { method?: string; params: Record<string, unknown> },
+  event: AgentEvent = {
+    type: 'adapter:native-event',
+    adapter: 'grok',
+    nativeType: String(
+      (nativeEvent.params.update as { sessionUpdate?: string } | undefined)?.sessionUpdate ?? nativeEvent.method,
+    ),
+  },
+  source: AgentEventSource = 'native-protocol',
+): AdapterEventCandidate {
+  return {
+    type: agentEventType(event),
+    sessionId: SESSION,
+    nativeSessionId: SESSION,
+    timestamp: AT,
+    monotonicTime: 0,
+    source,
+    confidence: 'authoritative',
+    event,
+    // adapter-acp attaches a session/update's bare params, and an extension's { method, params }.
+    nativeEvent: nativeEvent.method ? nativeEvent : nativeEvent.params,
+  } as AdapterEventCandidate;
+}
+
+// Shapes from the 1.0.70 census (packages/surface/vendors/grok/captures/grok@1.0.70/subagent/acp-controller.jsonl).
+const RESPONSE_USAGE = {
+  input_tokens: 28,
+  output_tokens: 7,
+  cache_read_input_tokens: 3,
+  cache_creation_input_tokens: 0,
+  reasoning_tokens: 2,
+};
+const queueChanged = (sessionId: string, runningPromptId?: string) =>
+  frame({
+    method: '_x.ai/queue/changed',
+    params: {
+      sessionId,
+      entries: [],
+      ...(runningPromptId ? { runningPromptId, runningText: '<redacted>', runningKind: 'prompt' } : {}),
+    },
+  });
+const responseCompleted = (sessionId: string) =>
+  frame({
+    method: '_x.ai/session_notification',
+    params: { sessionId, update: { sessionUpdate: 'response_completed', usage: RESPONSE_USAGE } },
+  });
+const turnCompleted = (sessionId: string, promptId: string, usage?: Record<string, unknown>) =>
+  frame({
+    method: '_x.ai/session_notification',
+    params: {
+      sessionId,
+      update: {
+        sessionUpdate: 'turn_completed',
+        prompt_id: promptId,
+        stop_reason: 'end_turn',
+        ...(usage ? { usage } : {}),
+        elapsed_ms: 393,
+      },
+      _meta: { eventId: `${sessionId}-26`, agentTimestampMs: 1_767_225_600_000 },
+    },
+  });
+const turnUsage = (calls: number, extra: Record<string, unknown> = {}) => ({
+  inputTokens: 31 * calls,
+  outputTokens: 7 * calls,
+  totalTokens: 38 * calls,
+  cachedReadTokens: 3 * calls,
+  cacheCreationTokens: 0,
+  reasoningTokens: 2 * calls,
+  modelCalls: calls,
+  numTurns: calls,
+  ...extra,
+});
+
+function monitorOf(batches: readonly (AdapterMonitorObservationBatch | null)[]) {
+  let state = createMonitorAccumulatorState({
+    runtimeRunId: 'run',
+    runtimeEpoch: 1,
+    providerId: 'grok',
+    executionMode: 'native-tui',
+    observationLevel: 'native-log',
+    allocatedAt: AT,
+  });
+  for (const batch of batches) {
+    if (batch)
+      state = reduceMonitorAccumulator(state, {
+        ...batch,
+        kind: 'semantic',
+        runtimeRunId: 'run',
+        runtimeEpoch: 1,
+      }).state;
+  }
+  return projectAgentMonitorState(state, { asOf: AT });
+}
+
 describe('GrokMonitorEvidence', () => {
+  it('identifies unsigned live responses by session, running native prompt, and ordinal', () => {
+    const projector = evidence();
+    const prompt = 'a11a5ed0-7f16-4f54-a38b-b4622654d3f8';
+    const batches = [
+      projector.controlCandidateBatch(queueChanged(SESSION)),
+      projector.controlCandidateBatch(queueChanged(SESSION, prompt)),
+      projector.controlCandidateBatch(responseCompleted(SESSION)),
+      projector.controlCandidateBatch(responseCompleted(SESSION)),
+      projector.controlCandidateBatch(queueChanged(SESSION)),
+      projector.controlCandidateBatch(turnCompleted(SESSION, prompt, turnUsage(2))),
+    ];
+    expect(batches.flatMap((batch) => batch?.updates ?? [])).toEqual([
+      expect.objectContaining({
+        key: `grok-turn:${SESSION}:${prompt}:response:1`,
+        value: expect.objectContaining({ inputTokens: 31, outputTokens: 7, deltaTokens: 38 }),
+      }),
+      expect.objectContaining({
+        key: `grok-turn:${SESSION}:${prompt}:response:2`,
+        value: expect.objectContaining({ deltaTokens: 38 }),
+      }),
+      // The turn total equals its two responses, so reconciliation adds nothing.
+      expect.objectContaining({
+        key: `grok-turn:${SESSION}:${prompt}`,
+        value: expect.objectContaining({ deltaTokens: 0, inputTokens: 0, outputTokens: 0 }),
+      }),
+    ]);
+    // A response after its turn ended belongs to no running prompt and is not counted twice.
+    expect(projector.controlCandidateBatch(responseCompleted(SESSION))).toBeNull();
+    expect(monitorOf(batches).usage).toMatchObject({ cumulativeTokens: 76, burnRateBoundary: 'response' });
+  });
+
+  it('correlates a response through the turn’s session/update _meta.promptId', () => {
+    const projector = evidence();
+    projector.controlCandidateBatch(
+      frame(
+        {
+          params: {
+            sessionId: SESSION,
+            update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'x' } },
+            _meta: { promptId: 'anon-a30e14c93db4bc70', eventId: `${SESSION}-32`, chunkId: 2 },
+          },
+        },
+        { type: 'conversation:assistant-message', text: 'x', final: false, displayOnly: false },
+        'native-hook',
+      ),
+    );
+    expect(projector.controlCandidateBatch(responseCompleted(SESSION))?.updates).toEqual([
+      expect.objectContaining({ key: `grok-turn:${SESSION}:anon-a30e14c93db4bc70:response:1` }),
+    ]);
+  });
+
+  it('never keys a signed response by the adapter turn id, which its native turn_completed never names', () => {
+    const projector = evidence();
+    // The 1.0.0 live shape (captures/grok@1.0.0/turn.jsonl): a signed
+    // response_completed, no _meta.promptId on the turn's frames, no queue/changed.
+    const batches = [
+      projector.controlCandidateBatch(
+        frame(
+          { params: { sessionId: SESSION, update: { sessionUpdate: 'user_message_chunk' } } },
+          { type: 'turn:started', turnId: 'acp-turn-1' },
+        ),
+      ),
+      projector.controlCandidateBatch(
+        frame({
+          method: '_x.ai/session_notification',
+          params: {
+            sessionId: SESSION,
+            update: { sessionUpdate: 'response_completed', signature: 'sig-1', usage: RESPONSE_USAGE },
+          },
+        }),
+      ),
+      projector.controlCandidateBatch(turnCompleted(SESSION, 'native-prompt', turnUsage(1))),
+    ];
+    expect(batches[1]).toBeNull();
+    expect(monitorOf(batches).usage.cumulativeTokens).toBe(38);
+  });
+
+  it('never takes a running prompt from replayed history or another session', () => {
+    const projector = evidence();
+    const replayed = queueChanged(SESSION, 'replayed-prompt');
+    (replayed.nativeEvent as { params: Record<string, unknown> }).params._meta = { isReplay: true };
+    projector.controlCandidateBatch(replayed);
+    projector.controlCandidateBatch(queueChanged('unspawned-child', 'child-prompt'));
+    expect(projector.controlCandidateBatch(responseCompleted(SESSION))).toBeNull();
+  });
+
+  it('keeps the response contributions of a turn whose total is incomplete or absent', () => {
+    const projector = evidence();
+    const batches = [
+      projector.controlCandidateBatch(queueChanged(SESSION, 'p1')),
+      projector.controlCandidateBatch(responseCompleted(SESSION)),
+      projector.controlCandidateBatch(responseCompleted(SESSION)),
+      // The subagent census's root turn: Grok flags the total incomplete.
+      projector.controlCandidateBatch(turnCompleted(SESSION, 'p1', turnUsage(2, { usageIsIncomplete: true }))),
+      projector.controlCandidateBatch(queueChanged(SESSION, 'p2')),
+      projector.controlCandidateBatch(responseCompleted(SESSION)),
+      // A mid-turn abort reports no usage at all.
+      projector.controlCandidateBatch(turnCompleted(SESSION, 'p2')),
+    ];
+    expect(batches[3]).toBeNull();
+    expect(batches[6]).toBeNull();
+    expect(monitorOf(batches).usage.cumulativeTokens).toBe(38 * 3);
+  });
+
+  it('attributes a spawned child’s usage and running turn to its subagent actor', () => {
+    const projector = evidence();
+    const child = 'a11a5ed0-0199-422d-ab3b-5ce364f0476a';
+    const runKey = `${SESSION}:actor:${child}`;
+    const batches = [
+      projector.controlCandidateBatch(
+        frame({
+          method: '_x.ai/session_notification',
+          params: {
+            sessionId: SESSION,
+            update: {
+              sessionUpdate: 'subagent_spawned',
+              subagent_id: child,
+              attempt_id: 'anon-ea7651f99560907e',
+              parent_session_id: SESSION,
+              parent_prompt_id: 'root-prompt',
+              child_session_id: child,
+              subagent_type: 'general-purpose',
+              description: '<redacted:description>',
+              effective_context_source: 'new',
+              model: 'puppeteer-grok-live',
+              agentAddress: 'anon-a3bb37eafac9effc',
+            },
+            _meta: { eventId: `${SESSION}-11`, agentTimestampMs: 1_767_225_600_000 },
+          },
+        }),
+      ),
+      projector.controlCandidateBatch(queueChanged(child)),
+      projector.controlCandidateBatch(queueChanged(child, 'child-prompt')),
+      projector.controlCandidateBatch(queueChanged(child, 'child-prompt')),
+      projector.controlCandidateBatch(responseCompleted(child)),
+      projector.controlCandidateBatch(queueChanged(child)),
+      projector.controlCandidateBatch(turnCompleted(child, 'child-prompt', turnUsage(1))),
+    ];
+    expect(batches[1]).toBeNull();
+    expect(batches[2]?.updates).toEqual([
+      {
+        family: 'status',
+        operation: 'upsert',
+        key: `turn:actor:${runKey}`,
+        value: expect.objectContaining({
+          kind: 'activity',
+          active: true,
+          actor: expect.objectContaining({ runKey, role: 'child', nativeSessionId: child }),
+        }),
+      },
+    ]);
+    expect(batches[3]).toBeNull();
+    expect(batches[4]?.updates).toEqual([
+      expect.objectContaining({
+        key: `grok-turn:${child}:child-prompt:response:1`,
+        value: expect.objectContaining({ deltaTokens: 38, actor: expect.objectContaining({ runKey }) }),
+      }),
+    ]);
+    expect(batches[6]?.updates).toEqual([
+      expect.objectContaining({
+        key: `grok-turn:${child}:child-prompt`,
+        value: expect.objectContaining({ deltaTokens: 0, actor: expect.objectContaining({ runKey }) }),
+      }),
+      { family: 'status', operation: 'retract', key: `turn:actor:${runKey}` },
+    ]);
+    expect(batches.every((batch) => batch === null || batch.scope?.nativeSessionId === SESSION)).toBe(true);
+
+    const state = monitorOf(batches);
+    expect(state.usage.cumulativeTokens).toBe(38);
+    expect(state.subagents).toEqual([expect.objectContaining({ id: child, cumulativeTokens: 38 })]);
+    // While the child's turn runs it is the subagent's own activity, never the root's.
+    const running = monitorOf(batches.slice(0, 3));
+    expect(running.subagents).toEqual([expect.objectContaining({ id: child, working: true, activity: 'Working' })]);
+  });
+
+  it('projects nothing for a child no spawn announced, nor other child-session evidence', () => {
+    const projector = evidence();
+    for (const batch of [
+      queueChanged('unknown-child', 'p'),
+      responseCompleted('unknown-child'),
+      turnCompleted('unknown-child', 'p', turnUsage(1)),
+    ]) {
+      expect(projector.controlCandidateBatch(batch)).toBeNull();
+    }
+    projector.controlCandidateBatch(
+      frame({
+        method: '_x.ai/session_notification',
+        params: {
+          sessionId: SESSION,
+          update: { sessionUpdate: 'subagent_spawned', subagent_id: 'child', child_session_id: 'child' },
+        },
+      }),
+    );
+    for (const update of [
+      { sessionUpdate: 'pending_interaction', tool_call_id: 'call-1', kind: 'permission' },
+      { sessionUpdate: 'auto_compact_completed', tokens_before: 10, tokens_after: 2 },
+      { sessionUpdate: 'model_changed', model_id: 'other' },
+    ]) {
+      expect(
+        projector.controlCandidateBatch(
+          frame({ method: '_x.ai/session_notification', params: { sessionId: 'child', update } }),
+        ),
+      ).toBeNull();
+    }
+    expect(
+      projector.controlCandidateBatch(
+        frame(
+          { params: { sessionId: 'child', update: { sessionUpdate: 'usage_update', used: 5, size: 10 } } },
+          { type: 'context-window:updated', usedTokens: 5, capacityTokens: 10 },
+        ),
+      ),
+    ).toBeNull();
+  });
+
   it('publishes live response burn and reconciles the final turn without double counting', () => {
     const projector = evidence();
     let state = createMonitorAccumulatorState({
@@ -72,9 +388,11 @@ describe('GrokMonitorEvidence', () => {
     };
     apply(
       projector.controlCandidateBatch(
-        candidate({ sessionUpdate: 'user_message_chunk' }, { type: 'turn:started', turnId: 'prompt-1' }),
+        candidate({ sessionUpdate: 'user_message_chunk' }, { type: 'turn:started', turnId: 'acp-turn-1' }),
       ),
     );
+    // The native prompt, not adapter-acp's turn id, is what turn_completed names.
+    apply(projector.controlCandidateBatch(queueChanged(SESSION, 'prompt-1')));
     const response = candidate({
       sessionUpdate: 'response_completed',
       signature: 'response-1',
@@ -123,7 +441,7 @@ describe('GrokMonitorEvidence', () => {
     );
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'usage')).toMatchObject({
       support: 'degraded',
-      actorScope: 'root',
+      actorScope: 'current-actors',
     });
     expect(GROK_MONITOR_CAPABILITIES.find(({ family }) => family === 'delegation')).toMatchObject({
       support: 'degraded',
@@ -193,8 +511,10 @@ describe('GrokMonitorEvidence', () => {
     const projector = evidence();
     for (const update of [
       { signature: 'no-prompt', usage: { inputTokens: 100 } },
-      { prompt_id: 'p', usage: { inputTokens: 100 } },
+      // Neither a native id nor a native prompt: nothing to identify it by.
+      { usage: { inputTokens: 100 } },
       { prompt_id: 'p', signature: 'incomplete', usage: { inputTokens: 100, usage_is_incomplete: true } },
+      { prompt_id: 'p', usage: { inputTokens: 100, usage_is_incomplete: true } },
     ]) {
       expect(projector.controlCandidateBatch(candidate({ sessionUpdate: 'response_completed', ...update }))).toBeNull();
     }

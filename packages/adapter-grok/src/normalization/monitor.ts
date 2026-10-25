@@ -12,7 +12,7 @@ import type {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import type { GrokObservedEvent } from './types.js';
 import { GROK_CONTRACT, GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
-import { GrokUsageEvidence } from './usage.js';
+import { GrokUsageEvidence, type GrokResponseIdentity } from './usage.js';
 
 export { GROK_MONITOR_CAPABILITIES } from './monitor-capabilities.js';
 
@@ -42,6 +42,15 @@ function nestedUpdate(
   const params = rec(carrier.params) ?? carrier;
   const update = rec(params.update);
   return update ? { params, update } : undefined;
+}
+
+/** A control candidate's ACP frame: an extension's `{ method, params }`, or bare `session/update` params. */
+function controlFrame(value: unknown): { method?: string; params: Record<string, unknown> } | undefined {
+  const carrier = rec(value);
+  if (!carrier) return undefined;
+  const method = str(carrier.method);
+  const params = rec(carrier.params);
+  return method && params ? { method, params } : { params: carrier };
 }
 
 function sessionUpdate(value: unknown): string | undefined {
@@ -80,6 +89,12 @@ export class GrokMonitorEvidence {
   private activePromptId: string | undefined;
   private readonly usage = new GrokUsageEvidence();
   private readonly childTypes = new Map<string, string | undefined>();
+  /** `child_session_id` → `subagent_id`, from `subagent_spawned`. */
+  private readonly childSessions = new Map<string, string>();
+  /** Per session (the bound one or a child): the native prompt it is running. */
+  private readonly runningPrompts = new Map<string, string>();
+  /** Per child session: the prompt whose turn is projected as the subagent's activity. */
+  private readonly childTurns = new Map<string, string>();
 
   constructor(private readonly options: GrokMonitorEvidenceOptions) {
     this.epoch = options.epoch ?? `grok:${randomUUID()}`;
@@ -197,16 +212,123 @@ export class GrokMonitorEvidence {
   }
 
   controlCandidateBatch(candidate: AdapterEventCandidate): AdapterMonitorObservationBatch | null {
-    const replay =
-      candidate.replay === true || rec(nestedUpdate(candidate.nativeEvent)?.params._meta)?.isReplay === true;
-    return this.eventBatch(
-      candidate.event,
-      candidate.nativeEvent,
-      candidate.timestamp,
-      replay ? 'bootstrap' : 'live',
-      candidate.promptId ?? candidate.turnId,
-      candidate.source === 'native-protocol' && !replay,
-    );
+    const frame = controlFrame(candidate.nativeEvent);
+    const replay = candidate.replay === true || rec(frame?.params._meta)?.isReplay === true;
+    const frameSession = str(frame?.params.sessionId);
+    if (!replay && frame && frameSession) this.observeRunningPrompt(frameSession, frame);
+    // The leader forwards a subagent child's traffic under the child's sessionId.
+    const batch =
+      frameSession && frameSession !== this.options.nativeSessionId()
+        ? replay || !frame
+          ? null
+          : this.childBatch(frameSession, candidate, frame)
+        : this.eventBatch(
+            candidate.event,
+            candidate.nativeEvent,
+            candidate.timestamp,
+            replay ? 'bootstrap' : 'live',
+            candidate.promptId ?? candidate.turnId,
+            candidate.source === 'native-protocol' && !replay,
+          );
+    const update = rec(frame?.params.update);
+    if (!replay && frameSession && update?.sessionUpdate === 'turn_completed') {
+      const promptId = str(update.prompt_id);
+      if (promptId && this.runningPrompts.get(frameSession) === promptId) this.runningPrompts.delete(frameSession);
+    }
+    return batch;
+  }
+
+  /**
+   * The running native prompt of a session, from live evidence only: Grok
+   * names it in `_x.ai/queue/changed` `runningPromptId` before the turn streams
+   * and stamps it on every agent `session/update` as `_meta.promptId`.
+   * `response_completed` carries neither, so this is its prompt correlation.
+   */
+  private observeRunningPrompt(sessionId: string, frame: { method?: string; params: Record<string, unknown> }): void {
+    const running =
+      frame.method === '_x.ai/queue/changed'
+        ? str(frame.params.runningPromptId)
+        : frame.method === undefined || frame.method === 'session/update'
+          ? str(rec(frame.params._meta)?.promptId)
+          : undefined;
+    if (running) this.runningPrompts.set(sessionId, running);
+  }
+
+  private responseIdentity(
+    update: Record<string, unknown>,
+    params: Record<string, unknown>,
+    nativePromptId: string | undefined,
+  ): GrokResponseIdentity | undefined {
+    // A response is keyed under its turn, so it needs the native prompt that
+    // turn's turn_completed names. Under an adapter-side turn id, signed or
+    // not, the turn total would never subtract it and would count it twice.
+    if (!nativePromptId) return undefined;
+    const id = str(update.signature) ?? str(rec(params._meta)?.eventId);
+    return id ? { kind: 'native', id } : { kind: 'ordinal' };
+  }
+
+  /**
+   * Monitor evidence for a subagent child session, attributed to the actor
+   * `subagent_spawned` named for it: the child's live response and turn usage,
+   * and its running turn as the actor's activity. Nothing projects onto the
+   * root, and a child no spawn announced yet has no actor to carry its evidence.
+   */
+  private childBatch(
+    childSessionId: string,
+    candidate: AdapterEventCandidate,
+    frame: { method?: string; params: Record<string, unknown> },
+  ): AdapterMonitorObservationBatch | null {
+    const subagentId = this.childSessions.get(childSessionId);
+    if (!subagentId || candidate.source !== 'native-protocol') return null;
+    const actor = this.actor(subagentId, childSessionId);
+    const activityKey = `turn:actor:${actor.runKey}`;
+    const update = rec(frame.params.update);
+    const kind = str(update?.sessionUpdate);
+    const updates: MonitorFamilyUpdate[] = [];
+    let promptId: string | undefined;
+    if (frame.method === '_x.ai/queue/changed') {
+      promptId = str(frame.params.runningPromptId);
+      if (promptId && this.childTurns.get(childSessionId) !== promptId) {
+        this.childTurns.set(childSessionId, promptId);
+        updates.push(
+          upsert('status', activityKey, {
+            kind: 'activity',
+            activityKind: 'other',
+            active: true,
+            line: 'Working',
+            since: candidate.timestamp,
+            actor,
+          }),
+        );
+      }
+    } else if (
+      update &&
+      candidate.event.type === 'adapter:native-event' &&
+      candidate.event.adapter === 'grok' &&
+      (kind === 'response_completed' || kind === 'turn_completed')
+    ) {
+      promptId =
+        str(update.prompt_id) ?? str(rec(frame.params._meta)?.promptId) ?? this.runningPrompts.get(childSessionId);
+      updates.push(
+        ...this.usage.normalize(
+          childSessionId,
+          promptId,
+          update,
+          this.responseIdentity(update, frame.params, promptId),
+          actor,
+        ),
+      );
+      if (kind === 'turn_completed' && promptId && this.childTurns.get(childSessionId) === promptId) {
+        this.childTurns.delete(childSessionId);
+        updates.push(retract('status', activityKey));
+      }
+    }
+    if (updates.length === 0) return null;
+    return this.batch(`child-${kind ?? 'queue-changed'}`, candidate.timestamp, updates, {
+      evidence: this.evidence(
+        ['child', childSessionId, kind ?? frame.method, promptId].filter((value) => value !== undefined).join(':'),
+      ),
+    });
   }
 
   private eventBatch(
@@ -224,8 +346,10 @@ export class GrokMonitorEvidence {
     let quality: AdapterMonitorObservationBatch['quality'] = 'exact';
     let provisional = false;
     if (directUsage && event.type === 'turn:started') this.activePromptId = promptId ?? event.turnId;
-    const usagePromptId =
-      str(update?.prompt_id) ?? str(rec(nested?.params._meta)?.promptId) ?? promptId ?? this.activePromptId;
+    const frameSession = str(nested?.params.sessionId) ?? this.options.nativeSessionId();
+    const nativePromptId =
+      str(update?.prompt_id) ?? str(rec(nested?.params._meta)?.promptId) ?? this.runningPrompts.get(frameSession);
+    const usagePromptId = nativePromptId ?? promptId ?? this.activePromptId;
 
     if (event.type === 'context-window:updated') {
       this.contextCapacity = event.capacityTokens;
@@ -281,7 +405,7 @@ export class GrokMonitorEvidence {
           this.options.nativeSessionId(),
           usagePromptId,
           update,
-          str(update.signature) ?? str(rec(nested?.params._meta)?.eventId),
+          this.responseIdentity(update, nested?.params ?? {}, nativePromptId),
         ),
       );
       if (kind === 'turn_completed' && usagePromptId === this.activePromptId) this.activePromptId = undefined;
@@ -351,7 +475,9 @@ export class GrokMonitorEvidence {
       const childId = str(update.subagent_id) ?? str(update.child_session_id);
       if (childId) {
         this.childTypes.set(childId, str(update.subagent_type));
-        const actor = this.actor(childId, str(update.child_session_id));
+        const childSessionId = str(update.child_session_id);
+        if (childSessionId) this.childSessions.set(childSessionId, childId);
+        const actor = this.actor(childId, childSessionId);
         updates.push(upsert('delegation', `actor:${actor.runKey}`, { kind: 'actor', actor, state: 'active' }));
         const modelId = str(update.model);
         if (modelId) {
