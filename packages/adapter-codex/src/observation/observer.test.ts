@@ -8,6 +8,7 @@ import {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
+import { CODEX_HISTORY_LIMITS } from './thread-history.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
 
@@ -34,6 +35,8 @@ interface ControllableOptions {
   threadReadError?: { code: number; message: string };
   /** Answer every `thread/turns/list` page with the same turns and the same cursor. */
   repeatCursor?: boolean;
+  /** Serve this many `thread/turns/list` pages of one new turn each, every one with a new cursor. */
+  distinctPages?: number;
 }
 
 const GATED = {
@@ -71,6 +74,13 @@ function controllable(
     onMsg?.({ jsonrpc: '2.0', id, error: { code, message } });
   const turnsPage = (params: Record<string, unknown>) => {
     if (options.repeatCursor) return { data: storedTurns, nextCursor: 'same', backwardsCursor: null };
+    if (options.distinctPages !== undefined) {
+      const at = typeof params.cursor === 'string' ? Number(params.cursor) : 0;
+      const data = [
+        { id: `t${at}`, status: 'completed', items: [{ type: 'agentMessage', id: `a${at}`, text: `${at}` }] },
+      ];
+      return { data, nextCursor: at + 1 < options.distinctPages ? String(at + 1) : null, backwardsCursor: null };
+    }
     const size = options.pageSize ?? Math.max(storedTurns.length, 1);
     const from = typeof params.cursor === 'string' ? Number(params.cursor) : 0;
     const data = storedTurns.slice(from, from + size);
@@ -1048,6 +1058,23 @@ describe('createCodexObserver paginated history (0.151.0 and later) with a full-
     const projection = projectAgentEvents(obs);
     expect(requests(t, 'thread/turns/list')).toHaveLength(2);
     expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('stops paging a server whose cursors outlast the page limit, and reports the history incomplete', async () => {
+    const { pages } = CODEX_HISTORY_LIMITS;
+    const t = controllable(0, stored(), { distinctPages: pages * 5 });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(requests(t, 'thread/turns/list')).toHaveLength(pages);
+    expect(requests(t, 'thread/read')).toEqual([]);
+    expect(replayedAnswers(projection)).toHaveLength(pages);
+    expect(projection.state.lastAssistantMessage).toBe(String(pages - 1));
+    expect(historyDiagnostics(projection)).toEqual([
+      `Codex thread history could not be read in full (stopped after ${pages} pages); ${pages} earliest turn(s) were replayed and later ones are missing.`,
+    ]);
     projection.dispose();
     await obs.dispose();
   });

@@ -721,7 +721,9 @@ as complete.
 
 ## File-change semantics carried forward from exact source
 
-`census/source-contract.mjs --from 0.150.0 --version 0.164.0` fetched both pinned files at both tags, re-checked the
+`census/source-contract.mjs --from 0.150.0 --version 0.164.0` (now also `pnpm --filter @vibefield/puppeteer-surface
+surface:reference:codex --from 0.150.0 --version 0.164.0`, with `--sources <dir>` for an offline re-check) fetched both
+pinned files at both tags, re-checked the
 0.150.0 pins byte for byte, and extracted the seven named items (with their attributes and doc comments) from each:
 all byte-identical, so the contract is carried forward with new pins only — `item_builders.rs` `1b227632…` (15 495 B)
 and `v2/item.rs` `7a1bcd40…` (65 490 B) at `rust-v0.164.0` (`sourceCommit` `6aaac694…`). The runtime agrees
@@ -878,6 +880,48 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
   `puppeteer-last-verified` stays `0.147.0`, because `pnpm packages:check` pins it to the ledger's promoted version
   (follow-up below).
 
+## Follow-up stage (2026-10-25)
+
+- **Live tests name their codex.** The seven opt-in adapter live tests (`native-tui`, `driver`, `observer`,
+  `ws-transport`, `invocation-probe`, `models`, `account-usage`) resolved codex the production way, which falls back to
+  `codex` on `PATH`; `driver`, `observer`, `ws-transport` and `account-usage` also ran it in the caller's HOME and
+  `~/.codex`, against a real account, and `models` under the real HOME. With its flag set, each now refuses to run
+  unless `PUPPETEER_CODEX_BIN` is an absolute path to a file (`test-support/live-profile.ts`) and runs in a throwaway
+  HOME and CODEX_HOME; the turn-driving ones answer from the loopback Responses endpoint and assert its marker, and the
+  observer test tells its live turn apart by turn id, since it can attach while the first turn is still streaming.
+  `live-isolation.test.ts` fails any live test that resolves codex another way, or that calls an app-server, session,
+  TUI, usage, model or terminal spawn without an `env` (or a session without a `transport`); it is a source-text
+  heuristic, and names files with `/` so its inventory also holds on the Windows CI leg. The production resolver is
+  unchanged. On the 0.164.0 standalone artifact, `driver`, `ws-transport`, `observer` (five runs), `models`,
+  `account-usage` and `native-tui` pass.
+- **The profile pins Codex's own variables.** The live app-servers are spawned with the test process's environment
+  beneath the profile's, so a caller's `CODEX_*` and `OPENAI_*` variables reached codex. With `CODEX_SQLITE_HOME` set,
+  0.164.0 wrote `state_5`, `thread_history_1`, `logs_2`, `memories_1`, `goals_1` and `queue_1` `.sqlite` outside the
+  profile (driver live test, reproduced). The profile now pins `CODEX_SQLITE_HOME` to its CODEX_HOME (the same run
+  then leaves nothing behind), and a live test refuses to start, naming the variables but not their values, while the
+  environment exports any other `CODEX_*`/`OPENAI_*` variable than the ones it pins and the tests' own switches. The
+  artifact's strings show it reads credentials (`CODEX_API_KEY`, `CODEX_ACCESS_TOKEN`, `CODEX_AUTH`,
+  `OPENAI_IDENTITY_TOKEN_FILE`, …) and output roots (`CODEX_ROLLOUT_TRACE_ROOT`, `CODEX_TUI_SESSION_LOG_PATH`, …) from
+  such names; refusing them is safer than guessing how codex treats an empty override.
+- **Account usage without an account.** `account-usage.live.test.ts` read the developer's own rate limits. It now
+  proves the other side: in an empty profile 0.164.0 answers `account/rateLimits/read` with `-32600` "codex account
+  authentication required to read rate limits", which the service reports as `unauthenticated`, not retryable.
+- **The plugin sync outlives its app-server.** In an empty profile, 0.164.0 runs `git ls-remote`, then
+  `git -C <CODEX_HOME>/.tmp/plugins-clone-* fetch --depth 1` and `index-pack`, as children in the app-server's
+  process group. They survive the app-server's SIGTERM and keep writing, so removing the home fails with `ENOTEMPTY`
+  however long `rmSync` retries (the observer live test hit it). The live profile stops every process that names its
+  root, with their descendants, before removing it. The sync goes out to the network, so the live tests reach no
+  account or model provider but are not network-free (Known gaps, "Network at app-server start").
+- **The history walk is bounded.** `observation/thread-history.ts` follows at most 1000 `thread/turns/list` pages
+  and keeps at most 10000 turns (`CODEX_HISTORY_LIMITS`). Past either limit it returns what it read with `incomplete`
+  ("stopped after 1000 pages", "stopped at 10000 turns"), reported as `codex-history-incomplete`, and sends no
+  `thread/read`, which would load the history the limit refuses. The turn limit binds every source of turns: the full
+  `thread/read` after a failed page, and the deprecated full-hydration calls, keep their oldest 10000 and report the
+  rest the same way. Measured on the 0.164.0 artifact (a 30-turn loopback thread, `itemsView: full`, `asc`): the
+  default page is 25 turns with a cursor, the next 5 with none, and `limit: 30` returns all 30 with none, so a final
+  page carries no cursor whether full or partial; the adapter's walk took 2 pages. Against real codex the turn limit
+  therefore stops a long history first (at page 400); the page limit stops only a server that keeps minting cursors.
+
 ## Known gaps / follow-ups
 
 - **Companion-file artifact identity.** The census needs `bin/codex-code-mode-host`, but `upstream.schema.json`
@@ -900,7 +944,8 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
 - **Cold resume.** History scenarios run on one connection; resuming from the rollout after an app-server restart is
   not in the census.
 - **Network at app-server start.** The curated-plugin sync reaches the network even in the census (unauthenticated);
-  disabling it would change the captured surface, so it stays and is documented.
+  disabling it would change the captured surface, so it stays and is documented. The adapter live tests run it too
+  (`git ls-remote`, `fetch --depth 1` into the profile); whether a 0.164.0 config key turns it off was not checked.
 - **Imposter history fidelity.** The codex persona replays a stored session as live notifications on
   `thread/resume`; real Codex returns no history there and pages it through `thread/turns/list`. Serving stored turns
   from `thread/turns/list` needs a shared Imposter op that builds `Turn`s from the native store.
@@ -924,5 +969,19 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
 - **Signed URLs in old local bundles.** `download.json` files written by the earlier downloader still hold the signed
   redirect URL on the machine that acquired them (outside the repository). Acquisition now refuses them; regenerate
   those bundles with the current downloader before assembling.
+- **Authenticated account usage has no live lane.** A live test never borrows a real account, so the parsing of real
+  rate-limit buckets is covered by unit fixtures only. A loopback ChatGPT backend with a synthetic sign-in might restore
+  it; not investigated.
+- **A disposed app-server leaves its plugin sync running.** `transport/app-server-process.ts` signals only its child,
+  so the sync's `git` keeps writing into `CODEX_HOME/.tmp/plugins-clone-*` after a session's app-server exits; the
+  census harness (process group) and the live profile stop it. Spawning detached and signalling the group would end it
+  in production too, but changes shutdown for real sessions.
+- **A looping cursor ends the history walk as complete.** An empty page, or a `nextCursor` already followed, still
+  ends the walk without `incomplete`. Whether a server that claims more history but loops should be reported is open;
+  real codex has not been seen to do either.
+- **The scheduled codex-live lane's `vars.CODEX_BIN`.** `agent-live.yml` passes it as `PUPPETEER_CODEX_BIN`, which
+  the live tests now require to be an absolute path to a file (an unset or bare value used to fall back to `codex` on
+  the runner's PATH), and the runner must export no unpinned `CODEX_*`/`OPENAI_*` variable. The repository variable's
+  value is not visible from a checkout; confirm both on the self-hosted runner before the lane is next enabled.
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.

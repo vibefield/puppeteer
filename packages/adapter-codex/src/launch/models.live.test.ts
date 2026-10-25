@@ -1,19 +1,24 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+/**
+ * Opt-in, zero-inference: creates a native thread only inside a throwaway HOME and CODEX_HOME with no
+ * credentials and no provider, run by the exact codex PUPPETEER_CODEX_BIN names.
+ *
+ *   PUPPETEER_LIVE_MODELS=1 PUPPETEER_CODEX_BIN=/absolute/path/to/codex pnpm exec vitest run src/launch/models.live.test.ts
+ */
+
 import { expect, it } from 'vitest';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexModelService } from '../services/models.js';
+import { createCodexLiveProfile, requireCodexLiveExecutable } from '../test-support/live-profile.js';
 import { prepareCodexTuiSession } from './tui-session.js';
 
-/** Zero-inference check: creates a native thread only inside a disposable Codex profile. */
 it.skipIf(process.env.PUPPETEER_LIVE_MODELS !== '1')(
   'native thread startup acknowledges the discovered model and requested effort',
   async () => {
-    const cwd = await realpath(await mkdtemp(join(tmpdir(), 'codex-model-start-')));
-    const env = { CODEX_HOME: cwd };
+    const executable = requireCodexLiveExecutable('PUPPETEER_LIVE_MODELS');
+    const profile = await createCodexLiveProfile('codex-model-start-', 'none');
+    const { cwd, environment: env } = profile;
     try {
-      const result = await createCodexModelService({ env: { ...process.env, ...env } }).discover({
+      const result = await createCodexModelService({ executable, env: { ...process.env, ...env } }).discover({
         cwd,
         timeoutMs: 40_000,
       });
@@ -26,6 +31,7 @@ it.skipIf(process.env.PUPPETEER_LIVE_MODELS !== '1')(
       expect(choice).toBeDefined();
       const prepared = await prepareCodexTuiSession({
         cwd,
+        executable,
         model: choice!.id,
         effort: 'high',
         env,
@@ -63,7 +69,7 @@ it.skipIf(process.env.PUPPETEER_LIVE_MODELS !== '1')(
         await prepared.dispose();
       }
     } finally {
-      await rm(cwd, { recursive: true, force: true });
+      await profile.dispose();
     }
   },
   90_000,

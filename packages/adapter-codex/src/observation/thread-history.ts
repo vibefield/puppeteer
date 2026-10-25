@@ -21,6 +21,15 @@
  * it never answered (a timeout, a lost connection) gets no second request. Whatever is still
  * missing is reported as `incomplete`, never presented as the whole history.
  *
+ * The walk is bounded (`CODEX_HISTORY_LIMITS`). `nextCursor` is the server's word, and the repeat
+ * guard stops only a server that hands back a cursor already followed: one that kept minting new
+ * cursors would be paged without end, each page another round trip held in memory before the
+ * session can go ready. A history past either limit is kept as far as it was read and reported
+ * `incomplete` like any other — no full `thread/read` follows, since that would load the very
+ * history the limit refuses. The turn limit holds whichever call supplies the turns: a full
+ * `thread/read` after a failed page, and the deprecated calls, keep their oldest `limits.turns` and
+ * report the rest missing the same way.
+ *
  * Replayed history is what Codex persisted, not what it streamed. Since rust-v0.162.0 (#50427,
  * #50458) a command's `aggregatedOutput` is capped at 64 KiB in persisted history — the first and
  * last 32 743 bytes around `\n... command output truncated for persistence ...\n`, even while the
@@ -44,6 +53,16 @@ export interface CodexThreadHistoryRead {
 }
 
 const HISTORY_PAGE = { itemsView: 'full', sortDirection: 'asc' } as const;
+
+/** How far one history read walks before it reports the rest missing. */
+export interface CodexHistoryLimits {
+  /** `thread/turns/list` pages one read requests. */
+  readonly pages: number;
+  /** Turns one read keeps. */
+  readonly turns: number;
+}
+
+export const CODEX_HISTORY_LIMITS: CodexHistoryLimits = { pages: 1_000, turns: 10_000 };
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const rec = (v: unknown): Record<string, unknown> | undefined =>
@@ -81,7 +100,20 @@ export class CodexThreadHistory {
   /** Whether the last resume hydrated every turn, so that its answer is the whole history. */
   private resumeHydrated = false;
 
-  constructor(private readonly client: AppServerClient) {}
+  constructor(
+    private readonly client: AppServerClient,
+    private readonly limits: CodexHistoryLimits = CODEX_HISTORY_LIMITS,
+  ) {}
+
+  /** `read` within the turn limit: a longer history keeps its oldest turns and says the rest is missing. */
+  private bounded(read: CodexThreadHistoryRead): CodexThreadHistoryRead {
+    if (read.turns.length <= this.limits.turns) return read;
+    return {
+      ...read,
+      turns: read.turns.slice(0, this.limits.turns),
+      incomplete: read.incomplete ?? { reason: `stopped at ${this.limits.turns} turns` },
+    };
+  }
 
   /**
    * Open the thread's live stream without hydrating its history. A server that refuses
@@ -116,6 +148,7 @@ export class CodexThreadHistory {
       try {
         const cursors = new Set<string>();
         let cursor: string | undefined;
+        let pages = 0;
         do {
           const page = rec(
             await this.client.request('thread/turns/list', {
@@ -124,11 +157,19 @@ export class CodexThreadHistory {
               ...(cursor === undefined ? {} : { cursor }),
             }),
           );
+          pages += 1;
           const data = Array.isArray(page?.data) ? page.data : [];
-          turns.push(...data);
+          const room = this.limits.turns - turns.length;
+          turns.push(...data.slice(0, room));
           const next = str(page?.nextCursor);
           // An empty page or a cursor already followed ends the walk, so a server cannot loop it.
           cursor = data.length > 0 && next !== undefined && !cursors.has(next) ? next : undefined;
+          if (data.length > room || (cursor !== undefined && turns.length === this.limits.turns)) {
+            return { turns, incomplete: { reason: `stopped at ${this.limits.turns} turns` } };
+          }
+          if (cursor !== undefined && pages === this.limits.pages) {
+            return { turns, incomplete: { reason: `stopped after ${this.limits.pages} pages` } };
+          }
           if (cursor !== undefined) cursors.add(cursor);
         } while (cursor !== undefined);
         return { turns };
@@ -142,7 +183,7 @@ export class CodexThreadHistory {
           try {
             const read = rec(await this.client.request('thread/read', { threadId, includeTurns: true }));
             const all = rec(read?.thread)?.turns;
-            if (Array.isArray(all)) return { turns: all, path: str(rec(read?.thread)?.path) };
+            if (Array.isArray(all)) return this.bounded({ turns: all, path: str(rec(read?.thread)?.path) });
           } catch {
             // The pages already read are all there is.
           }
@@ -152,13 +193,13 @@ export class CodexThreadHistory {
     }
     try {
       const read = rec(await this.client.request('thread/read', { threadId, includeTurns: true }));
-      return { turns: turnsOf(read ?? resumed), path: str(rec(read?.thread)?.path) };
+      return this.bounded({ turns: turnsOf(read ?? resumed), path: str(rec(read?.thread)?.path) });
     } catch (error) {
       // A hydrated resume already carried every turn; one without them leaves nothing to replay.
-      return {
+      return this.bounded({
         turns: turnsOf(resumed),
         ...(this.resumeHydrated ? {} : { incomplete: { reason: failureReason(error) } }),
-      };
+      });
     }
   }
 }

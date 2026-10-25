@@ -84,6 +84,7 @@
     "surface:census:codex": "node vendors/codex/census/harness.mjs",
     "surface:sanitize:codex": "node vendors/codex/census/sanitize.mjs",
     "surface:privacy:codex": "node vendors/codex/census/sanitize.mjs --check-only",
+    "surface:reference:codex": "node vendors/codex/census/source-contract.mjs",
     "surface:census:hermes": "node vendors/hermes/census/harness.mjs",
     "surface:reference:hermes": "node vendors/hermes/census/extract-source-reference.mjs",
     "surface:model:hermes": "node vendors/hermes/census/generate-model.mjs",

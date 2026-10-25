@@ -57,6 +57,9 @@ jobs:
       - name: Run Codex native-TUI/app-server/resume proof
         env:
           CODEX_NATIVE_TUI_LIVE: '1'
+          # Must be an absolute path to a codex file: the live tests refuse an unset value or a bare name
+          # (spawn would look it up on PATH), and a runner exporting CODEX_*/OPENAI_* variables the
+          # throwaway profile does not pin (adapter-codex test-support/live-profile.ts).
           PUPPETEER_CODEX_BIN: ${{ vars.CODEX_BIN }}
         run: pnpm --filter @vibefield/puppeteer-adapter-codex test
 
