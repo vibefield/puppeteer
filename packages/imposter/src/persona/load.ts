@@ -295,6 +295,14 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     const invocation = requireRecord(path, entry, `boot[${index}]`);
     requireString(path, invocation, 'op');
   }
+  const resumeBoot = record.resumeBoot;
+  if (resumeBoot !== undefined) {
+    if (!Array.isArray(resumeBoot)) throw new Error(`imposter: ${path} field "resumeBoot" must be an array`);
+    for (const [index, entry] of resumeBoot.entries()) {
+      const invocation = requireRecord(path, entry, `resumeBoot[${index}]`);
+      requireString(path, invocation, 'op');
+    }
+  }
   const envelope = requireRecord(path, record.envelope, 'field "envelope"');
   if (record.eventNameField !== undefined) requireString(path, record, 'eventNameField');
   if (record.jsonrpcEventMethod !== undefined) requireString(path, record, 'jsonrpcEventMethod');
@@ -467,6 +475,7 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     ...(personaBindings === undefined ? {} : { bindings: personaBindings }),
     ...(nativeStore === undefined ? {} : { nativeStore }),
     boot: boot as PersonaDocument['boot'],
+    ...(resumeBoot === undefined ? {} : { resumeBoot: resumeBoot as PersonaDocument['boot'] }),
   };
 }
 

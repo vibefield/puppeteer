@@ -74,6 +74,18 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
   return rows;
 }
 
+/**
+ * Whether a row can matter to the conversation projection: a message (`type` user or assistant)
+ * or a node of the parent-linked graph a message may descend from (it has a `uuid`). Everything
+ * else is bookkeeping. Since 2.1.300 Claude records each API request in the session JSONL
+ * (`api-request`, `api-request-shape`, `api-request-blob`, `atis-latch`, `cost-state`) beside its
+ * side rows; none has a `uuid`, `api-request-blob` echoes a `message.role` (a phantom message to a
+ * reader that keys on role), and together they are most of the file.
+ */
+export function isClaudeTranscriptConversationRow(record: ClaudeTranscriptRecord): boolean {
+  return record.type === 'user' || record.type === 'assistant' || record.uuid !== undefined;
+}
+
 export function transcriptContent(record: ClaudeTranscriptRecord): unknown[] {
   const content = record.message?.content;
   if (typeof content === 'string') return [{ type: 'text', text: content }];

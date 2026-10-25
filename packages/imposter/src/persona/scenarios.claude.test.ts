@@ -99,6 +99,31 @@ describe('claude persona scenarios', () => {
     }
   });
 
+  it('keeps the 2.1.308 /model and /compact orders the TUI census observed', () => {
+    const events = (name: string) =>
+      actionsFor(JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as unknown).map(
+        (action) => action.emit?.event ?? (action.statusline ? 'statusLine' : 'transcript'),
+      );
+    // A slash command fires no UserPromptSubmit; the switch lands before the status line shows it.
+    expect(events('model-switch').slice(0, 4)).toEqual([
+      'PreModelSwitch',
+      'PostModelSwitch',
+      'statusLine',
+      'UserPromptSubmit',
+    ]);
+    expect(events('compact-lifecycle')).toEqual([
+      'PreCompact',
+      'SubagentStop',
+      'SessionStart',
+      'PostCompact',
+      'statusLine',
+    ]);
+    const internal = actionsFor(
+      JSON.parse(readFileSync(join(scenarioDir, 'compact-lifecycle.json'), 'utf8')) as unknown,
+    ).find((action) => action.emit?.event === 'SubagentStop');
+    expect(internal?.emit?.with?.agent_type).toBe('');
+  });
+
   it('keeps every curated runflow at realistic agent-workflow depth', () => {
     for (const flow of persona.runflows) {
       const document = JSON.parse(readFileSync(join(scenarioDir, `${flow.scenario}.json`), 'utf8')) as unknown;

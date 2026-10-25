@@ -275,6 +275,12 @@ export interface PersonaDocument {
   nativeStore?: NativeStoreDocument;
   /** Ops emitted when a session starts, before any stimulus. */
   boot: OpInvocation[];
+  /**
+   * Ops emitted instead of `boot` when the launch resumes a session by id (the persona's `resume`
+   * flag names one): a vendor that announces a resumed session differently says so here. Absent,
+   * a resume boots like a fresh start.
+   */
+  resumeBoot?: OpInvocation[];
 }
 
 export interface Persona {

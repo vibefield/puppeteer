@@ -1,0 +1,1023 @@
+{
+  "projection": "native hook and status-line arrival order per capture mode; event names and enum discriminators only",
+  "entries": [
+    {
+      "mode": "init",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "init",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "Setup",
+      "trigger": "init"
+    },
+    {
+      "mode": "init",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "init",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "headless",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "headless",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "headless",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "headless",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "headless",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "authentication_failed"
+    },
+    {
+      "mode": "headless",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "unknown"
+    },
+    {
+      "mode": "api-error-400",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "authentication_failed"
+    },
+    {
+      "mode": "api-error-401",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "rate_limit"
+    },
+    {
+      "mode": "api-error-429",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "server_error"
+    },
+    {
+      "mode": "api-error-500",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 3,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "StopFailure",
+      "error": "server_error"
+    },
+    {
+      "mode": "api-error-529",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "other"
+    },
+    {
+      "mode": "interactive",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "startup"
+    },
+    {
+      "mode": "interactive",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "interactive",
+      "seq": 3,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 7,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 8,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 9,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 10,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 11,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "interactive",
+      "seq": 12,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 13,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 14,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 15,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 16,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 17,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUseFailure"
+    },
+    {
+      "mode": "interactive",
+      "seq": 18,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "interactive",
+      "seq": 19,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 20,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 21,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 22,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 23,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 24,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 25,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "interactive",
+      "seq": 26,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 27,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 28,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 29,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 30,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 31,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PermissionRequest"
+    },
+    {
+      "mode": "interactive",
+      "seq": 32,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Notification",
+      "notification_type": "permission_prompt"
+    },
+    {
+      "mode": "interactive",
+      "seq": 33,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 34,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 35,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 36,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SubagentStart",
+      "subagent": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 37,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 38,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "interactive",
+      "seq": 39,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SubagentStop",
+      "stop_hook_active": false,
+      "subagent": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 40,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 41,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 42,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 43,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 44,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 45,
+      "channel": "subagentStatusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 46,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 47,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "FileChanged",
+      "event": "change"
+    },
+    {
+      "mode": "interactive",
+      "seq": 48,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "ConfigChange",
+      "source": "project_settings"
+    },
+    {
+      "mode": "interactive",
+      "seq": 49,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "interactive",
+      "seq": 50,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 51,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "CwdChanged"
+    },
+    {
+      "mode": "interactive",
+      "seq": 52,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolUse"
+    },
+    {
+      "mode": "interactive",
+      "seq": 53,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostToolBatch"
+    },
+    {
+      "mode": "interactive",
+      "seq": 54,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 55,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "interactive",
+      "seq": 56,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 57,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreCompact",
+      "trigger": "manual"
+    },
+    {
+      "mode": "interactive",
+      "seq": 58,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SubagentStop",
+      "stop_hook_active": false,
+      "subagent": true,
+      "agentTypeEmpty": true
+    },
+    {
+      "mode": "interactive",
+      "seq": 59,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "compact"
+    },
+    {
+      "mode": "interactive",
+      "seq": 60,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostCompact",
+      "trigger": "manual"
+    },
+    {
+      "mode": "interactive",
+      "seq": 61,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 62,
+      "channel": "subagentStatusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 63,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PreModelSwitch",
+      "source": "command",
+      "cache_ttl": "5m",
+      "pricing": "catalog"
+    },
+    {
+      "mode": "interactive",
+      "seq": 64,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "PostModelSwitch",
+      "source": "command",
+      "cache_ttl": "5m",
+      "pricing": "catalog"
+    },
+    {
+      "mode": "interactive",
+      "seq": 65,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 66,
+      "channel": "subagentStatusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 67,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "DirectoryAdded",
+      "source": "slash_command"
+    },
+    {
+      "mode": "interactive",
+      "seq": 68,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 69,
+      "channel": "subagentStatusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 70,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "clear"
+    },
+    {
+      "mode": "interactive",
+      "seq": 71,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "clear"
+    },
+    {
+      "mode": "interactive",
+      "seq": 72,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "interactive",
+      "seq": 73,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "prompt_input_exit"
+    },
+    {
+      "mode": "resume",
+      "seq": 1,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "command",
+      "hook": "SessionStart",
+      "source": "resume"
+    },
+    {
+      "mode": "resume",
+      "seq": 2,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "InstructionsLoaded",
+      "load_reason": "session_start",
+      "memory_type": "Project"
+    },
+    {
+      "mode": "resume",
+      "seq": 3,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "resume",
+      "seq": 4,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "UserPromptSubmit"
+    },
+    {
+      "mode": "resume",
+      "seq": 5,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "MessageDisplay",
+      "final": true
+    },
+    {
+      "mode": "resume",
+      "seq": 6,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "Stop",
+      "stop_hook_active": false
+    },
+    {
+      "mode": "resume",
+      "seq": 7,
+      "channel": "statusLine",
+      "bearer": "bearer"
+    },
+    {
+      "mode": "resume",
+      "seq": 8,
+      "channel": "hook",
+      "bearer": "bearer",
+      "transport": "http",
+      "hook": "SessionEnd",
+      "reason": "prompt_input_exit"
+    }
+  ]
+}

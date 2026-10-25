@@ -1,5 +1,329 @@
 # Phase 0 — Hook Surface Findings
 
+## 2.1.308 adaptation candidate (2026-10-25)
+
+Claude Code **2.1.308** is the upstream stable release this candidate targets. The exact
+darwin-arm64 standalone artifact (`downloads.claude.ai/claude-code-releases/2.1.308/darwin-arm64/claude`)
+reports `2.1.308 (Claude Code)` and has SHA-256
+`ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37`. Its `--help`
+(`probes/claude@2.1.308/help.txt`, SHA-256 `b10f5c36…7fbc`) is identical at COLUMNS 80, 200 and
+unset. The identity, probes, reviewed hook reference, sanitized captures, and generated ASM v3
+tree are digest-bound in `model/claude@2.1.308/evidence.json`. Only darwin-arm64 has artifact
+and runtime evidence, so this is a candidate, not promoted support.
+
+### Method
+
+Every execution of the artifact — census lanes, `--version`/`--help` probes in the generator,
+invocation and switch probes — runs in `census/isolation.mjs`: a throwaway HOME,
+`CLAUDE_CONFIG_DIR`, TMPDIR and XDG tree, a minimal PATH whose first entry is a `security(1)`
+stub (Claude looks credentials up through PATH on macOS), and **nothing inherited** from the
+caller (no `ANTHROPIC_*`, `CLAUDE_CODE_*`, proxies, or PATH `claude`). No lane used an account,
+a credential, or a billed model. Reproduce with:
+
+```sh
+node packages/surface/vendors/claude/census/harness.mjs --artifact <claude> --version 2.1.308
+node packages/surface/vendors/claude/sanitize-captures.mjs packages/surface/vendors/claude/captures-raw/claude@2.1.308 packages/surface/vendors/claude/captures/claude@2.1.308
+node packages/surface/vendors/claude/census/invocation-probes.mjs --artifact <claude> --previous packages/surface/vendors/claude/probes/claude@2.1.283/invocation-grammar.json --output <file>
+node packages/surface/vendors/claude/census/switch-probes.mjs --artifact <claude> --output <file>
+node packages/surface/vendors/claude/census/generate-model.mjs --artifact <claude> --version 2.1.308 --captured-at <iso> --retrieved-at <iso>
+```
+
+Census lanes (capture modes): `init` (`--init-only`), `headless` (print turn with no
+credential), `api-error-{400,401,429,500,529}` (print turns against a loopback Messages API
+that answers that status to a placeholder token, `CLAUDE_CODE_MAX_RETRIES=0`), and
+`interactive` + `resume` (the native TUI in a harness-owned PTY against a scripted loopback
+model, driven only by hook arrivals and fixed delays — terminal output is never read). Hooks
+reach one loopback sink in the adapter's own shape: SessionStart and Setup through the command
+forwarder, every other event over HTTP with a bearer interpolated from `PUPPETEER_HOOK_TOKEN`.
+Every managed hook carried the bearer (63 interactive hook deliveries, 0 without it).
+
+The lanes observed **24 of 33 events** in 103 records: ConfigChange, CwdChanged,
+DirectoryAdded, FileChanged, InstructionsLoaded, MessageDisplay, Notification,
+PermissionRequest, PostCompact, PostModelSwitch, PostToolBatch, PostToolUse,
+PostToolUseFailure, PreCompact, PreModelSwitch, PreToolUse, SessionEnd, SessionStart, Setup,
+Stop, StopFailure, SubagentStart, SubagentStop, UserPromptSubmit. Not reached:
+UserPromptExpansion, PermissionDenied, TaskCreated, TaskCompleted, TeammateIdle,
+WorktreeCreate (never registered: a registration replaces native creation), WorktreeRemove,
+Elicitation, ElicitationResult. Print-lane events are `verified-headless`
+(`claude-runtime-headless`); events seen only in the TUI lanes are `verified-interactive`
+(`claude-runtime-interactive`); the rest stay `unverified` with documentation evidence only.
+
+### Hook inventory: 33 events, two new
+
+The binary's own hook-event arrays (the runtime registry and the bundled SDK schema, both 33
+entries) equal `CLAUDE_HOOK_EVENTS`; the generator re-checks this
+(`probes/claude@2.1.308/hook-events.json`) and fails on any addition or removal.
+
+- **PreModelSwitch** (2.1.251+) fires before a requested switch (`/model`, a picker, `/config`,
+  fast mode, SDK `set_model`) with `from_model`, `to_model`, `requested_model` (string or
+  null), `source` (`command|picker|sdk`), `context_tokens`, `prompt_cache_warm`, `cache_ttl`
+  (`5m|1h`), `estimated_cache_write_usd`, and `pricing` (`configured|catalog|default`). It can
+  cancel the switch (exit 2, `decision: "block"`, or `hookSpecificOutput.permissionDecision`
+  `allow|deny|ask`), and **a hook still running at its timeout (native default 30 s) blocks the
+  switch**. It is therefore modeled with the new Surface observation mode **`timeout-blocks`**
+  (`packages/surface/src/model.ts`): installing it is safe only while the observer answers in
+  time, so the adapter's generated default (passive-only) registration must not include it.
+  Captured over HTTP: `/model claude-opus-4-1-20250805` produced `to_model: claude-opus-5-5`
+  (Claude resolved the requested id to another model); an immediate empty reply preserved
+  native behaviour.
+- **PostModelSwitch** (2.1.251+) is asynchronous and passive, with the same fields and
+  `source` adding `auto` and `resume` (`requested_model` null for `auto`). It followed
+  PreModelSwitch in the lane. The `resume` branch was **not** observed: the resume lane
+  relaunched by id without `--model` or `ANTHROPIC_MODEL` and no PostModelSwitch arrived.
+
+### StopFailure: fires on every failure path; print mode no longer waits for its command hooks
+
+The survey and its critic concluded that the credential-less print turn stopped emitting
+StopFailure after 2.1.226. **That was a census artefact.** Since 2.1.283 a print-mode process
+exits without awaiting StopFailure *command* hooks: the 2.1.226 harness's node collector
+(≈100 ms to start) never completed, while a shell `cat` hook did and an HTTP hook arrived.
+Re-probed on all three artifacts with both transports: 2.1.226 awaited even a 1 s command
+hook; 2.1.283 and 2.1.308 drop a node or 1 s hook; HTTP StopFailure arrives in all three. The
+census now records over HTTP, so StopFailure is runtime-verified on every path:
+
+| Mode | HTTP status from the loopback API | `error` |
+| --- | --- | --- |
+| `headless` | none (no credential, no request) | `authentication_failed` (payload also carried `effort`) |
+| `api-error-400` | 400 `invalid_request_error` | `unknown` |
+| `api-error-401` | 401 `authentication_error` | `authentication_failed` |
+| `api-error-429` | 429 `rate_limit_error` | `rate_limit` |
+| `api-error-500` | 500 `api_error` | `server_error` |
+| `api-error-529` | 529 `overloaded_error` | `server_error` (never `overloaded`) |
+
+Order: UserPromptSubmit → MessageDisplay(final) → StopFailure → SessionEnd. The binary enum
+has 13 values (the official list's 12 plus `verification_required`); the model takes the
+superset. `error_details` is a string in the bundled schema and absent from every capture.
+Adapter consequence: StopFailure must stay on HTTP; a command-forwarder fallback for it would
+lose the event whenever a print-mode process exits.
+
+### Payload changes
+
+- **SessionStart** `source: resume|fork` carries `seconds_since_last_response`,
+  `context_tokens`, `prompt_cache_likely_expired`, `estimated_cache_write_usd` (observed on the
+  resume lane). SessionStart `model` is absent after `/clear`, as documented; the TUI lane's
+  compact SessionStart did carry it.
+- **scratchpad_dir** (2.1.257+) is a common field only when a scratchpad exists (the runtime
+  input builder adds it; the bundled SDK base schema omits it). No capture carried it.
+- **mcp_server** `{name, source}` (2.1.274+) on PreToolUse, PermissionRequest, PostToolUse,
+  PostToolUseFailure and PermissionDenied for `mcp__*` tools; `source` is an open set. Schema
+  only (no MCP lane).
+- Enums: StopFailure.error (13), Notification.notification_type adds `plugin_notification`
+  (13), InstructionsLoaded `memory_type` (`User|Project|Local|Managed`) and `load_reason`
+  (`session_start|nested_traversal|path_glob_match|include|compact`) plus optional `globs`,
+  `trigger_file_path`, `parent_file_path`; UserPromptExpansion `expansion_type`
+  (`slash_command|mcp_prompt`) with `command_source` optional. UserPromptSubmit gains a
+  `source` enum (… `poll_event`) in the bundled schema, but **both runtime builders compile it
+  out**: no payload carries it, including the background-agent task-notification turn.
+- Required lists follow the bundled schema and the captures: Stop requires only
+  `stop_hook_active` (2.1.308 interactive Stop payloads carry neither `background_tasks` nor
+  `session_crons`); SubagentStop no longer requires `last_assistant_message`; PostToolBatch
+  `tool_calls[].tool_response` is optional.
+- Callback additions: PostToolUse `classifierContext`/`updatedMCPToolOutput`, UserPromptSubmit
+  and UserPromptExpansion `suppressOriginalPrompt`, SessionStart `initialUserMessage`,
+  `sessionTitle`, `watchPaths`, `reloadSkills`; CwdChanged/FileChanged `watchPaths`;
+  PreModelSwitch decisions and PostModelSwitch `additionalContext`; PreToolUse
+  `permissionDisplay` (desktop-internal). The new handler field `onFailure: continue|block`
+  (2.1.295) is a settings field the adapter does not set; a managed HTTP 500 stayed
+  non-blocking (switch probe F13). SessionEnd hooks share a 1.5 s budget that a per-hook
+  `timeout` raises (the adapter's 5 s applies).
+- **PostToolUse(Bash) `tool_response.bashEditDiff`** (2.1.269, documentation, beta) lists files a
+  Bash command changed; not captured and not modeled beyond the open `tool_response`.
+
+### Ordering observed in the TUI lane
+
+From the committed projection `captures/claude@2.1.308/ordering.json` (sink arrival order;
+command-forwarded SessionStart/Setup can arrive after HTTP hooks emitted later, as in the print
+lanes, where InstructionsLoaded arrives first):
+
+- Tool turn: UserPromptSubmit → PreToolUse → PostToolUse | PostToolUseFailure → PostToolBatch →
+  MessageDisplay → Stop.
+- Permission: PreToolUse → PermissionRequest (no `tool_use_id`) → Notification
+  `permission_prompt` after Claude's ≈6 s idle gate; Esc denied it with no Post*, no Stop.
+- **Background agent re-entry**: the Agent tool runs in the background by default —
+  PreToolUse → SubagentStart → PostToolUse (`tool_response.status: async_launched`) →
+  PostToolBatch → SubagentStop → MessageDisplay → Stop, then the completion **re-enters as a new
+  UserPromptSubmit turn** (a `<task-notification>` prompt) → MessageDisplay → Stop. The hook
+  payload has no discriminator for that system-injected turn; the transcript has one
+  (`turnOrigin: task_notification`, below).
+- Files and settings: rewriting a FileChanged-matched file in the session cwd → FileChanged
+  (`event: change`); rewriting `.claude/settings.json` → ConfigChange (`project_settings`).
+  Bash `cd sub` → CwdChanged between PreToolUse and PostToolUse. (FileChanged watches literal
+  names in the current cwd; the survey lane missed it because it wrote the file after the cd.)
+- **Compaction**: `/compact` → PreCompact(manual) → SubagentStop with an **empty `agent_type`
+  and no SubagentStart** (Claude's internal compaction agent) → SessionStart(compact) →
+  PostCompact. SessionStart(compact) arrived via the slower command forwarder and still before
+  the HTTP PostCompact, so it precedes PostCompact natively; the model's relation is corrected.
+- `/model` → PreModelSwitch → PostModelSwitch; `/add-dir` → DirectoryAdded(`slash_command`);
+  `/clear` → SessionEnd(clear) → SessionStart(clear) with a new session id; `/exit` →
+  SessionEnd(`prompt_input_exit`). Resume: SessionStart(resume) → InstructionsLoaded → turn →
+  SessionEnd.
+
+### Transcript bookkeeping rows
+
+Since 2.1.300 (`--system-prompt-snapshot` on by default) the session JSONL records each API
+request. The committed projection `captures/claude@2.1.308/transcript-shape.json` (record
+types, key names and counts only) of the TUI lane shows, beside `user` (29), `assistant` (14),
+`system` (19) and `attachment` (40): `api-request` (13), `api-request-shape` (2),
+`api-request-blob` (17), `atis-latch` (8), `cost-state` (5), plus `agent-name`, `custom-title`,
+`last-prompt`, `mode`, `permission-mode`, `file-history-snapshot`, `file-history-delta`,
+`queue-operation`. **`api-request-blob` rows carry `message.role` `user` (and once
+`assistant`) with no `uuid` and no `timestamp`** — a reader that keys on `message.role` instead
+of `type` projects phantom messages. `user` rows now carry `turnOrigin` (`human` |
+`task_notification`) and `turnPosition`; assistant rows `requestRef`, `requestedModel`,
+`apiBlockIndex`, `perTurnEffort`. Volume grew about 9×: 533 KB across 201 rows for this lane
+(attachments 292 KB, one `api-request-shape` row up to 63 KB); the subagent transcript is
+124 KB for 15 rows. Subagent `*.meta.json` adds `launchedWithDefaults`, `requestShape`,
+`requestNonInteractive`, `finished`.
+
+### Status lines
+
+The statusLine payload adds a `prompt_cache` object (`warm`, `ttl`, `hit_ratio`, `misses`, …);
+`rate_limits` appears only for subscription accounts. subagentStatusLine task rows add
+`agentType` (2.1.293; `probes/claude@2.1.308/status-channels.json`). The static probe that
+reads the subagent timing is now structural: the cap from the bound in `X.length>CAP)X.splice`,
+the interval from the self-rescheduling snapshot timer. Validated on the 2.1.226, 2.1.283 and
+2.1.308 windows (16 samples, 5000 ms in each; the first timer in every window is a one-shot
+300 ms kick that an identifier-agnostic "first setTimeout" probe would have reported).
+
+### Invocation grammar (2.1.308 changes to §7)
+
+`probes/claude@2.1.308/invocation-grammar.json` re-binds every 2.1.283 static fact to its
+relocated anchor (each anchor and 8 KiB window re-hashed from the artifact) and adds the new
+ones. All 59 recorded parse probes read identically; 17 new ones and 8 runtime probes (each in a
+disposable environment, credential-less, on 2.1.308 and 2.1.283) cover the changes:
+
+| Change | Evidence |
+| --- | --- |
+| `purge [path]` is a root subcommand (`--dry-run`, `-y`, `-i`, `--all`; asks unless `-y`); `project` is hidden (`project purge` still works) | `purge --help`; R04 `purge --dry-run` and R05 `-- purge` enter purge (no exit within 15 s, non-TTY) where 2.1.283 refused or started a session; R06 `--verbose -- purge --dry-run` treats `--dry-run` as purge's path |
+| Background verbs dispatch behind safe root options: first operand, an 8-hex id (or `respawn --all`) next, every preceding token a safe root option, never directly after `--`, not inside a bg session | R01 `--verbose attach 1a2b3c4d` → "No job matching" (2.1.283: a session); R02 `-- attach …` is still a session; R03 argv[0] unchanged |
+| `--bg/--background` count only as option tokens before `--`, value-aware | static `background-flag-value-aware` (not executed: it would start a background session) |
+| `--desktop` (listed) opens the Desktop app from the root command's action (commander parses it: static `desktop-root-action`); a raw scan before `--` refuses it on the background and tmux fast paths; also refused with print, SDK, restricted, safe, bare, restrict-personal-config | parse probe reads mcp help; static only (never executed) |
+| hidden `drop-worktree-registrations` (VS Code helper, requires `--json` on stdin) | R07 → "required option '--json' not specified" (2.1.283: a session) |
+| `--client-data-url` no longer listed, still parses; hidden `--fast-mode <on\|off>`, `--allow-other-models`, `--include-unsupported-models`, `--host-auth-is-org-sign-in`, `--proactivity <ask\|default\|proactive>` (choices checked), `--runner-declares <names>` | parse probes (2.1.283 read root help for each new name) |
+| argv[0] `--gh-standin` is the per-session gh shim's entry | R08 refuses direct use |
+
+The 16 live sessions L01–L16 of §7 were not repeated; each rests on a static fact whose
+anchor re-read unchanged and on parse probes that read identically. `cloudSessionsByDefault`
+and the new `sandboxVmByDefault` are still hard-coded false.
+
+### What blinds a session without a flag (2.1.308 re-verification of §7.5)
+
+`probes/claude@2.1.308/hook-switches.json` re-binds the 16 static facts and re-runs the switch
+sessions live with `census/switch-probes.mjs` (managed hooks in the adapter's shape, plus "the
+person's" own user-settings command hooks and status line). F01–F11 reproduce the 2.1.283
+results exactly. Two switches are new in 2.1.308's env registry (absent from 2.1.283's):
+
+| Variable | Probe | Result |
+| --- | --- | --- |
+| `CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG` | F12 | does **not** blind: managed hooks fire with the bearer; the person's own command hooks and status line still run |
+| | F14 (managed PreToolUse answered HTTP 500) | non-blocking: the allowed tool ran, as without the switch (F13) |
+| | F16 (the person's own PreToolUse HTTP hook answered 500) | **fails closed**: the tool did not run, where F15 (no switch) and 2.1.283 ran it |
+| `CLAUDE_CODE_IGNORE_PERSISTED_TRUST` | static | no persisted trust record counts, so hooks wait for the trust dialog; not blinding once answered |
+
+Neither needs adapter handling: the managed `--settings` layer is not "personal", and the
+person's own fail-closed hooks are their configuration.
+
+### Privacy
+
+Claude's capture rules now live in `privacy.mjs` and extend the shared engine: `scratchpad_dir`
+(the uid plus the slug-encoded project path), DirectoryAdded `directory` and permission
+`directories` are paths; `mcp_server.name`, `compact_summary`, `custom_instructions`,
+`command_args`, task subjects and descriptions, background-task `description`, permission
+`ruleContent`, PermissionDenied `reason`, and team/teammate names are redacted; the closed
+StopFailure `error` and SessionEnd `reason` enums are kept. Each rule has a paired detector test.
+The repository-wide gate applies only the closed-enum allowance on top of the shared defaults to
+Claude's committed sets (historical 2.1.207/2.1.226 sets predate the stricter keys; the 2.1.207
+interactive fixture carries one MCP plugin tool name and two permission-suggestion paths that the
+2.1.308 rules would redact).
+
+### Documentation versus artifact
+
+`references/claude@2.1.308/hooks.json` is the reviewed field-level summary of
+`https://code.claude.com/docs/en/hooks` (Markdown snapshot SHA-256 `3ce0f8a0…eb47`, retrieved
+2026-10-25T02:31:24Z), reconciled with the hook schemas bundled in the artifact. Its
+`contradictions` list records each disagreement and how the model resolves it, including
+`verification_required` (binary only), StopFailure command-hook delivery, `scratchpad_dir`,
+UserPromptSubmit `source`, Stop's optional lists, `bypass_permissions_disabled` (docs only,
+removed), PostModelSwitch `resume` (unobserved), and `effort`. The page already mentions a later
+release (v2.1.309) in one Windows-only note.
+
+### Adapter and Imposter (2.1.308 candidate)
+
+`packages/adapter-claude` projections are regenerated from this model (`CLAUDE_SURFACE_VERSION`
+2.1.308; 33 events, 24 runtime-verified) and its ground-truth map is re-locked: PostModelSwitch is
+semantic, PreModelSwitch observed-or-controlled, none unmapped. Decisions, each with its evidence
+above:
+
+- **PreModelSwitch** (`timeout-blocks`) is not in the default registration; a caller that selects
+  it explicitly gets it with the native 30 s timeout. When it arrives it is retained as
+  `adapter:native-event`: a request that may still be cancelled is not a model.
+- **PostModelSwitch** `to_model` → `model:updated` (observed). The status line stays the
+  authoritative model card and is published whenever its own reading changes; a root hook model
+  (PostModelSwitch, SessionStart `model`) is published only when it moves the id last reported, so
+  a hook never erases the status line's display name or repeats it. The live proof switches with
+  `/model` on the pinned artifact and sees the normalized model.
+- **StopFailure** stays on HTTP (print mode does not await its command hooks).
+- **Compaction**: the compact SessionStart between PreCompact and PostCompact no longer closes the
+  attempt; PostCompact completes it once. The internal compaction agent's SubagentStop (empty
+  `agent_type`, never started) stays native, and an empty `agent_type`/`agent_id` is never stamped
+  on a candidate (Runtime refuses empty actor metadata, so that SubagentStop was dropped before).
+- **Transcript**: only `type` user/assistant rows are projected, and rows that are neither a
+  message nor a parent-graph node (no `uuid`: every bookkeeping and side row) are dropped before the
+  bounded reader window. On the lane's real 2.1.308 transcript 189 rows keep 99, with 8 replies, no
+  phantom message and every turn id a prompt row's `uuid`.
+- **Status lines**: subagent task rows' `agentType` names a status-only child's agent definition
+  (task `type` is the task kind, `local_agent`).
+- **Invocation grammar** (`CLAUDE_INVOCATION_GRAMMAR_VERSION` 2.1.308, help fixture byte-identical
+  to `probes/claude@2.1.308/help.txt`): `purge` and the hidden `project` and
+  `drop-worktree-registrations` are utility subcommands; background verbs dispatch as argv[0] or
+  behind safe root options before an 8-hex id; `--bg/--background` count only as option tokens
+  before `--`; `--desktop` is an `elsewhere` option; `--client-data-url` is a hidden carried option.
+  An accepted session's managed `-- <prompt>` may never hand a subcommand its first operand.
+  Classification per row: `probes/claude@2.1.308/invocation-grammar.json#adapterClassification`.
+- **Imposter** (`personas/claude`): a resumed launch boots with SessionStart `source: resume` and
+  the four prompt-cache fields (synthetic values from the resume lane); new `model-switch` and
+  `compact-lifecycle` scenarios follow the TUI lane's orders, and the `incident-investigation`
+  runflow starts with a `/model` switch.
+
+### Known gaps / follow-ups
+
+- **Platforms**: only darwin-arm64 evidence; darwin-x64, linux-x64 and windows-x64 are required
+  before promotion.
+- **Unreached events**: UserPromptExpansion, PermissionDenied (auto mode), TaskCreated,
+  TaskCompleted, TeammateIdle, WorktreeCreate/WorktreeRemove, Elicitation/ElicitationResult,
+  PostModelSwitch `auto`/`resume`, `mcp_server`, `scratchpad_dir`, `bashEditDiff`, and the
+  diskless (`transcript_path: ""`) and served (`session_id: "served:<caller>"`) input variants.
+- **Adapter follow-ups (deferred, design-level)**:
+  - `PostToolUse(Bash).tool_response.bashEditDiff` → `workspace:file-operation`: documentation-only
+    beta field (2.1.269+, recorded only with `bashEditDiffEnabled` or when Claude edits through
+    Bash in auto/bypass modes); not captured, so its `shared`/`unavailable`/`skipped` semantics are
+    unverified. It stays inside the retained `tool_response`.
+  - Transcript `turnOrigin` (`human` | `task_notification`) as the system-turn discriminator in
+    place of the `<task-notification>` prefix heuristic: observed on 2.1.308 only, absent from
+    every earlier transcript and from slash/local-command rows, so a fallback would remain; the
+    decoder does not read it yet.
+  - `<pasted_content id=…>` wrapper lines in `UserPromptSubmit.prompt` (feature-flag gated, strings
+    only, not reproduced): prompt confirmation compares exactly and would answer `uncertain`.
+  - Closing an open turn at `SessionEnd`: every observed failing print turn reached StopFailure
+    over HTTP before SessionEnd (the census table above); only a process that exits before the
+    StopFailure delivery would leave a turn open; Core's `session:exited` then clears it and
+    diagnoses it as orphaned, without a turn outcome.
+  - PostModelSwitch `auto`/`resume`: unobserved. The adapter treats every `to_model` as the model
+    now serving; whether an automatic fallback is reverted with another PostModelSwitch is unknown.
+  - `CLAUDE_CODE_SESSION_KIND=bg`: inside a background session the CLI dispatches a background
+    verb only as argv[0]; the reader does not see that variable and reads a verb behind root
+    options as dispatched (a passthrough, the safe direction).
+  - Hidden root options without a row (`--fast-mode`, `--proactivity`, `--runner-declares`,
+    `--allow-other-models`, `--include-unsupported-models`, `--host-auth-is-org-sign-in`) are
+    refused as unknown; whether any should be carried is open.
+- **MCP tool names**: `tool_name` for `mcp__<server>__<tool>` embeds the server's config key and is
+  not redacted by any rule (it is the structural tool id).
+- **Not probed live**: `--desktop` (would open the Desktop app), `-- --bg`/`--model --bg` (would
+  start a background session), `CLAUDE_CODE_IGNORE_PERSISTED_TRUST`, policy-layer settings, and
+  §7's L01–L16 sessions on 2.1.308.
+
+---
+
 ## 2.1.226 adaptation candidate (2026-08-09)
 
 Claude Code **2.1.226** was the official latest release when this candidate was
@@ -191,6 +515,8 @@ Implications for the adapter (`driver.ts` allow-list and transcript attachment):
 
 ## 7. Invocation grammar (2.1.283 probe, 2026-09-27)
 
+> **2.1.308:** what changed since this probe (purge, background verbs behind root options, value-aware `--bg`, `--desktop`, `drop-worktree-registrations`, new hidden options, `--gh-standin`) and the re-verification evidence are in the 2.1.308 section at the top, *Invocation grammar*; `probes/claude@2.1.308/invocation-grammar.json` supersedes the 2.1.283 record for the candidate.
+
 **Probed:** 2026-09-27, Claude Code **2.1.283**, darwin-arm64, native installer, SHA-256 `d8cb1e5c79684cc12a8bfc813e3a2073406921b6245744b3009be3ab5651d21e`. The adapter's table is `packages/adapter-claude/src/launch/invocation-grammar.ts`; its census test holds it to `claude --help` (captured as `probes/claude@2.1.283/help.txt` and the adapter fixture `claude-help-2.1.283.txt`, identical). Every probe below is recorded in `probes/claude@2.1.283/invocation-grammar.json`.
 
 **Three probe forms**, cheapest first:
@@ -241,6 +567,8 @@ Departures from the brief's reading, each on the evidence above: `--teleport` el
 - **Accepted without a live probe of their own:** `--from-pr` (a resume form, like `-r`), `--remote-control`/`--rc` (enabling Remote Control would register with claude.ai), `--agent`, `--agents`, `--plugin-dir`, `--plugin-url`, `--client-data-url`, `--file`, `--betas`, `--ide`, `--chrome`.
 
 ### 7.5 What blinds a session without a flag (2.1.283 probe, 2026-09-27)
+
+> **2.1.308:** F01–F11 re-ran with identical results; `CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG` and `CLAUDE_CODE_IGNORE_PERSISTED_TRUST` are new (see *What blinds a session without a flag* in the 2.1.308 section and `probes/claude@2.1.308/hook-switches.json`).
 
 A managed session is one the host can observe through its hooks, and Claude can be told to skip them from outside argv. Recorded in `probes/claude@2.1.283/hook-switches.json`: 16 static facts (anchored as in §7), the scan of every name on the paths to hook registration, the session id and the working directory, and 11 live sessions (F01–F11) in the isolated rig with managed settings in the adapter's own shape (SessionStart by the command forwarder, the rest over HTTP with the bearer from `$PUPPETEER_HOOK_TOKEN`).
 

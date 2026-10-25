@@ -1,0 +1,266 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.308",
+  "event": "MessageDisplay",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "Streaming display delta; display-only and distinct from durable transcript content.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "MessageDisplay"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "string"
+      },
+      "index": {
+        "type": "number"
+      },
+      "final": {
+        "type": "boolean"
+      },
+      "delta": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "delta",
+      "final",
+      "hook_event_name",
+      "index",
+      "message_id",
+      "session_id",
+      "transcript_path",
+      "turn_id"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "continue": {
+        "type": "boolean"
+      },
+      "stopReason": {
+        "type": "string"
+      },
+      "suppressOutput": {
+        "type": "boolean"
+      },
+      "systemMessage": {
+        "type": "string"
+      },
+      "terminalSequence": {
+        "type": "string"
+      },
+      "decision": {
+        "type": "string",
+        "enum": [
+          "block"
+        ]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "hookSpecificOutput": {
+        "type": "object",
+        "properties": {
+          "hookEventName": {
+            "type": "string",
+            "enum": [
+              "MessageDisplay"
+            ]
+          },
+          "displayContent": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "MessageDisplay"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "turn_id": {
+        "type": "string"
+      },
+      "message_id": {
+        "type": "string"
+      },
+      "index": {
+        "type": "number"
+      },
+      "final": {
+        "type": "boolean"
+      },
+      "delta": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "cwd",
+      "delta",
+      "final",
+      "hook_event_name",
+      "index",
+      "message_id",
+      "session_id",
+      "transcript_path",
+      "turn_id"
+    ]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+      "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
+      "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+    ]
+  },
+  "observationMode": "passive",
+  "evidence": {
+    "existence": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ],
+    "shape": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ],
+    "result": [
+      "claude-official-hooks"
+    ],
+    "carrier": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 2,
+  "firstSeen": "2.1.308",
+  "lastVerified": "2.1.308",
+  "fixture": "captures/claude@2.1.308",
+  "notes": "Streaming display delta; display-only and distinct from durable transcript content."
+}

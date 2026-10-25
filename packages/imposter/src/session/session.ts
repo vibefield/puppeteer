@@ -147,9 +147,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   const { persona, argv, env, cwd, behavior } = options;
   const log = options.log ?? (() => {});
 
-  const explicitSessionId =
-    flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ??
-    flagValue(argv, persona.flagsFor('resume', '--resume'));
+  const resumedSessionId = flagValue(argv, persona.flagsFor('resume', '--resume'));
+  const explicitSessionId = flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ?? resumedSessionId;
   const generatedSessionId = mintPersonaSessionId(persona);
   const sessionId = explicitSessionId ?? generatedSessionId;
   const settingsPath = flagValue(argv, persona.flagsFor('settings', '--settings'));
@@ -902,7 +901,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       pushScenarioRun(activeScenario.progress);
     },
     async boot() {
-      await timeline.runAll(persona.document.boot);
+      const resumeBoot = resumedSessionId === undefined ? undefined : persona.document.resumeBoot;
+      await timeline.runAll(resumeBoot ?? persona.document.boot);
     },
     async turn(text) {
       const ops = behavior.ops ?? [];

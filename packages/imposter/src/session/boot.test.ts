@@ -94,6 +94,45 @@ describe('persona boot', () => {
     expect(thread.cwd).toBe(session.transcriptRoot);
   });
 
+  it('announces a Claude resume as Claude 2.1.308 does, with the resume-only prompt-cache fields', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'puppeteer-claude-resume-'));
+    temporaries.add(home);
+    const start = (argv: string[]) =>
+      createImposterSession({
+        persona: loadPersona('claude'),
+        argv,
+        env: { PUPPETEER_IMPOSTER_HOME: home },
+        cwd: home,
+        behavior: {},
+      });
+    const resumeOnly = [
+      'seconds_since_last_response',
+      'context_tokens',
+      'prompt_cache_likely_expired',
+      'estimated_cache_write_usd',
+    ];
+
+    const fresh = start(['--session-id', '64a61b19-f4d8-4f96-ba56-07024b470813']);
+    await fresh.boot();
+    const startup = fresh.emitted.find((entry) => entry.event === 'SessionStart')!.payload!;
+    expect(startup.source).toBe('startup');
+    // An op field the boot does not supply is absent, not an off-model undefined.
+    for (const field of resumeOnly) expect(Object.hasOwn(startup, field), field).toBe(false);
+
+    const resumed = start(['--resume', '64a61b19-f4d8-4f96-ba56-07024b470813']);
+    await resumed.boot();
+    expect(resumed.scenarioDriver).toMatchObject({ state: 'ready', offModel: 0 });
+    expect(resumed.emitted.map((entry) => entry.event)).toEqual(['SessionStart', 'InstructionsLoaded']);
+    expect(resumed.emitted[0]!.payload).toMatchObject({
+      session_id: '64a61b19-f4d8-4f96-ba56-07024b470813',
+      source: 'resume',
+      seconds_since_last_response: 29,
+      context_tokens: 3152,
+      prompt_cache_likely_expired: true,
+      estimated_cache_write_usd: 0.0118,
+    });
+  });
+
   it('honours a persona native-root environment variable without requiring the shared override', () => {
     const home = mkdtempSync(join(tmpdir(), 'puppeteer-grok-native-root-'));
     temporaries.add(home);

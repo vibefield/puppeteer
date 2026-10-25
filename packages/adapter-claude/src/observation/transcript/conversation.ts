@@ -161,12 +161,13 @@ export function projectClaudeTranscriptAssistants(
 
   for (const record of causalOrder(records)) {
     if (record.isSidechain) continue;
-    const role = record.message?.role;
-    if (record.type === 'user' || role === 'user') {
+    // The row type decides, never `message.role`: 2.1.308's `api-request-blob` bookkeeping rows
+    // carry a user or assistant role and are neither a prompt nor a reply.
+    if (record.type === 'user') {
       if (userPrompt(record)) turnId = transcriptRecordId(record);
       continue;
     }
-    if (record.type !== 'assistant' && role !== 'assistant') continue;
+    if (record.type !== 'assistant') continue;
     const projected = assistant(record, turnId);
     if (!projected) continue;
     const key = transcriptRecordId(record);

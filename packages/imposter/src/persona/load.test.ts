@@ -11,7 +11,7 @@ describe('loadPersona', () => {
     expect(persona.vendor).toBe('claude');
     // Version comes from the ASM manifest, never from persona.json — the
     // captured model is the single source of vendor truth (§3.3).
-    expect(persona.version).toBe('2.1.226');
+    expect(persona.version).toBe('2.1.308');
     expect(persona.channels).toEqual(['argv', 'hook', 'transcript', 'statusline', 'subagentStatusLine', 'terminal']);
   });
 
@@ -70,7 +70,12 @@ describe('loadPersona', () => {
 
   it('declares boot ops that all exist in the ops document', () => {
     const persona = loadPersona('claude');
-    for (const invocation of persona.document.boot) {
+    expect(persona.document.resumeBoot?.map((invocation) => invocation.op)).toEqual([
+      'session.start',
+      'session.ready',
+      'usage.refresh',
+    ]);
+    for (const invocation of [...persona.document.boot, ...(persona.document.resumeBoot ?? [])]) {
       expect(persona.ops[invocation.op], `boot op ${invocation.op} is unmapped`).toBeDefined();
     }
   });

@@ -1,8 +1,9 @@
 /**
  * The switches in a person's own settings that decide whether the managed hooks reach the bridge
- * (Claude Code 2.1.283, packages/surface/vendors/claude/findings.md §7.5). For each key the last
- * enabled layer that states it wins (user < project < local); the launch's own `--settings` ranks
- * above all three, and managed policy above that.
+ * (packages/surface/vendors/claude/findings.md §7.5: probed on 2.1.283, and F01–F11 reproduced
+ * live on 2.1.308 in probes/claude@2.1.308/hook-switches.json). For each key the last enabled
+ * layer that states it wins (user < project < local); the launch's own `--settings` ranks above
+ * all three, and managed policy above that.
  *
  * - `disableAllHooks: true` — no settings hook fires, the managed ones included (live F05, F08).
  *   A `disableAllHooks: false` in the launch's own settings turns them back on, but turns the

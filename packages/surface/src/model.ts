@@ -290,8 +290,12 @@ export type SurfaceConfidence = 'verified-headless' | 'verified-interactive' | '
 
 export type SurfaceDirection = 'client-to-agent' | 'agent-to-client' | 'agent-local';
 
-/** Whether installing an observer preserves native behavior and whether it needs a native matcher. */
-export type SurfaceObservationMode = 'passive' | 'matcher-required' | 'response-required';
+/**
+ * Whether installing an observer preserves native behavior and whether it needs a native matcher.
+ * `timeout-blocks` preserves native behavior only while the observer answers before its timeout:
+ * a missed deadline blocks the native action, so it is never safe to register as a default observer.
+ */
+export type SurfaceObservationMode = 'passive' | 'matcher-required' | 'response-required' | 'timeout-blocks';
 
 /** One independently attributable observation/source in an ASM v2 evidence index. */
 export interface SurfaceEvidenceClaimRecord {
@@ -872,7 +876,12 @@ const payloadTypes = new Set(['string', 'number', 'integer', 'boolean', 'object'
 const surfaceConfidences = new Set<SurfaceConfidence>(['verified-headless', 'verified-interactive', 'unverified']);
 const schemaFidelities = new Set<SurfaceSchemaFidelity>(['exact', 'semantic', 'structural', 'sampled', 'unknown']);
 const surfaceDirections = new Set<SurfaceDirection>(['client-to-agent', 'agent-to-client', 'agent-local']);
-const surfaceObservationModes = new Set<SurfaceObservationMode>(['passive', 'matcher-required', 'response-required']);
+const surfaceObservationModes = new Set<SurfaceObservationMode>([
+  'passive',
+  'matcher-required',
+  'response-required',
+  'timeout-blocks',
+]);
 const evidenceKinds = new Set<SurfaceEvidenceClaimRecord['kind']>([
   'runtime-capture',
   'binary-probe',
@@ -1310,7 +1319,7 @@ function validateEventOperationalMetadata(path: string, event: Record<string, un
     (typeof event.observationMode !== 'string' ||
       !surfaceObservationModes.has(event.observationMode as SurfaceObservationMode))
   ) {
-    throw new Error(`ASM: ${path} observationMode must be passive|matcher-required|response-required`);
+    throw new Error(`ASM: ${path} observationMode must be passive|matcher-required|response-required|timeout-blocks`);
   }
 }
 

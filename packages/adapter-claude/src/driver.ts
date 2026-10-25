@@ -36,7 +36,12 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
-import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalization/index.js';
+import {
+  ClaudeHookNormalizer,
+  ClaudeRootModelGate,
+  type ClaudeHookDiagnostic,
+  type ClaudeHookPayload,
+} from './normalization/index.js';
 import {
   prepareClaudeSession,
   cleanupClaudeSession,
@@ -469,6 +474,7 @@ function createClaudeObservation(
   let configuredIntentPublished = false;
   let observedStatusEnvironmentKey: string | undefined;
   let observedStatusContextKey: string | undefined;
+  const rootModel = new ClaudeRootModelGate();
   const observedOtelUsage = new Map<string, string>();
   const observedOtelModels = new Map<string, string>();
 
@@ -812,6 +818,9 @@ function createClaudeObservation(
       }
     }
     for (const event of normalized.events) {
+      if (event.type === 'model:updated' && event.model && !normalized.agentId && !rootModel.admitHook(event.model)) {
+        continue;
+      }
       if (event.type === 'context-window:invalidated') {
         emitMonitorBatch(monitorEvidence.rootContextInvalidationBatch(hookEnvelope.receivedAt, hookEnvelope.requestId));
       }
@@ -871,6 +880,7 @@ function createClaudeObservation(
       if (environmentKey !== observedStatusEnvironmentKey) {
         observedStatusEnvironmentKey = environmentKey;
         for (const event of environmentEvents) {
+          if (event.type === 'model:updated' && event.model) rootModel.observeStatusLine(event.model);
           apply(event, {
             source: 'native-statusline',
             timestamp: statusEnvelope.receivedAt,

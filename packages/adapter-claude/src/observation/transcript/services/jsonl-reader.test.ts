@@ -2,6 +2,11 @@ import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  CLAUDE_2_1_308_BOOKKEEPING_TYPES,
+  CLAUDE_2_1_308_SIDE_TYPES,
+  claude2308TranscriptText,
+} from '../../../test-support/claude-transcript-fixtures.js';
 import { createClaudeTranscriptReader } from './jsonl-reader.js';
 
 const roots: string[] = [];
@@ -75,6 +80,36 @@ describe('createClaudeTranscriptReader', () => {
 
     expect(first.map(({ uuid }) => uuid)).toEqual(['recent-1', 'recent-2']);
     expect(second.map(({ uuid }) => uuid)).toEqual(['recent-1', 'recent-2', 'recent-3']);
+  });
+
+  it('drops 2.1.308 request bookkeeping before the bounded window: kept rows keep their physical line ids', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-jsonl-bookkeeping-'));
+    roots.push(root);
+    const path = join(root, 'transcript.jsonl');
+    const text = claude2308TranscriptText([
+      { promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true },
+      { promptUuid: 'prompt-2', prompt: 'Summarize them', answer: 'Both are notes.' },
+    ]);
+    writeFileSync(path, text);
+    const lines = text.trimEnd().split('\n');
+    // Kept rows are the conversation messages and every node of the parent-linked graph.
+    const reader = createClaudeTranscriptReader(path, { maxRecords: 13 });
+    const kept = await reader.read();
+    const types = new Set(kept.map(({ type }) => type));
+    for (const type of [...CLAUDE_2_1_308_BOOKKEEPING_TYPES, ...CLAUDE_2_1_308_SIDE_TYPES]) {
+      expect(types.has(type), type).toBe(false);
+    }
+    expect([...types].sort()).toEqual(['assistant', 'attachment', 'system', 'user']);
+    // The window holds the whole conversation: bookkeeping no longer counts against maxRecords.
+    expect(kept).toHaveLength(13);
+    expect(kept[0]?.uuid).toBe('prompt-1');
+    expect(lines.length).toBeGreaterThan(30);
+    for (const record of kept) expect(JSON.parse(lines[record.index]!).uuid).toBe(record.uuid);
+
+    // A bookkeeping-only append changes nothing a projection reads, so the snapshot is reused.
+    appendFileSync(path, `${JSON.stringify({ type: 'cost-state', modelUsage: {}, totalCostUSD: 0 })}\n`);
+    appendFileSync(path, `${JSON.stringify({ type: 'api-request-blob', message: { role: 'user', content: 'x' } })}\n`);
+    expect(await reader.read()).toBe(kept);
   });
 
   it('bounds retained decoded records', async () => {

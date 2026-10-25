@@ -18,6 +18,9 @@
  *   "$encodeURIComponent:<template>" URI-encode one resolved string binding
  *   "$workdirKey:<template>" Kimi-v2-compatible opaque workspace key
  *   "$concat:<part>:<part>" concatenate literal parts and resolved bindings
+ *
+ * An object field whose template resolves to nothing (an `$op.<field>` the op did not supply) is
+ * omitted, exactly as the JSON wire omits it: an op can leave a vendor's optional fields out.
  */
 
 import { createHash } from 'node:crypto';
@@ -136,7 +139,9 @@ export function substitute(value: unknown, context: TemplateContext): unknown {
   if (Array.isArray(value)) return value.map((entry) => substitute(entry, context));
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, substitute(entry, context)]),
+      Object.entries(value as Record<string, unknown>)
+        .map(([key, entry]) => [key, substitute(entry, context)] as const)
+        .filter(([, entry]) => entry !== undefined),
     );
   }
   return value;

@@ -1,0 +1,611 @@
+{
+  "projection": "native transcript record types, key sets, and volume only",
+  "session": {
+    "files": 2,
+    "rows": 201,
+    "bytes": 533563,
+    "unparsed": 0,
+    "types": {
+      "agent-name": {
+        "rows": 8,
+        "bytes": 928,
+        "keys": [
+          "agentName",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 8,
+        "withoutTimestamp": 8
+      },
+      "api-request": {
+        "rows": 13,
+        "bytes": 13502,
+        "keys": [
+          "base",
+          "cacheControl",
+          "id",
+          "keep",
+          "params",
+          "querySource",
+          "requestDigest",
+          "sessionId",
+          "shapeHash",
+          "tail",
+          "timestamp",
+          "type",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 13,
+        "withoutTimestamp": 0
+      },
+      "api-request-blob": {
+        "rows": 17,
+        "bytes": 36831,
+        "keys": [
+          "hash",
+          "message",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [
+          "content",
+          "role"
+        ],
+        "roles": [
+          "assistant",
+          "user"
+        ],
+        "contentTypes": [
+          "<string>",
+          "text",
+          "tool_result"
+        ],
+        "turnOrigins": [],
+        "withoutUuid": 17,
+        "withoutTimestamp": 17
+      },
+      "api-request-shape": {
+        "rows": 2,
+        "bytes": 125948,
+        "keys": [
+          "sessionId",
+          "shape",
+          "shapeHash",
+          "timestamp",
+          "type",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 2,
+        "withoutTimestamp": 0
+      },
+      "assistant": {
+        "rows": 14,
+        "bytes": 17292,
+        "keys": [
+          "apiBlockIndex",
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isSidechain",
+          "message",
+          "parentUuid",
+          "perTurnEffort",
+          "requestRef",
+          "requestedModel",
+          "sessionId",
+          "session_id",
+          "slug",
+          "timestamp",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [
+          "content",
+          "id",
+          "model",
+          "role",
+          "stop_details",
+          "stop_reason",
+          "stop_sequence",
+          "type",
+          "usage"
+        ],
+        "roles": [
+          "assistant"
+        ],
+        "contentTypes": [
+          "text",
+          "tool_use"
+        ],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      },
+      "atis-latch": {
+        "rows": 8,
+        "bytes": 656,
+        "keys": [
+          "atis",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 8,
+        "withoutTimestamp": 8
+      },
+      "attachment": {
+        "rows": 40,
+        "bytes": 292118,
+        "keys": [
+          "attachment",
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isSidechain",
+          "parentUuid",
+          "rendered",
+          "renderedBesideToolResult",
+          "renderedRole",
+          "sessionId",
+          "session_id",
+          "slug",
+          "timestamp",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      },
+      "cost-state": {
+        "rows": 5,
+        "bytes": 2101,
+        "keys": [
+          "hasUnknownModelCost",
+          "modelUsage",
+          "sessionId",
+          "startTime",
+          "totalAPIDuration",
+          "totalAPIDurationWithoutRetries",
+          "totalCostUSD",
+          "totalDuration",
+          "totalLinesAdded",
+          "totalLinesRemoved",
+          "totalToolDuration",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 5,
+        "withoutTimestamp": 5
+      },
+      "custom-title": {
+        "rows": 8,
+        "bytes": 960,
+        "keys": [
+          "customTitle",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 8,
+        "withoutTimestamp": 8
+      },
+      "file-history-delta": {
+        "rows": 1,
+        "bytes": 365,
+        "keys": [
+          "backup",
+          "messageId",
+          "snapshotMessageId",
+          "timestamp",
+          "trackingPath",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 1,
+        "withoutTimestamp": 0
+      },
+      "file-history-snapshot": {
+        "rows": 13,
+        "bytes": 4308,
+        "keys": [
+          "isSnapshotUpdate",
+          "messageId",
+          "snapshot",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 13,
+        "withoutTimestamp": 13
+      },
+      "last-prompt": {
+        "rows": 7,
+        "bytes": 1059,
+        "keys": [
+          "lastPrompt",
+          "leafUuid",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 7,
+        "withoutTimestamp": 7
+      },
+      "mode": {
+        "rows": 8,
+        "bytes": 656,
+        "keys": [
+          "mode",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 8,
+        "withoutTimestamp": 8
+      },
+      "permission-mode": {
+        "rows": 7,
+        "bytes": 728,
+        "keys": [
+          "permissionMode",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 7,
+        "withoutTimestamp": 7
+      },
+      "queue-operation": {
+        "rows": 2,
+        "bytes": 1021,
+        "keys": [
+          "content",
+          "operation",
+          "sessionId",
+          "timestamp",
+          "type"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 2,
+        "withoutTimestamp": 0
+      },
+      "system": {
+        "rows": 19,
+        "bytes": 11373,
+        "keys": [
+          "commandRun",
+          "compactMetadata",
+          "content",
+          "cwd",
+          "durationMs",
+          "entrypoint",
+          "gitBranch",
+          "hasOutput",
+          "hookAdditionalContext",
+          "hookCount",
+          "hookErrors",
+          "hookInfos",
+          "isMeta",
+          "isSidechain",
+          "level",
+          "logicalParentUuid",
+          "messageCount",
+          "parentUuid",
+          "pendingBackgroundAgentCount",
+          "preventedContinuation",
+          "sessionId",
+          "session_id",
+          "slug",
+          "stopReason",
+          "subtype",
+          "timestamp",
+          "toolUseID",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      },
+      "user": {
+        "rows": 29,
+        "bytes": 23717,
+        "keys": [
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isCompactSummary",
+          "isMeta",
+          "isSidechain",
+          "isVisibleInTranscriptOnly",
+          "message",
+          "origin",
+          "parentUuid",
+          "permissionDecision",
+          "permissionMode",
+          "promptId",
+          "promptSource",
+          "queueSkipAttachments",
+          "repeatsCompactSummary",
+          "sandboxed",
+          "sessionId",
+          "session_id",
+          "slug",
+          "sourceToolAssistantUUID",
+          "timestamp",
+          "toolDenialKind",
+          "toolUseResult",
+          "turnOrigin",
+          "turnPosition",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [
+          "content",
+          "role"
+        ],
+        "roles": [
+          "user"
+        ],
+        "contentTypes": [
+          "<string>",
+          "text",
+          "tool_result"
+        ],
+        "turnOrigins": [
+          "human",
+          "task_notification"
+        ],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      }
+    }
+  },
+  "subagent": {
+    "files": 1,
+    "rows": 15,
+    "bytes": 124233,
+    "unparsed": 0,
+    "types": {
+      "api-request": {
+        "rows": 1,
+        "bytes": 959,
+        "keys": [
+          "agentId",
+          "cacheControl",
+          "id",
+          "keep",
+          "params",
+          "querySource",
+          "requestDigest",
+          "sessionId",
+          "shapeHash",
+          "tail",
+          "timestamp",
+          "type",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 1,
+        "withoutTimestamp": 0
+      },
+      "api-request-blob": {
+        "rows": 1,
+        "bytes": 8970,
+        "keys": [
+          "agentId",
+          "hash",
+          "message",
+          "sessionId",
+          "type"
+        ],
+        "messageKeys": [
+          "content",
+          "role"
+        ],
+        "roles": [
+          "user"
+        ],
+        "contentTypes": [
+          "text"
+        ],
+        "turnOrigins": [],
+        "withoutUuid": 1,
+        "withoutTimestamp": 1
+      },
+      "api-request-shape": {
+        "rows": 1,
+        "bytes": 32835,
+        "keys": [
+          "agentId",
+          "sessionId",
+          "shape",
+          "shapeHash",
+          "timestamp",
+          "type",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 1,
+        "withoutTimestamp": 0
+      },
+      "assistant": {
+        "rows": 1,
+        "bytes": 1200,
+        "keys": [
+          "agentId",
+          "apiBlockIndex",
+          "attributionAgent",
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isSidechain",
+          "message",
+          "parentUuid",
+          "perTurnEffort",
+          "requestRef",
+          "requestedModel",
+          "sessionId",
+          "timestamp",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [
+          "content",
+          "id",
+          "model",
+          "role",
+          "stop_details",
+          "stop_reason",
+          "stop_sequence",
+          "type",
+          "usage"
+        ],
+        "roles": [
+          "assistant"
+        ],
+        "contentTypes": [
+          "text"
+        ],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      },
+      "attachment": {
+        "rows": 10,
+        "bytes": 79797,
+        "keys": [
+          "agentId",
+          "attachment",
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isSidechain",
+          "parentUuid",
+          "rendered",
+          "renderedBesideToolResult",
+          "renderedRole",
+          "sessionId",
+          "timestamp",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [],
+        "roles": [],
+        "contentTypes": [],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      },
+      "user": {
+        "rows": 1,
+        "bytes": 472,
+        "keys": [
+          "agentId",
+          "cwd",
+          "entrypoint",
+          "gitBranch",
+          "isSidechain",
+          "message",
+          "parentUuid",
+          "promptId",
+          "sessionId",
+          "timestamp",
+          "type",
+          "userType",
+          "uuid",
+          "version"
+        ],
+        "messageKeys": [
+          "content",
+          "role"
+        ],
+        "roles": [
+          "user"
+        ],
+        "contentTypes": [
+          "<string>"
+        ],
+        "turnOrigins": [],
+        "withoutUuid": 0,
+        "withoutTimestamp": 0
+      }
+    }
+  },
+  "subagentMeta": {
+    "files": 1,
+    "keys": [
+      "agentType",
+      "description",
+      "finished",
+      "launchedWithDefaults",
+      "requestNonInteractive",
+      "requestShape",
+      "spawnDepth",
+      "toolUseId"
+    ]
+  }
+}
