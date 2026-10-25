@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ClaudeCapabilityError,
@@ -7,6 +10,8 @@ import {
   type ClaudeExec,
 } from './detection.js';
 import { CLAUDE_SURFACE_VERSION } from './generated/registry.js';
+import { isolatedClaudeExec, requireClaudeLiveExecutable } from './test-support/live-executable.js';
+import { isolatedClaudeLiveEnvironment, startClaudeLoopbackProvider } from './test-support/live-model.js';
 
 const FULL_HELP = `Usage: claude [options] [prompt]
 
@@ -152,11 +157,24 @@ describe('detectClaude', () => {
   });
 });
 
-// Opt-in: probes the actually-installed Claude binary. Skipped unless asked.
+// Opt-in: probes the explicitly named artifact (never `claude` on PATH) with isolated user state.
 const realClaude = process.env.CLAUDE_NATIVE_TUI_LIVE === '1';
 describe.skipIf(!realClaude)('detectClaude against the real binary', () => {
   it('is the exact Surface candidate and reports the required flags', async () => {
-    const result = await detectClaude();
+    const executable = requireClaudeLiveExecutable();
+    const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-claude-detect-')));
+    const cwd = join(root, 'workspace');
+    mkdirSync(cwd, { recursive: true });
+    const provider = await startClaudeLoopbackProvider();
+    let result: Awaited<ReturnType<typeof detectClaude>>;
+    try {
+      const environment = isolatedClaudeLiveEnvironment(root, join(root, 'claude-config'), cwd, provider.baseUrl);
+      result = await detectClaude({ executable, exec: isolatedClaudeExec(environment) });
+    } finally {
+      await provider.close();
+      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+    }
+    expect(result.executable).toBe(executable);
     expect(result.version).toBe(CLAUDE_SURFACE_VERSION);
     expect(result.flags).toEqual({
       sessionId: true,
@@ -169,5 +187,5 @@ describe.skipIf(!realClaude)('detectClaude against the real binary', () => {
       effort: true,
     });
     expect(result.warnings).toEqual([]);
-  });
+  }, 30_000);
 });

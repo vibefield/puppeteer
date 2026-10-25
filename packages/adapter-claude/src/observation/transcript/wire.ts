@@ -13,6 +13,17 @@ export interface ClaudeTranscriptRecord {
   requestId?: string | undefined;
   agentId?: string | undefined;
   agentType?: string | undefined;
+  /**
+   * Who opened the turn a `user` row belongs to (2.1.283+). 2.1.308's native values are `human`
+   * (typed TUI prompt), `sdk` (print-mode / Agent SDK prompt), `scheduled`, `task_notification`,
+   * `auto_continuation`, `peer`, `host_synthetic`, `system` and `unknown`. Claude stamps it on the
+   * turn's prompt row, and its auto and prompt-too-long compactions copy the active prompt's
+   * value onto the compaction summary. 2.1.226 and earlier transcripts carry none, nor do
+   * 2.1.308's slash/local-command, manual `/compact`, interruption and tool-result rows.
+   */
+  turnOrigin?: string | undefined;
+  /** Claude's own marker of a compaction summary, which continues a turn instead of opening one. */
+  isCompactSummary?: true | undefined;
   isSidechain: boolean;
   message?: Record<string, unknown> | undefined;
 }
@@ -67,6 +78,8 @@ export function decodeClaudeTranscript(text: string, startIndex = 0, sourceId = 
       ...(transcriptString(body.agentType ?? body.agent_type)
         ? { agentType: transcriptString(body.agentType ?? body.agent_type) }
         : {}),
+      ...(transcriptString(body.turnOrigin) ? { turnOrigin: transcriptString(body.turnOrigin) } : {}),
+      ...(body.isCompactSummary === true ? { isCompactSummary: true as const } : {}),
       isSidechain: body.isSidechain === true,
       ...(transcriptObject(body.message) ? { message: transcriptObject(body.message) } : {}),
     });
