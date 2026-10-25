@@ -33,9 +33,9 @@
       "intent": "workflow.incident.competing-hypotheses",
       "scenario": "incident-investigation",
       "title": "Competing-hypotheses incident",
-      "summary": "Two investigators test deploy and dependency hypotheses using MCP logs/metrics, shell reproduction, and web status evidence; one tool fails, context reaches 93%, compaction preserves the timeline, and a final check isolates the root cause.",
+      "summary": "The person escalates to Opus with /model, then two investigators test deploy and dependency hypotheses using MCP logs/metrics, shell reproduction, and web status evidence; one tool fails, context reaches 93%, compaction preserves the timeline, and a final check isolates the root cause.",
       "kind": "typical",
-      "tags": ["incident", "agent-team", "mcp", "web", "tool-failure", "compaction"],
+      "tags": ["incident", "model-switch", "agent-team", "mcp", "web", "tool-failure", "compaction"],
       "defaultStimulus": {
         "text": "Investigate the API timeout spike. Run competing hypotheses in parallel, identify the root cause from logs and metrics, and recommend the safest immediate mitigation."
       },

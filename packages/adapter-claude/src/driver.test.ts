@@ -917,6 +917,67 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
   });
 
+  it('takes a landed model switch from the hook rail without repeating or erasing the status line', async () => {
+    const { projection, events, hook, statusLine } = await startSession();
+    const modelEvents = () =>
+      events.filter(({ event }) => event.type === 'model:updated' && event.intent !== 'configured');
+    await statusLine({ model: { id: 'claude-sonnet-4-5-20250929', display_name: 'Sonnet 4.5' } });
+    // The switch lands before the next status-line refresh: the hook rail reports it at once.
+    await hook('PostModelSwitch', {
+      from_model: 'claude-sonnet-4-5-20250929',
+      to_model: 'claude-opus-5-5',
+      requested_model: 'claude-opus-4-1-20250805',
+      source: 'command',
+    });
+    expect(projection.state.environment.model?.value).toEqual({ id: 'claude-opus-5-5', provider: 'anthropic' });
+    await statusLine({ model: { id: 'claude-opus-5-5', display_name: 'Opus 5.5' }, effort: { level: 'medium' } });
+    // The same id again, from the hook rail: not news, and the status line's display name stays.
+    await hook('PostModelSwitch', {
+      from_model: 'claude-sonnet-4-5-20250929',
+      to_model: 'claude-opus-5-5',
+      requested_model: null,
+      source: 'auto',
+    });
+    await hook('SessionStart', { source: 'resume', model: 'claude-opus-5-5' });
+    expect(modelEvents().map(({ source, event }) => [source, event])).toEqual([
+      [
+        'native-statusline',
+        {
+          type: 'model:updated',
+          intent: 'observed',
+          model: { id: 'claude-sonnet-4-5-20250929', displayName: 'Sonnet 4.5', provider: 'anthropic' },
+        },
+      ],
+      [
+        'native-hook',
+        { type: 'model:updated', intent: 'observed', model: { id: 'claude-opus-5-5', provider: 'anthropic' } },
+      ],
+      [
+        'native-statusline',
+        {
+          type: 'model:updated',
+          intent: 'observed',
+          model: { id: 'claude-opus-5-5', displayName: 'Opus 5.5', provider: 'anthropic' },
+        },
+      ],
+    ]);
+    expect(projection.state.environment.model?.value).toEqual({
+      id: 'claude-opus-5-5',
+      displayName: 'Opus 5.5',
+      provider: 'anthropic',
+    });
+    // A subagent's own switch is actor-scoped evidence, never deduplicated against the root.
+    await hook('PostModelSwitch', {
+      agent_id: 'agent-3',
+      agent_type: 'Explore',
+      from_model: 'claude-opus-5-5',
+      to_model: 'claude-opus-5-5',
+      requested_model: null,
+      source: 'auto',
+    });
+    expect(modelEvents().at(-1)).toMatchObject({ source: 'native-hook', agentId: 'agent-3' });
+  });
+
   it('publishes root and correlated child status evidence through the monitor SPI', async () => {
     const { projection, hook, statusLine, subagentStatusLine } = await startSession();
     const batches = projection.monitorBatches;

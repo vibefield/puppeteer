@@ -1,0 +1,60 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "--session-id establishes new identity; --resume continues an existing identity and is never combined with --session-id."
+    },
+    "hook": {
+      "kind": "hook-http",
+      "fallback": "hook-command",
+      "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.308 does not support HTTP for them. A print-mode process exits without awaiting StopFailure command hooks, so StopFailure must stay on HTTP."
+    },
+    "transcript": {
+      "kind": "transcript",
+      "notes": "Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp."
+    },
+    "statusline": {
+      "kind": "statusline",
+      "notes": "Claude invokes the configured statusLine command with model, cost, context-window, workspace, and prompt-cache JSON on stdin (rate limits only for subscription accounts)."
+    },
+    "subagentStatusLine": {
+      "kind": "statusline",
+      "nativeSetting": "subagentStatusLine",
+      "inputShape": "full-task-snapshot",
+      "taskFields": [
+        "id",
+        "name",
+        "type",
+        "agentType",
+        "status",
+        "description",
+        "label",
+        "startTime",
+        "model",
+        "effort",
+        "contextWindowSize",
+        "tokenCount",
+        "tokenSamples",
+        "cwd"
+      ],
+      "tokenSamples": {
+        "maxItems": 16,
+        "timestampsIncluded": false
+      },
+      "nominalCallbackIntervalMs": 5000,
+      "notes": "Claude invokes the configured child command with the currently visible task snapshot on stdin. Rolling tokenSamples omit timestamps, so consumers must use callback-time tokenCount for rate samples. Fields whose value is undefined are omitted from the JSON.",
+      "evidence": {
+        "existence": [
+          "claude-binary-probe"
+        ],
+        "shape": [
+          "claude-binary-probe"
+        ]
+      }
+    },
+    "terminal": {
+      "kind": "terminal",
+      "notes": "Native TUI control only; semantic state is never parsed from terminal rendering."
+    }
+  }
+}

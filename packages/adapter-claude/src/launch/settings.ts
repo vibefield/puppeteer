@@ -5,6 +5,11 @@
  * consumers and tests so documentation-backed hooks cannot be mistaken for
  * runtime captures. Matcher-gated and behavior-replacing hooks stay explicit.
  *
+ * A `timeout-blocks` hook (PreModelSwitch) is wired only when a caller selects it: an empty answer
+ * preserves the native switch, and the bridge acknowledges before it fans out, but an answer that
+ * misses the hook's timeout blocks the switch — never a default observer's trade. PostModelSwitch
+ * (passive) is the default model-switch rail.
+ *
  * Transport split follows the hybrid bridge (DESIGN §16.4): http events POST
  * straight to the loopback bridge; command-only events run a generated Node
  * forwarder that relays stdin JSON to the same bridge on every platform.
@@ -58,7 +63,10 @@ export interface GenerateHookSettingsOptions {
   commandExecutable?: string | undefined;
   /** Native matcher values. A FileChanged matcher also opts that event in. */
   matchers?: Readonly<Record<string, string>> | undefined;
-  /** Events to wire; defaults to passively observable events in the pinned Surface. */
+  /**
+   * Events to wire; defaults to passively observable events in the pinned Surface. Selecting a
+   * `timeout-blocks` event opts into its native block-on-timeout behavior.
+   */
   events?: readonly HookEventSpec[] | undefined;
   /** Internal multiplexer command plus presentation fields copied from the user's line. */
   statusLine?: ClaudeStatusLineConfig | undefined;

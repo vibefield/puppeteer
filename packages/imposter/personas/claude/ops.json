@@ -3,7 +3,14 @@
     {
       "channel": "hook",
       "event": "SessionStart",
-      "with": { "source": "$op.source", "session_title": "$sessionTitle" }
+      "with": {
+        "source": "$op.source",
+        "session_title": "$sessionTitle",
+        "seconds_since_last_response": "$op.seconds_since_last_response",
+        "context_tokens": "$op.context_tokens",
+        "prompt_cache_likely_expired": "$op.prompt_cache_likely_expired",
+        "estimated_cache_write_usd": "$op.estimated_cache_write_usd"
+      }
     }
   ],
   "session.ready": [

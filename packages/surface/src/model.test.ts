@@ -486,9 +486,15 @@ describe('loadModel', () => {
     expect(() => loadModel(dir)).toThrow(/resultSchema is only valid for a request\/callback transport/);
 
     event.transport = 'http';
+    event.observationMode = 'timeout-blocks';
+    writeFileSync(eventPath, JSON.stringify(event));
+    expect(loadModel(dir).events[0]!.observationMode).toBe('timeout-blocks');
+
     event.observationMode = 'sometimes';
     writeFileSync(eventPath, JSON.stringify(event));
-    expect(() => loadModel(dir)).toThrow(/observationMode must be passive\|matcher-required\|response-required/);
+    expect(() => loadModel(dir)).toThrow(
+      /observationMode must be passive\|matcher-required\|response-required\|timeout-blocks/,
+    );
   });
 
   it('rejects malformed payload schemas before they reach an audit', () => {

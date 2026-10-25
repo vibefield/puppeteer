@@ -154,9 +154,10 @@ export class ClaudeConversationMissingError extends Error {
 
 /**
  * A launch whose person's settings switch every hook off (`disableAllHooks: true`): the managed
- * hooks would never fire (probed 2.1.283, findings.md §7.5), so it is refused before launch, typed
- * or a host's own spawn, rather than run as a session the host cannot observe. The adapter's own refusal
- * ({@link AgentLaunchRefusedError}): the runtime carries its sentence and code to the person.
+ * hooks would never fire (probed 2.1.283 and 2.1.308: F05, F08, findings.md §7.5), so it is
+ * refused before launch, typed or a host's own spawn, rather than run as a session the host cannot
+ * observe. The adapter's own refusal ({@link AgentLaunchRefusedError}): the runtime carries its
+ * sentence and code to the person.
  */
 export class ClaudeHooksOffError extends AgentLaunchRefusedError<'CLAUDE_HOOKS_OFF'> {
   constructor(
@@ -339,7 +340,7 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
       subagentStatusLine,
     }),
     // A person's allow-list would block the managed HTTP hooks, or strip their bearer (probed
-    // 2.1.283: F09, F10). These settings rank above the person's layers, so each list is restated
+    // 2.1.283 and 2.1.308: F09, F10). These settings rank above the person's layers, so each list is restated
     // with the bridge's entry added (F11): every HTTP hook of theirs is allowed and interpolated as before.
     ...(hookSwitches.allowedHttpHookUrls
       ? { allowedHttpHookUrls: [...hookSwitches.allowedHttpHookUrls, `${new URL(options.endpoint).origin}/*`] }

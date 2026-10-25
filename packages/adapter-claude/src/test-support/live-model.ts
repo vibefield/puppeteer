@@ -1,10 +1,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 export const CLAUDE_LIVE_MODEL = 'claude-sonnet-4-5-20250929';
 export const CLAUDE_LIVE_RESPONSE_MARKER = 'SURFACE_CLAUDE_TUI_OK';
 export const CLAUDE_LIVE_AUTH_TOKEN = 'puppeteer-not-a-real-token';
+
+/** Answers every keychain lookup "not found" (exit 44) and touches no keychain. */
+const KEYCHAIN_STUB = `#!/bin/sh
+case "$1" in find-*|delete-*) exit 44 ;; *) exit 0 ;; esac
+`;
 
 export interface ClaudeLiveModelRequest {
   readonly method?: string | undefined;
@@ -80,6 +85,27 @@ function streamMessage(
   response.end();
 }
 
+function jsonMessage(
+  response: import('node:http').ServerResponse,
+  requestNumber: number,
+  model: string,
+  text: string,
+): void {
+  response.writeHead(200, { 'content-type': 'application/json' });
+  response.end(
+    JSON.stringify({
+      id: `msg_puppeteer_claude_${requestNumber}`,
+      type: 'message',
+      role: 'assistant',
+      model,
+      content: [{ type: 'text', text }],
+      stop_reason: 'end_turn',
+      stop_sequence: null,
+      usage: { input_tokens: 12, output_tokens: 7, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    }),
+  );
+}
+
 /** Build an isolated Claude state root without copying user settings or credentials. */
 export function isolatedClaudeLiveEnvironment(
   root: string,
@@ -89,7 +115,13 @@ export function isolatedClaudeLiveEnvironment(
 ): Record<string, string> {
   const home = join(root, 'home');
   const temporary = join(root, 'tmp');
+  const bin = join(root, 'bin');
   mkdirSync(home, { recursive: true });
+  // On macOS Claude looks credentials up through `security(1)` found on PATH. The stub comes
+  // first, so the proof never reads, writes or prompts for the owner's login keychain: the
+  // placeholder bearer is its only credential.
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, 'security'), KEYCHAIN_STUB, { mode: 0o700 });
   mkdirSync(configDir, { recursive: true });
   mkdirSync(temporary, { recursive: true });
   writeFileSync(
@@ -110,6 +142,7 @@ export function isolatedClaudeLiveEnvironment(
     { mode: 0o600 },
   );
   return {
+    PATH: [bin, process.env.PATH].filter((entry) => entry !== undefined && entry !== '').join(delimiter),
     HOME: home,
     USERPROFILE: home,
     XDG_CONFIG_HOME: join(home, '.config'),
@@ -177,12 +210,14 @@ export async function startClaudeLoopbackProvider(): Promise<ClaudeLiveModelProv
         typeof (body as { model?: unknown }).model === 'string'
           ? (body as { model: string }).model
           : CLAUDE_LIVE_MODEL;
-      streamMessage(
-        response,
-        requestNumber,
-        requestedModel,
-        kind === 'turn' ? CLAUDE_LIVE_RESPONSE_MARKER : 'Claude native TUI',
-      );
+      const text = kind === 'turn' ? CLAUDE_LIVE_RESPONSE_MARKER : 'Claude native TUI';
+      // A non-streaming request (2.1.308's `/model` validation is one) gets one JSON message, as
+      // the Messages API answers it.
+      if ((body as { stream?: unknown } | null)?.stream !== true) {
+        jsonMessage(response, requestNumber, requestedModel, text);
+        return;
+      }
+      streamMessage(response, requestNumber, requestedModel, text);
     });
   });
   await new Promise<void>((resolve, reject) => {

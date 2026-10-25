@@ -406,6 +406,8 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
             <a class="hook-chip use-registry" href="#hook-WorktreeRemove"><code>WorktreeRemove</code></a>
             <a class="hook-chip use-registry" href="#hook-PreCompact"><code>PreCompact</code></a>
             <a class="hook-chip use-registry" href="#hook-PostCompact"><code>PostCompact</code></a>
+            <a class="hook-chip use-registry" href="#hook-PreModelSwitch"><code>PreModelSwitch</code></a>
+            <a class="hook-chip use-used" href="#hook-PostModelSwitch"><code>PostModelSwitch</code></a>
             <a class="hook-chip use-used" href="#hook-SessionEnd"><code>SessionEnd</code></a>
             <a class="hook-chip use-registry" href="#hook-Elicitation"><code>Elicitation</code></a>
             <a class="hook-chip use-registry" href="#hook-ElicitationResult"><code>ElicitationResult</code></a>
@@ -977,6 +979,32 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
     <p class="hook-usage"><strong>Puppeteer:</strong> Registered by default; confidence remains unverified and unprojected payloads are retained as <code>adapter:native-event</code>.</p>
   </div>
 </article>
+<article class="hook-card use-registry" id="hook-PreModelSwitch">
+  <header class="hook-card-h">
+    <div class="hook-card-title">
+      <a class="hook-anchor" href="#hook-PreModelSwitch"><code>PreModelSwitch</code></a>
+      <span class="tag t-registry">Explicit only · native</span>
+    </div>
+    <p class="hook-when">Before a requested model switch (Claude Code 2.1.251+; 2.1.308 candidate evidence)</p>
+  </header>
+  <div class="hook-card-body">
+    <p>Runs before <code>/model</code>, a picker, <code>/config</code>, fast mode, or an SDK <code>set_model</code> changes the model, and can cancel the switch. Input adds <code>from_model</code>, <code>to_model</code>, <code>requested_model</code> (string or null), <code>source</code> (<code>command</code> · <code>picker</code> · <code>sdk</code>), <code>context_tokens</code>, <code>prompt_cache_warm</code>, <code>cache_ttl</code>, <code>estimated_cache_write_usd</code> and <code>pricing</code>. A hook still running at its timeout (native default 30 s) blocks the switch.</p>
+    <p class="hook-usage"><strong>Puppeteer:</strong> Surface observation mode <code>timeout-blocks</code>, so it is never in the default registration; a caller that selects it opts into the block-on-timeout trade. When it arrives it is retained as <code>adapter:native-event</code>: a request that may still be cancelled is not a model.</p>
+  </div>
+</article>
+<article class="hook-card use-used" id="hook-PostModelSwitch">
+  <header class="hook-card-h">
+    <div class="hook-card-title">
+      <a class="hook-anchor" href="#hook-PostModelSwitch"><code>PostModelSwitch</code></a>
+      <span class="tag t-used">Wired + normalized</span>
+    </div>
+    <p class="hook-when">After the session's model changed (Claude Code 2.1.251+; 2.1.308 candidate evidence)</p>
+  </header>
+  <div class="hook-card-body">
+    <p>Asynchronous. Same input as PreModelSwitch, with <code>source</code> adding <code>auto</code> (an automatic fallback; <code>requested_model</code> null) and <code>resume</code> (the model a resume restored). The 2.1.308 TUI census observed <code>/model</code> → PreModelSwitch → PostModelSwitch → a status line on the new model; <code>to_model</code> is the model that serves, which can differ from the requested id.</p>
+    <p class="hook-usage"><strong>Puppeteer:</strong> <code>to_model</code> → <code>model:updated</code> (observed). The status line stays the authoritative model card; a root hook model that repeats the id already reported is not republished, so the card neither flaps nor loses its display name.</p>
+  </div>
+</article>
 <article class="hook-card use-used" id="hook-SessionEnd">
   <header class="hook-card-h">
     <div class="hook-card-title">
@@ -1096,6 +1124,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
                 <tr><td class="m">Notification</td><td class="m">http</td><td class="m">notification:received</td><td>reducer no-op</td></tr>
                 <tr><td class="m">SessionEnd</td><td class="m">http</td><td class="m">session:exited</td><td>exited → dropped in views</td></tr>
                 <tr><td class="m">StopFailure · Task* · CwdChanged · PostCompact</td><td class="m">http</td><td class="m">turn:failed · delegation:* · environment:updated · context-window:invalidated</td><td><span class="tag t-used">wired + normalized</span></td></tr>
+                <tr><td class="m">PostModelSwitch</td><td class="m">http</td><td class="m">model:updated (observed)</td><td>model card between status-line refreshes; never repeats the reported id</td></tr>
                 <tr><td class="m">Other passive official hooks</td><td class="m">http / command</td><td class="m">adapter:native-event</td><td>retained without inventing a portable meaning</td></tr>
               </tbody>
             </table>
@@ -1356,6 +1385,10 @@ flowchart LR
               <td class="m">CwdChanged</td><td class="m">environment:updated</td><td>environment.currentCwd</td>
               <td>a native <code>cd</code> updates the shared current working directory</td>
             </tr>
+            <tr>
+              <td class="m">PostModelSwitch</td><td class="m">model:updated</td><td>environment.model</td>
+              <td>a landed <code>/model</code> switch, fallback, or resume restore shows before the next status-line refresh</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -1369,7 +1402,9 @@ flowchart LR
         <table>
           <thead><tr><th>Raw hook</th><th>Why it is interesting</th></tr></thead>
           <tbody>
-            <tr><td class="m">PreCompact</td><td>registered and retained natively; <code>PostCompact</code> separately emits <code>context-window:invalidated</code></td></tr>
+            <tr><td class="m">PreCompact</td><td>opens the compaction; the compact <code>SessionStart</code> between it and <code>PostCompact</code> leaves it open, and <code>PostCompact</code> completes it and emits <code>context-window:invalidated</code></td></tr>
+            <tr><td class="m">SubagentStop (internal)</td><td>2.1.308 <code>/compact</code> runs an internal agent whose stop has an empty <code>agent_type</code> and no <code>SubagentStart</code>; retained natively, never a delegation</td></tr>
+            <tr><td class="m">PreModelSwitch</td><td>observation mode <code>timeout-blocks</code>: excluded from the default registration because a missed timeout blocks the native switch</td></tr>
             <tr><td class="m">Elicitation / ElicitationResult</td><td>registered and retained without falsely mapping every MCP form to a single permission state</td></tr>
             <tr><td class="m">FileChanged</td><td>opt-in via <code>fileChangeMatcher</code>, then emits the direct observation <code>workspace:file-changed</code></td></tr>
             <tr><td class="m">ConfigChange</td><td>registered and retained natively; configuration reload is not treated as an agent file edit</td></tr>
@@ -1395,7 +1430,9 @@ flowchart LR
               <td>
                 Existing root assistant messages form a silent baseline on every attachment. Only later assistant
                 changes produce events. Transcript history does not publish turns, models, usage or metadata events,
-                and child transcripts are not discovered or read.
+                and child transcripts are not discovered or read. Only <code>user</code>/<code>assistant</code> rows
+                are projected; 2.1.300+ request bookkeeping (<code>api-request*</code>, <code>atis-latch</code>,
+                <code>cost-state</code>) is dropped before the bounded read window.
               </td>
             </tr>
             <tr>
@@ -1423,7 +1460,8 @@ flowchart LR
       </p>
 
       <footer>
-        Generated against Claude Code 2.1.207 census data. Verify with
+        Generated against Claude Code 2.1.207 census data, with the 2.1.308 candidate's additions
+        (PreModelSwitch, PostModelSwitch, transcript bookkeeping rows); last verified stays at the promoted 2.1.207. Verify with
         <code>src/generated/registry.ts</code> · <code>src/normalization/index.ts</code> · <code>src/launch/settings.ts</code>.
       </footer>
     </main>

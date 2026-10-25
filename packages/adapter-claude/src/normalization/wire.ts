@@ -36,6 +36,7 @@ const NORMALIZER_REQUIREMENTS: Readonly<Record<string, readonly FieldRequirement
   PostCompact: [['trigger', 'string']],
   DirectoryAdded: [['directory', 'string']],
   FileChanged: [['file_path', 'string']],
+  PostModelSwitch: [['to_model', 'string']],
 };
 
 export const claudeString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);

@@ -1,0 +1,27 @@
+{
+  "executables": [
+    "claude"
+  ],
+  "envVar": "PUPPETEER_CLAUDE_BIN",
+  "versionFlag": "--version",
+  "versionOutput": "2.1.308 (Claude Code)",
+  "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
+  "helpFlag": "--help",
+  "probedFlags": {
+    "sessionId": "--session-id",
+    "settings": "--settings",
+    "settingSources": "--setting-sources",
+    "name": "-n, --name",
+    "permissionMode": "--permission-mode",
+    "print": "-p, --print",
+    "initOnly": "--init-only",
+    "includeHookEvents": "--include-hook-events"
+  },
+  "launchFlags": {
+    "resume": "--resume",
+    "forkSession": "--fork-session",
+    "model": "--model",
+    "effort": "--effort"
+  },
+  "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.308; missing flags still degrade observation with warnings."
+}

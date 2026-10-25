@@ -1,0 +1,299 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.308",
+  "event": "SessionStart",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "command",
+  "direction": "agent-to-client",
+  "trigger": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "SessionStart"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "startup",
+          "resume",
+          "clear",
+          "compact",
+          "fork"
+        ]
+      },
+      "model": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "seconds_since_last_response": {
+        "type": "number"
+      },
+      "context_tokens": {
+        "type": "number"
+      },
+      "prompt_cache_likely_expired": {
+        "type": "boolean"
+      },
+      "estimated_cache_write_usd": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "cwd",
+      "hook_event_name",
+      "session_id",
+      "source",
+      "transcript_path"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "continue": {
+        "type": "boolean"
+      },
+      "stopReason": {
+        "type": "string"
+      },
+      "suppressOutput": {
+        "type": "boolean"
+      },
+      "systemMessage": {
+        "type": "string"
+      },
+      "terminalSequence": {
+        "type": "string"
+      },
+      "decision": {
+        "type": "string",
+        "enum": [
+          "block"
+        ]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "hookSpecificOutput": {
+        "type": "object",
+        "properties": {
+          "hookEventName": {
+            "type": "string",
+            "enum": [
+              "SessionStart"
+            ]
+          },
+          "additionalContext": {
+            "type": "string"
+          },
+          "initialUserMessage": {
+            "type": "string"
+          },
+          "sessionTitle": {
+            "type": "string"
+          },
+          "watchPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reloadSkills": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "SessionStart"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "source": {
+        "type": "string",
+        "enum": [
+          "startup",
+          "resume",
+          "clear",
+          "compact",
+          "fork"
+        ]
+      },
+      "model": {
+        "type": "string"
+      },
+      "session_title": {
+        "type": "string"
+      },
+      "seconds_since_last_response": {
+        "type": "number"
+      },
+      "context_tokens": {
+        "type": "number"
+      },
+      "prompt_cache_likely_expired": {
+        "type": "boolean"
+      },
+      "estimated_cache_write_usd": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "cwd",
+      "hook_event_name",
+      "session_id",
+      "source",
+      "transcript_path"
+    ]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+      "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
+      "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+    ]
+  },
+  "observationMode": "passive",
+  "evidence": {
+    "existence": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ],
+    "shape": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ],
+    "result": [
+      "claude-official-hooks"
+    ],
+    "carrier": [
+      "claude-official-hooks",
+      "claude-runtime-headless",
+      "claude-runtime-interactive"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "firstSeen": "2.1.308",
+  "lastVerified": "2.1.308",
+  "fixture": "captures/claude@2.1.308",
+  "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response."
+}

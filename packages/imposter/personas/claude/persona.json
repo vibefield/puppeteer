@@ -25,5 +25,23 @@
     {
       "op": "usage.refresh"
     }
+  ],
+  "resumeBoot": [
+    {
+      "op": "session.start",
+      "with": {
+        "source": "resume",
+        "seconds_since_last_response": 29,
+        "context_tokens": 3152,
+        "prompt_cache_likely_expired": true,
+        "estimated_cache_write_usd": 0.0118
+      }
+    },
+    {
+      "op": "session.ready"
+    },
+    {
+      "op": "usage.refresh"
+    }
   ]
 }

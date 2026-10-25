@@ -113,6 +113,47 @@ describe.runIf(live)('Claude adapter through real native TUI (live)', () => {
           15_000,
         );
         expect(projection.state.lastAssistantMessage).toContain(CLAUDE_LIVE_RESPONSE_MARKER);
+        // 2.1.300+ records request bookkeeping (`api-request-blob` carries a message role) beside the
+        // conversation: no transcript message may be keyed to one of those rows.
+        expect(
+          projection.envelopes
+            .filter(
+              ({ source, event }) => source === 'native-transcript' && event.type === 'conversation:assistant-message',
+            )
+            .map(({ event }) => (event as { messageId: string }).messageId),
+        ).not.toContainEqual(expect.stringMatching(/:line-\d+$/));
+
+        // `/model` is a slash command: no UserPromptSubmit, but PreModelSwitch then PostModelSwitch.
+        const switched = () =>
+          projection!.envelopes.find(
+            ({ source, event, nativeEvent }) =>
+              source === 'native-hook' &&
+              event.type === 'model:updated' &&
+              (nativeEvent as { hook_event_name?: unknown } | undefined)?.hook_event_name === 'PostModelSwitch',
+          );
+        await host.automateTerminal(session.runtimeSessionId, {
+          kind: 'text',
+          text: '/model claude-opus-4-1-20250805',
+        });
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await host.automateTerminal(session.runtimeSessionId, { kind: 'text', text: '\r' });
+        try {
+          await waitFor(() => switched() !== undefined, 'normalized PostModelSwitch', 5_000);
+        } catch {
+          // A confirmation (a warm prompt cache) or the slash-command picker takes the first Enter;
+          // the next accepts the highlighted default.
+          await host.automateTerminal(session.runtimeSessionId, { kind: 'text', text: '\r' });
+          await waitFor(() => switched() !== undefined, 'normalized PostModelSwitch after confirmation', 10_000);
+        }
+        const landed = switched()!;
+        const target = (landed.nativeEvent as { to_model: string }).to_model;
+        expect(landed.event).toEqual({
+          type: 'model:updated',
+          intent: 'observed',
+          model: { id: target, provider: 'anthropic' },
+        });
+        expect(target).not.toBe(CLAUDE_LIVE_MODEL);
+        expect(projection.state.environment.model?.value.id).toBe(target);
       } catch (cause) {
         throw new Error(
           `Claude native-TUI diagnostics: requests=${JSON.stringify(provider.requests.map(({ method, url, kind }) => ({ method, url, kind })))} ` +

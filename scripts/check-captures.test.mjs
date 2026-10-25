@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { checkCaptureFile } from '@vibefield/puppeteer-surface/sanitize';
+import { claudeRepositoryGateRules } from '../packages/surface/vendors/claude/privacy.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -43,6 +44,18 @@ const captureRoots = [
  * Their shape is asserted by adapter-claude's settings.test.ts instead.
  */
 const notACapture = /-settings\.json$/;
+
+/**
+ * Vendor rule sets that relax the shared defaults on purpose. Claude's admits
+ * only the closed StopFailure/SessionEnd enum values (protocol constants that
+ * fall under the free-text `error`/`reason` keys); everything else is the
+ * shared default detector. Any other vendor's captures use the defaults.
+ */
+const vendorRules = [['packages/surface/vendors/claude/captures/', claudeRepositoryGateRules]];
+
+function rulesFor(file) {
+  return vendorRules.find(([prefix]) => file.startsWith(prefix))?.[1];
+}
 
 function trackedCaptureFiles() {
   const listed = execFileSync(
@@ -66,7 +79,7 @@ test('committed captures carry no unsanitised session data', () => {
   // A scan that silently matches nothing would pass forever; assert it looked.
   assert.ok(files.length > 0, 'expected to find tracked capture files to scan');
 
-  const findings = files.flatMap((file) => checkCaptureFile(join(repoRoot, file), file));
+  const findings = files.flatMap((file) => checkCaptureFile(join(repoRoot, file), file, rulesFor(file)));
   assert.deepEqual(
     findings.slice(0, 20),
     [],

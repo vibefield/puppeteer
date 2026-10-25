@@ -1,9 +1,70 @@
 {
   "name": "incident-investigation",
-  "notes": "A competing-hypotheses incident investigation using MCP, shell, web, failure recovery, delegation, compaction, and verification.",
+  "notes": "A competing-hypotheses incident investigation, escalated to Opus with /model first (PreModelSwitch, PostModelSwitch, a status line on the new model), using MCP, shell, web, failure recovery, delegation, compaction, and verification.",
   "steps": [
     {
       "at": 0,
+      "do": {
+        "emit": {
+          "event": "PreModelSwitch",
+          "with": {
+            "prompt_id": "$uuid:previous-prompt",
+            "from_model": "$modelId",
+            "to_model": "claude-opus-5-5",
+            "requested_model": "opus",
+            "source": "command",
+            "context_tokens": 3005,
+            "prompt_cache_warm": false,
+            "cache_ttl": "5m",
+            "estimated_cache_write_usd": 0.015,
+            "pricing": "catalog"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "PostModelSwitch",
+          "with": {
+            "prompt_id": "$uuid:previous-prompt",
+            "from_model": "$modelId",
+            "to_model": "claude-opus-5-5",
+            "requested_model": "opus",
+            "source": "command",
+            "context_tokens": 3005,
+            "prompt_cache_warm": false,
+            "cache_ttl": "5m",
+            "estimated_cache_write_usd": 0.015,
+            "pricing": "catalog"
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "claude-opus-5-5", "display_name": "Opus 5.5" },
+            "effort": { "level": "medium" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 3005,
+              "context_window_size": "$capacityTokens",
+              "used_percentage": 1.5,
+              "current_usage": { "input_tokens": 5, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 3000 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
       "do": {
         "emit": {
           "event": "UserPromptSubmit",
@@ -17,7 +78,7 @@
       }
     },
     {
-      "at": 100,
+      "at": 400,
       "do": {
         "emit": {
           "event": "MessageDisplay",
@@ -33,7 +94,7 @@
       }
     },
     {
-      "at": 200,
+      "at": 500,
       "do": {
         "emit": {
           "event": "TaskCreated",
@@ -49,7 +110,7 @@
       }
     },
     {
-      "at": 300,
+      "at": 600,
       "do": {
         "emit": {
           "event": "TaskCreated",
@@ -65,7 +126,7 @@
       }
     },
     {
-      "at": 400,
+      "at": 700,
       "do": {
         "emit": {
           "event": "SubagentStart",
@@ -74,7 +135,7 @@
       }
     },
     {
-      "at": 500,
+      "at": 800,
       "do": {
         "emit": {
           "event": "SubagentStart",
@@ -83,7 +144,7 @@
       }
     },
     {
-      "at": 600,
+      "at": 900,
       "do": {
         "emit": {
           "event": "PreToolUse",
@@ -99,7 +160,7 @@
       }
     },
     {
-      "at": 800,
+      "at": 1100,
       "do": {
         "emit": {
           "event": "PostToolUse",
@@ -117,7 +178,7 @@
       }
     },
     {
-      "at": 900,
+      "at": 1200,
       "do": {
         "emit": {
           "event": "PreToolUse",
@@ -133,7 +194,7 @@
       }
     },
     {
-      "at": 1100,
+      "at": 1400,
       "do": {
         "emit": {
           "event": "PostToolUseFailure",
@@ -152,7 +213,7 @@
       }
     },
     {
-      "at": 1200,
+      "at": 1500,
       "do": {
         "emit": {
           "event": "PreToolUse",
@@ -168,7 +229,7 @@
       }
     },
     {
-      "at": 1400,
+      "at": 1700,
       "do": {
         "emit": {
           "event": "PostToolUse",
@@ -186,7 +247,7 @@
       }
     },
     {
-      "at": 1500,
+      "at": 1800,
       "do": {
         "emit": {
           "event": "PreToolUse",
@@ -200,7 +261,7 @@
       }
     },
     {
-      "at": 1700,
+      "at": 2000,
       "do": {
         "emit": {
           "event": "PostToolUse",
@@ -221,7 +282,7 @@
       }
     },
     {
-      "at": 1800,
+      "at": 2100,
       "do": {
         "emit": {
           "event": "PostToolBatch",
@@ -258,7 +319,7 @@
       }
     },
     {
-      "at": 1900,
+      "at": 2200,
       "do": {
         "emit": {
           "event": "TaskCompleted",
@@ -274,7 +335,7 @@
       }
     },
     {
-      "at": 2000,
+      "at": 2300,
       "do": {
         "emit": {
           "event": "SubagentStop",
@@ -292,7 +353,7 @@
       }
     },
     {
-      "at": 2100,
+      "at": 2400,
       "do": {
         "emit": {
           "event": "TaskCompleted",
@@ -308,7 +369,7 @@
       }
     },
     {
-      "at": 2200,
+      "at": 2500,
       "do": {
         "emit": {
           "event": "SubagentStop",
@@ -326,14 +387,14 @@
       }
     },
     {
-      "at": 2300,
+      "at": 2600,
       "do": {
         "statusline": {
           "with": {
             "session_id": "$sessionId",
             "transcript_path": "$transcriptPath",
             "cwd": "$cwd",
-            "model": { "id": "$modelId", "display_name": "$modelId" },
+            "model": { "id": "claude-opus-5-5", "display_name": "Opus 5.5" },
             "workspace": { "current_dir": "$cwd" },
             "context_window": {
               "total_input_tokens": 186000,
@@ -350,7 +411,7 @@
       }
     },
     {
-      "at": 2400,
+      "at": 2700,
       "do": {
         "emit": {
           "event": "PreCompact",
@@ -359,7 +420,7 @@
       }
     },
     {
-      "at": 2500,
+      "at": 2800,
       "do": {
         "emit": {
           "event": "PostCompact",
@@ -372,7 +433,7 @@
       }
     },
     {
-      "at": 2600,
+      "at": 2900,
       "do": {
         "emit": {
           "event": "PreToolUse",
@@ -386,7 +447,7 @@
       }
     },
     {
-      "at": 2800,
+      "at": 3100,
       "do": {
         "emit": {
           "event": "PostToolUse",
@@ -405,7 +466,7 @@
       }
     },
     {
-      "at": 2900,
+      "at": 3200,
       "do": {
         "emit": {
           "event": "MessageDisplay",
@@ -421,7 +482,7 @@
       }
     },
     {
-      "at": 3000,
+      "at": 3300,
       "do": {
         "transcript": {
           "record": {
@@ -434,7 +495,7 @@
             "message": {
               "id": "$uuid:message",
               "role": "assistant",
-              "model": "$modelId",
+              "model": "claude-opus-5-5",
               "content": [
                 {
                   "type": "text",
@@ -447,7 +508,7 @@
       }
     },
     {
-      "at": 3100,
+      "at": 3400,
       "do": {
         "emit": {
           "event": "Stop",

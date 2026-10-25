@@ -1,0 +1,136 @@
+{
+  "name": "model-switch",
+  "notes": "/model as Claude Code 2.1.308 runs it: PreModelSwitch, PostModelSwitch, then a status line on the new model. A slash command fires no UserPromptSubmit, and the requested alias resolves to the model that serves. One turn follows on the new model.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "PreModelSwitch",
+          "with": {
+            "prompt_id": "$uuid:previous-prompt",
+            "from_model": "$modelId",
+            "to_model": "claude-opus-5-5",
+            "requested_model": "opus",
+            "source": "command",
+            "context_tokens": 3005,
+            "prompt_cache_warm": false,
+            "cache_ttl": "5m",
+            "estimated_cache_write_usd": 0.015,
+            "pricing": "catalog"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "PostModelSwitch",
+          "with": {
+            "prompt_id": "$uuid:previous-prompt",
+            "from_model": "$modelId",
+            "to_model": "claude-opus-5-5",
+            "requested_model": "opus",
+            "source": "command",
+            "context_tokens": 3005,
+            "prompt_cache_warm": false,
+            "cache_ttl": "5m",
+            "estimated_cache_write_usd": 0.015,
+            "pricing": "catalog"
+          }
+        }
+      }
+    },
+    {
+      "at": 200,
+      "do": {
+        "statusline": {
+          "with": {
+            "session_id": "$sessionId",
+            "transcript_path": "$transcriptPath",
+            "cwd": "$cwd",
+            "model": { "id": "claude-opus-5-5", "display_name": "Opus 5.5" },
+            "effort": { "level": "medium" },
+            "workspace": { "current_dir": "$cwd" },
+            "context_window": {
+              "total_input_tokens": 3005,
+              "context_window_size": "$capacityTokens",
+              "used_percentage": 1.5,
+              "current_usage": {
+                "input_tokens": 5,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 3000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 300,
+      "do": {
+        "emit": {
+          "event": "UserPromptSubmit",
+          "with": {
+            "prompt": "$stimulus.text",
+            "prompt_id": "$uuid:prompt",
+            "session_title": "$sessionTitle",
+            "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 400,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:message",
+            "index": 0,
+            "final": true,
+            "delta": "Answering on Opus 5.5."
+          }
+        }
+      }
+    },
+    {
+      "at": 500,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "assistant",
+            "uuid": "$uuid:assistant",
+            "sessionId": "$sessionId",
+            "timestamp": "$now",
+            "cwd": "$cwd",
+            "version": "$vendorVersion",
+            "message": {
+              "id": "$uuid:message",
+              "role": "assistant",
+              "model": "claude-opus-5-5",
+              "content": [{ "type": "text", "text": "Answering on Opus 5.5." }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 600,
+      "do": {
+        "emit": {
+          "event": "Stop",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "last_assistant_message": "Answering on Opus 5.5.",
+            "stop_hook_active": false,
+            "effort": { "level": "medium" }
+          }
+        }
+      }
+    }
+  ]
+}

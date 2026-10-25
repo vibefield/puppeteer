@@ -32,7 +32,7 @@
         "reason": "Grandfathered support predates claim-addressable ASM v2 and the guarded multi-platform promotion workflow."
       },
       "introducedInPuppeteer": "0.1.8",
-      "candidateVersion": "2.1.226"
+      "candidateVersion": "2.1.308"
     },
     {
       "id": "codex",

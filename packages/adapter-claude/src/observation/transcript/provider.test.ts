@@ -7,6 +7,7 @@ import type { SemanticObservationEvent, SemanticObservationHandle } from '../sem
 import { ClaudeTranscriptObservationProvider } from './provider.js';
 import * as jsonlReader from './services/jsonl-reader.js';
 import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from './wire.js';
+import { claude2308TranscriptRows, claude2308TranscriptText } from '../../test-support/claude-transcript-fixtures.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
@@ -125,6 +126,46 @@ describe('ClaudeTranscriptObservationProvider', () => {
     rebound.onEvent((event) => reboundEvents.push(event));
     await rebound.poll();
     expect(reboundEvents).toEqual([]);
+  });
+
+  it('publishes one live reply per 2.1.308 turn, keyed to its prompt, across request bookkeeping', async () => {
+    const sessionId = 'session-1';
+    const history = [{ promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true }];
+    const { path, handle, events } = await fixture(claude2308TranscriptText(history, { sessionId }));
+    await handle.poll();
+    expect(events).toEqual([]);
+
+    // Append the next turn exactly as the session file grows: only its rows are new.
+    const next = { promptUuid: 'prompt-2', prompt: 'Summarize them', answer: 'Both are notes.', tool: true };
+    const before = claude2308TranscriptRows(history, { sessionId }).length;
+    const grown = claude2308TranscriptRows([...history, next], { sessionId });
+    appendFileSync(
+      path,
+      grown
+        .slice(before)
+        .map((row) => JSON.stringify(row))
+        .join('\n')
+        .concat('\n'),
+    );
+    await handle.poll();
+    expect(events.map(({ turnId, event }) => ({ turnId, event }))).toEqual([
+      {
+        turnId: 'prompt-2',
+        event: {
+          type: 'conversation:assistant-message',
+          messageId: 'prompt-2-answer',
+          turnId: 'prompt-2',
+          text: 'Both are notes.',
+          final: true,
+          displayOnly: false,
+        },
+      },
+    ]);
+    // Trailing bookkeeping re-announces nothing.
+    events.length = 0;
+    appendFileSync(path, `${JSON.stringify({ type: 'cost-state', modelUsage: {}, totalCostUSD: 0, sessionId })}\n`);
+    await handle.poll();
+    expect(events).toEqual([]);
   });
 
   it('ignores transcript models and usage during attachment and later changes', async () => {

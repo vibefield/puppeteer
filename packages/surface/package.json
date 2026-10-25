@@ -77,6 +77,8 @@
     "surface:sanitize:pi": "node vendors/pi/sanitize-captures.mjs",
     "surface:privacy:pi": "node vendors/pi/sanitize-captures.mjs --check",
     "surface:census:claude": "node vendors/claude/census/harness.mjs",
+    "surface:census:claude:invocation": "node vendors/claude/census/invocation-probes.mjs",
+    "surface:census:claude:switches": "node vendors/claude/census/switch-probes.mjs",
     "surface:model:claude": "node vendors/claude/census/generate-model.mjs",
     "surface:census:codex": "node vendors/codex/census/harness.mjs",
     "surface:sanitize:codex": "node vendors/codex/census/sanitize.mjs",

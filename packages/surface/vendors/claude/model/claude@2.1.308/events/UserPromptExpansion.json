@@ -1,0 +1,266 @@
+{
+  "surface": "claude",
+  "surfaceVersion": "2.1.308",
+  "event": "UserPromptExpansion",
+  "channel": "hook",
+  "channels": [
+    "hook"
+  ],
+  "transport": "http",
+  "direction": "agent-to-client",
+  "trigger": "A user-typed command expanded into its prompt before model processing.",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "UserPromptExpansion"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "expansion_type": {
+        "type": "string",
+        "enum": [
+          "slash_command",
+          "mcp_prompt"
+        ]
+      },
+      "command_name": {
+        "type": "string"
+      },
+      "command_args": {
+        "type": "string"
+      },
+      "command_source": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_args",
+      "command_name",
+      "cwd",
+      "expansion_type",
+      "hook_event_name",
+      "prompt",
+      "session_id",
+      "transcript_path"
+    ]
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "continue": {
+        "type": "boolean"
+      },
+      "stopReason": {
+        "type": "string"
+      },
+      "suppressOutput": {
+        "type": "boolean"
+      },
+      "systemMessage": {
+        "type": "string"
+      },
+      "terminalSequence": {
+        "type": "string"
+      },
+      "decision": {
+        "type": "string",
+        "enum": [
+          "block"
+        ]
+      },
+      "reason": {
+        "type": "string"
+      },
+      "hookSpecificOutput": {
+        "type": "object",
+        "properties": {
+          "hookEventName": {
+            "type": "string",
+            "enum": [
+              "UserPromptExpansion"
+            ]
+          },
+          "additionalContext": {
+            "type": "string"
+          },
+          "suppressOriginalPrompt": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "session_id": {
+        "type": "string"
+      },
+      "transcript_path": {
+        "type": "string"
+      },
+      "cwd": {
+        "type": "string"
+      },
+      "scratchpad_dir": {
+        "type": "string"
+      },
+      "prompt_id": {
+        "type": "string"
+      },
+      "permission_mode": {
+        "type": "string",
+        "enum": [
+          "default",
+          "plan",
+          "acceptEdits",
+          "auto",
+          "dontAsk",
+          "bypassPermissions"
+        ]
+      },
+      "effort": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "hook_event_name": {
+        "type": "string",
+        "enum": [
+          "UserPromptExpansion"
+        ]
+      },
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_type": {
+        "type": "string"
+      },
+      "expansion_type": {
+        "type": "string",
+        "enum": [
+          "slash_command",
+          "mcp_prompt"
+        ]
+      },
+      "command_name": {
+        "type": "string"
+      },
+      "command_args": {
+        "type": "string"
+      },
+      "command_source": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_args",
+      "command_name",
+      "cwd",
+      "expansion_type",
+      "hook_event_name",
+      "prompt",
+      "session_id",
+      "transcript_path"
+    ]
+  },
+  "schemaFidelity": {
+    "payload": "structural",
+    "result": "structural",
+    "carrier": "structural",
+    "limitations": [
+      "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+      "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
+      "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+    ]
+  },
+  "observationMode": "passive",
+  "evidence": {
+    "existence": [
+      "claude-official-hooks"
+    ],
+    "shape": [
+      "claude-official-hooks"
+    ],
+    "result": [
+      "claude-official-hooks"
+    ],
+    "carrier": [
+      "claude-official-hooks"
+    ]
+  },
+  "confidence": "unverified",
+  "timeoutSec": 5,
+  "notes": "A user-typed command expanded into its prompt before model processing."
+}

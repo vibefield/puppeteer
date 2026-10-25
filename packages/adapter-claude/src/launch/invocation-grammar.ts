@@ -15,11 +15,12 @@
  *
  * Every row is evidence-bound to one CLI version: the census test holds the table to the
  * captured `claude --help` in both directions. Evidence per row, and the probes behind the
- * classes: packages/surface/vendors/claude/findings.md §7 and probes/claude@2.1.283/.
+ * classes: packages/surface/vendors/claude/findings.md §7 (2.1.283) with its 2.1.308 changes, and
+ * probes/claude@2.1.308/invocation-grammar.json.
  */
 
 /** The Claude Code version whose grammar this table is. */
-export const CLAUDE_INVOCATION_GRAMMAR_VERSION = '2.1.283';
+export const CLAUDE_INVOCATION_GRAMMAR_VERSION = '2.1.308';
 
 /**
  * Commander's arity, read from the help's usage column: `none` (a flag), `one` (`<value>`: always
@@ -65,9 +66,11 @@ export interface ClaudeOptionRow {
  * How the CLI reaches a subcommand: `command` — commander's first operand, when the argv does not
  * ask for print mode; `first-argument` — the entry's own dispatch, only as argv[0];
  * `after-skip-permission-flags` — the entry's own dispatch, as the first argument after any
- * `--dangerously-skip-permissions` / `--allow-dangerously-skip-permissions`.
+ * `--dangerously-skip-permissions` / `--allow-dangerously-skip-permissions`; `background-verb` —
+ * the entry's background-verb index: the first operand, always as argv[0], and behind other tokens
+ * only after safe root options and before a job id (`backgroundVerbIndex`).
  */
-export type ClaudeSubcommandDispatch = 'command' | 'first-argument' | 'after-skip-permission-flags';
+export type ClaudeSubcommandDispatch = 'command' | 'first-argument' | 'after-skip-permission-flags' | 'background-verb';
 
 export interface ClaudeSubcommandRow {
   /** The name, then its aliases. */
@@ -108,7 +111,6 @@ export const CLAUDE_OPTIONS: readonly ClaudeOptionRow[] = [
   { names: ['--betas'], arity: 'variadic', class: 'carried', why: 'API beta headers' },
   { names: ['--brief'], arity: 'none', class: 'carried', why: 'enables the SendUserMessage tool' },
   { names: ['--chrome'], arity: 'none', class: 'carried', why: 'the Claude in Chrome integration' },
-  { names: ['--client-data-url'], arity: 'one', class: 'carried', why: 'a signed configuration document' },
   { names: ['--cloud'], arity: 'optional', class: 'elsewhere', why: 'the session runs in the cloud' },
   {
     names: ['-c', '--continue'],
@@ -125,6 +127,12 @@ export const CLAUDE_OPTIONS: readonly ClaudeOptionRow[] = [
   },
   { names: ['-d', '--debug'], arity: 'optional', class: 'carried', why: 'debug mode and its filter' },
   { names: ['--debug-file'], arity: 'one', class: 'carried', why: 'where debug logs go' },
+  {
+    names: ['--desktop'],
+    arity: 'none',
+    class: 'elsewhere',
+    why: 'the session opens in the Claude Desktop app, not in this terminal',
+  },
   { names: ['--disable-slash-commands'], arity: 'none', class: 'carried', why: 'disables skills' },
   { names: ['--disallowedTools', '--disallowed-tools'], arity: 'variadic', class: 'carried', why: 'tools denied' },
   { names: ['--effort'], arity: 'one', class: 'mapped', maps: 'effort', why: 'the effort level' },
@@ -315,6 +323,13 @@ export const CLAUDE_OPTIONS: readonly ClaudeOptionRow[] = [
     why: 'Remote Control for this session',
     hidden: 'a hidden root option, "Alias for --remote-control"; parse probe',
   },
+  {
+    names: ['--client-data-url'],
+    arity: 'one',
+    class: 'carried',
+    why: 'a signed configuration document',
+    hidden: 'listed until 2.1.283; still a root option taking one value (static client-data-url-option; parse probe)',
+  },
 ];
 
 const BACKGROUND_HOUSEKEEPING = 'it manages background sessions and starts none here';
@@ -326,7 +341,7 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
     names: ['attach'],
     class: 'elsewhere',
     why: 'it opens a background session that runs outside this terminal',
-    dispatch: ['first-argument'],
+    dispatch: ['background-verb'],
   },
   { names: ['auth'], class: 'utility', why: 'it manages authentication', dispatch: ['command'] },
   { names: ['auto-mode'], class: 'utility', why: 'it manages the auto mode configuration', dispatch: ['command'] },
@@ -336,14 +351,21 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
   // before the parser sees it (CLAUDE_IMPORT_REWRITE); any other form reaches this subcommand.
   { names: ['import'], class: 'utility', why: 'it prints how to import configuration', dispatch: ['command'] },
   { names: ['install'], class: 'utility', why: 'it installs Claude Code', dispatch: ['command'] },
-  { names: ['logs'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['first-argument'] },
+  { names: ['logs'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['background-verb'] },
   { names: ['mcp'], class: 'utility', why: 'it manages MCP servers', dispatch: ['command'] },
   { names: ['plugin', 'plugins'], class: 'utility', why: 'it manages plugins', dispatch: ['command'] },
-  { names: ['project'], class: 'utility', why: 'it manages project state', dispatch: ['command'] },
-  { names: ['respawn'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['first-argument'] },
-  { names: ['rm'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['first-argument'] },
+  // It asks before it deletes (unless -y), and every token after `--` is its [path]: as a prompt
+  // after the managed launch's `--`, `purge` would run the deletion instead of a session.
+  {
+    names: ['purge'],
+    class: 'utility',
+    why: "it deletes a project's Claude Code state and starts no session",
+    dispatch: ['command'],
+  },
+  { names: ['respawn'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['background-verb'] },
+  { names: ['rm'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['background-verb'] },
   { names: ['setup-token'], class: 'utility', why: 'it sets up a token', dispatch: ['command'] },
-  { names: ['stop', 'kill'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['first-argument'] },
+  { names: ['stop', 'kill'], class: 'utility', why: BACKGROUND_HOUSEKEEPING, dispatch: ['background-verb'] },
   { names: ['ultrareview'], class: 'elsewhere', why: 'the review runs in the cloud', dispatch: ['command'] },
   { names: ['update', 'upgrade'], class: 'utility', why: 'it updates Claude Code', dispatch: ['command'] },
   // Accepted by the CLI but not listed by its help.
@@ -405,6 +427,14 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
     dispatch: ['command'],
     hidden: 'a hidden subcommand',
   },
+  {
+    names: ['project'],
+    class: 'utility',
+    why: 'it manages project state',
+    dispatch: ['command'],
+    hidden:
+      'listed until 2.1.283; registered hidden, "`claude project purge` is now `claude purge`" (static project-purge-alias; parse probe)',
+  },
   ...[
     'edit-hook',
     'edit-permission-rules',
@@ -413,6 +443,8 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
     'edit-sandbox-settings',
     'edit-chrome-settings',
     'design-login',
+    // 2.1.308: requires --json and reads its request on stdin (static drop-worktree-registrations; R07).
+    'drop-worktree-registrations',
   ].map((name): ClaudeSubcommandRow => ({
     names: [name],
     class: 'utility',
@@ -426,8 +458,10 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
  * The entry's checks on the raw argv, before its parser runs. `argvIs`: the whole argv is one of
  * these; `firstTwo`: argv[0] and argv[1]; `subcommand`: a {@link CLAUDE_SUBCOMMANDS} row with that
  * dispatch, at its position (the row's class and why answer); `anywhere`: some token equals one of
- * these, `--` or not (`also`: and some token equals or starts with one of those too); `withNext`:
- * the token appears with a token after it.
+ * these, `--` or not (`also`: and some token equals or starts with one of those too); `optionToken`:
+ * one of these is an option token before `--`, not another option's value (values are skipped by
+ * the table's arities, which equal the CLI's own pre-parse sets row for row); `withNext`: the token
+ * appears with a token after it.
  */
 export type ClaudeEntryMatch =
   | { readonly argvIs: readonly (readonly string[])[] }
@@ -437,6 +471,7 @@ export type ClaudeEntryMatch =
       readonly anywhere: readonly string[];
       readonly also?: { readonly tokens: readonly string[]; readonly prefixes: readonly string[] };
     }
+  | { readonly optionToken: readonly string[] }
   | { readonly withNext: string };
 
 export interface ClaudeEntryRule {
@@ -460,9 +495,12 @@ export const CLAUDE_ENTRY_RULES: readonly ClaudeEntryRule[] = [
   { id: 'plugin-test', match: { firstTwo: ['plugin', 'test'] }, class: 'utility', why: 'it tests a plugin' },
   { id: 'first-argument', match: { subcommand: 'first-argument' } },
   { id: 'after-skip-permission-flags', match: { subcommand: 'after-skip-permission-flags' } },
+  // A background verb and --bg both take the background path; a verb wins (2.1.285+).
+  { id: 'background-verb', match: { subcommand: 'background-verb' } },
   {
     id: 'background',
-    match: { anywhere: ['--bg', '--background'] },
+    // 2.1.299+: an option token before `--`, not another option's value (`-- --bg` is a prompt).
+    match: { optionToken: ['--bg', '--background'] },
     class: 'elsewhere',
     why: 'the session starts in the background, not in this terminal',
   },
@@ -511,10 +549,12 @@ export interface ClaudeEnvironmentSwitch {
 }
 
 /**
- * In Claude Code 2.1.283 each is read through one parser, whatever reads it (findings.md §7.5):
- * CLAUDE_CODE_SIMPLE does what --bare does (no hook fires: live F01), CLAUDE_CODE_SAFE_MODE what
- * --safe-mode does (none fires: F03), and CLAUDE_CODE_RESTRICTED what --restricted does (the
- * managed hooks fire, the person's settings files are not read: F04).
+ * Each is read through one parser, whatever reads it (findings.md §7.5; re-run live on 2.1.308,
+ * probes/claude@2.1.308/hook-switches.json): CLAUDE_CODE_SIMPLE does what --bare does (no hook
+ * fires: F01), CLAUDE_CODE_SAFE_MODE what --safe-mode does (none fires: F03), and
+ * CLAUDE_CODE_RESTRICTED what --restricted does (the managed hooks fire, the person's settings
+ * files are not read: F04). 2.1.308's CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG blinds nothing: the
+ * managed `--settings` hooks fire and a managed HTTP 500 stays non-blocking (F12–F14).
  */
 export const CLAUDE_ENVIRONMENT_SWITCHES: readonly ClaudeEnvironmentSwitch[] = [
   { name: 'CLAUDE_CODE_SIMPLE', flag: '--bare', class: 'rejected', why: HOOKS_OFF },
@@ -609,12 +649,106 @@ function quoted(token: string): string {
   return `\`${token}\``;
 }
 
+/**
+ * The index of the last token the option at `index` takes (itself when it takes none), by the
+ * table's arity for a whole token; a token with no row takes nothing.
+ */
+function lastValueIndex(argv: readonly string[], index: number): number {
+  const row = OPTIONS_BY_NAME.get(argv[index]!);
+  if (row === undefined || row.arity === 'none') return index;
+  const next = argv[index + 1];
+  if (row.arity === 'optional') return next !== undefined && !looksLikeOption(next) ? index + 1 : index;
+  let last = index + 1;
+  if (row.arity === 'variadic') {
+    while (argv[last + 1] !== undefined && !looksLikeOption(argv[last + 1]!)) last += 1;
+  }
+  return last;
+}
+
+/** The CLI's first operand: the first token that is neither an option nor an option's value, or the one after `--`. */
+function firstOperandIndex(argv: readonly string[]): number {
+  for (let index = 0; index < argv.length; index = lastValueIndex(argv, index) + 1) {
+    const token = argv[index]!;
+    if (token === '--') return index + 1 < argv.length ? index + 1 : -1;
+    if (!looksLikeOption(token)) return index;
+  }
+  return -1;
+}
+
+/** The index of one of `tokens` as an option token before `--` (never another option's value), or -1. */
+function optionTokenIndex(argv: readonly string[], tokens: readonly string[]): number {
+  for (let index = 0; index < argv.length; index = lastValueIndex(argv, index) + 1) {
+    const token = argv[index]!;
+    if (token === '--') return -1;
+    if (tokens.includes(token)) return index;
+  }
+  return -1;
+}
+
+/** A job id the CLI takes as naming a background session behind root options. */
+const BACKGROUND_JOB_ID = /^[a-f0-9]{8}$/u;
+/** Before a background verb, these make it a prompt: print, background, help and version. */
+const BACKGROUND_VERB_BREAKERS = new Set([
+  '-p',
+  '--print',
+  '--bg',
+  '--background',
+  '--routine',
+  '-h',
+  '--help',
+  '-v',
+  '-V',
+  '--version',
+]);
+
+/**
+ * A root option a background verb may follow: any row's whole token, or `--name=value` for a row
+ * that takes a value — except the breakers, `--routine=…`, and short clusters (`-cd`, `-nfoo`).
+ */
+function backgroundSafeRootOption(token: string): boolean {
+  if (BACKGROUND_VERB_BREAKERS.has(token) || token.startsWith('--routine=') || /^-[A-Za-z]{2,}$/u.test(token)) {
+    return false;
+  }
+  if (OPTIONS_BY_NAME.has(token)) return true;
+  const equals = token.indexOf('=');
+  const row = equals === -1 ? undefined : OPTIONS_BY_NAME.get(token.slice(0, equals));
+  return row !== undefined && row.arity !== 'none';
+}
+
+/**
+ * The entry's background-verb index (2.1.285+, probes R01–R03): a `background-verb` row as the
+ * first operand. As argv[0] it always dispatches; behind other tokens only when the verb does not
+ * directly follow `--`, the token after it is an 8-hex job id (or `respawn --all`), and every token
+ * before it is a safe root option. Otherwise it is a prompt. Inside a background session
+ * (`CLAUDE_CODE_SESSION_KIND=bg`) the CLI dispatches only argv[0]; the reader does not see that
+ * variable and reads the verb as dispatched — a passthrough, the safe direction.
+ */
+function backgroundVerbIndex(argv: readonly string[]): number {
+  const index = firstOperandIndex(argv);
+  const row = index === -1 ? undefined : SUBCOMMANDS_BY_NAME.get(argv[index]!);
+  if (!row?.dispatch.includes('background-verb')) return -1;
+  if (index === 0) return 0;
+  if (argv[index - 1] === '--') return -1;
+  const next = argv[index + 1];
+  if (next === undefined || !(BACKGROUND_JOB_ID.test(next) || (argv[index] === 'respawn' && next === '--all'))) {
+    return -1;
+  }
+  for (let position = 0; position < index; position = lastValueIndex(argv, position) + 1) {
+    if (!backgroundSafeRootOption(argv[position]!)) return -1;
+  }
+  return index;
+}
+
 /** The reading one entry rule gives the raw argv, or `undefined` when it does not match. */
 function entryReading(rule: ClaudeEntryRule, argv: readonly string[]): ClaudeInvocationReading | undefined {
   const match = rule.match;
   if ('subcommand' in match) {
     const position =
-      match.subcommand === 'first-argument' ? argv[0] : argv.find((token) => !SKIP_PERMISSION_FLAGS.has(token));
+      match.subcommand === 'first-argument'
+        ? argv[0]
+        : match.subcommand === 'background-verb'
+          ? argv[backgroundVerbIndex(argv)]
+          : argv.find((token) => !SKIP_PERMISSION_FLAGS.has(token));
     const row = position === undefined ? undefined : SUBCOMMANDS_BY_NAME.get(position);
     return row?.dispatch.includes(match.subcommand) ? passthrough(row.class, row.why) : undefined;
   }
@@ -628,6 +762,8 @@ function entryReading(rule: ClaudeEntryRule, argv: readonly string[]): ClaudeInv
   } else if ('withNext' in match) {
     const index = argv.indexOf(match.withNext);
     matched = index !== -1 && argv[index + 1] !== undefined;
+  } else if ('optionToken' in match) {
+    matched = optionTokenIndex(argv, match.optionToken) !== -1;
   } else {
     const also = match.also;
     matched =
@@ -684,22 +820,11 @@ function importRewrite(argv: readonly string[]): readonly string[] | undefined {
 function scanBeforeParse(argv: readonly string[]): { print: boolean; connect: boolean } {
   let print = false;
   let connect = false;
-  for (let index = 0; index < argv.length; index += 1) {
+  for (let index = 0; index < argv.length; index = lastValueIndex(argv, index) + 1) {
     const token = argv[index]!;
     if (token === '--') break;
     if (token === '-p' || token === '--print') print = true;
     if (token.startsWith('cc://') || token.startsWith('cc+unix://')) connect = true;
-    const row = OPTIONS_BY_NAME.get(token);
-    if (row === undefined || row.arity === 'none') continue;
-    const next = argv[index + 1];
-    if (row.arity === 'optional') {
-      if (next !== undefined && !looksLikeOption(next)) index += 1;
-      continue;
-    }
-    index += 1;
-    if (row.arity === 'variadic') {
-      while (argv[index + 1] !== undefined && !looksLikeOption(argv[index + 1]!)) index += 1;
-    }
   }
   return { print, connect };
 }
@@ -987,9 +1112,16 @@ export function readClaudeInvocation(argv: readonly string[]): ClaudeInvocationR
     };
   }
   // The managed launch puts its own flags first and the prompt after `--`: the entry must read
-  // that argv as the same plain session, or the arguments cannot be passed on as typed.
+  // that argv as the same plain session, or the arguments cannot be passed on as typed. Its first
+  // operand must not select a subcommand either: commander dispatches one even after `--` (2.1.308
+  // probe R05: `claude -- purge` runs purge, its [path] then every later token).
   const shape = managedShape(reading);
-  if (entryDispatch(shape) !== undefined || importRewrite(shape) !== undefined) {
+  const firstOperand = shape[firstOperandIndex(shape)];
+  if (
+    entryDispatch(shape) !== undefined ||
+    importRewrite(shape) !== undefined ||
+    (firstOperand !== undefined && SUBCOMMANDS_BY_NAME.get(firstOperand)?.dispatch.includes('command') === true)
+  ) {
     return {
       status: 'rejected',
       reason: 'the managed launch could not pass these arguments on as typed',
