@@ -6,9 +6,9 @@ import { PassThrough } from 'node:stream';
 import type { ChildProcess } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
+const mocks = vi.hoisted(() => ({ spawn: vi.fn(), execFile: vi.fn() }));
 
-vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
+vi.mock('node:child_process', () => ({ spawn: mocks.spawn, execFile: mocks.execFile }));
 
 import { spawnAppServer } from './app-server-process.js';
 
@@ -114,5 +114,33 @@ describe('spawnAppServer process contract', () => {
     await expect(ready).rejects.toThrow(/exited before ready.*configuration could not be loaded/s);
     await server.dispose();
     expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it('ends the whole process tree on Windows, where kill() would leave the app-server helpers running', async () => {
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
+    try {
+      const child = new FakeChildProcess();
+      mocks.spawn.mockReturnValue(child.asChildProcess());
+      mocks.execFile.mockImplementation((_file: string, _args: string[], _options: object, callback: () => void) => {
+        queueMicrotask(() => {
+          child.exitCode = 1;
+          child.emit('exit', 1, null);
+          callback();
+        });
+      });
+      const server = spawnAppServer({ executable: 'codex-test', transport: 'websocket' });
+      await server.dispose();
+      expect(mocks.execFile).toHaveBeenCalledOnce();
+      expect(mocks.execFile).toHaveBeenCalledWith(
+        'taskkill',
+        ['/PID', '4242', '/T', '/F'],
+        { windowsHide: true },
+        expect.any(Function),
+      );
+      expect(child.kill).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+    }
   });
 });
