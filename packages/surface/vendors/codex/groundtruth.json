@@ -69,6 +69,50 @@
         "integrity": {
           "status": "verified",
           "sha256": "sha256:d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+        },
+        "artifactKind": "standalone-executable",
+        "acquisitionKey": "codex@0.164.0@darwin-arm64@sha256:d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+      },
+      {
+        "id": "codex-0.164.0-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:17:03.291Z",
+        "versionOutput": "codex-cli 0.164.0",
+        "sourceUrl": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-x86_64-apple-darwin.tar.gz",
+        "acquisitionKey": "codex@0.164.0@darwin-x64@sha256:d7e19691e0c1945612475ee8ab32e59ead55472e976b5cea1682d827d34dbba1",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:d7e19691e0c1945612475ee8ab32e59ead55472e976b5cea1682d827d34dbba1"
+        }
+      },
+      {
+        "id": "codex-0.164.0-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:17:03.484Z",
+        "versionOutput": "codex-cli 0.164.0",
+        "sourceUrl": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-x86_64-unknown-linux-musl.tar.gz",
+        "acquisitionKey": "codex@0.164.0@linux-x64@sha256:b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306"
+        }
+      },
+      {
+        "id": "codex-0.164.0-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:17:03.712Z",
+        "versionOutput": "codex-cli 0.164.0",
+        "sourceUrl": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-x86_64-pc-windows-msvc.tar.gz",
+        "acquisitionKey": "codex@0.164.0@windows-x64@sha256:6f267830b029ee25d9339864aa867cd45de9f8fd4c5ea007d2e63c13a0c66d36",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:6f267830b029ee25d9339864aa867cd45de9f8fd4c5ea007d2e63c13a0c66d36"
         }
       }
     ],

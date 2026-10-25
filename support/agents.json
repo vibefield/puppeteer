@@ -63,17 +63,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-codex",
       "persona": "codex",
       "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-      "currentVersion": "0.147.0",
-      "status": "legacy-verified",
-      "legacyEvidence": {
-        "kind": "pre-asm-v2-baseline",
-        "version": "0.147.0",
-        "modelSha256": "d4d3bc10031505878233743032fd529fce4741f9228158361d5b6675763904cc",
-        "frozenOn": "2026-08-09",
-        "reason": "Grandfathered support predates the complete multi-platform artifact attestation required by the guarded promotion workflow."
-      },
+      "currentVersion": "0.164.0",
+      "status": "verified",
       "introducedInPuppeteer": "0.1.8",
-      "candidateVersion": "0.164.0"
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "c20fef3a714b3061446ae360b7551cc821350884",
+        "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
+        "vendorVersion": "0.164.0",
+        "evidenceDigest": "9f2d9d1634a16e4519a9f7df3da9fa8104e0531c1f48fedacb7e363998b3cc88",
+        "replayDigest": "1f66d0ac24d56902f182f74039d87371b542b20f8caac34a3211d006f84d99a0",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/adapt/upstream-claude-codex-grok",
+        "runId": "40243951864",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:d7e19691e0c1945612475ee8ab32e59ead55472e976b5cea1682d827d34dbba1"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:b93f6811d3f653f0fb83be4050d857fb9abbb111dfa2ce160563327daff7f306"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:6f267830b029ee25d9339864aa867cd45de9f8fd4c5ea007d2e63c13a0c66d36"
+          }
+        ]
+      }
     },
     {
       "id": "copilot",
