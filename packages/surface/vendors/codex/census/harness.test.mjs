@@ -1,5 +1,16 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, isAbsolute, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SCENARIOS, censusEnvironment, resolveCodexExecutable, routerErrors, scenarioFailures } from './harness.mjs';
+import {
+  SCENARIOS,
+  censusEnvironment,
+  explicitCodexExecutable,
+  hermeticPath,
+  resolveCodexExecutable,
+  routerErrors,
+  scenarioFailures,
+} from './harness.mjs';
 
 const item = (method, type) => ({ method, params: { item: { type } } });
 const turnArc = (...types) => [
@@ -144,6 +155,36 @@ describe('the census runs hermetically', () => {
     );
     expect(resolveCodexExecutable({ bin: '/x/codex', packageRoot: '/pkg' })).toBe('/x/codex');
     expect(resolveCodexExecutable({ env: { PUPPETEER_CODEX_BIN: '/other/codex' } })).toBe('/other/codex');
-    expect(resolveCodexExecutable({ env: {} })).toBe('codex');
+  });
+
+  it('never falls back to codex on PATH, where the operator’s own signed-in install lives', () => {
+    expect(explicitCodexExecutable({ env: {} })).toBeUndefined();
+    expect(() => resolveCodexExecutable({ env: {} })).toThrow(/codex on PATH is never run/);
+    // A bare name is a path relative to the working directory, never a PATH lookup.
+    const named = resolveCodexExecutable({ env: { PUPPETEER_CODEX_BIN: 'codex' } });
+    expect(isAbsolute(named)).toBe(true);
+    expect(named).toBe(resolve('codex'));
+  });
+
+  it('drops every PATH directory that provides another codex, keeping the reviewed one’s own', () => {
+    const root = mkdtempSync(join(tmpdir(), 'codex-hermetic-path-'));
+    try {
+      const [installed, windows, tools, reviewed] = ['installed', 'windows', 'tools', 'reviewed'].map((name) => {
+        mkdirSync(join(root, name));
+        return join(root, name);
+      });
+      writeFileSync(join(installed, 'codex'), '');
+      writeFileSync(join(windows, 'codex.exe'), '');
+      writeFileSync(join(reviewed, 'codex'), '');
+      const path = [installed, '', windows, tools, reviewed].join(delimiter);
+      expect(hermeticPath(path, join(reviewed, 'codex'))).toBe([tools, reviewed].join(delimiter));
+      expect(hermeticPath(path)).toBe(tools);
+      expect(censusEnvironment('/scratch/home', { PATH: path }, { executable: join(reviewed, 'codex') }).PATH).toBe(
+        [tools, reviewed].join(delimiter),
+      );
+      expect(censusEnvironment('/scratch/home', {}).PATH).toBeUndefined();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

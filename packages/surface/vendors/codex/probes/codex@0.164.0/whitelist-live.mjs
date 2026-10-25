@@ -8,13 +8,12 @@
 // (model, tools, reasoning, permission lines and their digests, images, whether the prompt arrived),
 // the TUI's own error lines, and the process sweep. Dropped: screens, directories, thread and message
 // ids, prompt and instruction text, and every other field. The case root is already `<root>` in the
-// raw output; the detector in `@vibefield/puppeteer-surface/sanitize` must find nothing in the result.
+// raw output. The kept fields still carry whatever the TUI printed, so the result goes through the
+// probe-record gate (`checkProbeRecord`, census/sanitize.mjs) and nothing is written if it reports anything.
 import { readFileSync, writeFileSync } from 'node:fs';
-
-const [casesPath, rawPath, outputPath, version] = process.argv.slice(2);
-if (!version) throw new Error('usage: whitelist-live.mjs <cases> <raw> <output> <codex version>');
-const cases = new Map(JSON.parse(readFileSync(casesPath, 'utf8')).map((entry) => [entry.id, entry]));
-const raw = JSON.parse(readFileSync(rawPath, 'utf8'));
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkProbeRecord } from '../../census/sanitize.mjs';
 
 const TITLE_PROMPT = 'Generate a concise, single-line task title';
 const PERMISSION_LINE =
@@ -87,8 +86,13 @@ function projectTui(result) {
 
 const screenErrors = (screen = '') => [...new Set(screen.match(/Error: [^.\n]*\./gu) ?? [])];
 
-const sessions = raw.map((result) => {
-  const entry = cases.get(result.id) ?? {};
+/** The committed record for `raw` (the live test's results array), keyed to `cases` by id. */
+export function projectLiveResults(cases, raw, version) {
+  const byId = new Map(cases.map((entry) => [entry.id, entry]));
+  return { codex: version, sessions: raw.map((result) => projectSession(result, byId.get(result.id) ?? {})) };
+}
+
+function projectSession(result, entry) {
   const session = {
     session: result.id.split('-')[0],
     case: result.id,
@@ -118,7 +122,24 @@ const sessions = raw.map((result) => {
   session.alternateScreen = result.altScreen ?? null;
   session.processesSweptAfter = result.survivorsKilled ?? 0;
   return session;
-});
+}
 
-writeFileSync(outputPath, `${JSON.stringify({ codex: version, sessions }, null, 2)}\n`);
-console.log(`${sessions.length} session(s) -> ${outputPath}`);
+const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (invokedDirectly) {
+  const [casesPath, rawPath, outputPath, version] = process.argv.slice(2);
+  if (!version) throw new Error('usage: whitelist-live.mjs <cases> <raw> <output> <codex version>');
+  const document = projectLiveResults(
+    JSON.parse(readFileSync(casesPath, 'utf8')),
+    JSON.parse(readFileSync(rawPath, 'utf8')),
+    version,
+  );
+  const issues = checkProbeRecord(document);
+  if (issues.length > 0) {
+    // Locations only: the values are what must not be printed or kept.
+    for (const issue of issues.slice(0, 20)) console.error(issue);
+    console.error(`${issues.length} issue(s); nothing was written to ${outputPath}.`);
+    process.exit(1);
+  }
+  writeFileSync(outputPath, `${JSON.stringify(document, null, 2)}\n`);
+  console.log(`${document.sessions.length} session(s) -> ${outputPath}`);
+}

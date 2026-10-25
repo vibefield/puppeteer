@@ -126,10 +126,10 @@ describe('persona boot', () => {
     expect(resumed.emitted[0]!.payload).toMatchObject({
       session_id: '64a61b19-f4d8-4f96-ba56-07024b470813',
       source: 'resume',
-      seconds_since_last_response: 29,
-      context_tokens: 3152,
+      seconds_since_last_response: 19,
+      context_tokens: 3005,
       prompt_cache_likely_expired: true,
-      estimated_cache_write_usd: 0.0118,
+      estimated_cache_write_usd: 0.0113,
     });
   });
 

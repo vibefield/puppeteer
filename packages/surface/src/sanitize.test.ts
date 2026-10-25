@@ -150,9 +150,35 @@ describe('absolute temp roots', () => {
     expect(sanitizeRecord(clean)).toEqual(clean);
   });
 
+  it('treats a file URL as the local temp path it names', () => {
+    // A file URL's path is local, so the slash before it is not a URL path's.
+    const raw = {
+      note: 'attached file:///private/tmp/agent-1001/-Users-bob-secretproj/a.png',
+      image: 'file:///tmp/probe-home-x8Yq/shot.png',
+      local: 'file://localhost/private/tmp/agent-1001/x',
+    };
+    // Redacting the slug alone leaves the uid and the checkout name behind.
+    const slugOnly = { note: 'attached file:///private/tmp/agent-1001/-Users-<redacted>-secretproj/a.png' };
+    expect(checkRecord(slugOnly)).toEqual([expect.stringContaining('unsafe text at note')]);
+    expect(checkRecord(raw)).toEqual([
+      expect.stringContaining('unsafe text at note'),
+      expect.stringContaining('unsafe text at image'),
+      expect.stringContaining('unsafe text at local'),
+    ]);
+    const clean = sanitizeRecord(raw);
+    expect(clean).toEqual({
+      note: 'attached file:///workspace/redacted-path',
+      image: 'file:///workspace/redacted-path',
+      local: 'file://localhost/workspace/redacted-path',
+    });
+    expect(checkRecord(clean)).toEqual([]);
+    expect(sanitizeRecord(clean)).toEqual(clean);
+  });
+
   it('leaves other temp-like and URL paths alone', () => {
     const benign = {
       label: 'see /var/tmp/cache and https://example.invalid/tmp/x',
+      remote: 'file://fileserver/tmp/shared and file:///var/tmp/cache',
       relative: 'build/tmp/out',
       flag: 'excludeSlashTmp',
     };

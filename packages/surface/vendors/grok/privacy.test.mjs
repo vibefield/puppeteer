@@ -6,6 +6,8 @@ import { REDACTED_EPOCH_MS, checkRecord, extendRules } from '@vibefield/puppetee
 import {
   REDACTED_EPOCH_SECONDS,
   REDACTED_MACHINE_AGENT_ID,
+  REDACTED_MEMTRACE_NAME,
+  SYNTHETIC_ROOTS,
   checkGrokCaptureDirectory,
   checkGrokOnlyRecord,
   checkGrokRecord,
@@ -14,7 +16,11 @@ import {
 } from './privacy.mjs';
 import { sanitizeGrokCaptureSet } from './sanitize-captures.mjs';
 
-/** The rules this vendor shipped before the 1.0.70 survey: they passed every leak below. */
+/**
+ * The Grok keys this vendor shipped before the 1.0.70 survey, on top of the CURRENT shared
+ * defaults. Those defaults later gained a temp-root rule, so the survey's temp-rooted path
+ * leaks are now caught here too; see `TEMP_ROOTED_LEAKS`.
+ */
 const previousGrokRules = extendRules({ sensitiveTextKey: /^(?:signature|prompt_text|summary_preview|description)$/i });
 
 // A disposable census root shaped like the survey's (uid-scoped temp dir, short socket dir).
@@ -92,6 +98,22 @@ const surveyedLeaks = {
   },
 };
 
+/**
+ * The surveyed path leaks sat under the uid-scoped temp root, which the shared temp-root
+ * rule (added after the survey) now reports by itself. TMPDIR is relocatable, though, and
+ * the shared rule deliberately leaves `/var/tmp/…` out of scope.
+ */
+const TEMP_ROOTED_LEAKS = ['currentWorkingDirectory', 'facets', 'outputFile'];
+
+/** The same record captured under `/var/tmp`, in plain and percent-encoded (session-bucket) form. */
+function relocateCensusRoot(record) {
+  return JSON.parse(
+    JSON.stringify(record)
+      .replaceAll('/private/tmp/', '/var/tmp/')
+      .replaceAll('%2Fprivate%2Ftmp%2F', '%2Fvar%2Ftmp%2F'),
+  );
+}
+
 describe('Grok capture privacy', () => {
   it('treats native prose and signatures as sensitive regardless of nesting', () => {
     const raw = {
@@ -118,14 +140,52 @@ describe('Grok capture privacy', () => {
   });
 
   it('detects every surveyed 1.0.70 leak that the previous rules reported clean', () => {
-    for (const [name, record] of Object.entries(surveyedLeaks)) {
-      const previous = checkRecord(record, previousGrokRules).filter(
+    const previous = (record) =>
+      checkRecord(record, previousGrokRules).filter(
         // The shared clock rule always caught a bare `timestamp`; it pinned it to the wrong unit instead.
         (issue) => !issue.includes('unpinned wall-clock timestamp at timestamp'),
       );
-      expect(previous, name).toEqual([]);
+    for (const [name, record] of Object.entries(surveyedLeaks)) {
       expect(checkGrokRecord(record).length, name).toBeGreaterThan(0);
+      if (!TEMP_ROOTED_LEAKS.includes(name)) {
+        expect(previous(record), name).toEqual([]);
+        continue;
+      }
+      // Positive control: the shared temp-root rule now reports the surveyed path by itself.
+      expect(previous(record).length, name).toBeGreaterThan(0);
+      expect(
+        previous(record).every((issue) => issue.includes(': unsafe text at ')),
+        name,
+      ).toBe(true);
+      // Negative control: the same census under a root outside that rule's scope still passes
+      // the previous rules, and only the Grok synthetic-root detector rejects it.
+      const relocated = relocateCensusRoot(record);
+      expect(JSON.stringify(relocated), name).not.toContain('/private/tmp/');
+      expect(previous(relocated), name).toEqual([]);
+      expect(checkGrokOnlyRecord(relocated), name).toContainEqual(
+        expect.stringContaining('absolute path outside synthetic roots'),
+      );
     }
+  });
+
+  it('keeps every synthetic root through the shared pass and passes both detectors', () => {
+    const record = {
+      arguments: ['agent', '--leader', '--leader-socket', `${SYNTHETIC_ROOTS.socketDir}/leader.sock`, 'stdio'],
+      _meta: { currentWorkingDirectory: SYNTHETIC_ROOTS.workspace, tmp: `${SYNTHETIC_ROOTS.tmp}/x` },
+    };
+    for (const root of Object.values(SYNTHETIC_ROOTS)) {
+      // A temp-rooted placeholder is private to the shared gate and flattened by its redaction.
+      expect(root, 'synthetic root').not.toMatch(/^\/(?:private\/)?tmp(?:\/|$)/);
+    }
+    expect(sanitizeGrokRecord(record)).toEqual(record);
+    expect(checkRecord(record)).toEqual([]);
+    expect(checkGrokRecord(record)).toEqual([]);
+    // The previous placeholder fails both, so it can never be reintroduced silently.
+    const temporary = { arguments: ['--leader-socket', '/tmp/grok-census/leader.sock'] };
+    expect(checkRecord(temporary)).toEqual(['<record>.arguments[1]: unsafe text at arguments']);
+    expect(checkGrokOnlyRecord(temporary)).toEqual([
+      '<record>.arguments[1]: absolute path outside synthetic roots at arguments',
+    ]);
   });
 
   it('redacts each surveyed leak in place without changing native types', () => {
@@ -162,6 +222,21 @@ describe('Grok capture privacy', () => {
     );
     // The seconds pin never exceeds the shared detector's floor, so the default repository gate accepts it.
     expect(checkRecord({ timestamp: REDACTED_EPOCH_SECONDS })).toEqual([]);
+  });
+
+  it('pins the memtrace start clock and pid that the store listing carries in a file name', () => {
+    // The viewer writes GROK_HOME/memtrace/<unix seconds>-<pid>.jsonl; no key rule sees a name.
+    const listing = { grokHomeFiles: ['config.toml', 'memtrace/1792904405-8116.jsonl'] };
+    expect(checkRecord(listing)).toEqual([]);
+    expect(checkRecord(listing, grokRules)).toEqual([]);
+    expect(checkGrokOnlyRecord(listing)).toEqual([
+      '<record>.grokHomeFiles[1]: unpinned memtrace start clock or pid at grokHomeFiles',
+    ]);
+    const sanitized = sanitizeGrokRecord(listing);
+    expect(sanitized.grokHomeFiles).toEqual(['config.toml', REDACTED_MEMTRACE_NAME]);
+    expect(REDACTED_MEMTRACE_NAME).toBe(`memtrace/${REDACTED_EPOCH_SECONDS}-0.jsonl`);
+    expect(checkGrokRecord(sanitized)).toEqual([]);
+    expect(checkGrokOnlyRecord({ path: `/home/user/.grok/${REDACTED_MEMTRACE_NAME}` })).toEqual([]);
   });
 
   it('replaces the stable machine agentId with one constant and aliases xAI prefixed ids', () => {
@@ -323,6 +398,14 @@ describe('Grok capture privacy', () => {
         }),
       );
       expect(diff.path).toMatch(/^\/workspace/);
+      // The leader-socket topology survives the shared pass under its synthetic root.
+      const topology = JSON.parse(readFileSync(join(output, 'viewer-session', 'topology.json'), 'utf8'));
+      expect(topology.processes[0].arguments).toEqual([
+        'agent',
+        'leader',
+        '--leader-socket',
+        `${SYNTHETIC_ROOTS.socketDir}/leader.sock`,
+      ]);
       const durable = JSON.parse(readFileSync(join(output, 'viewer-session', 'updates.jsonl'), 'utf8'));
       expect(durable.timestamp).toBe(REDACTED_EPOCH_SECONDS);
       expect(durable.params.update.content.text).toBe('<redacted:text>');

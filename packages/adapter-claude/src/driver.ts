@@ -818,7 +818,12 @@ function createClaudeObservation(
       }
     }
     for (const event of normalized.events) {
-      if (event.type === 'model:updated' && event.model && !normalized.agentId && !rootModel.admitHook(event.model)) {
+      if (
+        event.type === 'model:updated' &&
+        event.model &&
+        !normalized.agentId &&
+        !rootModel.admitHook(event.model, body)
+      ) {
         continue;
       }
       if (event.type === 'context-window:invalidated') {
@@ -876,18 +881,23 @@ function createClaudeObservation(
 
     const environmentEvents = claudeEnvironmentEvents(statusEnvelope.body);
     if (environmentEvents.length > 0) {
-      const environmentKey = JSON.stringify(environmentEvents);
-      if (environmentKey !== observedStatusEnvironmentKey) {
-        observedStatusEnvironmentKey = environmentKey;
-        for (const event of environmentEvents) {
-          if (event.type === 'model:updated' && event.model) rootModel.observeStatusLine(event.model);
-          apply(event, {
-            source: 'native-statusline',
-            timestamp: statusEnvelope.receivedAt,
-            providerVersion: payloadVersion(statusEnvelope.body),
-            native: statusEnvelope.body,
-          });
-        }
+      // The model card is news against the root model either rail last published (the hooks can
+      // move it between refreshes); the rest of the snapshot against the status line's own reading.
+      const environmentKey = JSON.stringify(environmentEvents.filter((event) => event.type !== 'model:updated'));
+      const environmentChanged = environmentKey !== observedStatusEnvironmentKey;
+      observedStatusEnvironmentKey = environmentKey;
+      for (const event of environmentEvents) {
+        const news =
+          event.type === 'model:updated'
+            ? event.model !== null && rootModel.admitStatusLine(event.model)
+            : environmentChanged;
+        if (!news) continue;
+        apply(event, {
+          source: 'native-statusline',
+          timestamp: statusEnvelope.receivedAt,
+          providerVersion: payloadVersion(statusEnvelope.body),
+          native: statusEnvelope.body,
+        });
       }
     }
 

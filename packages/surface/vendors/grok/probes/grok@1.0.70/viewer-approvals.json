@@ -5,8 +5,9 @@
   "versionOutput": "grok 1.0.70 (f50904eaee6c)",
   "artifactSha256": "5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec",
   "harness": "packages/surface/vendors/grok/census/harness.mjs --approval-probe",
+  "capturedAt": "2026-10-25T09:20:45.252Z",
   "topology": "one leader, one ACP controller that leaves session/request_permission unanswered, and the native viewer (grok --leader --resume) in a PTY; loopback model provider; disposable HOME/GROK_HOME",
-  "method": "Viewer keystrokes are control input only. Each outcome is read from the controller’s ACP frames, the workspace file the mutating command writes, and the persisted-rule count; terminal text is never consulted.",
+  "method": "Viewer keystrokes are control input only. Each outcome is read from the controller’s ACP frames, the workspace file the mutating command writes, and the persisted-rule count and location; terminal text is never consulted, and no rule file is copied or read.",
   "probes": {
     "viewer-answers": {
       "cases": [
@@ -633,7 +634,7 @@
             "label": "after-probes",
             "stopReason": "end_turn",
             "timedOut": false,
-            "promptResultMs": 116,
+            "promptResultMs": 165,
             "signalsPresentAtResult": true,
             "signalsAppearedAfterResultMs": 0,
             "signalsTurnCountAtResult": 4,
@@ -774,7 +775,7 @@
             },
             {
               "direction": "agent-to-client",
-              "childSessionFrames": 4
+              "childSessionFrames": 9
             },
             {
               "direction": "agent-to-client",
@@ -807,7 +808,7 @@
             },
             {
               "direction": "agent-to-client",
-              "childSessionFrames": 7
+              "childSessionFrames": 2
             },
             {
               "direction": "agent-to-client",
@@ -894,6 +895,236 @@
         {
           "id": "viewer-allow-spawn-request-reaches-controller",
           "ok": true
+        }
+      ]
+    },
+    "viewer-answers-always": {
+      "cases": [
+        {
+          "label": "viewer-allow-always",
+          "input": [
+            "1",
+            "Enter"
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "1"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "session_summary_generated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "session_info_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "in_progress"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_message_chunk",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "last_turn_summary"
+            }
+          ],
+          "stopReason": "end_turn",
+          "interactionResolved": true,
+          "toolRan": true,
+          "permissionRuleFilesWritten": 1,
+          "permissionRules": [
+            {
+              "location": "sessions/<cwd>",
+              "namedFor": "controller"
+            }
+          ],
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": true
+            }
+          ],
+          "followUp": {
+            "permissionRequests": 0,
+            "toolRan": true,
+            "stopReason": "end_turn",
+            "permissionRuleFilesWritten": 0
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "leader-socket-ready",
+          "ok": true
+        },
+        {
+          "id": "initialize-result",
+          "ok": true
+        },
+        {
+          "id": "session-new-result",
+          "ok": true
+        },
+        {
+          "id": "viewer-attached",
+          "ok": true
+        },
+        {
+          "id": "viewer-allow-always-request-reaches-controller",
+          "ok": true
+        },
+        {
+          "id": "allow-always-persists-one-rule",
+          "ok": true,
+          "detail": [
+            {
+              "location": "sessions/<cwd>",
+              "namedFor": "controller"
+            }
+          ]
+        },
+        {
+          "id": "allow-always-answers-the-next-request",
+          "ok": true,
+          "detail": {
+            "permissionRequests": 0,
+            "toolRan": true,
+            "stopReason": "end_turn",
+            "permissionRuleFilesWritten": 0
+          }
         }
       ]
     },

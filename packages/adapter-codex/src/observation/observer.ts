@@ -20,8 +20,10 @@
  * resumed, not appear as an empty new session. The history is read through
  * `thread-history.ts`: `thread/resume` with `excludeTurns`, then paged
  * `thread/turns/list`, and the deprecated full hydration only on an app-server that
- * predates them (0.150.x, 0.147.0). Replayed history is Codex's persisted copy, so a
- * replayed command output can be capped at 64 KiB where the live one was not.
+ * predates them (0.150.x, 0.147.0). A history that cannot be read in full is
+ * replayed as far as it was read and then reported as a `codex-history-incomplete`
+ * diagnostic. Replayed history is Codex's persisted copy, so a replayed command
+ * output can be capped at 64 KiB where the live one was not.
  */
 
 import {
@@ -280,10 +282,12 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
         applyEnvironmentFromResponse(resumed);
         let turns = turnsOf(resumed);
+        let incomplete: { readonly reason: string } | undefined;
         if (!fresh) {
           // Never throws: history enrichment must never prevent live resume attachment.
           const read = await history.read(threadId, resumed);
           turns = read.turns;
+          incomplete = read.incomplete;
           threadPath = read.path ?? threadPath;
         }
         // A thread this connection just created has no prior turns or usage.
@@ -296,6 +300,25 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         // directly to its consumer without dropping bootstrap metadata.
         pendingHistoryReplay = () => {
           const replayedTurnIds = replayCompletedTurns(turns);
+          if (incomplete) {
+            // The replay above is the oldest part of the thread, so the latest answer and turn the
+            // projection now shows may be older than the real ones. Say so rather than look complete.
+            apply(
+              {
+                type: 'adapter:native-event',
+                adapter: 'codex',
+                nativeType: 'thread.history.incomplete',
+                diagnostic: {
+                  code: 'codex-history-incomplete',
+                  message:
+                    `Codex thread history could not be read in full (${incomplete.reason}); ` +
+                    `${replayedTurnIds.size} earliest turn(s) were replayed and later ones are missing.`,
+                },
+              },
+              'runtime',
+              { reason: incomplete.reason, turnsReplayed: replayedTurnIds.size },
+            );
+          }
           if (contextWindow && !contextWindowObserved) {
             emitMonitorBatch(
               monitorEvidence.contextBootstrapBatch(contextWindow, new Date().toISOString(), 'rollout-token-count'),

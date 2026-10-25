@@ -4,11 +4,11 @@
  * shell-free command forwarder, every other event as an HTTP hook whose bearer
  * Claude interpolates from an allow-listed environment variable.
  *
- * HTTP matters for evidence, not only parity: since 2.1.283 a print-mode
- * process exits without waiting for its StopFailure command hooks, so a
- * forwarder that needs ~100 ms to start loses the race, while the HTTP request
- * is already on the wire. A command-hook census therefore under-reports
- * StopFailure; this sink does not.
+ * HTTP matters for evidence, not only parity: during adaptation a 2.1.283+
+ * print-mode process was seen to exit before a StopFailure command forwarder
+ * (~100 ms to start) completed, while the HTTP request was already on the
+ * wire (an unrecorded bisect; findings.md). A command-hook census can
+ * therefore under-report StopFailure; this sink does not.
  *
  * Each payload is appended verbatim to `<outputRoot>/<mode>/<Event>.jsonl`.
  * Status-line payloads go to the auxiliary tree. Arrival order is kept in

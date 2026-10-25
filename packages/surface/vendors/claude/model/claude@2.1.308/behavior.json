@@ -340,7 +340,7 @@
       },
       "lane": "turn",
       "order": 18,
-      "description": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Print mode exits without awaiting its command hooks."
+      "description": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed."
     },
     {
       "id": "teammate-idle",

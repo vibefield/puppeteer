@@ -75,14 +75,14 @@
       "kind": "probe-set",
       "path": "packages/surface/vendors/claude/probes/claude@2.1.308",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "2c85819949a0c45fecc4639af6cec811ab6fb9edc33ef465c4095261a9d4821b"
+      "sha256": "249ab4ac527ec12b084cc1f9e127144a088b2569b0e4d1e1e43131bebdc73950"
     },
     {
       "id": "official-hook-reference",
       "kind": "reference-snapshot",
       "path": "packages/surface/vendors/claude/references/claude@2.1.308",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "aa6974f652408f53c677e76a43a4fb32d18a072154898306e8bc57a39b5a514b"
+      "sha256": "e718061d9f9ba191172b6fc0cdeae29ab8129dc55980f8f6258ed034dfd4b972"
     },
     {
       "id": "agent-surface-model",
@@ -92,7 +92,7 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "1ed9e5d46e556139a2c6e26026bdb71570c8be3f76e6626cff8c60f45aa3a2ec"
+      "sha256": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba"
     }
   ],
   "limitations": [

@@ -11750,6 +11750,7 @@
   "binaryProbe": {
     "artifactSha256": "5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec",
     "platform": "darwin-arm64",
+    "scannedAt": "2026-10-25T09:23:04.602Z",
     "method": "printable-run scan (strings -n 6) for the run holding the serde SessionUpdate variant and field names; tokens compared with the public enum",
     "confidence": "low",
     "serdeRunSha256": "b1698d37035a3ab20d31919ccc4f9c5c05f01d7715824201a2a471f148781074",

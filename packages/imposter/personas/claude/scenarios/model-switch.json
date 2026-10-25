@@ -1,6 +1,6 @@
 {
   "name": "model-switch",
-  "notes": "/model as Claude Code 2.1.308 runs it: PreModelSwitch, PostModelSwitch, then a status line on the new model. A slash command fires no UserPromptSubmit, and the requested alias resolves to the model that serves. One turn follows on the new model.",
+  "notes": "/model as Claude Code 2.1.308 runs it: PreModelSwitch, PostModelSwitch, then a status line on the new model. A slash command fires no UserPromptSubmit, and the requested alias resolves to the model that serves. One turn follows on the new model; its transcript has the 2.1.308 shapes: a typed prompt row with turnOrigin and turnPosition, and an api-request-blob bookkeeping row (role user, no uuid, no timestamp) that a reader must not project as a message.",
   "steps": [
     {
       "at": 0,
@@ -77,6 +77,41 @@
             "prompt_id": "$uuid:prompt",
             "session_title": "$sessionTitle",
             "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 340,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "user",
+            "uuid": "$uuid:user",
+            "parentUuid": null,
+            "sessionId": "$sessionId",
+            "timestamp": "$now",
+            "cwd": "$cwd",
+            "version": "$vendorVersion",
+            "promptId": "$uuid:prompt",
+            "promptSource": "typed",
+            "origin": { "kind": "human" },
+            "turnOrigin": "human",
+            "turnPosition": { "promptIndex": 1, "turnIndex": 1 },
+            "message": { "role": "user", "content": "$stimulus.text" }
+          }
+        }
+      }
+    },
+    {
+      "at": 370,
+      "do": {
+        "transcript": {
+          "record": {
+            "type": "api-request-blob",
+            "hash": "5e1ac0de7a9b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d",
+            "sessionId": "$sessionId",
+            "message": { "role": "user", "content": [{ "type": "text", "text": "$stimulus.text" }] }
           }
         }
       }

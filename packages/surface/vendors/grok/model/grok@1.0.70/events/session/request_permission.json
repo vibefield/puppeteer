@@ -954,6 +954,7 @@
   "evidence": {
     "existence": ["grok-runtime-headless"],
     "shape": ["grok-public-acp-lead", "grok-runtime-headless"],
+    "ordering": ["grok-runtime-headless", "grok-approval-probe"],
     "result": ["grok-public-acp-lead", "grok-runtime-headless"],
     "carrier": ["grok-runtime-headless"]
   },
@@ -1177,5 +1178,5 @@
     }
   ],
   "fixture": "captures/grok@1.0.70/approvals-remembered-off/acp-controller.jsonl",
-  "notes": "Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs \"received response for unknown request id\"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always persists GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml. spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once."
+  "notes": "Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs \"received response for unknown request id\"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always — in the viewer too — persists one GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml rule that answers the next matching command without a request (approval probe viewer-answers-always). spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once."
 }

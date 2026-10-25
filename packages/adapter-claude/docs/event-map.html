@@ -1002,7 +1002,7 @@ per tool call in the agentic loop (<code>PreToolUse</code>, <code>PostToolUse</c
   </header>
   <div class="hook-card-body">
     <p>Asynchronous. Same input as PreModelSwitch, with <code>source</code> adding <code>auto</code> (an automatic fallback; <code>requested_model</code> null) and <code>resume</code> (the model a resume restored). The 2.1.308 TUI census observed <code>/model</code> → PreModelSwitch → PostModelSwitch → a status line on the new model; <code>to_model</code> is the model that serves, which can differ from the requested id.</p>
-    <p class="hook-usage"><strong>Puppeteer:</strong> <code>to_model</code> → <code>model:updated</code> (observed). The status line stays the authoritative model card; a root hook model that repeats the id already reported is not republished, so the card neither flaps nor loses its display name.</p>
+    <p class="hook-usage"><strong>Puppeteer:</strong> <code>to_model</code> → <code>model:updated</code> (observed). The status line stays the authoritative model card: its card is republished whenever it differs from the root model either rail last reported, so the refresh after a switch restores the display name. A root hook model that repeats the id already reported is not republished, and a switch whose <code>from_model</code> is not the reported model landed late (the hooks run as detached tasks) and is dropped.</p>
   </div>
 </article>
 <article class="hook-card use-used" id="hook-SessionEnd">

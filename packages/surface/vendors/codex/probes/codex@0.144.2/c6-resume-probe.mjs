@@ -4,6 +4,11 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { appendFileSync } from 'node:fs';
+import { isolatedCodex } from '../../census/harness.mjs';
+
+// The executable under review (PUPPETEER_CODEX_BIN), never `codex` on PATH, in a throwaway HOME and
+// CODEX_HOME with an allowlisted environment: not the caller's own, possibly signed-in, profile.
+const codex = isolatedCodex();
 const require = createRequire(import.meta.url);
 const pty = require('node-pty');
 const LOG = new URL('./c6-resume.log', import.meta.url).pathname;
@@ -22,12 +27,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- Phase 1: create + materialize a thread ---
 const P1 = 8803;
-const s1 = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${P1}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const s1 = spawn(codex.executable, ['app-server', '--listen', `ws://127.0.0.1:${P1}`], { stdio: ['ignore', 'pipe', 'pipe'], env: codex.env });
 await sleep(1800);
 const c1 = wsClient(P1); await c1.ready;
 await c1.req('initialize', { clientInfo: { name: 'p', version: '0' }, capabilities: {} }); c1.noti('initialized');
 const before = new Set(((await c1.req('thread/list', {}))?.data ?? []).map((t) => t.id));
-const t1 = pty.spawn('codex', ['--remote', `ws://127.0.0.1:${P1}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...process.env, TERM: 'xterm-256color' } });
+const t1 = pty.spawn(codex.executable, ['--remote', `ws://127.0.0.1:${P1}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...codex.env, TERM: 'xterm-256color' } });
 await sleep(4000);
 t1.write('\x1b[200~Remember the word banana\x1b[201~'); await sleep(500); t1.write('\r');
 await sleep(7000);
@@ -41,14 +46,14 @@ if (!threadId) { log('no thread; abort'); process.exit(1); }
 
 // --- Phase 2: resume it against a fresh app-server ---
 const P2 = 8804;
-const s2 = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${P2}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const s2 = spawn(codex.executable, ['app-server', '--listen', `ws://127.0.0.1:${P2}`], { stdio: ['ignore', 'pipe', 'pipe'], env: codex.env });
 await sleep(1800);
 const c2 = wsClient(P2); await c2.ready;
 await c2.req('initialize', { clientInfo: { name: 'p2', version: '0' }, capabilities: {} }); c2.noti('initialized');
 const before2 = new Set(((await c2.req('thread/list', {}))?.data ?? []).map((t) => t.id));
 
 let out = '';
-const t2 = pty.spawn('codex', ['resume', threadId, '--remote', `ws://127.0.0.1:${P2}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...process.env, TERM: 'xterm-256color' } });
+const t2 = pty.spawn(codex.executable, ['resume', threadId, '--remote', `ws://127.0.0.1:${P2}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...codex.env, TERM: 'xterm-256color' } });
 t2.onData((d) => { out += d; });
 await sleep(6000);
 const plain = out.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\x1b[()][AB0]/g, '').replace(/\x1b\][0-9];[^\x07]*\x07/g, '');

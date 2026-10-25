@@ -8,6 +8,14 @@ export interface AcpApprovalRequest {
   tool?: string | undefined;
   input?: unknown;
   options: PermissionOption[];
+  /**
+   * Present only where another attached client is shown the same request
+   * (`unhandled: 'defer'`). Aborted once the request settled without this
+   * decision — the agent acted on that client's answer, the turn ended, the
+   * transport closed, or the session was disposed — so a host UI can close.
+   * A decision returned after the abort is ignored.
+   */
+  signal?: AbortSignal | undefined;
 }
 
 /**
@@ -20,6 +28,11 @@ export interface AcpApprovalRequest {
  *   another client attached to the same agent session — the agent's own
  *   terminal UI — is shown the same request and lets a person answer it. The
  *   request then settles from native evidence (see `AcpDeferredApprovalEvidence`).
+ *
+ * `defer` also declares that the agent acts on the FIRST answer from any
+ * client, so a host decision races the person there too: native evidence that
+ * arrives before `decide` resolves settles the request, aborts the host's
+ * `signal`, and the later host decision is dropped rather than published.
  */
 export type AcpUnhandledApprovalPolicy = 'deny' | 'defer';
 
@@ -49,9 +62,9 @@ export type AcpDeferredApprovalEvidence = (
 
 export interface AcpApprovalServiceOptions {
   decide?: ((request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>) | undefined;
-  /** Without `decide`. Default `deny`. */
+  /** Without `decide`: who answers. With `decide`, `defer` still marks the request as shared. Default `deny`. */
   unhandled?: AcpUnhandledApprovalPolicy | undefined;
-  /** With `unhandled: 'defer'`: the agent's native resolution evidence. */
+  /** With `unhandled: 'defer'`: the agent's native resolution evidence, for deferred and host-pending requests. */
   deferredEvidence?: AcpDeferredApprovalEvidence | undefined;
   publish(event: AgentEvent, nativeEvent: unknown): void;
 }
@@ -87,9 +100,16 @@ export function acpPermissionOutcome(
  */
 const RELEASED: RequestPermissionResponse = { outcome: { outcome: 'cancelled' } };
 
-interface DeferredApproval {
+/**
+ * A request another attached client may answer: deferred (no host handler) or
+ * host-pending in a shared composition. Native evidence settles either one;
+ * a host decision settles only its own entry, and only while it is pending.
+ */
+interface PendingApproval {
   readonly requestId: string;
   readonly sessionId: string;
+  /** The host decision still outstanding, aborted when the request settles without it. */
+  readonly host?: AbortController | undefined;
   release(response: RequestPermissionResponse): void;
 }
 
@@ -97,25 +117,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function deferredKey(sessionId: string, toolCallId: string): string {
+function pendingKey(sessionId: string, toolCallId: string): string {
   return `${sessionId}\u0000${toolCallId}`;
 }
 
 /** Structured ACP permission request → normalized permission events + response. */
 export class AcpApprovalService {
-  private readonly deferred = new Map<string, DeferredApproval>();
+  private readonly pending = new Map<string, PendingApproval>();
 
   constructor(private readonly options: AcpApprovalServiceOptions) {}
 
-  /** Deferred requests still awaiting native evidence; bounded by turn end, transport close, and dispose. */
+  /** Requests still awaiting native evidence or a shared host decision; bounded by turn end, transport close, and dispose. */
   get pendingCount(): number {
-    return this.deferred.size;
+    return this.pending.size;
   }
 
   async handle(params: RequestPermissionRequest): Promise<RequestPermissionResponse> {
     const requestId = params.toolCall.toolCallId;
     const tool = params.toolCall.title ?? params.toolCall.kind ?? undefined;
-    const deferring = !this.options.decide && this.options.unhandled === 'defer';
+    const decide = this.options.decide;
+    // Another attached client is shown this request and the agent takes the first answer.
+    const shared = this.options.unhandled === 'defer';
+    // A repeated request for a tool call still pending supersedes the first;
+    // nothing native says how the first one ended. It settles before the new
+    // request is published: both carry the same requestId, so the reverse
+    // order would resolve the new request in state while it is still open.
+    this.settleOne(params.sessionId, requestId, 'unknown', params);
     this.options.publish(
       {
         type: 'interaction:permission-requested',
@@ -123,33 +150,53 @@ export class AcpApprovalService {
         toolCallId: requestId,
         tool,
         input: params.toolCall.rawInput,
-        presentation: deferring ? 'native-tui' : 'host-ui',
+        presentation: !decide && shared ? 'native-tui' : 'host-ui',
       },
       params,
     );
-    if (deferring) return this.defer(requestId, params);
-    const decision = this.options.decide
-      ? await this.options.decide({
-          toolCallId: requestId,
-          tool,
-          input: params.toolCall.rawInput,
-          options: params.options,
-        })
-      : 'denied';
-    this.options.publish(
-      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
-      params,
-    );
-    return acpPermissionOutcome(decision, params.options);
+    if (!decide) {
+      if (shared) return this.track(requestId, params.sessionId);
+      return this.resolve(requestId, 'denied', params);
+    }
+    const request: AcpApprovalRequest = {
+      toolCallId: requestId,
+      tool,
+      input: params.toolCall.rawInput,
+      options: params.options,
+    };
+    if (!shared) return this.resolve(requestId, await decide(request), params);
+
+    // Shared: the first of the host decision and native evidence wins. When the
+    // evidence wins, the agent already acted on another client's answer; the
+    // host decision is dropped and the SDK request only released.
+    const key = pendingKey(params.sessionId, requestId);
+    const host = new AbortController();
+    const settled = this.track(requestId, params.sessionId, host);
+    const entry = this.pending.get(key);
+    const decided = Promise.resolve()
+      .then(() => decide({ ...request, signal: host.signal }))
+      .then(
+        (decision) => {
+          if (this.pending.get(key) !== entry) return settled;
+          this.pending.delete(key);
+          return this.resolve(requestId, decision, params);
+        },
+        (error: unknown) => {
+          if (this.pending.get(key) !== entry) return settled;
+          this.pending.delete(key);
+          throw error;
+        },
+      );
+    return Promise.race([settled, decided]);
   }
 
   /**
-   * Read one inbound notification as evidence for deferred requests. The
+   * Read one inbound notification as evidence for pending requests. The
    * agent's own evidence is consulted first; ACP's tool-call progress (a tool
    * that started or completed was allowed) is the generic floor.
    */
   observe(method: string, params: Record<string, unknown>): void {
-    if (this.deferred.size === 0) return;
+    if (this.pending.size === 0) return;
     const nativeEvent = { method, params };
     const sessionId = typeof params.sessionId === 'string' ? params.sessionId : undefined;
     for (const settlement of this.options.deferredEvidence?.(method, params) ?? []) {
@@ -169,37 +216,43 @@ export class AcpApprovalService {
   }
 
   /**
-   * Settle every deferred request, or those of one session, without native
+   * Settle every pending request, or those of one session, without native
    * evidence of the outcome: the prompt ended, the transport closed, or the
    * session is being disposed.
    */
   settleAll(outcome: AcpPermissionResolution, nativeEvent: unknown, sessionId?: string): void {
-    for (const entry of [...this.deferred.values()]) {
+    for (const entry of [...this.pending.values()]) {
       if (sessionId === undefined || entry.sessionId === sessionId) {
         this.settleOne(entry.sessionId, entry.requestId, outcome, nativeEvent);
       }
     }
   }
 
-  private defer(requestId: string, params: RequestPermissionRequest): Promise<RequestPermissionResponse> {
-    // A repeated request for a tool call still pending supersedes the first;
-    // nothing native says how the first one ended.
-    this.settleOne(params.sessionId, requestId, 'unknown', params);
+  private resolve(
+    requestId: string,
+    decision: AcpApprovalDecision,
+    params: RequestPermissionRequest,
+  ): RequestPermissionResponse {
+    this.options.publish(
+      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
+      params,
+    );
+    return acpPermissionOutcome(decision, params.options);
+  }
+
+  private track(requestId: string, sessionId: string, host?: AbortController): Promise<RequestPermissionResponse> {
     return new Promise<RequestPermissionResponse>((release) => {
-      this.deferred.set(deferredKey(params.sessionId, requestId), {
-        requestId,
-        sessionId: params.sessionId,
-        release,
-      });
+      this.pending.set(pendingKey(sessionId, requestId), { requestId, sessionId, host, release });
     });
   }
 
   private settleOne(sessionId: string, toolCallId: string, outcome: AcpPermissionResolution, nativeEvent: unknown) {
-    const key = deferredKey(sessionId, toolCallId);
-    const entry = this.deferred.get(key);
+    const key = pendingKey(sessionId, toolCallId);
+    const entry = this.pending.get(key);
     if (!entry) return;
-    this.deferred.delete(key);
+    this.pending.delete(key);
     this.options.publish({ type: 'interaction:permission-resolved', requestId: entry.requestId, outcome }, nativeEvent);
+    entry.host?.abort();
     entry.release(RELEASED);
   }
 }

@@ -27,6 +27,15 @@
  * - Prompt- and model-derived text in Grok-only keys (`runningText`,
  *   `session_summary`, `generated_title`, `last_turn_summary`,
  *   `arguments_delta`, `output_for_prompt`, …) is sensitive text.
+ * - The viewer's `memtrace/<unix seconds>-<pid>.jsonl` file name embeds its
+ *   start clock and pid, which no key rule sees; both pin in place
+ *   (`memtrace/1000000000-0.jsonl`), and the detector rejects any other value.
+ *
+ * Values under the SHARED path keys (`grok_home`, `cwd`, `*_path`, `*_home`,
+ * `path`, …) are not Grok's to keep: the repository-wide default gate accepts
+ * only its own placeholders there, so they become `/workspace` (cwd) or
+ * `/workspace/redacted-file`, whatever the synthetic root. The capture
+ * fidelity record lists that loss.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -56,17 +65,26 @@ export const REDACTED_EPOCH_SECONDS = 1_000_000_000;
 export const REDACTED_MACHINE_AGENT_ID = 'a11a5ed0-0000-4000-8000-00000000a9e7';
 export const REDACTED_ISO_DATE = '2026-01-01T00:00:00';
 
-/** Synthetic roots that disposable census paths are rewritten to. */
+/**
+ * Synthetic roots that disposable census paths are rewritten to.
+ *
+ * The census base (and its short leader-socket directory) is deliberately not
+ * a temp root: the shared gate treats every `/tmp/…` path as private, since a
+ * relocated TMPDIR names the uid and the checkout, and its redaction would
+ * flatten a temp-rooted placeholder to `/workspace/redacted-path`, erasing the
+ * leader-socket topology. It also stays outside GROK_HOME so it never reads as
+ * the auto-discovered default `~/.grok/leader*.sock`.
+ */
 export const SYNTHETIC_ROOTS = Object.freeze({
   workspace: '/workspace',
   home: '/home/user',
   grokHome: '/home/user/.grok',
-  socketDir: '/tmp/grok-census',
-  base: '/tmp/grok-census',
-  tmp: '/tmp/grok-census/tmp',
+  socketDir: '/home/user/grok-census',
+  base: '/home/user/grok-census',
+  tmp: '/home/user/grok-census/tmp',
   artifact: '/usr/local/bin/grok',
 });
-const ALLOWED_PATH_PREFIXES = ['/workspace', '/home/user', '/tmp/grok-census', '/usr/local/bin/grok'];
+const ALLOWED_PATH_PREFIXES = ['/workspace', '/home/user', '/usr/local/bin/grok'];
 
 /** Census prompt, response, and tool-argument canaries. Any survivor means text leaked. */
 export const GROK_CENSUS_CANARIES = Object.freeze([
@@ -87,6 +105,9 @@ const XAI_PREFIXED_ID = /\b(?:ag1|at1|aa1)\.[0-9a-f]{32}\b/g;
 /** The shared engine's embedded-UUID rule, applied before id keys so `<sessionId>-<n>` event ids keep their shape. */
 const EMBEDDED_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
 const ISO_DATETIME = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+/** The viewer's memory-trace file: `memtrace/<unix seconds>-<pid>.jsonl`. */
+const MEMTRACE_NAME = /(^|\/)memtrace\/(\d+)-(\d+)\.jsonl/g;
+export const REDACTED_MEMTRACE_NAME = `memtrace/${REDACTED_EPOCH_SECONDS}-0.jsonl`;
 const CLOCK_KEY = /(?:time|Time|timestamp|Timestamp|_at$|At$|At[A-Z]|Ms$|_ms$|Unix|^ts$|^created$|^updated$)/;
 
 function escapeRegExp(value) {
@@ -152,6 +173,7 @@ function prepare(value, key, context, inRawTool, underXaiTool) {
     let next = rewriteRoots(value, context.replacements);
     next = next.replace(XAI_PREFIXED_ID, (match) => alias(match));
     next = next.replace(EMBEDDED_UUID, (match) => alias(match));
+    next = next.replace(MEMTRACE_NAME, (_match, lead) => `${lead}${REDACTED_MEMTRACE_NAME}`);
     next = pinIsoDatetime(next);
     return inRawTool ? redactRawToolLeaf(next, key) : next;
   }
@@ -220,6 +242,11 @@ function inspectGrok(value, issues, location, key, inRawTool, underXaiTool) {
       issues.push(`${location}: unpinned ISO timestamp at ${key}`);
     }
     if (value.match(XAI_PREFIXED_ID)) issues.push(`${location}: raw xAI prefixed id at ${key}`);
+    for (const [, , seconds, pid] of value.matchAll(MEMTRACE_NAME)) {
+      if (seconds !== String(REDACTED_EPOCH_SECONDS) || pid !== '0') {
+        issues.push(`${location}: unpinned memtrace start clock or pid at ${key}`);
+      }
+    }
     if (key === 'agentId' && value !== REDACTED_MACHINE_AGENT_ID) {
       issues.push(`${location}: machine agentId is not the fixed redaction`);
     }

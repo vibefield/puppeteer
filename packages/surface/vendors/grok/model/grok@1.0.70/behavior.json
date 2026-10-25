@@ -230,10 +230,10 @@
       "event": "session/update",
       "lane": "session",
       "order": 6,
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-runtime-interactive"]
       },
       "match": {
         "update.sessionUpdate": "config_option_update"
@@ -682,7 +682,7 @@
       "event": "session/update",
       "lane": "tool",
       "order": 11,
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
         "existence": ["grok-approval-probe"],
         "shape": ["grok-approval-probe"]
@@ -1182,11 +1182,11 @@
       "to": "background-tasks",
       "kind": "conditional",
       "label": "another client (the native viewer) attaches",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-runtime-headless"],
-        "ordering": ["grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-runtime-interactive"],
+        "ordering": ["grok-runtime-interactive"]
       }
     },
     {
@@ -1215,11 +1215,11 @@
       "from": "available-commands",
       "to": "config-option",
       "kind": "sequence",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-runtime-headless"],
-        "ordering": ["grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-runtime-interactive"],
+        "ordering": ["grok-runtime-interactive"]
       }
     },
     {
@@ -1260,11 +1260,11 @@
       "to": "user-message-echo",
       "kind": "conditional",
       "label": "live echo only while another client is attached",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-runtime-headless"],
-        "ordering": ["grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-runtime-interactive"],
+        "ordering": ["grok-runtime-interactive"]
       }
     },
     {
@@ -1628,7 +1628,7 @@
       "to": "tool-permission-cancelled",
       "kind": "conditional",
       "label": "permission prompt cancelled in the viewer: toolNotRun cancelled, PermissionCancelled",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
         "existence": ["grok-approval-probe"],
         "shape": ["grok-approval-probe"],
@@ -1639,7 +1639,7 @@
       "from": "tool-permission-cancelled",
       "to": "turn-complete",
       "kind": "sequence",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
         "existence": ["grok-approval-probe"],
         "shape": ["grok-approval-probe"],
@@ -1651,7 +1651,7 @@
       "to": "interaction-resolved",
       "kind": "conditional",
       "label": "a pending request is resolved by session/cancel with no tool_call_update (MidTurnAbort)",
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "evidence": {
         "existence": ["grok-approval-probe"],
         "shape": ["grok-approval-probe"],

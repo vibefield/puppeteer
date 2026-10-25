@@ -7,7 +7,7 @@
     "hook": {
       "kind": "hook-http",
       "fallback": "hook-command",
-      "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.308 does not support HTTP for them. A print-mode process exits without awaiting StopFailure command hooks, so StopFailure must stay on HTTP."
+      "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.308 does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP."
     },
     "transcript": {
       "kind": "transcript",

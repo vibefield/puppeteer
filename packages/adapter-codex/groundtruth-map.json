@@ -3,7 +3,7 @@
   "provider": "codex",
   "adapterPackage": "@vibefield/puppeteer-adapter-codex",
   "groundTruth": "packages/surface/vendors/codex/groundtruth.json",
-  "groundTruthSha256": "df5c25f1d70df705bfb2fbb6a18f120bf3ee118c5443231402d7d4ff65aaf778",
+  "groundTruthSha256": "24be5fb8550106e9533ecbe1e37cc8200106a60ea0490db981a58bb938c75e3f",
   "semanticEvents": [
     "account/login/completed",
     "account/rateLimits/updated",

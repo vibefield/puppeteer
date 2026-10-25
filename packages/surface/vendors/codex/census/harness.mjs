@@ -38,9 +38,11 @@
  *                         [--scenario <name>]
  *
  * The executable is `--bin`, else `<package-root>/bin/codex`, else
- * `$PUPPETEER_CODEX_BIN`, else `codex` on PATH. Its `--version` must print
- * `codex-cli <version>`; the version is `$PUPPETEER_CODEX_VERSION`, else
- * `--version`, else the support ledger's active version.
+ * `$PUPPETEER_CODEX_BIN`; with none of them nothing runs. It is never looked up
+ * on PATH, where the operator's own codex (usually signed in) lives. Its
+ * `--version` must print `codex-cli <version>`; the version is
+ * `$PUPPETEER_CODEX_VERSION`, else `--version`, else the support ledger's
+ * active version.
  */
 
 import { execFileSync, spawn } from 'node:child_process';
@@ -48,7 +50,7 @@ import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, delimiter, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveAgentModel } from '../../../../../scripts/agent-model-selection.mjs';
 
@@ -216,9 +218,32 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /** Variables a hermetic codex child may inherit. Everything else is dropped. */
 const INHERITED_ENV = ['PATH', 'LANG', 'LC_ALL', 'TERM', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR'];
 
-export function censusEnvironment(home, source = process.env) {
+const CODEX_EXECUTABLE_NAMES = ['codex', 'codex.exe'];
+
+/**
+ * The caller's PATH without the directories that provide some other `codex`.
+ * The operator's own install is usually signed in and its managed daemon lives
+ * in the real `~/.codex`, so nothing a hermetic child starts by name (a helper,
+ * a model-chosen command) may reach it. The executable under review keeps its
+ * own directory, which also holds its companions.
+ */
+export function hermeticPath(path, executable) {
+  if (typeof path !== 'string') return undefined;
+  const own = executable ? dirname(resolve(executable)) : undefined;
+  return path
+    .split(delimiter)
+    .filter(
+      (entry) =>
+        entry !== '' &&
+        (resolve(entry) === own || !CODEX_EXECUTABLE_NAMES.some((name) => existsSync(join(entry, name)))),
+    )
+    .join(delimiter);
+}
+
+export function censusEnvironment(home, source = process.env, { executable } = {}) {
   const env = {};
   for (const name of INHERITED_ENV) if (typeof source[name] === 'string') env[name] = source[name];
+  if (env.PATH !== undefined) env.PATH = hermeticPath(env.PATH, executable);
   return {
     ...env,
     HOME: home,
@@ -228,11 +253,50 @@ export function censusEnvironment(home, source = process.env) {
   };
 }
 
-/** Resolve the executable: `--bin`, the package layout, the documented override, or PATH. */
-export function resolveCodexExecutable({ bin, packageRoot, env = process.env } = {}) {
+/**
+ * The executable a census, probe or drift check was told to run: `--bin`, the
+ * package layout, or `$PUPPETEER_CODEX_BIN`, always as a path. `undefined` when
+ * none is named, because PATH is never searched: `codex` there is the
+ * operator's own install, not the artifact under review.
+ */
+export function explicitCodexExecutable({ bin, packageRoot, env = process.env } = {}) {
   if (bin) return resolve(bin);
   if (packageRoot) return resolve(packageRoot, 'bin', 'codex');
-  return env.PUPPETEER_CODEX_BIN ?? 'codex';
+  if (env.PUPPETEER_CODEX_BIN) return resolve(env.PUPPETEER_CODEX_BIN);
+  return undefined;
+}
+
+/** {@link explicitCodexExecutable}, for the tools that cannot run without one. */
+export function resolveCodexExecutable(options = {}) {
+  const executable = explicitCodexExecutable(options);
+  if (!executable) {
+    throw new Error(
+      'name the codex executable under review with --bin <codex>, --package-root <dir> or PUPPETEER_CODEX_BIN; ' +
+        'codex on PATH is never run',
+    );
+  }
+  return executable;
+}
+
+/**
+ * What a hand-driven probe runs: the named executable and the census
+ * environment around a throwaway HOME and CODEX_HOME, removed at exit. A probe
+ * that inherited the caller's environment would start threads in, and sign in
+ * through, the operator's real profile.
+ */
+export function isolatedCodex(options = {}) {
+  const executable = resolveCodexExecutable(options);
+  const home = mkdtempSync(join(tmpdir(), 'codex-probe-home-'));
+  const env = censusEnvironment(home, process.env, { executable });
+  mkdirSync(env.CODEX_HOME, { recursive: true });
+  process.once('exit', () => {
+    try {
+      rmSync(home, { recursive: true, force: true });
+    } catch {
+      // A child still writing into it; it is a temp directory either way.
+    }
+  });
+  return { executable, env, home };
 }
 
 function fileIdentity(path) {
@@ -248,7 +312,7 @@ export function codexArtifactIdentity(executable) {
   const scratch = mkdtempSync(join(tmpdir(), 'codex-census-version-'));
   let versionOutput;
   try {
-    const env = censusEnvironment(scratch);
+    const env = censusEnvironment(scratch, process.env, { executable });
     mkdirSync(env.CODEX_HOME, { recursive: true });
     versionOutput = execFileSync(executable, ['--version'], {
       encoding: 'utf8',
@@ -269,7 +333,7 @@ export function codexArtifactIdentity(executable) {
   }
   return {
     versionOutput,
-    executable: located ? { name: basename(executable), ...fileIdentity(executable) } : { name: executable },
+    executable: located ? { name: basename(executable), ...fileIdentity(executable) } : { name: basename(executable) },
     companions,
   };
 }
@@ -283,10 +347,11 @@ export async function runScenario(name, options = {}) {
   const scenario = options.scenario ?? SCENARIOS[name];
   if (!scenario) throw new Error(`unknown scenario ${name} (have: ${Object.keys(SCENARIOS).join(', ')})`);
 
+  const executable = options.bin ?? resolveCodexExecutable();
   const root = mkdtempSync(join(tmpdir(), 'codex-census-'));
   const home = join(root, 'home');
   const cwd = join(root, 'cwd');
-  const env = censusEnvironment(home);
+  const env = censusEnvironment(home, process.env, { executable });
   mkdirSync(env.CODEX_HOME, { recursive: true });
   mkdirSync(cwd, { recursive: true });
   writeFileSync(join(env.CODEX_HOME, 'auth.json'), JSON.stringify({ OPENAI_API_KEY: 'sk-not-a-real-key' }));
@@ -324,7 +389,7 @@ export async function runScenario(name, options = {}) {
   const { port } = provider.address();
 
   const child = spawn(
-    options.bin ?? resolveCodexExecutable(),
+    executable,
     [
       'app-server',
       '-c', 'model_provider="fake"',

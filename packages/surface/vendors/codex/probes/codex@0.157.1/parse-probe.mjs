@@ -1,16 +1,21 @@
 // Session-free parse probes for codex's CLI grammar (the method behind parse-results.json).
 //
-//   node parse-probe.mjs <cases.json: an array of argv arrays> <results.json>
+//   PUPPETEER_CODEX_BIN=<codex> node parse-probe.mjs <cases.json: an array of argv arrays> <results.json>
 //
 // Safety net, every run: argv is an explicit array (no shell — zsh does not split an unquoted
 // variable, and a joined argv reads as a prompt), stdin is not a terminal and TERM is dumb (the TUI
 // refuses both), the working directory is a throwaway one, and CODEX_HOME and HOME are empty isolated
 // directories (no login, no config, no session of anyone's can be reached). Every case must still end
 // in `--help`, `--version` or a clap error; `codex <opts> --help` is the shape proven to validate.
+// Since 0.164.0 the executable is the one named, never `codex` on PATH (the operator's own, signed-in
+// install), and PATH keeps no directory with another codex.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { hermeticPath, resolveCodexExecutable } from '../../census/harness.mjs';
+
+const executable = resolveCodexExecutable();
 
 const root = mkdtempSync(join(realpathSync(tmpdir()), 'codex-parse-'));
 const home = join(root, 'home');
@@ -21,10 +26,16 @@ for (const directory of [home, codexHome, cwd]) mkdirSync(directory, { recursive
 const cases = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const results = [];
 for (const argv of cases) {
-  const run = spawnSync('codex', argv, {
+  const run = spawnSync(executable, argv, {
     cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { PATH: process.env.PATH, HOME: home, CODEX_HOME: codexHome, TERM: 'dumb', LANG: 'en_US.UTF-8' },
+    env: {
+      PATH: hermeticPath(process.env.PATH, executable),
+      HOME: home,
+      CODEX_HOME: codexHome,
+      TERM: 'dumb',
+      LANG: 'en_US.UTF-8',
+    },
     timeout: 20_000,
     encoding: 'utf8',
   });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { fakeClaudeHookPayload, listHookFixtureEvents, loadHookFixtures } from '../test-support/claude-fixtures.js';
+import {
+  fakeClaudeHookPayload,
+  listHookFixtureEvents,
+  loadHookFixtures,
+  loadOrderedHookLane,
+} from '../test-support/claude-fixtures.js';
 import { ClaudeHookNormalizer, type ClaudeHookPayload } from './pipeline.js';
 import { getHookSpec } from '../generated/registry.js';
 
@@ -629,6 +634,63 @@ describe('permission correlation (no native request id)', () => {
       },
     ]);
     expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+  });
+
+  it('closes an Esc-interrupted request, which has no Stop, when the next prompt starts', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    // A background agent's own request may still be waiting when the person types again.
+    const worker = { ...tool, agent_id: 'a1b2c3d4e5f6a7b8c', agent_type: 'general-purpose', tool_use_id: 'toolu_bg' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', worker) as ClaudeHookPayload);
+    normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(2);
+
+    const next = normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', {
+        prompt_id: 'prompt-next',
+        prompt: 'try another way',
+      }) as ClaudeHookPayload,
+    );
+    expect(next.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'turn:started', turnId: 'prompt-next' }),
+    ]);
+    expect(next.diagnostics).toEqual([
+      {
+        code: 'permission-outlived-turn',
+        hookEventName: 'UserPromptSubmit',
+        issues: ['1 pending permission request(s) of an interrupted turn closed when the next prompt started'],
+      },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toEqual([
+      expect.objectContaining({ agentId: worker.agent_id, toolCallId: 'toolu_bg' }),
+    ]);
+  });
+
+  it('replays the 2.1.308 TUI lane with no request pending past the next prompt', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const resolved: Array<{ seq: number; requestId: string; outcome: string }> = [];
+    let requested: { seq: number; requestId: string } | undefined;
+    for (const { seq, record } of loadOrderedHookLane('interactive')) {
+      const result = normalizer.normalize(record as ClaudeHookPayload);
+      for (const event of result.events) {
+        if (event.type === 'interaction:permission-requested') requested = { seq, requestId: event.requestId };
+        if (event.type === 'interaction:permission-resolved') {
+          resolved.push({ seq, requestId: event.requestId, outcome: event.outcome });
+        }
+      }
+      if (record.hook_event_name === 'UserPromptSubmit') {
+        // Every request still open belongs to the prompt that just started.
+        expect(
+          normalizer.pendingPermissionRequests().filter((permission) => permission.promptId !== record.prompt_id),
+        ).toEqual([]);
+      }
+    }
+    // The lane's Esc at the Bash prompt (seq 31): no Stop follows, the next prompt (seq 34) closes it.
+    expect(requested?.seq).toBe(31);
+    expect(resolved).toEqual([{ seq: 34, requestId: requested!.requestId, outcome: 'unknown' }]);
   });
 
   it('resolves an evicted request before bounding the permission queue', () => {

@@ -17,7 +17,14 @@ package's `bin/codex` with the companion beside it.
 
 No account, no model, no billed call. Every run used throwaway HOME, CODEX_HOME and TMPDIR directories with short
 paths under the shared temp root (so Unix socket paths stay under `SUN_LEN`), an allowlisted environment, and a
-loopback Responses endpoint. Nothing ran against anyone's real `~/.codex`.
+loopback Responses endpoint. Nothing ran against anyone's real `~/.codex`. Isolated is not offline: a run that starts an
+app-server (Methods 2–4) lets its curated-plugin sync make unauthenticated requests to github.com and chatgpt.com
+(findings C8, Known gaps); Method 1 starts none, and Method 5 ran with outbound network denied.
+
+The scripts run only the executable they are given (`PUPPETEER_CODEX_BIN`, `--bin`, `--package-root`, or Method 5's
+argument), never `codex` on `PATH`, and keep no other codex directory on the child's `PATH`. No sanitizer writes these
+records, so `pnpm surface:privacy:codex`, the codex audit and `model.test.ts` run the detector over every record here
+(`checkProbeRecords`, `census/sanitize.mjs`), and `whitelist-live.mjs` writes nothing the detector flags.
 
 ## Method 1 — session-free parse and config probes
 
@@ -39,7 +46,7 @@ record, plus seven for the new subcommand) and `config-cases.json` (its 14 confi
 part of them). The root help differs from the 0.157.1 fixture by one row, `migrate-nfs-db`; the resume help is byte
 for byte the 0.157.1 file.
 
-## Method 2 — live, hermetic
+## Method 2 — live, isolated
 
 `packages/adapter-codex/src/launch/invocation-probe.live.test.ts` (unchanged), on `live-cases.json`: the 0.157.1
 cases made replayable — the harness's `id` field in place of `case`, the harness's own prompt (`Reply with the single

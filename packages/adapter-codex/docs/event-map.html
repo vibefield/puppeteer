@@ -1654,9 +1654,10 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <h5>Puppeteer</h5>
                 <p class="hook-usage">
                   <strong>Puppeteer:</strong> The observer's history read after <code>thread/resume</code> with
-                  <code>excludeTurns</code>: <code>itemsView: &quot;full&quot;</code> (the default summary drops tool
-                  and file-change items), <code>sortDirection: &quot;asc&quot;</code>, paged by <code>nextCursor</code>,
-                  each completed turn replayed once (<code>replay: true</code>). Persisted history caps a command's
+                  <code>excludeTurns</code>: <code>itemsView: &quot;full&quot;</code> (the default summary is only a
+                  display summary, which left out a turn's file change in the 0.164.0 survey),
+                  <code>sortDirection: &quot;asc&quot;</code>, paged by <code>nextCursor</code>, each completed turn
+                  replayed once (<code>replay: true</code>). Persisted history caps a command's
                   <code>aggregatedOutput</code> at 64 KiB (head and tail around a marker), so a replayed output can be
                   shorter than the live one.
                 </p>

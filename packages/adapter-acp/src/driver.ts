@@ -66,7 +66,10 @@ export interface CreateAcpSessionOptions {
    * it at once; `defer` leaves it to another client attached to the same agent
    * session (the agent's own terminal UI) and settles it from native evidence.
    * Choose `defer` only for a composition that really attaches such a client,
-   * or the agent waits for an answer nobody can give.
+   * or the agent waits for an answer nobody can give. With `onApproval` too,
+   * `defer` means the host races that client: the answer native evidence shows
+   * the agent acted on is published, and a host decision that arrives after it
+   * is dropped (the request's `signal` is aborted first).
    */
   unhandledApproval?: AcpUnhandledApprovalPolicy | undefined;
   /** With `unhandledApproval: 'defer'`: the agent's own resolution evidence. */

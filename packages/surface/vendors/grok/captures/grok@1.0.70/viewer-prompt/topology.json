@@ -8,7 +8,7 @@
         "--no-exit-on-disconnect",
         "--relay-on-demand",
         "--leader-socket",
-        "/tmp/grok-census/leader.sock"
+        "/home/user/grok-census/leader.sock"
       ]
     },
     {
@@ -17,7 +17,7 @@
         "agent",
         "--leader",
         "--leader-socket",
-        "/tmp/grok-census/leader.sock",
+        "/home/user/grok-census/leader.sock",
         "stdio"
       ]
     },
@@ -30,7 +30,7 @@
         "default",
         "--leader",
         "--leader-socket",
-        "/tmp/grok-census/leader.sock",
+        "/home/user/grok-census/leader.sock",
         "--resume",
         "a11a5ed0-e26c-4e1e-8372-a07ac5927acd"
       ]

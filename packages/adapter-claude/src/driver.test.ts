@@ -978,6 +978,59 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(modelEvents().at(-1)).toMatchObject({ source: 'native-hook', agentId: 'agent-3' });
   });
 
+  it('lets the next status line restore its card after a switch away and back between refreshes', async () => {
+    const { projection, hook, statusLine } = await startSession();
+    const sonnet = { id: 'claude-sonnet-4-5-20250929', display_name: 'Sonnet 4.5' };
+    await statusLine({ model: sonnet });
+    await hook('PostModelSwitch', { from_model: sonnet.id, to_model: 'claude-opus-5-5', source: 'command' });
+    await hook('PostModelSwitch', { from_model: 'claude-opus-5-5', to_model: sonnet.id, source: 'command' });
+    expect(projection.state.environment.model?.value).toEqual({ id: sonnet.id, provider: 'anthropic' });
+    // The refresh reads exactly as the one before the switches; it is still news against the hooks.
+    await statusLine({ model: sonnet });
+    expect(projection.state.environment.model?.value).toEqual({
+      id: sonnet.id,
+      displayName: 'Sonnet 4.5',
+      provider: 'anthropic',
+    });
+  });
+
+  it('drops a PostModelSwitch that lands after a later switch, and the status line stays authoritative', async () => {
+    const { projection, events, hook, statusLine } = await startSession();
+    const rootModels = () =>
+      events
+        .filter(({ event, agentId }) => event.type === 'model:updated' && event.intent !== 'configured' && !agentId)
+        .map(({ event }) => (event.type === 'model:updated' ? event.model?.id : undefined));
+    await statusLine({ model: { id: 'claude-sonnet-4-5-20250929', display_name: 'Sonnet 4.5' } });
+    // The person switches sonnet → opus-4-1 → opus-5-5; Claude runs each PostModelSwitch as a
+    // detached task, and the second switch's hook arrives first: it starts from a model never reported.
+    await hook('PostModelSwitch', {
+      from_model: 'claude-opus-4-1-20250805',
+      to_model: 'claude-opus-5-5',
+      source: 'command',
+    });
+    await statusLine({ model: { id: 'claude-opus-5-5', display_name: 'Opus 5.5' } });
+    await hook('PostModelSwitch', {
+      from_model: 'claude-sonnet-4-5-20250929',
+      to_model: 'claude-opus-4-1-20250805',
+      source: 'command',
+    });
+    await statusLine({ model: { id: 'claude-opus-5-5', display_name: 'Opus 5.5' } });
+    expect(rootModels()).toEqual(['claude-sonnet-4-5-20250929', 'claude-opus-5-5']);
+    expect(projection.state.environment.model?.value).toEqual({
+      id: 'claude-opus-5-5',
+      displayName: 'Opus 5.5',
+      provider: 'anthropic',
+    });
+    // A switch the next refresh contradicts is corrected by it, card and all.
+    await hook('PostModelSwitch', { from_model: 'claude-opus-5-5', to_model: 'claude-haiku-5-5', source: 'auto' });
+    await statusLine({ model: { id: 'claude-opus-5-5', display_name: 'Opus 5.5' } });
+    expect(projection.state.environment.model?.value).toEqual({
+      id: 'claude-opus-5-5',
+      displayName: 'Opus 5.5',
+      provider: 'anthropic',
+    });
+  });
+
   it('publishes root and correlated child status evidence through the monitor SPI', async () => {
     const { projection, hook, statusLine, subagentStatusLine } = await startSession();
     const batches = projection.monitorBatches;

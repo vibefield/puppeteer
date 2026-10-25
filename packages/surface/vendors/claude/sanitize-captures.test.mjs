@@ -77,12 +77,23 @@ describe('Claude-specific capture rules', () => {
   it('redacts and detects scratchpad_dir, which embeds the uid and the slug-encoded project path', () => {
     const scratchpad = '/private/tmp/claude-501/-Users-alice-proj/0d6f8f6e-1a2b-4c3d-9e8f-001122334455/scratchpad';
     const raw = { hook_event_name: 'PreToolUse', scratchpad_dir: scratchpad };
-    // The shared defaults alone leave the uid and project name behind and report clean.
-    expect(JSON.stringify(sanitizeRecord(raw, defaultRules))).toContain('claude-501');
-    expect(check(raw)).toContain('<record>.scratchpad_dir: unsanitized sensitive field scratchpad_dir');
-    const sanitized = sanitize(raw);
-    expect(sanitized.scratchpad_dir).toBe('/workspace/redacted-file');
-    expect(check(sanitized)).toEqual([]);
+    // The shared temp-root rule now redacts and reports the default temp-rooted scratchpad by itself.
+    expect(sanitizeRecord(raw, defaultRules).scratchpad_dir).toBe('/workspace/redacted-path');
+    expect(checkRecord(raw, defaultRules)).toContain('<record>.scratchpad_dir: unsafe text at scratchpad_dir');
+    // TMPDIR is relocatable, and `/var/tmp/…` is outside that rule's scope. There the shared
+    // defaults alias the UUID and the slug's user segment but leave the uid and project name
+    // behind, then report the result clean; only the Claude path key still rejects it.
+    const relocated = { ...raw, scratchpad_dir: scratchpad.replace('/private/tmp/', '/var/tmp/') };
+    const sharedOnly = sanitizeRecord(relocated, defaultRules);
+    expect(sharedOnly.scratchpad_dir).toMatch(/^\/var\/tmp\/claude-501\/-Users-<redacted>-proj\//);
+    expect(checkRecord(sharedOnly, defaultRules)).toEqual([]);
+    expect(check(sharedOnly)).toEqual(['<record>.scratchpad_dir: unsanitized sensitive field scratchpad_dir']);
+    for (const record of [raw, relocated]) {
+      expect(check(record)).toContain('<record>.scratchpad_dir: unsanitized sensitive field scratchpad_dir');
+      const sanitized = sanitize(record);
+      expect(sanitized.scratchpad_dir).toBe('/workspace/redacted-file');
+      expect(check(sanitized)).toEqual([]);
+    }
   });
 
   it('redacts MCP server names but keeps their configuration source', () => {
@@ -92,6 +103,76 @@ describe('Claude-specific capture rules', () => {
     const sanitized = sanitize(raw);
     expect(sanitized.mcp_server).toEqual({ name: '<redacted:name>', source: 'user' });
     expect(check(sanitized)).toEqual([]);
+  });
+
+  it('redacts the user- and server-authored 2.1.308 fields the shared keys miss', () => {
+    const records = [
+      {
+        hook_event_name: 'Elicitation',
+        mcp_server_name: 'acme-jira',
+        mode: 'form',
+        requested_schema: {
+          type: 'object',
+          properties: { ticket: { type: 'string', enum: ['ACME-1042'], default: 'ACME-1042' } },
+        },
+      },
+      {
+        hook_event_name: 'ElicitationResult',
+        mcp_server_name: 'acme-jira',
+        action: 'accept',
+        mode: 'form',
+        content: { ticket: 'ACME-1042', note: 'bluebird billing outage' },
+      },
+      {
+        hook_event_name: 'StopFailure',
+        error: 'rate_limit',
+        error_details: 'Organization org-7f3a exceeded its limit; request_id req_011CXyz',
+      },
+      { hook_event_name: 'InstructionsLoaded', load_reason: 'path_glob_match', globs: ['services/bluebird/**'] },
+      {
+        hook_event_name: 'UserPromptExpansion',
+        expansion_type: 'slash_command',
+        command_name: 'deploy-bluebird',
+        command_source: 'projectSettings',
+      },
+    ];
+    const issues = [
+      '<record>.mcp_server_name: unsanitized sensitive field mcp_server_name',
+      '<record>.requested_schema.properties.ticket.enum[0]: unsanitized sensitive field enum',
+      '<record>.requested_schema.properties.ticket.default: unsanitized sensitive field default',
+      '<record>.content.ticket: unsanitized sensitive field ticket',
+      '<record>.content.note: unsanitized sensitive field note',
+      '<record>.error_details: unsanitized sensitive field error_details',
+      '<record>.globs[0]: unsanitized sensitive field globs',
+      '<record>.command_name: unsanitized sensitive field command_name',
+    ];
+    const defaultIssues = records.flatMap((record) => checkRecord(record, defaultRules));
+    const claudeIssues = records.flatMap((record) => check(record));
+    for (const issue of issues) {
+      expect(defaultIssues).not.toContain(issue);
+      expect(claudeIssues).toContain(issue);
+    }
+    const [elicitation, result, failure, instructions, expansion] = records.map((record) => sanitize(record));
+    expect(elicitation).toEqual({
+      hook_event_name: 'Elicitation',
+      mcp_server_name: '<redacted:mcp_server_name>',
+      mode: 'form',
+      requested_schema: {
+        type: 'object',
+        properties: {
+          ticket: { type: 'string', enum: ['<redacted:enum>'], default: '<redacted:default>' },
+        },
+      },
+    });
+    expect(result.content).toEqual({ ticket: '<redacted:ticket>', note: '<redacted:note>' });
+    expect(result.action).toBe('accept');
+    expect(failure).toMatchObject({ error: 'rate_limit', error_details: '<redacted:error_details>' });
+    expect(instructions.globs).toEqual(['<redacted:globs>']);
+    // The command's provenance is the CLI's own source enum and survives.
+    expect(expansion).toMatchObject({ command_name: '<redacted:command_name>', command_source: 'projectSettings' });
+    for (const sanitized of [elicitation, result, failure, instructions, expansion]) {
+      expect(check(sanitized)).toEqual([]);
+    }
   });
 
   it('preserves every closed StopFailure error value while free-text errors stay redacted', () => {
@@ -116,30 +197,45 @@ describe('Claude-specific capture rules', () => {
   });
 
   it('redacts added directories, permission-suggestion paths, and rule contents', () => {
-    const raw = {
+    const suggestions = (directory) => ({
       hook_event_name: 'PermissionRequest',
       permission_suggestions: [
-        { type: 'addDirectories', directories: ['/private/tmp/pcc-1/extra'], destination: 'session' },
+        { type: 'addDirectories', directories: [directory], destination: 'session' },
         { type: 'addRules', rules: [{ toolName: 'Read', ruleContent: '//srv/acme/**' }], behavior: 'allow' },
       ],
-    };
-    expect(check(raw)).toHaveLength(2);
-    const sanitized = sanitize(raw);
-    expect(sanitized.permission_suggestions[0]).toEqual({
-      type: 'addDirectories',
-      directories: ['/workspace/redacted-file'],
-      destination: 'session',
     });
-    expect(sanitized.permission_suggestions[1].rules[0]).toEqual({
-      toolName: 'Read',
-      ruleContent: '<redacted:ruleContent>',
-    });
-    expect(sanitize({ hook_event_name: 'DirectoryAdded', directory: '/opt/acme', source: 'slash_command' })).toEqual({
+    const directoryIssue = '<record>.permission_suggestions[0].directories[0]: unsanitized sensitive field directories';
+    const ruleIssue =
+      '<record>.permission_suggestions[1].rules[0].ruleContent: unsanitized sensitive field ruleContent';
+    // A workstation directory outside the temp root: the shared defaults see nothing at all.
+    const workstation = suggestions('/srv/acme/extra');
+    expect(checkRecord(workstation, defaultRules)).toEqual([]);
+    expect(check(workstation)).toEqual([directoryIssue, ruleIssue]);
+    // A temp-rooted directory is now also reported by the shared temp-root rule.
+    const temporary = suggestions('/private/tmp/pcc-1/extra');
+    const temporaryIssue = '<record>.permission_suggestions[0].directories[0]: unsafe text at directories';
+    expect(checkRecord(temporary, defaultRules)).toEqual([temporaryIssue]);
+    expect(check(temporary)).toEqual([temporaryIssue, directoryIssue, ruleIssue]);
+    for (const raw of [workstation, temporary]) {
+      const sanitized = sanitize(raw);
+      expect(sanitized.permission_suggestions[0]).toEqual({
+        type: 'addDirectories',
+        directories: ['/workspace/redacted-file'],
+        destination: 'session',
+      });
+      expect(sanitized.permission_suggestions[1].rules[0]).toEqual({
+        toolName: 'Read',
+        ruleContent: '<redacted:ruleContent>',
+      });
+      expect(check(sanitized)).toEqual([]);
+    }
+    const added = { hook_event_name: 'DirectoryAdded', directory: '/opt/acme', source: 'slash_command' };
+    expect(checkRecord(added, defaultRules)).toEqual([]);
+    expect(sanitize(added)).toEqual({
       hook_event_name: 'DirectoryAdded',
       directory: '/workspace/redacted-file',
       source: 'slash_command',
     });
-    expect(check(sanitized)).toEqual([]);
   });
 
   it('redacts conversation text that the shared free-text keys miss', () => {

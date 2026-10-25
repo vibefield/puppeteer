@@ -1,18 +1,21 @@
 // Session-free config-loader probes (the config batches in parse-results.json): does codex accept a
 // config.toml, with or without `-c` overrides? Unchanged from probes/codex@0.157.1 except that a case
-// carries its batch and is spelled as its result is (configToml, typed), and the executable may be named.
+// carries its batch and is spelled as its result is (configToml, typed), and the executable is named.
 //
 //   PUPPETEER_CODEX_BIN=<codex> node config-probe.mjs <cases.json: [{ batch, configToml: [toml], typed?: [options] }]> <results.json>
 //
 // Each case writes its top-level lines into an empty isolated CODEX_HOME and runs
 // `codex [argv] features list`, which loads the configuration and starts no session. HOME is isolated
-// too, stdin is not a terminal and TERM is dumb, so nothing of anyone's is read or written.
+// too, stdin is not a terminal and TERM is dumb, so nothing of anyone's is read or written. The
+// executable is the one named, never `codex` on PATH (the operator's own, signed-in install), and PATH
+// keeps no directory with another codex.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { hermeticPath, resolveCodexExecutable } from '../../census/harness.mjs';
 
-const executable = process.env.PUPPETEER_CODEX_BIN ?? 'codex';
+const executable = resolveCodexExecutable();
 const cases = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const results = [];
 for (const { batch, configToml: lines, typed: argv } of cases) {
@@ -25,7 +28,13 @@ for (const { batch, configToml: lines, typed: argv } of cases) {
   const run = spawnSync(executable, [...(argv ?? []), 'features', 'list'], {
     cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { PATH: process.env.PATH, HOME: home, CODEX_HOME: codexHome, TERM: 'dumb', LANG: 'en_US.UTF-8' },
+    env: {
+      PATH: hermeticPath(process.env.PATH, executable),
+      HOME: home,
+      CODEX_HOME: codexHome,
+      TERM: 'dumb',
+      LANG: 'en_US.UTF-8',
+    },
     timeout: 20_000,
     encoding: 'utf8',
   });

@@ -108,21 +108,21 @@
         "kind": "capture-set",
         "path": "packages/surface/vendors/grok/captures/grok@1.0.70",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "3bdf58361e694cde466ea70290765a7d92355493feab1fef7f66ec2efbc18eba"
+        "sha256": "fcabeb3de3e1aa588b48f134366a48dd36833a6c19dcda810c7768bcedff160a"
       },
       {
         "id": "binary-probes",
         "kind": "probe-set",
         "path": "packages/surface/vendors/grok/probes/grok@1.0.70",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "6edd3971028eaee094edcc21125a084a06ea305c633edece2edfc4abf2267ce8"
+        "sha256": "7effc36183e44f065f04582c5dba71bf5fee2e4bbd34e0e3b89775bdb3d0e94a"
       },
       {
         "id": "supplemental-public-reference",
         "kind": "reference-snapshot",
         "path": "packages/surface/vendors/grok/references/grok@1.0.70",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "1ad6795777523f051f27034fe00edec82b978f067f193aabb3d2a90264378621"
+        "sha256": "5cc880856b5f19a547a7829269a3b1c02d0e7b7d659f8d40643910769bc11888"
       },
       {
         "id": "agent-surface-model",
@@ -132,7 +132,7 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "89bf66e301193bc3e277cff7e0829913c1166fec7c71b8b39f8a282ce45d6467"
+        "sha256": "a6e77e469f95f7c545b808ab37f7491be1162e697db772a43bb2160068f174e9"
       }
     ],
     "claims": [
@@ -144,8 +144,19 @@
         "artifact": "installed-grok-1.0.70-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
-        "capturedAt": "2026-10-25T00:00:00.000Z",
-        "notes": "Type-preserving native carriers from scenarios approvals-remembered-off, headless-compact, hooks, subagent, viewer-prompt, viewer-session: directional ACP frames, updates.jsonl, and signals/summary/usage.json."
+        "capturedAt": "2026-10-25T05:00:02.273Z",
+        "notes": "Type-preserving native carriers from scenarios approvals-remembered-off, headless-compact, hooks, subagent, viewer-prompt, viewer-session: directional ACP frames, updates.jsonl, and signals/summary/usage.json. Facts that exist only because the native viewer attached cite grok-runtime-interactive instead."
+      },
+      {
+        "id": "grok-runtime-interactive",
+        "kind": "runtime-capture",
+        "confidence": "verified-interactive",
+        "record": "sanitized-captures",
+        "artifact": "installed-grok-1.0.70-darwin-arm64",
+        "platform": "darwin-arm64",
+        "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+        "capturedAt": "2026-10-25T05:00:02.273Z",
+        "notes": "The same captures, for facts whose trigger is the native viewer attached to the leader session in a PTY (scenarios viewer-session, viewer-prompt): attach-time broadcasts to the already-attached controller (config_option_update; background_tasks after session/new) and the live user_message_chunk echo. The controller rail that records them is headless; the trigger is the native TUI."
       },
       {
         "id": "grok-census-observations",
@@ -155,7 +166,7 @@
         "artifact": "installed-grok-1.0.70-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
-        "capturedAt": "2026-10-25T00:00:00.000Z",
+        "capturedAt": "2026-10-25T05:00:02.273Z",
         "notes": "Harness-computed semantic projections (observations.json, topology.json, store-layout.json): timing, counts, literal permission option inventories, and process topology. Admissible for occurrence, ordering, timing, and retained literals only, never for a schema."
       },
       {
@@ -166,19 +177,19 @@
         "artifact": "installed-grok-1.0.70-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "packages/surface/vendors/grok/census/harness.mjs --probes-only (disposable home, explicit environment)",
-        "capturedAt": "2026-10-25T00:00:00.000Z",
+        "capturedAt": "2026-10-25T09:20:29.161Z",
         "notes": "`--version`, long/short help, subcommand help trees, and the `grok completions fish` grammar of the exact artifact."
       },
       {
         "id": "grok-approval-probe",
         "kind": "runtime-capture",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "record": "binary-probes",
         "artifact": "installed-grok-1.0.70-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "packages/surface/vendors/grok/census/harness.mjs --approval-probe (deferring ACP controller, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
-        "capturedAt": "2026-10-25T00:00:00.000Z",
-        "notes": "Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count. Admissible for occurrence, ordering, and outcomes only, never for a schema."
+        "capturedAt": "2026-10-25T09:20:45.252Z",
+        "notes": "Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open, answered or interrupted with keystrokes in the native viewer (hence interactive evidence), including the allow_always choice and the rule it persists. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count and location. Admissible for occurrence, ordering, and outcomes only, never for a schema."
       },
       {
         "id": "grok-binary-serde-lead",
@@ -188,7 +199,7 @@
         "artifact": "installed-grok-1.0.70-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "packages/surface/vendors/grok/census/extract-public-reference.mjs (printable-run scan)",
-        "capturedAt": "2026-10-25T00:00:00.000Z",
+        "capturedAt": "2026-10-25T09:23:04.602Z",
         "notes": "Low-confidence leads from a strings heuristic over the exact bytes: serde variant names absent from the public enum and xAI method literals. Rust string pooling makes absence meaningless and presence weak."
       },
       {
@@ -13751,6 +13762,10 @@
           "grok-public-acp-lead",
           "grok-runtime-headless"
         ],
+        "ordering": [
+          "grok-runtime-headless",
+          "grok-approval-probe"
+        ],
         "result": [
           "grok-public-acp-lead",
           "grok-runtime-headless"
@@ -14029,7 +14044,7 @@
         }
       ],
       "fixture": "captures/grok@1.0.70/approvals-remembered-off/acp-controller.jsonl",
-      "notes": "Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs \"received response for unknown request id\"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always persists GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml. spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once."
+      "notes": "Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs \"received response for unknown request id\"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always — in the viewer too — persists one GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml rule that answers the next matching command without a request (approval probe viewer-answers-always). spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once."
     },
     {
       "surface": "grok",
@@ -15907,14 +15922,14 @@
           },
           "evidence": {
             "existence": [
-              "grok-runtime-headless"
+              "grok-runtime-interactive"
             ],
             "shape": [
               "grok-public-acp-lead",
-              "grok-runtime-headless"
+              "grok-runtime-interactive"
             ]
           },
-          "confidence": "verified-headless"
+          "confidence": "verified-interactive"
         },
         {
           "match": {
@@ -17728,13 +17743,13 @@
           },
           "evidence": {
             "existence": [
-              "grok-runtime-headless"
+              "grok-runtime-interactive"
             ],
             "shape": [
-              "grok-runtime-headless"
+              "grok-runtime-interactive"
             ]
           },
-          "confidence": "verified-headless",
+          "confidence": "verified-interactive",
           "fidelity": "sampled",
           "limitations": [
             "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
@@ -19286,13 +19301,13 @@
         "event": "session/update",
         "lane": "session",
         "order": 6,
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "shape": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ]
         },
         "match": {
@@ -19874,7 +19889,7 @@
         "event": "session/update",
         "lane": "tool",
         "order": 11,
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
             "grok-approval-probe"
@@ -20562,16 +20577,16 @@
         "to": "background-tasks",
         "kind": "conditional",
         "label": "another client (the native viewer) attaches",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "shape": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "ordering": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ]
         }
       },
@@ -20613,16 +20628,16 @@
         "from": "available-commands",
         "to": "config-option",
         "kind": "sequence",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "shape": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "ordering": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ]
         }
       },
@@ -20682,16 +20697,16 @@
         "to": "user-message-echo",
         "kind": "conditional",
         "label": "live echo only while another client is attached",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "shape": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ],
           "ordering": [
-            "grok-runtime-headless"
+            "grok-runtime-interactive"
           ]
         }
       },
@@ -21248,7 +21263,7 @@
         "to": "tool-permission-cancelled",
         "kind": "conditional",
         "label": "permission prompt cancelled in the viewer: toolNotRun cancelled, PermissionCancelled",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
             "grok-approval-probe"
@@ -21265,7 +21280,7 @@
         "from": "tool-permission-cancelled",
         "to": "turn-complete",
         "kind": "sequence",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
             "grok-approval-probe"
@@ -21283,7 +21298,7 @@
         "to": "interaction-resolved",
         "kind": "conditional",
         "label": "a pending request is resolved by session/cancel with no tool_call_update (MidTurnAbort)",
-        "confidence": "verified-headless",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
             "grok-approval-probe"

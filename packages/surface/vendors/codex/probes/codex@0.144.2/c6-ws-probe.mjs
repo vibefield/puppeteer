@@ -2,12 +2,17 @@
 // connect with Node's built-in global WebSocket, drive initialize+thread/start.
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
+import { isolatedCodex } from '../../census/harness.mjs';
+
+// The executable under review (PUPPETEER_CODEX_BIN), never `codex` on PATH, in a throwaway HOME and
+// CODEX_HOME with an allowlisted environment: not the caller's own, possibly signed-in, profile.
+const codex = isolatedCodex();
 const LOG = new URL('./c6-ws.log', import.meta.url).pathname;
 appendFileSync(LOG, '\n==== ' + new Date().toISOString() + ' ====\n');
 const log = (...a) => appendFileSync(LOG, a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
 
 const PORT = 8791;
-const server = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(codex.executable, ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'], env: codex.env });
 server.stdout.on('data', (d) => log('[srv-out]', d.toString().slice(0, 200)));
 server.stderr.on('data', (d) => log('[srv-err]', d.toString().slice(0, 200)));
 await new Promise((r) => setTimeout(r, 1800));

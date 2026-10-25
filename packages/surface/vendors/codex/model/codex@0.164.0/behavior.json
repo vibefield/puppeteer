@@ -602,7 +602,7 @@
       "lane": "history",
       "order": 14,
       "label": "thread/turns/list",
-      "description": "itemsView 'full' carries each completed turn's items; the default 'summary' view drops tool and file-change items (survey probe).",
+      "description": "itemsView 'full' carries every persisted item of each completed turn; the default 'summary' is 'only a display summary' (the schema's TurnItemsView), and in the 0.164.0 survey probe it answered [userMessage, agentMessage] for a turn whose full items were [userMessage, fileChange, agentMessage].",
       "evidence": {
         "existence": [
           "codex-runtime-headless"

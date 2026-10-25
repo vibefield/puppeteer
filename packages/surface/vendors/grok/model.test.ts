@@ -161,10 +161,12 @@ describe(`the Grok ${selected.version} candidate ASM`, () => {
     ).toBe(true);
     expect(observations('viewer-prompt').viewerTurn.permissionRequestsToController).toBeGreaterThan(0);
     const relations = model.behavior.relations;
+    // The echo exists only because the native viewer attached: interactive evidence.
     expect(relations.find((entry) => entry.from === 'queue-changed' && entry.to === 'user-message-echo')).toMatchObject(
       {
         kind: 'conditional',
-        confidence: 'verified-headless',
+        confidence: 'verified-interactive',
+        evidence: { existence: ['grok-runtime-interactive'] },
       },
     );
     expect(
@@ -285,29 +287,77 @@ describe(`the Grok ${selected.version} candidate ASM`, () => {
     // The viewer, not the deferring controller, answered every case, and the
     // leader never cancelled the controller's copy; every late answer, the
     // `cancelled` one a deferring adapter sends included, was ignored.
-    expect(cases.length).toBeGreaterThanOrEqual(6);
+    expect(cases.length).toBeGreaterThanOrEqual(7);
     for (const entry of cases) {
       expect(entry).toMatchObject({ fallbackControllerAnswer: false, interactionResolved: true });
       expect(entry.controllerCancelRequests).toBe(0);
-      expect(entry.permissionRuleFilesWritten).toBe(0);
+      // Only the viewer's "don't ask again" choice persists a rule.
+      expect(entry.permissionRuleFilesWritten, entry.label).toBe(entry.label === 'viewer-allow-always' ? 1 : 0);
       expect((entry.lateControllerAnswers as Json[]).map(({ decision }) => decision)).toContain('cancelled');
       for (const late of entry.lateControllerAnswers as Json[]) {
         expect(late).toMatchObject({ framesAfter: [], leaderLoggedUnknownResponse: true });
       }
     }
+    // allow_always, chosen in the viewer, persists one rule beside the session
+    // bucket, named after the controller's argv, that answers the next request.
+    const always = cases.find((entry) => entry.label === 'viewer-allow-always')!;
+    expect(always).toMatchObject({
+      requestOptions: ['allow_always', 'allow_once', 'reject_once', 'reject_always'],
+      toolRan: true,
+      permissionRules: [{ location: 'sessions/<cwd>', namedFor: 'controller' }],
+      followUp: { permissionRequests: 0, toolRan: true, permissionRuleFilesWritten: 0 },
+    });
+    // Viewer keystrokes drive every case: interactive evidence, by the repository convention.
     expect(model.evidenceIndex?.claims?.find(({ id }) => id === 'grok-approval-probe')).toMatchObject({
       kind: 'runtime-capture',
       record: 'binary-probes',
+      confidence: 'verified-interactive',
     });
     const relations = model.behavior.relations;
     expect(relations.find((entry) => entry.from === 'cancel' && entry.to === 'interaction-resolved')).toMatchObject({
       kind: 'conditional',
-      confidence: 'verified-headless',
+      confidence: 'verified-interactive',
     });
     expect(
       relations.find((entry) => entry.from === 'interaction-resolved' && entry.to === 'tool-permission-cancelled'),
-    ).toMatchObject({ kind: 'conditional', confidence: 'verified-headless' });
-    expect(event('session/request_permission').notes).toContain('first answer wins');
+    ).toMatchObject({ kind: 'conditional', confidence: 'verified-interactive' });
+    // The controller-answered ordering stays headless; the probe adds the viewer's side.
+    expect(relations.find((entry) => entry.from === 'permission' && entry.to === 'interaction-resolved')).toMatchObject(
+      { kind: 'sequence', confidence: 'verified-headless' },
+    );
+    const permission = event('session/request_permission');
+    expect(permission.notes).toContain('first answer wins');
+    expect(permission.notes).toContain('answers the next matching command without a request');
+    expect(permission.evidence?.ordering).toEqual(['grok-runtime-headless', 'grok-approval-probe']);
+  });
+
+  it('labels viewer-triggered facts interactive and dates every claim after the artifact acquisition', () => {
+    const index = model.evidenceIndex as Json;
+    const claims = new Map((index.claims as Json[]).map((claim) => [claim.id as string, claim]));
+    expect(claims.get('grok-runtime-headless')?.confidence).toBe('verified-headless');
+    expect(claims.get('grok-runtime-interactive')).toMatchObject({
+      kind: 'runtime-capture',
+      confidence: 'verified-interactive',
+      record: 'sanitized-captures',
+    });
+    // config_option_update reaches the controller only when the viewer attaches.
+    expect(variant('session/update', 'config_option_update')).toMatchObject({
+      confidence: 'verified-interactive',
+      evidence: { existence: ['grok-runtime-interactive'] },
+    });
+    expect(model.behavior.nodes.find((node) => node.id === 'config-option')?.confidence).toBe('verified-interactive');
+    for (const kind of ['tool_call', 'user_message_chunk', 'available_commands_update']) {
+      expect(variant('session/update', kind)?.confidence, kind).toBe('verified-headless');
+    }
+    // Every capture instant is a real one, and none precedes the bytes it ran.
+    const acquired = new Map((index.artifacts as Json[]).map((artifact) => [artifact.id, artifact.acquiredAt]));
+    const instants = (index.claims as Json[]).filter((claim) => claim.capturedAt !== undefined);
+    expect(instants.length).toBeGreaterThanOrEqual(6);
+    for (const claim of instants) {
+      expect(claim.capturedAt, claim.id).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(Date.parse(claim.capturedAt), claim.id).toBeGreaterThanOrEqual(Date.parse(acquired.get(claim.artifact)));
+    }
+    expect(claims.get('grok-runtime-headless')?.capturedAt?.slice(0, 10)).toBe(capture.capturedOn);
   });
 
   it('contains no detectable private capture material', () => {

@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { AgentNativeInvocation, NativeInvocationGrammar, NativeInvocationOption } from '@vibefield/puppeteer-core';
-import { GROK_COMMANDS, INVOCATION_GRAMMAR, INVOCATION_GRAMMAR_VERSION, LEADER_GRAMMAR } from './invocation-grammar.js';
+import {
+  GROK_COMMANDS,
+  INVOCATION_GRAMMAR,
+  INVOCATION_GRAMMAR_VERSION,
+  LEADER_GRAMMAR,
+  WORKSPACE_GRAMMAR,
+} from './invocation-grammar.js';
 import { normalizeGrokNativeInvocation as normalize } from './native-invocation.js';
 
 const invoke = (argv: string[], implementation: AgentNativeInvocation['implementation'] = { kind: 'native' }) =>
@@ -49,6 +55,17 @@ function helpCommands(help: string): string[] {
     names.push(...(/\[aliases: ([^\]]+)\]/u.exec(line)?.[1]?.split(', ') ?? []));
   }
   return names;
+}
+
+/** Every root command `completions fish` offers: `__fish_grok_needs_command -a "<name>"`. */
+function fishRootCommands(): string[] {
+  const source = readFileSync(
+    new URL(`./__fixtures__/grok-root-commands-${INVOCATION_GRAMMAR_VERSION}.fish`, import.meta.url),
+    'utf8',
+  );
+  return [...source.matchAll(/^complete -c grok -n "__fish_grok_needs_command" -a "([^"]+)"/gmu)].map(
+    (match) => match[1]!,
+  );
 }
 
 /** clap names the canonical option in each parse error the probe provoked. */
@@ -99,6 +116,12 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
     ['leader', '--leader-socket', '/tmp/leader.sock', 'kill'],
     ['memory', 'serve'],
     ['worktree', 'create'],
+    ['workspace'],
+    ['workspace', '--help'],
+    ['workspace', 'status'],
+    ['workspace', 'list', '--json'],
+    ['workspace', '--leader-socket', '/tmp/leader.sock', 'stop'],
+    ['workspace', 'pause', '--pid', '42'],
   ],
   'one-shot': [
     ['-p', 'hi'],
@@ -119,6 +142,9 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
     ['leader', 'worker', 'start'],
     ['leader', '--debug', 'worker', 'status'],
     ['--model', 'example', 'leader', 'worker', 'start'],
+    ['workspace', 'start'],
+    ['workspace', '--debug', 'restart', '--hub-url', 'wss://hub.invalid'],
+    ['workspace', 'resume'],
   ],
   reject: [
     ['--leader-socket', '/tmp/foreign'],
@@ -133,6 +159,7 @@ const matrix: Record<'utility' | 'one-shot' | 'elsewhere' | 'reject', string[][]
     ['--append-system-prompt', 'be terse'],
     ['--allowed-tools', 'Bash'],
     ['--mode', 'ask'],
+    ['workspace', 'teleport'],
   ],
   mapped: [
     [
@@ -207,12 +234,33 @@ describe(`grok ${INVOCATION_GRAMMAR_VERSION} strict invocation grammar`, () => {
     const declared = GROK_COMMANDS.filter((row) => !row.hidden).flatMap((row) => [...row.names]);
     expect([...new Set(declared)].sort()).toEqual([...new Set(names)].sort());
     const hidden = GROK_COMMANDS.filter((row) => row.hidden);
-    expect(hidden.map((row) => row.names)).toEqual([['cursor-worker']]);
+    expect(hidden.map((row) => row.names)).toEqual([['cursor-worker'], ['workspace']]);
     for (const row of hidden) {
       expect(names).not.toContain(row.names[0]);
       const firstLine = fixture(`${row.names[0]}-help`).split('\n')[0]!;
       expect(row.hidden).toContain(firstLine);
     }
+  });
+
+  it('holds every root command to the `completions fish` grammar, in both directions', () => {
+    // The help omits hidden commands; the completion grammar clap generates lists them all.
+    const declared = GROK_COMMANDS.flatMap((row) => [...row.names]);
+    expect([...new Set(declared)].sort()).toEqual([...new Set(fishRootCommands())].sort());
+  });
+
+  it('holds the nested workspace grammar to `grok workspace --help`, in both directions', () => {
+    const help = fixture('workspace-help');
+    const grammar = WORKSPACE_GRAMMAR as NativeInvocationGrammar;
+    expect(grammar.commands!.flatMap((row) => [...row.names]).sort()).toEqual(helpCommands(help).sort());
+    expect(
+      grammar.options
+        .map((row) => ({ names: [...row.names].sort(), arity: row.arity }))
+        .sort((a, b) => a.names[0]!.localeCompare(b.names[0]!)),
+    ).toEqual(
+      helpOptions(help)
+        .map((option) => ({ names: [...option.names].sort(), arity: option.arity }))
+        .sort((a, b) => a.names[0]!.localeCompare(b.names[0]!)),
+    );
   });
 
   it('holds the nested leader grammar to `grok leader --help`, in both directions', () => {

@@ -1119,12 +1119,39 @@ function leaderUnknownResponses(run) {
     .filter((line) => LEADER_UNKNOWN_RESPONSE.test(line)).length;
 }
 
-function permissionRuleCount(root) {
+function permissionRuleEntries(root) {
   const sessions = join(root.grokHome, 'sessions');
-  if (!existsSync(sessions)) return 0;
-  return readdirSync(sessions, { recursive: true, encoding: 'utf8' }).filter((entry) =>
-    /^permission__.*\.toml$/.test(entry.split('/').pop() ?? ''),
-  ).length;
+  if (!existsSync(sessions)) return [];
+  return readdirSync(sessions, { recursive: true, encoding: 'utf8' })
+    .filter((entry) => /^permission__.*\.toml$/.test(entry.split('/').pop() ?? ''))
+    .sort();
+}
+
+function permissionRuleCount(root) {
+  return permissionRuleEntries(root).length;
+}
+
+/**
+ * Where each persisted rule lives, and whose argv names it, without its name:
+ * the directory relative to GROK_HOME/sessions as `<cwd>` (the workspace
+ * bucket) or `<cwd>/<session>`, and the client whose launch argv the file name
+ * embeds (`controller` for `… stdio`, `viewer` for `… --resume <id>`). The
+ * file is never copied or read.
+ */
+function permissionRuleShapes(root, sessionId) {
+  const sessionDir = sessionDirectory(root, sessionId);
+  const sessionsRoot = join(root.grokHome, 'sessions');
+  const bucket = sessionDir ? relative(sessionsRoot, dirname(sessionDir)) : undefined;
+  const session = sessionDir ? relative(sessionsRoot, sessionDir) : undefined;
+  return permissionRuleEntries(root).map((entry) => {
+    const directory = dirname(entry);
+    const name = entry.split('/').pop() ?? '';
+    return {
+      location:
+        directory === bucket ? 'sessions/<cwd>' : directory === session ? 'sessions/<cwd>/<session>' : 'elsewhere',
+      namedFor: /stdio/.test(name) ? 'controller' : /resume/.test(name) ? 'viewer' : 'unknown',
+    };
+  });
 }
 
 /**
@@ -1272,6 +1299,7 @@ async function deferredPermissionCase(
   outcome.interactionResolved = resolved();
   outcome.toolRan = existsSync(toolFile);
   outcome.permissionRuleFilesWritten = permissionRuleCount(run.root) - rulesBefore;
+  if (outcome.permissionRuleFilesWritten > 0) outcome.permissionRules = permissionRuleShapes(run.root, sessionId);
   outcome.controllerCancelRequests = controller.frames
     .slice(since)
     .filter((frame) => frame.direction === 'agent-to-client' && frame.message.method === '$/cancel_request').length;
@@ -1365,6 +1393,51 @@ export const GROK_APPROVAL_PROBES = {
     await stopLeader(run, leader, now);
   },
 
+  /**
+   * The person chooses "don't ask again" (allow_always) in the viewer: one
+   * persisted rule, which then answers the next matching request before any
+   * client is asked. Its own session, so the standing rule touches no other case.
+   */
+  async 'viewer-answers-always'(run, provider, now) {
+    const env = isolatedGrokEnvironment(run.root, { baseUrl: provider.baseUrl, extra: { GROK_SUBAGENTS: '0' } });
+    let deferring = true;
+    // Only the first request is left to the viewer; any later one is a rule
+    // that did not apply, and the controller denies it so the turn ends.
+    const { leader, controller, sessionId } = await bootstrap(run, env, now, {
+      decide: (params) => (deferring ? DEFER_PERMISSION : selectPermissionOption(params?.options, 'deny')),
+    });
+    const viewer = startViewer(run, env, sessionId, now);
+    for (let attempt = 0; attempt < 60 && viewer.bytes() < 4_000; attempt += 1) await sleep(100);
+    await sleep(4_000);
+    run.expect('viewer-attached', viewer.bytes() > 0 && !viewer.exited());
+    const always = await deferredPermissionCase(run, controller, viewer, sessionId, now, {
+      label: 'viewer-allow-always',
+      text: 'SURFACE_TOOL allow it from now on.',
+      keys: ['1', '\r'],
+      lateDecisions: ['cancelled'],
+    });
+    deferring = false;
+    const toolFile = join(run.root.workspace, 'surface-tool.txt');
+    rmSync(toolFile, { force: true });
+    const rulesBefore = permissionRuleCount(run.root);
+    const again = await prompt(run, controller, sessionId, 'after-allow-always', 'SURFACE_TOOL run it again.', now);
+    always.followUp = {
+      permissionRequests: again.turn.permissionRequests.length,
+      toolRan: existsSync(toolFile),
+      stopReason: again.turn.stopReason,
+      permissionRuleFilesWritten: permissionRuleCount(run.root) - rulesBefore,
+    };
+    run.expect('allow-always-persists-one-rule', always.permissionRuleFilesWritten === 1, always.permissionRules);
+    run.expect(
+      'allow-always-answers-the-next-request',
+      always.followUp.permissionRequests === 0 && always.followUp.toolRan,
+      always.followUp,
+    );
+    await controller.close();
+    await viewer.stop();
+    await stopLeader(run, leader, now);
+  },
+
   /** No viewer when the request is issued; the viewer attaches while it is pending. */
   async 'viewer-late-join'(run, provider, now) {
     const env = isolatedGrokEnvironment(run.root, { baseUrl: provider.baseUrl, extra: { GROK_SUBAGENTS: '0' } });
@@ -1432,6 +1505,7 @@ const HELP_PROBES = [
   ['memory-help.txt', ['memory', '--help']],
   ['update-help.txt', ['update', '--help']],
   ['hidden-cursor-worker-help.txt', ['cursor-worker', '--help']],
+  ['hidden-workspace-help.txt', ['workspace', '--help']],
   ['leader-worker-help.txt', ['leader', 'worker', '--help']],
   ['removed-share-help.txt', ['share', '--help']],
 ];
@@ -1530,7 +1604,7 @@ export function runProbes({ artifact, version, probes, sourceUrl }) {
       bytes: stat.size,
       versionOutput,
       ...(sourceUrl ? { sourceUrl } : {}),
-      probedAt: new Date().toISOString().slice(0, 10),
+      probedAt: new Date().toISOString(),
       environment: 'disposable HOME/GROK_HOME, explicit environment, no network model',
       probes: index,
     });
@@ -1550,6 +1624,7 @@ async function runApprovalProbe({ artifact, version, versionOutput, probes }) {
   if (existsSync(target)) throw new Error(`refusing to overwrite ${target}; remove it to re-probe`);
   const output = resolve(flag('--output', join(vendorRoot, 'captures-raw', `grok@${version}-approval-probe`)));
   mkdirSync(output, { recursive: true, mode: 0o700 });
+  const capturedAt = new Date().toISOString();
   const results = {};
   const failures = [];
   for (const name of Object.keys(GROK_APPROVAL_PROBES)) {
@@ -1565,10 +1640,11 @@ async function runApprovalProbe({ artifact, version, versionOutput, probes }) {
     versionOutput,
     artifactSha256: sha256File(artifact),
     harness: 'packages/surface/vendors/grok/census/harness.mjs --approval-probe',
+    capturedAt,
     topology:
       'one leader, one ACP controller that leaves session/request_permission unanswered, and the native viewer (grok --leader --resume) in a PTY; loopback model provider; disposable HOME/GROK_HOME',
     method:
-      'Viewer keystrokes are control input only. Each outcome is read from the controller’s ACP frames, the workspace file the mutating command writes, and the persisted-rule count; terminal text is never consulted.',
+      'Viewer keystrokes are control input only. Each outcome is read from the controller’s ACP frames, the workspace file the mutating command writes, and the persisted-rule count and location; terminal text is never consulted, and no rule file is copied or read.',
     probes: results,
   });
   if (failures.length > 0) {

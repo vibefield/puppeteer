@@ -351,13 +351,15 @@ describe('Claude invocation grammar: commander’s reading', () => {
     expect(read('--verbose', 'remote')).toMatchObject({ status: 'accepted', prompt: ['remote'] });
   });
 
-  it('--bg/--background: an option token before `--`, never another option’s value (2.1.299+)', () => {
+  it('--bg/--background: anywhere, as every release up to 2.1.283 reads it, though 2.1.299+ reads fewer', () => {
     expect(kind('fix it', '--bg')).toBe('elsewhere');
     expect(kind('--add-dir', 'a', '--bg')).toBe('elsewhere');
     expect(kind('--model', 'opus', '--background')).toBe('elsewhere');
-    expect(read('--', '--bg')).toMatchObject({ status: 'accepted', prompt: ['--bg'] });
-    expect(read('--model', '--bg')).toMatchObject({ status: 'accepted', model: '--bg' });
-    expect(read('-r', 'x', '--', '--background')).toMatchObject({ status: 'accepted', prompt: ['--background'] });
+    // 2.1.299+ reads these as a prompt or an option value; an older release starts a background
+    // session from them. Accepting them would hand that release a managed launch carrying the token.
+    expect(kind('--', '--bg')).toBe('elsewhere');
+    expect(kind('--model', '--bg')).toBe('elsewhere');
+    expect(kind('-r', 'x', '--', '--background')).toBe('elsewhere');
   });
 
   it('purge: a root subcommand wherever commander takes the first operand, `--` included (2.1.288+)', () => {

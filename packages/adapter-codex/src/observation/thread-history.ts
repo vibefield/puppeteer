@@ -6,14 +6,20 @@
  * (0.164.0 census `history-hydration`). The replacement opens the live stream with
  * `thread/resume {threadId, excludeTurns: true}` and pages the turns with `thread/turns/list
  * {itemsView: 'full', sortDirection: 'asc'}` by `nextCursor`. `itemsView` must be `full`: its
- * default, `summary`, drops tool and file-change items; and `sortDirection` must be `asc`, because
- * the default is newest first.
+ * default, `summary`, is "only a display summary" (the schema's `TurnItemsView`), which in the 0.164.0
+ * survey left out a turn's `fileChange` item; and `sortDirection` must be `asc`, because the
+ * default is newest first.
  *
  * Both were behind the `experimentalApi` capability until rust-v0.151.0, so 0.150.x and the
  * promoted 0.147.0 refuse them with -32600 "… requires experimentalApi capability" (0.150.0
  * pagination probe). Only that refusal, or a server that does not know the method, selects the
- * deprecated calls, once per connection. Any other failure is the server's answer and is not
- * retried another way.
+ * deprecated calls, once per connection.
+ *
+ * A page that fails any other way leaves only the OLDEST turns read, and replaying just those would
+ * pass an older answer off as the latest one. So a page the server answered with an error gets one
+ * full `thread/read` (on 0.158.0 and later at the cost of one native deprecation notice), and a page
+ * it never answered (a timeout, a lost connection) gets no second request. Whatever is still
+ * missing is reported as `incomplete`, never presented as the whole history.
  *
  * Replayed history is what Codex persisted, not what it streamed. Since rust-v0.162.0 (#50427,
  * #50458) a command's `aggregatedOutput` is capped at 64 KiB in persisted history — the first and
@@ -23,7 +29,7 @@
  * has no way to mark it yet (findings C8, Known gaps).
  */
 
-import { AppServerError, type AppServerClient } from '../transport/app-server-client.js';
+import { AppServerError, AppServerRequestTimeoutError, type AppServerClient } from '../transport/app-server-client.js';
 
 /** Which history calls this connection's app-server accepts. */
 type CodexHistoryApi = 'paginated' | 'full-hydration';
@@ -33,6 +39,8 @@ export interface CodexThreadHistoryRead {
   readonly turns: readonly unknown[];
   /** `thread.path` from a `thread/read` answer, when the deprecated read supplied the turns. */
   readonly path?: string | undefined;
+  /** Set when `turns` is only the oldest part of the history (or none of it): why the rest is missing. */
+  readonly incomplete?: { readonly reason: string } | undefined;
 }
 
 const HISTORY_PAGE = { itemsView: 'full', sortDirection: 'asc' } as const;
@@ -61,8 +69,17 @@ export function turnsOf(response: Record<string, unknown> | undefined): readonly
   return Array.isArray(turns) ? turns : [];
 }
 
+/** Why a history request failed, without the server's own text. */
+function failureReason(error: unknown): string {
+  if (error instanceof AppServerError) return `server error ${error.body.code}`;
+  if (error instanceof AppServerRequestTimeoutError) return 'request timed out';
+  return 'connection lost';
+}
+
 export class CodexThreadHistory {
   private current: CodexHistoryApi = 'paginated';
+  /** Whether the last resume hydrated every turn, so that its answer is the whole history. */
+  private resumeHydrated = false;
 
   constructor(private readonly client: AppServerClient) {}
 
@@ -74,23 +91,28 @@ export class CodexThreadHistory {
   async resume(threadId: string): Promise<Record<string, unknown> | undefined> {
     if (this.current === 'paginated') {
       try {
-        return rec(await this.client.request('thread/resume', { threadId, excludeTurns: true }));
+        const resumed = rec(await this.client.request('thread/resume', { threadId, excludeTurns: true }));
+        this.resumeHydrated = false;
+        return resumed;
       } catch (error) {
         if (!refusesPaginatedHistory(error)) throw error;
         this.current = 'full-hydration';
       }
     }
-    return rec(await this.client.request('thread/resume', { threadId }));
+    const resumed = rec(await this.client.request('thread/resume', { threadId }));
+    this.resumeHydrated = true;
+    return resumed;
   }
 
   /**
    * Read every turn of the thread, oldest first. Never throws: history enrichment must not prevent
-   * live attachment. When a page fails for any reason but the paginated-history refusal, the pages
-   * already read are kept — they are the oldest turns, in order.
+   * live attachment. When the whole history cannot be read, the turns that could be are returned
+   * with `incomplete` set.
    */
   async read(threadId: string, resumed: Record<string, unknown> | undefined): Promise<CodexThreadHistoryRead> {
     if (this.current === 'paginated') {
       const turns: unknown[] = [];
+      let failure: unknown;
       try {
         const cursors = new Set<string>();
         let cursor: string | undefined;
@@ -111,15 +133,32 @@ export class CodexThreadHistory {
         } while (cursor !== undefined);
         return { turns };
       } catch (error) {
-        if (!refusesPaginatedHistory(error)) return { turns };
-        this.current = 'full-hydration';
+        if (refusesPaginatedHistory(error)) this.current = 'full-hydration';
+        else failure = error;
+      }
+      if (failure !== undefined) {
+        // The server answered, so it may answer the whole read; the connection stays paginated.
+        if (failure instanceof AppServerError) {
+          try {
+            const read = rec(await this.client.request('thread/read', { threadId, includeTurns: true }));
+            const all = rec(read?.thread)?.turns;
+            if (Array.isArray(all)) return { turns: all, path: str(rec(read?.thread)?.path) };
+          } catch {
+            // The pages already read are all there is.
+          }
+        }
+        return { turns, incomplete: { reason: failureReason(failure) } };
       }
     }
     try {
       const read = rec(await this.client.request('thread/read', { threadId, includeTurns: true }));
       return { turns: turnsOf(read ?? resumed), path: str(rec(read?.thread)?.path) };
-    } catch {
-      return { turns: turnsOf(resumed) };
+    } catch (error) {
+      // A hydrated resume already carried every turn; one without them leaves nothing to replay.
+      return {
+        turns: turnsOf(resumed),
+        ...(this.resumeHydrated ? {} : { incomplete: { reason: failureReason(error) } }),
+      };
     }
   }
 }

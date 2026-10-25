@@ -156,7 +156,7 @@ describe('generateHookSettings', () => {
     ]);
   });
 
-  it('keeps StopFailure on HTTP: print mode exits without awaiting its command hooks', () => {
+  it('keeps StopFailure on HTTP: a print-mode process can exit before its command hooks complete', () => {
     const handler = generateHookSettings(OPTS).hooks.StopFailure![0]!.hooks[0]!;
     expect(handler.type).toBe('http');
   });

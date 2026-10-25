@@ -36,6 +36,23 @@ passed). It also refuses to copy `permission__*.toml`, even into the raw tree. R
 against the exact 1.0.0 bytes (sha256 `13c7f4f0…d21`, scratch output only) reproduces the drift recorded
 below: three 1.0.70 expectations fail on 1.0.0 by design.
 
+**Evidence classes.** The controller rails and the durable store are headless, so their facts cite
+`grok-runtime-headless` (`verified-headless`). A fact whose trigger is the native viewer in its PTY cites
+an interactive claim instead, the repository's class for a harness-driven native TUI (as
+`claude-runtime-interactive`): `grok-runtime-interactive` for what only an attached viewer causes — the
+attach-time `config_option_update` and `background_tasks` after `session/new`, and the live
+`user_message_chunk` echo — and `grok-approval-probe` for everything the probe drives with viewer
+keystrokes. The generator derives the first set from the captures: a notification kind seen only on the
+live controller rail of `viewer-session`/`viewer-prompt`, never durable, replayed, or viewer-less, is
+interactive.
+
+**Capture instants.** Each claim's `capturedAt` is when its record was produced: the census start
+(`2026-10-25T05:00:02.273Z`, the raw `harness.json` instant, pinned in the generator because
+`capture.json` publishes only the date, which the generator holds to it), the binary probes'
+`artifact.json` `probedAt`, the approval probe's `capturedAt`, and the serde scan's
+`binaryProbe.scannedAt`. The generator refuses an instant that precedes the artifact's `acquiredAt`
+(`02:25:00Z`). The shared `check-evidence.mjs` does not assert that ordering yet (see Known gaps).
+
 ## Evidence policy: binary-only
 
 `xai-org/grok-build` publishes HEAD/main only. Its newest commit is `2bdd1d6a` (SOURCE_REV `559751fd`,
@@ -217,11 +234,19 @@ claim.
 | Controller `session/cancel`             | `interaction_resolved`, no `tool_call_update`; `cancelled`/`MidTurnAbort`                                                      |
 | Viewer allow on `spawn_subagent` (`1`)  | 2-option request; `interaction_resolved`, `tool_call_update` `completed`, `subagent_spawned`                                   |
 | Viewer attaches while a request pends   | attach broadcasts, then the late viewer answers it (`2`); the tool ran                                                         |
+| Viewer allow-always (`1`), own session  | `in_progress` → `completed`; one rule in `sessions/<cwd>/`, named for the controller argv; the next command runs unasked       |
 
 In every case the leader sends the controller **no `$/cancel_request`**: its copy of the request simply
 stays open. `interaction_resolved` carries no outcome. A later controller answer to the resolved id —
 `cancelled`, or the opposite decision — produces no frame, changes nothing (the tool ran or did not), and
 is logged as `received response for unknown request id`. No once-answer writes a `permission__*.toml`.
+The viewer's "don't ask again" (`allow_always`) writes exactly one, beside the session directories in the
+cwd bucket (`GROK_HOME/sessions/<cwd>/`), and its name embeds the **controller's** argv even though the
+viewer answered. The next matching command in that session then runs with no request to any client
+(`viewer-answers-always`: `followUp.permissionRequests` 0, the tool ran). The probe records only the
+count, the location, and whose argv names the file; it never copies or reads the rule. That is the
+evidence behind adapter-acp's once-first selection: a host approval that chose `allow_always` would
+silently answer every later matching request.
 
 **Adapter policy (the user's decision: defer to Grok's TUI).** `adapter-acp` gains an explicit
 `unhandledApproval: 'deny' | 'defer'` option; the default stays `deny` for every other consumer
@@ -236,6 +261,20 @@ dismissed) or, with no tool update, the turn's `cancellationCategory` (`Permissi
 `PermissionCancelled`/`MidTurnAbort` → dismissed, otherwise unknown). A request still open at the
 prompt's end, transport close, or disposal resolves `unknown`. Every settled request then releases the
 SDK reply with a `cancelled` outcome, which the leader ignores as shown above.
+
+**A host handler races the person (review fix).** The managed composition always attaches the viewer, so
+with `onApproval` the person can still answer first in Grok's TUI, and Grok then ignores the host's later
+reply (`lateControllerAnswers`). `defer` therefore also marks a host-handled request as shared: it is
+held in the same evidence map while the host decides. Native evidence that arrives first (the tool
+call's next update or the turn's cancellation category) publishes the outcome Grok acted on, aborts the
+request's new `AcpApprovalRequest.signal` so a host dialog can close, and releases the SDK request with
+`cancelled`; the host decision that follows is dropped, never published. A host decision that comes first
+answers as before (once-first option) and later evidence is ignored. Unit and driver tests cover both
+orders, and `approvals.live.test.ts` proves it against the exact artifact: a host handler that waits,
+the person pressing `3`, and the published outcome `denied` with the tool not run.
+A repeated request for a still-pending tool call now resolves the superseded one (`unknown`) **before**
+publishing the repeat: both carry the toolCallId as `requestId`, and the previous order removed the
+repeat from Agent state while Grok still waited for it.
 
 ## Privacy
 
@@ -253,6 +292,14 @@ The replacement gate is described in `captures/grok@1.0.70/SANITIZATION.md`. The
 engine with Grok rules, the shared engine with its default rules (the repository-wide gate), and
 Grok-only detectors. `privacy.test.mjs` shows that every surveyed leak passed the previous rules and fails
 the new detector. On the survey's leaky output, the new gate reports 499 issues across all 12 leak classes.
+
+Review follow-up: the viewer's `memtrace/<unix seconds>-<pid>.jsonl` name in `store-layout.json` carried
+the capture-time clock and a pid past every key rule; it now pins to `memtrace/1000000000-0.jsonl` with a
+paired detector. Values under the shared path keys keep no synthetic root, because the repository-wide
+default gate accepts only its own placeholders there: `summary.json` `grok_home` and the
+`observations.json` `providerRequests[].path` HTTP routes become `/workspace/redacted-file`. The capture
+fidelity record and `SANITIZATION.md` list that loss; the routes survive as the harness `kind`
+(`origin-probe` is the un-routed `GET /` of Topology 6).
 
 ## Adapter and Imposter (implemented in the adapter stage)
 
@@ -293,9 +340,16 @@ the new detector. On the survey's leaky output, the new gate reports 499 issues 
     unchanged) are `elsewhere`.
   - `leader` has a nested grammar held to `leader --help`: `leader worker` is `elsewhere`; `list`, `info`,
     `kill`, and `help` are utility.
+  - (review fix) The hidden `workspace` command (completions.fish; `probes/grok@1.0.70/hidden-workspace-help.txt`)
+    has a nested grammar held to `workspace --help`: `start`/`resume`/`restart` expose the workspace to
+    Computer Hub agents and are `elsewhere`; `pause`, `stop`, `status`/`list`, and `help` are utility. It
+    used to be refused as an unsupported positional argument. The command rows are now also held, in both
+    directions, to every root command `completions fish` offers, so a hidden command cannot be missed
+    again.
 - **Leader shutdown.** Disposal now sends SIGTERM and awaits the exit before removing the leader directory.
   The wait is capped at 3 s, then SIGKILL; the 1.0.70 drain is ~2 s. `GrokBackend.dispose()` now returns a
-  promise.
+  promise that never rejects: a failed removal of the adapter-owned Imposter home is swallowed like the
+  leader directory's, since `builtin-providers` disposes backends without awaiting them.
 - **Control path (`services/control-session.ts`).**
   - ACP candidates whose params carry `_meta.isReplay` (session/load history) are published as replay.
   - ACP frames under another sessionId (a subagent child) keep only their raw native events. They add no
@@ -368,9 +422,22 @@ Deferred design-level work, each with its evidence:
 - **Deferred approvals, residual edges.** If the viewer exits while a request is pending and the binding
   stays alive, nothing answers it until the turn is cancelled or the binding is disposed (disposal
   releases it). A subagent child's request is keyed by its own sessionId and settles from that session's
-  evidence or at disposal, not at the parent's prompt end. The Imposter `approval-turn` still emits the
-  allowed tool path whatever the answer (its ops do not branch on `$response`), so an Imposter reject is
-  normalized from that allowed evidence.
+  evidence or at disposal, not at the parent's prompt end. With a host handler, a host decision that
+  resolves locally after the leader already took the viewer's answer, but before that answer's tool
+  update reaches the controller, is still published (the window is the same notification burst; Grok's
+  `interaction_resolved` carries no outcome to close it).
+- **Imposter deny/dismiss fidelity (review finding, deferred: design-level).** The persona's
+  `approval-turn` runs `tool.end` completed whatever `$response` holds, and no Grok op emits
+  `tool_call_update` failed with `_meta.toolNotRun` or `turn_completed` with `_meta.cancellationCategory`
+  (grep of `packages/imposter/personas/grok`). So an Imposter viewer reject (`3`) runs the tool and is
+  normalized `allowed`, and `grokDeferredApprovalEvidence`'s denied/dismissed branches and the
+  defer→deny flow have no Imposter-backed test: they rest on the unit fixtures, the adapter-acp driver
+  tests (a scripted agent emitting the probe's reject order), and the opt-in `approvals.live.test.ts`
+  against the exact artifact. Fixing it needs a conditional-op construct in the shared Imposter persona
+  language (ops keyed on `$response`; no persona has one, the others script denial as a separate
+  scenario) plus a turn-outcome-dependent `session/prompt` result in `serve.json` (`stopReason`
+  cancelled, `PermissionRejected`). Evidence for the frames: `probes/grok@1.0.70/viewer-approvals.json`
+  `viewer-reject-once` / `viewer-interrupt`.
 - **Child usage attribution.** Child-session frames no longer reach root state or usage (control path).
   Attributing them to the subagent actor, keyed by `child_session_id` from `subagent_spawned`, is not done.
   `adapter-acp`'s own monitor evidence for a foreign-session `usage_update`/`config_option_update` is
@@ -382,8 +449,34 @@ Deferred design-level work, each with its evidence:
 - **Managed environment:** `GROK_CONFIG_PATH`/`GROK_CONFIG` overlays (new in 1.0.70, binary strings) reach
   managed launches through the merged host environment (`driver.ts`). `GROK_REMEMBER_TOOL_APPROVALS`
   decides the option set (`approvals-remembered-off`); the adapter does not pin it.
-- **Invocation edge:** an unknown `leader` subcommand is now refused (the nested grammar), where the flat
-  row answered utility. The remaining 1.0.0-era hidden root options (`--trust`, `--load`,
+- **Teardown timeouts (unverified, binary strings only).** The 1.0.70 binary documents
+  `GROK_EXIT_TIMEOUT_SECS` (seconds after a quit before a forced exit if teardown hangs; default 20, `0`
+  disables; a hard exit follows 5 s later; on the daemon route it also waits up to 60 s more for
+  `SessionEnd` hooks) and `GROK_SESSION_END_HOOKS_TIMEOUT_MS` (each `SessionEnd` hook's default bound,
+  1.5 s, capped at 60 s; the daemon route runs them one after another, at most 60 s in all). Neither was
+  exercised: the census's hooks scenario uses the defaults, and its leader drained in about 2 s. The
+  adapter SIGKILLs the leader 3 s after SIGTERM (`services/leader.ts`, `GROK_LEADER_EXIT_GRACE_MS`) and
+  passes the host environment through, so a host that raises the SessionEnd hook timeout, or configures
+  several slow SessionEnd hooks, could have them cut short. Follow-up: a census of the leader drain with
+  configured `SessionEnd` hooks and the two variables, then derive or document the grace.
+- **Monitor model key (decision: accepted, last writer wins).** ACP `configOptions`/`config_option_update`
+  (adapter-acp `normalization/monitor.ts`, with `displayName`), Grok `model_changed`, and the Grok
+  context sample (`summary.json` `current_model_id`) all upsert the monitor's `('model', 'observed')`
+  record. All three report the same session's current model: in `viewer-session` the configOptions
+  `currentValue` `puppeteer-grok-live` and `model_changed`/`current_model_id` `anon-d87e258ce8fe18cb` are
+  the same id (the latter is its value-keyed alias). The only cost is that `displayName`, which only
+  ACP's configOptions carry, disappears whenever a Grok writer upserts after it. Carrying it across
+  writers is a follow-up, not a correctness gap.
+- **Shared evidence ordering check.** The Grok generator and `model.test.ts` refuse a claim captured
+  before its artifact's `acquiredAt`. The shared `check-evidence.mjs` does not, because existing Hermes
+  0.20.0 (`hermes-runtime-headless`) and Kimi 0.34.0 (`kimi-runtime-headless`) indexes already violate it;
+  adding it is cross-vendor work.
+- **Provider routes in the census projection.** `observations.json` `providerRequests[].path` is an HTTP
+  route the shared path rule flattens (see Privacy). Renaming the harness projection field (for example
+  to `route`) needs a new census and a Grok-detector allowance for the loopback routes, so it waits for
+  the next census.
+- **Invocation edge:** an unknown `leader` or `workspace` subcommand is refused (the nested grammars), where
+  the flat `leader` row answered utility. The remaining 1.0.0-era hidden root options (`--trust`, `--load`,
   `--compaction-mode`, …) are still unknown and refused, per the unknown-is-refused policy.
 - **Unverified service surfaces:** `grok update --check --json`, the plugin registry, the downloads
   layout, `models_cache.json`, `_x.ai/billing`, the xAI Responses-backend `signature`, and the memory
@@ -399,22 +492,36 @@ Deferred design-level work, each with its evidence:
 
 ## Reproduce
 
+The census writes the binary probes into `probes/grok@1.0.70/`, which it refuses unless that directory is
+empty, so empty it (and `captures-raw/grok@1.0.70/`) first. Emptying it also removes
+`viewer-approvals.json`, which the generator requires, so the approval probe runs right after the census
+(it refuses to overwrite an existing digest and writes its own raw tree, `captures-raw/grok@1.0.70-approval-probe/`):
+
 ```sh
 TMPDIR=<short dir> pnpm --filter @vibefield/puppeteer-surface surface:census:grok -- \
   --artifact <grok@1.0.70> --version 1.0.70 --source-url https://x.ai/cli/grok-1.0.70-macos-aarch64
+TMPDIR=<short dir> pnpm --filter @vibefield/puppeteer-surface surface:census:grok -- \
+  --artifact <grok@1.0.70> --version 1.0.70 --approval-probe
 pnpm --filter @vibefield/puppeteer-surface surface:sanitize:grok
 pnpm --filter @vibefield/puppeteer-surface surface:reference:grok -- \
   --grok-source <xai-org/grok-build clone> --acp-source <agent-client-protocol clone> --artifact <grok@1.0.70>
 pnpm --filter @vibefield/puppeteer-surface surface:model:grok
 pnpm --filter @vibefield/puppeteer-surface surface:audit:grok
+pnpm surface:groundtruth:write && pnpm groundtruth:mapping:write
 ```
 
+A new census also moves the census start: copy `captures-raw/grok@1.0.70/harness.json` `capturedAt` into
+the generator's `RELEASES[…].censusCapturedAt` (the generator refuses one that is not on
+`capture.json` `capturedOn`). To refresh only the probes, run `--probes-only` (or `--approval-probe`)
+into a scratch `--probes <dir>` and copy the changed files over; every other probe file reproduces byte
+for byte.
+
 Run every command that executes the vendor binary with a scrubbed environment; the harness passes only its
-explicit environment to Grok. The adapter's live proof against the exact artifact (loopback model only):
+explicit environment to Grok. The adapter's live proofs against the exact artifact (loopback model only):
 
 ```sh
 TMPDIR=<short dir> GROK_LIVE=1 PUPPETEER_GROK_BIN=<grok@1.0.70> \
-  pnpm --filter @vibefield/puppeteer-adapter-grok exec vitest run src/acp.live.test.ts
+  pnpm --filter @vibefield/puppeteer-adapter-grok exec vitest run src/acp.live.test.ts src/approvals.live.test.ts
 ```
 
 ## Promotion status

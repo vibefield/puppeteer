@@ -18,6 +18,7 @@ const NOT_PRESERVED = 'the managed launch cannot preserve this option';
 const COMPAT_ALIAS = 'compat alias documented in the native help description; parse-probes.txt names its option';
 const HEADLESS_ONLY = 'completions.fish lists it as a headless/daemon-only option the root help omits';
 const CURSOR_WORKER = 'it runs this machine as a Cursor private worker whose agents do not live in this process';
+const COMPUTER_HUB = 'it exposes this workspace to Computer Hub agents that do not live in this process';
 
 /** A command row plus the probe that found it when the native help omits it. */
 export interface GrokCommandRow extends NativeInvocationCommand {
@@ -364,6 +365,33 @@ export const LEADER_GRAMMAR = {
   defaultPassthrough: 'utility',
 } as const satisfies NativeInvocationGrammar;
 
+/**
+ * Hidden `grok workspace` (completions.fish lists it; `grok workspace --help`
+ * prints "Expose this workspace to the Computer Hub (via the leader)").
+ * Starting, resuming, or restarting the exposure lets remote hub agents work
+ * here through the leader, outside this process; the other subcommands pause,
+ * stop, or report it. The group's own options consume their values as in
+ * `leader`, and the subcommand decides.
+ */
+export const WORKSPACE_GRAMMAR = {
+  options: [
+    { names: ['--help', '-h'], arity: 'none', passthrough: 'utility' },
+    { names: ['--debug'], arity: 'none', mapped: null },
+    { names: ['--debug-file'], arity: 'one', mapped: null },
+    { names: ['--leader-socket'], arity: 'one', mapped: null },
+  ],
+  commands: [
+    { names: ['start'], passthrough: 'elsewhere', reason: COMPUTER_HUB },
+    { names: ['resume'], passthrough: 'elsewhere', reason: COMPUTER_HUB },
+    { names: ['restart'], passthrough: 'elsewhere', reason: COMPUTER_HUB },
+    { names: ['pause'], passthrough: 'utility' },
+    { names: ['stop'], passthrough: 'utility' },
+    { names: ['status', 'list'], passthrough: 'utility' },
+    { names: ['help'], passthrough: 'utility' },
+  ],
+  defaultPassthrough: 'utility',
+} as const satisfies NativeInvocationGrammar;
+
 /** One row per command in the native help, and the hidden ones clap still parses. */
 export const GROK_COMMANDS: readonly GrokCommandRow[] = [
   { names: ['completions'], passthrough: 'utility' },
@@ -394,6 +422,11 @@ export const GROK_COMMANDS: readonly GrokCommandRow[] = [
     reason: 'it registers this machine as a Cursor private worker through the leader',
     hidden:
       'probe: `grok cursor-worker --help` prints "Register this machine as a Cursor private worker (via the leader)"',
+  },
+  {
+    names: ['workspace'],
+    grammar: WORKSPACE_GRAMMAR,
+    hidden: 'probe: `grok workspace --help` prints "Expose this workspace to the Computer Hub (via the leader)"',
   },
   { names: ['wrap'], passthrough: 'elsewhere' },
   { names: ['agent'], passthrough: 'elsewhere' },

@@ -1,0 +1,49 @@
+{
+  "name": "api-error-overloaded",
+  "notes": "A turn the API refuses, as the 2.1.308 api-error-529 census lane recorded it: the overloaded 529 maps to StopFailure error server_error (never overloaded), after the error text is displayed as the final message. No Stop follows; StopFailure is the turn's only boundary.",
+  "steps": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "UserPromptSubmit",
+          "with": {
+            "prompt": "$stimulus.text",
+            "prompt_id": "$uuid:prompt",
+            "session_title": "$sessionTitle",
+            "permission_mode": "$permissionMode"
+          }
+        }
+      }
+    },
+    {
+      "at": 100,
+      "do": {
+        "emit": {
+          "event": "MessageDisplay",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "turn_id": "$uuid:turn",
+            "message_id": "$uuid:message",
+            "index": 0,
+            "final": true,
+            "delta": "API Error: 529 overloaded. This is a server-side issue, usually temporary."
+          }
+        }
+      }
+    },
+    {
+      "at": 150,
+      "do": {
+        "emit": {
+          "event": "StopFailure",
+          "with": {
+            "prompt_id": "$uuid:prompt",
+            "error": "server_error",
+            "last_assistant_message": "API Error: 529 overloaded. This is a server-side issue, usually temporary."
+          }
+        }
+      }
+    }
+  ]
+}

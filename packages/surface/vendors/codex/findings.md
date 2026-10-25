@@ -607,7 +607,9 @@ filesystem text codex writes for the model:
 into an empty directory: `bin/codex` `d8990e3e…` (byte-identical to what `pnpm surface:download` extracts) and
 `bin/codex-code-mode-host` `416721e3…`. Harness: `census/harness.mjs --package-root <extracted package>`. Records:
 `captures/codex@0.164.0/`, `probes/codex@0.164.0/` (README there), `references/codex@0.164.0/`. Every run was
-hermetic: throwaway HOME, CODEX_HOME and TMPDIR, an allowlisted environment, a loopback model, no account.
+isolated: throwaway HOME, CODEX_HOME and TMPDIR, an allowlisted environment, a loopback model, no account. Isolated is
+not offline: every run that starts an app-server lets its curated-plugin sync make unauthenticated requests to
+github.com and chatgpt.com (Known gaps).
 
 ## The exec tool needs the package's code-mode host
 
@@ -688,8 +690,11 @@ The calls still answer in full. The census reproduces the observer exactly — `
 `thread/inject_items`, `thread/resume {threadId}` — so **every managed session's attach on 0.164.0 receives a
 notice**, and so does every history read of an existing thread. `thread/resume {excludeTurns: true}` then
 `thread/turns/list {itemsView: 'full', sortDirection: 'asc'}` sends none and pages the completed turn's
-`[userMessage, agentMessage]` (`nextCursor: null`). The default `itemsView` is `summary`, which drops tool and
-file-change items (survey probe); only `full` is a faithful replacement. The 0.164.0 TUI already resumes with
+`[userMessage, agentMessage]` (`nextCursor: null`). The default `itemsView` is `summary`, which the schema calls
+"only a display summary" (`TurnItemsView`; `full` is "every ThreadItem available from persisted app-server history").
+In the survey's pagination probe (scratch, not committed) it answered `[userMessage, agentMessage]` for a turn whose
+`full` items were `[userMessage, fileChange, agentMessage]`; a command or tool item under `summary` was not observed.
+Only `full` is a faithful replacement. The 0.164.0 TUI already resumes with
 `excludeTurns: true` and pages with `thread/turns/list` and `thread/items/list` (probe record). Each resume is followed
 by `thread/goal/cleared`.
 
@@ -754,6 +759,22 @@ the 0.157.1 file; `sandbox uninstall` is new; of the 0.157.1 parse and config ca
 strings and `write_stdin_approval` now being stable. The clap `Subcommand` source adds only `MigrateNfsDb` (critic), so no
 hidden subcommand was missed.
 
+Below the root, from the critic's nested help of 0.150.0 and 0.164.0 (36 paths; scratch, not committed), only
+subcommand options moved: `app-server` gains `--startup-sign-out`, `--print-startup-config`, `--startup-client-info`,
+`--cloud-skills-snapshot` and `daemon update`; `exec` and `exec resume` gain `--worktree` and
+`--cyber-access-program`; `mcp login` gains `--no-browser`; `mcp add` gains `--oauth-client-secret`. `--listen` takes
+the same values, and `--ws-auth` is reworded ("Authentication mode for incoming WebSocket connections",
+`capability-token|signed-bearer-token`) with loopback still unauthenticated by default. Subcommands are passthrough
+rows in the grammar, and the flags `transport/app-server-process.ts` and `launch/tui-session.ts` pass are unchanged.
+The model now also sees `functions.request_user_input_async` and `namespace clock:{sleep}`, while `exec` stays the
+custom JavaScript tool with nested `tools.exec_command({cmd})` and `tools.apply_patch(input)` (critic provider bodies),
+so the census scenarios need no change. `features list` churned: `daemon_auto_start` is listed (stable and on since
+0.157.1, so not new to the grammar pin), `code_mode_host` and `write_stdin_approval` are stable,
+`apply_patch_streaming_events` is under development, and `transcript_v2`, `personality`, `remote_compaction_v2`,
+`shell_zsh_fork` and `worktrees` are gone. `cli_auth_credentials_store = "file"`, which `services/profiles.ts` writes so
+a managed profile's credentials stay out of the keychain, is still recognized: the critic's probe rejects a bogus value
+on both versions.
+
 Landing (S1–S35 re-run, made replayable): every permission-digest equality the recipe relies on holds. The workspace-write
 filesystem block now adds a read-only `.aws` entry per workspace root; the permissions text is unchanged (the critic's
 differing permissions digests came from the writable-roots sentence, whose root order depends on where the case root
@@ -788,6 +809,23 @@ unix-transport native-TUI live proof passes on 0.164.0 (package and standalone) 
   carrying `sig=` and a `jwt=` bearer token, which assemble and evidence-update copy into tracked evidence. The downloader
   now records the reviewed pre-redirect URL; the 0.164.0 evidence names
   `https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-aarch64-apple-darwin.tar.gz`.
+  Acquisition (`scripts/acquire-agent-artifacts.mjs`) now refuses a source URL with a query, a fragment or
+  credentials, and the evidence merge (`update-agent-evidence-artifacts.mjs`) re-checks rather than trusts a report
+  written before that, so a `download.json` from the old downloader can no longer reach tracked evidence.
+- **`file://` temp paths.** The temp-root rule's look-behind kept `https://host/tmp/x` out of scope and with it
+  `file:///private/tmp/<uid>/<slug>/…`, whose slug alone was aliased and which then read clean. A local `file://` or
+  `file://localhost/` URL's path is now treated as the path it is. No tracked capture of any vendor carried one.
+- **Probe records are gated.** No sanitizer writes `probes/codex@<version>/`, and nothing read it: a home path and an
+  `sk-` token planted in `live-results.json` passed every codex gate. `checkProbeRecords` (`census/sanitize.mjs`) now runs
+  the detector over every JSON record, help capture and README there, from `surface:privacy:codex`, the audit and
+  `model.test.ts`, with three pinned exceptions (live case labels under `id`, the `<root>/…` case-root placeholder, and
+  the 0.157.1 synthetic `/tmp/codex-extra`); `whitelist-live.mjs` refuses to write a projection it flags.
+- **No codex from `PATH`.** The audit's drift check, `generate-model.mjs`, the harness and every probe script used to
+  fall back to `codex` on `PATH`, the operator's own (usually signed-in) install, and the 0.144.2 and 0.147.0 probes
+  passed it the caller's whole environment. Each now runs only the executable it is named (`--bin`, `--package-root`
+  or `PUPPETEER_CODEX_BIN`) in a throwaway HOME and CODEX_HOME with the allowlisted environment, whose `PATH` keeps no
+  directory holding another codex. Without one the audit reports drift as skipped; with one that cannot generate its
+  schema the audit fails instead of skipping.
 
 ## Adapter implications (the adapter stage)
 
@@ -810,8 +848,11 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
   `thread/turns/list {itemsView: 'full', sortDirection: 'asc'}` paged by `nextCursor` (an empty page or a repeated
   cursor ends the walk). The deprecated full resume and `thread/read {includeTurns: true}` are used only after the
   server answers `-32600 … requires experimentalApi capability` or an unknown method (`-32600 … unknown variant`,
-  `-32601`), once per connection; any other failure is the server's answer (a failed later page keeps the pages
-  already read). The observer replays each completed turn once (`replay: true`), behind the same barrier and turn-id
+  `-32601`), once per connection. Any other page failure leaves only the oldest turns read: a page the server
+  answered with an error gets one `thread/read {includeTurns: true}` (one native deprecation notice on 0.158.0 and
+  later); a page it never answered (a timeout, a lost connection) gets no second request; and whatever is still
+  missing is replayed as far as it was read and then reported as an `adapter:native-event` with the diagnostic
+  `codex-history-incomplete`, rather than passed off as the whole history (fix review). The observer replays each completed turn once (`replay: true`), behind the same barrier and turn-id
   dedup; a thread it just created reads no history. `createCodexSession`'s resume reads only settings, so it sends
   `excludeTurns: true` too. Live: `native-tui.live.test.ts` now asserts that no native deprecation event reaches
   consumers and that the resumed answer is replayed history. It passes on 0.164.0 (package and the standalone
@@ -871,5 +912,17 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
 - **Event-map `lastVerified` at promotion.** `packages:check` requires `docs/event-map.html`'s
   `puppeteer-last-verified` to equal `support/agents.json`'s `currentVersion`, and `surface:promote` does not rewrite
   it, so promoting 0.164.0 must bump the meta in the same change.
+- **An enterprise server's sign-out cannot say what else it ends.** `codex mcp logout` on one `ema_auth` server ends
+  the grant every `ema_auth` server of the profile uses (run_logout, rust-v0.161.0+), but the plan reports
+  `reaches: ['sign-in']`, which Core defines as "a remote server's stored sign-in goes with it" — the act itself.
+  `ExtensionReach` has no value for "the profile's other servers lose theirs", and an available plan has no message
+  (`AvailableExtensionActPlanSchema` is strict), so a host cannot warn that the other enterprise servers are signed out
+  too. It needs a Core reach value (or a plan message) reviewed across adapters.
+- **Incomplete history is a diagnostic, not a state.** A history that cannot be read in full is replayed as far as it
+  was read and then reported (`codex-history-incomplete`); Core has no field marking a session's replay as partial, so
+  a projection's latest answer can still be an older one until live traffic supersedes it.
+- **Signed URLs in old local bundles.** `download.json` files written by the earlier downloader still hold the signed
+  redirect URL on the machine that acquired them (outside the repository). Acquisition now refuses them; regenerate
+  those bundles with the current downloader before assembling.
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.

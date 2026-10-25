@@ -98,7 +98,7 @@ const CONTRADICTIONS = [
     subject: 'StopFailure command hooks in print mode',
     reference: 'Silent on delivery timing; says hook output and exit code are ignored.',
     artifact:
-      'Since 2.1.283 a print-mode process exits without awaiting StopFailure command hooks: a node forwarder (~100 ms to start) never completes, a shell `cat` hook does, and an HTTP hook arrives. 2.1.226 awaited even a 1 s command hook. A command-hook census therefore misses StopFailure; it still fires on the credential-less and API-error paths.',
+      'The committed captures show StopFailure arriving over HTTP on the credential-less and every API-error print path. Observed during adaptation but not recorded as a probe: a print-mode process exited before a node command forwarder (~100 ms to start) completed its StopFailure hook, while a shell `cat` hook completed and the HTTP hook arrived; the same bisect saw 2.1.226 await even a 1 s command hook and 2.1.283 not. A command-hook census can therefore miss StopFailure.',
     model: 'StopFailure is runtime-verified through HTTP; the default transport stays http',
   },
   {
@@ -116,11 +116,11 @@ const CONTRADICTIONS = [
     model: 'optional enum, schema-only',
   },
   {
-    subject: 'Stop.background_tasks and Stop.session_crons',
+    subject: 'Stop.background_tasks, Stop.session_crons and Stop.last_assistant_message',
     reference: 'Shown in the Stop input example.',
     artifact:
-      'Optional in the bundled schema; absent from every 2.1.308 interactive Stop payload (present on SubagentStop when a background agent runs).',
-    model: 'optional; Stop requires only stop_hook_active',
+      'Optional in the bundled SDK schema; present in every captured 2.1.308 Stop payload (7 interactive, 1 resume), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
+    model: 'optional, following the bundled schema; Stop requires only stop_hook_active',
   },
   {
     subject: 'SessionEnd.reason',
@@ -475,7 +475,7 @@ const EVENT_SPECS = {
       last_assistant_message: string,
     },
     notes:
-      'The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Print mode exits without awaiting its command hooks.',
+      'The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed.',
   },
   TeammateIdle: {
     required: ['teammate_name', 'team_name'],
@@ -1011,7 +1011,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       hook: {
         kind: 'hook-http',
         fallback: 'hook-command',
-        notes: `Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude ${version} does not support HTTP for them. A print-mode process exits without awaiting StopFailure command hooks, so StopFailure must stay on HTTP.`,
+        notes: `Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude ${version} does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP.`,
       },
       transcript: {
         kind: 'transcript',

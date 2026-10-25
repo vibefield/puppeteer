@@ -71,6 +71,15 @@ function installedConsoleIdentity(manifest) {
   };
 }
 
+/**
+ * A serialized URL holds `?` only as the query delimiter and `#` only as the fragment
+ * delimiter (path characters are percent-encoded), so testing `href` also catches the
+ * bare `?`/`#` forms whose `search`/`hash` read as ''.
+ */
+export function carriesUrlSecrets(parsed) {
+  return /[?#]/.test(parsed.href) || parsed.username !== '' || parsed.password !== '';
+}
+
 export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifacts, now = () => new Date() }) {
   if (!/^[a-z][a-z0-9-]*$/.test(vendor ?? '')) throw new Error('vendor is required and must be normalized');
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:[-.][0-9A-Za-z.-]+)?$/.test(version)) {
@@ -156,7 +165,14 @@ export function acquireAgentArtifacts({ repoRoot = root, vendor, version, artifa
         ) {
           throw new Error('not allowlisted');
         }
-        sourceUrl = parsed.href;
+        // The allowlist admits release-asset hosts, whose redirect targets are short-lived
+        // signed URLs (`sig=`, `jwt=` bearer material). This report is merged into tracked
+        // evidence, so only a reviewed template URL, which carries neither, may pass.
+        if (carriesUrlSecrets(parsed)) {
+          issues.push(`${platform} artifact source URL carries a query, fragment or credentials`);
+        } else {
+          sourceUrl = parsed.href;
+        }
       } catch {
         issues.push(`${platform} has an invalid artifact source URL`);
       }

@@ -12,6 +12,8 @@
  *   when a decision is needed. We correlate by prompt, tool name, and canonical
  *   tool input, while still tolerating the legacy reverse ordering. Execution
  *   completion proves allow; PermissionDenied or a turn boundary closes denial.
+ *   An Esc-interrupted turn has no boundary hook: the next accepted prompt
+ *   closes its main-thread request with an unknown outcome.
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
  *   only the first occurrence per agent_id normalizes to delegation:subagent-stopped.
  *   `/compact` runs an internal agent whose SubagentStop has an empty agent_type and no
@@ -187,6 +189,30 @@ export class ClaudeHookNormalizer {
     });
   }
 
+  /**
+   * Esc at a permission prompt interrupts the turn and fires no Stop (2.1.308 TUI lane: the
+   * PermissionRequest at seq 31 is followed by the next UserPromptSubmit at seq 34). The main
+   * thread asks one dialog at a time, so a newly accepted main-thread prompt proves an earlier
+   * turn's dialog is gone. Which answer closed it is not observable, so the outcome is unknown. A
+   * subagent's request is left to its own boundary: a background agent can still be waiting on one.
+   */
+  private resolveInterruptedPermissions(
+    result: NormalizedHook,
+    hookEventName: string,
+    promptId: string | undefined,
+  ): void {
+    const interrupted = (permission: PendingPermission) =>
+      permission.agentId === undefined && (permission.promptId === undefined || permission.promptId !== promptId);
+    const count = this.pendingPermissions.filter(interrupted).length;
+    if (count === 0) return;
+    result.diagnostics.push({
+      code: 'permission-outlived-turn',
+      hookEventName,
+      issues: [`${count} pending permission request(s) of an interrupted turn closed when the next prompt started`],
+    });
+    this.resolvePermission(result, 'unknown', interrupted);
+  }
+
   private findRecentTool(permission: PendingPermission): RecentToolRequest | undefined {
     const requests = [...this.recentToolRequests.values()];
     for (let index = requests.length - 1; index >= 0; index -= 1) {
@@ -311,6 +337,7 @@ export class ClaudeHookNormalizer {
           'superseded',
           (question) => question.promptId === undefined || question.promptId !== promptId,
         );
+        if (!result.agentId) this.resolveInterruptedPermissions(result, name, promptId);
         result.events.push(normalizeClaudeTurnStarted(body, promptId));
         break;
 
@@ -348,6 +375,7 @@ export class ClaudeHookNormalizer {
         const pending: PendingPermission = {
           requestId,
           promptId,
+          agentId: result.agentId,
           toolName,
           inputKey: canonicalClaudeValue(body.tool_input),
         };

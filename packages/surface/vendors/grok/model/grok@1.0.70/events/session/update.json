@@ -1552,10 +1552,10 @@
         "update.sessionUpdate": "config_option_update"
       },
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-public-acp-lead", "grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-public-acp-lead", "grok-runtime-interactive"]
       },
-      "confidence": "verified-headless"
+      "confidence": "verified-interactive"
     },
     {
       "match": {
@@ -3037,10 +3037,10 @@
         "required": ["configOptions", "sessionUpdate"]
       },
       "evidence": {
-        "existence": ["grok-runtime-headless"],
-        "shape": ["grok-runtime-headless"]
+        "existence": ["grok-runtime-interactive"],
+        "shape": ["grok-runtime-interactive"]
       },
-      "confidence": "verified-headless",
+      "confidence": "verified-interactive",
       "fidelity": "sampled",
       "limitations": [
         "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."

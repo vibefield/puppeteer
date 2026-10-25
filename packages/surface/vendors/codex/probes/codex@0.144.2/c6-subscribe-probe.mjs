@@ -4,6 +4,11 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { appendFileSync } from 'node:fs';
+import { isolatedCodex } from '../../census/harness.mjs';
+
+// The executable under review (PUPPETEER_CODEX_BIN), never `codex` on PATH, in a throwaway HOME and
+// CODEX_HOME with an allowlisted environment: not the caller's own, possibly signed-in, profile.
+const codex = isolatedCodex();
 const require = createRequire(import.meta.url);
 const pty = require('node-pty');
 const LOG = new URL('./c6-subscribe.log', import.meta.url).pathname;
@@ -11,7 +16,7 @@ appendFileSync(LOG, '\n==== ' + new Date().toISOString() + ' ====\n');
 const log = (...a) => appendFileSync(LOG, a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
 
 const PORT = 8798;
-const server = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(codex.executable, ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: ['ignore', 'pipe', 'pipe'], env: codex.env });
 await new Promise((r) => setTimeout(r, 1800));
 
 let nextId = 1;
@@ -42,7 +47,7 @@ notify('initialized');
 
 // Native TUI attaches + user types prompt #1 -> creates a thread.
 let out = '';
-const term = pty.spawn('codex', ['--remote', `ws://127.0.0.1:${PORT}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...process.env, TERM: 'xterm-256color' } });
+const term = pty.spawn(codex.executable, ['--remote', `ws://127.0.0.1:${PORT}`], { name: 'xterm-256color', cols: 120, rows: 40, cwd: '/private/tmp', env: { ...codex.env, TERM: 'xterm-256color' } });
 term.onData((d) => { out += d; });
 await new Promise((r) => setTimeout(r, 4000));
 term.write('Reply with exactly: pong');

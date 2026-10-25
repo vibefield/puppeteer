@@ -8,18 +8,20 @@ HOME/GROK_HOME with an explicit environment. Each fixture is a copy of a file in
 normalized. These fixtures describe the command parser, not session state inferred
 from terminal text.
 
-| Fixture                                 | Probe file                      | argv                       |
-| --------------------------------------- | ------------------------------- | -------------------------- |
-| `grok-help-1.0.70.txt`                  | `help-long.txt`                 | `help` (the long form)     |
-| `grok-agent-help-1.0.70.txt`            | `agent-help.txt`                | `help agent`               |
-| `grok-leader-help-1.0.70.txt`           | `leader-help.txt`               | `leader --help`            |
-| `grok-leader-worker-help-1.0.70.txt`    | `leader-worker-help.txt`        | `leader worker --help`     |
-| `grok-sessions-help-1.0.70.txt`         | `sessions-help.txt`             | `sessions --help`          |
-| `grok-worktree-help-1.0.70.txt`         | `worktree-help.txt`             | `worktree --help`          |
-| `grok-worker-help-1.0.70.txt`           | `worker-help.txt`               | `worker --help`            |
-| `grok-cursor-worker-help-1.0.70.txt`    | `hidden-cursor-worker-help.txt` | `cursor-worker --help`     |
-| `grok-parse-probes-1.0.70.txt`          | `parse-probes.txt`              | value-less alias misuse    |
-| `grok-global-optspecs-1.0.70.fish`      | `completions.fish` lines 1–4    | `completions fish`         |
+| Fixture                              | Probe file                       | argv                    |
+| ------------------------------------ | -------------------------------- | ----------------------- |
+| `grok-help-1.0.70.txt`               | `help-long.txt`                  | `help` (the long form)  |
+| `grok-agent-help-1.0.70.txt`         | `agent-help.txt`                 | `help agent`            |
+| `grok-leader-help-1.0.70.txt`        | `leader-help.txt`                | `leader --help`         |
+| `grok-leader-worker-help-1.0.70.txt` | `leader-worker-help.txt`         | `leader worker --help`  |
+| `grok-sessions-help-1.0.70.txt`      | `sessions-help.txt`              | `sessions --help`       |
+| `grok-worktree-help-1.0.70.txt`      | `worktree-help.txt`              | `worktree --help`       |
+| `grok-worker-help-1.0.70.txt`        | `worker-help.txt`                | `worker --help`         |
+| `grok-cursor-worker-help-1.0.70.txt` | `hidden-cursor-worker-help.txt`  | `cursor-worker --help`  |
+| `grok-workspace-help-1.0.70.txt`     | `hidden-workspace-help.txt`      | `workspace --help`      |
+| `grok-parse-probes-1.0.70.txt`       | `parse-probes.txt`               | value-less alias misuse |
+| `grok-global-optspecs-1.0.70.fish`   | `completions.fish` lines 1–4     | `completions fish`      |
+| `grok-root-commands-1.0.70.fish`     | `completions.fish` lines 108–136 | `completions fish`      |
 
 Since 1.0.70, `--help`/`-h` print the short clap summary; `grok help` prints the long
 form the census reads (both forms list the same options).
@@ -34,15 +36,20 @@ The census holds the grammar to this evidence in both directions:
   `--always-approve`, `--append-system-prompt` → `--rules`) and the row must classify
   exactly as that option — or a root option the help omits, whose arity
   `__fish_grok_global_optspecs` records (`=` when it takes a value);
-- every command and alias of the help has a row; `cursor-worker` is the one hidden
-  command, recorded by its own help;
-- the nested `leader` grammar matches `grok leader --help`.
+- every command and alias of the help has a row; `cursor-worker` and `workspace` are
+  the hidden commands, each recorded by its own help;
+- the command rows are exactly the root commands `__fish_grok_needs_command` offers in
+  the completion grammar, which also lists the commands the help omits;
+- the nested `leader` and `workspace` grammars match `grok leader --help` and
+  `grok workspace --help`.
 
 The root CLI uses clap-style arity. A required option value cannot be mistaken for
 `--help`. `agent` runs protocols and servers without the local interactive UI;
 `wrap`, `clone`, `worker`, `cursor-worker`, and `leader worker` also have external
-ownership (a Cursor private worker's agents do not live in this process). The rest of
-`leader` manages leader processes. `dashboard` can open an interactive session and
+ownership (a Cursor private worker's agents do not live in this process), as do
+`workspace start|resume|restart`, which expose this workspace to Computer Hub agents
+through the leader. The rest of `leader` manages leader processes, and the rest of
+`workspace` pauses, stops, or reports the exposure. `dashboard` can open an interactive session and
 is refused. `--add-dir` is refused: a resumed session keeps the folders it was
 created with, and Grok's ACP `initialize` advertises no `additionalDirectories`
 capability through which the managed launch could carry them. The hidden

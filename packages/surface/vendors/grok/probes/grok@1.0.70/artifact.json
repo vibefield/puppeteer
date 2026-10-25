@@ -7,7 +7,7 @@
   "bytes": 179063008,
   "versionOutput": "grok 1.0.70 (f50904eaee6c)",
   "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-aarch64",
-  "probedAt": "2026-10-25",
+  "probedAt": "2026-10-25T09:20:29.161Z",
   "environment": "disposable HOME/GROK_HOME, explicit environment, no network model",
   "probes": [
     {
@@ -102,6 +102,14 @@
       "file": "hidden-cursor-worker-help.txt",
       "argv": [
         "cursor-worker",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "hidden-workspace-help.txt",
+      "argv": [
+        "workspace",
         "--help"
       ],
       "exitCode": 0

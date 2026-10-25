@@ -864,7 +864,8 @@ describe('Codex extension acts', () => {
         name: 'corp-docs',
         enabled: true,
         transport: { type: 'streamable_http', url: corpUrl },
-        auth_status: 'not_logged_in',
+        // what 0.164.0's `mcp list --json` reports for an `ema_auth` server (the hermetic EMA probe)
+        auth_status: 'unsupported',
       },
     ];
     const codex = service(fakeAppServer(answers), { home, listServers: async () => JSON.stringify(listing) });
@@ -876,10 +877,22 @@ describe('Codex extension acts', () => {
       available: true,
       runs: { kind: 'terminal' },
     });
+    expect(codex.plan!(profile, corp, 'sign-in')).toMatchObject({ available: false, reason: 'no-sign-in' });
 
     const inventory = ExtensionInventorySchema.parse(await codex.inventory(profile));
-    expect(find(inventory, 'mcp-server', 'corp-docs')).toMatchObject({ origin: 'own', auth: 'needs-sign-in' });
+    const listed = find(inventory, 'mcp-server', 'corp-docs');
+    // `unsupported` says nothing of a sign-in, so the inventory claims none.
+    expect(listed).toMatchObject({ origin: 'own' });
+    expect(listed).not.toHaveProperty('auth');
     expect(JSON.stringify(inventory)).not.toContain('ema_auth');
+    // The enterprise check, not the missing auth, decides: the inventory's own item is in-app.
+    expect(codex.plan!(profile, listed!, 'sign-in')).toEqual({
+      target: { kind: 'mcp-server', id: 'corp-docs' },
+      act: 'sign-in',
+      available: false,
+      reason: 'in-app',
+      message: "Codex signs in to corp-docs with the Codex account's own sign-in, in Codex itself",
+    });
     expect(codex.plan!(profile, { ...corp, auth: 'needs-sign-in' }, 'sign-in')).toEqual({
       target: { kind: 'mcp-server', id: 'corp-docs' },
       act: 'sign-in',

@@ -28,6 +28,10 @@ interface ControllableOptions {
   pageSize?: number;
   /** Answer this `thread/turns/list` page (0-based) with an error instead. */
   turnsListError?: { page: number; code: number; message: string };
+  /** Never answer this `thread/turns/list` page (0-based). */
+  turnsListUnanswered?: number;
+  /** Answer `thread/read` with this error instead. */
+  threadReadError?: { code: number; message: string };
   /** Answer every `thread/turns/list` page with the same turns and the same cursor. */
   repeatCursor?: boolean;
 }
@@ -104,10 +108,13 @@ function controllable(
           if (server === 'gated') refuse(msg.id, -32600, GATED.turnsList);
           else if (options.turnsListError?.page === page) {
             refuse(msg.id, options.turnsListError.code, options.turnsListError.message);
+          } else if (options.turnsListUnanswered === page) {
+            // Left pending until the transport closes.
           } else if (options.deferRead && page === 0) deferredRead = { id: msg.id!, result: turnsPage(params) };
           else reply(msg.id, turnsPage(params));
         } else if (msg.method === 'thread/read') {
-          if (options.deferRead) deferredRead = { id: msg.id!, result: historyResult };
+          if (options.threadReadError) refuse(msg.id, options.threadReadError.code, options.threadReadError.message);
+          else if (options.deferRead) deferredRead = { id: msg.id!, result: historyResult };
           else reply(msg.id, historyResult);
         } else if (msg.method === 'thread/start') {
           reply(msg.id, {
@@ -967,16 +974,70 @@ describe('createCodexObserver paginated history (0.151.0 and later) with a full-
     await obs.dispose();
   });
 
-  it('keeps the pages already read when a later page fails, without the deprecated read', async () => {
-    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second')), {
+  const historyDiagnostics = (projection: ReturnType<typeof projectAgentEvents>) =>
+    projection.state.diagnostics
+      .filter(({ code }) => code === 'codex-history-incomplete')
+      .map(({ message }) => message);
+
+  it('reads the whole history once in full when the server answers a later page with an error', async () => {
+    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
       pageSize: 1,
       turnsListError: { page: 1, code: -32603, message: 'internal error' },
     });
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
     const projection = projectAgentEvents(obs);
     expect(projection.state.lifecycle).toBe('ready');
+    expect(replayedAnswers(projection)).toEqual([
+      ['first', true],
+      ['second (latest)', true],
+    ]);
+    expect(projection.state.lastAssistantMessage).toBe('second (latest)');
+    expect(requests(t, 'thread/read').map(({ params }) => params)).toEqual([
+      { threadId: 'th-paged', includeTurns: true },
+    ]);
+    expect(historyDiagnostics(projection)).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it.each([1, 0])(
+    'replays the pages it has and reports the history incomplete when page %i and the full read both fail',
+    async (page) => {
+      const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
+        pageSize: 1,
+        turnsListError: { page, code: -32603, message: 'internal error' },
+        threadReadError: { code: -32603, message: 'internal error' },
+      });
+      const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+      const projection = projectAgentEvents(obs);
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(replayedAnswers(projection)).toEqual(page === 1 ? [['first', true]] : []);
+      expect(historyDiagnostics(projection)).toEqual([
+        `Codex thread history could not be read in full (server error -32603); ${page} earliest turn(s) were replayed and later ones are missing.`,
+      ]);
+      const reported = projection.envelopes.find(({ event }) => event.type === 'adapter:native-event');
+      expect(reported?.replay).toBeUndefined();
+      expect(reported?.event).toMatchObject({ adapter: 'codex', nativeType: 'thread.history.incomplete' });
+      projection.dispose();
+      await obs.dispose();
+    },
+  );
+
+  it('asks nothing more of a server that never answered a page, and reports the history incomplete', async () => {
+    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
+      pageSize: 1,
+      turnsListUnanswered: 1,
+    });
+    const creating = createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    await vi.waitFor(() => expect(requests(t, 'thread/turns/list')).toHaveLength(2));
+    t.fireClose();
+    const obs = await creating;
+    const projection = projectAgentEvents(obs);
     expect(replayedAnswers(projection)).toEqual([['first', true]]);
     expect(requests(t, 'thread/read')).toEqual([]);
+    expect(historyDiagnostics(projection)).toEqual([
+      'Codex thread history could not be read in full (connection lost); 1 earliest turn(s) were replayed and later ones are missing.',
+    ]);
     projection.dispose();
     await obs.dispose();
   });
@@ -1001,6 +1062,33 @@ describe('createCodexObserver paginated history (0.151.0 and later) with a full-
       { threadId: 'th-paged', includeTurns: true },
     ]);
     expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    expect(historyDiagnostics(projection)).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('reports the history incomplete when that full read fails, since the excluded resume carried no turns', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), {
+      turnsListError: { page: 0, code: -32601, message: 'method not found' },
+      threadReadError: { code: -32603, message: 'internal error' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(replayedAnswers(projection)).toEqual([]);
+    expect(historyDiagnostics(projection)).toHaveLength(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('keeps the hydrated resume as the whole history on a gated server whose full read fails', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), {
+      server: 'gated',
+      threadReadError: { code: -32603, message: 'internal error' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    expect(historyDiagnostics(projection)).toEqual([]);
     projection.dispose();
     await obs.dispose();
   });

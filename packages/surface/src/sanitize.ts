@@ -71,9 +71,11 @@ const EMBEDDED_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
  * that names the uid and, slug-encoded, the operator's checkout. A committed
  * codex capture carried exactly that under `runtimeWorkspaceRoots`, a key no
  * path rule named, while the detector reported it clean. The look-behind keeps
- * `/var/tmp/…` and URL paths such as `https://host/tmp/x` out of scope.
+ * `/var/tmp/…` and URL paths such as `https://host/tmp/x` out of scope — except
+ * a local `file:///…` or `file://localhost/…` URL, whose path IS the local one;
+ * excluding its slash let `file:///private/tmp/<uid>/<slug>/…` pass as clean.
  */
-const TEMP_ROOT_PATH = /(?<![\w.~/-])\/(?:private\/)?tmp\/[^\s"']*/;
+const TEMP_ROOT_PATH = /(?:(?<=file:\/\/(?:localhost)?)|(?<![\w.~/-]))\/(?:private\/)?tmp\/[^\s"']*/;
 
 export const defaultRules: SanitizerRules = {
   // Epoch-ms/seconds clocks. `At`/`Ms` suffixes cover startedAtMs, completedAtMs,

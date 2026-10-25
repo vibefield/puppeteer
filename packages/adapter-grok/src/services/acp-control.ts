@@ -12,8 +12,11 @@ import type { CreateGrokSessionOptions } from '../types.js';
  * With a viewer attached and no host handler, the controller therefore stays
  * silent and lets the person answer in Grok's TUI; an immediate deny would
  * pre-empt them (and, since 1.0.70 also asks before spawn_subagent, refuse every
- * managed subagent). Without a viewer nobody else can answer, so the controller
- * keeps adapter-acp's immediate deny rather than hang the turn.
+ * managed subagent). With a host handler the person can still answer first in
+ * the TUI, and Grok then ignores the host's reply; the same native evidence
+ * publishes the person's answer and aborts the host request's `signal`.
+ * Without a viewer nobody else can answer, so the controller keeps
+ * adapter-acp's immediate deny rather than hang the turn.
  */
 export interface GrokControlComposition {
   viewer: 'attached' | 'none';

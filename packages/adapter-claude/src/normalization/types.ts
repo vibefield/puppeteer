@@ -30,6 +30,8 @@ export interface ClaudeHookDiagnostic {
 export interface PendingPermission {
   requestId: string;
   promptId?: string | undefined;
+  /** The subagent that asked; absent for the main thread. */
+  agentId?: string | undefined;
   toolName: string;
   inputKey: string;
   toolCallId?: string | undefined;

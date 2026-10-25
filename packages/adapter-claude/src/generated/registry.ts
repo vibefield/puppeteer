@@ -245,7 +245,7 @@ export const CLAUDE_HOOK_REGISTRY: readonly HookEventSpec[] = [
     confidence: 'verified-headless',
     timeoutSec: 5,
     notes:
-      'The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Print mode exits without awaiting its command hooks.',
+      'The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed.',
   },
   {
     event: 'SubagentStart',

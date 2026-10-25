@@ -279,6 +279,8 @@ function binaryProbe(artifactPath, release, publicVariants) {
   return {
     artifactSha256: digest,
     platform: release.artifactPlatform,
+    // When this scan of the exact bytes ran: the evidence index's capturedAt for the lead.
+    scannedAt: new Date().toISOString(),
     method:
       'printable-run scan (strings -n 6) for the run holding the serde SessionUpdate variant and field names; tokens compared with the public enum',
     confidence: 'low',

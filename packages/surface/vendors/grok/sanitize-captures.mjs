@@ -28,7 +28,7 @@ import { hostname, userInfo } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeCaptureFidelity } from '../../scripts/capture-fidelity.mjs';
-import { checkGrokCaptureDirectory, sanitizeGrokRecord } from './privacy.mjs';
+import { SYNTHETIC_ROOTS, checkGrokCaptureDirectory, sanitizeGrokRecord } from './privacy.mjs';
 
 const DEFAULT_VERSION = '1.0.70';
 const vendorRoot = dirname(fileURLToPath(import.meta.url));
@@ -220,7 +220,8 @@ export function sanitizeGrokCaptureSet(input, output, { version = DEFAULT_VERSIO
       'Durable Unix-seconds clocks pin to 1000000000, millisecond clocks to 1767225600000, and ISO-8601 strings to 2026-01-01T00:00:00 with their native precision and offset retained.',
       'Values under id-shaped keys are value-keyed aliases, so joins survive but native literals do not: permission optionId values, model ids, config option ids, auth method ids, and xAI ag1./at1./aa1. identifiers are aliased. The census observations retain the literal permission option inventory.',
       'The machine-derived initialize _meta.agentId is one fixed constant. Raw tool arguments and results (rawInput, rawOutput, x.ai/tool.input) keep only their variant/type/kind/status discriminators.',
-      'Disposable workspace, HOME, GROK_HOME, leader socket, and executable paths are rewritten to /workspace, /home/user, /home/user/.grok, /tmp/grok-census, and /usr/local/bin/grok, including percent-encoded session buckets.',
+      `Disposable workspace, HOME, GROK_HOME, census root (which holds the leader socket), and executable paths are rewritten to ${SYNTHETIC_ROOTS.workspace}, ${SYNTHETIC_ROOTS.home}, ${SYNTHETIC_ROOTS.grokHome}, ${SYNTHETIC_ROOTS.base}, and ${SYNTHETIC_ROOTS.artifact}, including percent-encoded session buckets.`,
+      'Values under the shared path keys are flattened by the repository-wide gate whatever their synthetic root: a cwd becomes /workspace and every other path-keyed value (for example summary.json grok_home, which is GROK_HOME) becomes /workspace/redacted-file. Their native literal is not retained.',
     ],
     overrides: [
       {
@@ -228,6 +229,8 @@ export function sanitizeGrokCaptureSet(input, output, { version = DEFAULT_VERSIO
         representation: 'semantic-projection',
         limitations: [
           'Harness-computed timings, counts, permission option inventories, process argv, and store file listings. They are occurrence, ordering, timing, and topology evidence only and cannot define a native payload schema.',
+          "observations.json providerRequests[].path holds the loopback provider's HTTP route, which the shared path rule flattens to /workspace/redacted-file; the route survives only as the harness classification kind (census/harness.mjs classifyProviderRequest: origin-probe is a GET of the origin root, models a GET under v1/models, responses a POST to v1/responses).",
+          'store-layout.json memtrace/<unix seconds>-<pid>.jsonl names pin to memtrace/1000000000-0.jsonl.',
         ],
       },
     ],

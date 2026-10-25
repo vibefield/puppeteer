@@ -56,3 +56,39 @@ export function fakeClaudeHookPayload(event: string, overrides: Record<string, u
     ...overrides,
   };
 }
+
+interface CaptureOrderingEntry {
+  mode: string;
+  seq: number;
+  channel: string;
+  hook?: string;
+}
+
+/**
+ * One capture mode's hook records in the order the census sink received them, joined from the
+ * value-free `ordering.json` projection (each entry names its hook; the per-event files keep
+ * arrival order within a hook). Throws when the two disagree, so a replay never runs a guess.
+ */
+export function loadOrderedHookLane(mode: string): Array<{ seq: number; record: CapturedHookRecord }> {
+  const ordering = JSON.parse(readFileSync(join(captureRoot, 'ordering.json'), 'utf8')) as {
+    entries: CaptureOrderingEntry[];
+  };
+  const remaining = new Map(
+    readdirSync(join(captureRoot, mode))
+      .filter((file) => file.endsWith('.jsonl'))
+      .map((file) => [file.replace(/\.jsonl$/, ''), parseJsonl(join(captureRoot, mode, file))] as const),
+  );
+  const lane = ordering.entries
+    .filter((entry) => entry.mode === mode && entry.channel === 'hook')
+    .sort((left, right) => left.seq - right.seq)
+    .map((entry) => {
+      const hook = entry.hook ?? 'unknown';
+      const record = remaining.get(hook)?.shift();
+      if (!record) throw new Error(`${mode} ordering names more ${hook} hooks than were captured`);
+      return { seq: entry.seq, record };
+    });
+  for (const [hook, records] of remaining) {
+    if (records.length > 0) throw new Error(`${mode} captured ${records.length} ${hook} hook(s) the ordering omits`);
+  }
+  return lane;
+}

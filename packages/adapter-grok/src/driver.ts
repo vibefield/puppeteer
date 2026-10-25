@@ -109,9 +109,14 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       // The leader may still be writing into an adapter-owned Imposter home
       // while it drains, so that home goes only after the leader has exited.
       disposal = leader.dispose().then(() => {
-        if (ownedImposterHome) {
-          rmSync(ownedImposterHome, { recursive: true, force: true });
-          ownedImposterHome = undefined;
+        const home = ownedImposterHome;
+        ownedImposterHome = undefined;
+        if (!home) return;
+        try {
+          rmSync(home, { recursive: true, force: true });
+        } catch {
+          // Best-effort cleanup of an ephemeral root: disposal never rejects,
+          // and builtin-providers disposes backends without awaiting them.
         }
       });
       return disposal;

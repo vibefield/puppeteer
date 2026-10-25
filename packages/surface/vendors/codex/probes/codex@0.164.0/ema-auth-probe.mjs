@@ -7,13 +7,16 @@
 // Run it with an allowlisted environment and no network, e.g. under
 // `sandbox-exec -p '(version 1)(allow default)(deny network-outbound (remote ip))'` on macOS: nothing here needs the
 // network, and the app-server's curated-plugin sync would otherwise reach it. HOME, CODEX_HOME and TMPDIR are
-// pointed into the directory; nothing outside it is read or written. The output names no path.
+// pointed into the directory; nothing outside it is read or written. The output names no path. The executable is
+// taken as a path, never looked up on PATH (the operator's own, signed-in codex), and PATH keeps no other codex.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { hermeticPath, resolveCodexExecutable } from '../../census/harness.mjs';
 
-const [bin, root] = process.argv.slice(2);
-if (!bin || !root) throw new Error('usage: ema-auth-probe.mjs <codex executable> <empty directory>');
+const [named, root] = process.argv.slice(2);
+if (!named || !root) throw new Error('usage: ema-auth-probe.mjs <codex executable> <empty directory>');
+const bin = resolveCodexExecutable({ bin: named });
 if (readdirSync(root).length > 0) throw new Error(`${root} is not empty`);
 const home = join(root, 'home');
 const codexHome = join(root, 'codex-home');
@@ -33,7 +36,7 @@ writeFileSync(
   ].join('\n'),
 );
 const env = {
-  PATH: process.env.PATH ?? '/usr/bin:/bin',
+  PATH: hermeticPath(process.env.PATH ?? '/usr/bin:/bin', bin),
   HOME: home,
   CODEX_HOME: codexHome,
   TMPDIR: tmp,

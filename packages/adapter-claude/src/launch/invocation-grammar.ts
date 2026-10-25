@@ -458,10 +458,8 @@ export const CLAUDE_SUBCOMMANDS: readonly ClaudeSubcommandRow[] = [
  * The entry's checks on the raw argv, before its parser runs. `argvIs`: the whole argv is one of
  * these; `firstTwo`: argv[0] and argv[1]; `subcommand`: a {@link CLAUDE_SUBCOMMANDS} row with that
  * dispatch, at its position (the row's class and why answer); `anywhere`: some token equals one of
- * these, `--` or not (`also`: and some token equals or starts with one of those too); `optionToken`:
- * one of these is an option token before `--`, not another option's value (values are skipped by
- * the table's arities, which equal the CLI's own pre-parse sets row for row); `withNext`: the token
- * appears with a token after it.
+ * these, `--` or not (`also`: and some token equals or starts with one of those too); `withNext`: the
+ * token appears with a token after it.
  */
 export type ClaudeEntryMatch =
   | { readonly argvIs: readonly (readonly string[])[] }
@@ -471,7 +469,6 @@ export type ClaudeEntryMatch =
       readonly anywhere: readonly string[];
       readonly also?: { readonly tokens: readonly string[]; readonly prefixes: readonly string[] };
     }
-  | { readonly optionToken: readonly string[] }
   | { readonly withNext: string };
 
 export interface ClaudeEntryRule {
@@ -499,8 +496,12 @@ export const CLAUDE_ENTRY_RULES: readonly ClaudeEntryRule[] = [
   { id: 'background-verb', match: { subcommand: 'background-verb' } },
   {
     id: 'background',
-    // 2.1.299+: an option token before `--`, not another option's value (`-- --bg` is a prompt).
-    match: { optionToken: ['--bg', '--background'] },
+    // Anywhere, `--` or not. 2.1.299+ counts it only as an option token before `--` (static
+    // background-flag-value-aware: `-- --bg` is a prompt there), but 2.1.283 matched it anywhere,
+    // and the reader does not know which release a typed argv will run: reading `-- --bg` as a
+    // session would hand an older CLI a managed launch that leaves the terminal. A passthrough is
+    // safe on every release; on 2.1.308 it only means the CLI runs the typed argv unmanaged.
+    match: { anywhere: ['--bg', '--background'] },
     class: 'elsewhere',
     why: 'the session starts in the background, not in this terminal',
   },
@@ -675,16 +676,6 @@ function firstOperandIndex(argv: readonly string[]): number {
   return -1;
 }
 
-/** The index of one of `tokens` as an option token before `--` (never another option's value), or -1. */
-function optionTokenIndex(argv: readonly string[], tokens: readonly string[]): number {
-  for (let index = 0; index < argv.length; index = lastValueIndex(argv, index) + 1) {
-    const token = argv[index]!;
-    if (token === '--') return -1;
-    if (tokens.includes(token)) return index;
-  }
-  return -1;
-}
-
 /** A job id the CLI takes as naming a background session behind root options. */
 const BACKGROUND_JOB_ID = /^[a-f0-9]{8}$/u;
 /** Before a background verb, these make it a prompt: print, background, help and version. */
@@ -762,8 +753,6 @@ function entryReading(rule: ClaudeEntryRule, argv: readonly string[]): ClaudeInv
   } else if ('withNext' in match) {
     const index = argv.indexOf(match.withNext);
     matched = index !== -1 && argv[index + 1] !== undefined;
-  } else if ('optionToken' in match) {
-    matched = optionTokenIndex(argv, match.optionToken) !== -1;
   } else {
     const also = match.also;
     matched =

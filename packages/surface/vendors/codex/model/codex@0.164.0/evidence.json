@@ -94,14 +94,14 @@
         "evidence.json"
       ],
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "816700a19944320ece6dbc65e27bf2a33ae3cacb65057382b125a61f6231a344"
+      "sha256": "9f2d9d1634a16e4519a9f7df3da9fa8104e0531c1f48fedacb7e363998b3cc88"
     },
     {
       "id": "binary-probes",
       "kind": "probe-set",
       "path": "packages/surface/vendors/codex/probes/codex@0.164.0",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "7b65987d7b19d2f4cde77584e887e80a8cb0e963a81e40fa90571fff43ca804c"
+      "sha256": "3885221323d3a6036d72490396108079252cbb8a980dc5fbd20ad4f55177cd98"
     },
     {
       "id": "source-file-changes",

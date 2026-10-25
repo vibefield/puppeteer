@@ -71,15 +71,17 @@ entries) equal `CLAUDE_HOOK_EVENTS`; the generator re-checks this
   PreModelSwitch in the lane. The `resume` branch was **not** observed: the resume lane
   relaunched by id without `--model` or `ANTHROPIC_MODEL` and no PostModelSwitch arrived.
 
-### StopFailure: fires on every failure path; print mode no longer waits for its command hooks
+### StopFailure: fires on every failure path; record it over HTTP
 
 The survey and its critic concluded that the credential-less print turn stopped emitting
-StopFailure after 2.1.226. **That was a census artefact.** Since 2.1.283 a print-mode process
-exits without awaiting StopFailure *command* hooks: the 2.1.226 harness's node collector
-(≈100 ms to start) never completed, while a shell `cat` hook did and an HTTP hook arrived.
-Re-probed on all three artifacts with both transports: 2.1.226 awaited even a 1 s command
-hook; 2.1.283 and 2.1.308 drop a node or 1 s hook; HTTP StopFailure arrives in all three. The
-census now records over HTTP, so StopFailure is runtime-verified on every path:
+StopFailure after 2.1.226. **That was a census artefact.** The committed captures below show
+StopFailure arriving over HTTP on the credential-less and every API-error print path. Why the
+2.1.226 harness missed it was observed during adaptation with an ad-hoc bisect that is **not
+recorded as a probe** (so it is not reproducible from this repository): a 2.1.283+ print-mode
+process exited before the harness's node command collector (≈100 ms to start) completed its
+StopFailure hook, while a shell `cat` hook completed and an HTTP hook arrived; the same bisect
+saw 2.1.226 await even a 1 s command hook and 2.1.283 and 2.1.308 not. The census now records
+over HTTP, so StopFailure is runtime-verified on every path:
 
 | Mode | HTTP status from the loopback API | `error` |
 | --- | --- | --- |
@@ -93,8 +95,8 @@ census now records over HTTP, so StopFailure is runtime-verified on every path:
 Order: UserPromptSubmit → MessageDisplay(final) → StopFailure → SessionEnd. The binary enum
 has 13 values (the official list's 12 plus `verification_required`); the model takes the
 superset. `error_details` is a string in the bundled schema and absent from every capture.
-Adapter consequence: StopFailure must stay on HTTP; a command-forwarder fallback for it would
-lose the event whenever a print-mode process exits.
+Adapter consequence: StopFailure stays on HTTP; given that observation, a command-forwarder
+fallback for it could lose the event whenever a print-mode process exits.
 
 ### Payload changes
 
@@ -114,9 +116,10 @@ lose the event whenever a print-mode process exits.
   (`slash_command|mcp_prompt`) with `command_source` optional. UserPromptSubmit gains a
   `source` enum (… `poll_event`) in the bundled schema, but **both runtime builders compile it
   out**: no payload carries it, including the background-agent task-notification turn.
-- Required lists follow the bundled schema and the captures: Stop requires only
-  `stop_hook_active` (2.1.308 interactive Stop payloads carry neither `background_tasks` nor
-  `session_crons`); SubagentStop no longer requires `last_assistant_message`; PostToolBatch
+- Required lists follow the bundled schema: Stop requires only `stop_hook_active` (the schema
+  marks `background_tasks`, `session_crons` and `last_assistant_message` optional, although every
+  captured 2.1.308 Stop payload — 7 interactive, 1 resume — carries all three, the lists as empty
+  arrays); SubagentStop no longer requires `last_assistant_message`; PostToolBatch
   `tool_calls[].tool_response` is optional.
 - Callback additions: PostToolUse `classifierContext`/`updatedMCPToolOutput`, UserPromptSubmit
   and UserPromptExpansion `suppressOriginalPrompt`, SessionStart `initialUserMessage`,
@@ -227,10 +230,16 @@ person's own fail-closed hooks are their configuration.
 
 Claude's capture rules now live in `privacy.mjs` and extend the shared engine: `scratchpad_dir`
 (the uid plus the slug-encoded project path), DirectoryAdded `directory` and permission
-`directories` are paths; `mcp_server.name`, `compact_summary`, `custom_instructions`,
-`command_args`, task subjects and descriptions, background-task `description`, permission
-`ruleContent`, PermissionDenied `reason`, and team/teammate names are redacted; the closed
-StopFailure `error` and SessionEnd `reason` enums are kept. Each rule has a paired detector test.
+`directories` are paths; `mcp_server.name`, Elicitation `mcp_server_name`, `compact_summary`,
+`custom_instructions`, UserPromptExpansion `command_name` and `command_args`, InstructionsLoaded
+`globs`, StopFailure `error_details` (the API's own error text), task subjects and descriptions,
+background-task `description`, permission `ruleContent`, PermissionDenied `reason`, and
+team/teammate names are redacted; an MCP elicitation's `requested_schema` and its `content`
+answers are containers (keyed by the server's own field names, so every string inside is
+redacted); the closed StopFailure `error` and SessionEnd `reason` enums and the CLI's own
+provenance values (`mcp_server.source`, `command_source`) are kept. Each rule has a paired
+detector test. None of the newer fields occurs in the 2.1.308 captures: re-sanitizing the raw
+census with these rules is byte-identical to the committed set.
 The repository-wide gate applies only the closed-enum allowance on top of the shared defaults to
 Claude's committed sets (historical 2.1.207/2.1.226 sets predate the stricter keys; the 2.1.207
 interactive fixture carries one MCP plugin tool name and two permission-suggestion paths that the
@@ -243,9 +252,9 @@ interactive fixture carries one MCP plugin tool name and two permission-suggesti
 2026-10-25T02:31:24Z), reconciled with the hook schemas bundled in the artifact. Its
 `contradictions` list records each disagreement and how the model resolves it, including
 `verification_required` (binary only), StopFailure command-hook delivery, `scratchpad_dir`,
-UserPromptSubmit `source`, Stop's optional lists, `bypass_permissions_disabled` (docs only,
-removed), PostModelSwitch `resume` (unobserved), and `effort`. The page already mentions a later
-release (v2.1.309) in one Windows-only note.
+UserPromptSubmit `source`, Stop's schema-optional fields (present in every capture),
+`bypass_permissions_disabled` (docs only, removed), PostModelSwitch `resume` (unobserved), and
+`effort`. The page already mentions a later release (v2.1.309) in one Windows-only note.
 
 ### Adapter and Imposter (2.1.308 candidate)
 
@@ -257,12 +266,21 @@ above:
 - **PreModelSwitch** (`timeout-blocks`) is not in the default registration; a caller that selects
   it explicitly gets it with the native 30 s timeout. When it arrives it is retained as
   `adapter:native-event`: a request that may still be cancelled is not a model.
-- **PostModelSwitch** `to_model` → `model:updated` (observed). The status line stays the
-  authoritative model card and is published whenever its own reading changes; a root hook model
-  (PostModelSwitch, SessionStart `model`) is published only when it moves the id last reported, so
-  a hook never erases the status line's display name or repeats it. The live proof switches with
-  `/model` on the pinned artifact and sees the normalized model.
-- **StopFailure** stays on HTTP (print mode does not await its command hooks).
+- **PostModelSwitch** `to_model` → `model:updated` (observed). The root model card last published
+  by either rail is the reference: a status-line card is published whenever it differs from that
+  card (so the refresh after a switch away and back restores its display name, and corrects a
+  switch the hooks reported out of order); a root hook model (PostModelSwitch, SessionStart
+  `model`) is published only when it moves the id, so a hook never erases the status line's display
+  name or repeats it. Claude runs PostModelSwitch as a detached task (two quick switches can land
+  out of order), so a switch whose `from_model` is not the model currently reported is stale and
+  dropped. The live proof switches with `/model` on the pinned artifact and sees the normalized
+  model.
+- **StopFailure** stays on HTTP (see the StopFailure section on command-hook delivery).
+- **Interrupted permission prompts**: Esc at a permission prompt ends the turn with no Stop (TUI
+  lane: PermissionRequest at seq 31, the next UserPromptSubmit at seq 34). The next accepted prompt
+  closes every earlier main-thread request with outcome `unknown` and a `permission-outlived-turn`
+  diagnostic; a subagent's request is left to its own boundary. A replay of the committed
+  interactive lane pins this.
 - **Compaction**: the compact SessionStart between PreCompact and PostCompact no longer closes the
   attempt; PostCompact completes it once. The internal compaction agent's SubagentStop (empty
   `agent_type`, never started) stays native, and an empty `agent_type`/`agent_id` is never stamped
@@ -276,14 +294,21 @@ above:
 - **Invocation grammar** (`CLAUDE_INVOCATION_GRAMMAR_VERSION` 2.1.308, help fixture byte-identical
   to `probes/claude@2.1.308/help.txt`): `purge` and the hidden `project` and
   `drop-worktree-registrations` are utility subcommands; background verbs dispatch as argv[0] or
-  behind safe root options before an 8-hex id; `--bg/--background` count only as option tokens
-  before `--`; `--desktop` is an `elsewhere` option; `--client-data-url` is a hidden carried option.
+  behind safe root options before an 8-hex id; `--bg/--background` anywhere, `--` or not, is
+  `elsewhere` — broader than 2.1.299+, which counts them only as option tokens before `--`, because
+  the reader is not version-gated and 2.1.283 matched them anywhere: accepting `-- --bg` or
+  `--model --bg` would hand an older release a managed launch that starts in the background;
+  `--desktop` is an `elsewhere` option; `--client-data-url` is a hidden carried option.
   An accepted session's managed `-- <prompt>` may never hand a subcommand its first operand.
   Classification per row: `probes/claude@2.1.308/invocation-grammar.json#adapterClassification`.
 - **Imposter** (`personas/claude`): a resumed launch boots with SessionStart `source: resume` and
-  the four prompt-cache fields (synthetic values from the resume lane); new `model-switch` and
-  `compact-lifecycle` scenarios follow the TUI lane's orders, and the `incident-investigation`
-  runflow starts with a `/model` switch.
+  the four prompt-cache fields (the committed resume capture's values: 19 s, 3005 tokens, likely
+  expired, $0.0113); new `model-switch` and `compact-lifecycle` scenarios follow the TUI lane's
+  orders, and the `incident-investigation` runflow starts with a `/model` switch. The session
+  serves the model an explicit status line names, so later refreshes stay on the switched model.
+  The `model-switch` transcript carries a typed prompt row with `turnOrigin`/`turnPosition` and an
+  `api-request-blob` row (role `user`, no `uuid` or `timestamp`); `api-error-overloaded` replays the
+  api-error-529 lane (final error message, then StopFailure `server_error`, no Stop).
 
 ### Known gaps / follow-ups
 
@@ -316,8 +341,31 @@ above:
   - Hidden root options without a row (`--fast-mode`, `--proactivity`, `--runner-declares`,
     `--allow-other-models`, `--include-unsupported-models`, `--host-auth-is-org-sign-in`) are
     refused as unknown; whether any should be carried is open.
+  - A `<task-notification>` UserPromptSubmit (the background-agent re-entry, TUI lane seq 42) still
+    normalizes as a user `turn:started` carrying the notification as its prompt. The hook payload
+    has no discriminator (`UserPromptSubmit.source` is compiled out of both runtime builders) and
+    Core's `turn:started` has no origin field, so marking it a system turn needs a Core contract
+    change or the transcript's `turnOrigin`; a prompt-prefix test on the hook rail would be a text
+    heuristic.
+  - An Esc-interrupted turn's open `turn:started` and its permission-gated `tool:requested` are
+    not closed by the adapter: nothing native reports the interruption, and Core has no interrupted
+    outcome for either (`turn:failed`/`tool:failed` would assert a failure). Core diagnoses the
+    overlap (`turn-overlap`) when the next turn starts; only the pending permission is resolved.
+  - The root model rail can still show a stale card for one refresh: a status line rendered before
+    a switch but delivered after its PostModelSwitch is published (it differs from the hook's
+    card) until the next refresh (in the TUI lane the status line refreshed right after the switch).
 - **MCP tool names**: `tool_name` for `mcp__<server>__<tool>` embeds the server's config key and is
   not redacted by any rule (it is the structural tool id).
+- **Agent types and model ids are kept verbatim**: `agent_type` is a built-in agent name
+  (`general-purpose`, `Explore`, `Plan`), the empty compaction marker, or a custom subagent
+  definition's name, which is user-authored. The 2.1.308 census runs only built-in agents, and the
+  empty value is evidence the adapter depends on, which a sensitive-text rule would rewrite. Model
+  ids (`model`, `from_model`, `to_model`, `requested_model`) are first-party ids in every lane; a
+  census on Bedrock or Vertex, whose ids can be ARNs naming an account, or with custom agents must
+  add rules for these keys first (a built-in allowlist for `agent_type`).
+- **StopFailure command-hook delivery**: the cross-version bisect behind the StopFailure section
+  (2.1.226 awaited a 1 s command hook; 2.1.283 and 2.1.308 did not) is not a committed probe;
+  folding it into the census as a recorded lane would make that rationale reproducible.
 - **Not probed live**: `--desktop` (would open the Desktop app), `-- --bg`/`--model --bg` (would
   start a background session), `CLAUDE_CODE_IGNORE_PERSISTED_TRUST`, policy-layer settings, and
   §7's L01–L16 sessions on 2.1.308.

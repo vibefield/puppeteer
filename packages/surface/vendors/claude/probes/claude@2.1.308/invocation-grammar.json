@@ -1256,12 +1256,13 @@
       },
       {
         "argv": "--bg|--background",
-        "row": "entry rule background (option token before `--`)",
+        "row": "entry rule background (the token anywhere, `--` or not)",
         "class": "elsewhere",
         "evidence": [
           "entry-fast-paths",
           "background-flag-value-aware"
-        ]
+        ],
+        "note": "Deliberately broader than 2.1.308: the reader is not version-gated, and 2.1.283 matched the token anywhere, so `-- --bg` and `--model --bg` (a prompt and a model value on 2.1.299+) stay passthroughs rather than managed launches an older release would start in the background."
       },
       {
         "argv": "--desktop",

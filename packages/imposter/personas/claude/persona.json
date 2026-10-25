@@ -31,10 +31,10 @@
       "op": "session.start",
       "with": {
         "source": "resume",
-        "seconds_since_last_response": 29,
-        "context_tokens": 3152,
+        "seconds_since_last_response": 19,
+        "context_tokens": 3005,
         "prompt_cache_likely_expired": true,
-        "estimated_cache_write_usd": 0.0118
+        "estimated_cache_write_usd": 0.0113
       }
     },
     {

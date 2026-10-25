@@ -1,6 +1,13 @@
 import type { PermissionOption } from '@agentclientprotocol/sdk';
+import {
+  agentEventType,
+  createInitialSessionState,
+  reduceSessionState,
+  type AgentEvent,
+  type AgentEventEnvelope,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
-import { AcpApprovalService, acpPermissionOutcome } from './approvals.js';
+import { AcpApprovalService, acpPermissionOutcome, type AcpApprovalRequest } from './approvals.js';
 
 // Option ids, names, kinds, and order exactly as Grok offered them over ACP
 // (packages/surface/vendors/grok/captures/grok@1.0.70/*/observations.json).
@@ -176,10 +183,186 @@ describe('AcpApprovalService unhandled-approval policy', () => {
     const second = service.handle(request);
     await expect(first).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
     expect(service.pendingCount).toBe(1);
+    // The superseded request resolves before the repeat is published: both carry
+    // the toolCallId as requestId, so Agent state keeps the repeat pending.
+    expect(published.map(({ type, outcome }) => outcome ?? type)).toEqual([
+      'interaction:permission-requested',
+      'unknown',
+      'interaction:permission-requested',
+    ]);
+    expect(pendingInState(published as unknown as AgentEvent[])).toEqual(['call-1']);
     service.settleAll('unknown', {}, 'session-1');
     await expect(second).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
     expect(
       published.flatMap((event) => (event.type === 'interaction:permission-resolved' ? [event.outcome] : [])),
     ).toEqual(['unknown', 'unknown']);
+    expect(pendingInState(published as unknown as AgentEvent[])).toEqual([]);
+  });
+});
+
+/** Permission requests Core's session reducer still holds after these events. */
+function pendingInState(events: readonly AgentEvent[]): string[] {
+  let state = createInitialSessionState();
+  events.forEach((event, index) => {
+    state = reduceSessionState(state, {
+      type: agentEventType(event),
+      category: agentEventType(event).split(':')[0],
+      sequence: index + 1,
+      sessionId: 'runtime-session',
+      timestamp: '2026-10-25T00:00:00.000Z',
+      monotonicTime: index,
+      source: 'native-hook',
+      confidence: 'authoritative',
+      event,
+    } as AgentEventEnvelope);
+  });
+  return [...state.permissions.keys()];
+}
+
+describe('AcpApprovalService host decisions in a shared composition', () => {
+  // Grok 1.0.70: the leader routes the request to the controller and the native
+  // viewer and acts on the first answer; a later answer is ignored
+  // (probes/grok@1.0.70/viewer-approvals.json, lateControllerAnswers).
+  const request = {
+    sessionId: 'session-1',
+    toolCall: { toolCallId: 'call-1', title: 'Run Command', kind: 'execute' as const, rawInput: { variant: 'Bash' } },
+    options: GROK_1_0_70_BASH,
+  };
+  const failed = (toolNotRun: string) => ({
+    sessionId: 'session-1',
+    update: { sessionUpdate: 'tool_call_update', toolCallId: 'call-1', status: 'failed', _meta: { toolNotRun } },
+  });
+  const rejectedEvidence = (method: string, params: Record<string, unknown>) => {
+    const update = params.update as Record<string, unknown> | undefined;
+    const meta = update?._meta as Record<string, unknown> | undefined;
+    return method === 'session/update' && update?.status === 'failed' && meta?.toolNotRun === 'rejected'
+      ? [{ toolCallId: update.toolCallId as string, outcome: 'denied' as const }]
+      : [];
+  };
+
+  function hostDecision() {
+    const calls: AcpApprovalRequest[] = [];
+    let answer!: (decision: 'approved' | 'denied') => void;
+    let fail!: (error: Error) => void;
+    const decide = (call: AcpApprovalRequest) => {
+      calls.push(call);
+      return new Promise<'approved' | 'denied'>((resolve, reject) => {
+        answer = resolve;
+        fail = reject;
+      });
+    };
+    return {
+      calls,
+      decide,
+      answer: (decision: 'approved' | 'denied') => answer(decision),
+      fail: (e: Error) => fail(e),
+    };
+  }
+
+  function recording() {
+    const published: { type: string; outcome?: string; presentation?: string }[] = [];
+    const publish = (event: { type: string }) => published.push(event as (typeof published)[number]);
+    return { published, publish };
+  }
+
+  it('publishes the person’s answer when it reaches the agent before the host decides', async () => {
+    const { published, publish } = recording();
+    const host = hostDecision();
+    const service = new AcpApprovalService({
+      decide: host.decide,
+      unhandled: 'defer',
+      deferredEvidence: rejectedEvidence,
+      publish,
+    });
+    const reply = service.handle(request);
+    await Promise.resolve();
+    expect(host.calls).toHaveLength(1);
+    expect(host.calls[0]!.signal?.aborted).toBe(false);
+    expect(service.pendingCount).toBe(1);
+
+    // The person rejected in the native TUI; Grok reports the tool that never ran.
+    service.observe('session/update', failed('rejected'));
+    await expect(reply).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    expect(host.calls[0]!.signal?.aborted).toBe(true);
+    expect(service.pendingCount).toBe(0);
+
+    // The host's late approval is dropped, never published as the outcome.
+    host.answer('approved');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(published.map(({ type, presentation, outcome }) => presentation ?? outcome ?? type)).toEqual([
+      'host-ui',
+      'denied',
+    ]);
+    expect(pendingInState(published as unknown as AgentEvent[])).toEqual([]);
+  });
+
+  it('settles from ACP tool progress when another client allowed it first', async () => {
+    const { published, publish } = recording();
+    const host = hostDecision();
+    const service = new AcpApprovalService({ decide: host.decide, unhandled: 'defer', publish });
+    const reply = service.handle(request);
+    await Promise.resolve();
+    service.observe('session/update', {
+      sessionId: 'session-1',
+      update: { sessionUpdate: 'tool_call_update', toolCallId: 'call-1', status: 'in_progress' },
+    });
+    await expect(reply).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    host.answer('denied');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(published.map(({ outcome }) => outcome).filter(Boolean)).toEqual(['allowed']);
+  });
+
+  it('answers with the host decision when it comes first, and ignores evidence that follows', async () => {
+    const { published, publish } = recording();
+    const host = hostDecision();
+    const service = new AcpApprovalService({
+      decide: host.decide,
+      unhandled: 'defer',
+      deferredEvidence: rejectedEvidence,
+      publish,
+    });
+    const reply = service.handle(request);
+    await Promise.resolve();
+    host.answer('approved');
+    await expect(reply).resolves.toEqual(selected('allow-once'));
+    expect(host.calls[0]!.signal?.aborted).toBe(false);
+    expect(service.pendingCount).toBe(0);
+    service.observe('session/update', failed('rejected'));
+    expect(published.map(({ outcome }) => outcome).filter(Boolean)).toEqual(['allowed']);
+  });
+
+  it('withdraws a host-pending request at the prompt end and propagates a failing host before that', async () => {
+    const { published, publish } = recording();
+    const host = hostDecision();
+    const service = new AcpApprovalService({ decide: host.decide, unhandled: 'defer', publish });
+    const withdrawn = service.handle(request);
+    await Promise.resolve();
+    service.settleAll('unknown', { prompt: 'ended' }, 'session-1');
+    await expect(withdrawn).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    expect(host.calls[0]!.signal?.aborted).toBe(true);
+    host.fail(new Error('host gone'));
+
+    const failing = service.handle({ ...request, toolCall: { ...request.toolCall, toolCallId: 'call-2' } });
+    await Promise.resolve();
+    host.fail(new Error('host failed'));
+    await expect(failing).rejects.toThrow('host failed');
+    expect(service.pendingCount).toBe(0);
+    expect(published.map(({ outcome }) => outcome).filter(Boolean)).toEqual(['unknown']);
+  });
+
+  it('gives a host in a single-client composition no signal and keeps its decision authoritative', async () => {
+    const calls: AcpApprovalRequest[] = [];
+    const service = new AcpApprovalService({
+      decide: (call) => {
+        calls.push(call);
+        return 'approved';
+      },
+      deferredEvidence: rejectedEvidence,
+      publish: () => undefined,
+    });
+    const reply = service.handle(request);
+    service.observe('session/update', failed('rejected'));
+    await expect(reply).resolves.toEqual(selected('allow-once'));
+    expect(calls[0]).not.toHaveProperty('signal');
   });
 });

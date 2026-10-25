@@ -21,6 +21,7 @@ const temporaryDirectories: string[] = [];
 type RawScenarioAction = {
   emit?: { event?: string; request?: boolean; with?: Record<string, unknown> };
   statusline?: { with?: Record<string, unknown> };
+  transcript?: { record: Record<string, unknown> };
 };
 
 function actionsFor(document: unknown): RawScenarioAction[] {
@@ -122,6 +123,21 @@ describe('claude persona scenarios', () => {
       JSON.parse(readFileSync(join(scenarioDir, 'compact-lifecycle.json'), 'utf8')) as unknown,
     ).find((action) => action.emit?.event === 'SubagentStop');
     expect(internal?.emit?.with?.agent_type).toBe('');
+  });
+
+  it('writes the 2.1.308 transcript shapes and the API-error boundary the census recorded', () => {
+    const actions = (name: string) =>
+      actionsFor(JSON.parse(readFileSync(join(scenarioDir, `${name}.json`), 'utf8')) as unknown);
+    const records = actions('model-switch').flatMap((action) => (action.transcript ? [action.transcript.record] : []));
+    // A typed prompt row carries turnOrigin; a bookkeeping blob carries a user role but no uuid or timestamp.
+    expect(records).toContainEqual(expect.objectContaining({ type: 'user', turnOrigin: 'human' }));
+    const blob = records.find((record) => record.type === 'api-request-blob');
+    expect(blob).toMatchObject({ message: { role: 'user' } });
+    expect(Object.hasOwn(blob!, 'uuid') || Object.hasOwn(blob!, 'timestamp')).toBe(false);
+    // api-error-529: the final error message, then StopFailure server_error, and no Stop.
+    const failure = actions('api-error-overloaded');
+    expect(failure.map((action) => action.emit?.event)).toEqual(['UserPromptSubmit', 'MessageDisplay', 'StopFailure']);
+    expect(failure.at(-1)?.emit?.with?.error).toBe('server_error');
   });
 
   it('keeps every curated runflow at realistic agent-workflow depth', () => {

@@ -44,13 +44,20 @@ export const claudeCaptureRules = extendRules(
     // DirectoryAdded `directory` and permission-suggestion `directories` are
     // workstation paths under keys the shared list does not name.
     pathKey: /(?:^|_)(?:scratchpad_dir|directory|directories)$/,
-    // mcp_server.name is the owner's own MCP config key. compact_summary and
-    // custom_instructions carry conversation text; command_args, task
+    // mcp_server.name and Elicitation's mcp_server_name are the owner's own
+    // MCP config key. compact_summary and custom_instructions carry
+    // conversation text; command_name/command_args (a custom or plugin slash
+    // command), InstructionsLoaded globs (a rule file's `paths:`), task
     // subjects/descriptions, background-task descriptions, permission rule
     // contents, and team/teammate names are user-authored; PermissionDenied's
-    // reason is classifier prose quoting the call.
+    // reason is classifier prose quoting the call; StopFailure error_details is
+    // the API's own error text, which can name the organization or request.
     sensitiveTextKey:
-      /^(?:name|description|ruleContent|reason|command_args|custom_instructions|task_subject|task_description|teammate_name|team_name)$|(?:^|_)summary$/,
+      /^(?:name|mcp_server_name|description|ruleContent|reason|command_name|command_args|globs|error_details|custom_instructions|task_subject|task_description|teammate_name|team_name)$|(?:^|_)summary$/,
+    // An MCP elicitation's form schema and the person's answers are objects
+    // keyed by the server's own field names, so no key rule reaches their
+    // strings: everything inside is redacted unless it is a structural enum.
+    sensitiveContainer: /^(?:requested_schema|content)$/,
     structuralEnumValue: new RegExp(
       `^(?:${[...CLAUDE_STOP_FAILURE_ERRORS, ...CLAUDE_SESSION_END_REASONS].join('|')})$`,
     ),

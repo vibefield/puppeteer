@@ -3,9 +3,18 @@
   "provider": "grok",
   "adapterPackage": "@vibefield/puppeteer-adapter-grok",
   "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
-  "groundTruthSha256": "28d8c4803aef552b6b34a0956139584ebbd1b2cbee24e3113a9e2ad12490496f",
-  "semanticEvents": ["_x.ai/session/update", "_x.ai/session_notification", "session/update"],
-  "observedOrControlledEvents": ["_x.ai/auth/info", "initialize", "signals.json", "summary.json"],
+  "groundTruthSha256": "98993c00acc7fafd57a68ff9f06ce604072d5fed2a6013ae92a24cc2de621b5b",
+  "semanticEvents": [
+    "_x.ai/session/update",
+    "_x.ai/session_notification",
+    "session/update"
+  ],
+  "observedOrControlledEvents": [
+    "_x.ai/auth/info",
+    "initialize",
+    "signals.json",
+    "summary.json"
+  ],
   "unmapped": {
     "count": 17,
     "sha256": "4b47231a89dc82f3d70dd0471833bc08851ffc34f0d9c27e1091e9d6b69f7ea8",

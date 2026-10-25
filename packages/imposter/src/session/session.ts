@@ -477,8 +477,10 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   };
 
   const status = behavior.statusLine ?? {};
-  const modelId =
-    flagValue(argv, persona.flagsFor('model', '--model')) ?? status.modelId ?? `${persona.vendor}-imposter`;
+  // Mutable: a scenario that switches the model states it on its own status line (model-switch),
+  // and the session serves that model from then on, as the vendor would.
+  let modelId = flagValue(argv, persona.flagsFor('model', '--model')) ?? status.modelId ?? `${persona.vendor}-imposter`;
+  let modelDisplayName = status.modelDisplayName ?? modelId;
   const capacityTokens = status.capacityTokens ?? 200_000;
   let usedTokens = 0;
   let turnCount = 0;
@@ -493,7 +495,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       session_id: sessionId,
       transcript_path: transcriptPath,
       cwd,
-      model: { id: modelId, display_name: status.modelDisplayName ?? modelId },
+      model: { id: modelId, display_name: modelDisplayName },
       workspace: { current_dir: cwd },
       context_window:
         usedTokens === 0
@@ -523,7 +525,24 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     return payload;
   };
 
+  /**
+   * A status line reports the model now serving the session, so an explicit status line (a
+   * scenario's, after its switch) carrying a model card sets it: later refreshes and `$modelId`
+   * follow, rather than reverting to the launch model. A dropped channel does not change what the
+   * session serves.
+   */
+  const adoptStatusLineModel = (payload: Record<string, unknown>): void => {
+    const model = payload.model;
+    if (model === null || typeof model !== 'object' || Array.isArray(model)) return;
+    const { id, display_name: displayName } = model as Record<string, unknown>;
+    if (typeof id !== 'string' || id.length === 0) return;
+    modelId = id;
+    modelDisplayName = typeof displayName === 'string' && displayName.length > 0 ? displayName : id;
+    bindings.$modelId = id;
+  };
+
   const invokeStatusLine = async (payload?: Record<string, unknown>): Promise<void> => {
+    if (payload) adoptStatusLineModel(payload);
     if (dropped('statusline')) {
       log('dropped statusline payload: channel is disconnected');
       return;

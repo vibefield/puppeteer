@@ -17,11 +17,12 @@
  * usage: node sanitize.mjs [--in <dir>] [--out <dir>] [--check-only]
  */
 
-import { mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   checkCaptureDirectory,
+  checkRecord,
   defaultRules,
   extendRules,
   sanitizeCaptureDirectory,
@@ -63,6 +64,88 @@ export const codexRules = extendRules(
   defaultRules,
 );
 
+/** The probe records the gate reads; scripts are authored code and not evidence. */
+const PROBE_RECORD = /\.(?:json|jsonl|txt|md)$/;
+
+/**
+ * The few probe values the detector flags by key or shape that are not private, each pinned as
+ * narrowly as it can be: a live case's `id` is the harness's own label (`S12-typed-remote-…`); a
+ * `<root>/…` path is the case-root placeholder the live harness writes in place of its directory;
+ * `/tmp/codex-extra` is the 0.157.1 config probe's own synthetic literal (its README's erratum).
+ */
+const PROBE_CASE_ID = /^S\d+-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/;
+const PROBE_CASE_ROOT = /^<root>(?:\/[A-Za-z0-9._-]+)*$/;
+const PROBE_SYNTHETIC_LITERALS = [/\/tmp\/codex-extra(?![\w./-])/g];
+
+function withKnownProbeValues(value, key = '') {
+  if (typeof value === 'string') {
+    if (key === 'id' && PROBE_CASE_ID.test(value)) return '<redacted:id>';
+    if (PROBE_CASE_ROOT.test(value)) return '/workspace';
+    return PROBE_SYNTHETIC_LITERALS.reduce((text, literal) => text.replace(literal, '<synthetic>'), value);
+  }
+  if (Array.isArray(value)) return value.map((entry) => withKnownProbeValues(entry, key));
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([childKey, child]) => [childKey, withKnownProbeValues(child, childKey)]),
+    );
+  }
+  return value;
+}
+
+/** The detector over one parsed probe record, after the pinned exceptions above. */
+export function checkProbeRecord(record, rules = codexRules) {
+  return checkRecord(withKnownProbeValues(record), rules);
+}
+
+/**
+ * The detector over every committed probe record (`probes/codex@<version>/`).
+ *
+ * No sanitizer writes these: each probe projects its own output (`whitelist-live.mjs` from raw TUI
+ * sessions, the parse probe from argv and first lines), so a re-run that kept a path or token in an
+ * error line would otherwise be committed with every other gate green. JSON is inspected with the
+ * key rules; help captures and READMEs line by line, for value patterns only.
+ */
+export function checkProbeRecords(probesRoot = join(surfaceRoot, 'probes'), rules = codexRules) {
+  const issues = [];
+  if (!existsSync(probesRoot)) return issues;
+  for (const version of readdirSync(probesRoot).sort()) {
+    const directory = join(probesRoot, version);
+    if (!statSync(directory).isDirectory()) continue;
+    for (const file of readdirSync(directory).sort()) {
+      if (!PROBE_RECORD.test(file) || !statSync(join(directory, file)).isFile()) continue;
+      const label = `${version}/${file}`;
+      const text = readFileSync(join(directory, file), 'utf8');
+      const inspectRecord = (record, location) =>
+        issues.push(...checkProbeRecord(record, rules).map((issue) => issue.replace('<record>', location)));
+      if (file.endsWith('.json')) {
+        let document;
+        try {
+          document = JSON.parse(text);
+        } catch {
+          issues.push(`${label}: not valid JSON`);
+          continue;
+        }
+        inspectRecord(document, label);
+      } else {
+        for (const [index, line] of text.split('\n').entries()) {
+          if (!line.trim()) continue;
+          let record = line;
+          if (file.endsWith('.jsonl')) {
+            try {
+              record = JSON.parse(line);
+            } catch {
+              issues.push(`${label}:${index + 1}: not valid JSON`);
+              continue;
+            }
+          }
+          inspectRecord(record, `${label}:${index + 1}`);
+        }
+      }
+    }
+  }
+  return issues;
+}
+
 // Only the CLI runs; `audit.mjs` imports this module purely for `codexRules`,
 // and an import that silently rewrote the committed fixtures would be a nasty
 // surprise inside a check that is supposed to only read them.
@@ -79,7 +162,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const issues = checkCaptureDirectory(output, codexRules);
     for (const issue of issues.slice(0, 20)) console.error(issue);
     console.log(issues.length === 0 ? `clean: ${output}` : `${issues.length} issue(s) in ${output}`);
-    process.exit(issues.length === 0 ? 0 : 1);
+    const probeIssues = checkProbeRecords();
+    for (const issue of probeIssues.slice(0, 20)) console.error(issue);
+    console.log(
+      probeIssues.length === 0 ? 'clean: probe records' : `${probeIssues.length} issue(s) in the probe records`,
+    );
+    process.exit(issues.length === 0 && probeIssues.length === 0 ? 0 : 1);
   }
 
   // Write to a staging directory first: a capture set that fails the check must

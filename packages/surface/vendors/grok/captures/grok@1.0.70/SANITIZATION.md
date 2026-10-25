@@ -12,8 +12,17 @@ retained. Sensitive values are replaced in place:
   `<redacted:key>`.
 - Raw tool arguments and results (`rawInput`, `rawOutput`, `_meta["x.ai/tool"].input`) keep only their
   `variant`/`type`/`kind`/`status` discriminators; byte-array output keeps its length as zeros.
-- Disposable paths become `/workspace`, `/home/user`, `/home/user/.grok`, `/tmp/grok-census`, and
-  `/usr/local/bin/grok`, including the percent-encoded session bucket.
+- Disposable paths become `/workspace`, `/home/user`, `/home/user/.grok`, `/home/user/grok-census` (the
+  census root holding the leader socket), and `/usr/local/bin/grok`, including the percent-encoded
+  session bucket. No synthetic root is under `/tmp`: the shared gate rejects temp-rooted paths and its
+  redaction would flatten one to `/workspace/redacted-path`.
+- Values under the shared path keys keep no synthetic root: the repository-wide gate accepts only its own
+  placeholders there, so a `cwd` becomes `/workspace` and every other path-keyed value becomes
+  `/workspace/redacted-file`. That includes `summary.json` `grok_home` (GROK_HOME) and, in the
+  `observations.json` projection, `providerRequests[].path` — an HTTP route, which survives only as the
+  harness `kind` (`origin-probe` is a GET of the origin root).
+- The viewer's `memtrace/<unix seconds>-<pid>.jsonl` file name (in `store-layout.json`) pins to
+  `memtrace/1000000000-0.jsonl`.
 - Clocks keep their unit: the durable `timestamp` (Unix seconds) pins to `1000000000`, millisecond
   clocks to `1767225600000`, and ISO-8601 strings to `2026-01-01T00:00:00` with their precision and
   offset.
@@ -34,5 +43,5 @@ The following are never promoted from the raw tree: provider request bodies, std
 The paired detector (`privacy.mjs` `checkGrokCaptureDirectory`) runs the shared engine with Grok rules,
 the shared engine with its default rules (the repository-wide gate), and Grok-only detectors. Those
 reject surviving absolute paths outside the synthetic roots, partially redacted paths, unpinned
-second/millisecond/ISO clocks, raw xAI ids, a non-constant machine id, census prompt canaries, and raw
-tool arguments.
+second/millisecond/ISO clocks, an unpinned memtrace name, raw xAI ids, a non-constant machine id, census
+prompt canaries, and raw tool arguments.

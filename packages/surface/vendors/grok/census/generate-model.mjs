@@ -36,6 +36,9 @@ const RELEASES = {
     generatedAt: '2026-10-25',
     // mtime of the bytes fetched by `pnpm surface:download` from the allowlisted x.ai URL.
     acquiredAt: '2026-10-25T02:25:00.000Z',
+    // Census start, from the raw run's harness.json `capturedAt` (captures-raw/grok@1.0.70,
+    // gitignored); capture.json publishes only its date, which the generator holds to this.
+    censusCapturedAt: '2026-10-25T05:00:02.273Z',
     binaryReportedRevision: 'f50904eaee6c',
     platform: 'darwin-arm64',
   },
@@ -169,11 +172,61 @@ expectProbe(
   approvalFacts.lateViewer.viewerAttachedAfterRequest && approvalFacts.lateViewer.toolRan,
   'a viewer attaching while a request is pending can answer it',
 );
+// The one case that persists a rule, in its own session so the standing rule touches no other case.
+const viewerAlways = approvalCase('viewer-answers-always', 'viewer-allow-always');
+expectProbe(
+  !viewerAlways.fallbackControllerAnswer &&
+    viewerAlways.interactionResolved &&
+    viewerAlways.controllerCancelRequests === 0 &&
+    viewerAlways.requestOptions?.[0] === 'allow_always' &&
+    viewerAlways.toolRan &&
+    viewerAlways.permissionRuleFilesWritten === 1 &&
+    JSON.stringify(viewerAlways.permissionRules) ===
+      JSON.stringify([{ location: 'sessions/<cwd>', namedFor: 'controller' }]) &&
+    (viewerAlways.lateControllerAnswers ?? []).some(
+      (late) => late.decision === 'cancelled' && late.framesAfter.length === 0 && late.leaderLoggedUnknownResponse,
+    ),
+  'a viewer allow_always persists one GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml rule',
+);
+expectProbe(
+  viewerAlways.followUp?.permissionRequests === 0 &&
+    viewerAlways.followUp?.toolRan === true &&
+    viewerAlways.followUp?.permissionRuleFilesWritten === 0,
+  'the persisted allow_always rule answers the next matching command without a request',
+);
+// The live user_message_chunk echo is viewer-conditional: none without a viewer.
+for (const [scenario, key] of [['headless-compact', 'headlessUserMessageEchoes']]) {
+  const echoes = readJson(join(capturesRoot, scenario, 'observations.json'))[key];
+  if (echoes !== 0) throw new Error(`${scenario} echoed ${echoes} live user chunks without a viewer`);
+}
 
 const acp = reference.acpDependencyOfPublicMirror;
 const mirrorVariants = reference.publicMirror.xaiSessionUpdate.variants;
 const binaryLeads = reference.binaryProbe;
-const capturedAt = `${capture.capturedOn}T00:00:00.000Z`;
+
+/**
+ * When each evidence record was produced: the census start, the binary probes,
+ * the approval probe, and the serde-run scan each record their own instant. A
+ * capture cannot precede the acquisition of the bytes it ran.
+ */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+const capturedAt = {
+  census: release.censusCapturedAt,
+  probes: artifact.probedAt,
+  approvalProbe: approvalProbe.capturedAt,
+  serdeScan: binaryLeads.scannedAt,
+};
+for (const [record, instant] of Object.entries(capturedAt)) {
+  if (typeof instant !== 'string' || !ISO_INSTANT.test(instant)) {
+    throw new Error(`${record} records no capture instant (re-run its harness step)`);
+  }
+  if (Date.parse(instant) < Date.parse(release.acquiredAt)) {
+    throw new Error(`${record} captured at ${instant}, before the artifact was acquired at ${release.acquiredAt}`);
+  }
+}
+if (capturedAt.census.slice(0, 10) !== capture.capturedOn) {
+  throw new Error(`census instant ${capturedAt.census} is not on capture.json capturedOn ${capture.capturedOn}`);
+}
 const fixture = (scenario, file) => `captures/grok@${VERSION}/${scenario}/${file}`;
 
 /** Every captured carrier, keeping scenario, file, and direction so results correlate. */
@@ -228,15 +281,31 @@ const isReplay = (params) => params?._meta?.isReplay === true;
 // ---------------------------------------------------------------------------
 
 const runtimeClaim = 'grok-runtime-headless';
+const runtimeInteractiveClaim = 'grok-runtime-interactive';
 const observationClaim = 'grok-census-observations';
 const probeClaim = 'grok-binary-probe';
 const approvalProbeClaim = 'grok-approval-probe';
 const serdeLeadClaim = 'grok-binary-serde-lead';
 const mirrorClaim = 'grok-public-mirror-lead';
 const acpClaim = 'grok-public-acp-lead';
-const verifiedClaims = new Set([runtimeClaim, observationClaim, probeClaim, approvalProbeClaim]);
+/**
+ * Each claim's evidence class. A fact that needs the native viewer — attached
+ * in a PTY, typed into, or answering — is interactive evidence even though the
+ * controller rail that records it is headless (the repository convention for a
+ * harness-driven native TUI, as in claude-runtime-interactive).
+ */
+const claimConfidence = new Map([
+  [runtimeClaim, 'verified-headless'],
+  [observationClaim, 'verified-headless'],
+  [probeClaim, 'verified-headless'],
+  [runtimeInteractiveClaim, 'verified-interactive'],
+  [approvalProbeClaim, 'verified-interactive'],
+]);
+const CONFIDENCE_RANK = { unverified: 0, 'verified-interactive': 1, 'verified-headless': 2 };
+const RANKED = Object.keys(CONFIDENCE_RANK);
+/** The strongest claim supports one assertion, as the ASM validator reads it. */
 const confidenceOf = (claims) =>
-  claims.some((claim) => verifiedClaims.has(claim)) ? 'verified-headless' : 'unverified';
+  RANKED[Math.max(0, ...claims.map((claim) => CONFIDENCE_RANK[claimConfidence.get(claim) ?? 'unverified']))];
 const evidence = ({ existence, shape, result, carrier, trigger, ordering }) => ({
   existence,
   shape,
@@ -246,9 +315,21 @@ const evidence = ({ existence, shape, result, carrier, trigger, ordering }) => (
   ...(carrier ? { carrier } : {}),
 });
 const minConfidence = (...groups) =>
-  groups.filter(Boolean).every((group) => confidenceOf(group) === 'verified-headless')
-    ? 'verified-headless'
-    : 'unverified';
+  RANKED[Math.min(...groups.filter(Boolean).map((group) => CONFIDENCE_RANK[confidenceOf(group)]))];
+
+/**
+ * Census scenarios whose controller ran with the native viewer attached in a
+ * PTY. A notification kind captured ONLY on those live controller rails —
+ * never durable, replayed, or viewer-less — exists because the viewer
+ * attached (1.0.70's attach-time config_option_update), so it cites the
+ * interactive claim.
+ */
+const VIEWER_SCENARIOS = new Set(['viewer-session', 'viewer-prompt']);
+const kindClaims = (entries) =>
+  entries.length > 0 &&
+  entries.every((entry) => VIEWER_SCENARIOS.has(entry.scenario) && entry.file === 'acp-controller.jsonl')
+    ? [runtimeInteractiveClaim]
+    : [runtimeClaim];
 
 // ---------------------------------------------------------------------------
 // Schema helpers
@@ -517,8 +598,10 @@ const acpMethods = [
     direction: 'agent-to-client',
     sampledPayload: true,
     clientResult: true,
+    // First answer wins and a persisted allow_always rule pre-empts later requests: the approval probe.
+    orderingClaims: [runtimeClaim, approvalProbeClaim],
     notes:
-      'Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs "received response for unknown request id"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always persists GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml. spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once.',
+      'Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs "received response for unknown request id"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always — in the viewer too — persists one GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml rule that answers the next matching command without a request (approval probe viewer-answers-always). spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once.',
   },
 ];
 
@@ -552,6 +635,7 @@ for (const method of acpMethods) {
     evidence: evidence({
       existence: [runtimeClaim],
       shape,
+      ...(method.orderingClaims ? { ordering: method.orderingClaims } : {}),
       ...(resultSchema ? { result: shape } : {}),
       carrier: [runtimeClaim],
     }),
@@ -645,15 +729,20 @@ const observedStandard = new Set(standardPayloads.map(updateKind));
 for (const kind of observedStandard) {
   if (!acp.sessionUpdateValues.includes(kind)) throw new Error(`observed session/update ${kind} is not an ACP value`);
 }
-const sampledUpdateRefinement = (kind, payloads, extra = []) => ({
+const sampledUpdateRefinement = (kind, payloads, extra = [], claims = [runtimeClaim]) => ({
   match: { 'update.sessionUpdate': kind },
   path: 'update',
   schema: inferSchema(payloads.filter((params) => updateKind(params) === kind).map((params) => params.update)),
-  evidence: evidence({ existence: [runtimeClaim], shape: [runtimeClaim] }),
-  confidence: 'verified-headless',
+  evidence: evidence({ existence: claims, shape: claims }),
+  confidence: confidenceOf(claims),
   fidelity: 'sampled',
   limitations: [SAMPLED_LIMITATION, ...extra],
 });
+const standardKindClaims = (kind) =>
+  kindClaims([
+    ...standardLive.filter((entry) => updateKind(entry.message.params) === kind),
+    ...standardDurable.filter((entry) => updateKind(entry.record.params) === kind),
+  ]);
 const metaRefinement = (payloads, extra) => ({
   path: '_meta',
   schema: inferSchema(payloads.map((params) => params._meta)),
@@ -694,12 +783,12 @@ writeEvent('session/update', {
   confidence: 'verified-headless',
   variantDiscriminants: ['update.sessionUpdate'],
   variants: acp.sessionUpdateValues.map((value) => {
-    const claims = observedStandard.has(value) ? [runtimeClaim] : [acpClaim];
+    const claims = observedStandard.has(value) ? standardKindClaims(value) : [acpClaim];
     return {
       match: { 'update.sessionUpdate': value },
       evidence: evidence({
         existence: claims,
-        shape: observedStandard.has(value) ? [acpClaim, runtimeClaim] : [acpClaim],
+        shape: observedStandard.has(value) ? [acpClaim, ...claims] : [acpClaim],
       }),
       confidence: confidenceOf(claims),
     };
@@ -709,7 +798,9 @@ writeEvent('session/update', {
     toolRefinement('tool_call_update', 'ToolCallUpdate'),
     ...[...observedStandard]
       .sort()
-      .map((kind) => sampledUpdateRefinement(kind, standardPayloads, standardSpecific[kind] ?? [])),
+      .map((kind) =>
+        sampledUpdateRefinement(kind, standardPayloads, standardSpecific[kind] ?? [], standardKindClaims(kind)),
+      ),
     metaRefinement(
       standardPayloads,
       'Grok params-level `_meta`: eventId (`<sessionId>-<n>`, shared by a live notification and its durable copy), agentTimestampMs, promptId, totalTokens, requestTrimmedTokens, streamStartMs, turnStartMs, updateType, updateParams, chunkId, and on session/load replay isReplay plus x.ai/leaderClientId.',
@@ -805,12 +896,14 @@ const leadRefinements = leadVariants.map((wireName) => ({
   ],
 }));
 
-function extensionDocument(payloads, observed, { persisted }) {
+function extensionDocument(payloads, observed, { persisted, carriers }) {
   const inventory = persisted ? [...observed].sort() : extensionInventory;
+  const claimsOf = (kind) =>
+    kindClaims(carriers.filter((entry) => updateKind(entry.message?.params ?? entry.record?.params) === kind));
   return {
     variants: inventory.map((wireName) => {
       const claims = observed.has(wireName)
-        ? [runtimeClaim]
+        ? claimsOf(wireName)
         : leadVariants.includes(wireName)
           ? [serdeLeadClaim]
           : [mirrorClaim];
@@ -821,7 +914,9 @@ function extensionDocument(payloads, observed, { persisted }) {
       };
     }),
     payloadRefinements: [
-      ...[...observed].sort().map((kind) => sampledUpdateRefinement(kind, payloads, extensionSpecific[kind] ?? [])),
+      ...[...observed]
+        .sort()
+        .map((kind) => sampledUpdateRefinement(kind, payloads, extensionSpecific[kind] ?? [], claimsOf(kind))),
       ...inventory
         .filter((wireName) => mirrorByName.has(wireName))
         .map((wireName) => mirrorRefinement(mirrorByName.get(wireName), payloads))
@@ -831,7 +926,10 @@ function extensionDocument(payloads, observed, { persisted }) {
   };
 }
 
-const liveDocument = extensionDocument(livePayloads, observedLive, { persisted: false });
+const liveDocument = extensionDocument(livePayloads, observedLive, {
+  persisted: false,
+  carriers: [...liveExtension, ...durableExtension, ...replayExtension],
+});
 writeEvent('_x.ai/session_notification', {
   channel: 'acp',
   channels: ['acp'],
@@ -857,7 +955,10 @@ writeEvent('_x.ai/session_notification', {
     'Live spelling of xAI session updates. The leader also forwards a subagent child session’s notifications to the parent controller under the CHILD sessionId.',
 });
 
-const persistedDocument = extensionDocument(persistedPayloads, observedPersisted, { persisted: true });
+const persistedDocument = extensionDocument(persistedPayloads, observedPersisted, {
+  persisted: true,
+  carriers: [...durableExtension, ...replayExtension],
+});
 writeEvent('_x.ai/session/update', {
   channel: 'acp',
   channels: ['acp', 'session-log'],
@@ -1176,6 +1277,8 @@ const relation = (from, to, kind, claims, label) => ({
   evidence: evidence({ existence: claims, shape: claims, ordering: claims }),
 });
 const R = [runtimeClaim];
+/** Behavior that occurs only because the native viewer attached in a PTY. */
+const VIEWER = [runtimeInteractiveClaim];
 const M = [mirrorClaim];
 const xai = (kind, extra = {}) => ({ match: { 'update.sessionUpdate': kind, ...extra } });
 
@@ -1210,7 +1313,14 @@ writeJson(join(modelRoot, 'behavior.json'), {
     node('background-tasks', '_x.ai/session_notification', 'session', 3, R, xai('background_tasks')),
     node('model-changed', '_x.ai/session_notification', 'session', 4, R, xai('model_changed')),
     node('available-commands', 'session/update', 'session', 5, R, xai('available_commands_update')),
-    node('config-option', 'session/update', 'session', 6, R, xai('config_option_update')),
+    node(
+      'config-option',
+      'session/update',
+      'session',
+      6,
+      standardKindClaims('config_option_update'),
+      xai('config_option_update'),
+    ),
     node(
       'session-start-hook',
       '_x.ai/session_notification',
@@ -1359,16 +1469,22 @@ writeJson(join(modelRoot, 'behavior.json'), {
       'setup-response-ready',
       'background-tasks',
       'conditional',
-      R,
+      VIEWER,
       'another client (the native viewer) attaches',
     ),
     relation('background-tasks', 'model-changed', 'sequence', R),
     relation('model-changed', 'available-commands', 'sequence', R),
-    relation('available-commands', 'config-option', 'sequence', R),
+    relation('available-commands', 'config-option', 'sequence', standardKindClaims('config_option_update')),
     relation('setup-response-ready', 'prompt', 'sequence', R),
     relation('prompt', 'sessions-changed', 'sequence', R),
     relation('sessions-changed', 'queue-changed', 'sequence', R),
-    relation('queue-changed', 'user-message-echo', 'conditional', R, 'live echo only while another client is attached'),
+    relation(
+      'queue-changed',
+      'user-message-echo',
+      'conditional',
+      VIEWER,
+      'live echo only while another client is attached',
+    ),
     relation('queue-changed', 'prompt-hook-started', 'conditional', R, 'hooks configured'),
     relation('prompt-hook-started', 'prompt-hook', 'sequence', R),
     relation('queue-changed', 'summary-generated', 'conditional', R, 'first turn, or a retitled session'),
@@ -1603,8 +1719,19 @@ writeJson(join(modelRoot, 'evidence.json'), {
       artifact: artifactId,
       platform: release.platform,
       harness,
-      capturedAt,
-      notes: `Type-preserving native carriers from scenarios ${capture.scenarios.join(', ')}: directional ACP frames, updates.jsonl, and signals/summary/usage.json.`,
+      capturedAt: capturedAt.census,
+      notes: `Type-preserving native carriers from scenarios ${capture.scenarios.join(', ')}: directional ACP frames, updates.jsonl, and signals/summary/usage.json. Facts that exist only because the native viewer attached cite ${runtimeInteractiveClaim} instead.`,
+    },
+    {
+      id: runtimeInteractiveClaim,
+      kind: 'runtime-capture',
+      confidence: 'verified-interactive',
+      record: 'sanitized-captures',
+      artifact: artifactId,
+      platform: release.platform,
+      harness,
+      capturedAt: capturedAt.census,
+      notes: `The same captures, for facts whose trigger is the native viewer attached to the leader session in a PTY (scenarios ${[...VIEWER_SCENARIOS].join(', ')}): attach-time broadcasts to the already-attached controller (config_option_update; background_tasks after session/new) and the live user_message_chunk echo. The controller rail that records them is headless; the trigger is the native TUI.`,
     },
     {
       id: observationClaim,
@@ -1614,7 +1741,7 @@ writeJson(join(modelRoot, 'evidence.json'), {
       artifact: artifactId,
       platform: release.platform,
       harness,
-      capturedAt,
+      capturedAt: capturedAt.census,
       notes:
         'Harness-computed semantic projections (observations.json, topology.json, store-layout.json): timing, counts, literal permission option inventories, and process topology. Admissible for occurrence, ordering, timing, and retained literals only, never for a schema.',
     },
@@ -1626,22 +1753,22 @@ writeJson(join(modelRoot, 'evidence.json'), {
       artifact: artifactId,
       platform: release.platform,
       harness: 'packages/surface/vendors/grok/census/harness.mjs --probes-only (disposable home, explicit environment)',
-      capturedAt,
+      capturedAt: capturedAt.probes,
       notes:
         '`--version`, long/short help, subcommand help trees, and the `grok completions fish` grammar of the exact artifact.',
     },
     {
       id: approvalProbeClaim,
       kind: 'runtime-capture',
-      confidence: 'verified-headless',
+      confidence: 'verified-interactive',
       record: 'binary-probes',
       artifact: artifactId,
       platform: release.platform,
       harness:
         'packages/surface/vendors/grok/census/harness.mjs --approval-probe (deferring ACP controller, native viewer in a PTY, loopback model provider, disposable GROK_HOME)',
-      capturedAt,
+      capturedAt: capturedAt.approvalProbe,
       notes:
-        'Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count. Admissible for occurrence, ordering, and outcomes only, never for a schema.',
+        'Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open, answered or interrupted with keystrokes in the native viewer (hence interactive evidence), including the allow_always choice and the rule it persists. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count and location. Admissible for occurrence, ordering, and outcomes only, never for a schema.',
     },
     {
       id: serdeLeadClaim,
@@ -1651,7 +1778,7 @@ writeJson(join(modelRoot, 'evidence.json'), {
       artifact: artifactId,
       platform: release.platform,
       harness: 'packages/surface/vendors/grok/census/extract-public-reference.mjs (printable-run scan)',
-      capturedAt,
+      capturedAt: capturedAt.serdeScan,
       notes:
         'Low-confidence leads from a strings heuristic over the exact bytes: serde variant names absent from the public enum and xAI method literals. Rust string pooling makes absence meaningless and presence weak.',
     },

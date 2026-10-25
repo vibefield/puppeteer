@@ -494,6 +494,54 @@ describe('createAcpSession with deferred approvals', () => {
     }
   });
 
+  it('publishes the answer the agent acted on when the person answers before the host handler', async () => {
+    let asked!: () => void;
+    const hostAsked = new Promise<void>((resolve) => (asked = resolve));
+    let approve!: (decision: 'approved') => void;
+    const signals: (AbortSignal | undefined)[] = [];
+    const agent = deferringAgent(async (client) => {
+      await hostAsked;
+      // The person rejected in the agent's own terminal UI while the host dialog was open.
+      await client.sessionUpdate({
+        sessionId: SID,
+        update: { sessionUpdate: 'tool_call_update', toolCallId: 'tool-1', status: 'failed', _meta: { reason: 'no' } },
+      });
+      return 'cancelled';
+    });
+    const session = await createAcpSession({
+      cwd: '/x',
+      connector: agent.connector,
+      unhandledApproval: 'defer',
+      deferredApprovalEvidence: (method, params) => {
+        const update = params.update as { status?: string; toolCallId?: string } | undefined;
+        return method === 'session/update' && update?.status === 'failed'
+          ? [{ toolCallId: update.toolCallId, outcome: 'denied' }]
+          : [];
+      },
+      onApproval: (request) => {
+        signals.push(request.signal);
+        asked();
+        return new Promise((resolve) => (approve = resolve));
+      },
+    });
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((candidate) => events.push(candidate));
+    try {
+      await driveTurn(session, 'write the file');
+      await vi.waitFor(() => expect(agent.responses).toHaveLength(1));
+      expect(permissionEvents(events)).toEqual(['requested:host-ui', 'resolved:denied']);
+      // The agent already acted; this client's reply only releases the request.
+      expect(agent.responses).toEqual([{ outcome: { outcome: 'cancelled' } }]);
+      expect(signals[0]?.aborted).toBe(true);
+      approve('approved');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(permissionEvents(events)).toEqual(['requested:host-ui', 'resolved:denied']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
   it('keeps the immediate deny for compositions that do not defer', async () => {
     const agent = deferringAgent(async () => 'end_turn');
     const session = await createAcpSession({ cwd: '/x', connector: agent.connector });

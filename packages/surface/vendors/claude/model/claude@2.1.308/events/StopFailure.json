@@ -8,7 +8,7 @@
   ],
   "transport": "http",
   "direction": "agent-to-client",
-  "trigger": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Print mode exits without awaiting its command hooks.",
+  "trigger": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed.",
   "payloadSchema": {
     "type": "object",
     "properties": {
@@ -258,5 +258,5 @@
   "firstSeen": "2.1.308",
   "lastVerified": "2.1.308",
   "fixture": "captures/claude@2.1.308",
-  "notes": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Print mode exits without awaiting its command hooks."
+  "notes": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed."
 }
