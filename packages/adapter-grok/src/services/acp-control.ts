@@ -1,4 +1,8 @@
-import { createAcpSession, createStdioAcpConnector } from '@vibefield/puppeteer-adapter-acp';
+import {
+  createAcpSession,
+  createStdioAcpConnector,
+  type CreateAcpSessionOptions,
+} from '@vibefield/puppeteer-adapter-acp';
 import type { AgentAdapterBinding } from '@vibefield/puppeteer-core';
 import { grokExtensionEvents } from '../normalization/adapter.js';
 import { grokDeferredApprovalEvidence } from '../normalization/interaction.js';
@@ -22,6 +26,21 @@ export interface GrokControlComposition {
   viewer: 'attached' | 'none';
 }
 
+/** The Grok-specific ACP session options, apart from the transport and the session to load. */
+export function grokControlOptions(
+  options: Pick<CreateGrokSessionOptions, 'clientCapabilities' | 'onApproval' | 'onElicitation'>,
+  composition: GrokControlComposition = { viewer: 'none' },
+): Omit<CreateAcpSessionOptions, 'cwd' | 'connector' | 'resume'> {
+  return {
+    clientCapabilities: options.clientCapabilities,
+    onApproval: options.onApproval,
+    unhandledApproval: composition.viewer === 'attached' ? 'defer' : 'deny',
+    deferredApprovalEvidence: grokDeferredApprovalEvidence,
+    onElicitation: options.onElicitation,
+    onExtensionNotification: grokExtensionEvents,
+  };
+}
+
 /** Open ACP control through the shared leader, optionally loading a session. */
 export function openGrokControl(
   executable: string,
@@ -37,11 +56,6 @@ export function openGrokControl(
     cwd,
     connector: createStdioAcpConnector({ executable, args, cwd, env }),
     ...(sessionId ? { resume: sessionId } : {}),
-    clientCapabilities: options.clientCapabilities,
-    onApproval: options.onApproval,
-    unhandledApproval: composition.viewer === 'attached' ? 'defer' : 'deny',
-    deferredApprovalEvidence: grokDeferredApprovalEvidence,
-    onElicitation: options.onElicitation,
-    onExtensionNotification: grokExtensionEvents,
+    ...grokControlOptions(options, composition),
   });
 }

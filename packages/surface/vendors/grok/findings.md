@@ -352,8 +352,33 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
   leader directory's, since `builtin-providers` disposes backends without awaiting them.
 - **Control path (`services/control-session.ts`).**
   - ACP candidates whose params carry `_meta.isReplay` (session/load history) are published as replay.
-  - ACP frames under another sessionId (a subagent child) keep only their raw native events. They add no
-    monitor evidence and no normalized state to the root session.
+  - ACP frames under another sessionId (a subagent child) keep only their raw native events; the control
+    path publishes none of their normalized events on the root. One leak predates this and is outside the
+    Grok adapter: `adapter-acp`'s session-unscoped assistant-text buffer takes in the child's
+    `agent_message_chunk` text before the control path sees it, so in a composition without the durable
+    observer the root's later `conversation:assistant-message` and `turn:completed.lastAssistantMessage`
+    carry it (open item below). The default driver always attaches the observer, which filters those events
+    out. (follow-up) Their monitor evidence goes to the subagent actor
+    that `subagent_spawned` names for that `child_session_id`: the child's live `response_completed` and
+    `turn_completed` usage (actor-attributed, keyed by the child session and prompt), and its running turn
+    (`_x.ai/queue/changed` `runningPromptId` until its `turn_completed`) as the actor's activity. Any other
+    child evidence, and any frame of a child no spawn announced yet, projects nothing. Replaying the
+    committed `subagent` capture through the real control composition
+    (`services/control-session.test.ts`, `test-support/acp-capture-replay.ts`) gives a run total of 152 —
+    Grok's own `usage.json` session total — and 38 for the subagent, its `subagent_finished.tokens_used`.
+    A fresh census of the scenario against the exact artifact replays to the same totals.
+  - (follow-up) A live `response_completed` without a signature or `_meta.eventId` (every 1.0.70 capture)
+    is identified by its session, the running native prompt, and its ordinal within that prompt. The
+    running prompt is live evidence only: `_x.ai/queue/changed` `runningPromptId`, which precedes every
+    captured turn, and the `_meta.promptId` Grok stamps on each agent `session/update`; replayed history
+    never sets it. A response, signed or not, is identified only under such a native prompt, never under
+    adapter-acp's synthetic turn id, so each turn's `turn_completed` reconciles its responses exactly (a
+    zero remainder in every capture). A response with no known native prompt (the 1.0.0 live shape in
+    `captures/grok@1.0.0/turn.jsonl`: signed, but with no `_meta.promptId` or `queue/changed`) contributes
+    nothing on its own, and its `turn_completed` carries the whole total. A `turn_completed` closes its turn even without a usable total; a total flagged
+    `usageIsIncomplete` (the subagent census's root turn) or absent (`MidTurnAbort`) leaves the response
+    contributions as the turn's usage. The live proof asserts one contribution per live response and a run
+    total equal to the turn totals; restoring the old identity makes it fail.
   - ACP's `session/new|load` `session:started` is admitted once when the observer is active, deduplicated
     against a live hook-derived start.
 - **`--continue`/`resumeLatest`** skips sessions whose `summary.json` says `session_kind: "subagent"`.
@@ -368,10 +393,11 @@ fidelity record and `SANITIZATION.md` list that loss; the routes survive as the 
 - **`groundtruth-map.json` review.**
   - Semantic: `session/update` and `_x.ai/session/update` (the durable pipeline), and
     `_x.ai/session_notification` (`normalization/interaction.ts` reads its `turn_completed` cancellation
-    category to settle a deferred approval).
+    category to settle a deferred approval). (follow-up) `_x.ai/queue/changed`: `normalization/monitor.ts`
+    reads its `runningPromptId` as a session's running native prompt.
   - Observed or controlled: `initialize`, `signals.json`, `summary.json`, and now `_x.ai/auth/info`
     (`services/profiles.ts`).
-  - The 17 unmapped events are accepted as listed. The other `_x.ai/*` notifications are consumed
+  - The 16 unmapped events are accepted as listed. The other `_x.ai/*` notifications are consumed
     generically by `grokExtensionEvents` and the monitor rather than by literal. `session/new|load|prompt|cancel|request_permission` are consumed in `adapter-acp`.
     `usage.json` and `session/list` are unused.
 - **Imposter persona.**
@@ -438,14 +464,34 @@ Deferred design-level work, each with its evidence:
   scenario) plus a turn-outcome-dependent `session/prompt` result in `serve.json` (`stopReason`
   cancelled, `PermissionRejected`). Evidence for the frames: `probes/grok@1.0.70/viewer-approvals.json`
   `viewer-reject-once` / `viewer-interrupt`.
-- **Child usage attribution.** Child-session frames no longer reach root state or usage (control path).
-  Attributing them to the subagent actor, keyed by `child_session_id` from `subagent_spawned`, is not done.
-  `adapter-acp`'s own monitor evidence for a foreign-session `usage_update`/`config_option_update` is
-  also still unfiltered; the census captured neither on a child.
-- **Response usage identity:** live `response_completed` has no signature or eventId on this backend, so
-  per-response monitor usage is never attributed (`*/acp-controller.jsonl`); `turn_completed` reconciles
-  the turn. MidTurnAbort turns (`session/cancel`) carry no `turn_completed.usage`, so their tokens are not
-  counted. The prompt result `_meta` counters' semantics are unverified.
+- **Child-session evidence left (after child usage attribution).** A child's usage and running turn reach
+  its subagent actor (control path). Still open:
+  - `adapter-acp`'s own monitor evidence for a foreign-session `usage_update`/`config_option_update` is
+    unfiltered and scoped to the root; its batches carry no sessionId the Grok control path could test.
+    The census captured neither on a child.
+  - Child status other than its turn is not projected: a child's `pending_interaction`, compaction,
+    context, or model evidence (none captured on a child) is dropped from the root, not attributed.
+  - A frame a child sends before its `subagent_spawned` is dropped (its later `turn_completed` still
+    carries the turn total), and a grandchild that a child spawns is never registered.
+  - Child conversation text reaches the root through `adapter-acp`, without the durable observer only.
+    `AcpConversationNormalizer` and `AcpPromptService` are session-unscoped, and Grok's
+    `agent_message_chunk` has no `messageId`. Every chunk, a child's included, therefore joins one
+    `acp-msg` buffer, which becomes the root turn's `lastAssistantMessage` and later
+    `conversation:assistant-message` text. The control path drops only the child's own candidates. The same
+    buffer also grows across turns: each turn's message repeats every earlier turn's text. Replaying
+    `captures/grok@1.0.70/subagent/acp-controller.jsonl` with no observer gives the root's first
+    `turn:completed` 4 text chunks where the root sent 2 (the other 2 are under the child sessionId). The fix
+    belongs in `adapter-acp`, shared with the other ACP adapters: ignore or scope foreign-session
+    notifications in its normalizer and prompt service, and reset the buffer for each turn. The default
+    driver always attaches the observer, whose allowlist excludes these events.
+- **Response usage, residual edges.** Unsigned responses are now identified by session, running native
+  prompt, and ordinal (Adapter section). An ordinal cannot deduplicate a re-delivered notification; none
+  was observed on one controller connection. A signed response with no known native prompt (the 1.0.0
+  live shape) is not counted on its own; its `turn_completed` carries the whole turn total. That
+  backend's live `hook_execution` notifications carry the `prompt_id`, but they are not read as a
+  running-prompt source. A `MidTurnAbort` turn has no `turn_completed.usage` and
+  its aborted response sends no `response_completed`, so only the responses it completed before the
+  cancel are counted. The prompt result `_meta` counters' semantics are unverified.
 - **Managed environment:** `GROK_CONFIG_PATH`/`GROK_CONFIG` overlays (new in 1.0.70, binary strings) reach
   managed launches through the merged host environment (`driver.ts`). `GROK_REMEMBER_TOOL_APPROVALS`
   decides the option set (`approvals-remembered-off`); the adapter does not pin it.
@@ -488,6 +534,9 @@ Deferred design-level work, each with its evidence:
   - The served `session/prompt` result's `_meta.promptId` is bound per request and is not the stream's
     per-turn `$uuid:prompt`.
   - `modelUsage` uses the persona's default model id as its key.
+  - The persona emits no `_x.ai/queue/changed`, so an Imposter-backed composition correlates its unsigned
+    `response_completed` only through the `_meta.promptId` its chunks carry (the same `$uuid:prompt` as
+    its `turn_completed`), not through `runningPromptId` as 1.0.70 does.
   - The §6.1 scenario set is still partial: compaction, team, configured hooks, and remote ambient only.
 
 ## Reproduce

@@ -11,6 +11,12 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { AcpApprovalRequest } from '@vibefield/puppeteer-adapter-acp';
+import {
+  createMonitorAccumulatorState,
+  projectAgentMonitorState,
+  reduceMonitorAccumulator,
+  type AdapterMonitorObservationBatch,
+} from '@vibefield/puppeteer-core/monitor-spi';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
@@ -39,6 +45,40 @@ function persistedPermissionRules(grokHome: string): string[] {
   } catch {
     return [];
   }
+}
+
+/** Live `_x.ai/session_notification` updates of one kind, as the binding retained them. */
+function liveNotifications(projection: ReturnType<typeof projectAgentEvents>, kind: string) {
+  return projection.envelopes.flatMap(({ event, nativeEvent }) => {
+    const carrier = nativeEvent as
+      | { method?: string; params?: { update?: { sessionUpdate?: string; usage?: { totalTokens?: number } } } }
+      | undefined;
+    return event.type === 'adapter:native-event' &&
+      carrier?.method === '_x.ai/session_notification' &&
+      carrier.params?.update?.sessionUpdate === kind
+      ? [carrier.params.update]
+      : [];
+  });
+}
+
+function monitorUsage(batches: readonly AdapterMonitorObservationBatch[]) {
+  let state = createMonitorAccumulatorState({
+    runtimeRunId: 'live',
+    runtimeEpoch: 1,
+    providerId: 'grok',
+    executionMode: 'native-tui',
+    observationLevel: 'native-log',
+    allocatedAt: batches[0]!.observedAt,
+  });
+  for (const batch of batches) {
+    state = reduceMonitorAccumulator(state, {
+      ...batch,
+      kind: 'semantic',
+      runtimeRunId: 'live',
+      runtimeEpoch: 1,
+    }).state;
+  }
+  return projectAgentMonitorState(state, { asOf: batches.at(-1)!.observedAt }).usage;
 }
 
 describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
@@ -144,6 +184,29 @@ describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
           event.type === 'interaction:permission-resolved' ? [event.outcome] : [],
         ),
       ).toEqual(['allowed']);
+
+      // 1.0.70's live response_completed carries no signature or eventId. Each
+      // response is still published once, inside its running native prompt, and
+      // the turn totals reconcile them exactly.
+      await waitFor(() => liveNotifications(projection!, 'turn_completed').length >= 2, 'live usage of both turns');
+      const responses = liveNotifications(projection, 'response_completed');
+      expect(responses.length).toBeGreaterThanOrEqual(3);
+      expect(responses.every((update) => !('signature' in update))).toBe(true);
+      const responseKeys = projection.monitorBatches.flatMap(({ updates }) =>
+        updates.flatMap((update) =>
+          update.family === 'usage' && update.operation === 'upsert' && update.key.includes(':response:')
+            ? [update.key]
+            : [],
+        ),
+      );
+      expect(new Set(responseKeys).size).toBe(responses.length);
+      expect(responseKeys.every((key) => key.startsWith(`grok-turn:${sessionId}:`))).toBe(true);
+      expect(monitorUsage(projection.monitorBatches).cumulativeTokens).toBe(
+        liveNotifications(projection, 'turn_completed').reduce(
+          (sum, update) => sum + (update.usage?.totalTokens ?? 0),
+          0,
+        ),
+      );
 
       const originalRuntimeSessionId = session.runtimeSessionId;
       projection.dispose();

@@ -157,12 +157,13 @@ export function createPendingControlSession(
         );
         return;
       }
-      // A child session's turns, usage, and conversation are not this session's:
-      // keep its raw native events (they carry the child sessionId) and nothing
-      // that would project child state or usage onto the root.
+      // A child session's turns, usage, and conversation are not this session's.
+      // The monitor attributes a spawned child's usage and running turn to its
+      // subagent actor and nothing to the root; otherwise only the child's raw
+      // native events (they carry the child sessionId) are kept.
       const foreign = foreignSession(params, sessionId);
+      emitMonitorBatch(monitorEvidence.controlCandidateBatch(candidate));
       if (foreign && candidate.event.type !== 'adapter:native-event') return;
-      if (!foreign) emitMonitorBatch(monitorEvidence.controlCandidateBatch(candidate));
       const acpTransportClosed =
         candidate.event.type === 'adapter:native-event' &&
         candidate.event.adapter === 'acp' &&
