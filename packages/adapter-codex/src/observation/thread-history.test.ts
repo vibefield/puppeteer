@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppServerError, AppServerRequestTimeoutError, type AppServerClient } from '../transport/app-server-client.js';
-import { CodexThreadHistory, refusesPaginatedHistory, turnsOf } from './thread-history.js';
+import { CodexThreadHistory, refusesPaginatedHistory, turnsOf, type CodexHistoryLimits } from './thread-history.js';
 
 /** A client whose answer to each method is scripted: a value, or an error to reject with. */
 function scriptedClient(answers: Record<string, ReadonlyArray<unknown>>) {
@@ -121,5 +121,88 @@ describe('CodexThreadHistory.read when the history cannot be paged to the end', 
     const history = new CodexThreadHistory(scripted.client);
     const resumed = await history.resume('th');
     expect(await history.read('th', resumed)).toEqual({ turns: [turn('t1'), turn('t2')] });
+  });
+});
+
+describe('CodexThreadHistory.read within its limits', () => {
+  const page = (cursor: string | null, ...ids: string[]) => ({ data: ids.map(turn), nextCursor: cursor });
+
+  async function read(limits: CodexHistoryLimits, pages: ReadonlyArray<unknown>) {
+    const scripted = scriptedClient({
+      'thread/resume': [{ thread: { id: 'th', turns: [] } }],
+      'thread/turns/list': pages,
+      'thread/read': [{ thread: { id: 'th', turns: [turn('t1'), turn('t2'), turn('t3'), turn('t4')] } }],
+    });
+    const history = new CodexThreadHistory(scripted.client, limits);
+    const resumed = await history.resume('th');
+    return { result: await history.read('th', resumed), calls: scripted.calls };
+  }
+
+  it('stops after its page limit, keeps what it read and says the rest is missing', async () => {
+    const { result, calls } = await read({ pages: 2, turns: 100 }, [
+      page('1', 't1'),
+      page('2', 't2'),
+      page(null, 't3'),
+    ]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2')], incomplete: { reason: 'stopped after 2 pages' } });
+    // The full read would load the history the limit refuses.
+    expect(calls).toEqual(['thread/resume', 'thread/turns/list', 'thread/turns/list']);
+  });
+
+  it('takes a history that ends on its last allowed page as complete', async () => {
+    const { result } = await read({ pages: 2, turns: 100 }, [page('1', 't1'), page(null, 't2')]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2')] });
+  });
+
+  it('keeps no more turns than its turn limit and says the rest is missing', async () => {
+    const { result, calls } = await read({ pages: 100, turns: 3 }, [page('1', 't1', 't2'), page(null, 't3', 't4')]);
+    expect(result).toEqual({
+      turns: [turn('t1'), turn('t2'), turn('t3')],
+      incomplete: { reason: 'stopped at 3 turns' },
+    });
+    expect(calls).toEqual(['thread/resume', 'thread/turns/list', 'thread/turns/list']);
+  });
+
+  it('asks for no page past its turn limit', async () => {
+    const { result, calls } = await read({ pages: 100, turns: 2 }, [page('1', 't1', 't2'), page(null, 't3')]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2')], incomplete: { reason: 'stopped at 2 turns' } });
+    expect(calls).toEqual(['thread/resume', 'thread/turns/list']);
+  });
+
+  it('takes a history exactly as long as its turn limit as complete', async () => {
+    const { result } = await read({ pages: 100, turns: 2 }, [page(null, 't1', 't2')]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2')] });
+  });
+
+  const internal = (): AppServerError => new AppServerError({ code: -32603, message: 'internal error' });
+
+  it('keeps no more turns than its turn limit from the full read after a failed page', async () => {
+    const { result, calls } = await read({ pages: 100, turns: 2 }, [page('1', 't1'), internal()]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2')], incomplete: { reason: 'stopped at 2 turns' } });
+    expect(calls).toEqual(['thread/resume', 'thread/turns/list', 'thread/turns/list', 'thread/read']);
+  });
+
+  it('takes a full read after a failed page as complete within its turn limit', async () => {
+    const { result } = await read({ pages: 100, turns: 4 }, [page('1', 't1'), internal()]);
+    expect(result).toEqual({ turns: [turn('t1'), turn('t2'), turn('t3'), turn('t4')] });
+  });
+
+  it('keeps no more turns than its turn limit from a server without paginated history', async () => {
+    const gate = new AppServerError({
+      code: -32600,
+      message: 'thread/resume.excludeTurns requires experimentalApi capability',
+    });
+    const all = [turn('t1'), turn('t2'), turn('t3'), turn('t4')];
+    // Its full read, and when that fails, its hydrated resume.
+    for (const answer of [{ thread: { id: 'th', path: '/r.jsonl', turns: all } }, internal()]) {
+      const scripted = scriptedClient({
+        'thread/resume': [gate, { thread: { id: 'th', turns: all } }],
+        'thread/read': [answer],
+      });
+      const history = new CodexThreadHistory(scripted.client, { pages: 100, turns: 3 });
+      const result = await history.read('th', await history.resume('th'));
+      expect(result.turns).toEqual(all.slice(0, 3));
+      expect(result.incomplete).toEqual({ reason: 'stopped at 3 turns' });
+    }
   });
 });

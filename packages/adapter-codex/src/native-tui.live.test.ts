@@ -14,7 +14,6 @@ import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
-import { resolveCodexExecutable } from './detection.js';
 import { createCodexTuiSession } from './launch/tui-session.js';
 import type { AppServerTransportKind } from './transport/app-server-process.js';
 import {
@@ -24,6 +23,7 @@ import {
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from './test-support/live-model.js';
+import { requireCodexLiveExecutable } from './test-support/live-profile.js';
 import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
@@ -61,6 +61,7 @@ async function bounded<T>(operation: Promise<T>, label: string, timeoutMs = 20_0
 
 describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
   it('shares one exact thread across app-server, structured observation, TUI, and resume', async () => {
+    const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
     const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-codex-live-')));
     const codexHome = join(root, 'codex-home');
     const cwd = join(root, 'workspace');
@@ -69,7 +70,6 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
     writeCodexLiveConfiguration(codexHome, cwd, provider.baseUrl);
     const environment = isolatedCodexLiveEnvironment(root, codexHome);
     const appServerTransport = requestedAppServerTransport();
-    const executable = resolveCodexExecutable();
     const host = new CodexLivePtyHost();
     let session: Awaited<ReturnType<typeof createCodexTuiSession>> | undefined;
     let projection: ReturnType<typeof projectAgentEvents> | undefined;

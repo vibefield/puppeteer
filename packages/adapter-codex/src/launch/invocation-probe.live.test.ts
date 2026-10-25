@@ -8,8 +8,8 @@
  * settled are recorded in packages/surface/vendors/codex/probes/codex@0.157.1/, and re-run on
  * 0.164.0 in probes/codex@0.164.0/ (its `live-cases.json` replays directly).
  *
- *   CODEX_INVOCATION_LIVE=1 CODEX_INVOCATION_CASES=<cases.json> CODEX_INVOCATION_OUT=<out.json> \
- *     CODEX_INVOCATION_ROOT=<an empty directory of your own> TMPDIR=/tmp \
+ *   CODEX_INVOCATION_LIVE=1 PUPPETEER_CODEX_BIN=/absolute/path/to/codex CODEX_INVOCATION_CASES=<cases.json> \
+ *     CODEX_INVOCATION_OUT=<out.json> CODEX_INVOCATION_ROOT=<an empty directory of your own> TMPDIR=/tmp \
  *     pnpm vitest run src/launch/invocation-probe.live.test.ts
  */
 
@@ -18,7 +18,6 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'vitest';
-import { resolveCodexExecutable } from '../detection.js';
 import { normalizeCodexNativeInvocation } from './native-invocation.js';
 import { prepareCodexTuiSession, type PreparedCodexTuiSession } from './tui-session.js';
 import { AppServerClient } from '../transport/app-server-client.js';
@@ -33,6 +32,7 @@ import {
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from '../test-support/live-model.js';
+import { requireCodexLiveExecutable } from '../test-support/live-profile.js';
 import { CodexLivePtyHost, delay, waitFor } from '../test-support/live-pty-host.js';
 
 const live = process.env.CODEX_INVOCATION_LIVE === '1';
@@ -186,7 +186,7 @@ describe.runIf(live)('codex invocation probe (live, hermetic)', () => {
   it('runs each case', async () => {
     const cases = JSON.parse(readFileSync(process.env.CODEX_INVOCATION_CASES!, 'utf8')) as ProbeCase[];
     const results: Record<string, unknown>[] = [];
-    const executable = resolveCodexExecutable();
+    const executable = requireCodexLiveExecutable('CODEX_INVOCATION_LIVE');
     for (const probe of cases) {
       const root = realpathSync(mkdtempSync(join(realpathSync(process.env.CODEX_INVOCATION_ROOT!), 'p-')));
       const at = (argument: string): string => argument.split('<root>').join(root);

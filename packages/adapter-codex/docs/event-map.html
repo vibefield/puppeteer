@@ -1657,7 +1657,9 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                   <code>excludeTurns</code>: <code>itemsView: &quot;full&quot;</code> (the default summary is only a
                   display summary, which left out a turn's file change in the 0.164.0 survey),
                   <code>sortDirection: &quot;asc&quot;</code>, paged by <code>nextCursor</code>, each completed turn
-                  replayed once (<code>replay: true</code>). Persisted history caps a command's
+                  replayed once (<code>replay: true</code>). One read follows at most 1000 pages and keeps at most
+                  10000 turns; a longer history is replayed as far as it was read and reported as
+                  <code>codex-history-incomplete</code>. Persisted history caps a command's
                   <code>aggregatedOutput</code> at 64 KiB (head and tail around a marker), so a replayed output can be
                   shorter than the live one.
                 </p>
