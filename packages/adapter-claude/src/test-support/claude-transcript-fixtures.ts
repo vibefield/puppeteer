@@ -27,14 +27,26 @@ export const CLAUDE_2_1_308_SIDE_TYPES = [
   'queue-operation',
 ] as const;
 
+/** 2.1.308's `turnOrigin` enum, as compiled into the binary. */
+export type Claude2308TurnOrigin =
+  | 'human'
+  | 'sdk'
+  | 'scheduled'
+  | 'task_notification'
+  | 'auto_continuation'
+  | 'peer'
+  | 'host_synthetic'
+  | 'system'
+  | 'unknown';
+
 export interface Claude2308Turn {
   /** The `uuid` of the turn's typed prompt row. */
   promptUuid: string;
   prompt: string;
   /** Final assistant text. */
   answer: string;
-  /** `human` for a typed prompt; `task_notification` for a background agent's re-entry. */
-  turnOrigin?: 'human' | 'task_notification';
+  /** The prompt row's native origin: `human` (the default) for a typed prompt. */
+  turnOrigin?: Claude2308TurnOrigin;
   /** Run one Bash tool round trip before the answer, as the lane's tool turns do. */
   tool?: boolean;
 }

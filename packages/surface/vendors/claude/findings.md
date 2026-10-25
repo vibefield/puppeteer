@@ -171,12 +171,13 @@ types, key names and counts only) of the TUI lane shows, beside `user` (29), `as
 `last-prompt`, `mode`, `permission-mode`, `file-history-snapshot`, `file-history-delta`,
 `queue-operation`. **`api-request-blob` rows carry `message.role` `user` (and once
 `assistant`) with no `uuid` and no `timestamp`** — a reader that keys on `message.role` instead
-of `type` projects phantom messages. `user` rows now carry `turnOrigin` (`human` |
-`task_notification`) and `turnPosition`; assistant rows `requestRef`, `requestedModel`,
-`apiBlockIndex`, `perTurnEffort`. Volume grew about 9×: 533 KB across 201 rows for this lane
-(attachments 292 KB, one `api-request-shape` row up to 63 KB); the subagent transcript is
-124 KB for 15 rows. Subagent `*.meta.json` adds `launchedWithDefaults`, `requestShape`,
-`requestNonInteractive`, `finished`.
+of `type` projects phantom messages. `user` rows now carry `turnOrigin` (this lane: `human` |
+`task_notification`; the binary's enum also has `sdk`, `scheduled`, `auto_continuation`, `peer`,
+`host_synthetic`, `system`, `unknown`) and `turnPosition`; assistant rows `requestRef`,
+`requestedModel`, `apiBlockIndex`, `perTurnEffort`. Volume grew about 9×: 533 KB across 201
+rows for this lane (attachments 292 KB, one `api-request-shape` row up to 63 KB); the subagent
+transcript is 124 KB for 15 rows. Subagent `*.meta.json` adds `launchedWithDefaults`,
+`requestShape`, `requestNonInteractive`, `finished`.
 
 ### Status lines
 
@@ -288,7 +289,20 @@ above:
 - **Transcript**: only `type` user/assistant rows are projected, and rows that are neither a
   message nor a parent-graph node (no `uuid`: every bookkeeping and side row) are dropped before the
   bounded reader window. On the lane's real 2.1.308 transcript 189 rows keep 99, with 8 replies, no
-  phantom message and every turn id a prompt row's `uuid`.
+  phantom message and every turn id a prompt row's `uuid`. Which user rows open a turn follows the
+  binary's own user-started test. A row with the native `isCompactSummary` marker never does: it
+  continues the interrupted turn. Auto and prompt-too-long compactions copy the active prompt's
+  `promptId`/`turnOrigin`/`turnPosition` onto the summary (a hermetic TUI capture shows
+  `turnOrigin: human` there; manual `/compact` stamps nothing), and a summary of artifact content
+  written by others starts with `<artifact-content-authored-by-others/>`, not the preamble.
+  Otherwise the row's own `turnOrigin` decides, whatever its text: `human` (typed) and `sdk`
+  (print-mode / Agent SDK) open a turn, and every other native value is system-injected. Rows
+  without the field (2.1.226 and earlier; 2.1.308's slash/local-command, `/compact` echo,
+  interruption-marker and tool-result rows) keep the `<task-notification>`/preamble prefix
+  heuristic. The test is per row, never per transcript: a session begun under an older release and
+  resumed under 2.1.308 mixes both kinds in one file, and a file-wide switch would re-key (and
+  re-announce) its earlier replies. Across 132 real 2.1.226/2.1.283/2.1.308 adaptation and critic
+  lane transcripts (136 replies) the projection is unchanged from the heuristic-only one.
 - **Status lines**: subagent task rows' `agentType` names a status-only child's agent definition
   (task `type` is the task kind, `local_agent`).
 - **Invocation grammar** (`CLAUDE_INVOCATION_GRAMMAR_VERSION` 2.1.308, help fixture byte-identical
@@ -323,10 +337,19 @@ above:
     beta field (2.1.269+, recorded only with `bashEditDiffEnabled` or when Claude edits through
     Bash in auto/bypass modes); not captured, so its `shared`/`unavailable`/`skipped` semantics are
     unverified. It stays inside the retained `tool_response`.
-  - Transcript `turnOrigin` (`human` | `task_notification`) as the system-turn discriminator in
-    place of the `<task-notification>` prefix heuristic: observed on 2.1.308 only, absent from
-    every earlier transcript and from slash/local-command rows, so a fallback would remain; the
-    decoder does not read it yet.
+  - Transcript user rows without `turnOrigin` still go through the prefix heuristic, which reads
+    2.1.308's `/compact` input echo and its `[Request interrupted by user for tool use]` marker as
+    prompts that open a turn (unchanged from earlier releases; only a reply written before the next
+    typed prompt is keyed to them). The binary's user-started test also excludes `isMeta` rows,
+    rows whose `origin.kind` is not `human`, and the interruption markers; the decoder reads none of
+    them, and the `origin` / `promptSource` keys (in the 2.1.308 shape capture; the 2.1.226 survey
+    lane's typed and notification rows carried them too) may discriminate system turns for
+    releases without `turnOrigin`. Every observed meta row is a `<local-command-caveat>` the
+    heuristic already skips.
+  - `turnOrigin: unknown` (no `origin`, not meta, no host initiator, `promptSource` not `sdk`) is
+    read as system-injected, as the binary's own test reads it. Every observed 2.1.308 typed TUI
+    prompt carries `origin.kind: human` → `human`; whether a typed prompt can land on `unknown` is
+    unverified.
   - `<pasted_content id=…>` wrapper lines in `UserPromptSubmit.prompt` (feature-flag gated, strings
     only, not reproduced): prompt confirmation compares exactly and would answer `uncertain`.
   - Closing an open turn at `SessionEnd`: every observed failing print turn reached StopFailure
@@ -345,8 +368,9 @@ above:
     normalizes as a user `turn:started` carrying the notification as its prompt. The hook payload
     has no discriminator (`UserPromptSubmit.source` is compiled out of both runtime builders) and
     Core's `turn:started` has no origin field, so marking it a system turn needs a Core contract
-    change or the transcript's `turnOrigin`; a prompt-prefix test on the hook rail would be a text
-    heuristic.
+    change; a prompt-prefix test on the hook rail would be a text heuristic. The transcript rail
+    already reads the row's `turnOrigin` (no turn of its own for the re-entry's reply), but it
+    neither opens nor closes turns, so it cannot correct the hook rail's `turn:started`.
   - An Esc-interrupted turn's open `turn:started` and its permission-gated `tool:requested` are
     not closed by the adapter: nothing native reports the interruption, and Core has no interrupted
     outcome for either (`turn:failed`/`tool:failed` would assert a failure). Core diagnoses the
