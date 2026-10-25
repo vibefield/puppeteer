@@ -22,17 +22,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-claude",
       "persona": "claude",
       "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
-      "currentVersion": "2.1.207",
-      "status": "legacy-verified",
-      "legacyEvidence": {
-        "kind": "pre-asm-v2-baseline",
-        "version": "2.1.207",
-        "modelSha256": "19263fb99a091ad7c99d5b8d9a896328b86712419d19f4ed59c5e8304fc746b5",
-        "frozenOn": "2026-08-09",
-        "reason": "Grandfathered support predates claim-addressable ASM v2 and the guarded multi-platform promotion workflow."
-      },
+      "currentVersion": "2.1.308",
+      "status": "verified",
       "introducedInPuppeteer": "0.1.8",
-      "candidateVersion": "2.1.308"
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "dd97faa3820318f1498969e62d50fbcfb776f57f",
+        "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
+        "vendorVersion": "2.1.308",
+        "evidenceDigest": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba",
+        "replayDigest": "db49b9c58bbe45835b7f9b3cf54e419f440a4f77c6e28cc40a3a0e0412b45c04",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/adapt/upstream-claude-codex-grok",
+        "runId": "40242704606",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
+          }
+        ]
+      }
     },
     {
       "id": "codex",

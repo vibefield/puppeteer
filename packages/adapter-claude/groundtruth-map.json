@@ -3,7 +3,7 @@
   "provider": "claude",
   "adapterPackage": "@vibefield/puppeteer-adapter-claude",
   "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
-  "groundTruthSha256": "c0dc0ae69b5a4cebd5edfe01daa1f735ddf123cb79beba982f51e4192fa3405d",
+  "groundTruthSha256": "8b2d02ef300f99e946e4f35a5fde49fa265ed26b8f314549b0a29347bf0f3591",
   "semanticEvents": [
     "ConfigChange",
     "CwdChanged",
