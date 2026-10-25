@@ -74,6 +74,50 @@
         "integrity": {
           "status": "verified",
           "sha256": "sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+        },
+        "artifactKind": "standalone-executable",
+        "acquisitionKey": "grok@1.0.70@darwin-arm64@sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+      },
+      {
+        "id": "grok-1.0.70-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T22:28:08.601Z",
+        "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+        "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-x86_64",
+        "acquisitionKey": "grok@1.0.70@darwin-x64@sha256:d9ecd462f1f3c3b40a7a131944987ee7ed1c38069b7009cc4107398ab767f484",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:d9ecd462f1f3c3b40a7a131944987ee7ed1c38069b7009cc4107398ab767f484"
+        }
+      },
+      {
+        "id": "grok-1.0.70-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T22:28:08.739Z",
+        "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+        "sourceUrl": "https://x.ai/cli/grok-1.0.70-linux-x86_64",
+        "acquisitionKey": "grok@1.0.70@linux-x64@sha256:22d281c5964c5444147328096ba2a221f3f0874c6858e27c825656a80f6e58e9",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:22d281c5964c5444147328096ba2a221f3f0874c6858e27c825656a80f6e58e9"
+        }
+      },
+      {
+        "id": "grok-1.0.70-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T22:28:08.861Z",
+        "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+        "sourceUrl": "https://x.ai/cli/grok-1.0.70-windows-x86_64.exe",
+        "acquisitionKey": "grok@1.0.70@windows-x64@sha256:1e03c16cf2bd4626a79d6b1ea1430f88c38e0c8ec75edd283a60de11296ba326",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:1e03c16cf2bd4626a79d6b1ea1430f88c38e0c8ec75edd283a60de11296ba326"
         }
       }
     ],

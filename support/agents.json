@@ -73,11 +73,39 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-grok",
       "persona": "grok",
       "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
-      "candidateVersion": "1.0.70",
-      "status": "baseline-pending",
-      "blockers": [
-        "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."
-      ]
+      "status": "verified",
+      "currentVersion": "1.0.70",
+      "verification": {
+        "provider": "github-actions",
+        "candidateCommit": "9df853344209f087cc521c1bd2632abb533a2446",
+        "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
+        "vendorVersion": "1.0.70",
+        "evidenceDigest": "a6e77e469f95f7c545b808ab37f7491be1162e697db772a43bb2160068f174e9",
+        "replayDigest": "9d5822a7a0a7f734b2ac5226c826d7dc0fc274ebe963f82a48ff45367ba40d99",
+        "repository": "vibefield/puppeteer",
+        "workflowRef": "vibefield/puppeteer/.github/workflows/agent-surface-promotion.yml@refs/heads/adapt/upstream-claude-codex-grok",
+        "runId": "40240209372",
+        "runAttempt": "1",
+        "platformArtifacts": [
+          {
+            "platform": "darwin-arm64",
+            "artifactSha256": "sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+          },
+          {
+            "platform": "darwin-x64",
+            "artifactSha256": "sha256:d9ecd462f1f3c3b40a7a131944987ee7ed1c38069b7009cc4107398ab767f484"
+          },
+          {
+            "platform": "linux-x64",
+            "artifactSha256": "sha256:22d281c5964c5444147328096ba2a221f3f0874c6858e27c825656a80f6e58e9"
+          },
+          {
+            "platform": "windows-x64",
+            "artifactSha256": "sha256:1e03c16cf2bd4626a79d6b1ea1430f88c38e0c8ec75edd283a60de11296ba326"
+          }
+        ]
+      },
+      "introducedInPuppeteer": "0.2.1"
     },
     {
       "id": "hermes",

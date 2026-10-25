@@ -3,7 +3,7 @@
   "provider": "grok",
   "adapterPackage": "@vibefield/puppeteer-adapter-grok",
   "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
-  "groundTruthSha256": "179ba454ba63cb168025a8b0106fce675615355159aeb1ff6cca8c57b87777dd",
+  "groundTruthSha256": "114dd6fa96c57ae60c0e1c1b02913e918d78a47cb079062e9f2ae3f0115a4315",
   "semanticEvents": [
     "_x.ai/queue/changed",
     "_x.ai/session/update",
