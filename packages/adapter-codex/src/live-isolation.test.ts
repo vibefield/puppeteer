@@ -18,9 +18,7 @@ import {
 import {
   createCodexLiveProfile,
   inheritedCodexVariables,
-  parseWindowsProcessTable,
-  processesUnderRoot,
-  removeLiveRoot,
+  removeCodexLiveRoot,
   requireCodexLiveExecutable,
 } from './test-support/live-profile.js';
 
@@ -312,56 +310,12 @@ describe('the isolation guard', () => {
   });
 });
 
-describe('stopping what a live root leaves running', () => {
-  // The windows-2025 promotion lane failed with EBUSY: the app-server's plugin-sync git still held
-  // codex-home\.tmp\plugins-clone-* open, and nothing listed Windows processes.
-  it('finds a plugin-sync helper under any spelling of the root on Windows, with its descendants', () => {
-    const table = parseWindowsProcessTable(
-      JSON.stringify([
-        { ProcessId: 10, ParentProcessId: 1, CommandLine: 'node vitest' },
-        {
-          ProcessId: 20,
-          ParentProcessId: 7,
-          CommandLine:
-            '"C:\\Program Files\\Git\\cmd\\git.exe" -C C:/Users/runneradmin/AppData/Local/Temp/puppeteer-codex-live-KhAe5T/codex-home/.tmp/plugins-clone-Ubeta9 fetch --depth 1',
-        },
-        { ProcessId: 21, ParentProcessId: 20, CommandLine: 'git index-pack --stdin' },
-        { ProcessId: 30, ParentProcessId: 1, CommandLine: null },
-        { ProcessId: 40, ParentProcessId: 10, CommandLine: 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\other' },
-      ]),
-    );
-    expect(table).toHaveLength(5);
-    expect(
-      processesUnderRoot(
-        table,
-        [
-          'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\puppeteer-codex-live-KhAe5T',
-          'C:\\Users\\runneradmin\\AppData\\Local\\Temp\\puppeteer-codex-live-KhAe5T',
-        ],
-        { ownPid: 10, platform: 'win32' },
-      ).sort(),
-    ).toEqual([20, 21]);
-    // A single process is serialized as an object, not an array; unparseable output lists nothing.
-    expect(parseWindowsProcessTable('{"ProcessId":5,"ParentProcessId":1,"CommandLine":"x"}')).toEqual([
-      { pid: 5, ppid: 1, command: 'x' },
-    ]);
-    expect(parseWindowsProcessTable('')).toEqual([]);
-  });
-
-  it('matches POSIX command lines exactly and never names its own process', () => {
-    const rows = [
-      { pid: 1, ppid: 0, command: 'git -C /tmp/live-root/codex-home/.tmp/plugins-clone-x fetch' },
-      { pid: 2, ppid: 1, command: 'git index-pack' },
-      { pid: 3, ppid: 0, command: 'git -C /TMP/LIVE-ROOT fetch' },
-      { pid: 4, ppid: 0, command: 'node /tmp/live-root/vitest' },
-    ];
-    expect(processesUnderRoot(rows, ['/tmp/live-root'], { ownPid: 4, platform: 'darwin' }).sort()).toEqual([1, 2]);
-  });
-
+describe('removing a Codex live root', () => {
+  // Process discovery and the Windows retry policy are covered in @vibefield/puppeteer-testing/live-cleanup.
   it('removes a root once nothing works under it', async () => {
     const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'codex-remove-')));
     writeFileSync(join(root, 'file'), 'x');
-    await removeLiveRoot(root);
+    await removeCodexLiveRoot(root);
     expect(existsSync(root)).toBe(false);
   });
 });

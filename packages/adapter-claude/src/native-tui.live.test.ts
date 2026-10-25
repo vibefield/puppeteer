@@ -8,10 +8,11 @@
  *   CLAUDE_NATIVE_TUI_LIVE=1 PUPPETEER_CLAUDE_BIN=/absolute/path/to/claude pnpm test
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
+import { removeLiveRoot } from '@vibefield/puppeteer-testing/live-cleanup';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
 import { detectClaude } from './detection.js';
@@ -248,7 +249,9 @@ describe.runIf(live)('Claude adapter through real native TUI (live)', () => {
       await session?.dispose();
       await host.dispose();
       await provider.close();
-      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+      // On Windows the TUI can outlive its pseudoconsole with the workspace as its working directory, which
+      // blocks removal (EBUSY); the shared cleanup stops what still names the root before removing it.
+      await removeLiveRoot(root, 'claude live');
     }
   }, 120_000);
 });

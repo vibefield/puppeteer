@@ -23,7 +23,7 @@ import {
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from './test-support/live-model.js';
-import { removeLiveRoot, requireCodexLiveExecutable } from './test-support/live-profile.js';
+import { removeCodexLiveRoot, requireCodexLiveExecutable } from './test-support/live-profile.js';
 import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
@@ -62,7 +62,8 @@ async function bounded<T>(operation: Promise<T>, label: string, timeoutMs = 20_0
 describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
   it('shares one exact thread across app-server, structured observation, TUI, and resume', async () => {
     const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
-    const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-codex-live-')));
+    // The native spelling: Codex reports its rollout path without Windows 8.3 short names (RUNNER~1).
+    const root = realpathSync.native(mkdtempSync(join(realpathSync.native(tmpdir()), 'puppeteer-codex-live-')));
     const codexHome = join(root, 'codex-home');
     const cwd = join(root, 'workspace');
     mkdirSync(cwd, { recursive: true });
@@ -176,7 +177,7 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       await provider.close();
       // The app-server's plugin sync outlives it (findings C8): stop it before removing the root, and on
       // Windows never let a leftover handle replace this test's own result.
-      await removeLiveRoot(root);
+      await removeCodexLiveRoot(root);
     }
   }, 120_000);
 });

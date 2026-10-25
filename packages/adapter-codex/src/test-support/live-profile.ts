@@ -5,10 +5,10 @@
  * PUPPETEER_CODEX_BIN names, and only inside a throwaway HOME and CODEX_HOME.
  */
 
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
+import { removeLiveRoot } from '@vibefield/puppeteer-testing/live-cleanup';
 import { CODEX_EXECUTABLE_ENV } from '../detection.js';
 import {
   CODEX_LIVE_PINNED_VARIABLES,
@@ -76,142 +76,13 @@ export function requireCodexLiveExecutable(flag: string, environment: NodeJS.Pro
   return executable;
 }
 
-export interface LiveProcess {
-  readonly pid: number;
-  readonly ppid: number;
-  readonly command: string;
-}
-
-/** `Get-CimInstance Win32_Process | ConvertTo-Json` rows: one object for a single process, else an array. */
-export function parseWindowsProcessTable(json: string): LiveProcess[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return [];
-  }
-  return (Array.isArray(parsed) ? parsed : [parsed]).flatMap((row) => {
-    const { ProcessId, ParentProcessId, CommandLine } = (row ?? {}) as Record<string, unknown>;
-    return typeof ProcessId === 'number'
-      ? [
-          {
-            pid: ProcessId,
-            ppid: typeof ParentProcessId === 'number' ? ParentProcessId : 0,
-            command: typeof CommandLine === 'string' ? CommandLine : '',
-          },
-        ]
-      : [];
-  });
-}
-
-function processTable(): LiveProcess[] {
-  try {
-    if (process.platform === 'win32') {
-      return parseWindowsProcessTable(
-        execFileSync(
-          'powershell.exe',
-          [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress',
-          ],
-          { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true },
-        ),
-      );
-    }
-    return execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' })
-      .split('\n')
-      .flatMap((line) => {
-        const match = /^\s*(\d+)\s+(\d+)\s(.*)$/u.exec(line);
-        return match ? [{ pid: Number(match[1]), ppid: Number(match[2]), command: match[3]! }] : [];
-      });
-  } catch {
-    return [];
-  }
-}
-
 /**
- * The processes in `rows` whose command line names `root`, with their descendants. At startup the app-server
- * syncs its curated plugins with `git` into `CODEX_HOME/.tmp/plugins-clone-*` (findings C8); those helpers
- * name the directory on their command line, share the app-server's process group and outlive it, so removing
- * the home under a running `git fetch` or `index-pack` fails (ENOTEMPTY on POSIX, EBUSY on Windows, where an
- * open handle blocks the removal itself) however often it is retried. On Windows a helper may name the root
- * under its long name or with forward slashes, and paths compare without case.
+ * Remove a Codex live root. At startup the app-server syncs its curated plugins with `git` into
+ * `CODEX_HOME/.tmp/plugins-clone-*` (findings C8); those helpers name the directory on their command line,
+ * share the app-server's process group and outlive it, so the shared cleanup stops them before removing.
  */
-export function processesUnderRoot(
-  rows: readonly LiveProcess[],
-  spellings: readonly string[],
-  { ownPid = process.pid, platform = process.platform }: { ownPid?: number; platform?: NodeJS.Platform } = {},
-): number[] {
-  const fold = (value: string): string => (platform === 'win32' ? value.replaceAll('\\', '/').toLowerCase() : value);
-  const needles = [...new Set(spellings.filter(Boolean).map(fold))];
-  const found = new Set(
-    rows
-      .filter((row) => row.pid !== ownPid && needles.some((needle) => fold(row.command).includes(needle)))
-      .map((row) => row.pid),
-  );
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const row of rows) {
-      if (row.pid !== ownPid && found.has(row.ppid) && !found.has(row.pid)) {
-        found.add(row.pid);
-        grew = true;
-      }
-    }
-  }
-  return [...found];
-}
-
-function rootSpellings(root: string): string[] {
-  try {
-    return [root, realpathSync.native(root)];
-  } catch {
-    return [root];
-  }
-}
-
-/** Kill what still works under `root` (Windows: TerminateProcess) until nothing names it. */
-export async function stopProcessesUnder(root: string): Promise<void> {
-  const spellings = rootSpellings(root);
-  // Listing processes on Windows starts PowerShell, about a second each, so it is tried fewer times.
-  const attempts = process.platform === 'win32' ? 10 : 50;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const survivors = processesUnderRoot(processTable(), spellings);
-    if (survivors.length === 0) return;
-    for (const pid of survivors) {
-      try {
-        process.kill(pid, 'SIGKILL');
-      } catch {
-        // Already gone.
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-}
-
-const REMOVAL_RETRIES = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM', 'EACCES', 'EMFILE', 'ENFILE']);
-
-/**
- * Stop what still works under a live test's root, then remove it. On Windows a handle a vendor helper still
- * holds can outlast every attempt; the root is a throwaway temp directory on a disposable runner, so there
- * the leftover is reported instead of raised over the test's own result (and its attestation).
- */
-export async function removeLiveRoot(root: string): Promise<void> {
-  let failure: unknown;
-  for (let attempt = 0; attempt < (process.platform === 'win32' ? 8 : 1); attempt += 1) {
-    await stopProcessesUnder(root);
-    try {
-      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
-      return;
-    } catch (error) {
-      failure = error;
-      if (!REMOVAL_RETRIES.has((error as NodeJS.ErrnoException).code ?? '')) break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  if (process.platform !== 'win32') throw failure;
-  console.warn(`codex live root left behind: ${failure instanceof Error ? failure.message : String(failure)}`);
+export function removeCodexLiveRoot(root: string): Promise<void> {
+  return removeLiveRoot(root, 'codex live');
 }
 
 export interface CodexLiveProfile {
@@ -257,12 +128,12 @@ export async function createCodexLiveProfile(
       provider,
       async dispose() {
         await provider?.close();
-        await removeLiveRoot(root);
+        await removeCodexLiveRoot(root);
       },
     };
   } catch (error) {
     await provider?.close();
-    await removeLiveRoot(root);
+    await removeCodexLiveRoot(root);
     throw error;
   }
 }
