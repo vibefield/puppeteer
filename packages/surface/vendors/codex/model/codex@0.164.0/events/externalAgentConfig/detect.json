@@ -1,0 +1,165 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "externalAgentConfig/detect",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "cwds": {
+        "description": "Zero or more working directories to include for repo-scoped detection.",
+        "items": {
+          "type": "string"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "includeHome": {
+        "description": "If true, include detection under the user's home directory.",
+        "type": "boolean"
+      },
+      "maxSessionAgeDays": {
+        "description": "Maximum age in days for detected sessions. Missing values use the default limit.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "maxSessions": {
+        "description": "Maximum number of sessions to detect. Missing values use the default limit.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "migrationSource": {
+        "description": "Optional migration-source selector. Missing or unrecognized values use the default source.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "source": {
+        "description": "Deprecated field retained for compatibility. This field is ignored; use `migrationSource` to select the migration source.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "externalAgentConfig/detect"
+        ],
+        "title": "ExternalAgentConfig/detectRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ExternalAgentConfigDetectParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "ExternalAgentConfig/detectRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ExternalAgentConfigDetectParams": {
+        "properties": {
+          "cwds": {
+            "description": "Zero or more working directories to include for repo-scoped detection.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "includeHome": {
+            "description": "If true, include detection under the user's home directory.",
+            "type": "boolean"
+          },
+          "maxSessionAgeDays": {
+            "description": "Maximum age in days for detected sessions. Missing values use the default limit.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "maxSessions": {
+            "description": "Maximum number of sessions to detect. Missing values use the default limit.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "migrationSource": {
+            "description": "Optional migration-source selector. Missing or unrecognized values use the default source.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "description": "Deprecated field retained for compatibility. This field is ignored; use `migrationSource` to select the migration source.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

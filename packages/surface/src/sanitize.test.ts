@@ -125,6 +125,42 @@ describe('redactor and detector stay in lockstep', () => {
   });
 });
 
+describe('absolute temp roots', () => {
+  // A relocated TMPDIR under /private/tmp names the uid and, slug-encoded, the
+  // operator's checkout. A committed codex capture carried one under
+  // `runtimeWorkspaceRoots`, which no path key named, and the check passed.
+  const leaked = {
+    runtimeWorkspaceRoots: ['/private/tmp/claude-501/-Users-<redacted>-Projects-private-name/scratch/cwd'],
+    note: 'cd /tmp/probe-home-x8Yq && ls',
+  };
+
+  it('the detector flags /tmp and /private/tmp paths under any key, embedded or bare', () => {
+    const issues = checkRecord(leaked);
+    expect(issues).toEqual([
+      expect.stringContaining('unsafe text at runtimeWorkspaceRoots'),
+      expect.stringContaining('unsafe text at note'),
+    ]);
+  });
+
+  it('the redactor removes them, and the detector then passes', () => {
+    const clean = sanitizeRecord(leaked) as { runtimeWorkspaceRoots: string[]; note: string };
+    expect(clean.runtimeWorkspaceRoots).toEqual(['/workspace/redacted-path']);
+    expect(clean.note).toBe('cd /workspace/redacted-path && ls');
+    expect(checkRecord(clean)).toEqual([]);
+    expect(sanitizeRecord(clean)).toEqual(clean);
+  });
+
+  it('leaves other temp-like and URL paths alone', () => {
+    const benign = {
+      label: 'see /var/tmp/cache and https://example.invalid/tmp/x',
+      relative: 'build/tmp/out',
+      flag: 'excludeSlashTmp',
+    };
+    expect(checkRecord(benign)).toEqual([]);
+    expect(sanitizeRecord(benign)).toEqual(benign);
+  });
+});
+
 describe('extendRules', () => {
   it('adds vendor keys without dropping the defaults', () => {
     const rules = extendRules({ sensitiveTextKey: /^vendorSecret$/ });

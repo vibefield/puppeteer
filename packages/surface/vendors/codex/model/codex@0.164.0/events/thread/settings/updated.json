@@ -1,0 +1,876 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/settings/updated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "threadId": {
+        "type": "string"
+      },
+      "threadSettings": {
+        "$ref": "#/$defs/ThreadSettings"
+      }
+    },
+    "required": [
+      "threadId",
+      "threadSettings"
+    ],
+    "type": "object",
+    "$defs": {
+      "ThreadSettings": {
+        "properties": {
+          "activePermissionProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ActivePermissionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approvalPolicy": {
+            "$ref": "#/$defs/AskForApproval"
+          },
+          "approvalsReviewer": {
+            "$ref": "#/$defs/ApprovalsReviewer"
+          },
+          "collaborationMode": {
+            "$ref": "#/$defs/CollaborationMode"
+          },
+          "cwd": {
+            "$ref": "#/$defs/AbsolutePathBuf"
+          },
+          "disabledPluginIds": {
+            "default": [],
+            "description": "Saved list of disabled plugin IDs. Does not yet filter plugin capabilities.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "modelProvider": {
+            "type": "string"
+          },
+          "multiAgentMode": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/MultiAgentMode"
+              }
+            ],
+            "default": "explicitRequestOnly",
+            "description": "@deprecated Always `explicitRequestOnly`. Use `effort` for Ultra behavior."
+          },
+          "personality": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Personality"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "@deprecated Reports the saved setting; `friendly` and `pragmatic` no longer select a style."
+          },
+          "sandboxPolicy": {
+            "$ref": "#/$defs/SandboxPolicy"
+          },
+          "serviceTier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "approvalPolicy",
+          "approvalsReviewer",
+          "collaborationMode",
+          "cwd",
+          "model",
+          "modelProvider",
+          "sandboxPolicy"
+        ],
+        "type": "object"
+      },
+      "ActivePermissionProfile": {
+        "properties": {
+          "extends": {
+            "default": null,
+            "description": "Parent profile identifier from the selected permissions profile's `extends` setting, when present.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "Identifier from `default_permissions` or the implicit built-in default, such as `:workspace` or a user-defined `[permissions.<id>]` profile.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "AskForApproval": {
+        "oneOf": [
+          {
+            "enum": [
+              "untrusted",
+              "on-request",
+              "never"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "granular": {
+                "properties": {
+                  "mcp_elicitations": {
+                    "type": "boolean"
+                  },
+                  "request_permissions": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "rules": {
+                    "type": "boolean"
+                  },
+                  "sandbox_approval": {
+                    "type": "boolean"
+                  },
+                  "skill_approval": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "mcp_elicitations",
+                  "rules",
+                  "sandbox_approval"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "granular"
+            ],
+            "title": "GranularAskForApproval",
+            "type": "object"
+          }
+        ]
+      },
+      "ApprovalsReviewer": {
+        "description": "Configures who approval requests are routed to for review. Examples include sandbox escapes, blocked network access, MCP approval prompts, and ARC escalations. Defaults to `user`. `auto_review` uses a carefully prompted subagent to gather relevant context and apply a risk-based decision framework before approving or denying the request. The legacy value `guardian_subagent` is accepted for compatibility.",
+        "enum": [
+          "user",
+          "auto_review",
+          "guardian_subagent"
+        ],
+        "type": "string"
+      },
+      "CollaborationMode": {
+        "description": "Collaboration mode for a Codex session.",
+        "properties": {
+          "mode": {
+            "$ref": "#/$defs/ModeKind"
+          },
+          "settings": {
+            "$ref": "#/$defs/Settings"
+          }
+        },
+        "required": [
+          "mode",
+          "settings"
+        ],
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      },
+      "ReasoningEffort": {
+        "description": "A non-empty reasoning effort value advertised by the model.",
+        "minLength": 1,
+        "type": "string"
+      },
+      "MultiAgentMode": {
+        "description": "Controls the effective multi-agent delegation instructions for a turn. `custom` means the configured mode hint defines the policy instead of a built-in policy.",
+        "oneOf": [
+          {
+            "enum": [
+              "explicitRequestOnly",
+              "proactive"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "custom": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "custom"
+            ],
+            "title": "CustomMultiAgentMode",
+            "type": "object"
+          }
+        ]
+      },
+      "Personality": {
+        "description": "Deprecated: `friendly` and `pragmatic` no longer select a style.",
+        "enum": [
+          "none",
+          "friendly",
+          "pragmatic"
+        ],
+        "type": "string"
+      },
+      "SandboxPolicy": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "dangerFullAccess"
+                ],
+                "title": "DangerFullAccessSandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "DangerFullAccessSandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "networkAccess": {
+                "default": false,
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "readOnly"
+                ],
+                "title": "ReadOnlySandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "ReadOnlySandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "networkAccess": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/NetworkAccess"
+                  }
+                ],
+                "default": "restricted"
+              },
+              "type": {
+                "enum": [
+                  "externalSandbox"
+                ],
+                "title": "ExternalSandboxSandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "ExternalSandboxSandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "excludeSlashTmp": {
+                "default": false,
+                "type": "boolean"
+              },
+              "excludeTmpdirEnvVar": {
+                "default": false,
+                "type": "boolean"
+              },
+              "networkAccess": {
+                "default": false,
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "workspaceWrite"
+                ],
+                "title": "WorkspaceWriteSandboxPolicyType",
+                "type": "string"
+              },
+              "writableRoots": {
+                "default": [],
+                "items": {
+                  "$ref": "#/$defs/AbsolutePathBuf"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "WorkspaceWriteSandboxPolicy",
+            "type": "object"
+          }
+        ]
+      },
+      "ReasoningSummary": {
+        "description": "A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process. See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#reasoning-summaries",
+        "oneOf": [
+          {
+            "enum": [
+              "auto",
+              "concise",
+              "detailed"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "Option to disable reasoning summaries.",
+            "enum": [
+              "none"
+            ],
+            "type": "string"
+          }
+        ]
+      },
+      "ModeKind": {
+        "description": "Initial collaboration mode to use when the TUI starts.",
+        "enum": [
+          "plan",
+          "default"
+        ],
+        "type": "string"
+      },
+      "Settings": {
+        "description": "Settings for a collaboration mode.",
+        "properties": {
+          "developer_instructions": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object"
+      },
+      "NetworkAccess": {
+        "enum": [
+          "restricted",
+          "enabled"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/settings/updated"
+        ],
+        "title": "Thread/settings/updatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadSettingsUpdatedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/settings/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadSettingsUpdatedNotification": {
+        "properties": {
+          "threadId": {
+            "type": "string"
+          },
+          "threadSettings": {
+            "$ref": "#/$defs/ThreadSettings"
+          }
+        },
+        "required": [
+          "threadId",
+          "threadSettings"
+        ],
+        "type": "object"
+      },
+      "ThreadSettings": {
+        "properties": {
+          "activePermissionProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ActivePermissionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approvalPolicy": {
+            "$ref": "#/$defs/AskForApproval"
+          },
+          "approvalsReviewer": {
+            "$ref": "#/$defs/ApprovalsReviewer"
+          },
+          "collaborationMode": {
+            "$ref": "#/$defs/CollaborationMode"
+          },
+          "cwd": {
+            "$ref": "#/$defs/AbsolutePathBuf"
+          },
+          "disabledPluginIds": {
+            "default": [],
+            "description": "Saved list of disabled plugin IDs. Does not yet filter plugin capabilities.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "modelProvider": {
+            "type": "string"
+          },
+          "multiAgentMode": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/MultiAgentMode"
+              }
+            ],
+            "default": "explicitRequestOnly",
+            "description": "@deprecated Always `explicitRequestOnly`. Use `effort` for Ultra behavior."
+          },
+          "personality": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Personality"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "@deprecated Reports the saved setting; `friendly` and `pragmatic` no longer select a style."
+          },
+          "sandboxPolicy": {
+            "$ref": "#/$defs/SandboxPolicy"
+          },
+          "serviceTier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "approvalPolicy",
+          "approvalsReviewer",
+          "collaborationMode",
+          "cwd",
+          "model",
+          "modelProvider",
+          "sandboxPolicy"
+        ],
+        "type": "object"
+      },
+      "ActivePermissionProfile": {
+        "properties": {
+          "extends": {
+            "default": null,
+            "description": "Parent profile identifier from the selected permissions profile's `extends` setting, when present.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "Identifier from `default_permissions` or the implicit built-in default, such as `:workspace` or a user-defined `[permissions.<id>]` profile.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "AskForApproval": {
+        "oneOf": [
+          {
+            "enum": [
+              "untrusted",
+              "on-request",
+              "never"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "granular": {
+                "properties": {
+                  "mcp_elicitations": {
+                    "type": "boolean"
+                  },
+                  "request_permissions": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "rules": {
+                    "type": "boolean"
+                  },
+                  "sandbox_approval": {
+                    "type": "boolean"
+                  },
+                  "skill_approval": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "mcp_elicitations",
+                  "rules",
+                  "sandbox_approval"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "granular"
+            ],
+            "title": "GranularAskForApproval",
+            "type": "object"
+          }
+        ]
+      },
+      "ApprovalsReviewer": {
+        "description": "Configures who approval requests are routed to for review. Examples include sandbox escapes, blocked network access, MCP approval prompts, and ARC escalations. Defaults to `user`. `auto_review` uses a carefully prompted subagent to gather relevant context and apply a risk-based decision framework before approving or denying the request. The legacy value `guardian_subagent` is accepted for compatibility.",
+        "enum": [
+          "user",
+          "auto_review",
+          "guardian_subagent"
+        ],
+        "type": "string"
+      },
+      "CollaborationMode": {
+        "description": "Collaboration mode for a Codex session.",
+        "properties": {
+          "mode": {
+            "$ref": "#/$defs/ModeKind"
+          },
+          "settings": {
+            "$ref": "#/$defs/Settings"
+          }
+        },
+        "required": [
+          "mode",
+          "settings"
+        ],
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      },
+      "ReasoningEffort": {
+        "description": "A non-empty reasoning effort value advertised by the model.",
+        "minLength": 1,
+        "type": "string"
+      },
+      "MultiAgentMode": {
+        "description": "Controls the effective multi-agent delegation instructions for a turn. `custom` means the configured mode hint defines the policy instead of a built-in policy.",
+        "oneOf": [
+          {
+            "enum": [
+              "explicitRequestOnly",
+              "proactive"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "custom": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "custom"
+            ],
+            "title": "CustomMultiAgentMode",
+            "type": "object"
+          }
+        ]
+      },
+      "Personality": {
+        "description": "Deprecated: `friendly` and `pragmatic` no longer select a style.",
+        "enum": [
+          "none",
+          "friendly",
+          "pragmatic"
+        ],
+        "type": "string"
+      },
+      "SandboxPolicy": {
+        "oneOf": [
+          {
+            "properties": {
+              "type": {
+                "enum": [
+                  "dangerFullAccess"
+                ],
+                "title": "DangerFullAccessSandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "DangerFullAccessSandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "networkAccess": {
+                "default": false,
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "readOnly"
+                ],
+                "title": "ReadOnlySandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "ReadOnlySandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "networkAccess": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/NetworkAccess"
+                  }
+                ],
+                "default": "restricted"
+              },
+              "type": {
+                "enum": [
+                  "externalSandbox"
+                ],
+                "title": "ExternalSandboxSandboxPolicyType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "ExternalSandboxSandboxPolicy",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "excludeSlashTmp": {
+                "default": false,
+                "type": "boolean"
+              },
+              "excludeTmpdirEnvVar": {
+                "default": false,
+                "type": "boolean"
+              },
+              "networkAccess": {
+                "default": false,
+                "type": "boolean"
+              },
+              "type": {
+                "enum": [
+                  "workspaceWrite"
+                ],
+                "title": "WorkspaceWriteSandboxPolicyType",
+                "type": "string"
+              },
+              "writableRoots": {
+                "default": [],
+                "items": {
+                  "$ref": "#/$defs/AbsolutePathBuf"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "title": "WorkspaceWriteSandboxPolicy",
+            "type": "object"
+          }
+        ]
+      },
+      "ReasoningSummary": {
+        "description": "A summary of the reasoning performed by the model. This can be useful for debugging and understanding the model's reasoning process. See https://platform.openai.com/docs/guides/reasoning?api-mode=responses#reasoning-summaries",
+        "oneOf": [
+          {
+            "enum": [
+              "auto",
+              "concise",
+              "detailed"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "Option to disable reasoning summaries.",
+            "enum": [
+              "none"
+            ],
+            "type": "string"
+          }
+        ]
+      },
+      "ModeKind": {
+        "description": "Initial collaboration mode to use when the TUI starts.",
+        "enum": [
+          "plan",
+          "default"
+        ],
+        "type": "string"
+      },
+      "Settings": {
+        "description": "Settings for a collaboration mode.",
+        "properties": {
+          "developer_instructions": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "type": "object"
+      },
+      "NetworkAccess": {
+        "enum": [
+          "restricted",
+          "enabled"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

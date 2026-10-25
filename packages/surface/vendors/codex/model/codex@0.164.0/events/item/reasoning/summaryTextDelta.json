@@ -1,0 +1,104 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "item/reasoning/summaryTextDelta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "delta": {
+        "type": "string"
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "summaryIndex": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "delta",
+      "itemId",
+      "summaryIndex",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "item/reasoning/summaryTextDelta"
+        ],
+        "title": "Item/reasoning/summaryTextDeltaNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ReasoningSummaryTextDeltaNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Item/reasoning/summaryTextDeltaNotification",
+    "type": "object",
+    "$defs": {
+      "ReasoningSummaryTextDeltaNotification": {
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "summaryIndex": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "itemId",
+          "summaryIndex",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

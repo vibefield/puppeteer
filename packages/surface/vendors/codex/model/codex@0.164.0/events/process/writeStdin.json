@@ -1,0 +1,113 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "process/writeStdin",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Write stdin bytes to a running `process/spawn` session or close stdin.",
+  "payloadSchema": {
+    "description": "Write stdin bytes to a running `process/spawn` session, close stdin, or both.",
+    "properties": {
+      "closeStdin": {
+        "description": "Close stdin after writing `deltaBase64`, if present.",
+        "type": "boolean"
+      },
+      "deltaBase64": {
+        "description": "Optional base64-encoded stdin bytes to write.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "processHandle": {
+        "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "processHandle"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "description": "Write stdin bytes to a running `process/spawn` session or close stdin.",
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "process/writeStdin"
+        ],
+        "title": "Process/writeStdinRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ProcessWriteStdinParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Process/writeStdinRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ProcessWriteStdinParams": {
+        "description": "Write stdin bytes to a running `process/spawn` session, close stdin, or both.",
+        "properties": {
+          "closeStdin": {
+            "description": "Close stdin after writing `deltaBase64`, if present.",
+            "type": "boolean"
+          },
+          "deltaBase64": {
+            "description": "Optional base64-encoded stdin bytes to write.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "processHandle": {
+            "description": "Client-supplied, connection-scoped `processHandle` from `process/spawn`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "processHandle"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

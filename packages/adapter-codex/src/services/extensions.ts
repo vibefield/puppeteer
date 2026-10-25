@@ -13,9 +13,10 @@
  *   of enabled plugins (scope `user` with a `pluginId`, named
  *   `<plugin>:<folder>`).
  * - `plugin/installed` with no cwd: what this root has installed.
- * - `config/read` with no cwd, for its `origins` alone: which config layer set
- *   each `mcp_servers.<name>` key. The reply also carries the merged config,
- *   secrets included; nothing else of it is kept.
+ * - `config/read` with no cwd, for its `origins`: which config layer set each
+ *   `mcp_servers.<name>` key. The reply also carries the merged config,
+ *   secrets included; of it only the names of the servers whose `auth` is
+ *   `ema_auth` are kept (see the sign-in acts below).
  * - `plugin/read` per enabled plugin of a local marketplace: the servers it
  *   brings. A remote marketplace's plugin is not read, since that read goes to
  *   the account's plugin service.
@@ -27,11 +28,12 @@
  * folder of its own, and whose command line or address hides nothing also
  * carries it whole as its definition, for a host to give another agent.
  *
- * What the reads do besides reading, per the source at rust-v0.150.0: `mcp
- * list` starts no server and opens no MCP session, but for an enabled HTTP
- * server with no bearer variable, no Authorization header and no stored
- * sign-in it fetches the server's OAuth metadata, which is how it tells "needs
- * a sign-in" from "has none"; it reads its own sign-in store for "signed in".
+ * What the reads do besides reading, per the source at rust-v0.150.0 and again
+ * at rust-v0.164.0: `mcp list` starts no server and opens no MCP session, but
+ * for an enabled HTTP server with no bearer variable, no Authorization header
+ * and no stored sign-in it fetches the server's OAuth metadata, which is how it
+ * tells "needs a sign-in" from "has none"; it reads its own sign-in store for
+ * "signed in".
  * `plugin/installed` may refresh the account's remote-installed plugins, as
  * Codex does whenever it starts.
  *
@@ -53,6 +55,15 @@
  * there, config/src/types.rs) — so every Codex profile holding that server at
  * that address shares it. A profile whose config sets
  * `mcp_oauth_credentials_store = "file"` keeps its own; that key is not read.
+ * A server whose `auth` is `ema_auth` (enterprise-managed, which 0.150.0's
+ * config loader still refuses) has no sign-in of its own: `codex mcp login`
+ * refuses it ("Enterprise MCP authorization is managed by Codex account
+ * sign-in"), and `codex mcp logout` removes the one enterprise grant every
+ * such server of the profile shares — kept under the canonical `CODEX_HOME`,
+ * so no other profile's (`run_login` and `run_logout` in
+ * codex-rs/cli/src/mcp_cmd.rs, `compute_store_key` in oauth.rs, at
+ * rust-v0.164.0; the refusals reproduced hermetically on 0.164.0). Which
+ * servers those are is known from the profile's last inventory.
  * A server the profile does not hold is added by the same `config/value/write`,
  * replacing the whole `mcp_servers.<name>` table with the definition: its
  * command, arguments and `env_vars` (the names Codex forwards to the server
@@ -60,17 +71,18 @@
  * HTTP address. Never `codex mcp add`, which has no flag that names a forwarded
  * variable (its `--env` stores a value) and starts the browser login at once
  * for a server that offers OAuth (`run_add` in codex-rs/cli/src/mcp_cmd.rs at
- * rust-v0.150.0). A skill a host keeps goes into `~/.agents/skills`, the one
- * folder Codex reads a person's skills from: the host's copy moves in and a
- * link to it stays where it was. Every Codex profile reads that folder, and
- * Grok, Kimi, OpenCode and Pi do too, so a skill there is never taken away;
- * only Codex's switch turns it off, for one profile.
+ * rust-v0.150.0 and rust-v0.164.0). A skill a host keeps goes into
+ * `~/.agents/skills`, the one folder Codex reads a person's skills from: the
+ * host's copy moves in and a link to it stays where it was. Every Codex profile
+ * reads that folder, and Grok, Kimi, OpenCode and Pi do too, so a skill there is
+ * never taken away; only Codex's switch turns it off, for one profile.
  *
  * Shapes: `SkillsListResponse`, `PluginInstalledResponse` and
  * `PluginReadResponse` in codex-rs/app-server-protocol/src/protocol/v2/plugin.rs,
  * `ConfigReadResponse` in v2/config.rs, and `run_list` in
- * codex-rs/cli/src/mcp_cmd.rs, at rust-v0.150.0 (the Surface pin, whose model
- * carries these requests but not their results). The CLI spells sign-in states
+ * codex-rs/cli/src/mcp_cmd.rs, at rust-v0.150.0; every field read is in 0.164.0's
+ * generated schema too (the Surface pin, whose model carries these requests but
+ * not their results). The CLI spells sign-in states
  * in snake case (`not_logged_in`, `o_auth`), the protocol in camel case; both
  * are read.
  *
@@ -245,6 +257,8 @@ interface SessionRead {
   origins?: Array<{ key: string; layer: ServerOrigin }>;
   /** Server name → the enabled local plugin that brings it. */
   pluginServers?: Map<string, string>;
+  /** Names of the servers whose merged `auth` is `ema_auth`: the one value of the merged config kept. */
+  enterpriseServers?: ReadonlySet<string>;
 }
 
 function layerOf(metadata: unknown): ServerOrigin {
@@ -258,6 +272,14 @@ function layerOf(metadata: unknown): ServerOrigin {
   }
   // system, mdm, enterpriseManaged and the legacy managed files.
   return { origin: 'managed', ...(file ? { file } : {}) };
+}
+
+/** `config/read`'s merged `mcp_servers`: the names whose `auth` is `ema_auth`, and nothing else of it. */
+function enterpriseServersFrom(result: unknown): SessionRead['enterpriseServers'] {
+  const config = rec(rec(result)?.config);
+  if (!config) return undefined;
+  const servers = rec(config.mcp_servers) ?? {};
+  return new Set(Object.keys(servers).filter((name) => rec(servers[name])?.auth === 'ema_auth'));
 }
 
 function originsFrom(result: unknown): SessionRead['origins'] {
@@ -296,8 +318,10 @@ function ownerOf(
   return plugin !== undefined ? { origin: 'plugin', plugin } : { origin: 'managed' };
 }
 
-/** Off Windows a server's sign-in is one keychain entry for every Codex profile (see above). */
+/** Off Windows a server's own sign-in is one keychain entry for every Codex profile (see above). */
 const SIGN_IN_REACHES: readonly ExtensionReach[] = process.platform === 'win32' ? [] : ['every-profile'];
+/** An enterprise server's sign-out ends the grant the profile's other enterprise servers use, in this profile alone. */
+const ENTERPRISE_SIGN_OUT_REACHES: readonly ExtensionReach[] = ['sign-in'];
 
 function authOf(status: string | undefined): McpServerItem['auth'] | undefined {
   if (status === 'o_auth' || status === 'oAuth') return 'signed-in';
@@ -1789,6 +1813,8 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
   const home = options.home ?? homedir();
   // Codex's `user` skill scope, `$HOME/.agents/skills`: the only folder it reads a person's skills from.
   const sharedSkills = join(home, '.agents', 'skills');
+  // Per profile root, the enterprise-managed servers its last inventory found (see above).
+  const enterpriseServers = new Map<string, ReadonlySet<string>>();
 
   const provider: ExtensionProvider = {
     id: 'codex',
@@ -1852,12 +1878,14 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
         }
       }
       const origins = config ? originsFrom(config.value) : undefined;
+      const enterprise = config ? enterpriseServersFrom(config.value) : undefined;
       const skillItems = skills ? await skillsFrom(skills.value) : undefined;
       return {
         ...(skillItems ? { skills: skillItems } : {}),
         ...(plugins ? { plugins } : {}),
         ...(origins ? { origins } : {}),
         ...(pluginServers ? { pluginServers } : {}),
+        ...(enterprise ? { enterpriseServers: enterprise } : {}),
       };
     } finally {
       if (client) await client.close();
@@ -1887,8 +1915,18 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
         return extensionActUnavailable(target, act, 'no-command', "Codex's commands do not take this server's name");
       }
       if (act === 'sign-in' || act === 'sign-out') {
-        // `mcp list` says "signed in" or "asks" only for a server Codex can sign in to
-        if (item.transport !== 'http' || item.auth === undefined) {
+        const enterprise = item.transport === 'http' && enterpriseServers.get(profile.dataRoot)?.has(item.id) === true;
+        if (enterprise && act === 'sign-in') {
+          return extensionActUnavailable(
+            target,
+            act,
+            'in-app',
+            `Codex signs in to ${item.name} with the Codex account's own sign-in, in Codex itself`,
+          );
+        }
+        // `mcp list` says "signed in" or "asks" only for a server Codex can sign in to; an enterprise
+        // server's sign-out stays, as Codex keeps it, even when the list cannot tell its state.
+        if (item.transport !== 'http' || (item.auth === undefined && !enterprise)) {
           return extensionActUnavailable(
             target,
             act,
@@ -1903,7 +1941,7 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
           act,
           argv: codexArgv(executable, ['mcp', act === 'sign-in' ? 'login' : 'logout', item.id]),
           env: codexProfileBinding(profile),
-          reaches: SIGN_IN_REACHES,
+          reaches: enterprise ? ENTERPRISE_SIGN_OUT_REACHES : SIGN_IN_REACHES,
         };
         return act === 'sign-in' ? extensionTerminalPlan(fields) : extensionCommandPlan(fields);
       }
@@ -2028,6 +2066,8 @@ export function createCodexExtensionService(options: CodexExtensionOptions = {})
         };
       }
       const read = session.value;
+      if (read.enterpriseServers) enterpriseServers.set(root, read.enterpriseServers);
+      else enterpriseServers.delete(root);
       const items: ExtensionItem[] = [];
       const unread: NonNullable<ExtensionInventory['unread']> = [];
 

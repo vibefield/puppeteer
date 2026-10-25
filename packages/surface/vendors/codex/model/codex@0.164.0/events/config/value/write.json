@@ -1,0 +1,139 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "config/value/write",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "expectedVersion": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "filePath": {
+        "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "keyPath": {
+        "type": "string"
+      },
+      "mergeStrategy": {
+        "$ref": "#/$defs/MergeStrategy"
+      },
+      "value": {}
+    },
+    "required": [
+      "keyPath",
+      "mergeStrategy",
+      "value"
+    ],
+    "type": "object",
+    "$defs": {
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "config/value/write"
+        ],
+        "title": "Config/value/writeRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ConfigValueWriteParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Config/value/writeRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ConfigValueWriteParams": {
+        "properties": {
+          "expectedVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filePath": {
+            "description": "Path to the config file to write; defaults to the user's `config.toml` when omitted.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "keyPath": {
+            "type": "string"
+          },
+          "mergeStrategy": {
+            "$ref": "#/$defs/MergeStrategy"
+          },
+          "value": {}
+        },
+        "required": [
+          "keyPath",
+          "mergeStrategy",
+          "value"
+        ],
+        "type": "object"
+      },
+      "MergeStrategy": {
+        "enum": [
+          "replace",
+          "upsert"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

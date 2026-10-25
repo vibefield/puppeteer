@@ -5,7 +5,8 @@
  * Hermetic: an isolated CODEX_HOME and HOME and a loopback Responses endpoint, so no account and no
  * model is reached. What the TUI sends is read through the adapter's own tap; what the session
  * means is read from the request that reaches the model. The cases, their results and what they
- * settled are recorded in packages/surface/vendors/codex/probes/codex@0.157.1/.
+ * settled are recorded in packages/surface/vendors/codex/probes/codex@0.157.1/, and re-run on
+ * 0.164.0 in probes/codex@0.164.0/ (its `live-cases.json` replays directly).
  *
  *   CODEX_INVOCATION_LIVE=1 CODEX_INVOCATION_CASES=<cases.json> CODEX_INVOCATION_OUT=<out.json> \
  *     CODEX_INVOCATION_ROOT=<an empty directory of your own> TMPDIR=/tmp \

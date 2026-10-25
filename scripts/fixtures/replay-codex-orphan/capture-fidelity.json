@@ -1,7 +1,7 @@
 {
   "format": "puppeteer-capture-fidelity/1",
   "vendor": "codex",
-  "vendorVersion": "0.150.0",
+  "vendorVersion": "0.164.0",
   "defaultRepresentation": "type-preserving-redaction",
   "nativeArtifacts": ["*.jsonl"],
   "limitations": ["This deliberately incomplete directional fixture exists only to test orphan-result rejection."]

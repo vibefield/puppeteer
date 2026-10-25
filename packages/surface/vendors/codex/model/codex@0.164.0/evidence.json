@@ -1,0 +1,120 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "codex",
+  "vendorVersion": "0.164.0",
+  "artifacts": [
+    {
+      "id": "codex-0.164.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-10-25T02:35:46.000Z",
+      "versionOutput": "codex-cli 0.164.0",
+      "sourceUrl": "https://github.com/openai/codex/releases/download/rust-v0.164.0/codex-package-aarch64-apple-darwin.tar.gz",
+      "package": {
+        "file": "codex-package-aarch64-apple-darwin.tar.gz",
+        "sha256": "sha256:dd99e9092270691a67bdde7be04ac283dea9da8e86cbde356c2cc851a79205fa",
+        "bytes": 136007998,
+        "digestSource": "Equal to the release asset digest GitHub publishes for rust-v0.164.0."
+      },
+      "executable": "bin/codex",
+      "companions": [
+        {
+          "path": "bin/codex-code-mode-host",
+          "sha256": "sha256:416721e33af8822041dc650793512b3e58d43e0be4f3a5c6187eb4dfaad3148a",
+          "bytes": 68543072,
+          "role": "Runs the exec tool's JavaScript isolate; required by every tool scenario of the census (findings C8)."
+        }
+      ],
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/openai/codex",
+      "revision": "rust-v0.164.0",
+      "relation": "exact-release"
+    }
+  ],
+  "claims": [
+    {
+      "id": "codex-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "codex-0.164.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/codex/census/harness.mjs --package-root <extracted codex-package-aarch64-apple-darwin.tar.gz>",
+      "capturedAt": "2026-10-25T04:50:59.033Z",
+      "notes": "Run against the extracted release package: bin/codex beside bin/codex-code-mode-host. Every scenario met its declared expectations; a degraded run writes nothing to the capture directory."
+    },
+    {
+      "id": "codex-generated-schema",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "artifact": "codex-0.164.0-darwin-arm64",
+      "sourceReference": 0,
+      "harness": "codex app-server generate-json-schema --experimental"
+    },
+    {
+      "id": "codex-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "codex-0.164.0-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "probes/codex@0.164.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs, ema-auth-probe.mjs, and packages/adapter-codex/src/launch/invocation-probe.live.test.ts with live-cases.json",
+      "capturedAt": "2026-10-25T04:44:09.137Z",
+      "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, the 64 KiB command-output cap in replayed history, what config/read and the mcp commands make of an auth = \"ema_auth\" server without an account, and the S1-S35 invocation landing re-measured in isolated homes against a loopback model."
+    },
+    {
+      "id": "codex-file-change-source",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "source-file-changes",
+      "sourceReference": 0,
+      "notes": "Digest-pinned exact-release source establishes the kind-dependent meaning of FileUpdateChange.diff, move suffix encoding, and deterministic path ordering; source alone does not prove runtime occurrence."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/codex/captures/codex@0.164.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "47fa6926da66d1e48f3be2850633f9af89f09f1112d621f82ef944093d9f8b67"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/codex/model/codex@0.164.0",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "816700a19944320ece6dbc65e27bf2a33ae3cacb65057382b125a61f6231a344"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/codex/probes/codex@0.164.0",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "7b65987d7b19d2f4cde77584e887e80a8cb0e963a81e40fa90571fff43ca804c"
+    },
+    {
+      "id": "source-file-changes",
+      "kind": "source-contract",
+      "path": "packages/surface/vendors/codex/references/codex@0.164.0/source",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "c01ef5db9773e7053c38285d89d2c0fd11ddb05351628f165b9a6acb1c3356f8"
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and the hermetic census are pinned for darwin-arm64; darwin-x64, linux-x64 and windows-x64 package artifacts still require independent acquisition and verification.",
+    "The exec tool needs the package's codex-code-mode-host beside bin/codex. The artifact identity digests bin/codex; the companion digest is recorded here and in the census run, but the acquisition schema has no companion-file concept yet (findings C8).",
+    "The reviewed 0.150.0 behavior graph is retained for established flows and extended with the file-change and history-hydration branches the 0.164.0 census observed; other schema-only methods remain unverified until dedicated runtime scenarios establish their ordering.",
+    "History scenarios run on one connection with the thread loaded; a cold resume from the rollout after an app-server restart is not part of the census."
+  ]
+}

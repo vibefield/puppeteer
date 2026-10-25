@@ -1,0 +1,132 @@
+[
+  {
+    "batch": "config1",
+    "configToml": [
+      "approval_policy = \"bogus\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config1",
+    "configToml": [
+      "sandbox_mode = \"bogus\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config1",
+    "configToml": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config1",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"untrusted\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config1",
+    "configToml": [
+      "approval_policy = \"on-failure\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config1",
+    "configToml": [],
+    "typed": [
+      "-c",
+      "approval_policy=\"bogus\""
+    ]
+  },
+  {
+    "batch": "config1",
+    "configToml": [],
+    "typed": [
+      "-c",
+      "approval_policy=\"untrusted\"",
+      "-c",
+      "sandbox_mode=\"danger-full-access\""
+    ]
+  },
+  {
+    "batch": "config2",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-a",
+      "never",
+      "-c",
+      "sandbox_mode=\"read-only\""
+    ]
+  },
+  {
+    "batch": "config2",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-s",
+      "workspace-write",
+      "-c",
+      "approval_policy=\"never\"",
+      "-c",
+      "sandbox_workspace_write.network_access=true",
+      "-c",
+      "sandbox_workspace_write.writable_roots=[\"/opt/codex-extra\"]"
+    ]
+  },
+  {
+    "batch": "config2",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-c",
+      "sandbox_workspace_write.network_access=bogus"
+    ]
+  },
+  {
+    "batch": "config2",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": [
+      "-c",
+      "sandbox_mode=\"bogus\""
+    ]
+  },
+  {
+    "batch": "config3",
+    "configToml": [
+      "approval_policy = \"untrusted\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config3",
+    "configToml": [
+      "sandbox_mode = \"danger-full-access\"",
+      "approval_policy = \"on-request\""
+    ],
+    "typed": []
+  },
+  {
+    "batch": "config3",
+    "configToml": [
+      "sandbox_mode = \"read-only\"",
+      "approval_policy = \"never\""
+    ],
+    "typed": []
+  }
+]

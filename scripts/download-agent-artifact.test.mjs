@@ -337,6 +337,43 @@ test('downloader cancels an oversized response stream before buffering the artif
   assert.equal(existsSync(join(repoRoot, 'artifacts', 'fake')), false);
 });
 
+test('downloader records the reviewed URL, not the signed URL it was redirected to', async () => {
+  const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-signed-'));
+  const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');
+  mkdirSync(upstream, { recursive: true });
+  const signedConfig = {
+    ...config,
+    acquisition: { ...config.acquisition, allowedHosts: ['downloads.example.test', 'assets.example.test'] },
+  };
+  writeFileSync(join(upstream, 'upstream.json'), JSON.stringify(signedConfig));
+  const signed = 'https://assets.example.test/asset/1?sig=c2lnbmF0dXJl&jwt=eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.c2ln';
+  const requested = [];
+  const metadata = await downloadAgentArtifact({
+    repoRoot,
+    vendor: 'fake',
+    version: '1.2.3',
+    platform: 'linux-x64',
+    output: 'artifacts/fake',
+    fetchImpl: async (url) => {
+      requested.push(url);
+      if (url === 'https://downloads.example.test/1.2.3/fake') {
+        return { ok: false, status: 302, url, headers: new Headers({ location: signed }) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        url,
+        headers: new Headers({ 'content-length': '5' }),
+        arrayBuffer: async () => Buffer.from('bytes'),
+      };
+    },
+  });
+  assert.deepEqual(requested, ['https://downloads.example.test/1.2.3/fake', signed]);
+  assert.equal(readFileSync(join(repoRoot, 'artifacts', 'fake'), 'utf8'), 'bytes');
+  assert.equal(metadata.sourceUrl, 'https://downloads.example.test/1.2.3/fake');
+  assert.doesNotMatch(JSON.stringify(metadata), /sig=|jwt=|eyJ/);
+});
+
 test('downloader validates every redirect before contacting the next origin', async () => {
   const repoRoot = mkdtempSync(join(tmpdir(), 'puppeteer-download-redirect-'));
   const upstream = join(repoRoot, 'packages', 'surface', 'vendors', 'fake');

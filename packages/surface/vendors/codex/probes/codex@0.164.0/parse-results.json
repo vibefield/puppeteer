@@ -1,0 +1,1919 @@
+{
+  "codex": "0.164.0",
+  "probes": [
+    {
+      "batch": "batch1",
+      "typed": [
+        "--sandbox",
+        "bogus",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "--sandbox",
+        "read-only",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "--sandbox",
+        "bogus",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "-a",
+        "bogus",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "-a",
+        "bogus",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "--bogus-flag",
+        "mcp",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '--bogus-flag' found"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "--bogus-flag",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '--bogus-flag' found"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "-m",
+        "gpt-x",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch1",
+      "typed": [
+        "-s",
+        "read-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--sandbox",
+        "bogus",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--sandbox",
+        "read-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-c",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--config",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--enable",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--disable",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--remote",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--remote-auth-token-env",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--strict-config",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-i",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--image",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-m",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--model",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--oss",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--local-provider",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-p",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--profile",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-s",
+        "mcp",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'mcp' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--sandbox",
+        "mcp",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'mcp' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--approve-for-me",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--dangerously-bypass-hook-trust",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-C",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--cd",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--worktree",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--add-dir",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "-a",
+        "mcp",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'mcp' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--ask-for-approval",
+        "mcp",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'mcp' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--search",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--no-alt-screen",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "--no-daemon",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-c",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--config <key=value>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--config",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--config <key=value>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--enable",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--enable <FEATURE>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--disable",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--disable <FEATURE>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--remote",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--remote <ADDR>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--remote-auth-token-env",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--remote-auth-token-env <ENV_VAR>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--strict-config",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-i",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--image <FILE>...' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--image",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--image <FILE>...' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-m",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--model <MODEL>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--model",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--model <MODEL>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--oss",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--local-provider",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--local-provider <OSS_PROVIDER>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-p",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--profile <CONFIG_PROFILE_V2>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--profile",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--profile <CONFIG_PROFILE_V2>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-s",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--sandbox <SANDBOX_MODE>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--sandbox",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--sandbox <SANDBOX_MODE>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--approve-for-me",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--dangerously-bypass-hook-trust",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-C",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--cd <DIR>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--cd",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--cd <DIR>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--worktree",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--add-dir",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--add-dir <DIR>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "-a",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--ask-for-approval <APPROVAL_POLICY>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--ask-for-approval",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: a value is required for '--ask-for-approval <APPROVAL_POLICY>' but none was supplied"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--search",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--no-alt-screen",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--no-daemon",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--last",
+        "--last",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--last' cannot be used multiple times"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--all",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch2",
+      "typed": [
+        "resume",
+        "--include-non-interactive",
+        "--last",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-i",
+        "a.png",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--image",
+        "a.png",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-i",
+        "a.png",
+        "b.png",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--add-dir",
+        "d",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-c",
+        "k=v",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--enable",
+        "x",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-m",
+        "a",
+        "-m",
+        "b",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--model <MODEL>' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-c",
+        "a=1",
+        "-c",
+        "b=2",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--enable",
+        "x",
+        "--enable",
+        "y",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--disable",
+        "x",
+        "--disable",
+        "y",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--add-dir",
+        "a",
+        "--add-dir",
+        "b",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-s",
+        "read-only",
+        "-s",
+        "workspace-write",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--sandbox <SANDBOX_MODE>' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "never",
+        "-a",
+        "on-request",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--ask-for-approval <APPROVAL_POLICY>' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--search",
+        "--search",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--search' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-i",
+        "a",
+        "-i",
+        "b",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-p",
+        "x",
+        "-p",
+        "y",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--profile <CONFIG_PROFILE_V2>' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-C",
+        "x",
+        "-C",
+        "y",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: the argument '--cd <DIR>' cannot be used multiple times"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "untrusted",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'untrusted' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "on-failure",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'on-failure' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "never",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "on-request",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-a",
+        "granular",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'granular' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-s",
+        "workspace-write",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-s",
+        "danger-full-access",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--local-provider",
+        "bogus",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--local-provider",
+        "ollama",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--local-provider",
+        "lmstudio",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--model=x",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-m=x",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-mx",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-sread-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-s=read-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-sbogus",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--sandbox=bogus",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--search=true",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected value 'true' for '--search' found; no more were expected"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--no-alt-screen=x",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected value 'x' for '--no-alt-screen' found; no more were expected"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-c=k=v",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-ck=v",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "-s",
+        "read-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "-a",
+        "never",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--approve-for-me",
+        "-a",
+        "never",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--approve-for-me",
+        "-s",
+        "read-only",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--approve-for-me",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--oss",
+        "-m",
+        "x",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "--remote",
+        "x",
+        "--no-daemon",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-C",
+        "d",
+        "--worktree",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "--last",
+        "--all",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "--last",
+        "abc",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "abc",
+        "def",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "abc",
+        "def",
+        "ghi",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument 'ghi' found"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "hello",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "hello",
+        "world",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument 'world' found"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "hello",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "hello",
+        "resume",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "e",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Run Codex non-interactively"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "a",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Apply the latest diff produced by Codex agent as a `git apply` to your local working tree"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "r",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "f",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "execpolicy",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Execpolicy tooling"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "responses-api-proxy",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Internal: run the responses API proxy"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "stdio-to-uds",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Internal: relay stdio to a Unix domain socket"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "tcp-tunnel",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Internal: forward a local TCP socket through an HTTP/3 CONNECT proxy"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "mcp-server",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "cloud-tasks",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "[EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "proto",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "tui",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "help",
+        "resume"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "-V"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli-resume 0.164.0"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "abc",
+        "--version"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli-resume 0.164.0"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-m",
+        "x",
+        "-V"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli 0.164.0"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "fork",
+        "-V"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli-fork 0.164.0"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "exec",
+        "-V"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli-exec 0.164.0"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "login",
+        "-V"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '-V' found"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "-h"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch3",
+      "typed": [
+        "resume",
+        "-h"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch4",
+      "typed": [
+        "--sandbox",
+        "bogus",
+        "mcp",
+        "list"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch4",
+      "typed": [
+        "--sandbox",
+        "read-only",
+        "mcp",
+        "list"
+      ],
+      "exit": 0,
+      "firstLine": "No MCP servers configured yet. Try `codex mcp add my-tool -- my-command`."
+    },
+    {
+      "batch": "batch4",
+      "typed": [
+        "-a",
+        "bogus",
+        "features",
+        "list"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--ask-for-approval <APPROVAL_POLICY>'"
+    },
+    {
+      "batch": "batch4",
+      "typed": [
+        "-m",
+        "x",
+        "--sandbox",
+        "bogus",
+        "mcp",
+        "list"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch4",
+      "typed": [
+        "--sandbox",
+        "bogus",
+        "-m",
+        "x",
+        "mcp",
+        "list"
+      ],
+      "exit": 2,
+      "firstLine": "error: invalid value 'bogus' for '--sandbox <SANDBOX_MODE>'"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "--mod",
+        "x",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '--mod' found"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "--sea",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '--sea' found"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "-hV"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "-Vh"
+      ],
+      "exit": 0,
+      "firstLine": "codex-cli 0.164.0"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "-i",
+        "-",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "-m",
+        "-5",
+        "--help"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '-5' found"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "--image=a.png",
+        "mcp",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Manage external MCP servers for Codex"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "resume",
+        "--last",
+        "--all",
+        "--include-non-interactive",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Resume a previous interactive session (picker by default; use --last to continue the most recent)"
+    },
+    {
+      "batch": "batch5",
+      "typed": [
+        "-c",
+        "k",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Codex CLI"
+    },
+    {
+      "batch": "batch6",
+      "typed": [
+        "features",
+        "list"
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "migrate-nfs-db",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "[experimental] Migrate configured SQLite databases to DELETE mode in place"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "help",
+        "migrate-nfs-db"
+      ],
+      "exit": 0,
+      "firstLine": "[experimental] Migrate configured SQLite databases to DELETE mode in place"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "migrate-nfs-db",
+        "-V"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '-V' found"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "migrate-nfs-db",
+        "--version"
+      ],
+      "exit": 2,
+      "firstLine": "error: unexpected argument '--version' found"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "--sandbox",
+        "bogus",
+        "migrate-nfs-db",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "[experimental] Migrate configured SQLite databases to DELETE mode in place"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "sandbox",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Run commands within a Codex-provided sandbox"
+    },
+    {
+      "batch": "batch7",
+      "typed": [
+        "sandbox",
+        "uninstall",
+        "--help"
+      ],
+      "exit": 0,
+      "firstLine": "Remove the legacy Windows sandbox's machine-wide accounts and network rules"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"bogus\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration",
+      "lastLine": "in `approval_policy`"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"bogus\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration",
+      "lastLine": "in `sandbox_mode`"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"read-only\"",
+        "approval_policy = \"never\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"untrusted\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration",
+      "lastLine": "approval_policy = \"untrusted\" is no longer supported; remove this setting"
+    },
+    {
+      "batch": "config1",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"on-failure\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    },
+    {
+      "batch": "config1",
+      "typed": [
+        "-c",
+        "approval_policy=\"bogus\""
+      ],
+      "configToml": [],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration",
+      "lastLine": "in `approval_policy`"
+    },
+    {
+      "batch": "config1",
+      "typed": [
+        "-c",
+        "approval_policy=\"untrusted\"",
+        "-c",
+        "sandbox_mode=\"danger-full-access\""
+      ],
+      "configToml": [],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration",
+      "lastLine": "approval_policy = \"untrusted\" is no longer supported; remove this setting"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-a",
+        "never",
+        "-c",
+        "sandbox_mode=\"read-only\""
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-s",
+        "workspace-write",
+        "-c",
+        "approval_policy=\"never\"",
+        "-c",
+        "sandbox_workspace_write.network_access=true",
+        "-c",
+        "sandbox_workspace_write.writable_roots=[\"/opt/codex-extra\"]"
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-c",
+        "sandbox_workspace_write.network_access=bogus"
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration",
+      "lastLine": "in `sandbox_workspace_write.network_access`"
+    },
+    {
+      "batch": "config2",
+      "typed": [
+        "-c",
+        "sandbox_mode=\"bogus\""
+      ],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load bootstrap configuration",
+      "lastLine": "in `sandbox_mode`"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "approval_policy = \"untrusted\""
+      ],
+      "exit": 1,
+      "firstLine": "Error: failed to load configuration",
+      "lastLine": "approval_policy = \"untrusted\" is no longer supported; remove this setting"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"danger-full-access\"",
+        "approval_policy = \"on-request\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    },
+    {
+      "batch": "config3",
+      "typed": [],
+      "configToml": [
+        "sandbox_mode = \"read-only\"",
+        "approval_policy = \"never\""
+      ],
+      "exit": 0,
+      "firstLine": "agent_message_board                      under development  false",
+      "lastLine": "write_stdin_approval                     stable             true"
+    }
+  ]
+}

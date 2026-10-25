@@ -1,0 +1,15 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "codex",
+  "vendorVersion": "0.164.0",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*.jsonl"
+  ],
+  "limitations": [
+    "Only app-server JSON records are promoted; process diagnostics and fake-provider internals remain outside the committed capture set.",
+    "Sensitive scalar values are replaced in place while native keys, containers, primitive types, and record order are retained.",
+    "Absolute paths under path keys (cwd, path, codexHome, runtimeWorkspaceRoots, writableRoots) become fixed placeholders, so a root no longer string-equals the cwd it named and file-change basenames are not retained.",
+    "Free text under text, diff, patch, output and similar keys is redacted: a capture proves where such a field occurs and that it is a string, not what it says."
+  ]
+}

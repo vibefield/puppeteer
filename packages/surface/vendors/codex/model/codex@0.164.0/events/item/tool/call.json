@@ -1,0 +1,217 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "item/tool/call",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Execute a dynamic tool call on the client.",
+  "payloadSchema": {
+    "properties": {
+      "arguments": {},
+      "callId": {
+        "type": "string"
+      },
+      "namespace": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "tool": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "arguments",
+      "callId",
+      "threadId",
+      "tool",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "resultSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "contentItems": {
+        "items": {
+          "$ref": "#/$defs/DynamicToolCallOutputContentItem"
+        },
+        "type": "array"
+      },
+      "success": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "contentItems",
+      "success"
+    ],
+    "title": "DynamicToolCallResponse",
+    "type": "object",
+    "$defs": {
+      "DynamicToolCallOutputContentItem": {
+        "oneOf": [
+          {
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "inputText"
+                ],
+                "title": "InputTextDynamicToolCallOutputContentItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "type"
+            ],
+            "title": "InputTextDynamicToolCallOutputContentItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "imageUrl": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "inputImage"
+                ],
+                "title": "InputImageDynamicToolCallOutputContentItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "imageUrl",
+              "type"
+            ],
+            "title": "InputImageDynamicToolCallOutputContentItem",
+            "type": "object"
+          },
+          {
+            "properties": {
+              "audioUrl": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "inputAudio"
+                ],
+                "title": "InputAudioDynamicToolCallOutputContentItemType",
+                "type": "string"
+              }
+            },
+            "required": [
+              "audioUrl",
+              "type"
+            ],
+            "title": "InputAudioDynamicToolCallOutputContentItem",
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "recordSchema": {
+    "description": "Execute a dynamic tool call on the client.",
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "item/tool/call"
+        ],
+        "title": "Item/tool/callRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/DynamicToolCallParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Item/tool/callRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "DynamicToolCallParams": {
+        "properties": {
+          "arguments": {},
+          "callId": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "arguments",
+          "callId",
+          "threadId",
+          "tool",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

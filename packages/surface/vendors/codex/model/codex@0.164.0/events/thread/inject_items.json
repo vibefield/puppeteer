@@ -1,0 +1,115 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/inject_items",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "trigger": "Append raw Responses API items to the thread history without starting a user turn.",
+  "payloadSchema": {
+    "properties": {
+      "items": {
+        "description": "Raw Responses API items to append to the thread's model-visible history.",
+        "items": {},
+        "type": "array"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "items",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "resultSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ThreadInjectItemsResponse",
+    "type": "object"
+  },
+  "recordSchema": {
+    "description": "Append raw Responses API items to the thread history without starting a user turn.",
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/inject_items"
+        ],
+        "title": "Thread/injectItemsRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadInjectItemsParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/injectItemsRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadInjectItemsParams": {
+        "properties": {
+          "items": {
+            "description": "Raw Responses API items to append to the thread's model-visible history.",
+            "items": {},
+            "type": "array"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless",
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ],
+    "result": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.164.0",
+  "lastVerified": "0.164.0",
+  "fixture": "captures/codex@0.164.0/protocol-history-hydration.jsonl"
+}

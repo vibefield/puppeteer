@@ -1,0 +1,90 @@
+{
+  "codex": "0.164.0",
+  "probe": "probes/codex@0.164.0/file-change-probe.mjs",
+  "scenario": "file-change (packages/surface/vendors/codex/census/harness.mjs)",
+  "artifact": {
+    "versionOutput": "codex-cli 0.164.0",
+    "executableSha256": "d8990e3ee7acfbc26f91265b12a1a83f0fee40d0e0f8f1f40a37d4ec21f499cf",
+    "companions": {
+      "codex-code-mode-host": "416721e33af8822041dc650793512b3e58d43e0be4f3a5c6187eb4dfaad3148a"
+    }
+  },
+  "seededWorkspace": {
+    "hello.txt": "hello\n"
+  },
+  "appliedPatch": "*** Begin Patch\n*** Add File: added.txt\n+new file line\n*** Update File: hello.txt\n@@\n-hello\n+hello world\n*** End Patch\n",
+  "filesAfterTurn": {
+    "added.txt": "new file line\n",
+    "hello.txt": "hello world\n"
+  },
+  "expected": {
+    "addedFile": "new file line\n",
+    "updatedFile": "hello world\n",
+    "updateHunk": "@@ -1 +1 @@\n-hello\n+hello world\n"
+  },
+  "itemStarted": [
+    {
+      "status": "inProgress",
+      "changes": [
+        {
+          "file": "added.txt",
+          "kind": {
+            "type": "add"
+          },
+          "diffText": "new file line\n",
+          "diffSha256": "4a7a849f64e9760b",
+          "diffEqualsFileOnDisk": true,
+          "diffIsUnifiedHunk": false
+        },
+        {
+          "file": "hello.txt",
+          "kind": {
+            "type": "update",
+            "move_path": null
+          },
+          "diffText": "@@ -1 +1 @@\n-hello\n+hello world\n",
+          "diffSha256": "36250bbb3564fa0c",
+          "diffEqualsFileOnDisk": false,
+          "diffIsUnifiedHunk": true
+        }
+      ]
+    }
+  ],
+  "itemCompleted": [
+    {
+      "status": "completed",
+      "changes": [
+        {
+          "file": "added.txt",
+          "kind": {
+            "type": "add"
+          },
+          "diffText": "new file line\n",
+          "diffSha256": "4a7a849f64e9760b",
+          "diffEqualsFileOnDisk": true,
+          "diffIsUnifiedHunk": false
+        },
+        {
+          "file": "hello.txt",
+          "kind": {
+            "type": "update",
+            "move_path": null
+          },
+          "diffText": "@@ -1 +1 @@\n-hello\n+hello world\n",
+          "diffSha256": "36250bbb3564fa0c",
+          "diffEqualsFileOnDisk": false,
+          "diffIsUnifiedHunk": true
+        }
+      ]
+    }
+  ],
+  "observed": {
+    "addDiffIsWholeNewFile": true,
+    "updateDiffIsUnifiedDiff": true,
+    "changesSortedByPath": true,
+    "startedEqualsCompleted": true,
+    "turnDiffUpdated": 3,
+    "patchUpdated": 0,
+    "completedStatus": "completed"
+  }
+}

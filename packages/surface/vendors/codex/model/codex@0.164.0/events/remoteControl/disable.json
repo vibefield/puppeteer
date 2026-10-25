@@ -1,0 +1,75 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "remoteControl/disable",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "remoteControl/disable"
+        ],
+        "title": "RemoteControl/disableRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/RemoteControlDisableParams"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "method"
+    ],
+    "title": "RemoteControl/disableRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "RemoteControlDisableParams": {
+        "properties": {
+          "ephemeral": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

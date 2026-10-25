@@ -164,7 +164,7 @@ describe(`codex ${CODEX_GRAMMAR_VERSION} grammar census`, () => {
     const resume = parseHelp(fixture('codex-resume-help'));
     expect(root.options).toHaveLength(24);
     expect(resume.options).toHaveLength(27);
-    expect(root.commands).toHaveLength(27);
+    expect(root.commands).toHaveLength(28);
     expect(census(fixture('codex-help'), fixture('codex-resume-help'))).toEqual([]);
   });
 
@@ -204,7 +204,7 @@ describe(`codex ${CODEX_GRAMMAR_VERSION} grammar census`, () => {
   });
 });
 
-describe('the walker reads argv as clap does (parse probes, codex 0.157.1)', () => {
+describe('the walker reads argv as clap does (parse probes, codex 0.157.1, re-run on 0.164.0)', () => {
   const session = (argv: string[]) => {
     const reading = readCodexInvocation(argv);
     if (reading.kind !== 'session') throw new Error(`expected a session, got ${JSON.stringify(reading)}`);
@@ -297,6 +297,11 @@ describe('the walker reads argv as clap does (parse probes, codex 0.157.1)', () 
 
   it('lets a passthrough speak for itself: clap errors before it are codex to report', () => {
     expect(readCodexInvocation(['-s', 'bogus', 'mcp', 'list'])).toMatchObject({
+      kind: 'passthrough',
+      passthrough: 'utility',
+    });
+    // 0.164.0 parse batch7: `--sandbox bogus migrate-nfs-db --help` prints the subcommand's help.
+    expect(readCodexInvocation(['--sandbox', 'bogus', 'migrate-nfs-db', '--help'])).toMatchObject({
       kind: 'passthrough',
       passthrough: 'utility',
     });

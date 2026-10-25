@@ -29,6 +29,7 @@ import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/m
 import { AppServerClient, spawnAppServerTransport, type Transport } from './transport/app-server-client.js';
 import { CodexNotificationNormalizer } from './normalization/pipeline.js';
 import { CodexMonitorEvidence } from './normalization/monitor.js';
+import { CodexThreadHistory } from './observation/thread-history.js';
 import { CodexApprovalService, type CodexApprovalDecision, type CodexApprovalRequest } from './services/approvals.js';
 import { CodexEventSource } from './services/event-source.js';
 import { CodexPromptService } from './services/prompt.js';
@@ -183,8 +184,10 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
       // Catalog enrichment is optional; stable model ids remain available.
     }
 
+    // A resume here reads only the thread's settings, never its turns, so it asks for none: the
+    // full hydration is deprecated, and observation/thread-history.ts keeps it for older servers.
     const startResult = options.resume
-      ? await client.request('thread/resume', { threadId: options.resume })
+      ? await new CodexThreadHistory(client).resume(options.resume)
       : await client.request('thread/start', {
           cwd: options.cwd,
           model: options.model,

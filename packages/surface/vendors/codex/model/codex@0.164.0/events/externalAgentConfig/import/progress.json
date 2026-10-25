@@ -1,0 +1,326 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "externalAgentConfig/import/progress",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "importId": {
+        "type": "string"
+      },
+      "itemTypeResults": {
+        "items": {
+          "$ref": "#/$defs/ExternalAgentConfigImportTypeResult"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "importId",
+      "itemTypeResults"
+    ],
+    "type": "object",
+    "$defs": {
+      "ExternalAgentConfigImportTypeResult": {
+        "properties": {
+          "failures": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigImportItemTypeFailure"
+            },
+            "type": "array"
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "successes": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigImportItemTypeSuccess"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "failures",
+          "itemType",
+          "successes"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigImportItemTypeFailure": {
+        "properties": {
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failureStage": {
+            "type": "string"
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "message": {
+            "type": "string"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subErrorType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "failureStage",
+          "itemType",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigMigrationItemType": {
+        "enum": [
+          "AGENTS_MD",
+          "CONFIG",
+          "SKILLS",
+          "PLUGINS",
+          "MCP_SERVER_CONFIG",
+          "SUBAGENTS",
+          "HOOKS",
+          "COMMANDS",
+          "MEMORY",
+          "SESSIONS"
+        ],
+        "type": "string"
+      },
+      "ExternalAgentConfigImportItemTypeSuccess": {
+        "properties": {
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "default": null,
+            "description": "Original title for an imported session; null for other item types.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "itemType"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "externalAgentConfig/import/progress"
+        ],
+        "title": "ExternalAgentConfig/import/progressNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ExternalAgentConfigImportProgressNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "ExternalAgentConfig/import/progressNotification",
+    "type": "object",
+    "$defs": {
+      "ExternalAgentConfigImportProgressNotification": {
+        "properties": {
+          "importId": {
+            "type": "string"
+          },
+          "itemTypeResults": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigImportTypeResult"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "importId",
+          "itemTypeResults"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigImportTypeResult": {
+        "properties": {
+          "failures": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigImportItemTypeFailure"
+            },
+            "type": "array"
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "successes": {
+            "items": {
+              "$ref": "#/$defs/ExternalAgentConfigImportItemTypeSuccess"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "failures",
+          "itemType",
+          "successes"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigImportItemTypeFailure": {
+        "properties": {
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "errorType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failureStage": {
+            "type": "string"
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "message": {
+            "type": "string"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subErrorType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "failureStage",
+          "itemType",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ExternalAgentConfigMigrationItemType": {
+        "enum": [
+          "AGENTS_MD",
+          "CONFIG",
+          "SKILLS",
+          "PLUGINS",
+          "MCP_SERVER_CONFIG",
+          "SUBAGENTS",
+          "HOOKS",
+          "COMMANDS",
+          "MEMORY",
+          "SESSIONS"
+        ],
+        "type": "string"
+      },
+      "ExternalAgentConfigImportItemTypeSuccess": {
+        "properties": {
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "itemType": {
+            "$ref": "#/$defs/ExternalAgentConfigMigrationItemType"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "default": null,
+            "description": "Original title for an imported session; null for other item types.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "itemType"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

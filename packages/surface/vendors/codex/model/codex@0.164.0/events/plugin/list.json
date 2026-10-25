@@ -1,0 +1,151 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "plugin/list",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "cwds": {
+        "description": "Optional working directories used to discover repo marketplaces. When omitted, only home-scoped marketplaces and the official curated marketplace are considered.",
+        "items": {
+          "$ref": "#/$defs/AbsolutePathBuf"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "forceRefetch": {
+        "description": "Whether the client requests a fresh remote plugin catalog fetch.",
+        "type": "boolean"
+      },
+      "marketplaceKinds": {
+        "description": "Optional marketplace kind filter. When omitted, only local marketplaces are queried, plus the default remote catalog when enabled by feature flag.",
+        "items": {
+          "$ref": "#/$defs/PluginListMarketplaceKind"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$defs": {
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      },
+      "PluginListMarketplaceKind": {
+        "enum": [
+          "local",
+          "vertical",
+          "workspace-directory",
+          "shared-with-me",
+          "created-by-me-remote"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "plugin/list"
+        ],
+        "title": "Plugin/listRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/PluginListParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Plugin/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "PluginListParams": {
+        "properties": {
+          "cwds": {
+            "description": "Optional working directories used to discover repo marketplaces. When omitted, only home-scoped marketplaces and the official curated marketplace are considered.",
+            "items": {
+              "$ref": "#/$defs/AbsolutePathBuf"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "forceRefetch": {
+            "description": "Whether the client requests a fresh remote plugin catalog fetch.",
+            "type": "boolean"
+          },
+          "marketplaceKinds": {
+            "description": "Optional marketplace kind filter. When omitted, only local marketplaces are queried, plus the default remote catalog when enabled by feature flag.",
+            "items": {
+              "$ref": "#/$defs/PluginListMarketplaceKind"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      },
+      "PluginListMarketplaceKind": {
+        "enum": [
+          "local",
+          "vertical",
+          "workspace-directory",
+          "shared-with-me",
+          "created-by-me-remote"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

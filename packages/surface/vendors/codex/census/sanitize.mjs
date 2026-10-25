@@ -37,17 +37,27 @@ const surfaceRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
  * `startedAtMs`/`completedAtMs` are raw epoch milliseconds sitting beside the
  * UUIDv7 ids — aliasing the ids while leaving these behind would hand back the
  * same wall-clock the ids were scrubbed to hide.
+ *
+ * `runtimeWorkspaceRoots` (thread/start results, `thread.environments[]`,
+ * turn/start) and `writableRoots` (sandbox policies) are absolute host
+ * directories under keys the shared path rule does not name. Until 0.164.0 they
+ * were rewritten only when a value pattern (`/var/folders`, `/Users`) happened to match, so
+ * a census run with TMPDIR elsewhere committed the path verbatim.
+ *
+ * The detector patterns carry no `g` flag: `inspect` calls `RegExp.test`, which
+ * keeps `lastIndex` between calls on a global pattern and skips every other hit.
  */
 export const codexRules = extendRules(
   {
     idKey: /^(?:environmentId|processId|conversationId|rolloutId)$/,
+    pathKey: /^(?:runtimeWorkspaceRoots|writableRoots)$/,
     sensitiveTextKey: /^(?:proposedExecpolicyAmendment|commandActions|scriptPath|displayCommand|execpolicy_amendment)$/,
     unsafeTextPatterns: [
       // Absolute home paths that no key rule catches because they are embedded
       // in a longer string, e.g. inside a shell command line.
-      /\/(?:Users|home)\/[^/\s"']+/g,
+      /\/(?:Users|home)\/[^/\s"']+/,
       // Bare epoch-millisecond timestamps for the next ~30 years.
-      /\b1[7-9]\d{11}\b/g,
+      /\b1[7-9]\d{11}\b/,
     ],
   },
   defaultRules,
@@ -87,6 +97,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     limitations: [
       'Only app-server JSON records are promoted; process diagnostics and fake-provider internals remain outside the committed capture set.',
       'Sensitive scalar values are replaced in place while native keys, containers, primitive types, and record order are retained.',
+      'Absolute paths under path keys (cwd, path, codexHome, runtimeWorkspaceRoots, writableRoots) become fixed placeholders, so a root no longer string-equals the cwd it named and file-change basenames are not retained.',
+      'Free text under text, diff, patch, output and similar keys is redacted: a capture proves where such a field occurs and that it is a string, not what it says.',
     ],
   });
   const issues = checkCaptureDirectory(staging, codexRules);

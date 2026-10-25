@@ -1,0 +1,194 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "item/fileChange/requestApproval",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "trigger": "Sent when approval is requested for a specific file change. This request is used for Turns started via turn/start.",
+  "payloadSchema": {
+    "properties": {
+      "grantRoot": {
+        "description": "[UNSTABLE] When set, the agent is asking the user to allow writes under this root for the remainder of the session (unclear if this is honored today).",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "reason": {
+        "description": "Optional explanatory reason (e.g. request for extra write access).",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "startedAtMs": {
+        "description": "Unix timestamp (in milliseconds) when this approval request started.",
+        "format": "int64",
+        "type": "integer"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "itemId",
+      "startedAtMs",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "resultSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+      "decision": {
+        "$ref": "#/$defs/FileChangeApprovalDecision"
+      }
+    },
+    "required": [
+      "decision"
+    ],
+    "title": "FileChangeRequestApprovalResponse",
+    "type": "object",
+    "$defs": {
+      "FileChangeApprovalDecision": {
+        "oneOf": [
+          {
+            "description": "User approved the file changes.",
+            "enum": [
+              "accept"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "User approved the file changes and future changes to the same files should run without prompting.",
+            "enum": [
+              "acceptForSession"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "User denied the file changes. The agent will continue the turn.",
+            "enum": [
+              "decline"
+            ],
+            "type": "string"
+          },
+          {
+            "description": "User denied the file changes. The turn will also be immediately interrupted.",
+            "enum": [
+              "cancel"
+            ],
+            "type": "string"
+          }
+        ]
+      }
+    }
+  },
+  "recordSchema": {
+    "description": "Sent when approval is requested for a specific file change. This request is used for Turns started via turn/start.",
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "item/fileChange/requestApproval"
+        ],
+        "title": "Item/fileChange/requestApprovalRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/FileChangeRequestApprovalParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Item/fileChange/requestApprovalRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "FileChangeRequestApprovalParams": {
+        "properties": {
+          "grantRoot": {
+            "description": "[UNSTABLE] When set, the agent is asking the user to allow writes under this root for the remainder of the session (unclear if this is honored today).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "reason": {
+            "description": "Optional explanatory reason (e.g. request for extra write access).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAtMs": {
+            "description": "Unix timestamp (in milliseconds) when this approval request started.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "startedAtMs",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "result": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "result": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

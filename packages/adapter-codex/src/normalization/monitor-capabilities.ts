@@ -1,6 +1,6 @@
 import type { ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 
-export const CODEX_CONTRACT = 'codex-app-server@0.150.0';
+export const CODEX_CONTRACT = 'codex-app-server@0.164.0';
 
 /**
  * Capability claims are deliberately narrower than the generated schema.
@@ -68,7 +68,7 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'codex-thread-response-and-settings',
     contractVersion: CODEX_CONTRACT,
     limitations: [
-      'Plan/default collaboration mode requires thread/settings/updated.',
+      'Plan/default collaboration mode requires thread/settings/updated or a 0.164.0 thread/resume result.',
       'Approval and sandbox values are preserved together as provider permission state.',
     ],
   },

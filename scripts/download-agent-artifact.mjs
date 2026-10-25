@@ -103,7 +103,10 @@ async function fetchArtifact(spec, fetchImpl) {
         bytes = Buffer.from(await response.arrayBuffer());
       }
       if (bytes.length < 1 || bytes.length > spec.maxBytes) throw new Error(`artifact size ${bytes.length} is invalid`);
-      return { bytes, sourceUrl: finalUrl.href };
+      // Record the reviewed URL, never where it redirected: release hosts answer with
+      // short-lived signed URLs (`sig=`, `jwt=` bearer material), and this metadata is
+      // copied into tracked evidence by the assemble and evidence-update steps.
+      return { bytes, sourceUrl: url };
     } catch (error) {
       failures.push(`${url}: ${error.message}`);
     }

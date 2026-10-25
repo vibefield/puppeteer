@@ -1,0 +1,70 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "fuzzyFileSearch/sessionCompleted",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "sessionId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "fuzzyFileSearch/sessionCompleted"
+        ],
+        "title": "FuzzyFileSearch/sessionCompletedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/FuzzyFileSearchSessionCompletedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "FuzzyFileSearch/sessionCompletedNotification",
+    "type": "object",
+    "$defs": {
+      "FuzzyFileSearchSessionCompletedNotification": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,169 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "mcpServer/oauth/login",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "clientRegistration": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/McpServerOauthClientRegistration"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Registration strategy for this login only; omission selects automatic discovery."
+      },
+      "name": {
+        "type": "string"
+      },
+      "scopes": {
+        "items": {
+          "type": "string"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "timeoutSecs": {
+        "format": "int64",
+        "type": [
+          "integer",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "type": "object",
+    "$defs": {
+      "McpServerOauthClientRegistration": {
+        "enum": [
+          "auto",
+          "cimd",
+          "dcr"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "mcpServer/oauth/login"
+        ],
+        "title": "McpServer/oauth/loginRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/McpServerOauthLoginParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "McpServer/oauth/loginRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "McpServerOauthLoginParams": {
+        "properties": {
+          "clientRegistration": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpServerOauthClientRegistration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Registration strategy for this login only; omission selects automatic discovery."
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timeoutSecs": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "McpServerOauthClientRegistration": {
+        "enum": [
+          "auto",
+          "cimd",
+          "dcr"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

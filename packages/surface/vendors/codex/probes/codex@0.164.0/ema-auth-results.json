@@ -1,0 +1,64 @@
+{
+  "probe": "ema-auth-probe.mjs",
+  "probed": "2026-10-24",
+  "bounds": "darwin-arm64; allowlisted environment; throwaway HOME, CODEX_HOME and TMPDIR; no account and no enterprise IdP profile; network-outbound denied by sandbox-exec",
+  "results": [
+    {
+      "version": "codex-cli 0.164.0",
+      "configRead": {
+        "error": null,
+        "auth": {
+          "ema-docs": "ema_auth",
+          "plain": null
+        },
+        "originKeys": ["mcp_servers.ema-docs.auth", "mcp_servers.ema-docs.url", "mcp_servers.plain.url"]
+      },
+      "mcpList": {
+        "status": 0,
+        "servers": [
+          {
+            "name": "ema-docs",
+            "auth_status": "unsupported"
+          },
+          {
+            "name": "plain",
+            "auth_status": "unknown"
+          }
+        ],
+        "firstStderrLine": null
+      },
+      "mcpLogin": {
+        "status": 1,
+        "firstStderrLine": "Error: Enterprise MCP authorization is managed by Codex account sign-in. Open Codex to sign in."
+      },
+      "mcpLogout": {
+        "status": 1,
+        "firstStderrLine": "Error: Sign in to your Codex account before removing enterprise authorization"
+      }
+    },
+    {
+      "version": "codex-cli 0.150.0",
+      "configRead": {
+        "error": {
+          "code": -32603,
+          "firstLine": "invalid configuration: unknown variant `ema_auth`, expected `oauth` or `chatgpt`"
+        },
+        "auth": {},
+        "originKeys": []
+      },
+      "mcpList": {
+        "status": 1,
+        "servers": null,
+        "firstStderrLine": "Error: failed to load bootstrap configuration"
+      },
+      "mcpLogin": {
+        "status": 1,
+        "firstStderrLine": "Error: failed to load bootstrap configuration"
+      },
+      "mcpLogout": {
+        "status": 1,
+        "firstStderrLine": "Error: failed to load bootstrap configuration"
+      }
+    }
+  ]
+}

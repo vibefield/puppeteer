@@ -1,0 +1,169 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "mcpServerStatus/list",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "cursor": {
+        "description": "Opaque pagination cursor returned by a previous call.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "detail": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/McpServerStatusDetail"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Controls how much MCP inventory data to fetch for each server. Defaults to `Full` when omitted."
+      },
+      "limit": {
+        "description": "Optional page size; defaults to a server-defined value.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "serverName": {
+        "description": "Limit discovery to one server. With a thread ID, reuse that thread's MCP connection.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$defs": {
+      "McpServerStatusDetail": {
+        "enum": [
+          "full",
+          "toolsAndAuthOnly"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "mcpServerStatus/list"
+        ],
+        "title": "McpServerStatus/listRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ListMcpServerStatusParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "McpServerStatus/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ListMcpServerStatusParams": {
+        "properties": {
+          "cursor": {
+            "description": "Opaque pagination cursor returned by a previous call.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/McpServerStatusDetail"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Controls how much MCP inventory data to fetch for each server. Defaults to `Full` when omitted."
+          },
+          "limit": {
+            "description": "Optional page size; defaults to a server-defined value.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "serverName": {
+            "description": "Limit discovery to one server. With a thread ID, reuse that thread's MCP connection.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "McpServerStatusDetail": {
+        "enum": [
+          "full",
+          "toolsAndAuthOnly"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}
