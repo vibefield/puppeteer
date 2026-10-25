@@ -4,6 +4,7 @@ import {
   validatePlatformEvidence,
   validateVerificationPlatforms,
   promoteLedgerAgent,
+  stampEventMap,
   supportVerificationFromReport,
   validatePromotion,
   validateVerificationAttestation,
@@ -18,6 +19,7 @@ test('promotion atomically advances the supported version without moving canonic
         groundTruth: 'packages/surface/vendors/grok/groundtruth.json',
         candidateVersion: '1.0.0',
         legacyEvidence: { modelSha256: 'stale' },
+        blockers: ['The protected four-platform lane has not completed.'],
       },
     ],
   };
@@ -35,8 +37,28 @@ test('promotion atomically advances the supported version without moving canonic
   assert.equal(agent.currentVersion, '1.0.0');
   assert.equal(agent.candidateVersion, undefined);
   assert.equal(agent.legacyEvidence, undefined);
+  // The ledger forbids blockers outside baseline-pending, so a promotion that kept them would roll back.
+  assert.equal(agent.blockers, undefined);
   assert.equal(agent.verification, verification);
   assert.equal(agent.introducedInPuppeteer, '0.2.0');
+});
+
+test('promotion stamps the adapter event map with the promoted ground truth and version', () => {
+  const head = (metas) =>
+    `<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="utf-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n${metas}    <title>map</title>\n  </head>\n</html>\n`;
+  const gt = 'packages/surface/vendors/grok/groundtruth.json';
+  const stamped =
+    '    <meta name="puppeteer-surface-groundtruth" content="packages/surface/vendors/grok/groundtruth.json" />\n' +
+    '    <meta name="puppeteer-last-verified" content="1.0.70" />\n';
+  // A map that never carried the metas (Grok's) gains both, in the head, after the viewport.
+  assert.equal(stampEventMap(head(''), gt, '1.0.70'), head(stamped));
+  // A map that carries stale metas (Claude's legacy 2.1.207) is updated in place.
+  const stale =
+    '    <meta name="puppeteer-surface-groundtruth" content="packages/surface/vendors/grok/groundtruth.json" />\n' +
+    '    <meta name="puppeteer-last-verified" content="1.0.0" />\n';
+  assert.equal(stampEventMap(head(stale), gt, '1.0.70'), head(stamped));
+  assert.equal(stampEventMap(stampEventMap(head(''), gt, '1.0.70'), gt, '1.0.70'), head(stamped));
+  assert.throws(() => stampEventMap('<html></html>', gt, '1.0.70'), /no viewport meta/);
 });
 
 test('promotion retains the verification identity after workflow artifacts expire', () => {

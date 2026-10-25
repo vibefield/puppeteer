@@ -979,9 +979,5 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
 - **A looping cursor ends the history walk as complete.** An empty page, or a `nextCursor` already followed, still
   ends the walk without `incomplete`. Whether a server that claims more history but loops should be reported is open;
   real codex has not been seen to do either.
-- **The scheduled codex-live lane's `vars.CODEX_BIN`.** `agent-live.yml` passes it as `PUPPETEER_CODEX_BIN`, which
-  the live tests now require to be an absolute path to a file (an unset or bare value used to fall back to `codex` on
-  the runner's PATH), and the runner must export no unpinned `CODEX_*`/`OPENAI_*` variable. The repository variable's
-  value is not visible from a checkout; confirm both on the self-hosted runner before the lane is next enabled.
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.

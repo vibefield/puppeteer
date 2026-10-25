@@ -12,167 +12,66 @@ concurrency:
   group: agent-live-reconciliation
   cancel-in-progress: false
 
-# Live agents need installed vendor binaries; some lanes also need isolated
-# credentials. Repository variables keep each job explicitly disabled until a
-# suitable self-hosted runner with the `puppeteer-agent-live` label is available.
+# Nightly reconciliation rehearses the protected promotion lanes instead of keeping a second copy of them:
+# for every opted-in agent it dispatches agent-surface-promotion.yml with confirm=rehearse for the version
+# the support ledger selects (candidate, else current). That run acquires the exact upstream bytes and
+# drives the adapter through the real native TUI on all four GitHub-hosted platforms, then verifies the
+# platform matrix, but never reaches the protected promote job. Set the repository variable
+# <VENDOR>_LIVE_ENABLED=true to opt an agent in; a source-revision agent (Hermes) also needs
+# <VENDOR>_SOURCE_REFERENCE, the exact release tag of the selected version.
 jobs:
-  claude-live:
-    if: ${{ vars.CLAUDE_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live]
-    timeout-minutes: 20
+  rehearse:
+    name: rehearse ${{ matrix.vendor }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - vendor: claude
+            enabled: ${{ vars.CLAUDE_LIVE_ENABLED }}
+          - vendor: codex
+            enabled: ${{ vars.CODEX_LIVE_ENABLED }}
+          - vendor: grok
+            enabled: ${{ vars.GROK_LIVE_ENABLED }}
+          - vendor: hermes
+            enabled: ${{ vars.HERMES_LIVE_ENABLED }}
+            source_reference: ${{ vars.HERMES_SOURCE_REFERENCE }}
+          - vendor: kimi
+            enabled: ${{ vars.KIMI_LIVE_ENABLED }}
+          - vendor: opencode
+            enabled: ${{ vars.OPENCODE_LIVE_ENABLED }}
     steps:
       - uses: actions/checkout@v6
+        if: ${{ matrix.enabled == 'true' }}
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
       - uses: actions/setup-node@v6
+        if: ${{ matrix.enabled == 'true' }}
         with:
           node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Claude native-TUI/hooks/transcript/resume proof
+      - name: Rehearse the protected promotion lanes for the ledger-selected version
+        if: ${{ matrix.enabled == 'true' }}
         env:
-          CLAUDE_NATIVE_TUI_LIVE: '1'
-          PUPPETEER_CLAUDE_BIN: ${{ vars.CLAUDE_BIN }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-claude test
-
-  codex-live:
-    if: ${{ vars.CODEX_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live]
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Codex native-TUI/app-server/resume proof
-        env:
-          CODEX_NATIVE_TUI_LIVE: '1'
-          # Must be an absolute path to a codex file: the live tests refuse an unset value or a bare name
-          # (spawn would look it up on PATH), and a runner exporting CODEX_*/OPENAI_* variables the
-          # throwaway profile does not pin (adapter-codex test-support/live-profile.ts).
-          PUPPETEER_CODEX_BIN: ${{ vars.CODEX_BIN }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-codex test
-
-  grok-live:
-    if: ${{ vars.GROK_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run Grok native-TUI/leader/ACP/durable-store/resume proof
-        env:
-          GROK_LIVE: '1'
-          PUPPETEER_GROK_BIN: ${{ vars.GROK_BIN }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-grok test
-
-  hermes-surface:
-    if: ${{ vars.HERMES_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Prepare isolated Hermes census state
-        run: mkdir -p .agent-live/hermes-home
-      - name: Recheck the pinned installed-console identity
-        run: >-
-          node packages/surface/vendors/hermes/census/harness.mjs
-          --hermes-bin "${{ vars.HERMES_BIN }}"
-          --home .agent-live/hermes-home
-          --checkout "${{ vars.HERMES_CHECKOUT }}"
-      - name: Re-run the controlled tui_gateway Surface census
-        run: >-
-          node packages/surface/vendors/hermes/census/turn-census.mjs
-          --python "${{ vars.HERMES_PYTHON }}"
-          --checkout "${{ vars.HERMES_CHECKOUT }}"
-          --scenario basic-turn
-          --output .agent-live/hermes@0.20.0
-      - name: Recheck the adapter through pinned native-TUI resume
-        env:
-          HERMES_LIVE: '1'
-          PUPPETEER_HERMES_BIN: ${{ vars.HERMES_BIN }}
-          HERMES_PYTHON: ${{ vars.HERMES_PYTHON }}
-          HERMES_TUI_DIR: ${{ vars.HERMES_TUI_DIR }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-hermes test
-
-  kimi-live:
-    if: ${{ vars.KIMI_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run the controlled Kimi Surface census against the installed binary
-        env:
-          PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
-        run: >-
-          node packages/surface/vendors/kimi/census/harness.mjs
-          --artifact "$PUPPETEER_KIMI_BIN"
-          --version 0.34.0
-          --scenario basic-turn
-          --output .agent-live/kimi@0.34.0
-      - name: Run Kimi native-TUI/durable-wire/resume proof
-        env:
-          KIMI_LIVE: '1'
-          PUPPETEER_KIMI_BIN: ${{ vars.KIMI_BIN }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-kimi test
-
-  opencode-live:
-    if: ${{ vars.OPENCODE_LIVE_ENABLED == 'true' }}
-    runs-on: [self-hosted, puppeteer-agent-live, macOS, ARM64]
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.34.5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22.18.0
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - name: Run OpenCode native-TUI/private-backend/HTTP-SSE/resume proof
-        env:
-          OPENCODE_LIVE: '1'
-          PUPPETEER_OPENCODE_BIN: ${{ vars.OPENCODE_BIN }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-opencode test
+          GH_TOKEN: ${{ github.token }}
+          VENDOR: ${{ matrix.vendor }}
+          SOURCE_REFERENCE: ${{ matrix.source_reference }}
+        run: |
+          version=$(node scripts/agent-model-selection.mjs --vendor "$VENDOR" --field version)
+          ground_truth=$(node scripts/agent-model-selection.mjs --vendor "$VENDOR" --field groundTruthRelative)
+          strategy=$(node -e "console.log(require('./packages/surface/vendors/$VENDOR/upstream.json').acquisition.strategy)")
+          if [ "$strategy" = source-revision ] && [ -z "$SOURCE_REFERENCE" ]; then
+            echo "::error::$VENDOR acquires a source revision; set ${VENDOR^^}_SOURCE_REFERENCE to the exact release tag of $version"
+            exit 1
+          fi
+          gh workflow run agent-surface-promotion.yml \
+            --ref "$GITHUB_REF_NAME" \
+            -f vendor="$VENDOR" \
+            -f version="$version" \
+            -f ground_truth="$ground_truth" \
+            -f source_reference="$SOURCE_REFERENCE" \
+            -f confirm=rehearse
+          echo "rehearsing $VENDOR $version from $GITHUB_REF_NAME" >> "$GITHUB_STEP_SUMMARY"

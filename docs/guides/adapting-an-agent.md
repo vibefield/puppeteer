@@ -1038,7 +1038,9 @@ Never hand-bump package versions. All public packages release in lockstep.
 For a new vendor, update the hard-coded orchestration seams:
 
 - `.github/workflows/agent-adaptation.yml` vendor choices;
-- `.github/workflows/agent-live.yml` scheduled real-artifact job and enablement variables;
+- `.github/workflows/agent-live.yml` matrix entry and its `<VENDOR>_LIVE_ENABLED` variable (plus
+  `<VENDOR>_SOURCE_REFERENCE` for a source-revision policy). The nightly job does not run a second copy of the
+  lanes: it dispatches `agent-surface-promotion.yml` with `confirm=rehearse` for the ledger-selected version;
 - `packages/surface/package.json` vendor audit script;
 - any vendor-specific live-test environment variable documentation.
 
@@ -1063,7 +1065,8 @@ The adapter is integration-complete when:
 - resume restores native history when the Surface exposes it; an `identity-only` exception names the evidence-backed limitation and leaves history continuity to Runtime recording;
 - disposal leaves no processes, sockets, observers, settings, or stores orphaned;
 - package layout and tarball checks pass;
-- the pinned-real lane exists and is opt-in/credential-isolated.
+- the pinned-real lane exists, is opt-in, and needs no credentials (a loopback model provider, a disposable home, and
+  no secrets in the workflow).
 
 ---
 
@@ -1148,7 +1151,7 @@ It cannot author vendor-specific census claims or modify hand-written adapter/ru
 
 ### 10.4 Run protected promotion
 
-After the candidate PR and all semantic/security review are complete, dispatch the protected workflow:
+After the candidate PR and all semantic/security review are complete, rehearse, then dispatch the protected workflow:
 
 ```sh
 gh workflow run agent-surface-promotion.yml \
@@ -1156,20 +1159,28 @@ gh workflow run agent-surface-promotion.yml \
   -f vendor=<vendor> \
   -f version=<version> \
   -f ground_truth=<ground-truth> \
-  -f confirm=promote
+  -f confirm=rehearse   # every lane, never the promote job; then repeat with confirm=promote
 ```
 
 Promotion:
 
 1. reacquires the exact bytes on hosted runners;
-2. executes each platform artifact on credential-isolated self-hosted runners;
+2. executes each platform artifact on a fresh GitHub-hosted runner for that platform (`macos-14`, `macos-15-intel`,
+   `ubuntu-24.04`, `windows-2025`). Isolation comes from the workflow: no secrets or repository variables, a read-only
+   job token, no persisted checkout credentials, and a loopback model provider in a disposable home;
 3. runs the vendor Surface audit and real adapter suite;
 4. requires the executed live test to bind its test id to the SHA-256 of the exact workflow artifact;
 5. creates per-platform verification reports from that receipt rather than a caller-supplied passing flag;
 6. verifies the complete declared platform matrix and repository gates;
-7. enters the protected `agent-surface-promotion` environment for human approval;
-8. atomically updates artifact evidence, `support/agents.json`, and the generated README badge;
+7. enters the protected `agent-surface-promotion` environment for human approval (create it in the repository
+   settings with required reviewers before the first promotion: a job that names a missing environment creates it
+   unprotected);
+8. atomically updates artifact evidence, `support/agents.json` (clearing candidate-only fields such as `blockers`), the
+   generated README badge, and the adapter's `docs/event-map.html` metadata, re-locks `groundtruth-map.json`, reruns
+   the repository gates on that tree, and commits only those files to the dispatched ref;
 9. records the workflow/run/attempt, candidate commit, canonical ground-truth path and version, evidence/model/replay digests, and artifact hashes.
+
+Promotions of different vendors on one ref must run one after another: each pushes to the ref it was dispatched from.
 
 `pnpm surface:promote` is intentionally inert outside the exact attested GitHub Actions context. Local success is not authority to edit `currentVersion` manually.
 
@@ -1178,7 +1189,8 @@ Promotion:
 After promotion:
 
 - the six-hour upstream watcher detects and debounces stable releases but never promotes them;
-- the scheduled live workflow runs only on explicitly enabled, credential-isolated runners;
+- the nightly `agent-live.yml` rehearses the promotion lanes (`confirm=rehearse`) on GitHub-hosted runners for every
+  agent whose `<VENDOR>_LIVE_ENABLED` variable is `true`;
 - a new version starts again at Survey, using the promoted model as a diff baseline;
 - same-version artifact changes and stable-channel rollbacks are incidents, not normal updates to overwrite in place;
 - rollback rebuilds the canonical root from a retained verified authoring model, moves `currentVersion` through a protected transaction, and regenerates badges; it never deletes evidence or candidate history.

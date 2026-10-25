@@ -49,11 +49,96 @@ test('promotion binds one complete acquisition through test, verification, and t
   assert.doesNotMatch(pinnedReal, /--adapter-real passed/);
   assert.ok(verify.indexOf('pnpm surface:evidence:artifacts') < verify.indexOf('pnpm surface:verify'));
   assert.ok(promote.indexOf('pnpm surface:evidence:artifacts') < promote.indexOf('pnpm surface:promote'));
-  assert.ok(
-    promote.includes(
-      'git add -- support/agents.json README.md "$AGENT_GROUND_TRUTH" "${AGENT_GROUND_TRUTH%.json}.html" "${AGENT_GROUND_TRUTH%/*}/model/${AGENT_VENDOR}@${AGENT_VERSION}/evidence.json"',
-    ),
+  // The restored evidence moves the canonical ground truth, so the adapter lock follows it, and the
+  // repository gates must pass on the exact tree before anything is committed.
+  const relock = promote.indexOf('pnpm groundtruth:mapping:write');
+  const gates = promote.indexOf('Refuse a promotion commit that would leave the repository gates red');
+  const commit = promote.indexOf('git commit -m');
+  assert.ok(promote.indexOf('pnpm surface:promote') < relock && relock < gates && gates < commit);
+  for (const gate of [
+    'pnpm packages:check',
+    'pnpm support:check',
+    'pnpm groundtruth:mapping:check',
+    'pnpm surface:groundtruth:check',
+    'surface:evidence:check',
+    'node --test scripts/*.test.mjs',
+  ]) {
+    assert.ok(promote.indexOf(gate) > gates && promote.indexOf(gate) < commit, `promote must run ${gate}`);
+  }
+  for (const path of [
+    'support/agents.json',
+    'README.md',
+    '"$AGENT_GROUND_TRUTH"',
+    '"${AGENT_GROUND_TRUTH%.json}.html"',
+    '"${AGENT_GROUND_TRUTH%/*}/model/${AGENT_VENDOR}@${AGENT_VERSION}/evidence.json"',
+    '"$adapter/groundtruth-map.json"',
+    '"$adapter/docs/event-map.html"',
+  ]) {
+    assert.ok(promote.includes(path), `promotion allowlist must name ${path}`);
+  }
+  assert.match(promote, /promotion changed files outside its allowlist/);
+  assert.doesNotMatch(promote, /git add -A|git add \.(\s|$)/);
+});
+
+test('the live lanes run on fresh GitHub-hosted runners with no credentials to reach', () => {
+  const pinnedReal = job('pinned-real', 'verify');
+  assert.doesNotMatch(workflow, /self-hosted|puppeteer-agent-live/);
+  assert.doesNotMatch(workflow, /\$\{\{\s*(secrets|vars)\./);
+  for (const [platform, runner] of [
+    ['darwin-arm64', 'macos-14'],
+    ['darwin-x64', 'macos-15-intel'],
+    ['linux-x64', 'ubuntu-24.04'],
+    ['windows-x64', 'windows-2025'],
+  ]) {
+    assert.match(pinnedReal, new RegExp(`- platform: ${platform}\\n\\s+runner: ${runner}\\n`));
+  }
+  assert.match(workflow, /^permissions:\n {2}contents: read\n/m);
+  // Only the protected promote job may write, and only it enters the reviewed environment.
+  assert.equal(workflow.match(/contents: write/g)?.length, 1);
+  assert.equal(workflow.match(/environment: agent-surface-promotion/g)?.length, 1);
+  assert.match(job('promote'), /environment: agent-surface-promotion\n\s+permissions:\n\s+contents: write/);
+  assert.equal(pinnedReal.match(/persist-credentials: false/g)?.length, 1);
+  // Workflow artifacts drop file modes; the lane restores the bit on the exact (re-hashed) bytes.
+  assert.match(pinnedReal, /name: Restore the executable bit lost in artifact transfer/);
+  assert.match(
+    pinnedReal,
+    /runner\.os != 'Windows' && steps\.policy\.outputs\.artifactKind == 'standalone-executable'/,
   );
+  assert.ok(
+    pinnedReal.indexOf('Restore the executable bit') > pinnedReal.indexOf('name: promotion-acquisition') &&
+      pinnedReal.indexOf('Restore the executable bit') < pinnedReal.indexOf('Audit the exact candidate model'),
+  );
+});
+
+test('a rehearsal runs every acquisition, live, and verification lane but never the promote job', () => {
+  assert.match(
+    job('acquire', 'assemble'),
+    /if: \$\{\{ inputs\.confirm == 'promote' \|\| inputs\.confirm == 'rehearse' \}\}/,
+  );
+  assert.match(job('promote'), /needs: verify\n\s+if: \$\{\{ inputs\.confirm == 'promote' \}\}/);
+  for (const name of ['assemble', 'pinned-real', 'verify']) {
+    const next = { assemble: 'pinned-real', 'pinned-real': 'verify', verify: 'promote' }[name];
+    assert.doesNotMatch(job(name, next), /inputs\.confirm/, `${name} follows acquire rather than re-reading confirm`);
+  }
+});
+
+test('nightly reconciliation rehearses the protected lanes for every promotion vendor', () => {
+  assert.doesNotMatch(live, /self-hosted|puppeteer-agent-live/);
+  assert.doesNotMatch(live, /vars\.[A-Z_]+_BIN\b/);
+  assert.match(live, /^permissions:\n {2}contents: read\n/m);
+  assert.match(live, /permissions:\n\s+contents: read\n\s+actions: write/);
+  const vendors = /options: \[([^\]]+)\]/.exec(workflow.slice(workflow.indexOf('vendor:')))[1].split(', ');
+  for (const vendor of vendors) {
+    assert.match(
+      live,
+      new RegExp(`- vendor: ${vendor}\\n\\s+enabled: \\$\\{\\{ vars\\.${vendor.toUpperCase()}_LIVE_ENABLED \\}\\}`),
+    );
+  }
+  assert.match(live, /gh workflow run agent-surface-promotion\.yml/);
+  assert.match(live, /-f confirm=rehearse/);
+  assert.doesNotMatch(live, /confirm=promote/);
+  assert.match(live, /scripts\/agent-model-selection\.mjs --vendor "\$VENDOR" --field version/);
+  assert.match(live, /source_reference: \$\{\{ vars\.HERMES_SOURCE_REFERENCE \}\}/);
 });
 
 test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI and resume lanes', () => {
@@ -63,9 +148,6 @@ test('OpenCode is an explicit reviewed workflow choice with isolated native-TUI 
   assert.match(workflow, /OPENCODE_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_OPENCODE_BIN:/);
   assert.match(workflow, /@vibefield\/puppeteer-adapter-opencode test/);
-  assert.match(live, /opencode-live:/);
-  assert.match(live, /if: \$\{\{ vars\.OPENCODE_LIVE_ENABLED == 'true' \}\}/);
-  assert.match(live, /PUPPETEER_OPENCODE_BIN: \$\{\{ vars\.OPENCODE_BIN \}\}/);
   assert.match(protectedLiveTests.opencode, /testId: 'opencode:native-tui-wire'/);
   assert.match(
     protectedLiveTests.opencode,
@@ -83,9 +165,6 @@ test('Kimi uses the same exact artifact for its cross-platform native-TUI and re
   assert.match(workflow, /KIMI_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_KIMI_BIN:/);
   assert.match(workflow, /@vibefield\/puppeteer-adapter-kimi test/);
-  assert.match(live, /kimi-live:/);
-  assert.match(live, /KIMI_LIVE: '1'/);
-  assert.match(live, /PUPPETEER_KIMI_BIN: \$\{\{ vars\.KIMI_BIN \}\}/);
   assert.match(protectedLiveTests.kimi, /testId: 'kimi:native-tui-wire'/);
   assert.match(
     protectedLiveTests.kimi,
@@ -105,10 +184,6 @@ test('Codex promotion proves the exact private app-server and native TUI without
   assert.doesNotMatch(pinnedReal, /CODEX_LIVE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CODEX_BIN:/);
   assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-codex test/);
-  assert.match(live, /codex-live:/);
-  assert.match(live, /CODEX_NATIVE_TUI_LIVE: '1'/);
-  assert.match(live, /Run Codex native-TUI\/app-server\/resume proof/);
-  assert.match(live, /PUPPETEER_CODEX_BIN: \$\{\{ vars\.CODEX_BIN \}\}/);
   assert.match(protectedLiveTests.codex, /testId: 'codex:native-tui-app-server'/);
   assert.match(
     protectedLiveTests.codex,
@@ -128,10 +203,6 @@ test('Claude promotion proves the exact native TUI, hooks, transcript, and resum
   assert.doesNotMatch(pinnedReal, /PUPPETEER_REAL_CLAUDE: '1'/);
   assert.match(pinnedReal, /PUPPETEER_CLAUDE_BIN:/);
   assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-claude test/);
-  assert.match(live, /claude-live:/);
-  assert.match(live, /CLAUDE_NATIVE_TUI_LIVE: '1'/);
-  assert.match(live, /Run Claude native-TUI\/hooks\/transcript\/resume proof/);
-  assert.match(live, /PUPPETEER_CLAUDE_BIN: \$\{\{ vars\.CLAUDE_BIN \}\}/);
   assert.match(protectedLiveTests.claude, /testId: 'claude:native-tui-hooks'/);
   assert.match(
     protectedLiveTests.claude,
@@ -159,12 +230,7 @@ test('Grok uses the exact artifact in a hermetic cross-platform native-TUI adapt
   assert.match(workflow, /GROK_LIVE: '1'/);
   assert.match(workflow, /PUPPETEER_GROK_BIN:/);
   assert.match(workflow, /@vibefield\/puppeteer-adapter-grok test/);
-  assert.match(live, /grok-live:/);
-  assert.match(live, /if: \$\{\{ vars\.GROK_LIVE_ENABLED == 'true' \}\}/);
-  assert.match(live, /GROK_LIVE: '1'/);
-  assert.match(live, /Run Grok native-TUI\/leader\/ACP\/durable-store\/resume proof/);
-  assert.match(live, /PUPPETEER_GROK_BIN: \$\{\{ vars\.GROK_BIN \}\}/);
-  assert.doesNotMatch(live, /GROK_LIVE_HOME/);
+  assert.doesNotMatch(workflow, /GROK_LIVE_HOME/);
   assert.match(protectedLiveTests.grok, /testId: 'grok:native-tui-leader'/);
   assert.match(
     protectedLiveTests.grok,
@@ -198,7 +264,7 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.doesNotMatch(acquire, /inputs\.vendor == 'hermes'/);
   assert.doesNotMatch(acquire, /\$AGENT_/);
   assert.match(pinnedReal, /name: promotion-source-\$\{\{ matrix\.platform \}\}/);
-  assert.match(pinnedReal, /Reconstruct locked installed console on the protected runner/);
+  assert.match(pinnedReal, /Reconstruct locked installed console on the live runner/);
   assert.match(pinnedReal, /scripts\/verify-installed-console-reconstruction\.mjs/);
   assert.match(pinnedReal, /if: \$\{\{ inputs\.vendor == 'hermes' \}\}/);
   assert.match(pinnedReal, /HERMES_LIVE: '1'/);
@@ -208,12 +274,6 @@ test('source-built Hermes is reconstructed generically before its protected nati
   assert.match(pinnedReal, /Hermes pinned-real native-TUI\/resume lane/);
   assert.match(pinnedReal, /@vibefield\/puppeteer-adapter-hermes test/);
   assert.doesNotMatch(pinnedReal, /\$AGENT_/);
-  assert.match(live, /hermes-surface:/);
-  assert.match(live, /if: \$\{\{ vars\.HERMES_LIVE_ENABLED == 'true' \}\}/);
-  assert.match(live, /packages\/surface\/vendors\/hermes\/census\/turn-census\.mjs/);
-  assert.match(live, /HERMES_LIVE: '1'/);
-  assert.match(live, /HERMES_TUI_DIR: \$\{\{ vars\.HERMES_TUI_DIR \}\}/);
-  assert.match(live, /Recheck the adapter through pinned native-TUI resume/);
   assert.match(protectedLiveTests.hermes, /testId: 'hermes:native-tui-gateway'/);
   assert.match(
     protectedLiveTests.hermes,
