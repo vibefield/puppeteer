@@ -3,84 +3,72 @@
     {
       "channel": "jsonrpc",
       "event": "_x.ai/mcp/servers_updated",
-      "with": { "servers": [] }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/models/update",
-      "with": { "models": [], "currentModelId": "$modelId" }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/settings/update",
-      "with": { "settings": {} }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/announcements/update",
-      "with": { "announcements": [] }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/mcp/init_progress",
-      "with": { "completed": 0, "total": 0 }
+      "with": { "mcpServers": [] }
     }
   ],
   "session.start": [
     {
       "channel": "jsonrpc",
-      "event": "session/update",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "available_commands_update", "availableCommands": [] }
-      }
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "auth", "sessionId": null }
     },
     {
       "channel": "jsonrpc",
-      "event": "_x.ai/session_notification",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "session_start", "runs": [] }
-      }
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "resolve_workspace", "sessionId": null }
     },
     {
-      "channel": "native-log",
-      "event": "_x.ai/session/update",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "session_start", "runs": [] },
-        "_meta": { "agentTimestampMs": "$nowMs" }
-      }
+      "channel": "jsonrpc",
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "folder_trust", "sessionId": null }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "plugin_registry", "sessionId": null }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "mcp_merge", "sessionId": null }
     },
     {
       "channel": "native-state",
       "event": "summary.json",
       "with": {
         "info": { "id": "$sessionId", "cwd": "$threadCwd" },
-        "current_model_id": "$modelId",
+        "agent_id": "$agentId",
+        "attempt_id": "$attemptId",
+        "session_summary": "$sessionTitle",
         "created_at": "$sessionCreatedAt",
         "updated_at": "$now",
         "num_messages": "$messageCount",
         "num_chat_messages": "$messageCount",
-        "agent_name": "grok"
+        "current_model_id": "$modelId",
+        "next_trace_turn": "$turnCount",
+        "chat_format_version": 1,
+        "grok_home": "$imposterHome",
+        "last_active_at": "$now",
+        "generated_title": "$sessionTitle",
+        "agent_name": "grok-build-plan",
+        "sandbox_profile": "off"
       }
     }
   ],
-  "session.end": [
+  "session.ready": [
     {
       "channel": "jsonrpc",
-      "event": "_x.ai/session_notification",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "session_end", "runs": [] }
-      }
-    },
+      "event": "_x.ai/session/setup",
+      "with": { "method": "session/new", "phase": "response_ready", "sessionId": "$sessionId" }
+    }
+  ],
+  "session.end": [
     {
       "channel": "native-log",
       "event": "_x.ai/session/update",
       "with": {
         "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "session_end", "runs": [] },
+        "update": { "sessionUpdate": "background_tasks", "tasks": [] },
         "_meta": { "agentTimestampMs": "$nowMs" }
       }
     }
@@ -91,34 +79,12 @@
       "event": "session/update",
       "with": {
         "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "user_message_chunk", "content": { "type": "text", "text": "$op.text" } }
-      }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/session_notification",
-      "with": {
-        "sessionId": "$sessionId",
         "update": {
-          "sessionUpdate": "hook_execution",
-          "event_name": "user_prompt_submit",
-          "prompt_id": "$uuid:prompt",
-          "runs": []
-        }
-      }
-    },
-    {
-      "channel": "native-log",
-      "event": "_x.ai/session/update",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": {
-          "sessionUpdate": "hook_execution",
-          "event_name": "user_prompt_submit",
-          "prompt_id": "$uuid:prompt",
-          "runs": []
+          "sessionUpdate": "user_message_chunk",
+          "content": { "type": "text", "text": "$op.text" },
+          "_meta": { "modelId": "$modelId", "promptIndex": "$turnIndex" }
         },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "_meta": { "agentTimestampMs": "$nowMs" }
       }
     },
     {
@@ -126,8 +92,12 @@
       "event": "session/update",
       "with": {
         "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "user_message_chunk", "content": { "type": "text", "text": "$op.text" } },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "update": {
+          "sessionUpdate": "user_message_chunk",
+          "content": { "type": "text", "text": "$op.text" },
+          "_meta": { "modelId": "$modelId", "promptIndex": "$turnIndex" }
+        },
+        "_meta": { "agentTimestampMs": "$nowMs" }
       }
     }
   ],
@@ -137,11 +107,8 @@
       "event": "session/update",
       "with": {
         "sessionId": "$sessionId",
-        "update": {
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "$uuid:message",
-          "content": { "type": "text", "text": "$op.text" }
-        }
+        "update": { "sessionUpdate": "agent_message_chunk", "content": { "type": "text", "text": "$op.text" } },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "AgentMessageChunk" }
       }
     },
     {
@@ -149,12 +116,8 @@
       "event": "session/update",
       "with": {
         "sessionId": "$sessionId",
-        "update": {
-          "sessionUpdate": "agent_message_chunk",
-          "messageId": "$uuid:message",
-          "content": { "type": "text", "text": "$op.text" }
-        },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "update": { "sessionUpdate": "agent_message_chunk", "content": { "type": "text", "text": "$op.text" } },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "AgentMessageChunk" }
       }
     }
   ],
@@ -168,10 +131,52 @@
           "sessionUpdate": "tool_call",
           "toolCallId": "$op.toolId",
           "title": "$op.command",
+          "rawInput": { "command": "$op.command", "description": "Run the requested command" },
+          "_meta": {
+            "x.ai/tool": {
+              "version": 1,
+              "name": "run_terminal_command",
+              "kind": "execute",
+              "namespace": "grok_build",
+              "label": "Run Command",
+              "read_only": false
+            }
+          }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCall" }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "$op.toolId",
           "kind": "execute",
-          "status": "in_progress",
-          "rawInput": { "command": "$op.command" }
-        }
+          "title": "$op.command",
+          "content": [],
+          "locations": [],
+          "rawInput": {
+            "variant": "Bash",
+            "command": "$op.command",
+            "description": "Run the requested command",
+            "is_background": false
+          },
+          "_meta": {
+            "x.ai/tool": {
+              "version": 1,
+              "name": "run_terminal_command",
+              "kind": "execute",
+              "namespace": "grok_build",
+              "label": "Run Command",
+              "read_only": false,
+              "input": { "command": "$op.command", "description": "Run the requested command" }
+            }
+          }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCallUpdate" }
       }
     },
     {
@@ -183,15 +188,64 @@
           "sessionUpdate": "tool_call",
           "toolCallId": "$op.toolId",
           "title": "$op.command",
-          "kind": "execute",
-          "status": "in_progress",
-          "rawInput": { "command": "$op.command" }
+          "rawInput": { "command": "$op.command", "description": "Run the requested command" },
+          "_meta": {
+            "x.ai/tool": {
+              "version": 1,
+              "name": "run_terminal_command",
+              "kind": "execute",
+              "namespace": "grok_build",
+              "label": "Run Command",
+              "read_only": false
+            }
+          }
         },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCall" }
+      }
+    },
+    {
+      "channel": "native-log",
+      "event": "session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "$op.toolId",
+          "kind": "execute",
+          "title": "$op.command",
+          "content": [],
+          "locations": [],
+          "rawInput": {
+            "variant": "Bash",
+            "command": "$op.command",
+            "description": "Run the requested command",
+            "is_background": false
+          },
+          "_meta": {
+            "x.ai/tool": {
+              "version": 1,
+              "name": "run_terminal_command",
+              "kind": "execute",
+              "namespace": "grok_build",
+              "label": "Run Command",
+              "read_only": false,
+              "input": { "command": "$op.command", "description": "Run the requested command" }
+            }
+          }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCallUpdate" }
       }
     }
   ],
   "permission.ask": [
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "pending_interaction", "tool_call_id": "$op.toolId", "kind": "permission" }
+      }
+    },
     {
       "channel": "jsonrpc",
       "event": "session/request_permission",
@@ -200,15 +254,41 @@
         "sessionId": "$sessionId",
         "toolCall": {
           "toolCallId": "$op.toolId",
-          "title": "$op.command",
           "kind": "execute",
-          "status": "in_progress",
-          "rawInput": { "command": "$op.command" }
+          "title": "$op.command",
+          "rawInput": {
+            "variant": "Bash",
+            "command": "$op.command",
+            "description": "Run the requested command",
+            "is_background": false
+          },
+          "_meta": {
+            "x.ai/tool": {
+              "version": 1,
+              "name": "run_terminal_command",
+              "kind": "execute",
+              "namespace": "grok_build",
+              "label": "Run Command",
+              "read_only": false,
+              "input": { "command": "$op.command", "description": "Run the requested command" }
+            },
+            "x.ai/requestingSessionId": "$sessionId"
+          }
         },
         "options": [
-          { "optionId": "allow_once", "name": "Allow once", "kind": "allow_once" },
-          { "optionId": "reject_once", "name": "Reject", "kind": "reject_once" }
+          { "optionId": "always-allow", "name": "Yes, and don't ask again for bash commands", "kind": "allow_always" },
+          { "optionId": "allow-once", "name": "Yes, proceed", "kind": "allow_once" },
+          { "optionId": "reject-once", "name": "No, and tell Grok what to do differently", "kind": "reject_once" },
+          { "optionId": "reject-always", "name": "No, and don't ask again for this command", "kind": "reject_always" }
         ]
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session_notification",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": { "sessionUpdate": "interaction_resolved", "tool_call_id": "$op.toolId" }
       }
     }
   ],
@@ -222,8 +302,23 @@
           "sessionUpdate": "tool_call_update",
           "toolCallId": "$op.toolId",
           "status": "completed",
-          "rawOutput": "$op.output"
-        }
+          "content": [{ "type": "content", "content": { "type": "text", "text": "$op.output" } }],
+          "rawOutput": {
+            "type": "Bash",
+            "output": [],
+            "output_for_prompt": "$op.output",
+            "exit_code": 0,
+            "command": "$op.command",
+            "truncated": false,
+            "signal": null,
+            "timed_out": false,
+            "description": "Run the requested command",
+            "current_dir": "$threadCwd",
+            "output_file": "",
+            "total_bytes": 0
+          }
+        },
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCallUpdate" }
       }
     },
     {
@@ -235,9 +330,23 @@
           "sessionUpdate": "tool_call_update",
           "toolCallId": "$op.toolId",
           "status": "completed",
-          "rawOutput": "$op.output"
+          "content": [{ "type": "content", "content": { "type": "text", "text": "$op.output" } }],
+          "rawOutput": {
+            "type": "Bash",
+            "output": [],
+            "output_for_prompt": "$op.output",
+            "exit_code": 0,
+            "command": "$op.command",
+            "truncated": false,
+            "signal": null,
+            "timed_out": false,
+            "description": "Run the requested command",
+            "current_dir": "$threadCwd",
+            "output_file": "",
+            "total_bytes": 0
+          }
         },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs", "updateType": "ToolCallUpdate" }
       }
     }
   ],
@@ -249,17 +358,14 @@
         "sessionId": "$sessionId",
         "update": {
           "sessionUpdate": "response_completed",
-          "signature": "<redacted:signature>",
-          "usage": { "inputTokens": 12, "outputTokens": 4 }
+          "usage": {
+            "input_tokens": 12,
+            "output_tokens": 4,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0,
+            "reasoning_tokens": 0
+          }
         }
-      }
-    },
-    {
-      "channel": "jsonrpc",
-      "event": "_x.ai/session_notification",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "stop", "prompt_id": "$uuid:prompt", "runs": [] }
       }
     },
     {
@@ -271,31 +377,74 @@
           "sessionUpdate": "turn_completed",
           "prompt_id": "$uuid:prompt",
           "stop_reason": "end_turn",
-          "usage": { "inputTokens": 12, "outputTokens": 4 }
-        }
-      }
-    },
-    {
-      "channel": "native-log",
-      "event": "_x.ai/session/update",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": { "sessionUpdate": "hook_execution", "event_name": "stop", "prompt_id": "$uuid:prompt", "runs": [] },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
-      }
-    },
-    {
-      "channel": "native-log",
-      "event": "_x.ai/session/update",
-      "with": {
-        "sessionId": "$sessionId",
-        "update": {
-          "sessionUpdate": "turn_completed",
-          "prompt_id": "$uuid:prompt",
-          "stop_reason": "end_turn",
-          "usage": { "inputTokens": 12, "outputTokens": 4 }
+          "usage": {
+            "inputTokens": 12,
+            "outputTokens": 4,
+            "totalTokens": 16,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "modelCalls": 1,
+            "apiDurationMs": 40,
+            "modelUsage": {
+              "grok-imposter": {
+                "inputTokens": 12,
+                "outputTokens": 4,
+                "totalTokens": 16,
+                "cachedReadTokens": 0,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 0,
+                "modelCalls": 1,
+                "apiDurationMs": 40
+              }
+            },
+            "numTurns": 1
+          },
+          "elapsed_ms": 60
         },
-        "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+        "_meta": { "agentTimestampMs": "$nowMs" }
+      }
+    },
+    {
+      "channel": "jsonrpc",
+      "event": "_x.ai/session/prompt_complete",
+      "with": { "sessionId": "$sessionId", "promptId": "$uuid:prompt", "stopReason": "end_turn", "agentResult": null }
+    },
+    {
+      "channel": "native-log",
+      "event": "_x.ai/session/update",
+      "with": {
+        "sessionId": "$sessionId",
+        "update": {
+          "sessionUpdate": "turn_completed",
+          "prompt_id": "$uuid:prompt",
+          "stop_reason": "end_turn",
+          "usage": {
+            "inputTokens": 12,
+            "outputTokens": 4,
+            "totalTokens": 16,
+            "cachedReadTokens": 0,
+            "cacheCreationTokens": 0,
+            "reasoningTokens": 0,
+            "modelCalls": 1,
+            "apiDurationMs": 40,
+            "modelUsage": {
+              "grok-imposter": {
+                "inputTokens": 12,
+                "outputTokens": 4,
+                "totalTokens": 16,
+                "cachedReadTokens": 0,
+                "cacheCreationTokens": 0,
+                "reasoningTokens": 0,
+                "modelCalls": 1,
+                "apiDurationMs": 40
+              }
+            },
+            "numTurns": 1
+          },
+          "elapsed_ms": 60
+        },
+        "_meta": { "agentTimestampMs": "$nowMs" }
       }
     },
     {
@@ -303,12 +452,21 @@
       "event": "summary.json",
       "with": {
         "info": { "id": "$sessionId", "cwd": "$threadCwd" },
-        "current_model_id": "$modelId",
+        "agent_id": "$agentId",
+        "attempt_id": "$attemptId",
+        "session_summary": "$sessionTitle",
         "created_at": "$sessionCreatedAt",
         "updated_at": "$now",
         "num_messages": "$messageCount",
         "num_chat_messages": "$messageCount",
-        "agent_name": "grok"
+        "current_model_id": "$modelId",
+        "next_trace_turn": "$turnCount",
+        "chat_format_version": 1,
+        "grok_home": "$imposterHome",
+        "last_active_at": "$now",
+        "generated_title": "$sessionTitle",
+        "agent_name": "grok-build-plan",
+        "sandbox_profile": "off"
       }
     }
   ],
@@ -317,13 +475,70 @@
       "channel": "native-state",
       "event": "signals.json",
       "with": {
+        "turnCount": "$turnCount",
+        "userMessageCount": "$turnCount",
+        "assistantMessageCount": "$turnCount",
+        "errorCount": 0,
+        "toolFailureCount": 0,
+        "cancellationCount": 0,
+        "consecutiveCancellations": 0,
+        "regenerationCount": 0,
+        "hasReverted": false,
+        "compactionCount": "$compactionCount",
+        "totalTokensBeforeCompaction": 0,
+        "contextWindowUsage": "$contextPercent",
         "contextTokensUsed": "$usedTokens",
         "contextWindowTokens": "$capacityTokens",
-        "contextWindowUsage": "$contextUsage",
+        "toolCallCount": "$toolCallCount",
+        "toolsUsed": [],
+        "modelsUsed": ["$modelId"],
         "primaryModelId": "$modelId",
-        "compactionCount": "$compactionCount",
-        "turnCount": "$turnCount",
-        "toolCallCount": "$toolCallCount"
+        "editAndRetryCount": 0,
+        "bashBareEchoCount": 0,
+        "gitCommitCount": 0,
+        "prCreatedCount": 0,
+        "prMergedCount": 0,
+        "inferenceIdleTimeouts": 0,
+        "doomLoopRecoveryAttempts": 0,
+        "doomLoopRecoveryAcceptedAfterBudget": 0,
+        "doomLoopRecoveryTopTrigger": null,
+        "doomLoopRecoveryAbortedChunks": 0,
+        "inferenceIdleTimeoutConfiguredSecs": 600,
+        "gcsQueueEnqueued": 0,
+        "gcsQueueUploaded": 0,
+        "gcsQueueFailed": 0,
+        "gcsQueueFallbacks": 0,
+        "gcsQueueCircuitBreakerTrips": 0,
+        "gcsQueuePending": 0,
+        "gcsQueuePendingBytes": 0,
+        "gcsQueueOrphansCleaned": 0,
+        "positiveRatings": 0,
+        "negativeRatings": 0,
+        "longPausesCount": 0,
+        "sessionDurationSeconds": 0,
+        "avgTimeToFirstTokenMs": 0,
+        "avgResponseTimeMs": 0,
+        "minTimeToFirstTokenMs": 0,
+        "maxTimeToFirstTokenMs": 0,
+        "latencySampleCount": 0,
+        "itlP50Ms": 0,
+        "itlP99Ms": 0,
+        "itlMaxMs": 0,
+        "itlMeanMs": 0,
+        "totalChunkCount": 0,
+        "itlSampleCount": 0,
+        "agentLinesAdded": 0,
+        "agentLinesRemoved": 0,
+        "agentLinesAddedReverted": 0,
+        "agentLinesRemovedReverted": 0,
+        "humanLinesAdded": 0,
+        "humanLinesRemoved": 0,
+        "humanLinesAddedReverted": 0,
+        "humanLinesRemovedReverted": 0,
+        "agentFilesTouched": 0,
+        "humanFilesTouched": 0,
+        "totalFilesTouched": 0,
+        "peakRssBytes": 0
       }
     }
   ]

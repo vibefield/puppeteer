@@ -87,7 +87,7 @@ export class GrokUpdateNormalizer {
 
     const delegation = normalizeGrokDelegation(update, promptId, observed);
     if (delegation) return delegation;
-    const extension = normalizeGrokExtension(update, promptId, observed);
+    const extension = normalizeGrokExtension(record.method, update, promptId, observed);
     if (extension) return extension;
 
     // Standard ACP tools/context/config reuse ACP category normalization while

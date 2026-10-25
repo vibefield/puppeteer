@@ -1,0 +1,291 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "signals.json",
+  "channel": "session-state",
+  "channels": ["session-state"],
+  "transport": "json-file-replace",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agentFilesTouched": {
+        "type": "integer"
+      },
+      "agentLinesAdded": {
+        "type": "integer"
+      },
+      "agentLinesAddedReverted": {
+        "type": "integer"
+      },
+      "agentLinesRemoved": {
+        "type": "integer"
+      },
+      "agentLinesRemovedReverted": {
+        "type": "integer"
+      },
+      "assistantMessageCount": {
+        "type": "integer"
+      },
+      "avgResponseTimeMs": {
+        "type": "integer"
+      },
+      "avgTimeToFirstTokenMs": {
+        "type": "integer"
+      },
+      "bashBareEchoCount": {
+        "type": "integer"
+      },
+      "cancellationCount": {
+        "type": "integer"
+      },
+      "compactionCount": {
+        "type": "integer"
+      },
+      "consecutiveCancellations": {
+        "type": "integer"
+      },
+      "contextTokensUsed": {
+        "type": "integer"
+      },
+      "contextWindowTokens": {
+        "type": "integer"
+      },
+      "contextWindowUsage": {
+        "type": "integer"
+      },
+      "doomLoopRecoveryAbortedChunks": {
+        "type": "integer"
+      },
+      "doomLoopRecoveryAcceptedAfterBudget": {
+        "type": "integer"
+      },
+      "doomLoopRecoveryAttempts": {
+        "type": "integer"
+      },
+      "doomLoopRecoveryTopTrigger": {
+        "type": "null"
+      },
+      "editAndRetryCount": {
+        "type": "integer"
+      },
+      "errorCount": {
+        "type": "integer"
+      },
+      "gcsQueueCircuitBreakerTrips": {
+        "type": "integer"
+      },
+      "gcsQueueEnqueued": {
+        "type": "integer"
+      },
+      "gcsQueueFailed": {
+        "type": "integer"
+      },
+      "gcsQueueFallbacks": {
+        "type": "integer"
+      },
+      "gcsQueueOrphansCleaned": {
+        "type": "integer"
+      },
+      "gcsQueuePending": {
+        "type": "integer"
+      },
+      "gcsQueuePendingBytes": {
+        "type": "integer"
+      },
+      "gcsQueueUploaded": {
+        "type": "integer"
+      },
+      "gitCommitCount": {
+        "type": "integer"
+      },
+      "hasReverted": {
+        "type": "boolean"
+      },
+      "humanFilesTouched": {
+        "type": "integer"
+      },
+      "humanLinesAdded": {
+        "type": "integer"
+      },
+      "humanLinesAddedReverted": {
+        "type": "integer"
+      },
+      "humanLinesRemoved": {
+        "type": "integer"
+      },
+      "humanLinesRemovedReverted": {
+        "type": "integer"
+      },
+      "inferenceIdleTimeoutConfiguredSecs": {
+        "type": "integer"
+      },
+      "inferenceIdleTimeouts": {
+        "type": "integer"
+      },
+      "itlMaxMs": {
+        "type": "integer"
+      },
+      "itlMeanMs": {
+        "type": "integer"
+      },
+      "itlP50Ms": {
+        "type": "integer"
+      },
+      "itlP99Ms": {
+        "type": "integer"
+      },
+      "itlSampleCount": {
+        "type": "integer"
+      },
+      "latencySampleCount": {
+        "type": "integer"
+      },
+      "longPausesCount": {
+        "type": "integer"
+      },
+      "maxTimeToFirstTokenMs": {
+        "type": "integer"
+      },
+      "minTimeToFirstTokenMs": {
+        "type": "integer"
+      },
+      "modelsUsed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "negativeRatings": {
+        "type": "integer"
+      },
+      "peakRssBytes": {
+        "type": "integer"
+      },
+      "positiveRatings": {
+        "type": "integer"
+      },
+      "prCreatedCount": {
+        "type": "integer"
+      },
+      "prMergedCount": {
+        "type": "integer"
+      },
+      "primaryModelId": {
+        "type": "string"
+      },
+      "regenerationCount": {
+        "type": "integer"
+      },
+      "sessionDurationSeconds": {
+        "type": "integer"
+      },
+      "toolCallCount": {
+        "type": "integer"
+      },
+      "toolFailureCount": {
+        "type": "integer"
+      },
+      "toolsUsed": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "totalChunkCount": {
+        "type": "integer"
+      },
+      "totalFilesTouched": {
+        "type": "integer"
+      },
+      "totalTokensBeforeCompaction": {
+        "type": "integer"
+      },
+      "turnCount": {
+        "type": "integer"
+      },
+      "userMessageCount": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "agentFilesTouched",
+      "agentLinesAdded",
+      "agentLinesAddedReverted",
+      "agentLinesRemoved",
+      "agentLinesRemovedReverted",
+      "assistantMessageCount",
+      "avgResponseTimeMs",
+      "avgTimeToFirstTokenMs",
+      "bashBareEchoCount",
+      "cancellationCount",
+      "compactionCount",
+      "consecutiveCancellations",
+      "contextTokensUsed",
+      "contextWindowTokens",
+      "contextWindowUsage",
+      "doomLoopRecoveryAbortedChunks",
+      "doomLoopRecoveryAcceptedAfterBudget",
+      "doomLoopRecoveryAttempts",
+      "doomLoopRecoveryTopTrigger",
+      "editAndRetryCount",
+      "errorCount",
+      "gcsQueueCircuitBreakerTrips",
+      "gcsQueueEnqueued",
+      "gcsQueueFailed",
+      "gcsQueueFallbacks",
+      "gcsQueueOrphansCleaned",
+      "gcsQueuePending",
+      "gcsQueuePendingBytes",
+      "gcsQueueUploaded",
+      "gitCommitCount",
+      "hasReverted",
+      "humanFilesTouched",
+      "humanLinesAdded",
+      "humanLinesAddedReverted",
+      "humanLinesRemoved",
+      "humanLinesRemovedReverted",
+      "inferenceIdleTimeoutConfiguredSecs",
+      "inferenceIdleTimeouts",
+      "itlMaxMs",
+      "itlMeanMs",
+      "itlP50Ms",
+      "itlP99Ms",
+      "itlSampleCount",
+      "latencySampleCount",
+      "longPausesCount",
+      "maxTimeToFirstTokenMs",
+      "minTimeToFirstTokenMs",
+      "modelsUsed",
+      "negativeRatings",
+      "peakRssBytes",
+      "positiveRatings",
+      "prCreatedCount",
+      "prMergedCount",
+      "primaryModelId",
+      "regenerationCount",
+      "sessionDurationSeconds",
+      "toolCallCount",
+      "toolFailureCount",
+      "toolsUsed",
+      "totalChunkCount",
+      "totalFilesTouched",
+      "totalTokensBeforeCompaction",
+      "turnCount",
+      "userMessageCount"
+    ]
+  },
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/state.jsonl",
+  "notes": "Rewritten asynchronously after each turn (absent or stale at the session/prompt result, current ≤500 ms later); cancelled turns count toward turnCount and cancellationCount on 1.0.70."
+}

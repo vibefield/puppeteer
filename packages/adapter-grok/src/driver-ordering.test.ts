@@ -25,6 +25,8 @@ vi.mock('@vibefield/puppeteer-adapter-acp', async (importOriginal) => ({
 }));
 
 import { createGrokBackend } from './driver.js';
+import { grokDeferredApprovalEvidence } from './normalization/interaction.js';
+import { openGrokControl } from './services/acp-control.js';
 
 function controlSession(sessionId: string): AgentAdapterBinding {
   return {
@@ -92,6 +94,32 @@ describe('Grok leader session materialization ordering', () => {
     projection.dispose();
     await session.dispose();
     backend.dispose();
+  });
+
+  it('defers unhandled approvals to the native viewer every prepared session launches', async () => {
+    const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+    const prepared = await backend.prepareSession({ cwd: '/repo' });
+    const onApproval = vi.fn(() => 'approved' as const);
+    const handled = await backend.prepareSession({ cwd: '/repo', onApproval });
+
+    // The recipe always joins the controller's leader session with the viewer.
+    expect(prepared.launch.args).toEqual(expect.arrayContaining(['--leader', '--resume', prepared.sessionId]));
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toMatchObject({
+      unhandledApproval: 'defer',
+      deferredApprovalEvidence: grokDeferredApprovalEvidence,
+    });
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toHaveProperty('onApproval', undefined);
+    // A host handler still decides; adapter-acp applies the policy only without one.
+    expect(mocks.createAcpSession.mock.calls[1]![0]).toMatchObject({ onApproval, unhandledApproval: 'defer' });
+    await Promise.all([prepared.dispose(), handled.dispose()]);
+    backend.dispose();
+  });
+
+  it('keeps the immediate deny for a controller-only composition', async () => {
+    await openGrokControl('/real/grok', '/repo', '/tmp/leader.sock', undefined, {});
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toMatchObject({ unhandledApproval: 'deny' });
+    await openGrokControl('/real/grok', '/repo', '/tmp/leader.sock', undefined, {}, undefined, { viewer: 'attached' });
+    expect(mocks.createAcpSession.mock.calls[1]![0]).toMatchObject({ unhandledApproval: 'defer' });
   });
 
   it('loads an explicit resume id before launching the matching TUI', async () => {

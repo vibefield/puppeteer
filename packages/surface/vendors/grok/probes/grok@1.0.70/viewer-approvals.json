@@ -1,0 +1,1157 @@
+{
+  "probe": "viewer-approvals",
+  "vendor": "grok",
+  "version": "1.0.70",
+  "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+  "artifactSha256": "5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec",
+  "harness": "packages/surface/vendors/grok/census/harness.mjs --approval-probe",
+  "topology": "one leader, one ACP controller that leaves session/request_permission unanswered, and the native viewer (grok --leader --resume) in a PTY; loopback model provider; disposable HOME/GROK_HOME",
+  "method": "Viewer keystrokes are control input only. Each outcome is read from the controller’s ACP frames, the workspace file the mutating command writes, and the persisted-rule count; terminal text is never consulted.",
+  "probes": {
+    "viewer-answers": {
+      "cases": [
+        {
+          "label": "viewer-allow-once",
+          "input": [
+            "2",
+            "Enter"
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "2"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "session_summary_generated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "session_info_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "in_progress"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_message_chunk",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "last_turn_summary"
+            }
+          ],
+          "stopReason": "end_turn",
+          "interactionResolved": true,
+          "toolRan": true,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": true
+            },
+            {
+              "decision": "deny",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": true
+            }
+          ]
+        },
+        {
+          "label": "viewer-reject-once",
+          "input": [
+            "3",
+            "Enter"
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "3"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "failed",
+              "toolNotRun": "rejected"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "cancelled",
+              "cancellationCategory": "PermissionRejected"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "cancelled",
+              "cancellationCategory": "PermissionRejected"
+            }
+          ],
+          "stopReason": "cancelled",
+          "interactionResolved": true,
+          "toolRan": false,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            },
+            {
+              "decision": "allow",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            }
+          ]
+        },
+        {
+          "label": "controller-cancel",
+          "input": "controller session/cancel",
+          "resolvedBeforeInput": false,
+          "keysSent": [],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "client-to-agent",
+              "method": "session/cancel"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "cancelled",
+              "cancellationCategory": "MidTurnAbort"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "cancelled",
+              "cancellationCategory": "MidTurnAbort"
+            }
+          ],
+          "stopReason": "cancelled",
+          "interactionResolved": true,
+          "toolRan": false,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            },
+            {
+              "decision": "allow",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            }
+          ]
+        },
+        {
+          "label": "viewer-interrupt",
+          "input": [
+            "Ctrl+C"
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "Ctrl+C"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "failed",
+              "toolNotRun": "cancelled"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "cancelled",
+              "cancellationCategory": "PermissionCancelled"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "cancelled",
+              "cancellationCategory": "PermissionCancelled"
+            }
+          ],
+          "stopReason": "cancelled",
+          "interactionResolved": true,
+          "toolRan": false,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            },
+            {
+              "decision": "allow",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            }
+          ]
+        }
+      ],
+      "expectations": [
+        {
+          "id": "leader-socket-ready",
+          "ok": true
+        },
+        {
+          "id": "initialize-result",
+          "ok": true
+        },
+        {
+          "id": "session-new-result",
+          "ok": true
+        },
+        {
+          "id": "viewer-attached",
+          "ok": true
+        },
+        {
+          "id": "viewer-allow-once-request-reaches-controller",
+          "ok": true
+        },
+        {
+          "id": "viewer-reject-once-request-reaches-controller",
+          "ok": true
+        },
+        {
+          "id": "controller-cancel-request-reaches-controller",
+          "ok": true
+        },
+        {
+          "id": "viewer-interrupt-request-reaches-controller",
+          "ok": true
+        },
+        {
+          "id": "session-usable-after-probes",
+          "ok": true,
+          "detail": {
+            "label": "after-probes",
+            "stopReason": "end_turn",
+            "timedOut": false,
+            "promptResultMs": 116,
+            "signalsPresentAtResult": true,
+            "signalsAppearedAfterResultMs": 0,
+            "signalsTurnCountAtResult": 4,
+            "signalsTurnCountSettled": 5,
+            "permissionRequests": [],
+            "userMessageEchoes": 1,
+            "childSessionFrames": 0
+          }
+        }
+      ]
+    },
+    "viewer-answers-spawn": {
+      "cases": [
+        {
+          "label": "viewer-allow-spawn",
+          "input": [
+            "1",
+            "Enter"
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "1"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_once",
+            "reject_once"
+          ],
+          "requestTool": "spawn_subagent",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "session_summary_generated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "session_info_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_message_chunk",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "subagent_spawned"
+            },
+            {
+              "direction": "agent-to-client",
+              "childSessionFrames": 4
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "last_turn_summary"
+            },
+            {
+              "direction": "agent-to-client",
+              "childSessionFrames": 7
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "subagent_finished",
+              "status": "completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "user_message_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_message_chunk",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "last_turn_summary"
+            }
+          ],
+          "stopReason": "end_turn",
+          "interactionResolved": true,
+          "toolRan": false,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": false
+            }
+          ],
+          "subagentSpawned": true
+        }
+      ],
+      "expectations": [
+        {
+          "id": "leader-socket-ready",
+          "ok": true
+        },
+        {
+          "id": "initialize-result",
+          "ok": true
+        },
+        {
+          "id": "session-new-result",
+          "ok": true
+        },
+        {
+          "id": "viewer-attached",
+          "ok": true
+        },
+        {
+          "id": "viewer-allow-spawn-request-reaches-controller",
+          "ok": true
+        }
+      ]
+    },
+    "viewer-late-join": {
+      "cases": [
+        {
+          "label": "viewer-attaches-while-pending",
+          "input": [
+            "2",
+            "Enter"
+          ],
+          "viewerAttachedAfterRequest": true,
+          "framesOnViewerAttach": [
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/mcp/servers_updated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "background_tasks"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "model_changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "model_changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "config_option_update"
+            }
+          ],
+          "resolvedBeforeInput": false,
+          "keysSent": [
+            "2"
+          ],
+          "fallbackControllerAnswer": false,
+          "requestOptions": [
+            "allow_always",
+            "allow_once",
+            "reject_once",
+            "reject_always"
+          ],
+          "requestTool": "run_terminal_command",
+          "framesFromPrompt": [
+            {
+              "direction": "client-to-agent",
+              "method": "session/prompt",
+              "id": "prompt"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "session_summary_generated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "session_info_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "tool_call_delta_chunk",
+              "count": 3
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "pending_interaction",
+              "kind": "permission"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/request_permission",
+              "id": "permission-request"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/mcp/servers_updated"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "background_tasks"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "model_changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "model_changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "config_option_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "interaction_resolved"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "in_progress"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "tool_call_update",
+              "status": "completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_thought_chunk"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "agent_message_chunk",
+              "count": 2
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "session/update",
+              "sessionUpdate": "available_commands_update"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "response_completed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/queue/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "turn_completed",
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session/prompt_complete"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/sessions/changed"
+            },
+            {
+              "direction": "agent-to-client",
+              "id": "prompt",
+              "reply": true,
+              "stopReason": "end_turn"
+            },
+            {
+              "direction": "agent-to-client",
+              "method": "_x.ai/session_notification",
+              "sessionUpdate": "last_turn_summary"
+            }
+          ],
+          "stopReason": "end_turn",
+          "interactionResolved": true,
+          "toolRan": true,
+          "permissionRuleFilesWritten": 0,
+          "controllerCancelRequests": 0,
+          "lateControllerAnswers": [
+            {
+              "decision": "cancelled",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": true
+            },
+            {
+              "decision": "deny",
+              "framesAfter": [],
+              "leaderLoggedUnknownResponse": true,
+              "toolRanAfter": true
+            }
+          ]
+        }
+      ],
+      "expectations": [
+        {
+          "id": "leader-socket-ready",
+          "ok": true
+        },
+        {
+          "id": "initialize-result",
+          "ok": true
+        },
+        {
+          "id": "session-new-result",
+          "ok": true
+        },
+        {
+          "id": "viewer-attaches-while-pending-request-reaches-controller",
+          "ok": true
+        }
+      ]
+    }
+  }
+}

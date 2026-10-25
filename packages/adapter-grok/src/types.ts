@@ -13,7 +13,8 @@ export interface CreateGrokBackendOptions {
 export interface GrokBackend {
   createSession(options: CreateGrokSessionOptions): Promise<AgentAdapterBinding>;
   prepareSession(options: CreateGrokSessionOptions): Promise<PreparedGrokSession>;
-  dispose(): void;
+  /** Resolves once the shared leader has exited and adapter-owned state is removed. */
+  dispose(): Promise<void>;
 }
 
 export interface CreateGrokSessionOptions {

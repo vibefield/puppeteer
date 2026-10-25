@@ -49,6 +49,7 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
   const grokHome = childExtras?.GROK_HOME ?? process.env.GROK_HOME;
   const leader = createGrokLeaderService({ executable, env: childEnv });
   let disposed = false;
+  let disposal: Promise<void> | undefined;
 
   async function prepareSession(opts: CreateGrokSessionOptions): Promise<PreparedGrokSession> {
     if (disposed) throw new Error('Grok backend is disposed');
@@ -61,7 +62,11 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     // then joins that already-real session through --resume.
     const resume = opts.resume ?? (opts.resumeLatest ? await latestGrokSessionId(cwd, grokHome) : undefined);
     if (opts.resumeLatest && !resume) throw new Error(`no Grok session is available to resume in ${cwd}`);
-    const control = await openGrokControl(executable, cwd, socketPath, resume, opts, childEnv);
+    // Every session this backend prepares is launched with the native viewer
+    // on the same leader session (the recipe below), so the person answers
+    // permission requests there unless the host supplied a handler. A viewer
+    // that joins after a request was issued is still shown it (1.0.70 probe).
+    const control = await openGrokControl(executable, cwd, socketPath, resume, opts, childEnv, { viewer: 'attached' });
     const sessionId = control.sessionId;
     const launch: TerminalSpec = {
       command: executable,
@@ -98,14 +103,18 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
       }
     },
 
-    dispose(): void {
-      if (disposed) return;
+    dispose(): Promise<void> {
+      if (disposal) return disposal;
       disposed = true;
-      leader.dispose();
-      if (ownedImposterHome) {
-        rmSync(ownedImposterHome, { recursive: true, force: true });
-        ownedImposterHome = undefined;
-      }
+      // The leader may still be writing into an adapter-owned Imposter home
+      // while it drains, so that home goes only after the leader has exited.
+      disposal = leader.dispose().then(() => {
+        if (ownedImposterHome) {
+          rmSync(ownedImposterHome, { recursive: true, force: true });
+          ownedImposterHome = undefined;
+        }
+      });
+      return disposal;
     },
   };
 }

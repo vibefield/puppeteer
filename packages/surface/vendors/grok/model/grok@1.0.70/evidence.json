@@ -1,0 +1,159 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "evidencePolicy": {
+    "kind": "binary-only",
+    "statement": "Grok 1.0.70 has no public source: its binary-reported revision f50904eaee6c is absent from the public source mirror, whose newest commit is crate 1.0.45. Every verified claim therefore rests on runtime captures and binary probes of the exact artifact. Public mirror source and the ACP schema dependency are retained as unverified, separately attributed leads; an exact ACP schema is treated as verified only where every captured carrier validates against it. Binary serde-run names are low-confidence leads and never establish a shape."
+  },
+  "artifacts": [
+    {
+      "id": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-10-25T02:25:00.000Z",
+      "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-aarch64",
+      "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "f50904eaee6c",
+      "relation": "binary-reported-revision-not-present-in-public-mirror"
+    },
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8",
+      "relation": "public-mirror-commit",
+      "sourceRevision": "559751fdcec02d413e4c57c8832ab275e4f44980",
+      "scope": "nearest-public-mirror-older-than-binary",
+      "crateVersion": "1.0.45",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.70/public-source-surface.json"
+    },
+    {
+      "repository": "https://github.com/agentclientprotocol/agent-client-protocol",
+      "revision": "e931357254ff44573294d5cee214a269e0cd6c54",
+      "relation": "exact-release",
+      "scope": "dependency-of-supplemental-public-mirror-only",
+      "tag": "v0.11.4",
+      "schemaVersion": "0.11.4",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.70/public-source-surface.json"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/grok/captures/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "3bdf58361e694cde466ea70290765a7d92355493feab1fef7f66ec2efbc18eba"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/grok/probes/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "6edd3971028eaee094edcc21125a084a06ea305c633edece2edfc4abf2267ce8"
+    },
+    {
+      "id": "supplemental-public-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/grok/references/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "1ad6795777523f051f27034fe00edec82b978f067f193aabb3d2a90264378621"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/grok/model/grok@1.0.70",
+      "exclude": ["evidence.json"],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "89bf66e301193bc3e277cff7e0829913c1166fec7c71b8b39f8a282ce45d6467"
+    }
+  ],
+  "claims": [
+    {
+      "id": "grok-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T00:00:00.000Z",
+      "notes": "Type-preserving native carriers from scenarios approvals-remembered-off, headless-compact, hooks, subagent, viewer-prompt, viewer-session: directional ACP frames, updates.jsonl, and signals/summary/usage.json."
+    },
+    {
+      "id": "grok-census-observations",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T00:00:00.000Z",
+      "notes": "Harness-computed semantic projections (observations.json, topology.json, store-layout.json): timing, counts, literal permission option inventories, and process topology. Admissible for occurrence, ordering, timing, and retained literals only, never for a schema."
+    },
+    {
+      "id": "grok-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs --probes-only (disposable home, explicit environment)",
+      "capturedAt": "2026-10-25T00:00:00.000Z",
+      "notes": "`--version`, long/short help, subcommand help trees, and the `grok completions fish` grammar of the exact artifact."
+    },
+    {
+      "id": "grok-approval-probe",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs --approval-probe (deferring ACP controller, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T00:00:00.000Z",
+      "notes": "Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count. Admissible for occurrence, ordering, and outcomes only, never for a schema."
+    },
+    {
+      "id": "grok-binary-serde-lead",
+      "kind": "binary-probe",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/extract-public-reference.mjs (printable-run scan)",
+      "capturedAt": "2026-10-25T00:00:00.000Z",
+      "notes": "Low-confidence leads from a strings heuristic over the exact bytes: serde variant names absent from the public enum and xAI method literals. Rust string pooling makes absence meaningless and presence weak."
+    },
+    {
+      "id": "grok-public-mirror-lead",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "sourceReference": 1,
+      "notes": "Digest-pinned nearest public mirror (crate 1.0.45), older than the binary. It cannot promote binary claims."
+    },
+    {
+      "id": "grok-public-acp-lead",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "sourceReference": 2,
+      "notes": "Exact generated ACP schema 0.11.4, the dependency of the nearest public mirror commit."
+    }
+  ],
+  "limitations": [
+    "The binary-reported source revision f50904eaee6c is absent from the public source mirror, so source-to-artifact equivalence is unverified; this model follows the binary-only evidence policy above.",
+    "Only darwin-arm64 has artifact integrity and census evidence; darwin-x64, linux-x64, and windows-x64 (named-pipe leader) are unverified for 1.0.70.",
+    "The hermetic census disables remote settings, announcements, the model catalog, MCP servers, memory, workflows, and the Responses-API model backend, so _x.ai/models|settings|announcements/update, _x.ai/mcp/init_progress, models_cache.json, _x.ai/billing, the memory socket, and response_completed signatures remain unverified.",
+    "subagent_progress, workflow_updated, goal_updated, plan_*, auto_compact_started/failed/cancelled, session_status, served_model, turn_usage, memory_*, and the binary-only login_refused/backend_responsive/session_ended leads were not exercised.",
+    "Captured values under id-shaped keys are aliases (permission optionIds, model ids, config option ids, auth method ids, xAI ag1./at1./aa1. ids); literal option ids are retained only in the census observations."
+  ]
+}

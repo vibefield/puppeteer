@@ -7,9 +7,10 @@
  *   GROK_LIVE=1 PUPPETEER_GROK_BIN=/absolute/path/to/grok pnpm test
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
+import type { AcpApprovalRequest } from '@vibefield/puppeteer-adapter-acp';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
@@ -19,6 +20,8 @@ import {
   classifyGrokLiveModelRequest,
   GROK_LIVE_MODEL,
   GROK_LIVE_RESPONSE_MARKER,
+  GROK_LIVE_TOOL_FILE,
+  GROK_LIVE_TOOL_TRIGGER,
   isolatedGrokLiveEnvironment,
   startGrokLoopbackProvider,
   writeGrokLiveConfiguration,
@@ -26,6 +29,17 @@ import {
 import { GrokLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.GROK_LIVE === '1';
+
+/** Standing native allow/deny rules Grok writes when an `*_always` option is selected. */
+function persistedPermissionRules(grokHome: string): string[] {
+  try {
+    return readdirSync(join(grokHome, 'sessions'), { recursive: true, encoding: 'utf8' })
+      .map((entry) => basename(entry))
+      .filter((name) => name.startsWith('permission__'));
+  } catch {
+    return [];
+  }
+}
 
 describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
   it('shares one exact session across leader, ACP, durable observation, TUI, and resume', async () => {
@@ -47,7 +61,16 @@ describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
       const installation = await detectGrokInstallation(executable, { env: environment });
       expect(installation.exactTarget).toBe(true);
 
-      session = await backend.createSession({ cwd, model: GROK_LIVE_MODEL, permissionMode: 'default' });
+      const approvals: AcpApprovalRequest[] = [];
+      session = await backend.createSession({
+        cwd,
+        model: GROK_LIVE_MODEL,
+        permissionMode: 'default',
+        onApproval: (request) => {
+          approvals.push(request);
+          return 'approved';
+        },
+      });
       projection = projectAgentEvents(session);
       const sessionId = session.sessionId;
       expect(host.launches).toHaveLength(1);
@@ -87,6 +110,40 @@ describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
       );
       expect(projection.state.lastAssistantMessage).toContain(GROK_LIVE_RESPONSE_MARKER);
       expect(projection.envelopes.some(({ source }) => source === 'native-transcript')).toBe(true);
+      // 1.0.70 writes signals.json asynchronously after the prompt result, so a
+      // context sample may trail turn completion; wait for it instead of asserting.
+      await waitFor(
+        () => projection!.envelopes.some(({ event }) => event.type === 'context-window:updated'),
+        'context sample after the turn',
+      );
+
+      // A mutating command: 1.0.70 offers always-allow first, and a host
+      // approval must answer only this request (allow_once), persisting no rule.
+      const toolReceipt = await session.services.prompt.submit({
+        text: `${GROK_LIVE_TOOL_TRIGGER}: run the command, then reply with exactly ${GROK_LIVE_RESPONSE_MARKER}.`,
+      });
+      expect(toolReceipt, host.output(session.runtimeSessionId)).toEqual({
+        status: 'confirmed',
+        turnId: expect.any(String),
+      });
+      await waitFor(
+        () => projection!.envelopes.filter(({ event }) => event.type === 'turn:completed').length >= 2,
+        'normalized completion of the approved tool turn',
+      );
+      expect(approvals).toHaveLength(1);
+      expect(approvals[0]?.options.map(({ kind }) => kind)).toEqual([
+        'allow_always',
+        'allow_once',
+        'reject_once',
+        'reject_always',
+      ]);
+      expect(readFileSync(join(cwd, GROK_LIVE_TOOL_FILE), 'utf8').trim()).toBe(`${GROK_LIVE_TOOL_TRIGGER}_OK`);
+      expect(persistedPermissionRules(grokHome)).toEqual([]);
+      expect(
+        projection.envelopes.flatMap(({ event }) =>
+          event.type === 'interaction:permission-resolved' ? [event.outcome] : [],
+        ),
+      ).toEqual(['allowed']);
 
       const originalRuntimeSessionId = session.runtimeSessionId;
       projection.dispose();
@@ -117,13 +174,27 @@ describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
       const semanticTurnRequests = provider.requests.filter(
         ({ url, body }) => url?.startsWith('/v1/chat/completions') && classifyGrokLiveModelRequest(body) === 'turn',
       );
-      expect(semanticTurnRequests).toHaveLength(1);
+      const turnShapes = semanticTurnRequests.map(({ body }) => {
+        const messages = (body as { messages?: { role?: string; content?: unknown }[] }).messages ?? [];
+        return {
+          roles: messages.map(({ role }) => role).join(','),
+          lastUser: JSON.stringify([...messages].reverse().find(({ role }) => role === 'user')?.content ?? '').slice(
+            0,
+            160,
+          ),
+          tools: Array.isArray((body as { tools?: unknown }).tools),
+        };
+      });
+      // The plain turn, then the tool turn's call and its post-tool reply.
+      expect(semanticTurnRequests, JSON.stringify(turnShapes)).toHaveLength(3);
       expect(semanticTurnRequests[0]?.body).toMatchObject({ model: GROK_LIVE_MODEL, stream: true });
       expect(
         provider.requests.every(({ url }) =>
           ['/v1/chat/completions', '/v1/responses', '/v1/models'].some((route) => url?.startsWith(route)),
         ),
       ).toBe(true);
+      // The 1.0.70 origin probe is a bare GET of the provider origin, never a model call.
+      expect(provider.originProbes.every(({ method, body }) => method === 'GET' && body === undefined)).toBe(true);
       await attestLiveAdapter({ vendor: 'grok', artifact: executable, testId: 'grok:native-tui-leader' });
     } finally {
       resumedProjection?.dispose();
@@ -131,7 +202,9 @@ describe.runIf(live)('Grok adapter through real native TUI (live)', () => {
       projection?.dispose();
       await session?.dispose();
       await host.dispose();
-      backend.dispose();
+      // The 1.0.70 leader drains for ~2 s after SIGTERM; wait for it before
+      // removing the GROK_HOME it is still writing.
+      await backend.dispose();
       await provider.close();
       rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
     }

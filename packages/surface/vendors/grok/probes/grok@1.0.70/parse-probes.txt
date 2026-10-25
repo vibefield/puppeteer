@@ -1,0 +1,49 @@
+$ grok --print
+error: a value is required for '--single <PROMPT>' but none was supplied
+[exit 2]
+
+$ grok --effort
+error: a value is required for '--reasoning-effort <EFFORT>' but none was supplied
+[exit 2]
+
+$ grok --yolo=x
+error: unexpected value 'x' for '--always-approve' found; no more were expected
+[exit 2]
+
+$ grok --dangerously-skip-permissions=x
+error: unexpected value 'x' for '--always-approve' found; no more were expected
+[exit 2]
+
+$ grok --append-system-prompt
+error: a value is required for '--rules <RULES>' but none was supplied
+[exit 2]
+
+$ grok --allowed-tools
+error: a value is required for '--allow <RULE>' but none was supplied
+[exit 2]
+
+$ grok --allowedTools
+error: a value is required for '--allow <RULE>' but none was supplied
+[exit 2]
+
+$ grok --disallowedTools
+error: a value is required for '--deny <RULE>' but none was supplied
+[exit 2]
+
+$ grok --system-prompt
+error: a value is required for '--system-prompt-override <PROMPT>' but none was supplied
+[exit 2]
+
+$ grok --mode
+error: a value is required for '--mode <MODE>' but none was supplied
+  [possible values: ask]
+[exit 2]
+
+$ grok --mode x
+error: invalid value 'x' for '--mode <MODE>'
+  [possible values: ask]
+[exit 2]
+
+$ grok --add-dir
+error: a value is required for '--add-dir <DIR>' but none was supplied
+[exit 2]

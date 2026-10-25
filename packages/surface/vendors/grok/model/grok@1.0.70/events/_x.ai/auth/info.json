@@ -1,0 +1,123 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/auth/info",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "type": "object"
+  },
+  "resultSchema": {
+    "type": "object",
+    "properties": {
+      "codingDataRetentionOptOut": {
+        "type": "boolean"
+      },
+      "email": {
+        "type": "null"
+      },
+      "firstName": {
+        "type": "null"
+      },
+      "lastName": {
+        "type": "null"
+      },
+      "methodId": {
+        "type": "string"
+      },
+      "organizationId": {
+        "type": "null"
+      },
+      "organizationName": {
+        "type": "null"
+      },
+      "organizationRole": {
+        "type": "null"
+      },
+      "principalId": {
+        "type": "null"
+      },
+      "principalType": {
+        "type": "null"
+      },
+      "profileImageUrl": {
+        "type": "null"
+      },
+      "teamBlockedReasons": {
+        "type": "array"
+      },
+      "teamId": {
+        "type": "null"
+      },
+      "teamName": {
+        "type": "null"
+      },
+      "teamRole": {
+        "type": "null"
+      },
+      "userBlockedReason": {
+        "type": "null"
+      }
+    },
+    "required": [
+      "codingDataRetentionOptOut",
+      "email",
+      "firstName",
+      "lastName",
+      "methodId",
+      "organizationId",
+      "organizationName",
+      "organizationRole",
+      "principalId",
+      "principalType",
+      "profileImageUrl",
+      "teamBlockedReasons",
+      "teamId",
+      "teamName",
+      "teamRole",
+      "userBlockedReason"
+    ]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": ["integer", "string"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/auth/info"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "result": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "result": "sampled",
+    "carrier": "structural",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+      "Captured with the xai.api_key method and a placeholder key; account fields are null. A grok.com sign-in populates them (unverified).",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/viewer-session/acp-controller.jsonl",
+  "notes": "Client-to-agent extension request (adapter profiles read it). The result shape matches 1.0.0."
+}

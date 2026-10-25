@@ -1,0 +1,209 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "usage.json",
+  "channel": "session-state",
+  "channels": ["session-state"],
+  "transport": "json-file-replace",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "session": {
+        "type": "object",
+        "properties": {
+          "cacheCreationTokens": {
+            "type": "integer"
+          },
+          "cachedReadTokens": {
+            "type": "integer"
+          },
+          "inputTokens": {
+            "type": "integer"
+          },
+          "modelCalls": {
+            "type": "integer"
+          },
+          "modelUsage": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "cacheCreationTokens": {
+                  "type": "integer"
+                },
+                "cachedReadTokens": {
+                  "type": "integer"
+                },
+                "inputTokens": {
+                  "type": "integer"
+                },
+                "modelCalls": {
+                  "type": "integer"
+                },
+                "outputTokens": {
+                  "type": "integer"
+                },
+                "reasoningTokens": {
+                  "type": "integer"
+                },
+                "totalTokens": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "cacheCreationTokens",
+                "cachedReadTokens",
+                "inputTokens",
+                "modelCalls",
+                "outputTokens",
+                "reasoningTokens",
+                "totalTokens"
+              ]
+            }
+          },
+          "outputTokens": {
+            "type": "integer"
+          },
+          "primaryModelId": {
+            "type": "string"
+          },
+          "reasoningTokens": {
+            "type": "integer"
+          },
+          "totalTokens": {
+            "type": "integer"
+          },
+          "turnCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cacheCreationTokens",
+          "cachedReadTokens",
+          "inputTokens",
+          "modelCalls",
+          "modelUsage",
+          "outputTokens",
+          "primaryModelId",
+          "reasoningTokens",
+          "totalTokens",
+          "turnCount"
+        ]
+      },
+      "sessionId": {
+        "type": "string"
+      },
+      "turns": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cacheCreationTokens": {
+              "type": "integer"
+            },
+            "cachedReadTokens": {
+              "type": "integer"
+            },
+            "endedAt": {
+              "type": "string"
+            },
+            "inputTokens": {
+              "type": "integer"
+            },
+            "modelCalls": {
+              "type": "integer"
+            },
+            "modelUsage": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "cacheCreationTokens": {
+                    "type": "integer"
+                  },
+                  "cachedReadTokens": {
+                    "type": "integer"
+                  },
+                  "inputTokens": {
+                    "type": "integer"
+                  },
+                  "modelCalls": {
+                    "type": "integer"
+                  },
+                  "outputTokens": {
+                    "type": "integer"
+                  },
+                  "reasoningTokens": {
+                    "type": "integer"
+                  },
+                  "totalTokens": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "cacheCreationTokens",
+                  "cachedReadTokens",
+                  "inputTokens",
+                  "modelCalls",
+                  "outputTokens",
+                  "reasoningTokens",
+                  "totalTokens"
+                ]
+              }
+            },
+            "outputTokens": {
+              "type": "integer"
+            },
+            "primaryModelId": {
+              "type": "string"
+            },
+            "reasoningTokens": {
+              "type": "integer"
+            },
+            "totalTokens": {
+              "type": "integer"
+            },
+            "turnCount": {
+              "type": "integer"
+            },
+            "turnNumber": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "cacheCreationTokens",
+            "cachedReadTokens",
+            "endedAt",
+            "inputTokens",
+            "modelCalls",
+            "modelUsage",
+            "outputTokens",
+            "primaryModelId",
+            "reasoningTokens",
+            "totalTokens",
+            "turnCount",
+            "turnNumber"
+          ]
+        }
+      },
+      "updatedAt": {
+        "type": "string"
+      }
+    },
+    "required": ["session", "sessionId", "turns", "updatedAt"]
+  },
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/state.jsonl",
+  "notes": "New in 1.0.70: session and per-turn camelCase token totals with modelUsage per model."
+}

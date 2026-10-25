@@ -1,0 +1,80 @@
+{
+  "name": "configured-hooks",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session_notification",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "hook_run_started",
+              "event_name": "user_prompt_submit",
+              "prompt_id": "$uuid:prompt",
+              "count": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 10,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session_notification",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "hook_execution",
+              "event_name": "user_prompt_submit",
+              "prompt_id": "$uuid:prompt",
+              "runs": [
+                {
+                  "name": "true",
+                  "status": {
+                    "status": "success",
+                    "elapsed_ms": 3
+                  }
+                }
+              ]
+            },
+            "_meta": {
+              "agentTimestampMs": "$nowMs"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 10,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session/update",
+          "channel": "session-log",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "hook_execution",
+              "event_name": "user_prompt_submit",
+              "prompt_id": "$uuid:prompt",
+              "runs": [
+                {
+                  "name": "true",
+                  "status": {
+                    "status": "success",
+                    "elapsed_ms": 3
+                  }
+                }
+              ]
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9201",
+              "agentTimestampMs": "$nowMs"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

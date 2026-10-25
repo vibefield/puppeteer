@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "representation": "type-preserving-redaction",
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "mode": "controlled-leader-acp-viewer-census",
+  "harness": "packages/surface/vendors/grok/census/harness.mjs",
+  "platform": "darwin-arm64",
+  "artifactSha256": "5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec",
+  "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+  "capturedOn": "2026-10-25",
+  "scenarios": [
+    "approvals-remembered-off",
+    "headless-compact",
+    "hooks",
+    "subagent",
+    "viewer-prompt",
+    "viewer-session"
+  ]
+}

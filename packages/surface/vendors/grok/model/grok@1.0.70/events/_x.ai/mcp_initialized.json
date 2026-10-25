@@ -1,0 +1,58 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/mcp_initialized",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "elapsedMs": {
+        "type": "integer"
+      },
+      "mcpToolCount": {
+        "type": "integer"
+      },
+      "sessionId": {
+        "type": "string"
+      }
+    },
+    "required": ["elapsedMs", "mcpToolCount", "sessionId"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/mcp_initialized"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "structural",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/headless-compact/acp-resume.jsonl",
+  "notes": "Sent when the leader (re)initializes a session’s MCP servers: on session/load of an unloaded session and for a subagent child session."
+}

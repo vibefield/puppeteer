@@ -1,0 +1,140 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/session/setup",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "method": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "sessionId": {
+        "type": ["null", "string"]
+      }
+    },
+    "required": ["method", "phase", "sessionId"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/session/setup"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "phase": "auth"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "finalize_response"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "folder_trust"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "mcp_merge"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "plugin_registry"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "resolve_workspace"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "response_ready"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "phase": "tool_overrides"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "structural",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/acp-controller.jsonl",
+  "notes": "New in 1.0.70 and emitted only for session/new: phases auth, resolve_workspace, folder_trust, plugin_registry, mcp_merge (sessionId null) precede the result; response_ready (sessionId set) follows it, preceded by finalize_response and tool_overrides when subagents are enabled."
+}

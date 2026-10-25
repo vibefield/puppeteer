@@ -1,0 +1,28 @@
+{
+  "channels": {
+    "argv": {
+      "kind": "argv-env",
+      "notes": "One long-lived `grok agent leader` plus leader-attached ACP controllers (`grok agent --leader --leader-socket <sock> stdio`) and the native viewer (`grok --leader --leader-socket <sock> --resume <id>`)."
+    },
+    "acp": {
+      "kind": "acp",
+      "notes": "Strict JSON-RPC 2.0 NDJSON over stdio. Standard session/update and the xAI extension methods remain distinct; the leader fans session traffic out to every attached client."
+    },
+    "session-log": {
+      "kind": "native-log",
+      "notes": "Append-only GROK_HOME/sessions/<encoded cwd>/<session>/updates.jsonl records {timestamp (Unix seconds), method, params}."
+    },
+    "session-state": {
+      "kind": "native-state",
+      "notes": "Replace-in-place signals.json, summary.json, and usage.json beside updates.jsonl."
+    },
+    "leader": {
+      "kind": "unix-socket",
+      "notes": "Coordination socket owned by `grok agent leader`; topology, not an event source. On SIGTERM 1.0.70 drains for about 2 s, exits 143, and unlinks the socket; leader.lock remains."
+    },
+    "terminal": {
+      "kind": "terminal",
+      "notes": "Native leader-attached viewer. In 1.0.70 it renders and can answer leader-routed permission requests, including one issued before it attached; the first answer from any client wins. Semantics come from ACP and the durable store, never terminal text."
+    }
+  }
+}

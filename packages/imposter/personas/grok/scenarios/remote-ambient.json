@@ -1,0 +1,51 @@
+{
+  "name": "remote-ambient",
+  "then": [
+    {
+      "at": 0,
+      "do": {
+        "emit": {
+          "event": "_x.ai/models/update",
+          "with": {
+            "models": [],
+            "currentModelId": "$modelId"
+          }
+        }
+      }
+    },
+    {
+      "at": 10,
+      "do": {
+        "emit": {
+          "event": "_x.ai/settings/update",
+          "with": {
+            "settings": {}
+          }
+        }
+      }
+    },
+    {
+      "at": 20,
+      "do": {
+        "emit": {
+          "event": "_x.ai/announcements/update",
+          "with": {
+            "announcements": []
+          }
+        }
+      }
+    },
+    {
+      "at": 30,
+      "do": {
+        "emit": {
+          "event": "_x.ai/mcp/init_progress",
+          "with": {
+            "completed": 0,
+            "total": 0
+          }
+        }
+      }
+    }
+  ]
+}

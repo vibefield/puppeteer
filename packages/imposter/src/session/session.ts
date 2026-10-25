@@ -370,7 +370,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   let nativeStore: ReturnType<typeof createNativeSessionStore> | undefined;
 
   const emitNativeLog = async (method: string, params: Record<string, unknown>): Promise<void> => {
-    const wire = wireFor(method, params);
+    const wire = wireFor(method, nativeStore ? nativeStore.stamp(params) : params);
     const violations = persona.validate(method, wire);
     if (violations.length > 0) {
       throw new Error(`imposter refused an off-model payload for ${method}: ${violations.join('; ')}`);
@@ -390,15 +390,23 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       compactionCount += 1;
       bindings.$compactionCount = compactionCount;
       if (persona.schemaFor('signals.json')) {
-        await emitNativeState('signals.json', {
-          contextTokensUsed: usedTokens,
-          contextWindowTokens: capacityTokens,
-          contextWindowUsage: capacityTokens > 0 ? usedTokens / capacityTokens : 0,
-          primaryModelId: modelId,
-          compactionCount,
-          turnCount,
-          toolCallCount,
-        });
+        // The persona's own signals template keeps the file on-model; the
+        // inline snapshot remains for a persona that declares none.
+        const template = persona.ops['usage.refresh']?.find((binding) => binding.event === 'signals.json')?.with;
+        await emitNativeState(
+          'signals.json',
+          template
+            ? (substitute(template, { bindings, uuids: new Map() }) as Record<string, unknown>)
+            : {
+                contextTokensUsed: usedTokens,
+                contextWindowTokens: capacityTokens,
+                contextWindowUsage: capacityTokens > 0 ? usedTokens / capacityTokens : 0,
+                primaryModelId: modelId,
+                compactionCount,
+                turnCount,
+                toolCallCount,
+              },
+        );
       }
     }
   };
@@ -478,6 +486,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   let toolCallCount = 0;
   let compactionCount = 0;
   let assistantMessageStarted = false;
+  const contextPercent = (): number => (capacityTokens > 0 ? Math.round((usedTokens / capacityTokens) * 100) : 0);
 
   const statusPayload = (): Record<string, unknown> => {
     const payload: Record<string, unknown> = {
@@ -549,6 +558,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     $capacityTokens: capacityTokens,
     $usedTokens: usedTokens,
     $contextUsage: 0,
+    // Grok 1.0.70 persists context usage as a whole-number percentage.
+    $contextPercent: 0,
     $turnCount: turnCount,
     $turnIndex: 0,
     $turnStep: '0.1',
@@ -619,6 +630,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       // snapshot into its behavior document.
       bindings.$usedTokens = usedTokens;
       bindings.$contextUsage = capacityTokens > 0 ? usedTokens / capacityTokens : 0;
+      bindings.$contextPercent = contextPercent();
       bindings.$turnCount = turnCount;
       bindings.$turnIndex = Math.max(0, turnCount - 1);
       bindings.$turnStep = `${Math.max(0, turnCount - 1)}.1`;
@@ -787,28 +799,29 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       }
       bindings.$usedTokens = usedTokens;
       bindings.$contextUsage = capacityTokens > 0 ? usedTokens / capacityTokens : 0;
+      bindings.$contextPercent = contextPercent();
       bindings.$turnCount = turnCount;
       bindings.$turnIndex = Math.max(0, turnCount - 1);
       bindings.$turnStep = `${Math.max(0, turnCount - 1)}.1`;
       bindings.$messageCount = messageCount;
       bindings.$toolCallCount = toolCallCount;
       bindings.$compactionCount = compactionCount;
+      // A resumed session replays its journal under each record's own method
+      // (Grok 1.0.70 replays `_x.ai/session/update` itself over ACP during
+      // session/load), marked with the persona's replay metadata.
+      const replayMeta = persona.document.nativeStore?.replayMeta;
       for (const update of nativeStore.readUpdates()) {
-        const durableUpdate = update.params.update;
-        if (
-          update.method === '_x.ai/session/update' &&
-          durableUpdate !== null &&
-          typeof durableUpdate === 'object' &&
-          !Array.isArray(durableUpdate) &&
-          (durableUpdate as Record<string, unknown>).sessionUpdate === 'compaction_checkpoint'
-        ) {
-          // Grok persists this checkpoint for its own reconstruction but does
-          // not expose it on the live extension method. Replaying it would
-          // fabricate a wire event the ASM intentionally marks persist-only.
-          continue;
-        }
-        const method = update.method === '_x.ai/session/update' ? '_x.ai/session_notification' : update.method;
-        await replayRpc(method, update.params, notify);
+        const meta = update.params._meta;
+        const params = replayMeta
+          ? {
+              ...update.params,
+              _meta: {
+                ...(meta !== null && typeof meta === 'object' && !Array.isArray(meta) ? meta : {}),
+                ...replayMeta,
+              },
+            }
+          : update.params;
+        await replayRpc(update.method, params, notify);
       }
     },
     async runOp(op, argument = {}) {

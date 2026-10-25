@@ -336,6 +336,117 @@ describe('createPendingControlSession', () => {
     await session.dispose();
   });
 
+  it('publishes history Grok replays over ACP during session/load as replay, not live', async () => {
+    const control = fakeControl();
+    const observed = fakeObserver();
+    const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const envelopes: AdapterEventCandidate[] = [];
+    session.events.onCandidate((event) => envelopes.push(event));
+    envelopes.length = 0;
+
+    const replayed = { sessionId: 'sid', update: { sessionUpdate: 'turn_completed' }, _meta: { isReplay: true } };
+    control.emit({
+      ...candidate({ type: 'adapter:native-event', adapter: 'grok', nativeType: 'turn_completed' }, 'native-protocol'),
+      nativeEvent: { method: '_x.ai/session/update', params: replayed },
+    });
+    control.emit({
+      ...candidate(
+        { type: 'adapter:native-event', adapter: 'grok', nativeType: 'background_tasks' },
+        'native-protocol',
+      ),
+      nativeEvent: { method: '_x.ai/session_notification', params: { sessionId: 'sid', update: {} } },
+    });
+
+    expect(
+      envelopes.map(({ event, replay }) => [event.type === 'adapter:native-event' && event.nativeType, replay]),
+    ).toEqual([
+      ['turn_completed', true],
+      ['background_tasks', false],
+    ]);
+    await session.dispose();
+  });
+
+  it('keeps a subagent child session’s traffic off the root session state and usage', async () => {
+    const control = fakeControl();
+    const session = createPendingControlSession('sid', 'rt', () => control.session);
+    const projection = projectAgentEvents(session);
+    const envelopes: AdapterEventCandidate[] = [];
+    session.events.onCandidate((event) => envelopes.push(event));
+    envelopes.length = 0;
+    const batchesBefore = projection.monitorBatches.length;
+
+    const childTurn = {
+      sessionId: 'child-sid',
+      update: {
+        sessionUpdate: 'turn_completed',
+        prompt_id: 'child-prompt',
+        stop_reason: 'end_turn',
+        usage: { inputTokens: 900, outputTokens: 100, totalTokens: 1_000 },
+      },
+      _meta: { agentTimestampMs: 1_784_669_125_000 },
+    };
+    control.emit({
+      ...candidate({ type: 'adapter:native-event', adapter: 'grok', nativeType: 'turn_completed' }, 'native-protocol'),
+      nativeEvent: { method: '_x.ai/session_notification', params: childTurn },
+    });
+    control.emit({
+      ...candidate(
+        {
+          type: 'conversation:assistant-message',
+          messageId: 'm-child',
+          text: 'child',
+          final: false,
+          displayOnly: false,
+        },
+        'native-hook',
+      ),
+      nativeEvent: { sessionId: 'child-sid', update: { sessionUpdate: 'agent_message_chunk' } },
+    });
+
+    // The raw child event is retained (its nativeEvent names the child); nothing projects onto the root.
+    expect(envelopes.map(({ event }) => event.type)).toEqual(['adapter:native-event']);
+    expect(projection.state.lastAssistantMessage).toBeUndefined();
+    expect(projection.monitorBatches.slice(batchesBefore).flatMap((batch) => batch.updates)).toEqual([]);
+
+    control.emit({
+      ...candidate({ type: 'adapter:native-event', adapter: 'grok', nativeType: 'turn_completed' }, 'native-protocol'),
+      nativeEvent: { method: '_x.ai/session_notification', params: { ...childTurn, sessionId: 'sid' } },
+    });
+    expect(projection.monitorBatches.slice(batchesBefore).flatMap((batch) => batch.updates)).not.toEqual([]);
+    projection.dispose();
+    await session.dispose();
+  });
+
+  it('admits one live session start when the durable log has no hook-derived start', async () => {
+    const control = fakeControl([candidate({ type: 'session:started', nativeSessionId: 'sid' })]);
+    const observed = fakeObserver();
+    const session = createPendingControlSession('sid', 'rt', () => control.session, observed.observer);
+    const projection = projectAgentEvents(session);
+
+    observed.emit({
+      event: { type: 'session:started', nativeSessionId: 'sid' },
+      phase: 'live',
+      source: 'native-log',
+      confidence: 'authoritative',
+      nativeEvent: { update: { sessionUpdate: 'hook_execution', event_name: 'session_start' } },
+    });
+    observed.emit({
+      event: { type: 'session:started', nativeSessionId: 'sid' },
+      phase: 'bootstrap',
+      source: 'native-log',
+      confidence: 'authoritative',
+      nativeEvent: { update: { sessionUpdate: 'hook_execution', event_name: 'session_start' } },
+    });
+
+    const starts = projection.envelopes.filter(({ event }) => event.type === 'session:started');
+    expect(starts.map(({ replay, source }) => [replay, source])).toEqual([
+      [false, 'native-hook'],
+      [true, 'native-log'],
+    ]);
+    projection.dispose();
+    await session.dispose();
+  });
+
   it('degrades ACP control loss without claiming the native TUI exited', async () => {
     const control = fakeControl();
     const observed = fakeObserver();

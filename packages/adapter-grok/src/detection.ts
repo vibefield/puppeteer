@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 
-export const GROK_SURFACE_VERSION = '1.0.0';
-export const GROK_SURFACE_REVISION = '3cd0d0cbcebe';
+export const GROK_SURFACE_VERSION = '1.0.70';
+export const GROK_SURFACE_REVISION = 'f50904eaee6c';
 export const GROK_SURFACE_CHANNEL = 'stable';
 export const GROK_EXECUTABLE_ENV = 'PUPPETEER_GROK_BIN';
 export const GROK_DEFAULT_EXECUTABLE = 'grok';

@@ -73,7 +73,7 @@
       "adapterPackage": "@vibefield/puppeteer-adapter-grok",
       "persona": "grok",
       "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
-      "candidateVersion": "1.0.0",
+      "candidateVersion": "1.0.70",
       "status": "baseline-pending",
       "blockers": [
         "The protected four-platform adapter-through-real-native-TUI lane is implemented but has not yet completed successfully for every required platform."

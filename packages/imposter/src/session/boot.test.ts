@@ -183,7 +183,15 @@ describe('persona boot', () => {
       '_x.ai/session/update',
       {
         sessionId: 'restore-session',
-        update: { sessionUpdate: 'compaction_checkpoint', checkpoint_id: 'checkpoint-one' },
+        update: {
+          sessionUpdate: 'compaction_checkpoint',
+          checkpoint_id: 'checkpoint-one',
+          prompt_index_at_compaction: 1,
+          checkpoint_file: 'compaction_checkpoints/checkpoint-one.json',
+          schema_version: 1,
+          created_at: '2026-10-24T00:00:00.000000+00:00',
+        },
+        _meta: { agentTimestampMs: Date.now() },
       },
       'session-log',
     );
@@ -197,6 +205,15 @@ describe('persona boot', () => {
       contextTokensUsed: 16,
     });
     const before = readFileSync(updatesPath, 'utf8');
+    // Grok persists Unix seconds on the envelope and a per-session `_meta.eventId` ordinal.
+    const records = before
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { timestamp: number; params: { _meta?: { eventId?: string } } });
+    expect(records.every(({ timestamp }) => Number.isInteger(timestamp) && timestamp < 100_000_000_000)).toBe(true);
+    expect(records.map(({ params }) => params._meta?.eventId)).toEqual(
+      records.map((_, index) => `restore-session-${index + 1}`),
+    );
     const replayed: Array<{ method: string; params: Record<string, unknown> }> = [];
     const resumed = createImposterSession({
       persona,
@@ -218,18 +235,24 @@ describe('persona boot', () => {
           (params.update as { sessionUpdate?: string } | undefined)?.sessionUpdate === 'agent_message_chunk',
       ),
     ).toBe(true);
-    expect(
-      replayed.some(
-        ({ params }) =>
-          (params.update as { sessionUpdate?: string } | undefined)?.sessionUpdate === 'compaction_checkpoint',
-      ),
-    ).toBe(false);
+    // 1.0.70 replays its journal over ACP under each record's own method, marked as replay.
     expect(
       replayed.some(
         ({ method, params }) =>
-          method === '_x.ai/session_notification' &&
+          method === '_x.ai/session/update' &&
+          (params.update as { sessionUpdate?: string } | undefined)?.sessionUpdate === 'compaction_checkpoint',
+      ),
+    ).toBe(true);
+    expect(
+      replayed.some(
+        ({ method, params }) =>
+          method === '_x.ai/session/update' &&
           (params.update as { sessionUpdate?: string } | undefined)?.sessionUpdate === 'turn_completed',
       ),
+    ).toBe(true);
+    expect(replayed.some(({ method }) => method === '_x.ai/session_notification')).toBe(false);
+    expect(
+      replayed.every(({ params }) => (params._meta as { isReplay?: boolean } | undefined)?.isReplay === true),
     ).toBe(true);
     expect((resumed.statusPayload().context_window as { total_input_tokens: number }).total_input_tokens).toBe(16);
     expect(resumed.bindings).toMatchObject({

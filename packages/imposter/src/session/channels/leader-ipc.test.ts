@@ -76,6 +76,51 @@ describe.skipIf(process.platform === 'win32')('Grok leader IPC', () => {
     expect(viewerLines[1]).toMatchObject({ method: 'session/update', params: { sessionId: 'session-1' } });
   });
 
+  it('asks every viewer a routed controller request and shows a late viewer the ones still open', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-leader-request-'));
+    roots.push(root);
+    const relay = await listenLeaderRelay(join(root, 'leader.sock'), '1.0.70');
+    relays.push(relay);
+    const controller = await connectLeaderAcp(relay.socketPath, 'controller', 'session-1', '1.0.70');
+    const viewer = await connectLeaderAcp(relay.socketPath, 'viewer', 'session-1', '1.0.70');
+    connections.push(controller, viewer);
+    const controllerLines = lines(controller);
+    const viewerLines = lines(viewer);
+    const permission = (id: number, toolCallId: string) => ({
+      jsonrpc: '2.0',
+      id,
+      method: 'session/request_permission',
+      params: { sessionId: 'session-1', toolCall: { toolCallId }, options: [] },
+    });
+
+    controller.output.write(`${JSON.stringify(permission(3, 'call-1'))}\n`);
+    await waitFor(() => viewerLines.length === 1);
+    expect(viewerLines[0]).toMatchObject({ id: 3, method: 'session/request_permission' });
+    // The viewer's answer returns under the controller's own id.
+    viewer.output.write(
+      `${JSON.stringify({ jsonrpc: '2.0', id: 3, result: { outcome: { outcome: 'cancelled' } } })}\n`,
+    );
+    await waitFor(() => controllerLines.length === 1);
+    expect(controllerLines[0]).toEqual({ jsonrpc: '2.0', id: 3, result: { outcome: { outcome: 'cancelled' } } });
+
+    // Two more requests; another client resolves the first, so a late viewer sees only the second.
+    controller.output.write(`${JSON.stringify(permission(4, 'call-2'))}\n`);
+    controller.output.write(`${JSON.stringify(permission(5, 'call-3'))}\n`);
+    controller.output.write(
+      `${JSON.stringify({
+        jsonrpc: '2.0',
+        method: '_x.ai/session_notification',
+        params: { sessionId: 'session-1', update: { sessionUpdate: 'interaction_resolved', tool_call_id: 'call-2' } },
+      })}\n`,
+    );
+    await waitFor(() => viewerLines.length === 4);
+    const late = await connectLeaderAcp(relay.socketPath, 'viewer', 'session-1', '1.0.70');
+    connections.push(late);
+    const lateLines = lines(late);
+    await waitFor(() => lateLines.length === 1);
+    expect(lateLines).toEqual([expect.objectContaining({ id: 5, method: 'session/request_permission' })]);
+  });
+
   it('does not cross session boundaries', async () => {
     const root = mkdtempSync(join(tmpdir(), 'puppeteer-leader-isolation-'));
     roots.push(root);

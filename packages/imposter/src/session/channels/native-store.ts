@@ -17,6 +17,8 @@ export interface NativeSessionStore {
   readonly directory: string;
   readonly updatesPath: string;
   readonly indexPath?: string | undefined;
+  /** Params with the store's synthesized native fields (an event id) added, before validation. */
+  stamp(params: Record<string, unknown>): Record<string, unknown>;
   append(method: string, params: Record<string, unknown>): void;
   appendIndex(payload: Record<string, unknown>): void;
   write(name: string, payload: Record<string, unknown>): void;
@@ -77,6 +79,7 @@ export function createNativeSessionStore(
   interface JournalState {
     methods: Set<string>;
     nextSequence: number;
+    nextEventOrdinal: number;
     previousRecordId?: string;
   }
   const journalStates = new Map<string, JournalState>();
@@ -109,6 +112,33 @@ export function createNativeSessionStore(
     mkdirSync(path, { recursive: true });
     return path;
   };
+  const clock = (format: 'epoch-ms' | 'epoch-seconds' | 'iso' | undefined): number | string =>
+    format === 'iso'
+      ? new Date().toISOString()
+      : format === 'epoch-seconds'
+        ? Math.floor(Date.now() / 1_000)
+        : Date.now();
+  const eventIdField = document.recordEventId?.metaField;
+  /** The `-<n>` suffix of a method-params record's `params._meta.<metaField>`. */
+  const eventOrdinal = (carrier: Record<string, unknown>): number | undefined => {
+    if (!eventIdField) return undefined;
+    const params = carrier.params;
+    const meta = params !== null && typeof params === 'object' ? (params as Record<string, unknown>)._meta : undefined;
+    const value =
+      meta !== null && typeof meta === 'object' ? (meta as Record<string, unknown>)[eventIdField] : undefined;
+    const match = typeof value === 'string' ? /-(\d+)$/u.exec(value) : null;
+    return match ? Number(match[1]) : undefined;
+  };
+  const stampEventId = (params: Record<string, unknown>, state: JournalState): Record<string, unknown> => {
+    if (!eventIdField) return params;
+    const meta =
+      params._meta !== null && typeof params._meta === 'object' && !Array.isArray(params._meta)
+        ? (params._meta as Record<string, unknown>)
+        : {};
+    if (meta[eventIdField] !== undefined) return params;
+    const owner = typeof params.sessionId === 'string' ? params.sessionId : String(bindings.$sessionId ?? '');
+    return { ...params, _meta: { ...meta, [eventIdField]: `${owner}-${state.nextEventOrdinal}` } };
+  };
   const journalState = (): JournalState => {
     const path = updatesPath();
     const existing = journalStates.get(path);
@@ -116,6 +146,7 @@ export function createNativeSessionStore(
     const state: JournalState = {
       methods: new Set(),
       nextSequence: document.recordSequence?.start ?? 0,
+      nextEventOrdinal: 1,
     };
     if (existsSync(path)) {
       const typeField = document.recordTypeField ?? 'type';
@@ -142,6 +173,10 @@ export function createNativeSessionStore(
         const idField = document.recordIdentity?.idField;
         const id = idField === undefined ? undefined : carrier[idField];
         if (typeof id === 'string') state.previousRecordId = id;
+        const existingOrdinal = eventOrdinal(carrier);
+        if (existingOrdinal !== undefined) {
+          state.nextEventOrdinal = Math.max(state.nextEventOrdinal, existingOrdinal + 1);
+        }
       }
     }
     journalStates.set(path, state);
@@ -158,15 +193,18 @@ export function createNativeSessionStore(
     get indexPath() {
       return indexPath();
     },
+    stamp(params) {
+      return document.recordFormat === 'flat-record' ? params : stampEventId(params, journalState());
+    },
     append(method, params) {
       const flat = document.recordFormat === 'flat-record';
       const state = journalState();
       if (flat && document.singletonEvents?.includes(method) && state.methods.has(method)) return;
       const automatic: Record<string, unknown> = {};
       if (flat && document.recordTimestamp && !document.recordTimestamp.omitFor?.includes(method)) {
-        automatic[document.recordTimestamp.field] =
-          document.recordTimestamp.format === 'iso' ? new Date().toISOString() : Date.now();
+        automatic[document.recordTimestamp.field] = clock(document.recordTimestamp.format);
       }
+      const recordParams = flat ? params : stampEventId(params, state);
       if (flat && document.recordSequence) {
         automatic[document.recordSequence.field] = state.nextSequence;
       }
@@ -177,7 +215,7 @@ export function createNativeSessionStore(
         }
       }
       const typeField = document.recordTypeField ?? 'type';
-      const payload = document.recordPayloadField ? { [document.recordPayloadField]: params } : params;
+      const payload = document.recordPayloadField ? { [document.recordPayloadField]: recordParams } : recordParams;
       const envelope: Record<string, unknown> = flat
         ? {
             ...automatic,
@@ -188,19 +226,22 @@ export function createNativeSessionStore(
               : {}),
           }
         : {
-            // Grok's persisted envelope uses Unix epoch milliseconds. Keep this
-            // distinct from `_meta.agentTimestampMs`: both are independently
-            // present in real captures and consumers use the outer value while
-            // replaying records that do not carry metadata.
-            timestamp: Date.now(),
+            // The legacy envelope's clock defaults to epoch milliseconds; a persona
+            // sets its native unit (Grok persists Unix seconds). Keep it distinct
+            // from `_meta.agentTimestampMs`: both are independently present in
+            // real captures and consumers use the outer value while replaying
+            // records that do not carry metadata.
+            timestamp: clock(document.recordTimestamp?.format ?? 'epoch-ms'),
             method,
-            params,
+            params: recordParams,
           };
       const violations = options.validateRecord?.(method, envelope) ?? [];
       if (violations.length > 0) {
         throw new Error(`imposter refused an off-model native record for ${method}: ${violations.join('; ')}`);
       }
       state.methods.add(method);
+      const written = eventOrdinal(envelope);
+      if (written !== undefined) state.nextEventOrdinal = Math.max(state.nextEventOrdinal, written + 1);
       if (flat && document.recordSequence) {
         const ordinal = envelope[document.recordSequence.field];
         state.nextSequence =

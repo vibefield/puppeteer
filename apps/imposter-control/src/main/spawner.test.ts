@@ -103,16 +103,22 @@ describe.skipIf(!posix)('persona spawner', () => {
       const joined = plane.sessions.find((session) => session.sessionId === sessionId)!;
       expect(joined).toMatchObject({
         vendor: 'grok',
-        nativeBehavior: { title: expect.stringContaining('Grok 1.0.0 native') },
+        nativeBehavior: { title: expect.stringContaining('Grok 1.0.70 native') },
         scenarioDriver: { state: 'ready' },
       });
       expect(joined.nativeBehavior.nodes.map((node) => node.id)).toEqual(
         expect.arrayContaining(['compact-start', 'compact-checkpoint', 'subagent-spawned', 'subagent-finished']),
       );
-      expect(joined.nativeEvents.map((event) => event.channel)).toEqual(
+      // Grok's durable carriers are secondary rails of the ACP spellings.
+      expect(joined.nativeEvents.flatMap((event) => event.channels)).toEqual(
         expect.arrayContaining(['acp', 'session-log', 'session-state']),
       );
-      expect(joined.runflows.map((flow) => flow.intent)).toEqual(['session.compaction', 'subagent.lifecycle']);
+      expect(joined.runflows.map((flow) => flow.intent)).toEqual([
+        'session.compaction',
+        'subagent.lifecycle',
+        'hooks.lifecycle',
+        'session.ambient',
+      ]);
       expect(joined).not.toHaveProperty('state');
     } finally {
       await spawner.disposeAll();

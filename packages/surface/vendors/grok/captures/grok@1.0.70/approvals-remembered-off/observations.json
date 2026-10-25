@@ -1,0 +1,146 @@
+{
+  "scenario": "approvals-remembered-off",
+  "providerRequests": [
+    {
+      "method": "GET",
+      "path": "/workspace/redacted-file",
+      "kind": "origin-probe"
+    },
+    {
+      "method": "POST",
+      "path": "/workspace/redacted-file",
+      "kind": "responses"
+    },
+    {
+      "method": "POST",
+      "path": "/workspace/redacted-file",
+      "kind": "turn"
+    },
+    {
+      "method": "POST",
+      "path": "/workspace/redacted-file",
+      "kind": "turn"
+    },
+    {
+      "method": "POST",
+      "path": "/workspace/redacted-file",
+      "kind": "dashboard-summary"
+    }
+  ],
+  "leaderReadyMs": 153,
+  "sessionNewResultMs": 75,
+  "turns": [
+    {
+      "label": "mutating-allow",
+      "stopReason": "end_turn",
+      "timedOut": false,
+      "promptResultMs": 309,
+      "signalsPresentAtResult": false,
+      "signalsAppearedAfterResultMs": 54,
+      "signalsTurnCountAtResult": null,
+      "signalsTurnCountSettled": 1,
+      "permissionRequests": [
+        {
+          "tool": "run_terminal_command",
+          "options": [
+            "allow-once/allow_once",
+            "reject-once/reject_once"
+          ]
+        }
+      ],
+      "userMessageEchoes": 0,
+      "childSessionFrames": 0
+    }
+  ],
+  "leaderShutdown": {
+    "signal": "SIGTERM",
+    "exitedWithinMs": 2009,
+    "exitCode": 143,
+    "exitSignal": null,
+    "socketRemainsAfterExit": false,
+    "lockRemainsAfterExit": true,
+    "socketDirectoryEntries": [
+      "leader.lock"
+    ]
+  },
+  "permissionRuleFiles": 0,
+  "expectations": [
+    {
+      "id": "anon-746e0378dda14230",
+      "ok": true
+    },
+    {
+      "id": "anon-8199d03e7e3fad17",
+      "ok": true
+    },
+    {
+      "id": "anon-cec548d9297918ca",
+      "ok": true
+    },
+    {
+      "id": "anon-53b4285f8c39ecf6",
+      "ok": true,
+      "detail": {
+        "label": "mutating-allow",
+        "stopReason": "end_turn",
+        "timedOut": false,
+        "promptResultMs": 309,
+        "signalsPresentAtResult": false,
+        "signalsAppearedAfterResultMs": 54,
+        "signalsTurnCountAtResult": null,
+        "signalsTurnCountSettled": 1,
+        "permissionRequests": [
+          {
+            "tool": "run_terminal_command",
+            "options": [
+              "allow-once/allow_once",
+              "reject-once/reject_once"
+            ]
+          }
+        ],
+        "userMessageEchoes": 0,
+        "childSessionFrames": 0
+      }
+    },
+    {
+      "id": "anon-37fe8421da1589af",
+      "ok": true,
+      "detail": [
+        "allow-once/allow_once",
+        "reject-once/reject_once"
+      ]
+    }
+  ],
+  "offeredTools": [
+    {
+      "kind": "mutating",
+      "chosen": "run_terminal_command",
+      "offered": [
+        "run_terminal_command",
+        "read_file",
+        "search_replace",
+        "list_dir",
+        "grep",
+        "kill_command_or_subagent",
+        "todo_write",
+        "get_command_or_subagent_output",
+        "scheduler_create",
+        "scheduler_delete",
+        "scheduler_list",
+        "monitor",
+        "search_tool",
+        "use_tool",
+        "update_goal",
+        "enter_plan_mode",
+        "exit_plan_mode",
+        "ask_user_question",
+        "web_search",
+        "image_gen",
+        "image_edit",
+        "image_to_video",
+        "reference_to_video",
+        "write"
+      ]
+    }
+  ]
+}
