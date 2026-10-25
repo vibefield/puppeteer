@@ -18,7 +18,7 @@ describe('requireClaudeLiveExecutable', () => {
 
   it('returns the configured artifact as an absolute path', () => {
     expect(requireClaudeLiveExecutable({ PUPPETEER_CLAUDE_BIN: '/opt/artifacts/claude' })).toBe(
-      '/opt/artifacts/claude',
+      resolve('/opt/artifacts/claude'),
     );
     expect(requireClaudeLiveExecutable({ PUPPETEER_CLAUDE_BIN: './artifacts/claude' })).toBe(
       resolve('./artifacts/claude'),
@@ -35,39 +35,44 @@ describe('isolatedClaudeExec', () => {
     else process.env.PUPPETEER_CLAUDE_LIVE_PARENT_PROBE = parentProbe;
   });
 
-  it('probes with only the isolated environment, never the parent HOME or variables', async () => {
-    const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-claude-exec-')));
-    roots.push(root);
-    const seen = join(root, 'seen');
-    const fake = join(root, 'claude');
-    // A stand-in executable: answers the probes and records the environment it was given.
-    writeFileSync(
-      fake,
-      `#!/bin/sh
+  // The stand-in is a POSIX shell script; Windows cannot execute it without a shell, which the probe
+  // deliberately never uses. The Windows promotion lane exercises the same path with the real artifact.
+  it.skipIf(process.platform === 'win32')(
+    'probes with only the isolated environment, never the parent HOME or variables',
+    async () => {
+      const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-claude-exec-')));
+      roots.push(root);
+      const seen = join(root, 'seen');
+      const fake = join(root, 'claude');
+      // A stand-in executable: answers the probes and records the environment it was given.
+      writeFileSync(
+        fake,
+        `#!/bin/sh
 printf '%s|%s|%s\\n' "$HOME" "$CLAUDE_CONFIG_DIR" "\${PUPPETEER_CLAUDE_LIVE_PARENT_PROBE-unset}" >> '${seen}'
 case "$1" in
   --version) echo '${CLAUDE_SURFACE_VERSION} (Claude Code)' ;;
   *) echo '--session-id --settings --setting-sources -n, --name --permission-mode --resume --model --effort' ;;
 esac
 `,
-      { mode: 0o700 },
-    );
-    process.env.PUPPETEER_CLAUDE_LIVE_PARENT_PROBE = 'parent';
-    const home = join(root, 'home');
-    const configDir = join(root, 'claude-config');
+        { mode: 0o700 },
+      );
+      process.env.PUPPETEER_CLAUDE_LIVE_PARENT_PROBE = 'parent';
+      const home = join(root, 'home');
+      const configDir = join(root, 'claude-config');
 
-    const detection = await detectClaude({
-      executable: fake,
-      exec: isolatedClaudeExec({ PATH: '/usr/bin:/bin', HOME: home, CLAUDE_CONFIG_DIR: configDir }),
-    });
+      const detection = await detectClaude({
+        executable: fake,
+        exec: isolatedClaudeExec({ PATH: '/usr/bin:/bin', HOME: home, CLAUDE_CONFIG_DIR: configDir }),
+      });
 
-    expect(detection.version).toBe(CLAUDE_SURFACE_VERSION);
-    expect(detection.warnings).toEqual([]);
-    expect(readFileSync(seen, 'utf8').trimEnd().split('\n')).toEqual([
-      `${home}|${configDir}|unset`,
-      `${home}|${configDir}|unset`,
-    ]);
-  });
+      expect(detection.version).toBe(CLAUDE_SURFACE_VERSION);
+      expect(detection.warnings).toEqual([]);
+      expect(readFileSync(seen, 'utf8').trimEnd().split('\n')).toEqual([
+        `${home}|${configDir}|unset`,
+        `${home}|${configDir}|unset`,
+      ]);
+    },
+  );
 
   it('refuses an environment that leaves HOME or CLAUDE_CONFIG_DIR to the account', () => {
     expect(() => isolatedClaudeExec({ PATH: '/usr/bin', CLAUDE_CONFIG_DIR: '/tmp/config' })).toThrow(/explicit HOME/);
