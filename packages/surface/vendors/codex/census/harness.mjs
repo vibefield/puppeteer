@@ -261,7 +261,8 @@ export function censusEnvironment(home, source = process.env, { executable } = {
  */
 export function explicitCodexExecutable({ bin, packageRoot, env = process.env } = {}) {
   if (bin) return resolve(bin);
-  if (packageRoot) return resolve(packageRoot, 'bin', 'codex');
+  // The release package ships bin/codex.exe on Windows and bin/codex elsewhere.
+  if (packageRoot) return resolve(packageRoot, 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex');
   if (env.PUPPETEER_CODEX_BIN) return resolve(env.PUPPETEER_CODEX_BIN);
   return undefined;
 }
@@ -392,11 +393,16 @@ export async function runScenario(name, options = {}) {
     executable,
     [
       'app-server',
-      '-c', 'model_provider="fake"',
-      '-c', 'model_providers.fake.name="fake"',
-      '-c', `model_providers.fake.base_url="http://127.0.0.1:${port}/v1"`,
-      '-c', 'model_providers.fake.wire_api="responses"',
-      '-c', 'model_providers.fake.env_key="FAKE_KEY"',
+      '-c',
+      'model_provider="fake"',
+      '-c',
+      'model_providers.fake.name="fake"',
+      '-c',
+      `model_providers.fake.base_url="http://127.0.0.1:${port}/v1"`,
+      '-c',
+      'model_providers.fake.wire_api="responses"',
+      '-c',
+      'model_providers.fake.env_key="FAKE_KEY"',
     ],
     // Its own process group, so the helpers it spawns (the curated-plugin sync
     // among them) die with it instead of outliving the throwaway home.

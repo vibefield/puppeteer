@@ -143,18 +143,19 @@ describe('the census runs hermetically', () => {
       PATH: '/usr/bin',
       TMPDIR: '/scratch/tmp',
       HOME: '/scratch/home',
-      CODEX_HOME: '/scratch/home/.codex',
+      CODEX_HOME: join('/scratch/home', '.codex'),
       FAKE_KEY: 'sk-not-a-real-key',
       RUST_LOG: 'codex_core=debug',
     });
   });
 
   it('runs the package layout before the documented override', () => {
+    const packaged = resolve('/pkg', 'bin', process.platform === 'win32' ? 'codex.exe' : 'codex');
     expect(resolveCodexExecutable({ packageRoot: '/pkg', env: { PUPPETEER_CODEX_BIN: '/other/codex' } })).toBe(
-      '/pkg/bin/codex',
+      packaged,
     );
-    expect(resolveCodexExecutable({ bin: '/x/codex', packageRoot: '/pkg' })).toBe('/x/codex');
-    expect(resolveCodexExecutable({ env: { PUPPETEER_CODEX_BIN: '/other/codex' } })).toBe('/other/codex');
+    expect(resolveCodexExecutable({ bin: '/x/codex', packageRoot: '/pkg' })).toBe(resolve('/x/codex'));
+    expect(resolveCodexExecutable({ env: { PUPPETEER_CODEX_BIN: '/other/codex' } })).toBe(resolve('/other/codex'));
   });
 
   it('never falls back to codex on PATH, where the operator’s own signed-in install lives', () => {
