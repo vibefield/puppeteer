@@ -144,14 +144,24 @@ const evidence = model.evidenceIndex;
 if (!evidence) throw new Error('canonical ground truth has no evidence index');
 const artifact = readJson(join(probesDir, 'artifact.json'));
 const reference = readJson(referencePath);
+// The probe and census ran on one platform's bytes. Each other platform's artifact has its own
+// digest (attached by the adaptation workflow), so only the probed platform is held to the probe.
 for (const entry of evidence.artifacts ?? []) {
   const label = entry.id ?? entry.platform ?? 'unnamed artifact';
   if (typeof entry.versionOutput !== 'string' || !entry.versionOutput.includes(selected.version)) {
     problems.push(`${label} version/revision identity drifted`);
   }
-  if (entry.integrity?.sha256 !== `sha256:${artifact.sha256}`) problems.push(`${label} digest differs from the probe`);
+  if (entry.platform === artifact.platform) {
+    if (entry.integrity?.sha256 !== `sha256:${artifact.sha256}`)
+      problems.push(`${label} digest differs from the probe`);
+  } else if (!/^sha256:[0-9a-f]{64}$/.test(entry.integrity?.sha256 ?? '')) {
+    problems.push(`${label} carries no SHA-256 identity`);
+  }
 }
 if ((evidence.artifacts ?? []).length === 0) problems.push('artifact evidence is missing');
+if (!(evidence.artifacts ?? []).some((entry) => entry.platform === artifact.platform)) {
+  problems.push(`artifact evidence has no ${artifact.platform} entry for the probed bytes`);
+}
 if (metadata.artifactSha256 !== artifact.sha256) problems.push('census was captured from different artifact bytes');
 if (reference.binaryProbe?.artifactSha256 !== artifact.sha256)
   problems.push('binary-probe reference used different bytes');

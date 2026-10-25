@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import {
+  archiveListingEntries,
   downloadAgentArtifact,
   resolveArtifactDownload,
   resolveSourceArchiveRoot,
+  safeArchiveEntry,
 } from './download-agent-artifact.mjs';
 
 const config = {
@@ -62,6 +64,18 @@ function storedZip(entry, content) {
   end.writeUInt32LE(centralOffset, 16);
   return Buffer.concat([local, name, bytes, central, name, end]);
 }
+
+test('archive listings split CRLF lines the way Windows bsdtar prints them', () => {
+  // codex-package-x86_64-pc-windows-msvc.tar.gz listed by Windows tar: every line ends in CRLF.
+  const windowsListing = 'bin/\r\nbin/codex-code-mode-host.exe\r\nbin/codex.exe\r\ncodex-package.json\r\n';
+  const entries = archiveListingEntries(windowsListing);
+  assert.deepEqual(entries, ['bin/', 'bin/codex-code-mode-host.exe', 'bin/codex.exe', 'codex-package.json']);
+  assert.ok(entries.every(safeArchiveEntry));
+  assert.deepEqual(archiveListingEntries('bin/\nbin/codex\n'), ['bin/', 'bin/codex']);
+  // A carriage return inside a name is not a line ending and stays unsafe.
+  assert.equal(safeArchiveEntry('bin/co\rdex.exe'), false);
+  assert.ok(archiveListingEntries('bin/co\rdex.exe\n').some((entry) => !safeArchiveEntry(entry)));
+});
 
 test('artifact URLs expand only the reviewed version field and host', () => {
   const resolved = resolveArtifactDownload(config, 'linux-x64', '1.2.3');
