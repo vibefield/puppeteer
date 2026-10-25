@@ -1,0 +1,33 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*/acp-*.jsonl",
+    "*/updates.jsonl",
+    "*/updates-child-*.jsonl",
+    "*/state.jsonl",
+    "capture.json"
+  ],
+  "limitations": [
+    "Directional ACP frames, durable updates.jsonl records, and signals/summary/usage.json state retain every native key, container, primitive type, record order, and request/result correlation; sensitive scalars are replaced in place.",
+    "Durable Unix-seconds clocks pin to 1000000000, millisecond clocks to 1767225600000, and ISO-8601 strings to 2026-01-01T00:00:00 with their native precision and offset retained.",
+    "Values under id-shaped keys are value-keyed aliases, so joins survive but native literals do not: permission optionId values, model ids, config option ids, auth method ids, and xAI ag1./at1./aa1. identifiers are aliased. The census observations retain the literal permission option inventory.",
+    "The machine-derived initialize _meta.agentId is one fixed constant. Raw tool arguments and results (rawInput, rawOutput, x.ai/tool.input) keep only their variant/type/kind/status discriminators.",
+    "Disposable workspace, HOME, GROK_HOME, leader socket, and executable paths are rewritten to /workspace, /home/user, /home/user/.grok, /tmp/grok-census, and /usr/local/bin/grok, including percent-encoded session buckets."
+  ],
+  "overrides": [
+    {
+      "paths": [
+        "*/observations.json",
+        "*/topology.json",
+        "*/store-layout.json"
+      ],
+      "representation": "semantic-projection",
+      "limitations": [
+        "Harness-computed timings, counts, permission option inventories, process argv, and store file listings. They are occurrence, ordering, timing, and topology evidence only and cannot define a native payload schema."
+      ]
+    }
+  ]
+}

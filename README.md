@@ -28,7 +28,7 @@ specifications versus historical material.
 [![Claude Code: legacy verified 2.1.207](https://img.shields.io/badge/Claude_Code-legacy_verified_2.1.207-orange)](packages/surface/vendors/claude/groundtruth.json)
 [![Codex: legacy verified 0.147.0](https://img.shields.io/badge/Codex-legacy_verified_0.147.0-orange)](packages/surface/vendors/codex/groundtruth.json)
 [![GitHub Copilot CLI: baseline pending 1.0.80](https://img.shields.io/badge/GitHub_Copilot_CLI-baseline_pending_1.0.80-lightgrey)](packages/surface/vendors/copilot/groundtruth.json)
-[![Grok Build: baseline pending 1.0.0](https://img.shields.io/badge/Grok_Build-baseline_pending_1.0.0-lightgrey)](packages/surface/vendors/grok/groundtruth.json)
+[![Grok Build: baseline pending 1.0.70](https://img.shields.io/badge/Grok_Build-baseline_pending_1.0.70-lightgrey)](packages/surface/vendors/grok/groundtruth.json)
 [![Hermes Agent: baseline pending 0.20.0](https://img.shields.io/badge/Hermes_Agent-baseline_pending_0.20.0-lightgrey)](packages/surface/vendors/hermes/groundtruth.json)
 [![Kimi Code: baseline pending 0.34.0](https://img.shields.io/badge/Kimi_Code-baseline_pending_0.34.0-lightgrey)](packages/surface/vendors/kimi/groundtruth.json)
 [![OpenCode: baseline pending 1.18.16](https://img.shields.io/badge/OpenCode-baseline_pending_1.18.16-lightgrey)](packages/surface/vendors/opencode/groundtruth.json)

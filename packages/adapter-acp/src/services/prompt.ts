@@ -15,6 +15,8 @@ export interface AcpPromptServiceOptions {
   }): PromptResponse | PromiseLike<PromptResponse>;
   completeReasoning(): { active: boolean; reasoningId?: string };
   settleElicitations(outcome: 'failed' | 'superseded', nativeEvent: unknown): void;
+  /** Turn end: settle permission requests left to another client that no native evidence resolved. */
+  settleApprovals?(nativeEvent: unknown): void;
   publish(event: AgentEvent, source: AgentEventSource, nativeEvent?: unknown, confidence?: AgentEventConfidence): void;
 }
 
@@ -57,6 +59,7 @@ export class AcpPromptService {
       .then((response) => {
         this.closeReasoning(response);
         this.options.settleElicitations('superseded', response);
+        this.options.settleApprovals?.(response);
         this.options.publish(
           {
             type: 'turn:completed',
@@ -71,6 +74,7 @@ export class AcpPromptService {
       .catch((error: unknown) => {
         this.closeReasoning();
         this.options.settleElicitations('failed', { method: 'session/prompt', outcome: 'failed' });
+        this.options.settleApprovals?.({ method: 'session/prompt', outcome: 'failed' });
         this.options.publish(
           { type: 'turn:failed', turnId, error: error instanceof Error ? error.message : String(error) },
           'native-hook',

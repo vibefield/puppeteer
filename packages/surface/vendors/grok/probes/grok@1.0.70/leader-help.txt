@@ -1,0 +1,16 @@
+Manage running leader processes
+
+Usage: grok leader [OPTIONS] <COMMAND>
+
+Commands:
+  list    List running leader processes
+  info    Show details for a leader process
+  kill    Stop all running leader processes
+  worker  Run the same commands as `grok worker`
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+      --debug                 Enable debug logging
+      --debug-file <FILE>     Write debug logs to FILE
+  -h, --help                  Print help (see more with 'grok help leader')
+      --leader-socket <PATH>  Use a custom leader socket path instead of the default `~/.grok/leader.sock`

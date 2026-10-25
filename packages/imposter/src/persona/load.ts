@@ -385,16 +385,39 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     let recordTimestamp: NonNullable<NativeStoreDocument['recordTimestamp']> | undefined;
     if (timestampRecord) {
       const format = requireString(path, timestampRecord, 'format');
-      if (!['epoch-ms', 'iso'].includes(format)) {
-        throw new Error(`imposter: ${path} nativeStore.recordTimestamp.format must be epoch-ms or iso`);
+      if (!['epoch-ms', 'epoch-seconds', 'iso'].includes(format)) {
+        throw new Error(`imposter: ${path} nativeStore.recordTimestamp.format must be epoch-ms, epoch-seconds, or iso`);
       }
       const omitFor = stringArray(timestampRecord.omitFor, 'recordTimestamp.omitFor');
       recordTimestamp = {
         field: fieldName(timestampRecord.field, 'recordTimestamp.field'),
-        format: format as 'epoch-ms' | 'iso',
+        format: format as 'epoch-ms' | 'epoch-seconds' | 'iso',
         ...(omitFor === undefined ? {} : { omitFor }),
       };
+      // The method-params envelope has exactly one clock: its numeric `timestamp`.
+      if (
+        recordFormat !== 'flat-record' &&
+        (recordTimestamp.field !== 'timestamp' || recordTimestamp.format === 'iso' || omitFor !== undefined)
+      ) {
+        throw new Error(
+          `imposter: ${path} nativeStore.recordTimestamp on the method-params envelope must be a numeric "timestamp"`,
+        );
+      }
     }
+    const eventIdRecord =
+      nativeStoreRecord.recordEventId === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.recordEventId, 'nativeStore.recordEventId');
+    if (eventIdRecord && recordFormat === 'flat-record') {
+      throw new Error(`imposter: ${path} nativeStore.recordEventId applies only to the method-params envelope`);
+    }
+    const recordEventId = eventIdRecord
+      ? { metaField: fieldName(eventIdRecord.metaField, 'recordEventId.metaField') }
+      : undefined;
+    const replayMeta =
+      nativeStoreRecord.replayMeta === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.replayMeta, 'nativeStore.replayMeta');
     const sequenceRecord =
       nativeStoreRecord.recordSequence === undefined
         ? undefined
@@ -445,6 +468,8 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
       ...(recordTypeField === undefined ? {} : { recordTypeField }),
       ...(recordPayloadField === undefined ? {} : { recordPayloadField }),
       ...(recordTimestamp === undefined ? {} : { recordTimestamp }),
+      ...(recordEventId === undefined ? {} : { recordEventId }),
+      ...(replayMeta === undefined ? {} : { replayMeta }),
       ...(recordSequence === undefined ? {} : { recordSequence }),
       ...(recordIdentity === undefined ? {} : { recordIdentity }),
       ...(singletonEvents === undefined ? {} : { singletonEvents }),

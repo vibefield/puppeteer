@@ -10,5 +10,5 @@ test('support badges are derived from promoted vendor versions', () => {
   const block = renderSupportBlock();
   assert.match(block, /Claude_Code-legacy_verified_2\.1\.207-orange/);
   assert.match(block, /Codex-legacy_verified_0\.147\.0-orange/);
-  assert.match(block, /Grok_Build-baseline_pending_1\.0\.0-lightgrey/);
+  assert.match(block, /Grok_Build-baseline_pending_1\.0\.70-lightgrey/);
 });

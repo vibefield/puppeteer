@@ -277,6 +277,28 @@ describe('createGrokSessionObserver', () => {
     await expect(latestGrokSessionId('/other/repo', home)).resolves.toBeUndefined();
   });
 
+  it('never resumes a subagent child session that shares the cwd bucket', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'puppeteer-grok-home-'));
+    temporaryDirectories.push(home);
+    const parent = grokUpdatesPath('/work/repo', 'parent-session', home);
+    const child = grokUpdatesPath('/work/repo', 'child-session', home);
+    const unreadable = grokUpdatesPath('/work/repo', 'unreadable-summary', home);
+    for (const path of [parent, child, unreadable]) {
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, '{}\n');
+    }
+    await writeFile(join(dirname(parent), 'summary.json'), JSON.stringify({ info: { cwd: '/work/repo' } }));
+    await writeFile(join(dirname(child), 'summary.json'), JSON.stringify({ session_kind: 'subagent' }));
+    await writeFile(join(dirname(unreadable), 'summary.json'), '{"partial');
+    await utimes(unreadable, new Date(1_000), new Date(1_000));
+    await utimes(parent, new Date(2_000), new Date(2_000));
+    await utimes(child, new Date(3_000), new Date(3_000));
+
+    await expect(latestGrokSessionId('/work/repo', home)).resolves.toBe('parent-session');
+    await utimes(unreadable, new Date(4_000), new Date(4_000));
+    await expect(latestGrokSessionId('/work/repo', home)).resolves.toBe('unreadable-summary');
+  });
+
   it('tails appended JSONL once and waits for a complete line', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'puppeteer-grok-observer-'));
     temporaryDirectories.push(directory);

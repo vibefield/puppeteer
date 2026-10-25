@@ -29,12 +29,26 @@ import type { AcpAgentConnection, AcpConnector } from './transport/connection.js
 import { AcpMonitorEvidence } from './normalization/monitor.js';
 import { acpModelIdentity } from './normalization/model.js';
 import { AcpNotificationNormalizer } from './normalization/pipeline.js';
-import { AcpApprovalService, type AcpApprovalDecision, type AcpApprovalRequest } from './services/approvals.js';
+import {
+  AcpApprovalService,
+  type AcpApprovalDecision,
+  type AcpApprovalRequest,
+  type AcpDeferredApprovalEvidence,
+  type AcpUnhandledApprovalPolicy,
+} from './services/approvals.js';
 import { AcpElicitationService, type AcpElicitationRequest } from './services/elicitation.js';
 import { AcpEventSource } from './services/event-source.js';
 import { AcpPromptService } from './services/prompt.js';
 
-export type { AcpApprovalDecision, AcpApprovalRequest } from './services/approvals.js';
+export type {
+  AcpApprovalDecision,
+  AcpApprovalRequest,
+  AcpDeferredApprovalEvidence,
+  AcpDeferredApprovalSettlement,
+  AcpPermissionResolution,
+  AcpUnhandledApprovalPolicy,
+} from './services/approvals.js';
+export { acpPermissionOutcome } from './services/approvals.js';
 export type { AcpElicitationRequest } from './services/elicitation.js';
 
 export interface CreateAcpSessionOptions {
@@ -45,8 +59,18 @@ export interface CreateAcpSessionOptions {
   resume?: string | undefined;
   /** Default: filesystem disabled, identified plan notifications enabled. */
   clientCapabilities?: ClientCapabilities | undefined;
-  /** Decide structured permission requests. Default: deny. */
+  /** Decide structured permission requests. Without it, `unhandledApproval` applies. */
   onApproval?: ((request: AcpApprovalRequest) => AcpApprovalDecision | Promise<AcpApprovalDecision>) | undefined;
+  /**
+   * A permission request with no `onApproval` handler: `deny` (default) answers
+   * it at once; `defer` leaves it to another client attached to the same agent
+   * session (the agent's own terminal UI) and settles it from native evidence.
+   * Choose `defer` only for a composition that really attaches such a client,
+   * or the agent waits for an answer nobody can give.
+   */
+  unhandledApproval?: AcpUnhandledApprovalPolicy | undefined;
+  /** With `unhandledApproval: 'defer'`: the agent's own resolution evidence. */
+  deferredApprovalEvidence?: AcpDeferredApprovalEvidence | undefined;
   /** Answer ACP's experimental structured elicitation request. */
   onElicitation?:
     ((request: AcpElicitationRequest) => CreateElicitationResponse | Promise<CreateElicitationResponse>) | undefined;
@@ -94,6 +118,8 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
   });
   const approvals = new AcpApprovalService({
     decide: options.onApproval,
+    unhandled: options.unhandledApproval,
+    deferredEvidence: options.deferredApprovalEvidence,
     publish: (event, nativeEvent) => apply(event, 'native-hook', { nativeEvent }),
   });
   prompts = new AcpPromptService({
@@ -101,6 +127,8 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     request: (params) => connection.agent.prompt(params),
     completeReasoning: () => normalizer.completeReasoning(),
     settleElicitations: (outcome, nativeEvent) => elicitations.settlePending(outcome, nativeEvent),
+    // A deferred request still open when its prompt ends had no native outcome.
+    settleApprovals: (nativeEvent) => approvals.settleAll('unknown', nativeEvent, sessionId),
     publish: (event, source, nativeEvent, confidence) => apply(event, source, { nativeEvent, confidence }),
   });
 
@@ -110,6 +138,8 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     sessionUpdate(params: SessionNotification): void {
       const observedAt = new Date().toISOString();
       emitMonitorBatch(monitorEvidence.sessionUpdateBatch(params, observedAt, bootstrapping ? 'bootstrap' : 'live'));
+      // A deferred request's resolution precedes the tool progress that proves it.
+      approvals.observe('session/update', params as unknown as Record<string, unknown>);
       const normalized = normalizer.normalize(params);
       const closesReasoning = normalized.events.some((event) =>
         ['conversation:assistant-message', 'tool:requested', 'tool:started', 'tool:completed', 'tool:failed'].includes(
@@ -130,6 +160,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     },
 
     extNotification(method, params): void {
+      approvals.observe(method, params);
       const normalized = options.onExtensionNotification?.(method, params) ?? [
         { type: 'adapter:native-event', adapter: 'acp', nativeType: method } as const,
       ];
@@ -145,6 +176,8 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
 
   connection = options.connector(buildClient);
   connection.onClose(({ code, signal }) => {
+    // Nothing can answer a deferred request any more; release its SDK reply.
+    approvals.settleAll('unknown', { transport: 'closed', code, signal });
     if (disposed || controlDegraded) return;
     controlDegraded = true;
     observation = 'terminal-only';
@@ -229,6 +262,7 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
     },
     dispose() {
       if (disposal) return disposal;
+      approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true;
       eventSource.close();
       disposal = Promise.resolve().then(() => connection.close());

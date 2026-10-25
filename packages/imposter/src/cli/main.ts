@@ -18,6 +18,7 @@ import type { Persona } from '../persona/types.ts';
 import {
   createAppServerChannel,
   METHOD_NOT_FOUND,
+  requestFirstAnswer,
   RpcError,
   type AppServerChannel,
 } from '../session/channels/jsonrpc.ts';
@@ -108,6 +109,47 @@ async function runLeader(persona: Persona, argv: readonly string[], log: (messag
   return 0;
 }
 
+interface PendingViewerDecision {
+  readonly title: string;
+  readonly toolCallId: string | undefined;
+  readonly options: readonly { optionId: string; name: string }[];
+  answer(result: unknown): void;
+}
+
+const CANCELLED_DECISION = { outcome: { outcome: 'cancelled' } };
+
+function recordOf(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function viewerDecision(params: Record<string, unknown>, answer: (result: unknown) => void): PendingViewerDecision {
+  const toolCall = recordOf(params.toolCall);
+  const options = (Array.isArray(params.options) ? params.options : []).flatMap((value) => {
+    const option = recordOf(value);
+    return typeof option?.optionId === 'string'
+      ? [{ optionId: option.optionId, name: typeof option.name === 'string' ? option.name : option.optionId }]
+      : [];
+  });
+  return {
+    title: typeof toolCall?.title === 'string' ? toolCall.title : 'permission requested',
+    toolCallId: typeof toolCall?.toolCallId === 'string' ? toolCall.toolCallId : undefined,
+    options,
+    answer,
+  };
+}
+
+/** The leader's broadcast that another client already answered this prompt. */
+function resolvesDecision(params: Record<string, unknown>, decision: PendingViewerDecision): boolean {
+  const update = recordOf(params.update);
+  return (
+    update?.sessionUpdate === 'interaction_resolved' &&
+    decision.toolCallId !== undefined &&
+    update.tool_call_id === decision.toolCallId
+  );
+}
+
 /** A Grok terminal is an ACP client of the leader, never a second session. */
 async function runLeaderViewer(
   persona: Persona,
@@ -147,12 +189,39 @@ async function runLeaderViewer(
   process.once('SIGTERM', () => void shutdown());
   process.once('SIGINT', () => void shutdown());
 
+  // The vendor's viewer is shown the requests its leader routes to it (Grok
+  // 1.0.70: permission requests) and lets the person answer one with a number
+  // key, or cancel it with Ctrl+C. Another client may answer first; the leader
+  // then broadcasts the resolution and the prompt is dismissed with a
+  // `cancelled` reply, which the controller logs and drops as a late answer.
+  const answers = new Set(persona.serve?.$server?.viewer?.answers ?? []);
+  let decision: PendingViewerDecision | undefined;
+  const settleDecision = (result: unknown): void => {
+    const current = decision;
+    decision = undefined;
+    current?.answer(result);
+  };
   const channel = createAppServerChannel({
     input: connection.input,
     output: connection.output,
     jsonrpc: '2.0',
-    serve: (method) => Promise.reject(new RpcError(METHOD_NOT_FOUND, `a viewer cannot answer ${method}`)),
-    notified: (method, params) => screen.frame({ at: new Date().toISOString(), op: method, with: params }),
+    serve: (method, params) => {
+      if (!answers.has(method)) {
+        return Promise.reject(new RpcError(METHOD_NOT_FOUND, `a viewer cannot answer ${method}`));
+      }
+      // The agent asks one question at a time; a newer one supersedes a stale prompt.
+      settleDecision(CANCELLED_DECISION);
+      return new Promise((answer) => {
+        decision = viewerDecision(params, answer);
+        screen.notice(`${method}: ${decision.title}`);
+        decision.options.forEach((option, index) => screen.notice(`  ${index + 1}  ${option.name}`));
+        screen.notice('press a number to answer, Ctrl+C to cancel');
+      });
+    },
+    notified: (method, params) => {
+      if (decision && resolvesDecision(params, decision)) settleDecision(CANCELLED_DECISION);
+      screen.frame({ at: new Date().toISOString(), op: method, with: params });
+    },
     onClose: () => void shutdown(),
     log,
   });
@@ -178,6 +247,17 @@ async function runLeaderViewer(
   installPromptLine({
     interactive: screen.interactive,
     staged: (text) => screen.staged(text),
+    intercept: (chunk) => {
+      if (!decision) return false;
+      if (chunk === '\x03') {
+        settleDecision(CANCELLED_DECISION);
+        return true;
+      }
+      const option = /^[1-9]$/.test(chunk) ? decision.options[Number(chunk) - 1] : undefined;
+      if (!option) return false;
+      settleDecision({ outcome: { outcome: 'selected', optionId: option.optionId } });
+      return true;
+    },
     submit: (text) => {
       log(`session/prompt on ${sessionId} (${text.length} chars)`);
       void channel
@@ -453,14 +533,19 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
   // brings up a controller connection, and the native TUI joins the same server
   // beside it. Notifications fan out to all of them.
   //
-  // Server-initiated requests do NOT fan out — an approval answered twice is
-  // not an approval. They go to the first client to speak, which is always the
-  // controller: the adapter owns the thread and connects before the TUI it then
-  // launches, and it is the side with an approval policy at all. A viewer that
-  // later starts a turn still does not inherit the decision, which is the point
-  // (over stdio there is one client and it is trivially first).
+  // Server-initiated requests go to the first client to speak, which is always
+  // the controller: the adapter owns the thread and connects before the TUI it
+  // then launches (over stdio there is one client and it is trivially first).
+  //
+  // The one exception is the vendor's own: a request the persona's viewer
+  // `answers` (Grok 1.0.70's permission request) is also routed through the
+  // leader to every attached viewer, and the first answer wins. An approval
+  // answered twice is still not an approval — the loser's request is abandoned
+  // and its late answer logged and dropped, exactly as the real leader does.
   const clients = new Set<AppServerChannel>();
   let driver: AppServerChannel | undefined;
+  let viewerRoute: AppServerChannel | undefined;
+  const viewerAnswers = new Set(serverSpec?.viewer?.answers ?? []);
 
   const session = createImposterSession({
     persona,
@@ -477,9 +562,10 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
             },
             request: (method: string, params: Record<string, unknown>) => {
               const target = driver ?? [...clients][0];
-              return target
-                ? target.request(method, params)
-                : Promise.reject(new Error('app-server channel is not open'));
+              if (!target) return Promise.reject(new Error('app-server channel is not open'));
+              return viewerRoute && viewerRoute !== target && viewerAnswers.has(method)
+                ? requestFirstAnswer([target, viewerRoute], method, params)
+                : target.request(method, params);
             },
           },
         }
@@ -627,11 +713,13 @@ export async function main(argv: readonly string[], argv0?: string): Promise<num
         { input: leaderController.input, output: leaderController.output },
         () => {
           if (leaderChannel) clients.delete(leaderChannel);
+          if (viewerRoute === leaderChannel) viewerRoute = undefined;
           leaderChannel = undefined;
           leaderController = undefined;
         },
         false,
       );
+      viewerRoute = leaderChannel;
       closers.push(async () => leaderController?.close());
     };
 

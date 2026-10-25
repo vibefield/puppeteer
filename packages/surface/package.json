@@ -56,6 +56,7 @@
     "surface:audit:claude": "node vendors/claude/audit.mjs",
     "surface:audit:codex": "node vendors/codex/audit.mjs",
     "surface:audit:grok": "node vendors/grok/audit.mjs",
+    "surface:census:grok": "node vendors/grok/census/harness.mjs",
     "surface:reference:grok": "node vendors/grok/census/extract-public-reference.mjs",
     "surface:sanitize:grok": "node vendors/grok/sanitize-captures.mjs",
     "surface:privacy:grok": "node vendors/grok/sanitize-captures.mjs --check",

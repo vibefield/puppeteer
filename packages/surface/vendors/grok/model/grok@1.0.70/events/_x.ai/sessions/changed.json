@@ -1,0 +1,108 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/sessions/changed",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "removed": {
+        "type": "array"
+      },
+      "upserted": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "activity": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "isWorktree": {
+              "type": "boolean"
+            },
+            "lastChangeUnixMs": {
+              "type": "integer"
+            },
+            "modelId": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                }
+              },
+              "required": ["kind"]
+            },
+            "resident": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "null"
+            },
+            "yolo": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "activity",
+            "cwd",
+            "isWorktree",
+            "lastChangeUnixMs",
+            "modelId",
+            "origin",
+            "resident",
+            "sessionId",
+            "title",
+            "yolo"
+          ]
+        }
+      }
+    },
+    "required": ["removed", "upserted"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/sessions/changed"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "carrier": "structural",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/acp-controller.jsonl",
+  "notes": "Session-list upserts (cwd, activity working|idle, lastChangeUnixMs) around each turn."
+}

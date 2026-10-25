@@ -6,7 +6,7 @@
       "intent": "session.compaction",
       "scenario": "compact-lifecycle",
       "title": "Automatic compaction lifecycle",
-      "summary": "Compaction start, persisted checkpoint, and completion across Grok's live and durable rails.",
+      "summary": "Manual or automatic compaction: persisted checkpoint and completion across Grok's live and durable rails.",
       "kind": "vendor",
       "tags": ["context", "compaction", "native-store"],
       "defaultSpeed": 4
@@ -16,9 +16,31 @@
       "intent": "subagent.lifecycle",
       "scenario": "agent-team-lifecycle",
       "title": "Agent-team lifecycle",
-      "summary": "A child agent is spawned, reports progress, and finishes with correlated metrics.",
+      "summary": "A child agent is spawned, reports progress, and finishes; 1.0.70 persists the spawn just before the parent turn ends.",
       "kind": "vendor",
       "tags": ["subagent", "team", "progress"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "configured-hooks",
+      "intent": "hooks.lifecycle",
+      "scenario": "configured-hooks",
+      "title": "Configured hook run",
+      "summary": "Only when hooks are configured: hook_run_started, then the hook result on the live and durable rails.",
+      "kind": "vendor",
+      "danger": "safe",
+      "tags": ["hooks", "conditional"],
+      "defaultSpeed": 4
+    },
+    {
+      "id": "remote-ambient",
+      "intent": "session.ambient",
+      "scenario": "remote-ambient",
+      "title": "Remote ambient updates",
+      "summary": "Only with remote settings, announcements, and MCP init: the four ambient notifications (unverified on 1.0.70).",
+      "kind": "vendor",
+      "danger": "safe",
+      "tags": ["ambient", "conditional", "unverified"],
       "defaultSpeed": 4
     }
   ]

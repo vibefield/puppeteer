@@ -6,11 +6,19 @@
   },
   "shimNames": ["grok"],
   "envelope": {},
-  "bindings": { "$threadCwd": "$cwd", "$sessionCreatedAt": "$now" },
+  "bindings": {
+    "$threadCwd": "$cwd",
+    "$sessionCreatedAt": "$now",
+    "$agentId": "$uuid:agent-id",
+    "$attemptId": "$uuid:attempt-id"
+  },
   "nativeStore": {
     "rootEnv": "GROK_HOME",
     "sessionPath": ["sessions", "$encodeURIComponent:$threadCwd", "$sessionId"],
-    "updatesFile": "updates.jsonl"
+    "updatesFile": "updates.jsonl",
+    "recordTimestamp": { "field": "timestamp", "format": "epoch-seconds" },
+    "recordEventId": { "metaField": "eventId" },
+    "replayMeta": { "isReplay": true }
   },
   "boot": [
     { "op": "session.initialize" },

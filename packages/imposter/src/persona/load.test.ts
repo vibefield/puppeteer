@@ -97,6 +97,8 @@ describe('loadPersona', () => {
     expect(loadPersona('grok').runflows.map((flow) => flow.intent)).toEqual([
       'session.compaction',
       'subagent.lifecycle',
+      'hooks.lifecycle',
+      'session.ambient',
     ]);
     expect(loadPersona('synthetic').runflows).toEqual([]);
   });
@@ -149,6 +151,28 @@ describe('loadPersona validation', () => {
     expect(() => loadPersona('broken', { directory })).toThrow(
       /binds Stop to transcript, but the ASM declares it on hook/,
     );
+  });
+
+  it('rejects a native-store clock or event id the method-params envelope cannot carry', () => {
+    const store = { sessionPath: ['sessions', '$sessionId'], updatesFile: 'updates.jsonl' };
+    const isoClock = write(
+      { ...validPersona, nativeStore: { ...store, recordTimestamp: { field: 'timestamp', format: 'iso' } } },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: isoClock })).toThrow(/must be a numeric "timestamp"/);
+    const otherField = write(
+      { ...validPersona, nativeStore: { ...store, recordTimestamp: { field: 'time', format: 'epoch-seconds' } } },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: otherField })).toThrow(/must be a numeric "timestamp"/);
+    const flatEventId = write(
+      {
+        ...validPersona,
+        nativeStore: { ...store, recordFormat: 'flat-record', recordEventId: { metaField: 'eventId' } },
+      },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: flatEventId })).toThrow(/only to the method-params envelope/);
   });
 
   it('rejects an unknown op name', () => {

@@ -1,0 +1,55 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/mcp/init_progress",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "completed": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "total": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "required": ["completed", "total"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/mcp/init_progress"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-binary-serde-lead", "grok-public-mirror-lead"],
+    "shape": ["grok-public-mirror-lead"],
+    "carrier": ["grok-public-mirror-lead"]
+  },
+  "confidence": "unverified",
+  "schemaFidelity": {
+    "payload": "unknown",
+    "carrier": "structural",
+    "limitations": [
+      "Not emitted in the hermetic 1.0.70 census (remote settings, announcements, the model catalog, and MCP servers are disabled). The method literal is present in the binary and the public pager dispatches it; the payload shape is carried over from the 1.0.0 census projection and is not 1.0.70 evidence."
+    ]
+  },
+  "notes": "Conditional ambient extension: depends on remote settings/announcements fetch, model-catalog refresh, or MCP server initialization."
+}

@@ -1,6 +1,8 @@
 {
   "$server": {
-    "match": { "all": ["agent", "stdio"] },
+    "match": {
+      "all": ["agent", "stdio"]
+    },
     "jsonrpc": "2.0",
     "leader": {
       "sequence": ["agent", "leader"],
@@ -9,21 +11,97 @@
     "viewer": {
       "all": ["--leader", "--leader-socket", "--resume"],
       "none": ["agent"],
-      "sessionFlag": "--resume"
+      "sessionFlag": "--resume",
+      "answers": ["session/request_permission"]
     }
   },
   "initialize": {
-    "before": [{ "op": "session.initialize" }],
     "result": {
       "protocolVersion": 1,
       "agentCapabilities": {
         "loadSession": true,
-        "promptCapabilities": { "image": false, "audio": false, "embeddedContext": false },
-        "mcpCapabilities": { "http": false, "sse": false }
+        "promptCapabilities": {
+          "image": true,
+          "audio": false,
+          "embeddedContext": true
+        },
+        "mcpCapabilities": {
+          "http": true,
+          "sse": true
+        },
+        "sessionCapabilities": {
+          "list": {},
+          "resume": {},
+          "close": {}
+        },
+        "auth": {},
+        "_meta": {
+          "x.ai/fs_notify": true,
+          "x.ai/hooks": {
+            "blockingEvents": ["pre_tool_use", "stop", "subagent_stop"],
+            "decisions": ["deny", "block"],
+            "stopSignals": ["continue", "stopReason", "additionalContext"]
+          },
+          "x.ai/capabilities": {
+            "toolOverrides": {
+              "x_keyword_search": true,
+              "x_semantic_search": true,
+              "x_user_search": false,
+              "x_thread_fetch": false
+            }
+          }
+        }
       },
-      "authMethods": [],
-      "_meta": { "agentVersion": "$vendorVersion" }
-    }
+      "authMethods": [
+        {
+          "id": "xai.api_key",
+          "name": "xai.api_key",
+          "description": "Use an xAI API key"
+        },
+        {
+          "id": "grok.com",
+          "name": "Grok",
+          "description": "Sign in with grok.com"
+        }
+      ],
+      "_meta": {
+        "currentWorkingDirectory": "$cwd",
+        "agentVersion": "$vendorVersion",
+        "agentId": "$agentId",
+        "agentInstanceId": "$uuid:agent-instance",
+        "hostname": "imposter",
+        "metadata": null,
+        "grokShell": true,
+        "defaultAuthMethodId": "xai.api_key",
+        "x.ai/mcp/sdk": true,
+        "x.ai/pluginDirs": true,
+        "modelState": {
+          "currentModelId": "$modelId",
+          "availableModels": [
+            {
+              "modelId": "$modelId",
+              "name": "Grok Imposter",
+              "_meta": {
+                "totalContextTokens": "$capacityTokens",
+                "agentType": "grok-build-plan"
+              }
+            }
+          ]
+        },
+        "availableCommands": [],
+        "cancelRewind": true,
+        "feedbackTraceOffer": false,
+        "mcpApps": false,
+        "mcpServers": [],
+        "sessionRecap": true,
+        "voiceMode": true
+      }
+    },
+    "then": [
+      {
+        "op": "session.initialize"
+      }
+    ]
   },
   "session/new": {
     "bind": {
@@ -31,14 +109,77 @@
       "$threadCwd": "$params.cwd"
     },
     "before": [
-      { "op": "session.start" },
-      { "op": "session.ready" },
       {
-        "op": "usage.refresh",
-        "with": { "usedTokens": 0 }
+        "op": "session.start"
       }
     ],
-    "result": { "sessionId": "$sessionId" }
+    "result": {
+      "sessionId": "$sessionId",
+      "models": {
+        "currentModelId": "$modelId",
+        "availableModels": [
+          {
+            "modelId": "$modelId",
+            "name": "Grok Imposter",
+            "_meta": {
+              "totalContextTokens": "$capacityTokens",
+              "agentType": "grok-build-plan"
+            }
+          }
+        ]
+      },
+      "configOptions": [
+        {
+          "id": "model",
+          "name": "Model",
+          "category": "model",
+          "type": "select",
+          "currentValue": "$modelId",
+          "options": [
+            {
+              "value": "$modelId",
+              "name": "Grok Imposter"
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "currentWorkingDirectory": "$threadCwd",
+        "isGitRepo": false,
+        "gitRoot": null,
+        "showNonGitWarning": false,
+        "feedbackEnabled": false,
+        "codebaseIndexed": [],
+        "x.ai/sessionConfig": {
+          "options": [
+            {
+              "id": "$modelId",
+              "category": "model",
+              "label": "Grok Imposter",
+              "selected": true
+            }
+          ]
+        },
+        "x.ai/sessionDetail": {
+          "sessionId": "$sessionId",
+          "kind": "build",
+          "cwd": "$threadCwd",
+          "currentModelId": "$modelId"
+        },
+        "x.ai/memoryNotesWritable": false
+      }
+    },
+    "then": [
+      {
+        "op": "session.ready"
+      },
+      {
+        "op": "usage.refresh",
+        "with": {
+          "usedTokens": 0
+        }
+      }
+    ]
   },
   "session/load": {
     "bind": {
@@ -46,12 +187,154 @@
       "$threadCwd": "$params.cwd"
     },
     "restore": true,
-    "before": [{ "op": "session.ready" }],
-    "result": {}
+    "result": {
+      "models": {
+        "currentModelId": "$modelId",
+        "availableModels": [
+          {
+            "modelId": "$modelId",
+            "name": "Grok Imposter",
+            "_meta": {
+              "totalContextTokens": "$capacityTokens",
+              "agentType": "grok-build-plan"
+            }
+          }
+        ]
+      },
+      "configOptions": [
+        {
+          "id": "model",
+          "name": "Model",
+          "category": "model",
+          "type": "select",
+          "currentValue": "$modelId",
+          "options": [
+            {
+              "value": "$modelId",
+              "name": "Grok Imposter"
+            }
+          ]
+        }
+      ],
+      "_meta": {
+        "sessionId": "$sessionId",
+        "codebaseIndexed": [],
+        "x.ai/sessionConfig": {
+          "options": [
+            {
+              "id": "$modelId",
+              "category": "model",
+              "label": "Grok Imposter",
+              "selected": true
+            }
+          ]
+        },
+        "x.ai/sessionDetail": {
+          "sessionId": "$sessionId",
+          "kind": "build",
+          "cwd": "$threadCwd",
+          "currentModelId": "$modelId",
+          "title": "$sessionTitle"
+        },
+        "x.ai/memoryNotesWritable": false
+      }
+    }
   },
   "session/prompt": {
-    "bind": { "$promptId": "$uuid:prompt" },
+    "bind": {
+      "$promptId": "$uuid:prompt"
+    },
     "before": "$behavior",
-    "result": { "stopReason": "end_turn" }
+    "result": {
+      "stopReason": "end_turn",
+      "_meta": {
+        "sessionId": "$sessionId",
+        "requestId": "$promptId",
+        "promptId": "$promptId",
+        "totalTokens": 16,
+        "modelId": "$modelId",
+        "inputTokens": 12,
+        "outputTokens": 4,
+        "cachedReadTokens": 0,
+        "reasoningTokens": 0
+      }
+    },
+    "then": [
+      {
+        "op": "usage.refresh",
+        "with": {
+          "addedTokens": 16
+        }
+      }
+    ]
+  },
+  "session/list": {
+    "result": {
+      "sessions": [
+        {
+          "sessionId": "$sessionId",
+          "cwd": "$threadCwd",
+          "title": "$sessionTitle",
+          "updatedAt": "$now",
+          "_meta": {
+            "x.ai/session": {
+              "kind": "build",
+              "facets": {
+                "cwd": "$threadCwd",
+                "kind": "build"
+              }
+            }
+          }
+        }
+      ],
+      "_meta": {
+        "x.ai/facets": {
+          "scope": "window",
+          "keys": [
+            {
+              "key": "cwd",
+              "values": [
+                {
+                  "value": "$threadCwd",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "key": "kind",
+              "values": [
+                {
+                  "value": "build",
+                  "count": 1
+                }
+              ]
+            }
+          ]
+        },
+        "x.ai/partial": {
+          "conversations": false
+        }
+      }
+    }
+  },
+  "_x.ai/auth/info": {
+    "result": {
+      "methodId": "xai.api_key",
+      "email": null,
+      "firstName": null,
+      "lastName": null,
+      "profileImageUrl": null,
+      "teamId": null,
+      "teamName": null,
+      "teamRole": null,
+      "organizationId": null,
+      "organizationName": null,
+      "organizationRole": null,
+      "principalType": null,
+      "principalId": null,
+      "userBlockedReason": null,
+      "teamBlockedReasons": [],
+      "codingDataRetentionOptOut": true
+    }
   }
 }

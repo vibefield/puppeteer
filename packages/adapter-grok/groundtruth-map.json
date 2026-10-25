@@ -3,24 +3,17 @@
   "provider": "grok",
   "adapterPackage": "@vibefield/puppeteer-adapter-grok",
   "groundTruth": "packages/surface/vendors/grok/groundtruth.json",
-  "groundTruthSha256": "fcb786f619dc08a80d8db5480a0b85586ddfef5e409d4eba38d998dcc4f28203",
-  "semanticEvents": [
-    "_x.ai/session/update",
-    "session/update"
-  ],
-  "observedOrControlledEvents": [
-    "initialize",
-    "signals.json",
-    "summary.json"
-  ],
+  "groundTruthSha256": "28d8c4803aef552b6b34a0956139584ebbd1b2cbee24e3113a9e2ad12490496f",
+  "semanticEvents": ["_x.ai/session/update", "_x.ai/session_notification", "session/update"],
+  "observedOrControlledEvents": ["_x.ai/auth/info", "initialize", "signals.json", "summary.json"],
   "unmapped": {
-    "count": 11,
-    "sha256": "f1918010332d92e07b2778e2da79b3a3573c898061c3a9f64c59f4f7009880e8",
+    "count": 17,
+    "sha256": "4b47231a89dc82f3d70dd0471833bc08851ffc34f0d9c27e1091e9d6b69f7ea8",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 16,
-    "semantic": 2,
-    "observedOrControlled": 3
+    "groundTruth": 24,
+    "semantic": 3,
+    "observedOrControlled": 4
   }
 }

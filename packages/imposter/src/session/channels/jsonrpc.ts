@@ -59,7 +59,7 @@ export interface AppServerChannel {
    * is the whole point: `permission.ask` cannot resolve until the client
    * answers, which is why the op timeline had to be async before this existed.
    */
-  request(method: string, params: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
+  request(method: string, params: Record<string, unknown>, timeoutMs?: number, signal?: AbortSignal): Promise<unknown>;
   close(): void;
 }
 
@@ -144,7 +144,9 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
     const id = typeof message.id === 'number' ? message.id : undefined;
     if (id === undefined) return log('dropping a reply with no usable id');
     const entry = pending.get(id);
-    if (!entry) return log(`dropping a reply for unknown id ${id}`);
+    // The vendor's own wording: Grok's leader logs, and ignores, an answer to a
+    // request another client already answered (or that was abandoned).
+    if (!entry) return log(`received response for unknown request id: ${id}`);
     pending.delete(id);
     if (message.error !== undefined) {
       const failure = message.error as { code?: number; message?: string };
@@ -193,23 +195,33 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
       }
       write(message);
     },
-    request(method, params, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
+    request(method, params, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, signal) {
       if (closed) return Promise.reject(new RpcError(INTERNAL_ERROR, 'app-server channel is closed'));
+      if (signal?.aborted) return Promise.reject(new RpcError(INTERNAL_ERROR, `server request ${method} abandoned`));
       const id = nextId++;
       return new Promise((resolve, reject) => {
+        const abandon = (): void => {
+          if (!pending.delete(id)) return;
+          clearTimeout(timer);
+          reject(new RpcError(INTERNAL_ERROR, `server request ${method} abandoned`));
+        };
         const timer = setTimeout(() => {
           pending.delete(id);
+          signal?.removeEventListener('abort', abandon);
           reject(new RpcError(INTERNAL_ERROR, `server request ${method} timed out`));
         }, timeoutMs);
         timer.unref?.();
+        signal?.addEventListener('abort', abandon, { once: true });
         pending.set(id, {
           method,
           resolve: (value) => {
             clearTimeout(timer);
+            signal?.removeEventListener('abort', abandon);
             resolve(value);
           },
           reject: (error) => {
             clearTimeout(timer);
+            signal?.removeEventListener('abort', abandon);
             reject(error);
           },
         });
@@ -218,6 +230,7 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
         if (violations.length > 0) {
           pending.delete(id);
           clearTimeout(timer);
+          signal?.removeEventListener('abort', abandon);
           reject(new RpcError(INTERNAL_ERROR, `${method} carrier: ${violations.join('; ')}`));
           return;
         }
@@ -226,4 +239,44 @@ export function createAppServerChannel(options: AppServerChannelOptions): AppSer
     },
     close: finish,
   };
+}
+
+/**
+ * Ask several clients the same server request; the first successful answer
+ * wins. The vendor's leader does exactly this with a permission request (Grok
+ * 1.0.70 fans it to the controller and the native viewer). Losing requests are
+ * abandoned at once, so a later answer from that client finds no pending id and
+ * is logged and dropped — never applied a second time. A client that refuses
+ * (an error reply) does not win; the request fails only when every client did.
+ */
+export function requestFirstAnswer(
+  channels: readonly AppServerChannel[],
+  method: string,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const aborts = channels.map(() => new AbortController());
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let failures = 0;
+    let firstError: unknown;
+    channels.forEach((channel, index) => {
+      channel.request(method, params, undefined, aborts[index]!.signal).then(
+        (value) => {
+          if (settled) return;
+          settled = true;
+          aborts.forEach((abort, other) => other !== index && abort.abort());
+          resolve(value);
+        },
+        (error: unknown) => {
+          if (settled) return;
+          failures += 1;
+          firstError ??= error;
+          if (failures === channels.length) {
+            settled = true;
+            reject(firstError);
+          }
+        },
+      );
+    });
+  });
 }

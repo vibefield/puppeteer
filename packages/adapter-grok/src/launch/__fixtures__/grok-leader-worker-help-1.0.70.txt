@@ -1,0 +1,34 @@
+Run the same commands as `grok worker`
+
+Usage: grok leader worker [OPTIONS] <COMMAND>
+
+Commands:
+  start       Run a leader in this terminal until Ctrl+C
+  stop        Unregister from Cursor and release the claims (the leader keeps running)
+  status      Show the current worker status and its Cloud Agent claims [aliases: list]
+  controller  Claim pending Cloud Agent requests for team pools and run a spawn hook for each
+  help        Print this message or the help of the given subcommand(s)
+
+Options:
+      --name <NAME>                     Worker display name shown in Cursor [env: CURSOR_WORKER_NAME=]
+      --worker-dir <DIR>                Repository directory offered to Cursor Cloud Agents
+      --max-agents <N>                  Maximum concurrent Cloud Agent claims
+      --pool [<NAME>]                   Join a team Self-Hosted Pool
+      --single-use                      Same as `--pool` (legacy alias)
+      --pool-name <NAME>                Deprecated alias for `--pool <NAME>`. Needs `--pool` or `--single-use`
+      --mint-github-token               Let Cursor send the pool worker short-lived GitHub tokens during a claimed run
+      --sync-dashboard-secrets          Let Cursor send the pool worker the team's dashboard secrets as env variables
+      --clone-git-repos                 Clone the claimed run's repository with the minted token
+      --label <KEY=VALUE>               Routing label for the worker, as `key=value`. Repeatable
+      --labels-file <PATH>              JSON or TOML file of worker labels. Cannot be combined with `--label` [env: CURSOR_WORKER_LABELS_FILE=]
+      --api-key <KEY>                   Cursor API key the worker registers with, in place of your linked Cursor account [env: CURSOR_API_KEY]
+      --auth-token-file <PATH>          File holding the worker's Cursor auth token, re-read before every reconnect
+      --on-session-start <COMMAND>      Command run on this host once a pool claim lands. Needs `--pool`
+      --on-session-end <COMMAND>        Command run on this host once a pool claim is released. Needs `--pool`
+      --identity-socket                 Give each Cloud Agent its own OIDC identity socket
+      --management-addr <ADDRESS>       Serve worker health over HTTP for Kubernetes probes
+      --idle-release-timeout <SECONDS>  Seconds a claim may sit idle before Cursor releases it. 0 turns this off [env: CURSOR_WORKER_IDLE_RELEASE_TIMEOUT=]
+      --debug                           Enable debug logging
+      --debug-file <FILE>               Write debug logs to FILE
+  -h, --help                            Print help (see more with 'grok help leader worker')
+      --leader-socket <PATH>            Use a custom leader socket path instead of the default `~/.grok/leader.sock`

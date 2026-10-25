@@ -1,0 +1,8 @@
+{
+  "asmVersion": 3,
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "generatedAt": "2026-10-25",
+  "source": "Controlled darwin-arm64 census of the exact 1.0.70 artifact (shared leader, ACP controllers, native viewer, durable store) plus binary probes, under a binary-only evidence policy. A digest-pinned nearest public mirror and its exact ACP schema are retained as separately attributed, unverified leads.",
+  "evidence": "evidence.json"
+}
