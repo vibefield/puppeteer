@@ -127,7 +127,12 @@ test('anything but rewriting allowlisted regular files is refused', () => {
       ['README.md has status T; a promotion only rewrites existing files'],
     ],
     'an executable bit': [
-      ({ repoRoot }) => chmodSync(join(repoRoot, 'README.md'), 0o755),
+      // chmod alone is invisible to git on Windows (core.fileMode=false), so stage the mode through git
+      // as well; on POSIX the following `git add --all` re-reads the same 755 from the file.
+      ({ repoRoot }) => {
+        chmodSync(join(repoRoot, 'README.md'), 0o755);
+        git(repoRoot, 'update-index', '--chmod=+x', 'README.md');
+      },
       ['README.md changes mode 100644 to 100755; a promotion only rewrites regular files'],
     ],
   };
