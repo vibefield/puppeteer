@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-pi",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Pi adapter for Puppeteer: native TUI launch, durable session observation, and normalized agent events.",
   "license": "MIT",

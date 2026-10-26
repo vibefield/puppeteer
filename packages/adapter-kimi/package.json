@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-kimi",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Kimi Code adapter for Puppeteer: native TUI launch, durable-wire observation, and guarded prompt control.",
   "license": "MIT",

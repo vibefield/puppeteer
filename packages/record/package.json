@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-record",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Own-action record: the append-only JSONL log of what the puppeteer runtime itself did (injections, workspace finals, exits, policy conflicts).",
   "license": "MIT",
