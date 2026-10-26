@@ -537,6 +537,58 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  it('threadId: a resume at a chosen model and effort asks every thread/resume attempt for them', async () => {
+    const t = controllable(1);
+    const obs = await createCodexObserver({
+      transport: t.transport,
+      threadId: 'th-resume-me',
+      resumeOverrides: { model: 'chosen-model', effort: 'high' },
+    });
+    const projection = projectAgentEvents(obs);
+    try {
+      const resumes = t.calls().filter((call) => call.method === 'thread/resume');
+      expect(resumes).toHaveLength(2);
+      for (const call of resumes) {
+        // #38's resume asks for no turns (`excludeTurns`); the selection rides the same request
+        expect(call.params).toEqual({
+          threadId: 'th-resume-me',
+          excludeTurns: true,
+          model: 'chosen-model',
+          config: { model_reasoning_effort: 'high' },
+        });
+      }
+      expect(projection.monitorBatches.flatMap((batch) => batch.updates)).toContainEqual(
+        expect.objectContaining({ family: 'effort', value: { kind: 'effort', value: 'high', intent: 'configured' } }),
+      );
+    } finally {
+      projection.dispose();
+      await obs.dispose();
+    }
+  });
+
+  it('threadId: a server that refuses excludeTurns gets the full resume, at the chosen model and effort', async () => {
+    const t = controllable(0, {}, { server: 'gated' });
+    const obs = await createCodexObserver({
+      transport: t.transport,
+      threadId: 'th-resume-me',
+      resumeOverrides: { model: 'chosen-model', effort: 'high' },
+    });
+    try {
+      const resumes = t.calls().filter((call) => call.method === 'thread/resume');
+      expect(resumes.length).toBeGreaterThan(1);
+      for (const call of resumes) {
+        expect(call.params).toMatchObject({
+          threadId: 'th-resume-me',
+          model: 'chosen-model',
+          config: { model_reasoning_effort: 'high' },
+        });
+      }
+      expect(resumes.at(-1)?.params).not.toHaveProperty('excludeTurns');
+    } finally {
+      await obs.dispose();
+    }
+  });
+
   it('rejects threadId + start together', async () => {
     const t = controllable(0);
     await expect(

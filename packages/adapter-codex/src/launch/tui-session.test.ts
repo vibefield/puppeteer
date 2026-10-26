@@ -124,6 +124,33 @@ describe('Codex TUI preparation', () => {
     expect(fakes.serverDispose).toHaveBeenCalledOnce();
   });
 
+  it("resumes a thread at the chosen model and effort through the observer's first thread/resume", async () => {
+    const prepared = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: host(),
+      resume: 'thread-1',
+      model: 'gpt-test',
+      effort: 'high',
+    });
+    expect(fakes.createObserver).toHaveBeenLastCalledWith(
+      expect.objectContaining({ threadId: 'thread-1', resumeOverrides: { model: 'gpt-test', effort: 'high' } }),
+    );
+    expect(fakes.createObserver.mock.lastCall?.[0]).not.toHaveProperty('start');
+    // The TUI joins the thread the observer resumed, and adopts its settings (C7).
+    expect(prepared.launch.args).toEqual(['resume', 'thread-1', '--remote', 'unix:///tmp/codex.sock']);
+    await prepared.dispose();
+
+    const inherited = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: host(),
+      resume: 'thread-1',
+    });
+    expect(fakes.createObserver.mock.lastCall?.[0]).not.toHaveProperty('resumeOverrides');
+    await inherited.dispose();
+  });
+
   it('preserves the managed createSession spawn path through the same preparation', async () => {
     const terminalHost = host();
     const session = await createCodexTuiSession({ cwd: '/work/repo', host: terminalHost, executable: 'codex' });
