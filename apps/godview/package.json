@@ -55,7 +55,7 @@
     "@webgpu/types": "0.1.72",
     "electron": "^43.5.0",
     "esbuild": "^0.28.2",
-    "happy-dom": "20.11.0",
+    "happy-dom": "21.0.4",
     "typescript": "^5.6.0"
   }
 }
