@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/vibefield/puppeteer/compare/v0.2.1...v0.2.2) (2026-10-26)
+
+
+### Features
+
+* **adapters:** adapt Claude Code 2.1.308, Codex 0.164.0 and Grok 1.0.70 ([#38](https://github.com/vibefield/puppeteer/issues/38)) ([a6f067c](https://github.com/vibefield/puppeteer/commit/a6f067ceb5ad1b0749ecb9672457b9238022aebe))
+
 ## [0.2.1](https://github.com/vibefield/puppeteer/compare/v0.2.0...v0.2.1) (2026-10-13)
 
 
