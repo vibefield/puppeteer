@@ -6,8 +6,10 @@ import { countingCommands, parameterDefaults } from '@vibefield/puppeteer-view-s
 import { labModel } from '../src/lab/lab-model.js';
 import { LAB_NOW_MS, seededRandom } from '../src/lab/lab-world.js';
 import { readMonitorPalette } from '../src/monitor/palette.js';
+import { SWARM_FIT } from '../src/views/swarm/fit.js';
 import type { SwarmFrame } from '../src/views/swarm/gpu/swarm-renderer.js';
 import { SWARM_MANIFEST, swarmMonitorView } from '../src/views/swarm/index.js';
+import { DEFAULT_SWARM_PARAMETERS } from '../src/views/swarm/swarm-parameters.js';
 
 // The swarm's frame parity (MV-0, on the SDK since MV-5): the frames the shipping
 // swarm hands its renderer, for the seeded world at a fixed timestep, against
@@ -25,6 +27,14 @@ import { SWARM_MANIFEST, swarmMonitorView } from '../src/views/swarm/index.js';
 // Electron. This file lives outside the view's folder because its world is the
 // lab's (the wall, W1, reads a view's tests too). Re-record after an INTENTIONAL
 // change: `pnpm exec vitest run test/swarm-frames.test.tsx -u`.
+//
+// A golden holds on every CPU this repo's CI runs, or it is no golden. The n = 20 crowds are compared EXACTLY only
+// before EXACT_UNTIL_S; from there on every frame is held to the crowd's invariants instead (crowdKeepsItsShape),
+// because a crowd that full is chaotic in the last bit: on x64 (CI's ubuntu-latest and windows-latest, run
+// 40252549194, 2026-10-26) compact-n20's first frame to differ from the arm64-recorded golden is t = 0.592 s, body
+// `idle-unread`, x 156.26 → 156.25 and y 82.64 → 82.66, and the crowd amplifies it to every later frame. n = 1 has no
+// crowd to amplify anything and stays exact over its whole horizon. What the view promises is the crowd's behaviour,
+// not its ulps (VF-PM's ruling B, 2026-10-26 02:10Z).
 
 const { paint } = vi.hoisted(() => ({ paint: vi.fn<(frame: SwarmFrame) => void>() }));
 vi.mock('../src/views/swarm/gpu/swarm-renderer.js', async (original) => ({
@@ -43,6 +53,8 @@ const SCENARIOS = [
 const BEFORE = 60;
 const AFTER = 60;
 const KEEP_EVERY = 4;
+/** The n = 20 crowds' exact horizon, seconds: the first frame time x64 measured apart from arm64 (above). */
+const EXACT_UNTIL_S = 0.592;
 const NO_CHANGES = Object.freeze({ added: [], updated: [], removed: [] });
 
 let stage = { width: 0, height: 0 };
@@ -121,6 +133,70 @@ async function project(frame: SwarmFrame, index: number, models: Record<string, 
   };
 }
 
+/**
+ * What a crowd keeps on every CPU, every frame from the first in which every body has landed (its arrival `scale` is
+ * 1), measured on the arm64 goldens and bounded from them:
+ * - every body's centre inside the field: right of the usage column's inset, within the stage (measured: none out);
+ * - no body's centre inside another body's disc — the round pull packs the crowd and Matter's contacts yield under it
+ *   by design (SWF, a30d3984), so discs overlap, but by less than the smaller one's radius (measured: at most 0.82 of
+ *   it in compact-n20, 0.45 in default-n20);
+ * - ONE scale for the whole crowd (SWF's fit): every radius at or above the floor, and the largest over the smallest
+ *   at most the largest base over the smallest (80 / 50 here), the ratio one shared k keeps (measured: exactly 1.6);
+ * - the settled crowd centred on the field, as the radial pull puts it: its centroid within a tenth of the field's
+ *   width and height of the field's centre at the end of each phase (measured: 36 px and 5 px at most).
+ */
+function crowdKeepsItsShape(
+  recorded: readonly SwarmFrame[],
+  geometry: StageGeometry,
+  settled: readonly number[],
+): void {
+  const left = geometry.insets.left;
+  const fieldWidth = geometry.width - left;
+  const bases = [
+    DEFAULT_SWARM_PARAMETERS.radiusIdle,
+    DEFAULT_SWARM_PARAMETERS.radiusWorking,
+    DEFAULT_SWARM_PARAMETERS.radiusWorkingMax,
+    DEFAULT_SWARM_PARAMETERS.radiusBlocked,
+  ];
+  const ratio = Math.max(...bases) / Math.min(...bases);
+  const first = recorded.findIndex(
+    (frame) => frame.bodies.length > 0 && frame.bodies.every((body) => body.scale >= 0.999),
+  );
+  expect(first).toBeGreaterThanOrEqual(0);
+  recorded.forEach((frame, index) => {
+    if (index < first) return;
+    const bodies = frame.bodies.filter((body) => body.opacity > 0 && body.scale >= 0.999);
+    for (const body of bodies) {
+      expect(body.x, `frame ${index} ${body.model.id} x`).toBeGreaterThanOrEqual(left);
+      expect(body.x, `frame ${index} ${body.model.id} x`).toBeLessThanOrEqual(geometry.width);
+      expect(body.y, `frame ${index} ${body.model.id} y`).toBeGreaterThanOrEqual(0);
+      expect(body.y, `frame ${index} ${body.model.id} y`).toBeLessThanOrEqual(geometry.height);
+      expect(body.radius, `frame ${index} ${body.model.id} radius`).toBeGreaterThanOrEqual(
+        SWARM_FIT.floorRadius - 0.01,
+      );
+    }
+    for (let i = 0; i < bodies.length; i += 1) {
+      for (let j = i + 1; j < bodies.length; j += 1) {
+        const a = bodies[i]!;
+        const b = bodies[j]!;
+        const depth = a.radius + b.radius - Math.hypot(a.x - b.x, a.y - b.y);
+        expect(depth, `frame ${index} ${a.model.id} × ${b.model.id}`).toBeLessThan(Math.min(a.radius, b.radius));
+      }
+    }
+    if (bodies.length > 1) {
+      const radii = bodies.map((body) => body.radius);
+      expect(Math.max(...radii) / Math.min(...radii), `frame ${index} one scale`).toBeLessThanOrEqual(ratio * 1.02);
+    }
+  });
+  for (const index of settled) {
+    const bodies = recorded[index]!.bodies.filter((body) => body.opacity > 0);
+    const cx = bodies.reduce((sum, body) => sum + body.x, 0) / bodies.length;
+    const cy = bodies.reduce((sum, body) => sum + body.y, 0) / bodies.length;
+    expect(Math.abs(cx - (left + fieldWidth / 2)), `frame ${index} centroid x`).toBeLessThanOrEqual(fieldWidth / 10);
+    expect(Math.abs(cy - geometry.height / 2), `frame ${index} centroid y`).toBeLessThanOrEqual(geometry.height / 10);
+  }
+}
+
 /** Godview's stage as the host measures it (MV-D19): the usage column (godview.css) at (13, 11), 46 wide, the
  * stage's height less 17, as an obstacle and the left inset. */
 function stageOf(width: number, height: number): StageGeometry {
@@ -174,15 +250,27 @@ describe('the swarm’s frames', () => {
         ({ index }) =>
           index % KEEP_EVERY === 0 || index === before - 1 || index === before || index === recorded.length - 1,
       );
+    const crowd = n > 1;
     const kept = [];
-    for (const { frame, index } of sampled) kept.push(await project(frame, index, models));
+    for (const { frame, index } of sampled) {
+      if (crowd && frame.time >= EXACT_UNTIL_S) continue;
+      kept.push(await project(frame, index, models));
+    }
+    if (crowd) crowdKeepsItsShape(recorded, geometry, [before - 1, recorded.length - 1]);
     const ids = (frame: SwarmFrame | undefined) => new Set(frame?.bodies.map((body) => body.model.id));
     expect(ids(recorded[before - 1]).has('late-arrival')).toBe(false);
     expect(ids(recorded.at(-1)).has('late-arrival')).toBe(true);
     // No Worker here: the physics ran in this thread from the start, and the view said so (MV-D7).
     expect(reports).toContainEqual({ physics: 'inline' });
     await act(async () => instance.unmount());
-    const golden = { scenario: name, recorded: recorded.length, changedAt: before, frames: kept, models };
+    const golden = {
+      scenario: name,
+      recorded: recorded.length,
+      changedAt: before,
+      ...(crowd ? { exactUntil: EXACT_UNTIL_S } : {}),
+      frames: kept,
+      models,
+    };
     await expect(`${JSON.stringify(golden, null, 1)}\n`).toMatchFileSnapshot(`./goldens/swarm/${name}.json`);
   });
 });
