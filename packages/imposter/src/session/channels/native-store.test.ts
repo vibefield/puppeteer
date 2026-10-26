@@ -42,6 +42,45 @@ describe('vendor-native session store', () => {
     expect(store.read('signals.json')).toEqual({ turnCount: 1 });
   });
 
+  it('writes a Unix-seconds clock and a per-session event ordinal that continues after resume', () => {
+    const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-seconds-'));
+    roots.push(root);
+    const grok = {
+      ...document,
+      recordTimestamp: { field: 'timestamp', format: 'epoch-seconds' as const },
+      recordEventId: { metaField: 'eventId' },
+    };
+    const bindings: Record<string, unknown> = { $encodedCwd: '%2Fworkspace', $sessionId: 'session-one' };
+    const first = createNativeSessionStore(root, grok, bindings);
+    const before = Math.floor(Date.now() / 1_000);
+    // Stamping before validation previews the next ordinal without consuming it.
+    expect(first.stamp({ sessionId: 'session-one', _meta: { agentTimestampMs: 1 } })).toEqual({
+      sessionId: 'session-one',
+      _meta: { agentTimestampMs: 1, eventId: 'session-one-1' },
+    });
+    first.append('session/update', { sessionId: 'session-one', _meta: { agentTimestampMs: 1 } });
+    first.append('_x.ai/session/update', { sessionId: 'session-one', _meta: { eventId: 'session-one-7' } });
+    first.append('session/update', { sessionId: 'session-one' });
+    const resumed = createNativeSessionStore(root, grok, bindings);
+    resumed.append('_x.ai/session/update', { sessionId: 'session-one', _meta: { agentTimestampMs: 2 } });
+
+    const records = readFileSync(first.updatesPath, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as { timestamp: number; params: { _meta: { eventId: string } } });
+    expect(records.map(({ params }) => params._meta.eventId)).toEqual([
+      'session-one-1',
+      'session-one-7',
+      'session-one-8',
+      'session-one-9',
+    ]);
+    for (const { timestamp } of records) {
+      expect(Number.isInteger(timestamp)).toBe(true);
+      expect(timestamp).toBeGreaterThanOrEqual(before);
+      expect(timestamp).toBeLessThan(10_000_000_000);
+    }
+  });
+
   it('rebinds its directory when session/new adopts the authoritative id', () => {
     const root = mkdtempSync(join(tmpdir(), 'puppeteer-native-store-rebind-'));
     roots.push(root);

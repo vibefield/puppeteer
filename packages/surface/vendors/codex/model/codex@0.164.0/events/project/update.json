@@ -1,0 +1,165 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "project/update",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "metadata": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "projectId": {
+        "type": "string"
+      },
+      "roots": {
+        "items": {
+          "$ref": "#/$defs/ProjectRoot"
+        },
+        "type": [
+          "array",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "projectId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ProjectRoot": {
+        "properties": {
+          "path": {
+            "$ref": "#/$defs/AbsolutePathBuf"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "project/update"
+        ],
+        "title": "Project/updateRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ProjectUpdateParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Project/updateRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ProjectUpdateParams": {
+        "properties": {
+          "metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "roots": {
+            "items": {
+              "$ref": "#/$defs/ProjectRoot"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "projectId"
+        ],
+        "type": "object"
+      },
+      "ProjectRoot": {
+        "properties": {
+          "path": {
+            "$ref": "#/$defs/AbsolutePathBuf"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

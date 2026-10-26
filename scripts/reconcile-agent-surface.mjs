@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Structural/behavioral candidate classification. This prepares evidence; it never promotes support. */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildGroundTruth, isClaimAddressableAsmVersion, loadModel } from '@vibefield/puppeteer-surface';
@@ -230,7 +230,11 @@ if (invokedDirectly) {
   });
   const serialized = `${JSON.stringify(report, null, 2)}\n`;
   const output = flag('--output');
-  if (output) writeFileSync(safePath(root, output), serialized);
-  else process.stdout.write(serialized);
+  if (output) {
+    // The first candidate of a vendor has no candidates/<vendor>@<version>/ directory yet.
+    const destination = safePath(root, output);
+    mkdirSync(dirname(destination), { recursive: true });
+    writeFileSync(destination, serialized);
+  } else process.stdout.write(serialized);
   if (['unsafe-or-unknown', 'republished-artifact'].includes(report.classification)) process.exitCode = 1;
 }

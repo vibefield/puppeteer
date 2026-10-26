@@ -1,0 +1,946 @@
+{
+  "probeVersion": 1,
+  "vendor": "claude",
+  "vendorVersion": "2.1.308",
+  "capturedAt": "2026-10-25",
+  "lane": "Claude 2.1.308 adaptation — what blinds a managed session without a flag, re-verified",
+  "artifact": {
+    "platform": "darwin-arm64",
+    "install": "standalone executable from downloads.claude.ai/claude-code-releases/2.1.308/darwin-arm64/claude (surface:download)",
+    "sha256": "ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+  },
+  "static": {
+    "method": "Read-only inspection of the digest-pinned executable. Each fact is bound to its anchor by digest and byte offset, and to an 8 KiB window around it by digest; no source text is retained.",
+    "facts": [
+      {
+        "id": "switch-parser",
+        "fact": "One parser reads every switch: off when unset or empty; otherwise on only when the value, lowercased and trimmed, is 1, true, yes or on. The env registry's bool() type is the same parser.",
+        "anchorSha256": "5d1da90e34dc8c6c9136599e7c8f2b55007be850a68a6b588d367d5cbf7d5548",
+        "anchorBytes": 142,
+        "anchorByteOffset": 217110878,
+        "windowStart": 217108830,
+        "windowBytes": 8192,
+        "windowSha256": "a930bab72ba8ee50be34fa91ff02103fadceae817cdb75ee0b06c44137fe5ea7"
+      },
+      {
+        "id": "simple-mode",
+        "fact": "Simple (bare) mode is CLAUDE_CODE_SIMPLE read by that parser, or --bare in argv before `--`.",
+        "anchorSha256": "cedb1e4acf65e925d4fed4ef9cefd33a4749d11de7c9da52d94e01f440fa9d86",
+        "anchorBytes": 69,
+        "anchorByteOffset": 217273792,
+        "windowStart": 217271744,
+        "windowBytes": 8192,
+        "windowSha256": "c46907bbe2e3f02de33d8d8c08f4840f62fb37208b6d8c85810baab636eda49a"
+      },
+      {
+        "id": "safe-mode",
+        "fact": "Safe mode is CLAUDE_CODE_SAFE_MODE read by that parser, or --safe-mode in argv before `--`.",
+        "anchorSha256": "86c6342845f33783e21b45c746bf88b2804641d28aed11f5a015fb30782b211f",
+        "anchorBytes": 77,
+        "anchorByteOffset": 217273861,
+        "windowStart": 217271813,
+        "windowBytes": 8192,
+        "windowSha256": "6c2b3675ed8683caa0a2ccb2167b6a27d41cb499e19f61258bb38f48bfe04004"
+      },
+      {
+        "id": "restricted-env",
+        "fact": "CLAUDE_CODE_RESTRICTED, read by that parser, stands for --restricted.",
+        "anchorSha256": "fbd68e4392df11f8289c46c3b97196b08982581a748f08d2639464ec8044e922",
+        "anchorBytes": 61,
+        "anchorByteOffset": 217273938,
+        "windowStart": 217271890,
+        "windowBytes": 8192,
+        "windowSha256": "e267000f76b3f3522b0c2eaad25a45ff33d91148941076f58603e13f4a799300"
+      },
+      {
+        "id": "bare-gates-hooks",
+        "fact": "The customization gate: in bare mode the hooks surface is off (hooks: true in its skip table), so no settings, flag, policy or plugin hook fires; the status line is not in it.",
+        "anchorSha256": "4509f0f2ab8d78ecb774d705d971c0161b312d6ce1c89718c6056081a305712f",
+        "anchorBytes": 117,
+        "anchorByteOffset": 224218272,
+        "windowStart": 224216224,
+        "windowBytes": 8192,
+        "windowSha256": "8d8711d6faa0a92a1d280c04bb94a2b580c8ca379b2e4db286e4fe649dee6736"
+      },
+      {
+        "id": "hooks-config",
+        "fact": "The effective hooks: policy disableAllHooks → none; policy allowManagedHooksOnly, or safe mode → policy hooks only; policy strictPluginOnlyCustomization covering hooks → policy hooks only; the merged settings' disableAllHooks → policy hooks only; else the merged hooks of every enabled source.",
+        "anchorSha256": "63b0db75b2b71560dfe0a423c7080eed30da1bae87527c0b96f2e1ebaabeb063",
+        "anchorBytes": 76,
+        "anchorByteOffset": 221983412,
+        "windowStart": 221981364,
+        "windowBytes": 8192,
+        "windowSha256": "f79148f7572540dfe760b6a268f4dc540fbc6165c6d31e813424f92d45c512f9"
+      },
+      {
+        "id": "settings-order",
+        "fact": "Settings sources, low to high precedence: userSettings, projectSettings, localSettings, flagSettings (--settings), policySettings.",
+        "anchorSha256": "ec336acb62c9ef5a6467330908b3b27bd1acd25c83b17cc167a78ce3b327000a",
+        "anchorBytes": 89,
+        "anchorByteOffset": 217858683,
+        "windowStart": 217856635,
+        "windowBytes": 8192,
+        "windowSha256": "cff18b541e4fe3f52d031430d1a77d69e02df5064ba79b284ff4280882f839fb"
+      },
+      {
+        "id": "enabled-sources",
+        "fact": "The enabled sources are the --setting-sources list plus flagSettings and policySettings, always.",
+        "anchorSha256": "e763d86fabfb9e5e919d8ba771c9355d1075fb6f5823d664f3060a13bd5f7ba5",
+        "anchorBytes": 93,
+        "anchorByteOffset": 217860506,
+        "windowStart": 217858458,
+        "windowBytes": 8192,
+        "windowSha256": "06d10b7f7a8cdc30542ea3d4f0bfc2dd46d5d65236670eb32d297077eb21abbb"
+      },
+      {
+        "id": "restricted-drops-layers",
+        "fact": "--restricted or CLAUDE_CODE_RESTRICTED empties the setting sources: the person's user, project and local layers are not read; flag and policy still are.",
+        "anchorSha256": "efdee74cf19b1b6bf84539e2ec8fb7d6602d9fa2715d32bef267fba02fa585ae",
+        "anchorBytes": 107,
+        "anchorByteOffset": 231559747,
+        "windowStart": 231557699,
+        "windowBytes": 8192,
+        "windowSha256": "6740b511568b3d93f206d94aa4fbc67c916747f9228d168edd0b289bbd0d318b"
+      },
+      {
+        "id": "http-hook-gate",
+        "fact": "An HTTP hook reads allowedHttpHookUrls and httpHookAllowedEnvVars from the effective settings.",
+        "anchorSha256": "7f4292482f70b47a5a96e59bb5289fa93903a3e504c69cf32956f4f060eae348",
+        "anchorBytes": 108,
+        "anchorByteOffset": 229882952,
+        "windowStart": 229880904,
+        "windowBytes": 8192,
+        "windowSha256": "1839cdd6f8b9d12a8c19e7166c9248f4507984b0bc60243d9eb70972a6043f77"
+      },
+      {
+        "id": "http-hook-blocked",
+        "fact": "An HTTP hook whose URL matches no allowedHttpHookUrls pattern is blocked.",
+        "anchorSha256": "810893271e6534ec85756b9addb9587d42ad1e95178450de13ea1c6b8b1e7bdb",
+        "anchorBytes": 49,
+        "anchorByteOffset": 104457489,
+        "windowStart": 104455441,
+        "windowBytes": 8192,
+        "windowSha256": "e8dd5acfc1c93f18aafa66a0418c907dfbaee05d3fd21d7b0737314046313571"
+      },
+      {
+        "id": "header-interpolation",
+        "fact": "A header variable not in the hook's allowedEnvVars (narrowed by httpHookAllowedEnvVars) is not interpolated.",
+        "anchorSha256": "c392bf538b23c4f3f6cd3256f71121cea65b4a58bff44ac2299ce57131b6d6b3",
+        "anchorBytes": 45,
+        "anchorByteOffset": 104257605,
+        "windowStart": 104255557,
+        "windowBytes": 8192,
+        "windowSha256": "9cb16967b5dd54509521a27b20852d7da265f6821adff99de00da680d6df13dc"
+      },
+      {
+        "id": "url-matcher",
+        "fact": "An allowedHttpHookUrls pattern is a URL with `*` wildcards; the port must match unless wildcarded, and `/*` matches any path.",
+        "anchorSha256": "ad16bfbd8ca22737c033b6f01f17fd977a410ea3ab70e6920e45c041cd7300bb",
+        "anchorBytes": 37,
+        "anchorByteOffset": 223766505,
+        "windowStart": 223764457,
+        "windowBytes": 8192,
+        "windowSha256": "66ce22aff9c73b9f2357991e10cff0d9c0aba7c12a39b62bb97120ad471ed65e"
+      },
+      {
+        "id": "session-id-exported",
+        "fact": "CLAUDE_CODE_SESSION_ID is written, not read, on the local path: Claude exports its own session id when the variable is present (it only latches a cloud session reference otherwise).",
+        "anchorSha256": "4f85a1831522ecc85f6e918cee93bc3c630ecf59a44b518e4abe50290c83d978",
+        "anchorBytes": 64,
+        "anchorByteOffset": 241599793,
+        "windowStart": 241597745,
+        "windowBytes": 8192,
+        "windowSha256": "60f117da3bb013befa90ecdc13b4d534f0f431bdca15fe0f21206ad6a84baccb"
+      },
+      {
+        "id": "policy-chain",
+        "fact": "Policy settings are read from managed-settings.json and managed-settings.d/*.json in the platform's admin directory (plus the Windows registry, WSL inheritance, remote and helper policy): not a file the adapter can read in full.",
+        "anchorSha256": "99190f42d34daf5dc8698473d123656398e54585c8b00be496dae9d8f4a1165a",
+        "anchorBytes": 74,
+        "anchorByteOffset": 218204485,
+        "windowStart": 218202437,
+        "windowBytes": 8192,
+        "windowSha256": "ede883005e869e9e2972285b4dbf130c0b9394f4c56d05e7ff6bd03cb2e87590"
+      },
+      {
+        "id": "trust-gates-hooks",
+        "fact": "Hooks do not execute in a workspace whose trust dialog has not been accepted.",
+        "anchorSha256": "8beefdfe7e8efdc9a10f7152a0e523161622b5106e993d8b376d3b53d1df0f7f",
+        "anchorBytes": 45,
+        "anchorByteOffset": 104245837,
+        "windowStart": 104243789,
+        "windowBytes": 8192,
+        "windowSha256": "2808c6b9402f753fbdf66b7f681858890984084ec04dcb0f45bd8859d0815bb4"
+      },
+      {
+        "id": "restrict-personal-config-switch",
+        "fact": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG (new in 2.1.308), read by the switch parser or set by a managed source, turns on restrict-personal-config mode.",
+        "anchorSha256": "e8819c89a781a5a65a0c8496dc56f86f4a2de6e5273befa419ef9633eb9a4561",
+        "anchorBytes": 114,
+        "anchorByteOffset": 221629218,
+        "windowStart": 221627170,
+        "windowBytes": 8192,
+        "windowSha256": "ae6a194f3b749bd0e2fec1ca744c26cdeec08944fb3524858cd35cacac129275"
+      },
+      {
+        "id": "personal-hook-fail-closed-events",
+        "fact": "In that mode a personal hook that fails on PreToolUse, PermissionRequest, PreModelSwitch, UserPromptSubmit or UserPromptExpansion fails closed (blocks the action).",
+        "anchorSha256": "14b55f3c6fa955ffb4b7454d946de8193dd14aafce6f1855a8a6b94841e4b0ad",
+        "anchorBytes": 110,
+        "anchorByteOffset": 227256048,
+        "windowStart": 227254000,
+        "windowBytes": 8192,
+        "windowSha256": "f718e5a2ce14ae0f1d7841d21422070c86dfe44f5ae307e57f15132989a35033"
+      },
+      {
+        "id": "ignore-persisted-trust",
+        "fact": "CLAUDE_CODE_IGNORE_PERSISTED_TRUST (new in 2.1.308) makes no persisted workspace-trust record count in this process, so hooks wait for the trust dialog again (trust-gates-hooks).",
+        "anchorSha256": "6ee4455f00ba8792d0bb87bd3caa499099694f3f2738b2e44d32db1196763c09",
+        "anchorBytes": 68,
+        "anchorByteOffset": 220277035,
+        "windowStart": 220274987,
+        "windowBytes": 8192,
+        "windowSha256": "cd4c5f2b6dfdd1a27bcfcee402b4e939b8080560a203e104f59acbd564eb88c7"
+      },
+      {
+        "id": "hook-base-input",
+        "fact": "The common hook input is built in one place: session_id, transcript_path (\"\" in a diskless session), cwd, scratchpad_dir (only when a scratchpad exists), prompt_id, permission_mode, agent_id, agent_type, effort.",
+        "anchorSha256": "11e3cf173dd496c9e499f20ffa693fa6b7e62075f64fdbe5c980ac279b1af0c2",
+        "anchorBytes": 189,
+        "anchorByteOffset": 229929113,
+        "windowStart": 229927065,
+        "windowBytes": 8192,
+        "windowSha256": "9ab4dd239d61eb6ba8f5a97a272dfcf05f944d701a4a38814da77ab17d501969"
+      },
+      {
+        "id": "served-call-session-id",
+        "fact": "A served (remote-caller) hook call carries session_id \"served:<caller session>\" and an empty transcript_path; it does not originate from a local terminal launch.",
+        "anchorSha256": "8f5b8c1df740bc0d6f29a1921795f75f8abf45c4f02f3b764c58a29156d6f28b",
+        "anchorBytes": 138,
+        "anchorByteOffset": 229928926,
+        "windowStart": 229926878,
+        "windowBytes": 8192,
+        "windowSha256": "47c064400d937cb44e7502a364c84a7a61727a3095f0e2673b4f1d39a265d548"
+      }
+    ]
+  },
+  "scan": {
+    "method": "The 2.1.283 scan carried forward name by name, re-checked against the 2.1.308 env registry; every adapter-referenced env name and settings key is still present. Two names are new on these paths.",
+    "names": [
+      {
+        "name": "CLAUDE_CODE_SIMPLE",
+        "path": "hooks",
+        "verdict": "blinds (no hook fires)",
+        "evidence": [
+          "simple-mode",
+          "bare-gates-hooks",
+          "live F01"
+        ],
+        "adapter": "refused by name"
+      },
+      {
+        "name": "CLAUDE_CODE_SAFE_MODE",
+        "path": "hooks",
+        "verdict": "blinds (policy hooks only)",
+        "evidence": [
+          "safe-mode",
+          "hooks-config",
+          "live F03"
+        ],
+        "adapter": "refused by name"
+      },
+      {
+        "name": "CLAUDE_CODE_RESTRICTED",
+        "path": "hooks, settings",
+        "verdict": "does not blind: the person's layers are not read, --settings is",
+        "evidence": [
+          "restricted-env",
+          "restricted-drops-layers",
+          "live F04"
+        ],
+        "adapter": "accepted; no status-line delegate, no layer read"
+      },
+      {
+        "name": "disableAllHooks (user, project, local)",
+        "path": "hooks",
+        "verdict": "blinds",
+        "evidence": [
+          "hooks-config",
+          "settings-order",
+          "live F05",
+          "live F08"
+        ],
+        "adapter": "typed launch refused before launch; a host's own spawn unchanged"
+      },
+      {
+        "name": "disableAllHooks: false in the launch's --settings",
+        "path": "hooks",
+        "verdict": "turns the managed hooks back on, and the person's own hooks and status line with them",
+        "evidence": [
+          "settings-order",
+          "live F06"
+        ],
+        "adapter": "not used"
+      },
+      {
+        "name": "allowedHttpHookUrls (user, project, local)",
+        "path": "hooks",
+        "verdict": "blinds the HTTP hooks (SessionStart, a command hook, still arrives)",
+        "evidence": [
+          "http-hook-gate",
+          "http-hook-blocked",
+          "url-matcher",
+          "live F09"
+        ],
+        "adapter": "restated in the launch's settings with the bridge's entry added (F11)"
+      },
+      {
+        "name": "httpHookAllowedEnvVars (user, project, local)",
+        "path": "hooks",
+        "verdict": "strips the bearer from the HTTP hooks",
+        "evidence": [
+          "http-hook-gate",
+          "header-interpolation",
+          "live F10"
+        ],
+        "adapter": "restated with the bridge's token variable added (F11)"
+      },
+      {
+        "name": "policy: disableAllHooks, allowManagedHooksOnly, strictPluginOnlyCustomization (hooks), allowedHttpHookUrls, httpHookAllowedEnvVars",
+        "path": "hooks",
+        "verdict": "blind, and rank above --settings",
+        "evidence": [
+          "hooks-config",
+          "settings-order",
+          "policy-chain"
+        ],
+        "adapter": "not read: unprobed (a probe would write system files)"
+      },
+      {
+        "name": "workspace trust",
+        "path": "hooks",
+        "verdict": "hooks wait for the trust dialog, typed and managed alike",
+        "evidence": [
+          "trust-gates-hooks"
+        ],
+        "adapter": "nothing to carry"
+      },
+      {
+        "name": "--setting-sources excluding a layer",
+        "path": "settings",
+        "verdict": "that layer's switches do not apply",
+        "evidence": [
+          "enabled-sources",
+          "live F07"
+        ],
+        "adapter": "the check reads only the enabled layers"
+      },
+      {
+        "name": "CLAUDE_CODE_SESSION_ID",
+        "path": "session id",
+        "verdict": "does not set the id: Claude exports its own",
+        "evidence": [
+          "session-id-exported"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_RESUME_FROM_SESSION",
+        "path": "session id",
+        "verdict": "only on the SDK/URL resume path",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_HOST_SESSION_ID, CLAUDE_CODE_BRIDGE_SESSION_ID, CLAUDE_CODE_REMOTE_SESSION_ID, CLAUDE_BRIDGE_REATTACH_SESSION",
+        "path": "session id",
+        "verdict": "host naming, Remote Control and cloud paths only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_PROJECT_DIR_NAME",
+        "path": "directory",
+        "verdict": "names the transcripts' project folder under a CLAUDE_CONFIG_DIR; the session's directory is unchanged, and transcripts are found by id",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_TMUX_SESSION",
+        "path": "directory",
+        "verdict": "telemetry and display only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_BG_WORKSPACE_TRUSTED, CLAUDE_CODE_DISABLE_HOOK_FORWARDING",
+        "path": "hooks",
+        "verdict": "background and remote paths only",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_CHILD_SESSION, CLAUDECODE",
+        "path": "session",
+        "verdict": "set by Claude for its own child processes (history and persistence markers); not a person's shell",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_MANAGED_SETTINGS_PATH, CLAUDE_CODE_REMOTE_SETTINGS_PATH, CLAUDE_CODE_MOCK_REMOTE_SETTINGS",
+        "path": "policy",
+        "verdict": "registry names with no reading found on these paths",
+        "evidence": [
+          "static read"
+        ],
+        "adapter": "not read"
+      },
+      {
+        "name": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG",
+        "path": "hooks, settings",
+        "verdict": "does not blind: managed --settings hooks fire and a failing managed hook stays non-blocking; the person's own hooks and status line still run, but their failing PreToolUse (and the other listed events) now fails closed",
+        "evidence": [
+          "restrict-personal-config-switch",
+          "personal-hook-fail-closed-events",
+          "live F12",
+          "live F14",
+          "live F16"
+        ],
+        "adapter": "nothing to carry (the person's own configuration)"
+      },
+      {
+        "name": "CLAUDE_CODE_IGNORE_PERSISTED_TRUST",
+        "path": "hooks",
+        "verdict": "hooks wait for the trust dialog, as for an untrusted workspace; not blinding once answered",
+        "evidence": [
+          "ignore-persisted-trust",
+          "trust-gates-hooks"
+        ],
+        "adapter": "nothing to carry"
+      }
+    ]
+  },
+  "live": {
+    "method": "The isolated loopback rig of invocation-grammar.json, with managed settings in the adapter's own shape: SessionStart through the adapter's command forwarder, UserPromptSubmit, Stop and SessionEnd as HTTP hooks whose Authorization header names $PUPPETEER_HOOK_TOKEN (allowedEnvVars), all to a loopback bridge that checks the bearer. The person's user settings hold a command hook of theirs and a status line of theirs, plus what each probe sets. Nothing of the owner's configuration or account is read or written. Re-run with packages/surface/vendors/claude/census/switch-probes.mjs: each probe is one native TUI session in a disposable environment against the loopback model; whether a tool ran is read from the workspace. F01-F11 reproduce the 2.1.283 probes; F12-F16 are new and were also run on the 2.1.283 artifact (where the new switch is unknown).",
+    "prompt": "Reply with the single word ok. (F13-F16: a turn that runs the allowed tool Bash(touch touched.txt))",
+    "managedArgvPrefix": [
+      "--session-id",
+      "<uuid>",
+      "--settings",
+      "<managed settings>",
+      "--model",
+      "<loopback model>"
+    ],
+    "sessions": 16,
+    "probes": [
+      {
+        "id": "F01",
+        "question": "CLAUDE_CODE_SIMPLE=1 in the environment, no flag",
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F02",
+        "question": "CLAUDE_CODE_SIMPLE=0 (read as off): the positive control",
+        "environment": {
+          "CLAUDE_CODE_SIMPLE": "0"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "Stop"
+          ],
+          "personStatusLineRan": true
+        }
+      },
+      {
+        "id": "F03",
+        "question": "CLAUDE_CODE_SAFE_MODE=true, no flag",
+        "environment": {
+          "CLAUDE_CODE_SAFE_MODE": "true"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F04",
+        "question": "CLAUDE_CODE_RESTRICTED=1, no flag",
+        "environment": {
+          "CLAUDE_CODE_RESTRICTED": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F05",
+        "question": "disableAllHooks: true in the user settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F06",
+        "question": "disableAllHooks: true in the user settings and false in the managed --settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {
+          "disableAllHooks": false
+        },
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F07",
+        "question": "disableAllHooks: true in the user settings with --setting-sources project,local",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "disableAllHooks": true
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "settingSources": "project,local",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F08",
+        "question": "disableAllHooks: true in the project settings",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {
+            "disableAllHooks": true
+          }
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [],
+        "personHooks": [],
+        "personStatusLineRan": false,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F09",
+        "question": "allowedHttpHookUrls in the user settings that excludes the bridge",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ]
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F10",
+        "question": "httpHookAllowedEnvVars: [] in the user settings",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/wrong",
+          "Stop/http/wrong",
+          "SessionEnd/http/wrong"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F11",
+        "question": "both lists in the user settings, the managed --settings restating each with the bridge entry added",
+        "environment": {},
+        "personSettings": {
+          "user": {
+            "allowedHttpHookUrls": [
+              "https://example.invalid/*"
+            ],
+            "httpHookAllowedEnvVars": []
+          },
+          "project": {}
+        },
+        "managedSettingsAdd": "<lists restated with the bridge entry>",
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit"
+      },
+      {
+        "id": "F12",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1: managed hooks, the person hooks, and their status line",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 1,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "Stop"
+          ],
+          "personStatusLineRan": true
+        }
+      },
+      {
+        "id": "F13",
+        "question": "managed PreToolUse answered HTTP 500: does the allowed tool call still run",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "PreToolUse/http/bearer",
+            "PostToolUse/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "Stop"
+          ],
+          "personStatusLineRan": true,
+          "toolRan": true
+        }
+      },
+      {
+        "id": "F14",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1 and managed PreToolUse answered HTTP 500",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "managedHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "PreToolUse/http/bearer",
+            "PostToolUse/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "Stop"
+          ],
+          "personStatusLineRan": true,
+          "toolRan": true
+        }
+      },
+      {
+        "id": "F15",
+        "question": "the person's own PreToolUse HTTP hook answered HTTP 500: does the tool call run",
+        "environment": {},
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "personHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "PostToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "PreToolUse",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": true,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "PreToolUse/http/bearer",
+            "PostToolUse/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "PreToolUse",
+            "Stop"
+          ],
+          "personStatusLineRan": true,
+          "toolRan": true
+        }
+      },
+      {
+        "id": "F16",
+        "question": "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG=1 and the person's own PreToolUse HTTP hook answered HTTP 500",
+        "environment": {
+          "CLAUDE_CODE_RESTRICT_PERSONAL_CONFIG": "1"
+        },
+        "personSettings": {
+          "user": {},
+          "project": {}
+        },
+        "managedSettingsAdd": {},
+        "personHttp500": [
+          "PreToolUse"
+        ],
+        "managedHooks": [
+          "SessionStart/command/bearer",
+          "UserPromptSubmit/http/bearer",
+          "PreToolUse/http/bearer",
+          "Stop/http/bearer",
+          "SessionEnd/http/bearer"
+        ],
+        "personHooks": [
+          "SessionStart",
+          "UserPromptSubmit",
+          "PreToolUse",
+          "Stop"
+        ],
+        "personStatusLineRan": true,
+        "modelTurns": 2,
+        "toolRan": false,
+        "exit": "/exit",
+        "was2_1_283": {
+          "managedHooks": [
+            "SessionStart/command/bearer",
+            "UserPromptSubmit/http/bearer",
+            "PreToolUse/http/bearer",
+            "PostToolUse/http/bearer",
+            "Stop/http/bearer",
+            "SessionEnd/http/bearer"
+          ],
+          "personHooks": [
+            "SessionStart",
+            "UserPromptSubmit",
+            "PreToolUse",
+            "Stop"
+          ],
+          "personStatusLineRan": true,
+          "toolRan": true
+        }
+      }
+    ]
+  }
+}

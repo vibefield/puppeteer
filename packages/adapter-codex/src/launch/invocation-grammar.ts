@@ -1,13 +1,15 @@
 /**
  * Codex's own CLI grammar as data, and the one walker that reads a typed argv the
- * way clap reads it (codex-cli 0.157.1).
+ * way clap reads it (codex-cli 0.164.0).
  *
  * Each row says what an option or subcommand IS for a managed launch: a utility, a
  * one-shot or an agent elsewhere (a passthrough, which every host runs as typed), a
  * session argument the managed recipe carries, or one it cannot carry (rejected — a
  * strict host shows the person `why`). The census (`invocation-grammar.test.ts`)
  * holds every row to the help captured in `__fixtures__/`, and the probes the rows
- * cite are recorded under packages/surface/vendors/codex/probes/codex@0.157.1/.
+ * cite are recorded under packages/surface/vendors/codex/probes/codex@0.157.1/ and
+ * re-run on 0.164.0 under probes/codex@0.164.0/ (the same answers but for version
+ * strings and one feature's stage, plus the new `migrate-nfs-db`; README there).
  *
  * The managed launch is not the typed command with flags added: the adapter starts a
  * private app-server, starts the thread itself, and the terminal runs
@@ -20,7 +22,7 @@
 import type { AgentNativeInvocationPassthroughKind } from '@vibefield/puppeteer-core';
 
 /** The codex release whose help the table and its census fixtures were captured from. */
-export const CODEX_GRAMMAR_VERSION = '0.157.1';
+export const CODEX_GRAMMAR_VERSION = '0.164.0';
 
 /** `flag`: no value. `value`: exactly one (`<VALUE>`). `values`: one or more (`<VALUE>...`). */
 export type CodexArity = 'flag' | 'value' | 'values';
@@ -59,7 +61,7 @@ export interface CodexOptionRow {
   readonly landing?: CodexLanding;
   /** Rejected: the one clause a person reads. Otherwise: why the row lands where it does. */
   readonly why: string;
-  /** The probes that settle the row (their record: probes/codex@0.157.1/README.md). */
+  /** The probes that settle the row (record: probes/codex@0.157.1/README.md; re-run in probes/codex@0.164.0). */
   readonly evidence: readonly string[];
 }
 
@@ -341,6 +343,7 @@ export const CODEX_SUBCOMMANDS: readonly CodexSubcommandRow[] = [
   { name: 'archive', aliases: [], class: 'utility', why: 'it archives a saved session' },
   { name: 'delete', aliases: [], class: 'utility', why: 'it deletes a saved session' },
   { name: 'migrate-rollouts', aliases: [], class: 'utility', why: 'it migrates saved sessions' },
+  { name: 'migrate-nfs-db', aliases: [], class: 'utility', why: "it migrates codex's local databases" },
   { name: 'unarchive', aliases: [], class: 'utility', why: 'it unarchives a saved session' },
   {
     name: 'fork',

@@ -9,6 +9,15 @@ import {
   type ClaudeTranscriptRecord,
 } from './wire.js';
 
+/**
+ * The native `turnOrigin` values of a turn a person started: a typed TUI prompt (`human`) or a
+ * print-mode / Agent SDK prompt (`sdk`). 2.1.308's own user-started test accepts exactly these;
+ * every other value (`scheduled`, `task_notification`, `auto_continuation`, `peer`,
+ * `host_synthetic`, `system`, `unknown`) is a turn Claude or its host injected.
+ */
+const USER_STARTED_TURN_ORIGINS: ReadonlySet<string> = new Set(['human', 'sdk']);
+
+/** Text heuristic for rows without a native `turnOrigin` (see {@link opensUserTurn}). */
 const SYNTHETIC_USER_PREFIXES = [
   '<local-command-caveat>',
   '<local-command-stdout>',
@@ -37,16 +46,28 @@ function stripSyntheticUserPreamble(value: string): string | undefined {
   }
 }
 
-function userPrompt(record: ClaudeTranscriptRecord): string | undefined {
+/**
+ * Whether a `user` row is a person's prompt that opens a turn. A compaction summary never is: it
+ * continues the turn it interrupted, and auto/prompt-too-long compactions stamp that turn's
+ * `turnOrigin` onto it. Otherwise the row's native `turnOrigin` decides when present, whatever its
+ * text. Rows without one (transcripts before the field, and the 2.1.308 rows that carry none) keep
+ * the synthetic-preamble heuristic. The decision stays a property of the row: the projection runs
+ * over a sliding window of a file that a resumed session may have begun under an older version,
+ * and a transcript-wide switch would re-key earlier answers' turns (re-announcing them as live)
+ * once the first row carrying the field arrived.
+ */
+function opensUserTurn(record: ClaudeTranscriptRecord): boolean {
   if (
     transcriptContent(record).some((value) => {
       const block = transcriptObject(value);
       return block?.type === 'tool_result';
     })
   ) {
-    return undefined;
+    return false;
   }
-  return stripSyntheticUserPreamble(transcriptText(record));
+  if (record.isCompactSummary) return false;
+  if (record.turnOrigin !== undefined) return USER_STARTED_TURN_ORIGINS.has(record.turnOrigin);
+  return stripSyntheticUserPreamble(transcriptText(record)) !== undefined;
 }
 
 function observation(
@@ -161,12 +182,13 @@ export function projectClaudeTranscriptAssistants(
 
   for (const record of causalOrder(records)) {
     if (record.isSidechain) continue;
-    const role = record.message?.role;
-    if (record.type === 'user' || role === 'user') {
-      if (userPrompt(record)) turnId = transcriptRecordId(record);
+    // The row type decides, never `message.role`: 2.1.308's `api-request-blob` bookkeeping rows
+    // carry a user or assistant role and are neither a prompt nor a reply.
+    if (record.type === 'user') {
+      if (opensUserTurn(record)) turnId = transcriptRecordId(record);
       continue;
     }
-    if (record.type !== 'assistant' && role !== 'assistant') continue;
+    if (record.type !== 'assistant') continue;
     const projected = assistant(record, turnId);
     if (!projected) continue;
     const key = transcriptRecordId(record);

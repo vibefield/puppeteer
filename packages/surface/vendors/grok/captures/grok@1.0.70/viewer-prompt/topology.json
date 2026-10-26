@@ -1,0 +1,56 @@
+{
+  "processes": [
+    {
+      "role": "leader",
+      "arguments": [
+        "agent",
+        "leader",
+        "--no-exit-on-disconnect",
+        "--relay-on-demand",
+        "--leader-socket",
+        "/home/user/grok-census/leader.sock"
+      ]
+    },
+    {
+      "role": "controller",
+      "arguments": [
+        "agent",
+        "--leader",
+        "--leader-socket",
+        "/home/user/grok-census/leader.sock",
+        "stdio"
+      ]
+    },
+    {
+      "role": "viewer",
+      "arguments": [
+        "--model",
+        "puppeteer-grok-live",
+        "--permission-mode",
+        "default",
+        "--leader",
+        "--leader-socket",
+        "/home/user/grok-census/leader.sock",
+        "--resume",
+        "a11a5ed0-e26c-4e1e-8372-a07ac5927acd"
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "role": "controller",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "role": "viewer",
+      "exit": 0,
+      "signal": 0
+    },
+    {
+      "role": "leader",
+      "exit": 143,
+      "signal": null
+    }
+  ]
+}

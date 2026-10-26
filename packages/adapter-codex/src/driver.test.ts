@@ -84,6 +84,8 @@ function scriptedAppServer(opts?: {
   onTurnStart?: (emit: (m: unknown) => void, id: number, params: Record<string, unknown>) => void;
   turnStartError?: { code: number; message: string };
   threadStartError?: { code: number; message: string };
+  /** Answer `thread/resume` with `excludeTurns` as 0.150.x and 0.147.0 do (experimental gate). */
+  gatedHistory?: boolean;
 }): Scripted {
   let onMsg: ((m: unknown) => void) | undefined;
   let onCls: ((info: { code: number | null; signal: string | null }) => void) | undefined;
@@ -115,6 +117,17 @@ function scriptedAppServer(opts?: {
           }
           emit({ jsonrpc: '2.0', id: m.id, result: { thread } });
           emit({ jsonrpc: '2.0', method: 'thread/started', params: { thread } });
+          break;
+        case 'thread/resume':
+          if (opts?.gatedHistory && (m.params as Record<string, unknown>)?.excludeTurns !== undefined) {
+            emit({
+              jsonrpc: '2.0',
+              id: m.id,
+              error: { code: -32600, message: 'thread/resume.excludeTurns requires experimentalApi capability' },
+            });
+            break;
+          }
+          emit({ jsonrpc: '2.0', id: m.id, result: { thread: { ...thread, turns: [] }, model: 'gpt-5.6-sol' } });
           break;
         case 'turn/start':
           if (opts?.turnStartError) {
@@ -152,6 +165,22 @@ function scriptedAppServer(opts?: {
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
 describe('createCodexSession', () => {
+  it.each([false, true])(
+    'resumes without hydrating turns it never reads, falling back on a gated server (gated: %s)',
+    async (gatedHistory) => {
+      const s = scriptedAppServer({ gatedHistory });
+      const session = await createCodexSession({ cwd: '/x', transport: s.transport, resume: THREAD });
+      expect(session.sessionId).toBe(THREAD);
+      expect(session.threadPath()).toBe(ROLLOUT);
+      expect(s.sent.filter((message) => message.method === 'thread/resume').map(({ params }) => params)).toEqual(
+        gatedHistory
+          ? [{ threadId: THREAD, excludeTurns: true }, { threadId: THREAD }]
+          : [{ threadId: THREAD, excludeTurns: true }],
+      );
+      await session.dispose();
+    },
+  );
+
   it('closes the app-server transport when bootstrap fails', async () => {
     const s = scriptedAppServer({ threadStartError: { code: -32000, message: 'cannot start thread' } });
     await expect(createCodexSession({ cwd: '/x', transport: s.transport })).rejects.toThrow('cannot start thread');

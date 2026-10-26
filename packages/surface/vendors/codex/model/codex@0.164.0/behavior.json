@@ -1,0 +1,1578 @@
+{
+  "behaviorVersion": 1,
+  "title": "Codex app-server native protocol lifecycle",
+  "description": "Observable app-server methods and payload-discriminated item lifecycles for codex-cli 0.164.0. Repeated item/started and item/completed nodes are distinguished by native item.type, not normalized categories. The history lane is the controller-owned attach the adapter performs (thread/start, empty thread/inject_items, thread/resume) and its history reads; client requests appear there as nodes because Codex's deprecationNotice answers the request shape, not a server-side lifecycle. Node confidence applies to the event plus selector claim, not merely to the shared method name.",
+  "source": "Vendor-generated experimental app-server schema plus the hermetic census in packages/surface/vendors/codex/findings.md (C1, C8); the file-change and history-hydration branches are the 0.164.0 census scenarios of the same name.",
+  "lanes": [
+    {
+      "id": "thread",
+      "label": "Thread"
+    },
+    {
+      "id": "history",
+      "label": "History hydration"
+    },
+    {
+      "id": "turn",
+      "label": "Turn"
+    },
+    {
+      "id": "items",
+      "label": "Native items"
+    },
+    {
+      "id": "approval",
+      "label": "Server requests"
+    },
+    {
+      "id": "maintenance",
+      "label": "Context maintenance"
+    },
+    {
+      "id": "ambient",
+      "label": "Ambient notifications"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "thread-start",
+      "event": "thread/started",
+      "confidence": "verified-headless",
+      "lane": "thread",
+      "order": 0,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "thread-settings",
+      "event": "thread/settings/updated",
+      "confidence": "unverified",
+      "lane": "thread",
+      "order": 1,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "thread-status",
+      "event": "thread/status/changed",
+      "confidence": "verified-headless",
+      "lane": "thread",
+      "order": 2,
+      "description": "May repeat asynchronously throughout a turn; not a single exclusive lifecycle node.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "thread-closed",
+      "event": "thread/closed",
+      "confidence": "unverified",
+      "lane": "thread",
+      "order": 12,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "turn-start",
+      "event": "turn/started",
+      "confidence": "verified-headless",
+      "lane": "turn",
+      "order": 2,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "turn-complete",
+      "event": "turn/completed",
+      "confidence": "verified-headless",
+      "lane": "turn",
+      "order": 11,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "user-start",
+      "event": "item/started",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 3,
+      "label": "item/started \u00b7 userMessage",
+      "match": {
+        "item.type": "userMessage"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "user-complete",
+      "event": "item/completed",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 4,
+      "label": "item/completed \u00b7 userMessage",
+      "match": {
+        "item.type": "userMessage"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "reasoning-start",
+      "event": "item/started",
+      "confidence": "unverified",
+      "lane": "items",
+      "order": 5,
+      "label": "item/started \u00b7 reasoning",
+      "match": {
+        "item.type": "reasoning"
+      },
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "reasoning-complete",
+      "event": "item/completed",
+      "confidence": "unverified",
+      "lane": "items",
+      "order": 6,
+      "label": "item/completed \u00b7 reasoning",
+      "match": {
+        "item.type": "reasoning"
+      },
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "command-start",
+      "event": "item/started",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 6,
+      "label": "item/started \u00b7 commandExecution",
+      "match": {
+        "item.type": "commandExecution"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "command-complete",
+      "event": "item/completed",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 8,
+      "label": "item/completed \u00b7 commandExecution",
+      "match": {
+        "item.type": "commandExecution"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "agent-message-start",
+      "event": "item/started",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 8,
+      "label": "item/started \u00b7 agentMessage",
+      "match": {
+        "item.type": "agentMessage"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "message-delta",
+      "event": "item/agentMessage/delta",
+      "confidence": "unverified",
+      "lane": "items",
+      "order": 9,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "agent-message-complete",
+      "event": "item/completed",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 10,
+      "label": "item/completed \u00b7 agentMessage",
+      "match": {
+        "item.type": "agentMessage"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "approval-request",
+      "event": "item/commandExecution/requestApproval",
+      "confidence": "verified-headless",
+      "lane": "approval",
+      "order": 6,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "approval-resolved",
+      "event": "serverRequest/resolved",
+      "confidence": "verified-headless",
+      "lane": "approval",
+      "order": 7,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "compact-start",
+      "event": "item/started",
+      "confidence": "unverified",
+      "lane": "maintenance",
+      "order": 5,
+      "label": "item/started \u00b7 contextCompaction",
+      "description": "Native item start for compaction; declared by the schema but not exercised in the pinned census.",
+      "match": {
+        "item.type": "contextCompaction"
+      },
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "compact-complete",
+      "event": "item/completed",
+      "confidence": "unverified",
+      "lane": "maintenance",
+      "order": 8,
+      "label": "item/completed \u00b7 contextCompaction",
+      "description": "Native item completion for compaction; declared by the schema but not exercised in the pinned census.",
+      "match": {
+        "item.type": "contextCompaction"
+      },
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "thread-compacted",
+      "event": "thread/compacted",
+      "confidence": "unverified",
+      "lane": "maintenance",
+      "order": 9,
+      "description": "Deprecated completion notification retained by the native schema.",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "token-usage",
+      "event": "thread/tokenUsage/updated",
+      "confidence": "verified-headless",
+      "lane": "maintenance",
+      "order": 10,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "remote-status",
+      "event": "remoteControl/status/changed",
+      "confidence": "verified-headless",
+      "lane": "ambient",
+      "order": 1,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "rate-limits",
+      "event": "account/rateLimits/updated",
+      "confidence": "verified-headless",
+      "lane": "ambient",
+      "order": 10,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "mcp-startup",
+      "event": "mcpServer/startupStatus/updated",
+      "confidence": "unverified",
+      "lane": "ambient",
+      "order": 3,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "warning",
+      "event": "warning",
+      "confidence": "unverified",
+      "lane": "ambient",
+      "order": 4,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "error",
+      "event": "error",
+      "confidence": "unverified",
+      "lane": "ambient",
+      "order": 11,
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "id": "file-change-start",
+      "event": "item/started",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 6,
+      "label": "item/started \u00b7 fileChange",
+      "match": {
+        "item.type": "fileChange"
+      },
+      "description": "Already carries the complete change list: path, kind and the kind-dependent diff text.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "file-change-complete",
+      "event": "item/completed",
+      "confidence": "verified-headless",
+      "lane": "items",
+      "order": 7,
+      "label": "item/completed \u00b7 fileChange",
+      "match": {
+        "item.type": "fileChange"
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "turn-diff",
+      "event": "turn/diff/updated",
+      "confidence": "verified-headless",
+      "lane": "turn",
+      "order": 9,
+      "description": "The aggregated turn diff; repeats after later events in the same turn.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "history-materialize",
+      "event": "thread/inject_items",
+      "confidence": "verified-headless",
+      "lane": "history",
+      "order": 1,
+      "label": "thread/inject_items (empty text item)",
+      "description": "The observer materializes a controller-owned thread with one empty text item before attaching.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "history-resume",
+      "event": "thread/resume",
+      "confidence": "verified-headless",
+      "lane": "history",
+      "order": 2,
+      "label": "thread/resume",
+      "description": "Without excludeTurns the result hydrates the full history, which 0.158.0+ deprecates for paginated threads.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "history-read-full",
+      "event": "thread/read",
+      "confidence": "verified-headless",
+      "lane": "history",
+      "order": 12,
+      "label": "thread/read \u00b7 includeTurns",
+      "match": {
+        "includeTurns": true
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "history-resume-paged",
+      "event": "thread/resume",
+      "confidence": "verified-headless",
+      "lane": "history",
+      "order": 13,
+      "label": "thread/resume \u00b7 excludeTurns",
+      "match": {
+        "excludeTurns": true
+      },
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "history-turns-page",
+      "event": "thread/turns/list",
+      "confidence": "verified-headless",
+      "lane": "history",
+      "order": 14,
+      "label": "thread/turns/list",
+      "description": "itemsView 'full' carries every persisted item of each completed turn; the default 'summary' is 'only a display summary' (the schema's TurnItemsView), and in the 0.164.0 survey probe it answered [userMessage, agentMessage] for a turn whose full items were [userMessage, fileChange, agentMessage].",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "deprecation-notice",
+      "event": "deprecationNotice",
+      "confidence": "verified-headless",
+      "lane": "ambient",
+      "order": 3,
+      "description": "Carries no threadId: it answers the connection, ahead of the result of the request that hydrated full history.",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "id": "goal-cleared",
+      "event": "thread/goal/cleared",
+      "confidence": "verified-headless",
+      "lane": "ambient",
+      "order": 4,
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "thread-start",
+      "to": "thread-settings",
+      "kind": "async",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "thread-status",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "thread-status",
+      "to": "thread-status",
+      "kind": "loop",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "turn-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-start",
+      "to": "user-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "user-start",
+      "to": "user-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "user-complete",
+      "to": "reasoning-start",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "reasoning-start",
+      "to": "reasoning-complete",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "reasoning-complete",
+      "to": "command-start",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "reasoning-complete",
+      "to": "agent-message-start",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "user-complete",
+      "to": "command-start",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "user-complete",
+      "to": "agent-message-start",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "command-start",
+      "to": "approval-request",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "approval-request",
+      "to": "approval-resolved",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "approval-resolved",
+      "to": "command-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "command-start",
+      "to": "command-complete",
+      "kind": "conditional",
+      "label": "no approval",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "command-complete",
+      "to": "token-usage",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "command-complete",
+      "to": "agent-message-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "agent-message-start",
+      "to": "message-delta",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "message-delta",
+      "to": "message-delta",
+      "kind": "loop",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "message-delta",
+      "to": "agent-message-complete",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "agent-message-start",
+      "to": "agent-message-complete",
+      "kind": "sequence",
+      "label": "no delta observed",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "agent-message-complete",
+      "to": "token-usage",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "token-usage",
+      "to": "rate-limits",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "token-usage",
+      "to": "agent-message-start",
+      "kind": "conditional",
+      "label": "after tool usage",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "token-usage",
+      "to": "turn-complete",
+      "kind": "conditional",
+      "label": "final usage",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "rate-limits",
+      "to": "agent-message-start",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "rate-limits",
+      "to": "turn-complete",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "agent-message-complete",
+      "to": "turn-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-complete",
+      "to": "turn-start",
+      "kind": "loop",
+      "label": "next turn",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-complete",
+      "to": "thread-closed",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "turn-start",
+      "to": "compact-start",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "compact-start",
+      "to": "compact-complete",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "source": "Codex app-server thread compaction documentation",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "compact-complete",
+      "to": "thread-compacted",
+      "kind": "conditional",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "compact-complete",
+      "to": "token-usage",
+      "kind": "sequence",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "remote-status",
+      "to": "thread-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "mcp-startup",
+      "kind": "async",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "warning",
+      "kind": "async",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "error",
+      "kind": "async",
+      "confidence": "unverified",
+      "evidence": {
+        "existence": [
+          "codex-generated-schema"
+        ],
+        "shape": [
+          "codex-generated-schema"
+        ],
+        "ordering": [
+          "codex-generated-schema"
+        ]
+      }
+    },
+    {
+      "from": "user-complete",
+      "to": "file-change-start",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "file-change-start",
+      "to": "file-change-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "file-change-complete",
+      "to": "turn-diff",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-diff",
+      "to": "turn-diff",
+      "kind": "loop",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "file-change-complete",
+      "to": "token-usage",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-diff",
+      "to": "turn-complete",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "thread-start",
+      "to": "history-materialize",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "label": "controller-owned attach",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-materialize",
+      "to": "history-resume",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-resume",
+      "to": "deprecation-notice",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "label": "full-history hydration (no excludeTurns); the notice precedes the result",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-resume",
+      "to": "goal-cleared",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-resume",
+      "to": "turn-start",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "turn-complete",
+      "to": "history-read-full",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "label": "history read of an existing thread",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-read-full",
+      "to": "deprecation-notice",
+      "kind": "conditional",
+      "confidence": "verified-headless",
+      "label": "includeTurns: true; the notice precedes the result",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-resume-paged",
+      "to": "history-turns-page",
+      "kind": "sequence",
+      "confidence": "verified-headless",
+      "label": "the paginated replacement; no deprecationNotice",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    },
+    {
+      "from": "history-resume-paged",
+      "to": "goal-cleared",
+      "kind": "async",
+      "confidence": "verified-headless",
+      "evidence": {
+        "existence": [
+          "codex-runtime-headless"
+        ],
+        "shape": [
+          "codex-runtime-headless"
+        ],
+        "ordering": [
+          "codex-runtime-headless"
+        ]
+      }
+    }
+  ]
+}

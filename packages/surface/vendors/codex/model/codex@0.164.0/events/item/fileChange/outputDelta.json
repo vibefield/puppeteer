@@ -1,0 +1,98 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "item/fileChange/outputDelta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "trigger": "Deprecated legacy apply_patch output stream notification.",
+  "payloadSchema": {
+    "description": "Deprecated legacy notification for `apply_patch` textual output.\n\nThe server no longer emits this notification.",
+    "properties": {
+      "delta": {
+        "type": "string"
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "delta",
+      "itemId",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "description": "Deprecated legacy apply_patch output stream notification.",
+    "properties": {
+      "method": {
+        "enum": [
+          "item/fileChange/outputDelta"
+        ],
+        "title": "Item/fileChange/outputDeltaNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/FileChangeOutputDeltaNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Item/fileChange/outputDeltaNotification",
+    "type": "object",
+    "$defs": {
+      "FileChangeOutputDeltaNotification": {
+        "description": "Deprecated legacy notification for `apply_patch` textual output.\n\nThe server no longer emits this notification.",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "itemId",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

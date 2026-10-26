@@ -35,11 +35,15 @@ describe('generated registry', () => {
   it('still exposes the registry surface settings.ts and tests rely on', () => {
     const model = loadModel(vendorRoot);
     expect(CLAUDE_SURFACE_VERSION).toBe(model.manifest.vendorVersion);
-    expect(model.events).toHaveLength(31);
+    expect(model.events).toHaveLength(33);
     expect(model.events.filter((event) => event.evidence?.existence.includes('claude-runtime-headless'))).toHaveLength(
       7,
     );
-    expect(verifiedHookEvents()).toHaveLength(7);
+    expect(
+      model.events.filter((event) => event.evidence?.existence.includes('claude-runtime-interactive')),
+    ).toHaveLength(22);
+    // 7 headless (5 of them also in the TUI lanes) and 17 seen only in the TUI lanes.
+    expect(verifiedHookEvents()).toHaveLength(24);
   });
 
   it('keeps the runtime detection projection in sync with Surface', () => {

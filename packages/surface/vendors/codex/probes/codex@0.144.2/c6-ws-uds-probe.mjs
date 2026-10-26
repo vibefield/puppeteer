@@ -4,6 +4,11 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import crypto from 'node:crypto';
 import { existsSync, unlinkSync, mkdirSync, appendFileSync } from 'node:fs';
+import { isolatedCodex } from '../../census/harness.mjs';
+
+// The executable under review (PUPPETEER_CODEX_BIN), never `codex` on PATH, in a throwaway HOME and
+// CODEX_HOME with an allowlisted environment: not the caller's own, possibly signed-in, profile.
+const codex = isolatedCodex();
 const LOG = new URL('./c6-ws-uds.log', import.meta.url).pathname;
 appendFileSync(LOG, '\n==== ' + new Date().toISOString() + ' ====\n');
 const log = (...a) => appendFileSync(LOG, a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
@@ -12,7 +17,7 @@ const SOCK = '/private/tmp/cdxuds/s.sock';
 mkdirSync('/private/tmp/cdxuds', { recursive: true });
 try { if (existsSync(SOCK)) unlinkSync(SOCK); } catch {}
 
-const server = spawn('codex', ['app-server', '--listen', `unix://${SOCK}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(codex.executable, ['app-server', '--listen', `unix://${SOCK}`], { stdio: ['ignore', 'pipe', 'pipe'], env: codex.env });
 server.stderr.on('data', (d) => log('[srv]', d.toString().slice(0, 100)));
 for (let i = 0; i < 60 && !existsSync(SOCK); i++) await new Promise((r) => setTimeout(r, 100));
 log('socket exists:', existsSync(SOCK));

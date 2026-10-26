@@ -1,0 +1,80 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/realtime/error",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "description": "EXPERIMENTAL - emitted when thread realtime encounters an error.",
+    "properties": {
+      "message": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "message",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/realtime/error"
+        ],
+        "title": "Thread/realtime/errorNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadRealtimeErrorNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/realtime/errorNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeErrorNotification": {
+        "description": "EXPERIMENTAL - emitted when thread realtime encounters an error.",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

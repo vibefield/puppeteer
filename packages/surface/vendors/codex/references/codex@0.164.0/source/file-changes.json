@@ -1,0 +1,296 @@
+{
+  "vendor": "codex",
+  "vendorVersion": "0.164.0",
+  "kind": "exact-source-contract",
+  "sourceRepository": "https://github.com/openai/codex",
+  "sourceRevision": "rust-v0.164.0",
+  "sourceCommit": "6aaac694803004a63c6f393d153c96d22521a6b9",
+  "sourceFiles": [
+    {
+      "path": "codex-rs/app-server-protocol/src/protocol/item_builders.rs",
+      "sha256": "1b22763234b5931953d3fa92a4a4246a8ce561b779021ca75773eb41c3b1dfab",
+      "bytes": 15495,
+      "symbols": [
+        "convert_patch_changes",
+        "map_patch_change_kind",
+        "format_file_change_diff"
+      ]
+    },
+    {
+      "path": "codex-rs/app-server-protocol/src/protocol/v2/item.rs",
+      "sha256": "7a1bcd40f31a301897c300e9245c7d84447dc07c0e755d0fd095aff394a0264a",
+      "bytes": 65490,
+      "symbols": [
+        "ThreadItem::FileChange",
+        "FileUpdateChange",
+        "PatchChangeKind",
+        "FileChangePatchUpdatedNotification"
+      ]
+    }
+  ],
+  "nativeCarriers": [
+    "item/started",
+    "item/completed",
+    "item/fileChange/patchUpdated"
+  ],
+  "schemas": {
+    "fileUpdateChanges": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "add"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "diff": {
+                "type": "string",
+                "description": "Despite the field name, this is the complete new-file content for an add change."
+              }
+            },
+            "required": [
+              "path",
+              "kind",
+              "diff"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "delete"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "diff": {
+                "type": "string",
+                "description": "Despite the field name, this is the complete deleted-file content for a delete change."
+              }
+            },
+            "required": [
+              "path",
+              "kind",
+              "diff"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "update"
+                    ]
+                  },
+                  "move_path": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "diff": {
+                "type": "string",
+                "description": "A unified diff. When move_path is non-null, the app-server appends two newlines plus `Moved to: <move_path>` after the unified diff."
+              }
+            },
+            "required": [
+              "path",
+              "kind",
+              "diff"
+            ]
+          }
+        ]
+      }
+    },
+    "fileChangeThreadItem": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "fileChange"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "changes": {
+          "$ref": "#/$defs/fileUpdateChanges"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "inProgress",
+            "completed",
+            "failed",
+            "declined"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "changes",
+        "status"
+      ],
+      "$defs": {
+        "fileUpdateChanges": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "add"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  "diff": {
+                    "type": "string",
+                    "description": "Complete new-file content, not a unified diff."
+                  }
+                },
+                "required": [
+                  "path",
+                  "kind",
+                  "diff"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "delete"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  "diff": {
+                    "type": "string",
+                    "description": "Complete deleted-file content, not a unified diff."
+                  }
+                },
+                "required": [
+                  "path",
+                  "kind",
+                  "diff"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "update"
+                        ]
+                      },
+                      "move_path": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  "diff": {
+                    "type": "string",
+                    "description": "Unified diff, followed by `\\n\\nMoved to: <move_path>` for a move."
+                  }
+                },
+                "required": [
+                  "path",
+                  "kind",
+                  "diff"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "semantics": {
+    "add.diff": "complete new-file content",
+    "delete.diff": "complete deleted-file content",
+    "update.diff": "unified diff",
+    "move.diffSuffix": "\\n\\nMoved to: <move_path>",
+    "ordering": "convert_patch_changes sorts changes lexicographically by path"
+  },
+  "limitations": [
+    "Exact source establishes carrier encoding, not runtime occurrence for this release.",
+    "A completed fileChange item reports native operation completion; it is not an independent post-operation filesystem verification.",
+    "These carriers describe Codex-owned file-change operations and do not observe arbitrary filesystem writes performed by shell commands or other processes."
+  ]
+}

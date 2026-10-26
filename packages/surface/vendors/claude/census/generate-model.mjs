@@ -7,17 +7,20 @@
  * This generator does not promote support. It makes the Surface candidate
  * reproducible; scripts/stage-agent-candidate.mjs and the protected promotion
  * workflow remain the only pointer-changing paths.
+ *
+ * Every execution of the artifact (`--version`, `--help`) runs in the census's
+ * disposable environment (census/isolation.mjs); static probes only read the
+ * artifact's bytes.
  */
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { arch, platform } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eventDocumentPath } from '@vibefield/puppeteer-surface';
 import { digestTree } from '../../../scripts/check-evidence.mjs';
 import { writeGroundTruthArtifacts } from '../../../scripts/groundtruth.mjs';
-import { CLAUDE_HOOK_EVENTS } from './harness.mjs';
+import { CLAUDE_CAPTURE_MODES, CLAUDE_HOOK_EVENTS, probeClaude } from './harness.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const vendorRoot = dirname(dirname(scriptPath));
@@ -32,13 +35,16 @@ const array = { type: 'array' };
 const unknown = {};
 const enumString = (...values) => ({ type: 'string', enum: values });
 const nullableString = { type: ['string', 'null'] };
+const stringArray = { type: 'array', items: string };
 const RUNTIME_CLAIM = 'claude-runtime-headless';
+const INTERACTIVE_CLAIM = 'claude-runtime-interactive';
 const BINARY_CLAIM = 'claude-binary-probe';
 const DOCS_CLAIM = 'claude-official-hooks';
 const SUBAGENT_STATUS_TASK_FIELDS = [
   'id',
   'name',
   'type',
+  'agentType',
   'status',
   'description',
   'label',
@@ -53,10 +59,115 @@ const SUBAGENT_STATUS_TASK_FIELDS = [
 const SUBAGENT_TOKEN_SAMPLE_LIMIT = 16;
 const SUBAGENT_STATUS_INTERVAL_MS = 5_000;
 
+/** Which runtime claim each census capture mode supports. */
+const MODE_CLAIMS = new Map([
+  ...[...CLAUDE_CAPTURE_MODES.init, ...CLAUDE_CAPTURE_MODES.headless, ...CLAUDE_CAPTURE_MODES['api-error']].map(
+    (mode) => [mode, RUNTIME_CLAIM],
+  ),
+  ...CLAUDE_CAPTURE_MODES.interactive.map((mode) => [mode, INTERACTIVE_CLAIM]),
+]);
+const CLAIM_CONFIDENCE = { [RUNTIME_CLAIM]: 'verified-headless', [INTERACTIVE_CLAIM]: 'verified-interactive' };
+
+/**
+ * The reviewed official-reference snapshot. The page is mutable and already
+ * mentions a later release in one Windows-only note, so the review records its
+ * digest and reconciles every field with the pinned artifact.
+ */
+const DOCS_SNAPSHOT = {
+  url: 'https://code.claude.com/docs/en/hooks',
+  format: 'markdown',
+  sha256: '3ce0f8a007da9192d076b08ca1aa9332b28c12f443189066e3534b1595eaeb47',
+  bytes: 281_780,
+};
+
+/**
+ * Where the reference, the binary's own bundled hook schemas, and the census
+ * disagree or say different things. The model follows the artifact; these
+ * notes travel with the reviewed reference.
+ */
+const CONTRADICTIONS = [
+  {
+    subject: 'StopFailure.error',
+    reference:
+      'Lists 12 values: rate_limit, overloaded, authentication_failed, oauth_org_not_allowed, account_on_hold, billing_error, invalid_request, model_not_found, server_error, max_output_tokens, cloud_credential_error, unknown.',
+    artifact:
+      'The binary enum has 13: the 12 plus verification_required. Census: HTTP 401 -> authentication_failed, 400 -> unknown, 429 -> rate_limit, 500 and 529 -> server_error (529 never produced overloaded).',
+    model: 'enum is the binary superset',
+  },
+  {
+    subject: 'StopFailure command hooks in print mode',
+    reference: 'Silent on delivery timing; says hook output and exit code are ignored.',
+    artifact:
+      'The committed captures show StopFailure arriving over HTTP on the credential-less and every API-error print path. Observed during adaptation but not recorded as a probe: a print-mode process exited before a node command forwarder (~100 ms to start) completed its StopFailure hook, while a shell `cat` hook completed and the HTTP hook arrived; the same bisect saw 2.1.226 await even a 1 s command hook and 2.1.283 not. A command-hook census can therefore miss StopFailure.',
+    model: 'StopFailure is runtime-verified through HTTP; the default transport stays http',
+  },
+  {
+    subject: 'scratchpad_dir',
+    reference: 'Common input field (2.1.257+), absent when the session has no scratchpad.',
+    artifact:
+      'The runtime input builder adds it only when a scratchpad exists; the bundled SDK base schema omits it; no 2.1.308 census payload carried it.',
+    model: 'optional common string',
+  },
+  {
+    subject: 'UserPromptSubmit.source',
+    reference: 'Not documented.',
+    artifact:
+      'The bundled SDK schema declares an optional enum (user, sdk, system, loop_wakeup, schedule_wakeup, poll_event), but both runtime input builders compile the field out; no payload carried it, including the background-agent task-notification turn.',
+    model: 'optional enum, schema-only',
+  },
+  {
+    subject: 'Stop.background_tasks, Stop.session_crons and Stop.last_assistant_message',
+    reference: 'Shown in the Stop input example.',
+    artifact:
+      'Optional in the bundled SDK schema; present in every captured 2.1.308 Stop payload (7 interactive, 1 resume), the two lists as empty arrays. Docs and runtime agree; only the schema marks them optional.',
+    model: 'optional, following the bundled schema; Stop requires only stop_hook_active',
+  },
+  {
+    subject: 'SessionEnd.reason',
+    reference: 'Also lists bypass_permissions_disabled, marked removed in 2.1.234.',
+    artifact: 'The binary enum has clear, resume, logout, prompt_input_exit, other.',
+    model: 'binary enum',
+  },
+  {
+    subject: 'Notification.notification_type',
+    reference: 'Matcher table lists 13 values including plugin_notification.',
+    artifact: 'The bundled schema types it as a plain string; plugin_notification appears in the binary from 2.1.308.',
+    model: 'enum of the 13 documented values',
+  },
+  {
+    subject: 'PostModelSwitch source resume',
+    reference: 'Fires when Claude Code restores the model on resume.',
+    artifact:
+      'Not observed: the census resume relaunched by id without --model or ANTHROPIC_MODEL and received no PostModelSwitch.',
+    model: 'enum keeps resume; the branch stays documentation-only',
+  },
+  {
+    subject: 'effort',
+    reference: 'Present on tool-context events when the model supports the effort parameter.',
+    artifact:
+      'Absent from every interactive payload under the loopback model id; present on the credential-less headless StopFailure (model alias haiku).',
+    model: 'optional common object',
+  },
+  {
+    subject: 'FileChanged',
+    reference: 'The matcher names literal files in the working directory.',
+    artifact: 'Observed for a watched file in the session cwd before any cd; the watch list follows cwd.',
+    model: 'matcher-required',
+  },
+  {
+    subject: 'PreModelSwitch timeout',
+    reference: 'Default timeout 30 s; a hook that does not respond before its timeout blocks the switch.',
+    artifact:
+      'Observed over HTTP; an immediate empty reply preserved native behaviour (the warm-cache confirmation still showed).',
+    model: 'observationMode timeout-blocks, never a default passive registration',
+  },
+];
+
 const COMMON_PROPERTIES = {
   session_id: string,
   transcript_path: string,
   cwd: string,
+  scratchpad_dir: string,
   prompt_id: string,
   permission_mode: enumString('default', 'plan', 'acceptEdits', 'auto', 'dontAsk', 'bypassPermissions'),
   effort: {
@@ -68,6 +179,8 @@ const COMMON_PROPERTIES = {
   agent_id: string,
   agent_type: string,
 };
+
+const TOOL_EVENTS = ['PreToolUse', 'PermissionRequest', 'PostToolUse', 'PostToolUseFailure', 'PermissionDenied'];
 
 const TOOL_INPUTS = {
   Bash: {
@@ -97,6 +210,39 @@ const TOOL_INPUTS = {
   },
 };
 
+/** The MCP server serving an `mcp__*` tool (2.1.274+); `source` is an open set. */
+const MCP_SERVER = {
+  type: 'object',
+  properties: { name: string, source: string },
+  required: ['name', 'source'],
+};
+
+/** Shared by PreModelSwitch and PostModelSwitch; only the source inventory differs. */
+function modelSwitchFields(...sources) {
+  return {
+    from_model: string,
+    to_model: string,
+    requested_model: nullableString,
+    source: enumString(...sources),
+    context_tokens: number,
+    prompt_cache_warm: boolean,
+    cache_ttl: enumString('5m', '1h'),
+    estimated_cache_write_usd: number,
+    pricing: enumString('configured', 'catalog', 'default'),
+  };
+}
+const MODEL_SWITCH_REQUIRED = [
+  'from_model',
+  'to_model',
+  'requested_model',
+  'source',
+  'context_tokens',
+  'prompt_cache_warm',
+  'cache_ttl',
+  'estimated_cache_write_usd',
+  'pricing',
+];
+
 const COMMON_RESULT_SCHEMA = {
   type: 'object',
   properties: {
@@ -111,7 +257,11 @@ const COMMON_RESULT_SCHEMA = {
   },
 };
 
-/** Reviewed against https://code.claude.com/docs/en/hooks on 2026-08-09. */
+/**
+ * Reviewed against https://code.claude.com/docs/en/hooks retrieved
+ * 2026-10-25T02:31:24Z and reconciled with the hook input/output schemas
+ * bundled in the pinned 2.1.308 executable.
+ */
 const EVENT_SPECS = {
   SessionStart: {
     transport: 'command',
@@ -121,8 +271,13 @@ const EVENT_SPECS = {
       model: string,
       agent_type: string,
       session_title: string,
+      seconds_since_last_response: number,
+      context_tokens: number,
+      prompt_cache_likely_expired: boolean,
+      estimated_cache_write_usd: number,
     },
-    notes: 'Starts or resumes a session; source may be startup, resume, clear, compact, or fork.',
+    notes:
+      'Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response.',
   },
   Setup: {
     transport: 'command',
@@ -132,18 +287,30 @@ const EVENT_SPECS = {
   },
   InstructionsLoaded: {
     required: ['file_path', 'memory_type', 'load_reason'],
-    fields: { file_path: string, memory_type: string, load_reason: string },
+    fields: {
+      file_path: string,
+      memory_type: enumString('User', 'Project', 'Local', 'Managed'),
+      load_reason: enumString('session_start', 'nested_traversal', 'path_glob_match', 'include', 'compact'),
+      globs: stringArray,
+      trigger_file_path: string,
+      parent_file_path: string,
+    },
     notes: 'A CLAUDE.md or .claude/rules file entered context.',
   },
   UserPromptSubmit: {
     required: ['prompt'],
-    fields: { prompt: string, session_title: string },
-    notes: 'The verbatim submitted prompt; prompt_id is the native user-turn correlation when present.',
+    fields: {
+      prompt: string,
+      session_title: string,
+      source: enumString('user', 'sdk', 'system', 'loop_wakeup', 'schedule_wakeup', 'poll_event'),
+    },
+    notes:
+      'The submitted prompt as typed, before any skill or command expansion; also fires for turns Claude starts itself, such as a background-agent task notification. prompt_id is the native user-turn correlation when present; the bundled source field is compiled out of the runtime payload.',
   },
   UserPromptExpansion: {
-    required: ['expansion_type', 'command_name', 'command_args', 'command_source', 'prompt'],
+    required: ['expansion_type', 'command_name', 'command_args', 'prompt'],
     fields: {
-      expansion_type: string,
+      expansion_type: enumString('slash_command', 'mcp_prompt'),
       command_name: string,
       command_args: string,
       command_source: string,
@@ -159,17 +326,24 @@ const EVENT_SPECS = {
   },
   PreToolUse: {
     required: ['tool_name', 'tool_input', 'tool_use_id'],
-    fields: { tool_name: string, tool_input: object, tool_use_id: string },
+    fields: { tool_name: string, tool_input: object, tool_use_id: string, mcp_server: MCP_SERVER },
     notes: 'Runs before every tool call, before PermissionRequest when a decision is needed.',
   },
   PermissionRequest: {
     required: ['tool_name', 'tool_input'],
-    fields: { tool_name: string, tool_input: object, permission_suggestions: array },
+    fields: { tool_name: string, tool_input: object, permission_suggestions: array, mcp_server: MCP_SERVER },
     notes: 'Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input.',
   },
   PostToolUse: {
     required: ['tool_name', 'tool_input', 'tool_response', 'tool_use_id'],
-    fields: { tool_name: string, tool_input: object, tool_response: unknown, tool_use_id: string, duration_ms: number },
+    fields: {
+      tool_name: string,
+      tool_input: object,
+      tool_response: unknown,
+      tool_use_id: string,
+      duration_ms: number,
+      mcp_server: MCP_SERVER,
+    },
     notes: 'One completion event per successful tool call.',
   },
   PostToolUseFailure: {
@@ -181,6 +355,7 @@ const EVENT_SPECS = {
       error: string,
       is_interrupt: boolean,
       duration_ms: number,
+      mcp_server: MCP_SERVER,
     },
     notes: 'One failure event per approved tool call that fails.',
   },
@@ -192,7 +367,7 @@ const EVENT_SPECS = {
         items: {
           type: 'object',
           properties: { tool_name: string, tool_input: object, tool_use_id: string, tool_response: unknown },
-          required: ['tool_name', 'tool_input', 'tool_use_id', 'tool_response'],
+          required: ['tool_name', 'tool_input', 'tool_use_id'],
         },
       },
     },
@@ -200,7 +375,7 @@ const EVENT_SPECS = {
   },
   PermissionDenied: {
     required: ['tool_name', 'tool_input', 'tool_use_id', 'reason'],
-    fields: { tool_name: string, tool_input: object, tool_use_id: string, reason: string },
+    fields: { tool_name: string, tool_input: object, tool_use_id: string, reason: string, mcp_server: MCP_SERVER },
     notes: 'Auto-mode classifier denial; manual dialog denials do not emit this hook.',
   },
   Notification: {
@@ -221,9 +396,11 @@ const EVENT_SPECS = {
         'quota_auto_resume_fired',
         'quota_auto_resume_stale',
         'quota_auto_resume_disabled',
+        'plugin_notification',
       ),
     },
-    notes: 'Native Claude Code notification.',
+    notes:
+      'Native Claude Code notification; permission_prompt follows a permission dialog after about six idle seconds.',
   },
   SubagentStart: {
     required: ['agent_id', 'agent_type'],
@@ -231,7 +408,7 @@ const EVENT_SPECS = {
     notes: 'A subagent was spawned.',
   },
   SubagentStop: {
-    required: ['stop_hook_active', 'agent_id', 'agent_type', 'agent_transcript_path', 'last_assistant_message'],
+    required: ['stop_hook_active', 'agent_id', 'agent_type', 'agent_transcript_path'],
     fields: {
       agent_id: string,
       agent_type: string,
@@ -241,7 +418,8 @@ const EVENT_SPECS = {
       background_tasks: array,
       session_crons: array,
     },
-    notes: 'A subagent finished; stop-hook re-entry must be deduplicated by agent_id.',
+    notes:
+      'A subagent finished; stop-hook re-entry must be deduplicated by agent_id. Compaction runs an internal agent that emits SubagentStop with an empty agent_type and no SubagentStart.',
   },
   TaskCreated: {
     required: ['task_id', 'task_subject'],
@@ -266,7 +444,7 @@ const EVENT_SPECS = {
     notes: 'A task is about to be marked complete.',
   },
   Stop: {
-    required: ['stop_hook_active', 'last_assistant_message', 'background_tasks', 'session_crons'],
+    required: ['stop_hook_active'],
     fields: {
       stop_hook_active: boolean,
       last_assistant_message: string,
@@ -283,17 +461,21 @@ const EVENT_SPECS = {
         'overloaded',
         'authentication_failed',
         'oauth_org_not_allowed',
+        'account_on_hold',
+        'verification_required',
         'billing_error',
         'invalid_request',
         'model_not_found',
         'server_error',
         'max_output_tokens',
+        'cloud_credential_error',
         'unknown',
       ),
-      error_details: unknown,
+      error_details: string,
       last_assistant_message: string,
     },
-    notes: 'The turn ended because of an API error; hook output is observational only.',
+    notes:
+      'The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed.',
   },
   TeammateIdle: {
     required: ['teammate_name', 'team_name'],
@@ -322,7 +504,8 @@ const EVENT_SPECS = {
     observationMode: 'matcher-required',
     required: ['file_path', 'event'],
     fields: { file_path: string, event: enumString('change', 'add', 'unlink') },
-    notes: 'A configured matcher watch filename changed on disk; registration without a matcher observes nothing.',
+    notes:
+      'A configured matcher watch filename in the current working directory changed on disk; registration without a matcher observes nothing.',
   },
   WorktreeCreate: {
     observationMode: 'response-required',
@@ -357,7 +540,21 @@ const EVENT_SPECS = {
   PostCompact: {
     required: ['trigger', 'compact_summary'],
     fields: { trigger: enumString('manual', 'auto'), compact_summary: string },
-    notes: 'Context compaction completed.',
+    notes: 'Context compaction completed, after the compact SessionStart.',
+  },
+  PreModelSwitch: {
+    observationMode: 'timeout-blocks',
+    timeoutSec: 30,
+    required: MODEL_SWITCH_REQUIRED,
+    fields: modelSwitchFields('command', 'picker', 'sdk'),
+    notes:
+      'Runs before a requested model switch (/model, a picker, /config, fast mode, SDK set_model) and can cancel it. A hook still running at its timeout (native default 30 s) blocks the switch, so registration is never a passive default.',
+  },
+  PostModelSwitch: {
+    required: MODEL_SWITCH_REQUIRED,
+    fields: modelSwitchFields('command', 'picker', 'sdk', 'auto', 'resume'),
+    notes:
+      "The session's model changed: a requested switch, an automatic fallback, an opusplan transition, or the model restored on resume. Asynchronous; requested_model is null for auto.",
   },
   SessionEnd: {
     required: ['reason'],
@@ -393,6 +590,8 @@ const LANES = {
   SessionStart: 'session',
   Setup: 'session',
   SessionEnd: 'session',
+  PreModelSwitch: 'session',
+  PostModelSwitch: 'session',
   UserPromptSubmit: 'turn',
   UserPromptExpansion: 'turn',
   MessageDisplay: 'turn',
@@ -421,6 +620,7 @@ const RELATIONS = [
   ['user-prompt-submit', 'message-display', 'conditional', 'display stream'],
   ['user-prompt-submit', 'pre-tool-use', 'conditional', 'agentic tool loop'],
   ['pre-tool-use', 'permission-request', 'conditional', 'permission required'],
+  ['permission-request', 'notification', 'conditional', 'permission_prompt after the idle gate'],
   ['permission-request', 'permission-denied', 'conditional', 'auto-mode classifier denial'],
   ['pre-tool-use', 'post-tool-use', 'conditional', 'success'],
   ['pre-tool-use', 'post-tool-use-failure', 'conditional', 'execution failure'],
@@ -429,16 +629,22 @@ const RELATIONS = [
   ['post-tool-batch', 'message-display', 'loop', 'next model response'],
   ['message-display', 'message-display', 'loop', 'streaming deltas'],
   ['message-display', 'stop', 'sequence', 'turn completes'],
-  ['user-prompt-submit', 'stop-failure', 'conditional', 'API failure'],
+  ['user-prompt-submit', 'stop-failure', 'conditional', 'API failure or no credential'],
+  ['stop-failure', 'session-end', 'conditional', 'print session exits'],
   ['stop', 'user-prompt-submit', 'loop', 'next turn'],
   ['stop', 'session-end', 'conditional', 'session exits'],
-  ['session-end', 'session-start', 'resume', '--resume or --continue'],
-  ['user-prompt-submit', 'subagent-start', 'conditional', 'delegation'],
+  ['session-end', 'session-start', 'resume', '--resume, --continue, or /clear'],
+  ['pre-tool-use', 'subagent-start', 'conditional', 'Agent tool delegation'],
   ['subagent-start', 'subagent-stop', 'sequence', 'subagent completes'],
+  ['subagent-stop', 'user-prompt-submit', 'async', 'background agent completion re-enters as a task-notification turn'],
   ['task-created', 'task-completed', 'conditional', 'task lifecycle'],
   ['task-completed', 'teammate-idle', 'conditional', 'team lifecycle'],
+  ['pre-compact', 'subagent-stop', 'conditional', 'internal compaction agent'],
+  ['pre-compact', 'session-start', 'sequence', 'compact source refresh'],
+  ['session-start', 'post-compact', 'sequence', 'compaction completes after the compact SessionStart'],
   ['pre-compact', 'post-compact', 'conditional', 'compaction succeeds'],
-  ['post-compact', 'session-start', 'sequence', 'compact source refresh'],
+  ['pre-model-switch', 'post-model-switch', 'conditional', 'requested switch applied'],
+  ['session-start', 'post-model-switch', 'conditional', 'model restored on resume'],
   ['elicitation', 'elicitation-result', 'sequence', 'user responds'],
 ];
 
@@ -456,16 +662,37 @@ function repoRelative(path) {
   return relative(repoRoot, path).split(sep).join('/');
 }
 
-function probe(artifact, args) {
-  const result = spawnSync(artifact, args, { encoding: 'utf8', timeout: 15_000 });
-  if (result.status !== 0) {
-    throw new Error(`${artifact} ${args.join(' ')} failed: ${(result.stderr || result.error?.message || '').trim()}`);
-  }
-  return result.stdout.trimEnd();
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
 }
 
-function sha256File(path) {
-  return createHash('sha256').update(readFileSync(path)).digest('hex');
+function resolveNumericConstant(source, identifier) {
+  const escaped = identifier.replace(/[$]/g, '\\$&');
+  const match = new RegExp(`(?:^|[^\\w$])${escaped}=(\\d+(?:\\.\\d+)?(?:e\\d+)?)(?=[,;)}\\s])`).exec(source);
+  return match ? Number(match[1]) : Number.NaN;
+}
+
+/**
+ * Read the subagent status-line timing from one bounded source window. Both
+ * probes are structural, never identifier names (minified names change every
+ * release):
+ *
+ * - the history cap is the bound in `X.length>CAP)X.splice`;
+ * - the interval is the delay of the self-rescheduling snapshot timer
+ *   `setTimeout(function F(){try{tick()}finally{T=S.setTimeout(F,I)}},I)`.
+ *   The window's first setTimeout is a one-shot 300 ms kick (2.1.226, 2.1.283,
+ *   and 2.1.308 alike), so "first timer in the window" would be wrong.
+ */
+export function parseSubagentStatusTiming(source) {
+  const cap = /([\w$]+)\.length>([\w$]+)\)\1\.splice/.exec(source);
+  const timer =
+    /\.setTimeout\(function ([\w$]+)\(\)\{try\{([\w$]+)\(\)\}finally\{([\w$]+)=[\w$]+\.setTimeout\(\1,([\w$]+)\)\}\},\4\)/.exec(
+      source,
+    );
+  return {
+    sampleLimit: cap ? resolveNumericConstant(source, cap[2]) : Number.NaN,
+    intervalMs: timer ? resolveNumericConstant(source, timer[4]) : Number.NaN,
+  };
 }
 
 function inspectStatusChannels(artifact) {
@@ -497,14 +724,13 @@ function inspectStatusChannels(artifact) {
   if (!window) {
     throw new Error('pinned Claude artifact does not contain the complete subagentStatusLine payload surface');
   }
-  const sampleLimit = Number(sourceWindow.match(/kXm=(\d+)/)?.[1]);
-  const intervalMs = Number(sourceWindow.match(/OXm=(\d+)/)?.[1]);
+  const { sampleLimit, intervalMs } = parseSubagentStatusTiming(sourceWindow);
   if (sampleLimit !== SUBAGENT_TOKEN_SAMPLE_LIMIT || intervalMs !== SUBAGENT_STATUS_INTERVAL_MS) {
     throw new Error(`subagentStatusLine timing probe drifted: sampleLimit=${sampleLimit}, intervalMs=${intervalMs}`);
   }
 
   return {
-    probeVersion: 2,
+    probeVersion: 3,
     source: 'static inspection of the exact digest-pinned executable',
     subagentStatusLine: {
       present: true,
@@ -521,8 +747,58 @@ function inspectStatusChannels(artifact) {
       anchorByteOffset,
       windowStart: start,
       windowBytes: window.length,
-      windowSha256: createHash('sha256').update(window).digest('hex'),
+      windowSha256: sha256(window),
+      timing:
+        'history cap from the bound in X.length>CAP)X.splice; interval from the self-rescheduling snapshot timer, not the one-shot 300 ms kick',
     },
+  };
+}
+
+/**
+ * The executable carries its hook-event inventory as string arrays (the
+ * runtime registry and the bundled SDK schema). Every such array must equal the
+ * census list, so an upstream addition or removal fails generation.
+ */
+export function inspectHookEventInventory(bytes) {
+  const needle = Buffer.from('"PreToolUse","PostToolUse"');
+  const arrays = [];
+  for (let cursor = 0; ;) {
+    const hit = bytes.indexOf(needle, cursor);
+    if (hit < 0) break;
+    cursor = hit + needle.length;
+    const open = bytes.lastIndexOf(0x5b, hit);
+    const close = bytes.indexOf(0x5d, hit);
+    if (open < 0 || close < 0 || hit - open > 512 || close - hit > 4_096) continue;
+    const text = bytes.subarray(open, close + 1).toString('utf8');
+    if (!/^\[(?:"[A-Za-z]+",?)+\]$/.test(text)) continue;
+    const events = JSON.parse(text);
+    if (events.length < 25 || !events.includes('SessionStart') || !events.includes('SessionEnd')) continue;
+    arrays.push({ byteOffset: open, bytes: close + 1 - open, sha256: sha256(text), events });
+  }
+  if (arrays.length === 0) throw new Error('pinned Claude artifact has no recognizable hook-event inventory');
+  const expected = [...CLAUDE_HOOK_EVENTS].sort();
+  for (const entry of arrays) {
+    const actual = [...entry.events].sort();
+    if (actual.length !== expected.length || actual.some((event, index) => event !== expected[index])) {
+      const missing = expected.filter((event) => !actual.includes(event));
+      const added = actual.filter((event) => !expected.includes(event));
+      throw new Error(
+        `hook-event inventory drifted at byte ${entry.byteOffset}: added ${added.join(', ') || 'none'}; missing ${missing.join(', ') || 'none'}`,
+      );
+    }
+  }
+  return {
+    probeVersion: 1,
+    source: 'static inspection of the exact digest-pinned executable',
+    events: expected.length,
+    arrays: arrays.map(({ byteOffset, bytes: length, sha256: digest, events }) => ({
+      byteOffset,
+      bytes: length,
+      sha256: digest,
+      count: events.length,
+    })),
+    note: "Every hook-event string array in the executable equals the census list; order is the first array's own order.",
+    order: arrays[0].events,
   };
 }
 
@@ -540,7 +816,7 @@ function eventSchema(event, spec) {
     },
     required: [...new Set(['session_id', 'transcript_path', 'cwd', 'hook_event_name', ...spec.required])].sort(),
   };
-  if (['PreToolUse', 'PermissionRequest', 'PostToolUse', 'PostToolUseFailure', 'PermissionDenied'].includes(event)) {
+  if (TOOL_EVENTS.includes(event)) {
     schema.allOf = Object.entries(TOOL_INPUTS).map(([toolName, toolInput]) => ({
       if: {
         type: 'object',
@@ -556,46 +832,70 @@ function eventSchema(event, spec) {
 function resultSchema(event, spec) {
   if (spec.resultSchema) return spec.resultSchema;
   const schema = structuredClone(COMMON_RESULT_SCHEMA);
+  const context = { additionalContext: string };
   const hookSpecific = {
+    SessionStart: {
+      ...context,
+      initialUserMessage: string,
+      sessionTitle: string,
+      watchPaths: stringArray,
+      reloadSkills: boolean,
+    },
+    Setup: context,
+    UserPromptSubmit: { ...context, sessionTitle: string, suppressOriginalPrompt: boolean },
+    UserPromptExpansion: { ...context, suppressOriginalPrompt: boolean },
     PreToolUse: {
-      hookEventName: enumString('PreToolUse'),
       permissionDecision: enumString('allow', 'deny', 'ask', 'defer'),
       permissionDecisionReason: string,
       updatedInput: object,
       additionalContext: string,
+      permissionDisplay: object,
     },
-    PermissionRequest: {
-      hookEventName: enumString('PermissionRequest'),
-      decision: object,
-    },
-    PermissionDenied: { hookEventName: enumString('PermissionDenied'), retry: boolean },
+    PermissionRequest: { decision: object },
+    PermissionDenied: { retry: boolean },
     PostToolUse: {
-      hookEventName: enumString('PostToolUse'),
-      additionalContext: string,
+      ...context,
+      classifierContext: string,
       updatedToolOutput: unknown,
+      updatedMCPToolOutput: unknown,
     },
-    PostToolUseFailure: { hookEventName: enumString('PostToolUseFailure'), additionalContext: string },
-    PostToolBatch: { hookEventName: enumString('PostToolBatch'), additionalContext: string },
-    MessageDisplay: { hookEventName: enumString('MessageDisplay'), displayContent: string },
-    Elicitation: {
-      hookEventName: enumString('Elicitation'),
-      action: enumString('accept', 'decline', 'cancel'),
-      content: object,
-    },
-    ElicitationResult: {
-      hookEventName: enumString('ElicitationResult'),
-      action: enumString('accept', 'decline', 'cancel'),
-      content: object,
-    },
+    PostToolUseFailure: context,
+    PostToolBatch: context,
+    Notification: context,
+    MessageDisplay: { displayContent: string },
+    SubagentStart: context,
+    SubagentStop: context,
+    Stop: context,
+    CwdChanged: { watchPaths: stringArray },
+    FileChanged: { watchPaths: stringArray },
+    PreModelSwitch: { permissionDecision: enumString('allow', 'deny', 'ask'), permissionDecisionReason: string },
+    PostModelSwitch: context,
+    Elicitation: { action: enumString('accept', 'decline', 'cancel'), content: object },
+    ElicitationResult: { action: enumString('accept', 'decline', 'cancel'), content: object },
   }[event];
   if (hookSpecific) {
-    schema.properties.hookSpecificOutput = { type: 'object', properties: hookSpecific };
+    schema.properties.hookSpecificOutput = {
+      type: 'object',
+      properties: { hookEventName: enumString(event), ...hookSpecific },
+    };
   }
   return schema;
 }
 
-function evidenceFor(claim) {
-  return { existence: [claim], shape: [claim] };
+function evidenceFor(...claims) {
+  return { existence: claims, shape: claims };
+}
+
+/** Capture modes present in the sanitized set, each mapped to the claim its lane supports. */
+function capturedModes(captureRoot) {
+  const modes = readdirSync(captureRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  for (const mode of modes) {
+    if (!MODE_CLAIMS.has(mode)) throw new Error(`capture mode ${mode} is not produced by census/harness.mjs`);
+  }
+  return modes;
 }
 
 export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt = capturedAt }) {
@@ -617,40 +917,49 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     throw new Error('the exact artifact or the retained version/help/artifact probes are required');
   }
   const versionOutput = artifactPath
-    ? probe(artifactPath, ['--version'])
+    ? probeClaude(artifactPath, ['--version']).trim()
     : readFileSync(retainedVersionPath, 'utf8').trim();
   if (!versionOutput.startsWith(`${version} `)) throw new Error(`expected Claude ${version}, got ${versionOutput}`);
-  const helpOutput = artifactPath ? probe(artifactPath, ['--help']) : readFileSync(retainedHelpPath, 'utf8').trimEnd();
+  const helpOutput = artifactPath
+    ? probeClaude(artifactPath, ['--help'])
+    : readFileSync(retainedHelpPath, 'utf8').trimEnd();
   rmSync(join(modelRoot, 'events'), { recursive: true, force: true });
   mkdirSync(join(modelRoot, 'events'), { recursive: true });
   mkdirSync(probeRoot, { recursive: true });
   mkdirSync(referenceRoot, { recursive: true });
 
-  const artifactDigest = artifactPath
-    ? sha256File(artifactPath)
-    : JSON.parse(readFileSync(retainedArtifactPath, 'utf8')).sha256;
+  const retainedArtifact = existsSync(retainedArtifactPath)
+    ? JSON.parse(readFileSync(retainedArtifactPath, 'utf8'))
+    : undefined;
+  const artifactDigest = artifactPath ? sha256(readFileSync(artifactPath)) : retainedArtifact.sha256;
+  const artifactPlatform = artifactPath ? `${platform()}-${arch()}` : retainedArtifact.platform;
   if (artifactPath) {
     writeFileSync(join(probeRoot, 'version.txt'), `${versionOutput}\n`);
     writeFileSync(join(probeRoot, 'help.txt'), `${helpOutput}\n`);
     writeJson(join(probeRoot, 'artifact.json'), {
       vendor: 'claude',
       version,
-      platform: `${platform()}-${arch()}`,
+      platform: artifactPlatform,
       sha256: artifactDigest,
       capturedAt,
     });
     writeJson(join(probeRoot, 'status-channels.json'), inspectStatusChannels(artifactPath));
+    writeJson(join(probeRoot, 'hook-events.json'), inspectHookEventInventory(readFileSync(artifactPath)));
   }
 
   writeJson(join(referenceRoot, 'hooks.json'), {
     vendor: 'claude',
     appliesToRelease: `v${version}`,
     retrievedAt,
-    source: 'https://code.claude.com/docs/en/hooks',
+    source: DOCS_SNAPSHOT.url,
+    snapshot: { format: DOCS_SNAPSHOT.format, bytes: DOCS_SNAPSHOT.bytes, sha256: DOCS_SNAPSHOT.sha256 },
     release: `https://github.com/anthropics/claude-code/releases/tag/v${version}`,
     caveat:
-      'This is a reviewed field-level summary, not a runtime observation. Runtime confidence comes only from the census record.',
+      'This is a reviewed field-level summary, not a runtime observation. Runtime confidence comes only from the census record. Fields were reconciled with the hook schemas bundled in the pinned executable; contradictions lists every disagreement and how the model resolves it.',
     commonRequired: ['session_id', 'transcript_path', 'cwd', 'hook_event_name'],
+    commonOptional: Object.keys(COMMON_PROPERTIES).filter(
+      (field) => !['session_id', 'transcript_path', 'cwd', 'hook_event_name'].includes(field),
+    ),
     events: CLAUDE_HOOK_EVENTS.map((event) => ({
       event,
       transport: EVENT_SPECS[event].transport ?? 'http',
@@ -661,6 +970,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       notes: EVENT_SPECS[event].notes,
     })),
     ordering: RELATIONS.map(([from, to, kind, label]) => ({ from, to, kind, label })),
+    contradictions: CONTRADICTIONS,
   });
 
   writeJson(join(modelRoot, 'manifest.json'), {
@@ -668,7 +978,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     vendor: 'claude',
     vendorVersion: version,
     generatedAt: capturedAt,
-    source: `Pinned ${platform()}-${arch()} Claude Code ${version} census plus a reviewed snapshot of Anthropic's official hook reference.`,
+    source: `Pinned ${artifactPlatform} Claude Code ${version} census plus a reviewed snapshot of Anthropic's official hook reference.`,
     evidence: 'evidence.json',
   });
   writeJson(join(modelRoot, 'detection.json'), {
@@ -701,15 +1011,17 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       hook: {
         kind: 'hook-http',
         fallback: 'hook-command',
-        notes: `Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude ${version} does not support HTTP for them.`,
+        notes: `Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude ${version} does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP.`,
       },
       transcript: {
         kind: 'transcript',
-        notes: 'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle.',
+        notes:
+          'Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp.',
       },
       statusline: {
         kind: 'statusline',
-        notes: 'Claude invokes the configured statusLine command with usage and rate-limit JSON on stdin.',
+        notes:
+          'Claude invokes the configured statusLine command with model, cost, context-window, workspace, and prompt-cache JSON on stdin (rate limits only for subscription accounts).',
       },
       subagentStatusLine: {
         kind: 'statusline',
@@ -719,7 +1031,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         tokenSamples: { maxItems: SUBAGENT_TOKEN_SAMPLE_LIMIT, timestampsIncluded: false },
         nominalCallbackIntervalMs: SUBAGENT_STATUS_INTERVAL_MS,
         notes:
-          'Claude invokes the configured child command with the currently visible task snapshot on stdin. Rolling tokenSamples omit timestamps, so consumers must use callback-time tokenCount for rate samples.',
+          'Claude invokes the configured child command with the currently visible task snapshot on stdin. Rolling tokenSamples omit timestamps, so consumers must use callback-time tokenCount for rate samples. Fields whose value is undefined are omitted from the JSON.',
         evidence: evidenceFor(BINARY_CLAIM),
       },
       terminal: {
@@ -729,21 +1041,32 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     },
   });
 
-  const capturedEvents = new Set();
-  for (const mode of ['init', 'headless']) {
+  const modes = capturedModes(captureRoot);
+  const eventClaims = new Map();
+  for (const mode of modes) {
     const directory = join(captureRoot, mode);
-    if (!existsSync(directory)) continue;
     for (const event of CLAUDE_HOOK_EVENTS) {
-      if (existsSync(join(directory, `${event}.jsonl`))) capturedEvents.add(event);
+      if (!existsSync(join(directory, `${event}.jsonl`))) continue;
+      const claims = eventClaims.get(event) ?? new Set();
+      claims.add(MODE_CLAIMS.get(mode));
+      eventClaims.set(event, claims);
+    }
+    for (const file of readdirSync(directory)) {
+      if (file.endsWith('.jsonl') && !CLAUDE_HOOK_EVENTS.includes(file.replace(/\.jsonl$/, ''))) {
+        throw new Error(`capture ${mode}/${file} names an event outside the census list`);
+      }
     }
   }
+  const runtimeClaimsFor = (event) =>
+    [RUNTIME_CLAIM, INTERACTIVE_CLAIM].filter((claim) => eventClaims.get(event)?.has(claim));
   for (const event of CLAUDE_HOOK_EVENTS) {
     const spec = EVENT_SPECS[event];
     if (!spec) throw new Error(`no reviewed Claude hook spec for ${event}`);
-    const captured = capturedEvents.has(event);
+    const runtimeClaims = runtimeClaimsFor(event);
+    const captured = runtimeClaims.length > 0;
     const payloadSchema = eventSchema(event, spec);
     const callbackSchema = resultSchema(event, spec);
-    const sourceAndRuntime = captured ? [DOCS_CLAIM, RUNTIME_CLAIM] : [DOCS_CLAIM];
+    const sourceAndRuntime = [DOCS_CLAIM, ...runtimeClaims];
     writeJson(join(modelRoot, 'events', eventDocumentPath(event)), {
       surface: 'claude',
       surfaceVersion: version,
@@ -761,8 +1084,8 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         result: 'structural',
         carrier: 'structural',
         limitations: [
-          'Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.',
-          'Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.',
+          'Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.',
+          'Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.',
           'Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction.',
         ],
       },
@@ -787,12 +1110,12 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
   }
 
   const nodes = CLAUDE_HOOK_EVENTS.map((event, index) => {
-    const captured = capturedEvents.has(event);
+    const runtimeClaims = runtimeClaimsFor(event);
     return {
       id: kebab(event),
       event,
-      confidence: captured ? 'verified-headless' : 'unverified',
-      evidence: evidenceFor(captured ? RUNTIME_CLAIM : DOCS_CLAIM),
+      confidence: runtimeClaims.length > 0 ? CLAIM_CONFIDENCE[runtimeClaims[0]] : 'unverified',
+      evidence: runtimeClaims.length > 0 ? evidenceFor(...runtimeClaims) : evidenceFor(DOCS_CLAIM),
       lane: LANES[event] ?? 'async',
       order: index,
       description: EVENT_SPECS[event].notes,
@@ -802,7 +1125,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     behaviorVersion: 1,
     title: `Claude Code native hook lifecycle (${version})`,
     description:
-      'A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified until captured.',
+      'A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified; the capture set keeps a value-free arrival-order projection for review.',
     source: `Census ${repoRelative(captureRoot)} and reviewed official reference ${repoRelative(referenceRoot)}.`,
     lanes: [
       { id: 'session', label: 'Session' },
@@ -827,8 +1150,9 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     })),
   });
 
-  const artifactId = `installed-claude-${version}-${platform()}-${arch()}`;
+  const artifactId = `installed-claude-${version}-${artifactPlatform}`;
   const evidencePath = join(modelRoot, 'evidence.json');
+  const interactiveCaptured = modes.some((mode) => MODE_CLAIMS.get(mode) === INTERACTIVE_CLAIM);
   writeJson(evidencePath, {
     evidenceVersion: 2,
     vendor: 'claude',
@@ -836,8 +1160,8 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
     artifacts: [
       {
         id: artifactId,
-        platform: `${platform()}-${arch()}`,
-        channel: 'latest',
+        platform: artifactPlatform,
+        channel: 'stable',
         acquiredAt: capturedAt,
         versionOutput,
         integrity: { status: 'verified', sha256: `sha256:${artifactDigest}` },
@@ -857,20 +1181,35 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         confidence: 'verified-headless',
         record: 'sanitized-captures',
         artifact: artifactId,
-        platform: `${platform()}-${arch()}`,
+        platform: artifactPlatform,
         harness:
-          'Authentication-independent isolated --init-only and print-mode census in packages/surface/vendors/claude/census/harness.mjs',
+          'Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs',
         capturedAt,
       },
+      ...(interactiveCaptured
+        ? [
+            {
+              id: INTERACTIVE_CLAIM,
+              kind: 'runtime-capture',
+              confidence: 'verified-interactive',
+              record: 'sanitized-captures',
+              artifact: artifactId,
+              platform: artifactPlatform,
+              harness:
+                'Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs',
+              capturedAt,
+            },
+          ]
+        : []),
       {
         id: BINARY_CLAIM,
         kind: 'binary-probe',
         confidence: 'verified-headless',
         record: 'binary-probes',
         artifact: artifactId,
-        platform: `${platform()}-${arch()}`,
+        platform: artifactPlatform,
         harness:
-          'Exact artifact --version, --help, SHA-256, and bounded status-channel source probe in packages/surface/vendors/claude/census/generate-model.mjs',
+          'Exact artifact --version and --help in a disposable environment, SHA-256, and bounded static probes of the subagent status channel and hook-event inventory in packages/surface/vendors/claude/census/generate-model.mjs; reviewed invocation-grammar and hook-switch probe records beside them',
         capturedAt,
       },
       {
@@ -879,7 +1218,7 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
         confidence: 'unverified',
         record: 'official-hook-reference',
         sourceReference: 0,
-        notes: `Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v${version} adaptation. Documentation proves declared support, not execution on the pinned artifact.`,
+        notes: `Digest-pinned review of ${DOCS_SNAPSHOT.url} retrieved for the v${version} adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact.`,
       },
     ],
     records: [
@@ -914,13 +1253,19 @@ export function generateClaudeModel({ artifact, version, capturedAt, retrievedAt
       },
     ],
     limitations: [
-      `Artifact integrity and controlled runtime captures currently cover only ${platform()}-${arch()}; protected promotion still requires every configured platform.`,
-      'The isolated baseline deliberately uses no credentials. The child status payload is statically verified in the pinned artifact, but its runtime invocation and hook-based tool, permission, delegation, compaction, worktree, and MCP paths remain uncaptured.',
+      `Artifact integrity and controlled runtime captures currently cover only ${artifactPlatform}; protected promotion still requires every configured platform.`,
+      'No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.',
+      'Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.',
       'The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim.',
     ],
   });
   writeGroundTruthArtifacts(modelRoot);
-  return { modelRoot, capturedEvents: [...capturedEvents].sort(), artifactDigest };
+  return {
+    modelRoot,
+    capturedEvents: [...eventClaims.keys()].sort(),
+    modes,
+    artifactDigest,
+  };
 }
 
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
@@ -937,6 +1282,7 @@ if (invokedDirectly) {
     version && existsSync(join(vendorRoot, 'references', `claude@${version}`, 'hooks.json'))
       ? JSON.parse(readFileSync(join(vendorRoot, 'references', `claude@${version}`, 'hooks.json'), 'utf8'))
       : undefined;
+  // Never fall back to `claude` on PATH: that is whatever release the shell happens to hold.
   const result = generateClaudeModel({
     artifact: flag('--artifact') ?? process.env.PUPPETEER_CLAUDE_BIN,
     version,
@@ -945,5 +1291,6 @@ if (invokedDirectly) {
   });
   console.log(`generated ${result.modelRoot}`);
   console.log(`artifact sha256:${result.artifactDigest}`);
+  console.log(`capture modes: ${result.modes.join(', ')}`);
   console.log(`runtime-captured events: ${result.capturedEvents.join(', ')}`);
 }

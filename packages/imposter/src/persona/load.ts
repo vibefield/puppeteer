@@ -295,6 +295,14 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     const invocation = requireRecord(path, entry, `boot[${index}]`);
     requireString(path, invocation, 'op');
   }
+  const resumeBoot = record.resumeBoot;
+  if (resumeBoot !== undefined) {
+    if (!Array.isArray(resumeBoot)) throw new Error(`imposter: ${path} field "resumeBoot" must be an array`);
+    for (const [index, entry] of resumeBoot.entries()) {
+      const invocation = requireRecord(path, entry, `resumeBoot[${index}]`);
+      requireString(path, invocation, 'op');
+    }
+  }
   const envelope = requireRecord(path, record.envelope, 'field "envelope"');
   if (record.eventNameField !== undefined) requireString(path, record, 'eventNameField');
   if (record.jsonrpcEventMethod !== undefined) requireString(path, record, 'jsonrpcEventMethod');
@@ -385,16 +393,39 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     let recordTimestamp: NonNullable<NativeStoreDocument['recordTimestamp']> | undefined;
     if (timestampRecord) {
       const format = requireString(path, timestampRecord, 'format');
-      if (!['epoch-ms', 'iso'].includes(format)) {
-        throw new Error(`imposter: ${path} nativeStore.recordTimestamp.format must be epoch-ms or iso`);
+      if (!['epoch-ms', 'epoch-seconds', 'iso'].includes(format)) {
+        throw new Error(`imposter: ${path} nativeStore.recordTimestamp.format must be epoch-ms, epoch-seconds, or iso`);
       }
       const omitFor = stringArray(timestampRecord.omitFor, 'recordTimestamp.omitFor');
       recordTimestamp = {
         field: fieldName(timestampRecord.field, 'recordTimestamp.field'),
-        format: format as 'epoch-ms' | 'iso',
+        format: format as 'epoch-ms' | 'epoch-seconds' | 'iso',
         ...(omitFor === undefined ? {} : { omitFor }),
       };
+      // The method-params envelope has exactly one clock: its numeric `timestamp`.
+      if (
+        recordFormat !== 'flat-record' &&
+        (recordTimestamp.field !== 'timestamp' || recordTimestamp.format === 'iso' || omitFor !== undefined)
+      ) {
+        throw new Error(
+          `imposter: ${path} nativeStore.recordTimestamp on the method-params envelope must be a numeric "timestamp"`,
+        );
+      }
     }
+    const eventIdRecord =
+      nativeStoreRecord.recordEventId === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.recordEventId, 'nativeStore.recordEventId');
+    if (eventIdRecord && recordFormat === 'flat-record') {
+      throw new Error(`imposter: ${path} nativeStore.recordEventId applies only to the method-params envelope`);
+    }
+    const recordEventId = eventIdRecord
+      ? { metaField: fieldName(eventIdRecord.metaField, 'recordEventId.metaField') }
+      : undefined;
+    const replayMeta =
+      nativeStoreRecord.replayMeta === undefined
+        ? undefined
+        : requireRecord(path, nativeStoreRecord.replayMeta, 'nativeStore.replayMeta');
     const sequenceRecord =
       nativeStoreRecord.recordSequence === undefined
         ? undefined
@@ -445,6 +476,8 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
       ...(recordTypeField === undefined ? {} : { recordTypeField }),
       ...(recordPayloadField === undefined ? {} : { recordPayloadField }),
       ...(recordTimestamp === undefined ? {} : { recordTimestamp }),
+      ...(recordEventId === undefined ? {} : { recordEventId }),
+      ...(replayMeta === undefined ? {} : { replayMeta }),
       ...(recordSequence === undefined ? {} : { recordSequence }),
       ...(recordIdentity === undefined ? {} : { recordIdentity }),
       ...(singletonEvents === undefined ? {} : { singletonEvents }),
@@ -467,6 +500,7 @@ function parsePersonaDocument(path: string, value: unknown): PersonaDocument {
     ...(personaBindings === undefined ? {} : { bindings: personaBindings }),
     ...(nativeStore === undefined ? {} : { nativeStore }),
     boot: boot as PersonaDocument['boot'],
+    ...(resumeBoot === undefined ? {} : { resumeBoot: resumeBoot as PersonaDocument['boot'] }),
   };
 }
 

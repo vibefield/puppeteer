@@ -58,6 +58,51 @@ test('same-version changed bytes are quarantined as a republished artifact', () 
   assert.equal(report.republished[0].platform, 'darwin-arm64');
 });
 
+test('acquisition refuses a source URL that carries a query, fragment or credentials', () => {
+  const { repoRoot, vendorRoot, first, second } = fixture();
+  writeFileSync(
+    join(vendorRoot, 'upstream.json'),
+    JSON.stringify({
+      platforms: ['darwin-arm64', 'linux-x64'],
+      acquisition: { allowedHosts: ['downloads.example.test', 'assets.example.test'] },
+    }),
+  );
+  const acquire = (sourceUrl) =>
+    acquireAgentArtifacts({
+      repoRoot,
+      vendor: 'fake',
+      version: '1.2.3',
+      artifacts: [
+        {
+          platform: 'darwin-arm64',
+          path: first,
+          versionOutput: 'fake 1.2.3',
+          sourceUrl: 'https://downloads.example.test/1.2.3/fake',
+        },
+        { platform: 'linux-x64', path: second, versionOutput: 'fake 1.2.3', sourceUrl },
+      ],
+    });
+  const clean = acquire('https://downloads.example.test/1.2.3/fake-linux');
+  assert.equal(clean.status, 'complete');
+  assert.equal(clean.artifacts[1].sourceUrl, 'https://downloads.example.test/1.2.3/fake-linux');
+  // A release host's redirect target: short-lived signed bearer material in the query.
+  const signed = 'https://assets.example.test/asset/1?sp=r&sig=c2lnbmF0dXJl&jwt=eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjF9.c2ln';
+  for (const sourceUrl of [
+    signed,
+    'https://downloads.example.test/1.2.3/fake?token=abc',
+    'https://downloads.example.test/1.2.3/fake#sig=abc',
+    'https://downloads.example.test/1.2.3/fake?',
+    'https://downloads.example.test/1.2.3/fake#',
+    'https://user:secret@downloads.example.test/1.2.3/fake',
+  ]) {
+    const report = acquire(sourceUrl);
+    assert.equal(report.status, 'incomplete', sourceUrl);
+    assert.deepEqual(report.issues, ['linux-x64 artifact source URL carries a query, fragment or credentials']);
+    assert.equal(report.artifacts[1].sourceUrl, undefined);
+    assert.doesNotMatch(JSON.stringify(report), /sig=|jwt=|eyJ|token=|secret/);
+  }
+});
+
 test('CLI assignments reject repeated platform keys instead of silently replacing them', () => {
   assert.throws(
     () => assignmentMap('--artifact', ['darwin-arm64=first', 'darwin-arm64=second']),

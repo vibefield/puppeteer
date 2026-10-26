@@ -1,0 +1,88 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/realtime/item/transcript/delta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "description": "EXPERIMENTAL - text appended to an active realtime transcript item.",
+    "properties": {
+      "delta": {
+        "type": "string"
+      },
+      "itemId": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "delta",
+      "itemId",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/realtime/item/transcript/delta"
+        ],
+        "title": "Thread/realtime/item/transcript/deltaNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadRealtimeItemTranscriptDeltaNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/realtime/item/transcript/deltaNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeItemTranscriptDeltaNotification": {
+        "description": "EXPERIMENTAL - text appended to an active realtime transcript item.",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "itemId",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -135,6 +135,8 @@ describe('Claude invocation grammar: the classes', () => {
       ['kill', 'abc123'],
       ['--dangerously-skip-permissions', 'daemon', 'status'],
       ['edit-hook', '--json'],
+      ['drop-worktree-registrations', '--json'],
+      ['project', 'purge'],
     ]) {
       expect(kind(...argv), argv.join(' ')).toBe('utility');
     }
@@ -153,9 +155,14 @@ describe('Claude invocation grammar: the classes', () => {
       ['remote-control'],
       ['-w', 'feature', '--tmux'],
       ['--worktree=feature', '--tmux=classic'],
+      ['--desktop'],
+      ['--desktop', '--continue'],
+      ['--resume', '64a61b19-f4d8-4f96-ba56-07024b470813', '--desktop'],
     ]) {
       expect(kind(...argv), argv.join(' ')).toBe('elsewhere');
     }
+    // After `--` it is a prompt.
+    expect(read('--', '--desktop')).toMatchObject({ status: 'accepted', prompt: ['--desktop'] });
   });
 
   it('one-shot: -p/--print, whatever else is given', () => {
@@ -300,16 +307,96 @@ describe('Claude invocation grammar: commander’s reading', () => {
     expect(kind('-cp', 'mcp')).toBe('utility');
   });
 
-  it('entry dispatch by position: the background commands only as the first argument', () => {
+  it('background verbs: as argv[0], or behind safe root options before a job id (2.1.285+)', () => {
     expect(kind('attach', 'abc123')).toBe('elsewhere');
+    expect(kind('attach')).toBe('elsewhere');
+    expect(kind('logs', 'my-session')).toBe('utility');
+    // R01: behind a safe root option and before an 8-hex id, the verb dispatches.
+    expect(read('--verbose', 'attach', '1a2b3c4d')).toEqual({
+      status: 'passthrough',
+      kind: 'elsewhere',
+      reason: 'it opens a background session that runs outside this terminal',
+    });
+    for (const argv of [
+      ['--verbose', 'logs', '1a2b3c4d'],
+      ['--model', 'opus', 'stop', 'deadbeef'],
+      ['--model=opus', 'kill', 'deadbeef'],
+      ['--add-dir', 'a', 'b', '--verbose', 'rm', '0123abcd'],
+      ['-c', 'rm', '0123abcd'],
+      ['--verbose', 'respawn', '--all'],
+    ]) {
+      expect(kind(...argv), argv.join(' ')).toBe('utility');
+    }
+    // Otherwise the verb is a prompt: no job id, an id of another shape, a breaker or a cluster
+    // before it, or directly after `--` (R02).
+    for (const argv of [
+      ['--verbose', 'attach', 'abc123'],
+      ['--verbose', 'attach', '1A2B3C4D'],
+      ['--verbose', 'attach', '1a2b3c4d5'],
+      ['--verbose', 'attach'],
+      ['--', 'attach', '1a2b3c4d'],
+      ['fix', 'attach', '1a2b3c4d'],
+    ]) {
+      expect(read(...argv), argv.join(' ')).toMatchObject({ status: 'accepted' });
+    }
     expect(read('--verbose', 'attach', 'abc123')).toMatchObject({
-      status: 'accepted',
       carriedArgs: ['--verbose'],
       prompt: ['attach', 'abc123'],
     });
+    expect(read('--', 'attach', '1a2b3c4d')).toMatchObject({ prompt: ['attach', '1a2b3c4d'] });
+    expect(kind('-p', 'attach', '1a2b3c4d')).toBe('one-shot');
+    // Only respawn takes --all; elsewhere it is an option commander does not know.
+    expect(read('--verbose', 'logs', '--all')).toMatchObject({ status: 'rejected', argument: '--all' });
+    expect(kind('--verbose=1', 'attach', '1a2b3c4d')).toBe('rejected');
     expect(read('--verbose', 'remote')).toMatchObject({ status: 'accepted', prompt: ['remote'] });
-    // `--bg` is found anywhere, even after `--`.
+  });
+
+  it('--bg/--background: anywhere, as every release up to 2.1.283 reads it, though 2.1.299+ reads fewer', () => {
+    expect(kind('fix it', '--bg')).toBe('elsewhere');
+    expect(kind('--add-dir', 'a', '--bg')).toBe('elsewhere');
+    expect(kind('--model', 'opus', '--background')).toBe('elsewhere');
+    // 2.1.299+ reads these as a prompt or an option value; an older release starts a background
+    // session from them. Accepting them would hand that release a managed launch carrying the token.
     expect(kind('--', '--bg')).toBe('elsewhere');
+    expect(kind('--model', '--bg')).toBe('elsewhere');
+    expect(kind('-r', 'x', '--', '--background')).toBe('elsewhere');
+  });
+
+  it('purge: a root subcommand wherever commander takes the first operand, `--` included (2.1.288+)', () => {
+    const purge = {
+      status: 'passthrough',
+      kind: 'utility',
+      reason: "it deletes a project's Claude Code state and starts no session",
+    };
+    expect(read('purge')).toEqual(purge);
+    // R04, R05, R06: options, `--`, and tokens after `--` (its [path]) all reach purge.
+    for (const argv of [
+      ['purge', '--dry-run'],
+      ['purge', '-y'],
+      ['purge', '--all', '-i'],
+      ['purge', '../other'],
+      ['--', 'purge'],
+      ['--verbose', '--', 'purge', '--dry-run'],
+      ['--model', 'opus', 'purge'],
+    ]) {
+      expect(read(...argv), argv.join(' ')).toEqual(purge);
+    }
+    // Print mode registers no subcommands; a later operand is a dropped one.
+    expect(kind('-p', 'purge')).toBe('one-shot');
+    expect(read('fix', 'purge')).toMatchObject({ status: 'accepted', prompt: ['fix', 'purge'] });
+  });
+
+  it('never accepts a session whose managed launch would hand a subcommand its first operand', () => {
+    // The managed launch passes the prompt after `--`, and commander dispatches a subcommand there
+    // too: an accepted reading's first operand must never name one.
+    const commands = CLAUDE_SUBCOMMANDS.filter((row) => row.dispatch.includes('command')).flatMap((row) => row.names);
+    for (const name of commands) {
+      for (const argv of [[name], ['--', name], ['--verbose', name], ['--add-dir', 'a', '--', name], ['fix', name]]) {
+        const reading = readClaudeInvocation(argv);
+        if (reading.status !== 'accepted') continue;
+        expect(commands, argv.join(' ')).not.toContain(reading.prompt[0]);
+      }
+    }
   });
 
   it('`--flag=value`', () => {
@@ -427,6 +514,25 @@ describe('Claude invocation grammar: commander’s reading', () => {
 
   it('a deep link is refused', () => {
     expect(read('--handle-uri', 'claude-cli://open')).toMatchObject({ status: 'rejected', argument: '--handle-uri' });
+  });
+
+  it('refuses the hidden 2.1.308 root options and entries it has no row for, by name', () => {
+    // Each parses in 2.1.308 (probes/claude@2.1.308/invocation-grammar.json); unrowed, it is refused.
+    for (const argv of [
+      ['--fast-mode', 'on'],
+      ['--allow-other-models'],
+      ['--include-unsupported-models'],
+      ['--host-auth-is-org-sign-in'],
+      ['--proactivity', 'ask'],
+      ['--runner-declares', 'x'],
+      ['--gh-standin'],
+    ]) {
+      expect(read(...argv), argv.join(' ')).toEqual({
+        status: 'rejected',
+        reason: `this version of the Claude adapter (Claude Code ${CLAUDE_INVOCATION_GRAMMAR_VERSION}) does not know it`,
+        argument: argv[0],
+      });
+    }
   });
 });
 

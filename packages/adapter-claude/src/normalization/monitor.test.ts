@@ -264,6 +264,20 @@ describe('ClaudeMonitorEvidence', () => {
     ).toMatchObject({ value: { active: true } });
   });
 
+  it('names a status-only child by its agent definition, not its task kind', () => {
+    const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => SESSION_ID, epoch: 'status-epoch' });
+    // 2.1.308 task rows: `type` is the task kind; `agentType` (2.1.293+) is what hook agent_type names.
+    const batch = evidence.childStatusBatch(
+      {
+        session_id: SESSION_ID,
+        tasks: [{ id: 'task-9', type: 'local_agent', agentType: 'general-purpose', status: 'running' }],
+      },
+      AT,
+      'child-agent-type',
+    )!;
+    expect(family(batch, 'status')).toMatchObject({ value: { actor: { nativeAgentType: 'general-purpose' } } });
+  });
+
   it('starts independent replacement epochs for root and child status after native session rotation', () => {
     let sessionId = SESSION_ID;
     const evidence = new ClaudeMonitorEvidence({ nativeSessionId: () => sessionId, epoch: 'status-epoch' });

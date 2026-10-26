@@ -1,0 +1,149 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "remoteControl/client/list",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "cursor": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "environmentId": {
+        "type": "string"
+      },
+      "limit": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "order": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/RemoteControlClientsListOrder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "environmentId"
+    ],
+    "type": "object",
+    "$defs": {
+      "RemoteControlClientsListOrder": {
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "remoteControl/client/list"
+        ],
+        "title": "RemoteControl/client/listRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/RemoteControlClientsListParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "RemoteControl/client/listRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "RemoteControlClientsListParams": {
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "limit": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "order": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RemoteControlClientsListOrder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "environmentId"
+        ],
+        "type": "object"
+      },
+      "RemoteControlClientsListOrder": {
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

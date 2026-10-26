@@ -1,0 +1,18 @@
+Expose this workspace to the Computer Hub (via the leader)
+
+Usage: grok workspace [OPTIONS] <COMMAND>
+
+Commands:
+  start    Start (or update) the workspace-to-hub exposure
+  pause    Drain and disconnect from the hub, keeping the exposure warm
+  resume   Reconnect a paused exposure to the hub
+  stop     Stop exposing the workspace (the leader keeps running)
+  restart  Restart the exposure (stop, then start with the given options)
+  status   Show the current workspace-exposure status [aliases: list]
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --debug                 Enable debug logging
+      --debug-file <FILE>     Write debug logs to FILE
+  -h, --help                  Print help (see more with 'grok help workspace')
+      --leader-socket <PATH>  Use a custom leader socket path instead of the default `~/.grok/leader.sock`

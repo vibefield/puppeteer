@@ -80,18 +80,23 @@ export function renderRegistry(model: SurfaceModel): string {
 
 export type HookTransport = 'http' | 'command';
 
-export type HookRegistration = 'passive' | 'matcher-required' | 'response-required';
+/**
+ * \`timeout-blocks\`: an empty answer preserves native behavior, but an observer that misses the
+ * hook's timeout blocks the native action (PreModelSwitch: the model switch), so it is never part
+ * of the default registration.
+ */
+export type HookRegistration = 'passive' | 'matcher-required' | 'response-required' | 'timeout-blocks';
 
 export type HookConfidence =
-  | 'verified-headless' // fired in \`-p\` runs A–F
-  | 'verified-interactive' // fired only under the M1 PTY census
+  | 'verified-headless' // fired in a headless (print or init-only) census lane
+  | 'verified-interactive' // fired only under the PTY census lanes
   | 'unverified'; // name known from provider documentation; never observed
 
 export interface HookEventSpec {
   /** Claude Code \`hook_event_name\`. */
   event: string;
   transport: HookTransport;
-  /** Whether registration is passive, needs a matcher, or must produce a native result. */
+  /** Whether registration is passive, needs a matcher, must produce a native result, or blocks on a missed timeout. */
   registration: HookRegistration;
   confidence: HookConfidence;
   /** Hook timeout written into generated settings. */

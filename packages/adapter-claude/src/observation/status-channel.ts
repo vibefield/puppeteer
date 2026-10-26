@@ -66,7 +66,10 @@ interface ClaudeSubagentStatusLinePayload extends ClaudeStatusLinePayload {
 export interface ClaudeSubagentStatusTask {
   id: string;
   name?: string | undefined;
+  /** The task kind (`local_agent`), not the agent definition. */
   type?: string | undefined;
+  /** The agent definition the task runs (`general-purpose`), as hook `agent_type` names it (2.1.293+). */
+  agentType?: string | undefined;
   status?: string | undefined;
   description?: string | undefined;
   label?: string | undefined;
@@ -225,6 +228,7 @@ export function claudeSubagentStatusTasks(payload: unknown): ClaudeSubagentStatu
       id,
       ...(nonEmptyString(task.name) ? { name: nonEmptyString(task.name) } : {}),
       ...(nonEmptyString(task.type) ? { type: nonEmptyString(task.type) } : {}),
+      ...(nonEmptyString(task.agentType) ? { agentType: nonEmptyString(task.agentType) } : {}),
       ...(nonEmptyString(task.status) ? { status: nonEmptyString(task.status) } : {}),
       ...(nonEmptyString(task.description) ? { description: nonEmptyString(task.description) } : {}),
       ...(nonEmptyString(task.label) ? { label: nonEmptyString(task.label) } : {}),

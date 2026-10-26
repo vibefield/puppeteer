@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
+import { CLAUDE_HOOK_EVENTS } from './census/harness.mjs';
 
 interface CapturedHookRecord {
   session_id: string;
@@ -89,6 +90,7 @@ describe('captured hook fixtures', () => {
       'id',
       'name',
       'type',
+      'agentType',
       'status',
       'description',
       'label',
@@ -190,8 +192,8 @@ describe('captured hook fixtures', () => {
   });
 });
 
-// These events require credentialed interactive paths. A candidate produced by
-// the isolated census must either carry captures for them or keep their model
+// These events need the interactive census lane (native TUI against a loopback
+// model). A candidate must either carry captures for them or keep their model
 // confidence explicitly unverified; documentation alone is never promoted to
 // runtime evidence.
 describe('interactive hook fixtures', () => {
@@ -237,6 +239,58 @@ describe('interactive hook fixtures', () => {
       expect(typeof record.agent_type).toBe('string');
       expect(record.agent_transcript_path).toMatch(/^\/workspace\/transcripts\//);
       expect(record.last_assistant_message).toBeDefined();
+    }
+  });
+});
+
+describe('2.1.308 hook surface', () => {
+  const probeRoot = join(selected.surfaceRoot, 'vendors', 'claude', 'probes', `claude@${selected.version}`);
+
+  it('models exactly the hook-event inventory the pinned executable carries', () => {
+    const inventory = JSON.parse(readFileSync(join(probeRoot, 'hook-events.json'), 'utf8')) as {
+      events: number;
+      order: string[];
+    };
+    expect([...inventory.order].sort()).toEqual([...CLAUDE_HOOK_EVENTS].sort());
+    expect(surfaceModel.events.map((event) => event.event).sort()).toEqual([...CLAUDE_HOOK_EVENTS].sort());
+  });
+
+  it('never makes PreModelSwitch a passive observer, because a missed deadline blocks the switch', () => {
+    const descriptor = (event: string) => surfaceModel.events.find((candidate) => candidate.event === event)!;
+    expect(descriptor('PreModelSwitch').observationMode).toBe('timeout-blocks');
+    expect(descriptor('PostModelSwitch').observationMode).toBe('passive');
+    for (const record of loadHookFixtures('PreModelSwitch')) {
+      expect(['command', 'picker', 'sdk']).toContain(record.source);
+      expect(typeof record.to_model).toBe('string');
+    }
+  });
+
+  it('maps each loopback HTTP failure to its native StopFailure error, with no credential too', () => {
+    const errorOf = (mode: string) =>
+      readFileSync(join(captureRoot, mode, 'StopFailure.jsonl'), 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => (JSON.parse(line) as CapturedHookRecord).error);
+    if (!captureModes.includes('api-error-401')) {
+      expect(modelConfidence('StopFailure')).toBe('unverified');
+      return;
+    }
+    expect(errorOf('api-error-400')).toEqual(['unknown']);
+    expect(errorOf('api-error-401')).toEqual(['authentication_failed']);
+    expect(errorOf('api-error-429')).toEqual(['rate_limit']);
+    expect(errorOf('api-error-500')).toEqual(['server_error']);
+    expect(errorOf('api-error-529')).toEqual(['server_error']);
+    expect(errorOf('headless')).toEqual(['authentication_failed']);
+  });
+
+  it('carries the resume staleness fields on a resumed SessionStart', () => {
+    const resumed = loadHookFixtures('SessionStart').filter((record) => record.source === 'resume');
+    if (resumed.length === 0) return;
+    for (const record of resumed) {
+      expect(typeof record.seconds_since_last_response).toBe('number');
+      expect(typeof record.context_tokens).toBe('number');
+      expect(typeof record.prompt_cache_likely_expired).toBe('boolean');
+      expect(typeof record.estimated_cache_write_usd).toBe('number');
     }
   });
 });

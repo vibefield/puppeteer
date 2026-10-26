@@ -147,9 +147,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   const { persona, argv, env, cwd, behavior } = options;
   const log = options.log ?? (() => {});
 
-  const explicitSessionId =
-    flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ??
-    flagValue(argv, persona.flagsFor('resume', '--resume'));
+  const resumedSessionId = flagValue(argv, persona.flagsFor('resume', '--resume'));
+  const explicitSessionId = flagValue(argv, persona.flagsFor('sessionId', '--session-id')) ?? resumedSessionId;
   const generatedSessionId = mintPersonaSessionId(persona);
   const sessionId = explicitSessionId ?? generatedSessionId;
   const settingsPath = flagValue(argv, persona.flagsFor('settings', '--settings'));
@@ -371,7 +370,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   let nativeStore: ReturnType<typeof createNativeSessionStore> | undefined;
 
   const emitNativeLog = async (method: string, params: Record<string, unknown>): Promise<void> => {
-    const wire = wireFor(method, params);
+    const wire = wireFor(method, nativeStore ? nativeStore.stamp(params) : params);
     const violations = persona.validate(method, wire);
     if (violations.length > 0) {
       throw new Error(`imposter refused an off-model payload for ${method}: ${violations.join('; ')}`);
@@ -391,15 +390,23 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       compactionCount += 1;
       bindings.$compactionCount = compactionCount;
       if (persona.schemaFor('signals.json')) {
-        await emitNativeState('signals.json', {
-          contextTokensUsed: usedTokens,
-          contextWindowTokens: capacityTokens,
-          contextWindowUsage: capacityTokens > 0 ? usedTokens / capacityTokens : 0,
-          primaryModelId: modelId,
-          compactionCount,
-          turnCount,
-          toolCallCount,
-        });
+        // The persona's own signals template keeps the file on-model; the
+        // inline snapshot remains for a persona that declares none.
+        const template = persona.ops['usage.refresh']?.find((binding) => binding.event === 'signals.json')?.with;
+        await emitNativeState(
+          'signals.json',
+          template
+            ? (substitute(template, { bindings, uuids: new Map() }) as Record<string, unknown>)
+            : {
+                contextTokensUsed: usedTokens,
+                contextWindowTokens: capacityTokens,
+                contextWindowUsage: capacityTokens > 0 ? usedTokens / capacityTokens : 0,
+                primaryModelId: modelId,
+                compactionCount,
+                turnCount,
+                toolCallCount,
+              },
+        );
       }
     }
   };
@@ -470,8 +477,10 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   };
 
   const status = behavior.statusLine ?? {};
-  const modelId =
-    flagValue(argv, persona.flagsFor('model', '--model')) ?? status.modelId ?? `${persona.vendor}-imposter`;
+  // Mutable: a scenario that switches the model states it on its own status line (model-switch),
+  // and the session serves that model from then on, as the vendor would.
+  let modelId = flagValue(argv, persona.flagsFor('model', '--model')) ?? status.modelId ?? `${persona.vendor}-imposter`;
+  let modelDisplayName = status.modelDisplayName ?? modelId;
   const capacityTokens = status.capacityTokens ?? 200_000;
   let usedTokens = 0;
   let turnCount = 0;
@@ -479,13 +488,14 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
   let toolCallCount = 0;
   let compactionCount = 0;
   let assistantMessageStarted = false;
+  const contextPercent = (): number => (capacityTokens > 0 ? Math.round((usedTokens / capacityTokens) * 100) : 0);
 
   const statusPayload = (): Record<string, unknown> => {
     const payload: Record<string, unknown> = {
       session_id: sessionId,
       transcript_path: transcriptPath,
       cwd,
-      model: { id: modelId, display_name: status.modelDisplayName ?? modelId },
+      model: { id: modelId, display_name: modelDisplayName },
       workspace: { current_dir: cwd },
       context_window:
         usedTokens === 0
@@ -515,7 +525,24 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     return payload;
   };
 
+  /**
+   * A status line reports the model now serving the session, so an explicit status line (a
+   * scenario's, after its switch) carrying a model card sets it: later refreshes and `$modelId`
+   * follow, rather than reverting to the launch model. A dropped channel does not change what the
+   * session serves.
+   */
+  const adoptStatusLineModel = (payload: Record<string, unknown>): void => {
+    const model = payload.model;
+    if (model === null || typeof model !== 'object' || Array.isArray(model)) return;
+    const { id, display_name: displayName } = model as Record<string, unknown>;
+    if (typeof id !== 'string' || id.length === 0) return;
+    modelId = id;
+    modelDisplayName = typeof displayName === 'string' && displayName.length > 0 ? displayName : id;
+    bindings.$modelId = id;
+  };
+
   const invokeStatusLine = async (payload?: Record<string, unknown>): Promise<void> => {
+    if (payload) adoptStatusLineModel(payload);
     if (dropped('statusline')) {
       log('dropped statusline payload: channel is disconnected');
       return;
@@ -550,6 +577,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
     $capacityTokens: capacityTokens,
     $usedTokens: usedTokens,
     $contextUsage: 0,
+    // Grok 1.0.70 persists context usage as a whole-number percentage.
+    $contextPercent: 0,
     $turnCount: turnCount,
     $turnIndex: 0,
     $turnStep: '0.1',
@@ -620,6 +649,7 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       // snapshot into its behavior document.
       bindings.$usedTokens = usedTokens;
       bindings.$contextUsage = capacityTokens > 0 ? usedTokens / capacityTokens : 0;
+      bindings.$contextPercent = contextPercent();
       bindings.$turnCount = turnCount;
       bindings.$turnIndex = Math.max(0, turnCount - 1);
       bindings.$turnStep = `${Math.max(0, turnCount - 1)}.1`;
@@ -788,28 +818,29 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       }
       bindings.$usedTokens = usedTokens;
       bindings.$contextUsage = capacityTokens > 0 ? usedTokens / capacityTokens : 0;
+      bindings.$contextPercent = contextPercent();
       bindings.$turnCount = turnCount;
       bindings.$turnIndex = Math.max(0, turnCount - 1);
       bindings.$turnStep = `${Math.max(0, turnCount - 1)}.1`;
       bindings.$messageCount = messageCount;
       bindings.$toolCallCount = toolCallCount;
       bindings.$compactionCount = compactionCount;
+      // A resumed session replays its journal under each record's own method
+      // (Grok 1.0.70 replays `_x.ai/session/update` itself over ACP during
+      // session/load), marked with the persona's replay metadata.
+      const replayMeta = persona.document.nativeStore?.replayMeta;
       for (const update of nativeStore.readUpdates()) {
-        const durableUpdate = update.params.update;
-        if (
-          update.method === '_x.ai/session/update' &&
-          durableUpdate !== null &&
-          typeof durableUpdate === 'object' &&
-          !Array.isArray(durableUpdate) &&
-          (durableUpdate as Record<string, unknown>).sessionUpdate === 'compaction_checkpoint'
-        ) {
-          // Grok persists this checkpoint for its own reconstruction but does
-          // not expose it on the live extension method. Replaying it would
-          // fabricate a wire event the ASM intentionally marks persist-only.
-          continue;
-        }
-        const method = update.method === '_x.ai/session/update' ? '_x.ai/session_notification' : update.method;
-        await replayRpc(method, update.params, notify);
+        const meta = update.params._meta;
+        const params = replayMeta
+          ? {
+              ...update.params,
+              _meta: {
+                ...(meta !== null && typeof meta === 'object' && !Array.isArray(meta) ? meta : {}),
+                ...replayMeta,
+              },
+            }
+          : update.params;
+        await replayRpc(update.method, params, notify);
       }
     },
     async runOp(op, argument = {}) {
@@ -902,7 +933,8 @@ export function createImposterSession(options: ImposterSessionOptions): Imposter
       pushScenarioRun(activeScenario.progress);
     },
     async boot() {
-      await timeline.runAll(persona.document.boot);
+      const resumeBoot = resumedSessionId === undefined ? undefined : persona.document.resumeBoot;
+      await timeline.runAll(resumeBoot ?? persona.document.boot);
     },
     async turn(text) {
       const ops = behavior.ops ?? [];

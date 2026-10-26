@@ -1,3 +1,4 @@
+import { grokUpdateConfidence } from './adapter.js';
 import type { GrokObservedEvent, GrokObservedFactory, GrokUpdate } from './types.js';
 
 /** Grok subagent extensions → normalized delegation state events. */
@@ -16,7 +17,7 @@ export function normalizeGrokDelegation(
         },
         promptId,
         'native-log',
-        'inferred',
+        grokUpdateConfidence(update.sessionUpdate),
       ),
     ];
   }
@@ -26,7 +27,7 @@ export function normalizeGrokDelegation(
         { type: 'delegation:subagent-stopped', subagentId: update.subagent_id },
         promptId,
         'native-log',
-        'inferred',
+        grokUpdateConfidence(update.sessionUpdate),
       ),
     ];
   }

@@ -837,6 +837,90 @@ describe('Codex extension acts', () => {
     ).toMatchObject({ available: false, reason: 'no-sign-in' });
   });
 
+  it("leaves an enterprise server's sign-in to the Codex account; its sign-out ends this profile's one grant", async () => {
+    const { home, root } = await managedSetup();
+    const answers = answersFor(home, root);
+    const read = answers['config/read']!({}) as {
+      config: { mcp_servers: Record<string, unknown> };
+      origins: Record<string, unknown>;
+    };
+    const corpUrl = 'https://mcp.corp.example/docs';
+    answers['config/read'] = () => ({
+      ...read,
+      // `auth = "ema_auth"`, as 0.164.0's config/read returns it (the hermetic EMA probe)
+      config: {
+        ...read.config,
+        mcp_servers: { ...read.config.mcp_servers, 'corp-docs': { url: corpUrl, auth: 'ema_auth' } },
+      },
+      origins: {
+        ...read.origins,
+        'mcp_servers.corp-docs.url': user(join(root, 'config.toml')),
+        'mcp_servers.corp-docs.auth': user(join(root, 'config.toml')),
+      },
+    });
+    const listing = [
+      ...(JSON.parse(LISTING) as unknown[]),
+      {
+        name: 'corp-docs',
+        enabled: true,
+        transport: { type: 'streamable_http', url: corpUrl },
+        // what 0.164.0's `mcp list --json` reports for an `ema_auth` server (the hermetic EMA probe)
+        auth_status: 'unsupported',
+      },
+    ];
+    const codex = service(fakeAppServer(answers), { home, listServers: async () => JSON.stringify(listing) });
+    const profile = managedProfile(root);
+    const corp = { ...own, id: 'corp-docs', name: 'corp-docs', target: corpUrl };
+
+    // Until an inventory names it, it reads as any other server (and `codex mcp login` refuses it itself).
+    expect(codex.plan!(profile, { ...corp, auth: 'needs-sign-in' }, 'sign-in')).toMatchObject({
+      available: true,
+      runs: { kind: 'terminal' },
+    });
+    expect(codex.plan!(profile, corp, 'sign-in')).toMatchObject({ available: false, reason: 'no-sign-in' });
+
+    const inventory = ExtensionInventorySchema.parse(await codex.inventory(profile));
+    const listed = find(inventory, 'mcp-server', 'corp-docs');
+    // `unsupported` says nothing of a sign-in, so the inventory claims none.
+    expect(listed).toMatchObject({ origin: 'own' });
+    expect(listed).not.toHaveProperty('auth');
+    expect(JSON.stringify(inventory)).not.toContain('ema_auth');
+    // The enterprise check, not the missing auth, decides: the inventory's own item is in-app.
+    expect(codex.plan!(profile, listed!, 'sign-in')).toEqual({
+      target: { kind: 'mcp-server', id: 'corp-docs' },
+      act: 'sign-in',
+      available: false,
+      reason: 'in-app',
+      message: "Codex signs in to corp-docs with the Codex account's own sign-in, in Codex itself",
+    });
+    expect(codex.plan!(profile, { ...corp, auth: 'needs-sign-in' }, 'sign-in')).toEqual({
+      target: { kind: 'mcp-server', id: 'corp-docs' },
+      act: 'sign-in',
+      available: false,
+      reason: 'in-app',
+      message: "Codex signs in to corp-docs with the Codex account's own sign-in, in Codex itself",
+    });
+    // One grant for every enterprise server of the profile, kept under its root: its sign-out ends the
+    // others' sign-in and no other profile's. Codex keeps it even when the list cannot tell the state.
+    for (const item of [{ ...corp, auth: 'signed-in' as const }, corp]) {
+      expect(codex.plan!(profile, item, 'sign-out')).toMatchObject({
+        available: true,
+        runs: {
+          kind: 'command',
+          argv: ['/opt/node/bin/codex', 'mcp', 'logout', 'corp-docs'],
+          env: { CODEX_HOME: root },
+        },
+        reaches: ['sign-in'],
+      });
+    }
+    // A server of the same profile with its own sign-in is unchanged.
+    expect(codex.plan!(profile, { ...own, id: 'notion', name: 'notion', auth: 'signed-in' }, 'sign-out')).toMatchObject(
+      {
+        reaches: process.platform === 'win32' ? [] : ['every-profile'],
+      },
+    );
+  });
+
   it("leaves a plugin's, a project's and the app's servers where they come from", async () => {
     const { root } = await managedSetup();
     const codex = service(fakeAppServer({}));

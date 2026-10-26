@@ -1,0 +1,50 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "skills/changed",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "skills/changed"
+        ],
+        "title": "Skills/changedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/SkillsChangedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Skills/changedNotification",
+    "type": "object",
+    "$defs": {
+      "SkillsChangedNotification": {
+        "description": "Notification emitted when watched local skill files change.\n\nTreat this as an invalidation signal and re-run `skills/list` with the client's current parameters when refreshed skill metadata is needed.",
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

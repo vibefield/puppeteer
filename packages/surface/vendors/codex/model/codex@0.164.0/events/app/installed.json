@@ -1,0 +1,97 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "app/installed",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "description": "Read the committed installed connector runtime snapshot.",
+    "properties": {
+      "forceRefresh": {
+        "description": "When true and Apps are permitted, refresh and publish the hosted connector runtime tool snapshot first.",
+        "type": "boolean"
+      },
+      "threadId": {
+        "description": "Optional loaded thread id used to evaluate effective app configuration.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "app/installed"
+        ],
+        "title": "App/installedRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/AppsInstalledParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "App/installedRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "AppsInstalledParams": {
+        "description": "Read the committed installed connector runtime snapshot.",
+        "properties": {
+          "forceRefresh": {
+            "description": "When true and Apps are permitted, refresh and publish the hosted connector runtime tool snapshot first.",
+            "type": "boolean"
+          },
+          "threadId": {
+            "description": "Optional loaded thread id used to evaluate effective app configuration.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

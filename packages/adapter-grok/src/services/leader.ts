@@ -12,7 +12,8 @@ interface GrokLeader {
 
 export interface GrokLeaderService {
   ensure(): Promise<string>;
-  dispose(): void;
+  /** Resolves once every leader has exited (or was killed after the grace period) and its directory is gone. */
+  dispose(): Promise<void>;
 }
 
 export interface CreateGrokLeaderServiceOptions {
@@ -30,11 +31,75 @@ export function grokLeaderReadinessPath(socketPath: string, platform: NodeJS.Pla
   return platform === 'win32' && socketPath.endsWith('.sock') ? `${socketPath.slice(0, -5)}.lock` : socketPath;
 }
 
+/**
+ * Grok 1.0.70 drains for about 2 s after SIGTERM (exit 143) and unlinks its own
+ * socket; 1.0.0 exited within milliseconds. Removing the leader's directory, or
+ * starting another leader on the same GROK_HOME, while it still drains would race
+ * its final session writes, so shutdown waits for the exit and escalates to
+ * SIGKILL only after this grace period.
+ */
+export const GROK_LEADER_EXIT_GRACE_MS = 3_000;
+
+/** The part of a leader ChildProcess shutdown needs. */
+interface LeaderProcess {
+  readonly pid?: number | undefined;
+  readonly exitCode: number | null;
+  readonly signalCode: NodeJS.Signals | null;
+  kill(signal: NodeJS.Signals): boolean;
+  once(event: 'exit', listener: () => void): unknown;
+}
+
+/** SIGTERM, wait for the exit (at most `graceMs`, then SIGKILL), then clean up. */
+export function stopGrokLeaderProcess(
+  child: LeaderProcess,
+  cleanup: () => void,
+  graceMs: number = GROK_LEADER_EXIT_GRACE_MS,
+): Promise<void> {
+  const signal = (name: NodeJS.Signals): void => {
+    try {
+      child.kill(name);
+    } catch {
+      // The leader has already exited.
+    }
+  };
+  if (child.exitCode !== null || child.signalCode !== null) {
+    cleanup();
+    return Promise.resolve();
+  }
+  // Windows can retain the lock file until the handle closes, so the exit
+  // always gets another cleanup attempt, even after the grace period expired.
+  child.once('exit', () => cleanup());
+  signal('SIGTERM');
+  if (child.pid === undefined) {
+    // The process never started; no exit will follow.
+    cleanup();
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = (): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal('SIGKILL');
+      finish();
+    }, graceMs);
+    timer.unref?.();
+    child.once('exit', finish);
+  });
+}
+
 export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions): GrokLeaderService {
   let leader: GrokLeader | undefined;
   let startingLeader: GrokLeader | undefined;
   let leaderPromise: Promise<GrokLeader> | undefined;
   let disposed = false;
+  let disposal: Promise<void> | undefined;
+  const stopping = new WeakMap<GrokLeader, Promise<void>>();
 
   const live = (candidate: GrokLeader | undefined): candidate is GrokLeader =>
     candidate !== undefined &&
@@ -51,22 +116,22 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
     }
   };
 
-  const stop = (candidate: GrokLeader | undefined): void => {
-    if (!candidate) return;
-    candidate.child.once('exit', () => cleanDirectory(candidate));
-    try {
-      candidate.child.kill('SIGTERM');
-    } catch {
-      // The leader has already exited.
-    }
-    cleanDirectory(candidate);
+  const stop = (candidate: GrokLeader | undefined): Promise<void> => {
+    if (!candidate) return Promise.resolve();
     if (leader === candidate) leader = undefined;
     if (startingLeader === candidate) startingLeader = undefined;
+    // A second SIGTERM could cut a draining leader's shutdown short.
+    let stopped = stopping.get(candidate);
+    if (!stopped) {
+      stopped = stopGrokLeaderProcess(candidate.child, () => cleanDirectory(candidate));
+      stopping.set(candidate, stopped);
+    }
+    return stopped;
   };
 
   async function start(): Promise<GrokLeader> {
     if (disposed) throw new Error('Grok backend is disposed');
-    if (leader) stop(leader);
+    if (leader) await stop(leader);
 
     // macOS /tmp is a symlink the native socket bind rejects; use its real path.
     const directory = mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-grok-'));
@@ -101,7 +166,7 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
       startingLeader = undefined;
       return candidate;
     } catch (error) {
-      stop(candidate);
+      await stop(candidate);
       throw error;
     }
   }
@@ -109,7 +174,7 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
   async function ensure(): Promise<string> {
     if (disposed) throw new Error('Grok backend is disposed');
     if (live(leader)) return leader.socketPath;
-    if (leader) stop(leader);
+    if (leader) await stop(leader);
     const pending = leaderPromise ?? start();
     leaderPromise = pending;
     try {
@@ -121,11 +186,11 @@ export function createGrokLeaderService(options: CreateGrokLeaderServiceOptions)
 
   return {
     ensure,
-    dispose(): void {
-      if (disposed) return;
+    dispose(): Promise<void> {
+      if (disposal) return disposal;
       disposed = true;
-      stop(startingLeader);
-      stop(leader);
+      disposal = Promise.all([stop(startingLeader), stop(leader)]).then(() => undefined);
+      return disposal;
     },
   };
 }

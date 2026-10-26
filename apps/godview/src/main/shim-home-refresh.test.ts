@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
@@ -116,15 +117,23 @@ describe.skipIf(process.platform === 'win32')('startShimHomeRefresh', () => {
   it('refreshes on its interval without keeping the process alive, and writes nothing once stopped', async () => {
     const outcomes: ShimHomeRefreshOutcome[] = [];
     const idle = timeouts();
-    const refresh = startShimHomeRefresh(values, (outcome) => outcomes.push(outcome), 20);
+    // The file goes from inside the first report, while no refresh is in flight. Removed during one, it can be
+    // published again on the inode it just freed (ext4 reuses them at once) and counted as never touched, and
+    // every later refresh finds it in place: the wait below would never end.
+    const refresh = startShimHomeRefresh(
+      values,
+      (outcome) => {
+        outcomes.push(outcome);
+        if (outcomes.length === 1) rmSync(join(home, RENDEZVOUS_FILE));
+      },
+      20,
+    );
     try {
       // Its timer is unref'd: nothing of it holds the process open.
       expect(timeouts()).toBe(idle);
       await vi.waitFor(() => expect(outcomes.length).toBeGreaterThan(0), { timeout: 10_000, interval: 10 });
       expect(outcomes[0]).toEqual({ restored: 0 });
-
-      await rm(join(home, RENDEZVOUS_FILE));
-      await vi.waitFor(() => expect(outcomes).toContainEqual({ restored: 1 }), { timeout: 10_000, interval: 10 });
+      await vi.waitFor(() => expect(outcomes[1]).toEqual({ restored: 1 }), { timeout: 10_000, interval: 10 });
     } finally {
       await refresh.stop();
     }
@@ -134,7 +143,7 @@ describe.skipIf(process.platform === 'win32')('startShimHomeRefresh', () => {
 
     expect(outcomes).toHaveLength(reported);
     await expect(stat(join(home, RENDEZVOUS_FILE))).rejects.toThrow(/ENOENT/u);
-  });
+  }, 30_000);
 
   it('reports a refresh that fails, and tries again at the next', async () => {
     const outcomes: ShimHomeRefreshOutcome[] = [];
@@ -146,5 +155,5 @@ describe.skipIf(process.platform === 'win32')('startShimHomeRefresh', () => {
       await refresh.stop();
     }
     for (const outcome of outcomes) expect(String((outcome as { error: unknown }).error)).toMatch(/ENOENT/u);
-  });
+  }, 30_000);
 });

@@ -59,6 +59,12 @@ export interface LeaderInvocation extends InvocationMatch {
 
 export interface ViewerInvocation extends InvocationMatch {
   sessionFlag: string;
+  /**
+   * Server requests the vendor's leader also routes to an attached viewer,
+   * which shows them to the person (Grok 1.0.70: `session/request_permission`).
+   * The first answer from any client wins; a later one is logged and dropped.
+   */
+  answers?: string[];
 }
 
 export interface ServeServer {

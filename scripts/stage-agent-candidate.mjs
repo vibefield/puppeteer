@@ -18,12 +18,18 @@ export function stageCandidateDocuments({ ledger, persona, vendor, groundTruthRe
   if (agent.groundTruth && agent.groundTruth !== groundTruthRelative) {
     throw new Error(`${vendor} already declares a different canonical ground-truth path`);
   }
-  if (agent.currentVersion === candidateVersion)
+  if (agent.currentVersion === candidateVersion) {
+    // Re-running the promotion lanes on the version the ledger already supports (the nightly rehearsal of a
+    // promoted agent) stages nothing. Staging the current version beside a different candidate stays an error.
+    if (agent.candidateVersion === undefined && agent.groundTruth === groundTruthRelative) {
+      return { ledger, persona, agent, staged: false };
+    }
     throw new Error('current support cannot also be staged as a candidate');
+  }
   agent.groundTruth = groundTruthRelative;
   agent.candidateVersion = candidateVersion;
   persona.asm = { package: '@vibefield/puppeteer-surface', path: `vendors/${vendor}` };
-  return { ledger, persona, agent };
+  return { ledger, persona, agent, staged: true };
 }
 
 export function stageAgentCandidate({ vendor, groundTruthPath }) {
@@ -42,13 +48,15 @@ export function stageAgentCandidate({ vendor, groundTruthPath }) {
   if (!existsSync(personaPath)) throw new Error(`${vendor} persona does not exist`);
   const personaText = readFileSync(personaPath, 'utf8');
   const persona = JSON.parse(personaText);
-  stageCandidateDocuments({
+  const { staged } = stageCandidateDocuments({
     ledger,
     persona,
     vendor,
     groundTruthRelative,
     candidateVersion: model.manifest.vendorVersion,
   });
+  const personaRelative = relative(root, personaPath).split(sep).join('/');
+  if (!staged) return { groundTruthRelative, personaPath: personaRelative, staged };
   try {
     writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
     writeFileSync(personaPath, `${JSON.stringify(persona, null, 2)}\n`);
@@ -57,7 +65,7 @@ export function stageAgentCandidate({ vendor, groundTruthPath }) {
     writeFileSync(personaPath, personaText);
     throw error;
   }
-  return { groundTruthRelative, personaPath: relative(root, personaPath).split(sep).join('/') };
+  return { groundTruthRelative, personaPath: personaRelative, staged };
 }
 
 function flag(name) {
@@ -68,5 +76,9 @@ function flag(name) {
 const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (invokedDirectly) {
   const result = stageAgentCandidate({ vendor: flag('--vendor'), groundTruthPath: flag('--ground-truth') });
-  console.log(`staged ${result.groundTruthRelative}; updated ${result.personaPath}; support remains unpromoted`);
+  console.log(
+    result.staged
+      ? `staged ${result.groundTruthRelative}; updated ${result.personaPath}; support remains unpromoted`
+      : `${result.groundTruthRelative} is the version the ledger already supports; nothing staged`,
+  );
 }

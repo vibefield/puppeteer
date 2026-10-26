@@ -24,6 +24,7 @@
       "do": {
         "emit": {
           "event": "_x.ai/session/update",
+          "channel": "session-log",
           "with": {
             "sessionId": "$sessionId",
             "update": {
@@ -34,7 +35,10 @@
               "schema_version": 1,
               "created_at": "$now"
             },
-            "_meta": { "promptId": "$uuid:prompt", "agentTimestampMs": "$nowMs" }
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9001",
+              "agentTimestampMs": "$nowMs"
+            }
           }
         }
       }
@@ -50,8 +54,33 @@
               "sessionUpdate": "auto_compact_completed",
               "tokens_before": 110000,
               "tokens_after": 22000,
-              "elapsed_ms": 80,
-              "summary_preview": "imposter compacted summary"
+              "summary_preview": null
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9002",
+              "agentTimestampMs": "$nowMs"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 80,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session/update",
+          "channel": "session-log",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "auto_compact_completed",
+              "tokens_before": 110000,
+              "tokens_after": 22000,
+              "summary_preview": null
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9002",
+              "agentTimestampMs": "$nowMs"
             }
           }
         }

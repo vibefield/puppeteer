@@ -11,6 +11,32 @@ import { GrokMonitorEvidence, type GrokConfiguredIntent } from '../normalization
 import type { GrokObservedEvent, GrokSessionObserver } from '../normalization/types.js';
 import { GrokEventSource, type GrokEventPublication } from './event-source.js';
 
+type Params = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Params {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** ACP params behind a control candidate: session/update params, or an extension's `{ method, params }`. */
+function controlParams(nativeEvent: unknown): Params | undefined {
+  if (!isRecord(nativeEvent)) return undefined;
+  return typeof nativeEvent.method === 'string' && isRecord(nativeEvent.params) ? nativeEvent.params : nativeEvent;
+}
+
+/** Grok marks the history it replays over ACP during session/load with `_meta.isReplay`. */
+function replayedByGrok(params: Params | undefined): boolean {
+  return isRecord(params?._meta) && params._meta.isReplay === true;
+}
+
+/**
+ * The leader forwards a subagent child session's traffic to the parent's
+ * controller under the child's sessionId (Grok 1.0.0 and 1.0.70).
+ */
+function foreignSession(params: Params | undefined, sessionId: string): boolean {
+  const id = params?.sessionId;
+  return typeof id === 'string' && id !== '' && id !== sessionId;
+}
+
 /**
  * A Grok TUI session whose ACP control client attaches asynchronously. The TUI
  * is usable immediately; observation and prompt injection bind once attach
@@ -35,6 +61,10 @@ export function createPendingControlSession(
   let unsubscribeObserver: (() => void) | undefined;
   let unsubscribeObserverError: (() => void) | undefined;
   let controlDegraded = false;
+  // Without configured hooks the durable log never records session_start, so
+  // ACP's own session/new|load start is admitted; whichever rail reports a live
+  // start first wins and later live starts of this binding are duplicates.
+  let liveSessionStarted = false;
 
   function emitMonitorBatch(batch: AdapterMonitorObservationBatch | null): void {
     if (!batch) return;
@@ -54,6 +84,10 @@ export function createPendingControlSession(
     // previous pane's session_end would incorrectly terminate the newly
     // resumed binding before its live control rail can serve another turn.
     if (observed.phase === 'bootstrap' && observed.event.type === 'session:exited') return;
+    if (observed.event.type === 'session:started' && observed.phase !== 'bootstrap') {
+      if (liveSessionStarted) return;
+      liveSessionStarted = true;
+    }
     if (!monitorAlreadyObserved) {
       emitMonitorBatch(monitorEvidence.observedBatch(observed, observed.timestamp ?? new Date().toISOString()));
     }
@@ -107,12 +141,14 @@ export function createPendingControlSession(
     }
     control = acp;
     unsubscribeControl = acp.events.onCandidate((candidate: AdapterEventCandidate) => {
+      const params = controlParams(candidate.nativeEvent);
+      const phase = candidate.replay || replayedByGrok(params) ? 'bootstrap' : 'live';
       if (candidate.event.type === 'monitor:batch') {
         applyObserved(
           {
             event: candidate.event,
             timestamp: candidate.timestamp,
-            phase: candidate.replay ? 'bootstrap' : 'live',
+            phase,
             source: candidate.source,
             confidence: candidate.confidence,
             nativeEvent: candidate.nativeEvent,
@@ -121,7 +157,13 @@ export function createPendingControlSession(
         );
         return;
       }
+      // A child session's turns, usage, and conversation are not this session's.
+      // The monitor attributes a spawned child's usage and running turn to its
+      // subagent actor and nothing to the root; otherwise only the child's raw
+      // native events (they carry the child sessionId) are kept.
+      const foreign = foreignSession(params, sessionId);
       emitMonitorBatch(monitorEvidence.controlCandidateBatch(candidate));
+      if (foreign && candidate.event.type !== 'adapter:native-event') return;
       const acpTransportClosed =
         candidate.event.type === 'adapter:native-event' &&
         candidate.event.adapter === 'acp' &&
@@ -143,6 +185,7 @@ export function createPendingControlSession(
         'context-window:updated',
         'context-window:invalidated',
         'environment:updated',
+        'session:started',
       ];
       const liveNativeTruth = candidate.event.type === 'adapter:native-event' && candidate.event.adapter === 'grok';
       if (observer && !allowedWithObserver.includes(candidate.event.type) && !liveNativeTruth) return;
@@ -151,7 +194,7 @@ export function createPendingControlSession(
           event: candidate.event,
           promptId: candidate.promptId ?? candidate.turnId ?? activeTurnId,
           timestamp: candidate.timestamp,
-          phase: candidate.replay ? 'bootstrap' : 'live',
+          phase,
           source: candidate.source,
           confidence: candidate.confidence,
           nativeEvent: candidate.nativeEvent,

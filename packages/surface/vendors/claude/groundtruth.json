@@ -3,9 +3,9 @@
   "manifest": {
     "asmVersion": 3,
     "vendor": "claude",
-    "vendorVersion": "2.1.226",
-    "generatedAt": "2026-08-09T17:13:54.000Z",
-    "source": "Pinned darwin-arm64 Claude Code 2.1.226 census plus a reviewed snapshot of Anthropic's official hook reference.",
+    "vendorVersion": "2.1.308",
+    "generatedAt": "2026-10-25T04:38:36.000Z",
+    "source": "Pinned darwin-arm64 Claude Code 2.1.308 census plus a reviewed snapshot of Anthropic's official hook reference.",
     "evidence": "evidence.json"
   },
   "detection": {
@@ -14,7 +14,7 @@
     ],
     "envVar": "PUPPETEER_CLAUDE_BIN",
     "versionFlag": "--version",
-    "versionOutput": "2.1.226 (Claude Code)",
+    "versionOutput": "2.1.308 (Claude Code)",
     "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
     "helpFlag": "--help",
     "probedFlags": {
@@ -33,7 +33,7 @@
       "model": "--model",
       "effort": "--effort"
     },
-    "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.226; missing flags still degrade observation with warnings."
+    "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.308; missing flags still degrade observation with warnings."
   },
   "channels": {
     "channels": {
@@ -44,15 +44,15 @@
       "hook": {
         "kind": "hook-http",
         "fallback": "hook-command",
-        "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.226 does not support HTTP for them."
+        "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.308 does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP."
       },
       "transcript": {
         "kind": "transcript",
-        "notes": "Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle."
+        "notes": "Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp."
       },
       "statusline": {
         "kind": "statusline",
-        "notes": "Claude invokes the configured statusLine command with usage and rate-limit JSON on stdin."
+        "notes": "Claude invokes the configured statusLine command with model, cost, context-window, workspace, and prompt-cache JSON on stdin (rate limits only for subscription accounts)."
       },
       "subagentStatusLine": {
         "kind": "statusline",
@@ -62,6 +62,7 @@
           "id",
           "name",
           "type",
+          "agentType",
           "status",
           "description",
           "label",
@@ -78,7 +79,7 @@
           "timestampsIncluded": false
         },
         "nominalCallbackIntervalMs": 5000,
-        "notes": "Claude invokes the configured child command with the currently visible task snapshot on stdin. Rolling tokenSamples omit timestamps, so consumers must use callback-time tokenCount for rate samples.",
+        "notes": "Claude invokes the configured child command with the currently visible task snapshot on stdin. Rolling tokenSamples omit timestamps, so consumers must use callback-time tokenCount for rate samples. Fields whose value is undefined are omitted from the JSON.",
         "evidence": {
           "existence": [
             "claude-binary-probe"
@@ -97,24 +98,69 @@
   "evidenceIndex": {
     "evidenceVersion": 2,
     "vendor": "claude",
-    "vendorVersion": "2.1.226",
+    "vendorVersion": "2.1.308",
     "artifacts": [
       {
-        "id": "installed-claude-2.1.226-darwin-arm64",
+        "id": "installed-claude-2.1.308-darwin-arm64",
         "platform": "darwin-arm64",
-        "channel": "latest",
-        "acquiredAt": "2026-08-09T17:13:54.000Z",
-        "versionOutput": "2.1.226 (Claude Code)",
+        "channel": "stable",
+        "acquiredAt": "2026-10-25T04:38:36.000Z",
+        "versionOutput": "2.1.308 (Claude Code)",
         "integrity": {
           "status": "verified",
-          "sha256": "sha256:013a1cf17df5ff1dcc189d5d6fd3fdd5f097ddc3cd41aa9992e99805574febbe"
+          "sha256": "sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+        },
+        "artifactKind": "standalone-executable",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-arm64/claude",
+        "acquisitionKey": "claude@2.1.308@darwin-arm64@sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+      },
+      {
+        "id": "claude-2.1.308-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:01:25.151Z",
+        "versionOutput": "2.1.308 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-x64/claude",
+        "acquisitionKey": "claude@2.1.308@darwin-x64@sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59"
+        }
+      },
+      {
+        "id": "claude-2.1.308-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:01:25.355Z",
+        "versionOutput": "2.1.308 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/linux-x64/claude",
+        "acquisitionKey": "claude@2.1.308@linux-x64@sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58"
+        }
+      },
+      {
+        "id": "claude-2.1.308-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-10-25T23:01:25.559Z",
+        "versionOutput": "2.1.308 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/win32-x64/claude.exe",
+        "acquisitionKey": "claude@2.1.308@windows-x64@sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
         }
       }
     ],
     "sourceReferences": [
       {
         "repository": "https://github.com/anthropics/claude-code",
-        "revision": "v2.1.226",
+        "revision": "v2.1.308",
         "relation": "release-tag"
       }
     ],
@@ -124,20 +170,30 @@
         "kind": "runtime-capture",
         "confidence": "verified-headless",
         "record": "sanitized-captures",
-        "artifact": "installed-claude-2.1.226-darwin-arm64",
+        "artifact": "installed-claude-2.1.308-darwin-arm64",
         "platform": "darwin-arm64",
-        "harness": "Authentication-independent isolated --init-only and print-mode census in packages/surface/vendors/claude/census/harness.mjs",
-        "capturedAt": "2026-08-09T17:13:54.000Z"
+        "harness": "Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
+        "capturedAt": "2026-10-25T04:38:36.000Z"
+      },
+      {
+        "id": "claude-runtime-interactive",
+        "kind": "runtime-capture",
+        "confidence": "verified-interactive",
+        "record": "sanitized-captures",
+        "artifact": "installed-claude-2.1.308-darwin-arm64",
+        "platform": "darwin-arm64",
+        "harness": "Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs",
+        "capturedAt": "2026-10-25T04:38:36.000Z"
       },
       {
         "id": "claude-binary-probe",
         "kind": "binary-probe",
         "confidence": "verified-headless",
         "record": "binary-probes",
-        "artifact": "installed-claude-2.1.226-darwin-arm64",
+        "artifact": "installed-claude-2.1.308-darwin-arm64",
         "platform": "darwin-arm64",
-        "harness": "Exact artifact --version, --help, SHA-256, and bounded status-channel source probe in packages/surface/vendors/claude/census/generate-model.mjs",
-        "capturedAt": "2026-08-09T17:13:54.000Z"
+        "harness": "Exact artifact --version and --help in a disposable environment, SHA-256, and bounded static probes of the subagent status channel and hook-event inventory in packages/surface/vendors/claude/census/generate-model.mjs; reviewed invocation-grammar and hook-switch probe records beside them",
+        "capturedAt": "2026-10-25T04:38:36.000Z"
       },
       {
         "id": "claude-official-hooks",
@@ -145,52 +201,53 @@
         "confidence": "unverified",
         "record": "official-hook-reference",
         "sourceReference": 0,
-        "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.226 adaptation. Documentation proves declared support, not execution on the pinned artifact."
+        "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.308 adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact."
       }
     ],
     "records": [
       {
         "id": "sanitized-captures",
         "kind": "capture-set",
-        "path": "packages/surface/vendors/claude/captures/claude@2.1.226",
+        "path": "packages/surface/vendors/claude/captures/claude@2.1.308",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "9d4b218c866a656bcadfd5aaab9f616d451ec9d1aa34d868acfec89cfb2934d0"
+        "sha256": "7a4adbc0e1b7d73aa206255ebbe08874916e3f76fb573c3afc02977aa7b97710"
       },
       {
         "id": "binary-probes",
         "kind": "probe-set",
-        "path": "packages/surface/vendors/claude/probes/claude@2.1.226",
+        "path": "packages/surface/vendors/claude/probes/claude@2.1.308",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "1f21b7f422608a3caf840285a4ebaf9843dfb3eefb4895c48aad22a9306fafd8"
+        "sha256": "249ab4ac527ec12b084cc1f9e127144a088b2569b0e4d1e1e43131bebdc73950"
       },
       {
         "id": "official-hook-reference",
         "kind": "reference-snapshot",
-        "path": "packages/surface/vendors/claude/references/claude@2.1.226",
+        "path": "packages/surface/vendors/claude/references/claude@2.1.308",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "9b105c6cb9a1834b06f0cada4690a0635a6a5155a6a4abf99a89c092c52e8f21"
+        "sha256": "e718061d9f9ba191172b6fc0cdeae29ab8129dc55980f8f6258ed034dfd4b972"
       },
       {
         "id": "agent-surface-model",
         "kind": "model-tree",
-        "path": "packages/surface/vendors/claude/model/claude@2.1.226",
+        "path": "packages/surface/vendors/claude/model/claude@2.1.308",
         "exclude": [
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "aaa26645f092e7d6e72e4574c0bb25493cd62beafb91c627feb77acdc0a3db23"
+        "sha256": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba"
       }
     ],
     "limitations": [
-      "Artifact integrity and controlled runtime captures currently cover only darwin-arm64; protected promotion still requires every configured platform.",
-      "The isolated baseline deliberately uses no credentials. The child status payload is statically verified in the pinned artifact, but its runtime invocation and hook-based tool, permission, delegation, compaction, worktree, and MCP paths remain uncaptured.",
+      "Controlled runtime captures cover only darwin-arm64. The other configured platforms are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes, not by census claims.",
+      "No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
+      "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
       "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
     ]
   },
   "events": [
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "ConfigChange",
       "channel": "hook",
       "channels": [
@@ -211,6 +268,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -321,6 +381,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -392,33 +455,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "A settings, policy, or skill configuration source changed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "CwdChanged",
       "channel": "hook",
       "channels": [
@@ -439,6 +508,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -527,7 +599,21 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "CwdChanged"
+                ]
+              },
+              "watchPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -541,6 +627,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -608,33 +697,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "The active working directory changed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "DirectoryAdded",
       "channel": "hook",
       "channels": [
@@ -655,6 +750,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -763,6 +861,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -832,33 +933,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "An additional working directory was registered; the hook runs asynchronously."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "Elicitation",
       "channel": "hook",
       "channels": [
@@ -877,6 +984,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -1018,6 +1128,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -1099,8 +1212,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -1125,7 +1238,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "ElicitationResult",
       "channel": "hook",
       "channels": [
@@ -1144,6 +1257,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -1287,6 +1403,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -1370,8 +1489,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -1396,7 +1515,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "FileChanged",
       "channel": "hook",
       "channels": [
@@ -1404,7 +1523,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing.",
+      "trigger": "A configured matcher watch filename in the current working directory changed on disk; registration without a matcher observes nothing.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -1415,6 +1534,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -1510,7 +1632,21 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "FileChanged"
+                ]
+              },
+              "watchPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -1524,6 +1660,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -1596,33 +1735,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "matcher-required",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "notes": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "A configured matcher watch filename in the current working directory changed on disk; registration without a matcher observes nothing."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "InstructionsLoaded",
       "channel": "hook",
       "channels": [
@@ -1643,6 +1788,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -1691,9 +1839,34 @@
             "type": "string"
           },
           "memory_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "User",
+              "Project",
+              "Local",
+              "Managed"
+            ]
           },
           "load_reason": {
+            "type": "string",
+            "enum": [
+              "session_start",
+              "nested_traversal",
+              "path_glob_match",
+              "include",
+              "compact"
+            ]
+          },
+          "globs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trigger_file_path": {
+            "type": "string"
+          },
+          "parent_file_path": {
             "type": "string"
           }
         },
@@ -1751,6 +1924,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -1799,9 +1975,34 @@
             "type": "string"
           },
           "memory_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "User",
+              "Project",
+              "Local",
+              "Managed"
+            ]
           },
           "load_reason": {
+            "type": "string",
+            "enum": [
+              "session_start",
+              "nested_traversal",
+              "path_glob_match",
+              "include",
+              "compact"
+            ]
+          },
+          "globs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "trigger_file_path": {
+            "type": "string"
+          },
+          "parent_file_path": {
             "type": "string"
           }
         },
@@ -1820,8 +2021,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -1829,30 +2030,33 @@
       "evidence": {
         "existence": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "shape": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "A CLAUDE.md or .claude/rules file entered context."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "MessageDisplay",
       "channel": "hook",
       "channels": [
@@ -1871,6 +2075,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -2000,6 +2207,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -2077,8 +2287,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -2086,30 +2296,33 @@
       "evidence": {
         "existence": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "shape": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 2,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "Streaming display delta; display-only and distinct from durable transcript content."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "Notification",
       "channel": "hook",
       "channels": [
@@ -2117,7 +2330,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "Native Claude Code notification.",
+      "trigger": "Native Claude Code notification; permission_prompt follows a permission dialog after about six idle seconds.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -2128,6 +2341,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -2194,7 +2410,8 @@
               "agent_completed",
               "quota_auto_resume_fired",
               "quota_auto_resume_stale",
-              "quota_auto_resume_disabled"
+              "quota_auto_resume_disabled",
+              "plugin_notification"
             ]
           }
         },
@@ -2235,7 +2452,18 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "Notification"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -2249,6 +2477,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -2315,7 +2546,8 @@
               "agent_completed",
               "quota_auto_resume_fired",
               "quota_auto_resume_stale",
-              "quota_auto_resume_disabled"
+              "quota_auto_resume_disabled",
+              "plugin_notification"
             ]
           }
         },
@@ -2333,33 +2565,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "notes": "Native Claude Code notification."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "Native Claude Code notification; permission_prompt follows a permission dialog after about six idle seconds."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PermissionDenied",
       "channel": "hook",
       "channels": [
@@ -2378,6 +2616,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -2435,6 +2676,21 @@
           },
           "reason": {
             "type": "string"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -2719,6 +2975,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -2774,6 +3033,21 @@
           },
           "reason": {
             "type": "string"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -3008,8 +3282,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -3034,7 +3308,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PermissionRequest",
       "channel": "hook",
       "channels": [
@@ -3053,6 +3327,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -3107,6 +3384,21 @@
           },
           "permission_suggestions": {
             "type": "array"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -3389,6 +3681,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -3441,6 +3736,21 @@
           },
           "permission_suggestions": {
             "type": "array"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -3673,33 +3983,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PostCompact",
       "channel": "hook",
       "channels": [
@@ -3707,7 +4023,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "Context compaction completed.",
+      "trigger": "Context compaction completed, after the compact SessionStart.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -3718,6 +4034,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -3828,6 +4147,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -3897,33 +4219,372 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "notes": "Context compaction completed."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "Context compaction completed, after the compact SessionStart."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
+      "event": "PostModelSwitch",
+      "channel": "hook",
+      "channels": [
+        "hook"
+      ],
+      "transport": "http",
+      "direction": "agent-to-client",
+      "trigger": "The session's model changed: a requested switch, an automatic fallback, an opusplan transition, or the model restored on resume. Asynchronous; requested_model is null for auto.",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "transcript_path": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "permission_mode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "plan",
+              "acceptEdits",
+              "auto",
+              "dontAsk",
+              "bypassPermissions"
+            ]
+          },
+          "effort": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              }
+            },
+            "required": [
+              "level"
+            ]
+          },
+          "hook_event_name": {
+            "type": "string",
+            "enum": [
+              "PostModelSwitch"
+            ]
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_type": {
+            "type": "string"
+          },
+          "from_model": {
+            "type": "string"
+          },
+          "to_model": {
+            "type": "string"
+          },
+          "requested_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "command",
+              "picker",
+              "sdk",
+              "auto",
+              "resume"
+            ]
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_warm": {
+            "type": "boolean"
+          },
+          "cache_ttl": {
+            "type": "string",
+            "enum": [
+              "5m",
+              "1h"
+            ]
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
+          },
+          "pricing": {
+            "type": "string",
+            "enum": [
+              "configured",
+              "catalog",
+              "default"
+            ]
+          }
+        },
+        "required": [
+          "cache_ttl",
+          "context_tokens",
+          "cwd",
+          "estimated_cache_write_usd",
+          "from_model",
+          "hook_event_name",
+          "pricing",
+          "prompt_cache_warm",
+          "requested_model",
+          "session_id",
+          "source",
+          "to_model",
+          "transcript_path"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PostModelSwitch"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "transcript_path": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "permission_mode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "plan",
+              "acceptEdits",
+              "auto",
+              "dontAsk",
+              "bypassPermissions"
+            ]
+          },
+          "effort": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              }
+            },
+            "required": [
+              "level"
+            ]
+          },
+          "hook_event_name": {
+            "type": "string",
+            "enum": [
+              "PostModelSwitch"
+            ]
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_type": {
+            "type": "string"
+          },
+          "from_model": {
+            "type": "string"
+          },
+          "to_model": {
+            "type": "string"
+          },
+          "requested_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "command",
+              "picker",
+              "sdk",
+              "auto",
+              "resume"
+            ]
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_warm": {
+            "type": "boolean"
+          },
+          "cache_ttl": {
+            "type": "string",
+            "enum": [
+              "5m",
+              "1h"
+            ]
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
+          },
+          "pricing": {
+            "type": "string",
+            "enum": [
+              "configured",
+              "catalog",
+              "default"
+            ]
+          }
+        },
+        "required": [
+          "cache_ttl",
+          "context_tokens",
+          "cwd",
+          "estimated_cache_write_usd",
+          "from_model",
+          "hook_event_name",
+          "pricing",
+          "prompt_cache_warm",
+          "requested_model",
+          "session_id",
+          "source",
+          "to_model",
+          "transcript_path"
+        ]
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
+          "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+        ]
+      },
+      "observationMode": "passive",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ],
+        "shape": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ],
+        "result": [
+          "claude-official-hooks"
+        ],
+        "carrier": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ]
+      },
+      "confidence": "unverified",
+      "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "The session's model changed: a requested switch, an automatic fallback, an opusplan transition, or the model restored on resume. Asynchronous; requested_model is null for auto."
+    },
+    {
+      "surface": "claude",
+      "surfaceVersion": "2.1.308",
       "event": "PostToolBatch",
       "channel": "hook",
       "channels": [
@@ -3942,6 +4603,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -4007,8 +4671,7 @@
               "required": [
                 "tool_name",
                 "tool_input",
-                "tool_use_id",
-                "tool_response"
+                "tool_use_id"
               ]
             }
           }
@@ -4076,6 +4739,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -4139,8 +4805,7 @@
               "required": [
                 "tool_name",
                 "tool_input",
-                "tool_use_id",
-                "tool_response"
+                "tool_use_id"
               ]
             }
           }
@@ -4158,33 +4823,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "Runs once after every call in a parallel tool batch resolves."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PostToolUse",
       "channel": "hook",
       "channels": [
@@ -4203,6 +4874,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -4261,6 +4935,21 @@
           },
           "duration_ms": {
             "type": "number"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -4529,7 +5218,11 @@
               "additionalContext": {
                 "type": "string"
               },
-              "updatedToolOutput": {}
+              "classifierContext": {
+                "type": "string"
+              },
+              "updatedToolOutput": {},
+              "updatedMCPToolOutput": {}
             }
           }
         }
@@ -4544,6 +5237,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -4602,6 +5298,21 @@
           },
           "duration_ms": {
             "type": "number"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -4836,33 +5547,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "One completion event per successful tool call."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PostToolUseFailure",
       "channel": "hook",
       "channels": [
@@ -4881,6 +5598,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -4944,6 +5664,21 @@
           },
           "duration_ms": {
             "type": "number"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -5228,6 +5963,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -5289,6 +6027,21 @@
           },
           "duration_ms": {
             "type": "number"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -5523,33 +6276,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "One failure event per approved tool call that fails."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "PreCompact",
       "channel": "hook",
       "channels": [
@@ -5568,6 +6327,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -5681,6 +6443,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -5753,33 +6518,376 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "Context compaction is about to run and can still be blocked."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
+      "event": "PreModelSwitch",
+      "channel": "hook",
+      "channels": [
+        "hook"
+      ],
+      "transport": "http",
+      "direction": "agent-to-client",
+      "trigger": "Runs before a requested model switch (/model, a picker, /config, fast mode, SDK set_model) and can cancel it. A hook still running at its timeout (native default 30 s) blocks the switch, so registration is never a passive default.",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "transcript_path": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "permission_mode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "plan",
+              "acceptEdits",
+              "auto",
+              "dontAsk",
+              "bypassPermissions"
+            ]
+          },
+          "effort": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              }
+            },
+            "required": [
+              "level"
+            ]
+          },
+          "hook_event_name": {
+            "type": "string",
+            "enum": [
+              "PreModelSwitch"
+            ]
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_type": {
+            "type": "string"
+          },
+          "from_model": {
+            "type": "string"
+          },
+          "to_model": {
+            "type": "string"
+          },
+          "requested_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "command",
+              "picker",
+              "sdk"
+            ]
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_warm": {
+            "type": "boolean"
+          },
+          "cache_ttl": {
+            "type": "string",
+            "enum": [
+              "5m",
+              "1h"
+            ]
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
+          },
+          "pricing": {
+            "type": "string",
+            "enum": [
+              "configured",
+              "catalog",
+              "default"
+            ]
+          }
+        },
+        "required": [
+          "cache_ttl",
+          "context_tokens",
+          "cwd",
+          "estimated_cache_write_usd",
+          "from_model",
+          "hook_event_name",
+          "pricing",
+          "prompt_cache_warm",
+          "requested_model",
+          "session_id",
+          "source",
+          "to_model",
+          "transcript_path"
+        ]
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "suppressOutput": {
+            "type": "boolean"
+          },
+          "systemMessage": {
+            "type": "string"
+          },
+          "terminalSequence": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "block"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "hookSpecificOutput": {
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "PreModelSwitch"
+                ]
+              },
+              "permissionDecision": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "deny",
+                  "ask"
+                ]
+              },
+              "permissionDecisionReason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "transcript_path": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "permission_mode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "plan",
+              "acceptEdits",
+              "auto",
+              "dontAsk",
+              "bypassPermissions"
+            ]
+          },
+          "effort": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max"
+                ]
+              }
+            },
+            "required": [
+              "level"
+            ]
+          },
+          "hook_event_name": {
+            "type": "string",
+            "enum": [
+              "PreModelSwitch"
+            ]
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "agent_type": {
+            "type": "string"
+          },
+          "from_model": {
+            "type": "string"
+          },
+          "to_model": {
+            "type": "string"
+          },
+          "requested_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "command",
+              "picker",
+              "sdk"
+            ]
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_warm": {
+            "type": "boolean"
+          },
+          "cache_ttl": {
+            "type": "string",
+            "enum": [
+              "5m",
+              "1h"
+            ]
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
+          },
+          "pricing": {
+            "type": "string",
+            "enum": [
+              "configured",
+              "catalog",
+              "default"
+            ]
+          }
+        },
+        "required": [
+          "cache_ttl",
+          "context_tokens",
+          "cwd",
+          "estimated_cache_write_usd",
+          "from_model",
+          "hook_event_name",
+          "pricing",
+          "prompt_cache_warm",
+          "requested_model",
+          "session_id",
+          "source",
+          "to_model",
+          "transcript_path"
+        ]
+      },
+      "schemaFidelity": {
+        "payload": "structural",
+        "result": "structural",
+        "carrier": "structural",
+        "limitations": [
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
+          "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
+        ]
+      },
+      "observationMode": "timeout-blocks",
+      "evidence": {
+        "existence": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ],
+        "shape": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ],
+        "result": [
+          "claude-official-hooks"
+        ],
+        "carrier": [
+          "claude-official-hooks",
+          "claude-runtime-interactive"
+        ]
+      },
+      "confidence": "unverified",
+      "timeoutSec": 30,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "Runs before a requested model switch (/model, a picker, /config, fast mode, SDK set_model) and can cancel it. A hook still running at its timeout (native default 30 s) blocks the switch, so registration is never a passive default."
+    },
+    {
+      "surface": "claude",
+      "surfaceVersion": "2.1.308",
       "event": "PreToolUse",
       "channel": "hook",
       "channels": [
@@ -5798,6 +6906,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -5852,6 +6963,21 @@
           },
           "tool_use_id": {
             "type": "string"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -6133,6 +7259,9 @@
               },
               "additionalContext": {
                 "type": "string"
+              },
+              "permissionDisplay": {
+                "type": "object"
               }
             }
           }
@@ -6148,6 +7277,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -6202,6 +7334,21 @@
           },
           "tool_use_id": {
             "type": "string"
+          },
+          "mcp_server": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ]
           }
         },
         "required": [
@@ -6435,33 +7582,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "Runs before every tool call, before PermissionRequest when a decision is needed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "SessionEnd",
       "channel": "hook",
       "channels": [
@@ -6482,6 +7635,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -6589,6 +7745,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -6657,8 +7816,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -6666,30 +7825,33 @@
       "evidence": {
         "existence": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "shape": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "The native session terminated; prompt_id is absent before the first prompt."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "SessionStart",
       "channel": "hook",
       "channels": [
@@ -6697,7 +7859,7 @@
       ],
       "transport": "command",
       "direction": "agent-to-client",
-      "trigger": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork.",
+      "trigger": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -6710,6 +7872,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -6769,6 +7934,18 @@
           },
           "session_title": {
             "type": "string"
+          },
+          "seconds_since_last_response": {
+            "type": "number"
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_likely_expired": {
+            "type": "boolean"
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
           }
         },
         "required": [
@@ -6807,7 +7984,33 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "SessionStart"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              },
+              "initialUserMessage": {
+                "type": "string"
+              },
+              "sessionTitle": {
+                "type": "string"
+              },
+              "watchPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "reloadSkills": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },
@@ -6821,6 +8024,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -6882,6 +8088,18 @@
           },
           "session_title": {
             "type": "string"
+          },
+          "seconds_since_last_response": {
+            "type": "number"
+          },
+          "context_tokens": {
+            "type": "number"
+          },
+          "prompt_cache_likely_expired": {
+            "type": "boolean"
+          },
+          "estimated_cache_write_usd": {
+            "type": "number"
           }
         },
         "required": [
@@ -6897,8 +8115,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -6906,30 +8124,33 @@
       "evidence": {
         "existence": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "shape": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
-      "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "Setup",
       "channel": "hook",
       "channels": [
@@ -6950,6 +8171,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7038,7 +8262,18 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "Setup"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7052,6 +8287,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -7119,8 +8357,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -7144,14 +8382,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "One-time initialization hook for --init-only, -p --init, and maintenance mode."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "Stop",
       "channel": "hook",
       "channels": [
@@ -7172,6 +8410,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7230,11 +8471,8 @@
           }
         },
         "required": [
-          "background_tasks",
           "cwd",
           "hook_event_name",
-          "last_assistant_message",
-          "session_crons",
           "session_id",
           "stop_hook_active",
           "transcript_path"
@@ -7268,7 +8506,18 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "Stop"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7282,6 +8531,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -7342,11 +8594,8 @@
           }
         },
         "required": [
-          "background_tasks",
           "cwd",
           "hook_event_name",
-          "last_assistant_message",
-          "session_crons",
           "session_id",
           "stop_hook_active",
           "transcript_path"
@@ -7357,33 +8606,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "The assistant finished its turn."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "StopFailure",
       "channel": "hook",
       "channels": [
@@ -7391,7 +8646,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "The turn ended because of an API error; hook output is observational only.",
+      "trigger": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -7404,6 +8659,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7455,15 +8713,20 @@
               "overloaded",
               "authentication_failed",
               "oauth_org_not_allowed",
+              "account_on_hold",
+              "verification_required",
               "billing_error",
               "invalid_request",
               "model_not_found",
               "server_error",
               "max_output_tokens",
+              "cloud_credential_error",
               "unknown"
             ]
           },
-          "error_details": {},
+          "error_details": {
+            "type": "string"
+          },
           "last_assistant_message": {
             "type": "string"
           }
@@ -7520,6 +8783,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7571,15 +8837,20 @@
               "overloaded",
               "authentication_failed",
               "oauth_org_not_allowed",
+              "account_on_hold",
+              "verification_required",
               "billing_error",
               "invalid_request",
               "model_not_found",
               "server_error",
               "max_output_tokens",
+              "cloud_credential_error",
               "unknown"
             ]
           },
-          "error_details": {},
+          "error_details": {
+            "type": "string"
+          },
           "last_assistant_message": {
             "type": "string"
           }
@@ -7597,8 +8868,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -7622,14 +8893,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
-      "notes": "The turn ended because of an API error; hook output is observational only."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "SubagentStart",
       "channel": "hook",
       "channels": [
@@ -7650,6 +8921,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7732,7 +9006,18 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "SubagentStart"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7746,6 +9031,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -7807,33 +9095,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
       "notes": "A subagent was spawned."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "SubagentStop",
       "channel": "hook",
       "channels": [
@@ -7841,7 +9135,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id.",
+      "trigger": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id. Compaction runs an internal agent that emits SubagentStop with an empty agent_type and no SubagentStart.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -7854,6 +9148,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -7920,7 +9217,6 @@
           "agent_type",
           "cwd",
           "hook_event_name",
-          "last_assistant_message",
           "session_id",
           "stop_hook_active",
           "transcript_path"
@@ -7954,7 +9250,18 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "SubagentStop"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -7968,6 +9275,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -8036,7 +9346,6 @@
           "agent_type",
           "cwd",
           "hook_event_name",
-          "last_assistant_message",
           "session_id",
           "stop_hook_active",
           "transcript_path"
@@ -8047,33 +9356,39 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
       "observationMode": "passive",
       "evidence": {
         "existence": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "shape": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
-          "claude-official-hooks"
+          "claude-official-hooks",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id. Compaction runs an internal agent that emits SubagentStop with an empty agent_type and no SubagentStart."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "TaskCompleted",
       "channel": "hook",
       "channels": [
@@ -8094,6 +9409,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -8207,6 +9525,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -8281,8 +9602,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -8307,7 +9628,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "TaskCreated",
       "channel": "hook",
       "channels": [
@@ -8326,6 +9647,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -8441,6 +9765,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -8515,8 +9842,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -8541,7 +9868,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "TeammateIdle",
       "channel": "hook",
       "channels": [
@@ -8560,6 +9887,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -8666,6 +9996,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -8731,8 +10064,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -8757,7 +10090,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "UserPromptExpansion",
       "channel": "hook",
       "channels": [
@@ -8776,6 +10109,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -8823,7 +10159,11 @@
             "type": "string"
           },
           "expansion_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "slash_command",
+              "mcp_prompt"
+            ]
           },
           "command_name": {
             "type": "string"
@@ -8841,7 +10181,6 @@
         "required": [
           "command_args",
           "command_name",
-          "command_source",
           "cwd",
           "expansion_type",
           "hook_event_name",
@@ -8878,7 +10217,21 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "UserPromptExpansion"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              },
+              "suppressOriginalPrompt": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },
@@ -8892,6 +10245,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -8939,7 +10295,11 @@
             "type": "string"
           },
           "expansion_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "slash_command",
+              "mcp_prompt"
+            ]
           },
           "command_name": {
             "type": "string"
@@ -8957,7 +10317,6 @@
         "required": [
           "command_args",
           "command_name",
-          "command_source",
           "cwd",
           "expansion_type",
           "hook_event_name",
@@ -8971,8 +10330,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -8997,7 +10356,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "UserPromptSubmit",
       "channel": "hook",
       "channels": [
@@ -9005,7 +10364,7 @@
       ],
       "transport": "http",
       "direction": "agent-to-client",
-      "trigger": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present.",
+      "trigger": "The submitted prompt as typed, before any skill or command expansion; also fires for turns Claude starts itself, such as a background-agent task notification. prompt_id is the native user-turn correlation when present; the bundled source field is compiled out of the runtime payload.",
       "payloadSchema": {
         "type": "object",
         "properties": {
@@ -9016,6 +10375,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -9067,6 +10429,17 @@
           },
           "session_title": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "user",
+              "sdk",
+              "system",
+              "loop_wakeup",
+              "schedule_wakeup",
+              "poll_event"
+            ]
           }
         },
         "required": [
@@ -9105,7 +10478,24 @@
             "type": "string"
           },
           "hookSpecificOutput": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "hookEventName": {
+                "type": "string",
+                "enum": [
+                  "UserPromptSubmit"
+                ]
+              },
+              "additionalContext": {
+                "type": "string"
+              },
+              "sessionTitle": {
+                "type": "string"
+              },
+              "suppressOriginalPrompt": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },
@@ -9119,6 +10509,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -9170,6 +10563,17 @@
           },
           "session_title": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "user",
+              "sdk",
+              "system",
+              "loop_wakeup",
+              "schedule_wakeup",
+              "poll_event"
+            ]
           }
         },
         "required": [
@@ -9185,8 +10589,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -9194,30 +10598,33 @@
       "evidence": {
         "existence": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "shape": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ],
         "result": [
           "claude-official-hooks"
         ],
         "carrier": [
           "claude-official-hooks",
-          "claude-runtime-headless"
+          "claude-runtime-headless",
+          "claude-runtime-interactive"
         ]
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.226",
-      "lastVerified": "2.1.226",
-      "fixture": "captures/claude@2.1.226",
-      "notes": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
+      "firstSeen": "2.1.308",
+      "lastVerified": "2.1.308",
+      "fixture": "captures/claude@2.1.308",
+      "notes": "The submitted prompt as typed, before any skill or command expansion; also fires for turns Claude starts itself, such as a background-agent task notification. prompt_id is the native user-turn correlation when present; the bundled source field is compiled out of the runtime payload."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "WorktreeCreate",
       "channel": "hook",
       "channels": [
@@ -9236,6 +10643,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -9332,6 +10742,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -9393,8 +10806,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -9419,7 +10832,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.226",
+      "surfaceVersion": "2.1.308",
       "event": "WorktreeRemove",
       "channel": "hook",
       "channels": [
@@ -9438,6 +10851,9 @@
             "type": "string"
           },
           "cwd": {
+            "type": "string"
+          },
+          "scratchpad_dir": {
             "type": "string"
           },
           "prompt_id": {
@@ -9540,6 +10956,9 @@
           "cwd": {
             "type": "string"
           },
+          "scratchpad_dir": {
+            "type": "string"
+          },
           "prompt_id": {
             "type": "string"
           },
@@ -9601,8 +11020,8 @@
         "result": "structural",
         "carrier": "structural",
         "limitations": [
-          "Claude publishes prose and examples rather than a generated JSON Schema; undocumented optional fields may exist.",
-          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs remain open objects.",
+          "Claude publishes prose, examples, and bundled zod schemas rather than a generated JSON Schema; undocumented optional fields may exist.",
+          "Tool-specific input constraints cover Bash, PowerShell, Write, Edit, and Read; other built-in and MCP tool inputs and every tool_response remain open.",
           "Callback schemas retain documented control fields but do not claim every event-specific invalid-field interaction."
         ]
       },
@@ -9628,9 +11047,9 @@
   ],
   "behavior": {
     "behaviorVersion": 1,
-    "title": "Claude Code native hook lifecycle (2.1.226)",
-    "description": "A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified until captured.",
-    "source": "Census packages/surface/vendors/claude/captures/claude@2.1.226 and reviewed official reference packages/surface/vendors/claude/references/claude@2.1.226.",
+    "title": "Claude Code native hook lifecycle (2.1.308)",
+    "description": "A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified; the capture set keeps a value-free arrival-order projection for review.",
+    "source": "Census packages/surface/vendors/claude/captures/claude@2.1.308 and reviewed official reference packages/surface/vendors/claude/references/claude@2.1.308.",
     "lanes": [
       {
         "id": "session",
@@ -9664,15 +11083,17 @@
         "confidence": "verified-headless",
         "evidence": {
           "existence": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ]
         },
         "lane": "session",
         "order": 0,
-        "description": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork."
+        "description": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response."
       },
       {
         "id": "setup",
@@ -9696,10 +11117,12 @@
         "confidence": "verified-headless",
         "evidence": {
           "existence": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
@@ -9712,15 +11135,17 @@
         "confidence": "verified-headless",
         "evidence": {
           "existence": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ]
         },
         "lane": "turn",
         "order": 3,
-        "description": "The verbatim submitted prompt; prompt_id is the native user-turn correlation when present."
+        "description": "The submitted prompt as typed, before any skill or command expansion; also fires for turns Claude starts itself, such as a background-agent task notification. prompt_id is the native user-turn correlation when present; the bundled source field is compiled out of the runtime payload."
       },
       {
         "id": "user-prompt-expansion",
@@ -9744,10 +11169,12 @@
         "confidence": "verified-headless",
         "evidence": {
           "existence": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ]
         },
         "lane": "turn",
@@ -9757,13 +11184,13 @@
       {
         "id": "pre-tool-use",
         "event": "PreToolUse",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "tool",
@@ -9773,13 +11200,13 @@
       {
         "id": "permission-request",
         "event": "PermissionRequest",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "tool",
@@ -9789,13 +11216,13 @@
       {
         "id": "post-tool-use",
         "event": "PostToolUse",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "tool",
@@ -9805,13 +11232,13 @@
       {
         "id": "post-tool-use-failure",
         "event": "PostToolUseFailure",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "tool",
@@ -9821,13 +11248,13 @@
       {
         "id": "post-tool-batch",
         "event": "PostToolBatch",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "tool",
@@ -9853,29 +11280,29 @@
       {
         "id": "notification",
         "event": "Notification",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
         "order": 12,
-        "description": "Native Claude Code notification."
+        "description": "Native Claude Code notification; permission_prompt follows a permission dialog after about six idle seconds."
       },
       {
         "id": "subagent-start",
         "event": "SubagentStart",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "delegation",
@@ -9885,18 +11312,18 @@
       {
         "id": "subagent-stop",
         "event": "SubagentStop",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "delegation",
         "order": 14,
-        "description": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id."
+        "description": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id. Compaction runs an internal agent that emits SubagentStop with an empty agent_type and no SubagentStart."
       },
       {
         "id": "task-created",
@@ -9933,13 +11360,13 @@
       {
         "id": "stop",
         "event": "Stop",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "turn",
@@ -9960,7 +11387,7 @@
         },
         "lane": "turn",
         "order": 18,
-        "description": "The turn ended because of an API error; hook output is observational only."
+        "description": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed."
       },
       {
         "id": "teammate-idle",
@@ -9981,13 +11408,13 @@
       {
         "id": "config-change",
         "event": "ConfigChange",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
@@ -9997,13 +11424,13 @@
       {
         "id": "cwd-changed",
         "event": "CwdChanged",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
@@ -10013,13 +11440,13 @@
       {
         "id": "directory-added",
         "event": "DirectoryAdded",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
@@ -10029,18 +11456,18 @@
       {
         "id": "file-changed",
         "event": "FileChanged",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "async",
         "order": 23,
-        "description": "A configured matcher watch filename changed on disk; registration without a matcher observes nothing."
+        "description": "A configured matcher watch filename in the current working directory changed on disk; registration without a matcher observes nothing."
       },
       {
         "id": "worktree-create",
@@ -10077,13 +11504,13 @@
       {
         "id": "pre-compact",
         "event": "PreCompact",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "maintenance",
@@ -10093,18 +11520,50 @@
       {
         "id": "post-compact",
         "event": "PostCompact",
-        "confidence": "unverified",
+        "confidence": "verified-interactive",
         "evidence": {
           "existence": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-official-hooks"
+            "claude-runtime-interactive"
           ]
         },
         "lane": "maintenance",
         "order": 27,
-        "description": "Context compaction completed."
+        "description": "Context compaction completed, after the compact SessionStart."
+      },
+      {
+        "id": "pre-model-switch",
+        "event": "PreModelSwitch",
+        "confidence": "verified-interactive",
+        "evidence": {
+          "existence": [
+            "claude-runtime-interactive"
+          ],
+          "shape": [
+            "claude-runtime-interactive"
+          ]
+        },
+        "lane": "session",
+        "order": 28,
+        "description": "Runs before a requested model switch (/model, a picker, /config, fast mode, SDK set_model) and can cancel it. A hook still running at its timeout (native default 30 s) blocks the switch, so registration is never a passive default."
+      },
+      {
+        "id": "post-model-switch",
+        "event": "PostModelSwitch",
+        "confidence": "verified-interactive",
+        "evidence": {
+          "existence": [
+            "claude-runtime-interactive"
+          ],
+          "shape": [
+            "claude-runtime-interactive"
+          ]
+        },
+        "lane": "session",
+        "order": 29,
+        "description": "The session's model changed: a requested switch, an automatic fallback, an opusplan transition, or the model restored on resume. Asynchronous; requested_model is null for auto."
       },
       {
         "id": "session-end",
@@ -10112,14 +11571,16 @@
         "confidence": "verified-headless",
         "evidence": {
           "existence": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ],
           "shape": [
-            "claude-runtime-headless"
+            "claude-runtime-headless",
+            "claude-runtime-interactive"
           ]
         },
         "lane": "session",
-        "order": 28,
+        "order": 30,
         "description": "The native session terminated; prompt_id is absent before the first prompt."
       },
       {
@@ -10135,7 +11596,7 @@
           ]
         },
         "lane": "async",
-        "order": 29,
+        "order": 31,
         "description": "An MCP server requested structured user input."
       },
       {
@@ -10151,7 +11612,7 @@
           ]
         },
         "lane": "async",
-        "order": 30,
+        "order": 32,
         "description": "The user response to an MCP elicitation before it is returned to the server."
       }
     ],
@@ -10269,6 +11730,24 @@
         "to": "permission-request",
         "kind": "conditional",
         "label": "permission required",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "permission-request",
+        "to": "notification",
+        "kind": "conditional",
+        "label": "permission_prompt after the idle gate",
         "confidence": "unverified",
         "evidence": {
           "existence": [
@@ -10430,7 +11909,25 @@
         "from": "user-prompt-submit",
         "to": "stop-failure",
         "kind": "conditional",
-        "label": "API failure",
+        "label": "API failure or no credential",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "stop-failure",
+        "to": "session-end",
+        "kind": "conditional",
+        "label": "print session exits",
         "confidence": "unverified",
         "evidence": {
           "existence": [
@@ -10484,7 +11981,7 @@
         "from": "session-end",
         "to": "session-start",
         "kind": "resume",
-        "label": "--resume or --continue",
+        "label": "--resume, --continue, or /clear",
         "confidence": "unverified",
         "evidence": {
           "existence": [
@@ -10499,10 +11996,10 @@
         }
       },
       {
-        "from": "user-prompt-submit",
+        "from": "pre-tool-use",
         "to": "subagent-start",
         "kind": "conditional",
-        "label": "delegation",
+        "label": "Agent tool delegation",
         "confidence": "unverified",
         "evidence": {
           "existence": [
@@ -10521,6 +12018,24 @@
         "to": "subagent-stop",
         "kind": "sequence",
         "label": "subagent completes",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "subagent-stop",
+        "to": "user-prompt-submit",
+        "kind": "async",
+        "label": "background agent completion re-enters as a task-notification turn",
         "confidence": "unverified",
         "evidence": {
           "existence": [
@@ -10572,6 +12087,60 @@
       },
       {
         "from": "pre-compact",
+        "to": "subagent-stop",
+        "kind": "conditional",
+        "label": "internal compaction agent",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "pre-compact",
+        "to": "session-start",
+        "kind": "sequence",
+        "label": "compact source refresh",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "session-start",
+        "to": "post-compact",
+        "kind": "sequence",
+        "label": "compaction completes after the compact SessionStart",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "pre-compact",
         "to": "post-compact",
         "kind": "conditional",
         "label": "compaction succeeds",
@@ -10589,10 +12158,28 @@
         }
       },
       {
-        "from": "post-compact",
-        "to": "session-start",
-        "kind": "sequence",
-        "label": "compact source refresh",
+        "from": "pre-model-switch",
+        "to": "post-model-switch",
+        "kind": "conditional",
+        "label": "requested switch applied",
+        "confidence": "unverified",
+        "evidence": {
+          "existence": [
+            "claude-official-hooks"
+          ],
+          "shape": [
+            "claude-official-hooks"
+          ],
+          "ordering": [
+            "claude-official-hooks"
+          ]
+        }
+      },
+      {
+        "from": "session-start",
+        "to": "post-model-switch",
+        "kind": "conditional",
+        "label": "model restored on resume",
         "confidence": "unverified",
         "evidence": {
           "existence": [

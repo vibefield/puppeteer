@@ -61,7 +61,9 @@ export function validatePlatformReports({
       report.vendor !== vendor ||
       report.vendorVersion !== vendorVersion ||
       report.status !== 'passed' ||
-      ['binaryVersion', 'surfaceAudit', 'adapterReal'].some((gate) => report.checks?.[gate] !== 'passed') ||
+      ['binaryVersion', 'hostPlatform', 'surfaceAudit', 'adapterReal'].some(
+        (gate) => report.checks?.[gate] !== 'passed',
+      ) ||
       artifact?.integrity?.status !== 'verified' ||
       report.artifactSha256 !== artifact?.integrity?.sha256
     ) {
@@ -135,8 +137,17 @@ export function verifyAgentSurface({
           ['--filter', '@vibefield/puppeteer-surface', 'run', `surface:audit:${vendor}`],
           repoRoot,
         ),
-        adapter: runGate('pnpm', ['--filter', `@vibefield/puppeteer-adapter-${vendor}`, 'test'], repoRoot),
-        imposter: runGate('pnpm', ['--filter', '@vibefield/puppeteer-imposter', 'test'], repoRoot),
+        // The same per-test budget CI gives process-backed suites on hosted runners.
+        adapter: runGate(
+          'pnpm',
+          ['--filter', `@vibefield/puppeteer-adapter-${vendor}`, 'test', '--testTimeout=15000'],
+          repoRoot,
+        ),
+        imposter: runGate(
+          'pnpm',
+          ['--filter', '@vibefield/puppeteer-imposter', 'test', '--testTimeout=15000'],
+          repoRoot,
+        ),
         packages: runGate('pnpm', ['packages:check'], repoRoot),
         pack: runGate('pnpm', ['pack:check'], repoRoot),
         docs: runGate('pnpm', ['support:check'], repoRoot),

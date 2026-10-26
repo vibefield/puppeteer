@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { fakeClaudeHookPayload, listHookFixtureEvents, loadHookFixtures } from '../test-support/claude-fixtures.js';
+import {
+  fakeClaudeHookPayload,
+  listHookFixtureEvents,
+  loadHookFixtures,
+  loadOrderedHookLane,
+} from '../test-support/claude-fixtures.js';
 import { ClaudeHookNormalizer, type ClaudeHookPayload } from './pipeline.js';
 import { getHookSpec } from '../generated/registry.js';
 
@@ -631,6 +636,63 @@ describe('permission correlation (no native request id)', () => {
     expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
   });
 
+  it('closes an Esc-interrupted request, which has no Stop, when the next prompt starts', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', tool) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', tool) as ClaudeHookPayload);
+    const requestId = (requested.events[0] as { requestId: string }).requestId;
+    // A background agent's own request may still be waiting when the person types again.
+    const worker = { ...tool, agent_id: 'a1b2c3d4e5f6a7b8c', agent_type: 'general-purpose', tool_use_id: 'toolu_bg' };
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', worker) as ClaudeHookPayload);
+    normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', worker) as ClaudeHookPayload);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(2);
+
+    const next = normalizer.normalize(
+      fakeClaudeHookPayload('UserPromptSubmit', {
+        prompt_id: 'prompt-next',
+        prompt: 'try another way',
+      }) as ClaudeHookPayload,
+    );
+    expect(next.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'unknown' },
+      expect.objectContaining({ type: 'turn:started', turnId: 'prompt-next' }),
+    ]);
+    expect(next.diagnostics).toEqual([
+      {
+        code: 'permission-outlived-turn',
+        hookEventName: 'UserPromptSubmit',
+        issues: ['1 pending permission request(s) of an interrupted turn closed when the next prompt started'],
+      },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toEqual([
+      expect.objectContaining({ agentId: worker.agent_id, toolCallId: 'toolu_bg' }),
+    ]);
+  });
+
+  it('replays the 2.1.308 TUI lane with no request pending past the next prompt', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const resolved: Array<{ seq: number; requestId: string; outcome: string }> = [];
+    let requested: { seq: number; requestId: string } | undefined;
+    for (const { seq, record } of loadOrderedHookLane('interactive')) {
+      const result = normalizer.normalize(record as ClaudeHookPayload);
+      for (const event of result.events) {
+        if (event.type === 'interaction:permission-requested') requested = { seq, requestId: event.requestId };
+        if (event.type === 'interaction:permission-resolved') {
+          resolved.push({ seq, requestId: event.requestId, outcome: event.outcome });
+        }
+      }
+      if (record.hook_event_name === 'UserPromptSubmit') {
+        // Every request still open belongs to the prompt that just started.
+        expect(
+          normalizer.pendingPermissionRequests().filter((permission) => permission.promptId !== record.prompt_id),
+        ).toEqual([]);
+      }
+    }
+    // The lane's Esc at the Bash prompt (seq 31): no Stop follows, the next prompt (seq 34) closes it.
+    expect(requested?.seq).toBe(31);
+    expect(resolved).toEqual([{ seq: 34, requestId: requested!.requestId, outcome: 'unknown' }]);
+  });
+
   it('resolves an evicted request before bounding the permission queue', () => {
     const normalizer = new ClaudeHookNormalizer();
     let oldestRequestId = '';
@@ -741,6 +803,98 @@ describe('Claude 2.1.226 hook additions', () => {
         nativeType: event,
       });
     }
+  });
+});
+
+describe('Claude 2.1.308 hook additions', () => {
+  it('maps the landed model switch to an observed model and keeps the cancellable request native', () => {
+    const [request] = loadHookFixtures('PreModelSwitch');
+    const [landed] = loadHookFixtures('PostModelSwitch');
+    expect(normalizeOne(request as ClaudeHookPayload).events).toEqual([
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'PreModelSwitch' },
+    ]);
+    expect(normalizeOne(landed as ClaudeHookPayload).events).toEqual([
+      { type: 'model:updated', intent: 'observed', model: { id: landed!.to_model, provider: 'anthropic' } },
+    ]);
+    // Claude resolved the requested id to another model: the event names the one serving.
+    expect(landed!.to_model).not.toBe(landed!.requested_model);
+    for (const source of ['auto', 'resume']) {
+      expect(
+        normalizeOne(
+          fakeClaudeHookPayload('PostModelSwitch', {
+            from_model: 'claude-opus-5-5',
+            to_model: 'claude-sonnet-4-5-20250929',
+            requested_model: null,
+            source,
+          }),
+        ).events,
+      ).toEqual([
+        {
+          type: 'model:updated',
+          intent: 'observed',
+          model: { id: 'claude-sonnet-4-5-20250929', provider: 'anthropic' },
+        },
+      ]);
+    }
+  });
+
+  it('retains a PostModelSwitch without a target model natively and reports it', () => {
+    const result = normalizeOne(fakeClaudeHookPayload('PostModelSwitch', { from_model: 'a', source: 'command' }));
+    expect(result.events).toEqual([
+      { type: 'adapter:native-event', adapter: 'claude-code', nativeType: 'PostModelSwitch' },
+    ]);
+    expect(result.diagnostics).toEqual([
+      { code: 'malformed-known-hook', hookEventName: 'PostModelSwitch', issues: ['to_model must be string'] },
+    ]);
+  });
+
+  it('keeps the compaction agent native: an empty agent_type stop with no start delegated nothing', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const [internal] = loadHookFixtures('SubagentStop').filter((record) => record.agent_type === '');
+    expect(internal).toBeDefined();
+    const result = normalizer.normalize(internal as ClaudeHookPayload);
+    expect(result.events[0]).toEqual({
+      type: 'adapter:native-event',
+      adapter: 'claude-code',
+      nativeType: 'SubagentStop',
+    });
+    expect(result.events.some((event) => event.type.startsWith('delegation:'))).toBe(false);
+    // Runtime refuses empty candidate actor metadata, so the empty type is not stamped.
+    expect(result.agentId).toBe(internal!.agent_id);
+    expect(result.agentType).toBeUndefined();
+    // A started agent with an empty type still stops as delegation.
+    normalizer.normalize(fakeClaudeHookPayload('SubagentStart', { agent_id: 'agent-blank', agent_type: '' }));
+    expect(
+      normalizer.normalize(fakeClaudeHookPayload('SubagentStop', { agent_id: 'agent-blank', agent_type: '' })).events,
+    ).toEqual([{ type: 'delegation:subagent-stopped', subagentId: 'agent-blank' }]);
+  });
+
+  it('completes /compact once, at PostCompact, across the compact SessionStart between them', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    // 2.1.308 TUI order: PreCompact → SubagentStop(internal) → SessionStart(compact) → PostCompact.
+    const started = normalizer.normalize(
+      fakeClaudeHookPayload('PreCompact', { prompt_id: 'p-compact', trigger: 'manual', custom_instructions: '' }),
+    );
+    const compactionId = (started.events[0] as { compactionId: string }).compactionId;
+    normalizer.normalize(
+      fakeClaudeHookPayload('SubagentStop', { prompt_id: 'p-compact', agent_id: 'anon-compact', agent_type: '' }),
+    );
+    const restarted = normalizer.normalize(fakeClaudeHookPayload('SessionStart', { source: 'compact' }));
+    expect(restarted.events.filter((event) => event.type.startsWith('compaction:'))).toEqual([]);
+    expect(restarted.events[0]).toMatchObject({ type: 'session:started', startSource: 'compact' });
+    expect(
+      normalizer.normalize(fakeClaudeHookPayload('PostCompact', { trigger: 'manual', compact_summary: '...' })).events,
+    ).toEqual([
+      { type: 'compaction:completed', compactionId, trigger: 'manual', outcome: 'completed' },
+      { type: 'context-window:invalidated', reason: 'compacted' },
+    ]);
+    // Any other start still ends an attempt that never reported its outcome.
+    normalizer.normalize(fakeClaudeHookPayload('PreCompact', { trigger: 'auto', custom_instructions: '' }));
+    expect(
+      normalizer
+        .normalize(fakeClaudeHookPayload('SessionStart', { source: 'resume' }))
+        .events.filter((event) => event.type === 'compaction:completed'),
+    ).toEqual([expect.objectContaining({ trigger: 'auto', outcome: 'unknown' })]);
   });
 });
 

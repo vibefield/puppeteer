@@ -40,8 +40,12 @@ describe('generateHookSettings', () => {
     expect(settings.hooks.PostToolBatch).toBeDefined();
     expect(settings.hooks.FileChanged).toBeUndefined();
     expect(settings.hooks.WorktreeCreate).toBeUndefined();
+    // A PreModelSwitch observer that misses its timeout blocks the model switch; PostModelSwitch is the rail.
+    expect(settings.hooks.PreModelSwitch).toBeUndefined();
+    expect(settings.hooks.PostModelSwitch).toBeDefined();
     expect(verifiedHookEvents().length).toBeLessThan(supportedHookEvents().length);
-    expect(defaultHookEvents().length).toBe(supportedHookEvents().length - 2);
+    // FileChanged (matcher-required), WorktreeCreate (response-required), PreModelSwitch (timeout-blocks).
+    expect(defaultHookEvents().length).toBe(supportedHookEvents().length - 3);
     for (const block of Object.values(settings.hooks)) {
       expect(block).toHaveLength(1);
       expect(block[0]!.hooks).toHaveLength(1);
@@ -140,6 +144,21 @@ describe('generateHookSettings', () => {
     expect(() =>
       generateHookSettings({ ...OPTS, events: [getHookSpec('FileChanged')!], matchers: { FileChanged: ' ' } }),
     ).toThrow(/must be non-empty/);
+  });
+
+  it('wires PreModelSwitch only when selected, with its native 30 s timeout', () => {
+    const preSwitch = getHookSpec('PreModelSwitch')!;
+    expect(preSwitch).toMatchObject({ registration: 'timeout-blocks', transport: 'http', timeoutSec: 30 });
+    expect(defaultHookEvents().some((spec) => spec.registration === 'timeout-blocks')).toBe(false);
+    const settings = generateHookSettings({ ...OPTS, events: [preSwitch] });
+    expect(settings.hooks.PreModelSwitch).toEqual([
+      { hooks: [expect.objectContaining({ type: 'http', timeout: 30 })] },
+    ]);
+  });
+
+  it('keeps StopFailure on HTTP: a print-mode process can exit before its command hooks complete', () => {
+    const handler = generateHookSettings(OPTS).hooks.StopFailure![0]!.hooks[0]!;
+    expect(handler.type).toBe('http');
   });
 
   it('refuses to install WorktreeCreate as an observer because it replaces native worktree creation', () => {

@@ -124,14 +124,26 @@ export interface NativeStoreDocument {
   recordTypeField?: string | undefined;
   /** Optional field that contains the event payload inside the flat carrier. */
   recordPayloadField?: string | undefined;
-  /** Optional per-record native clock synthesized only when the op did not supply one. */
+  /**
+   * Optional per-record native clock synthesized only when the op did not supply one. On the
+   * method-params envelope it sets the format of the envelope's own `timestamp` (whose field is
+   * fixed); the legacy default stays epoch milliseconds.
+   */
   recordTimestamp?:
     | {
         field: string;
-        format: 'epoch-ms' | 'iso';
+        format: 'epoch-ms' | 'epoch-seconds' | 'iso';
         omitFor?: string[] | undefined;
       }
     | undefined;
+  /**
+   * Method-params envelope only: a per-session event ordinal written into `params._meta.<metaField>`
+   * as `<params.sessionId>-<n>` when the op did not supply one (Grok's `_meta.eventId`). The ordinal
+   * continues after the highest one already in the journal, so a resumed session never reuses one.
+   */
+  recordEventId?: { metaField: string } | undefined;
+  /** Fields merged into each restored record's `params._meta` when a session is replayed on resume. */
+  replayMeta?: Record<string, unknown> | undefined;
   /** Optional append-order ordinal synthesized only when the op did not supply one. */
   recordSequence?:
     | {
@@ -275,6 +287,12 @@ export interface PersonaDocument {
   nativeStore?: NativeStoreDocument;
   /** Ops emitted when a session starts, before any stimulus. */
   boot: OpInvocation[];
+  /**
+   * Ops emitted instead of `boot` when the launch resumes a session by id (the persona's `resume`
+   * flag names one): a vendor that announces a resumed session differently says so here. Absent,
+   * a resume boots like a fresh start.
+   */
+  resumeBoot?: OpInvocation[];
 }
 
 export interface Persona {

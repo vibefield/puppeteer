@@ -1,0 +1,72 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "session/cancel",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-notification",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "description": "Notification to cancel ongoing operations for a session.\n\nSee protocol docs: [Cancellation](https://agentclientprotocol.com/protocol/prompt-turn#cancellation)",
+    "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "sessionId": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionId"
+          }
+        ],
+        "description": "The ID of the session to cancel operations for."
+      }
+    },
+    "required": ["sessionId"],
+    "type": "object",
+    "x-method": "session/cancel",
+    "x-side": "agent",
+    "$defs": {
+      "SessionId": {
+        "description": "A unique identifier for a conversation session between a client and agent.\n\nSessions maintain their own context, conversation history, and state,\nallowing multiple independent interactions with the same agent.\n\nSee protocol docs: [Session ID](https://agentclientprotocol.com/protocol/session-setup#session-id)",
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session/cancel"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-public-acp-lead", "grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Exact ACP schema 0.11.4 (v0.11.4, e9313572), the dependency of the nearest public Grok mirror commit. The binary embeds agent-client-protocol-0.10.4 (binary probe), and every captured 1.0.70 carrier validates against it; the schema is not the binary's own source.",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/viewer-session/acp-controller.jsonl",
+  "notes": "Cancels the running turn: the prompt result reports stopReason cancelled with cancellationCategory MidTurnAbort. A permission request still pending is resolved by the cancel (interaction_resolved, no tool_call_update), and the leader sends its client no $/cancel_request."
+}

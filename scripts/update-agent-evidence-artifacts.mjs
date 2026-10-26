@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeGroundTruthArtifacts } from '../packages/surface/scripts/groundtruth.mjs';
+import { carriesUrlSecrets } from './acquire-agent-artifacts.mjs';
 import { resolveCanonicalGroundTruth } from './agent-model-selection.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -16,6 +17,29 @@ function safePath(path) {
   const absolute = resolve(root, path);
   if (!absolute.startsWith(`${resolve(root)}${sep}`)) throw new Error(`${path} is outside the repository`);
   return absolute;
+}
+
+function plainHttpsUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' && !carriesUrlSecrets(parsed);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The reviewed byte identity a platform already has, if any: an executable whose SHA-256 was verified when the
+ * evidence was authored. A fixture corpus (it carries a `kind`) or a legacy entry without a digest is not one,
+ * and acquisition replaces it.
+ */
+function reviewedArtifact(existing) {
+  return existing &&
+    existing.kind === undefined &&
+    existing.integrity?.status === 'verified' &&
+    /^sha256:[0-9a-f]{64}$/.test(existing.integrity.sha256 ?? '')
+    ? existing
+    : undefined;
 }
 
 export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
@@ -37,8 +61,39 @@ export function mergeArtifactReport({ evidence, report, requiredPlatforms }) {
   evidence.artifacts = requiredPlatforms.map((platform) => {
     const artifact = acquired.get(platform);
     if (!/^sha256:[0-9a-f]{64}$/.test(artifact.sha256 ?? '')) throw new Error(`${platform} has no SHA-256`);
-    const id = existingByPlatform.get(platform)?.id ?? `${evidence.vendor}-${evidence.vendorVersion}-${platform}`;
+    // Acquisition refuses these, but a report written before it did may still carry a
+    // signed redirect target, and evidence is tracked: re-check rather than trust.
+    if (artifact.sourceUrl !== undefined && !plainHttpsUrl(artifact.sourceUrl)) {
+      throw new Error(`${platform} artifact source URL is not a plain https URL`);
+    }
+    const existing = existingByPlatform.get(platform);
+    const reviewed = reviewedArtifact(existing);
+    // The claims on a reviewed artifact were captured on its bytes. Different bytes under the same version are
+    // a republished artifact: an incident to quarantine, never an update that silently rebinds those claims.
+    if (reviewed && reviewed.integrity.sha256 !== artifact.sha256) {
+      throw new Error(
+        `same-version artifact change for ${platform}: evidence reviewed ${reviewed.integrity.sha256}, but the ` +
+          `acquisition holds ${artifact.sha256}; a republished artifact is an incident, not an update`,
+      );
+    }
+    const id = existing?.id ?? `${evidence.vendor}-${evidence.vendorVersion}-${platform}`;
     idByPlatform.set(platform, id);
+    if (reviewed) {
+      // The same bytes again: keep the reviewed provenance (package, companions, and the first acquisition the
+      // captures followed) and add only what this acquisition attests.
+      return {
+        ...reviewed,
+        id,
+        channel: reviewed.channel ?? 'stable',
+        ...(artifact.artifactKind ? { artifactKind: artifact.artifactKind } : {}),
+        acquiredAt: reviewed.acquiredAt ?? artifact.acquiredAt,
+        versionOutput: reviewed.versionOutput ?? artifact.versionOutput,
+        ...(artifact.sourceUrl ? { sourceUrl: artifact.sourceUrl } : {}),
+        acquisitionKey: artifact.key,
+        ...(artifact.identity ? { identity: artifact.identity } : {}),
+        integrity: { status: 'verified', sha256: artifact.sha256 },
+      };
+    }
     return {
       id,
       platform,

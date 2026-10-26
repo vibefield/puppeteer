@@ -1,0 +1,70 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/reverted",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/reverted"
+        ],
+        "title": "Thread/revertedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadRevertedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/revertedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRevertedNotification": {
+        "properties": {
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="puppeteer-surface-groundtruth" content="packages/surface/vendors/codex/groundtruth.json" />
-    <meta name="puppeteer-last-verified" content="0.147.0" />
+    <meta name="puppeteer-last-verified" content="0.164.0" />
     <title>Codex adapter — event map</title>
     <style>
       :root {
@@ -991,9 +991,9 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
             ><a class="hook-chip use-used" href="#cx-m-thread-start"><code>thread/start</code></a
             ><a class="hook-chip use-used" href="#cx-m-thread-resume"><code>thread/resume</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-fork"><code>thread/fork</code></a
-            ><a class="hook-chip use-used" href="#cx-m-thread-read"><code>thread/read</code></a
+            ><a class="hook-chip use-partial" href="#cx-m-thread-read"><code>thread/read</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-list"><code>thread/list</code></a
-            ><a class="hook-chip use-unused" href="#cx-m-thread-turns-list"><code>thread/turns/list</code></a
+            ><a class="hook-chip use-used" href="#cx-m-thread-turns-list"><code>thread/turns/list</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-items-list"><code>thread/items/list</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-loaded-list"><code>thread/loaded/list</code></a
             ><a class="hook-chip use-unused" href="#cx-m-thread-name-set"><code>thread/name/set</code></a
@@ -1340,7 +1340,12 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <h5>Source section</h5>
                 <p class="muted-p">Official docs § Start or resume a thread</p>
                 <h5>Puppeteer</h5>
-                <p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p>
+                <p class="hook-usage">
+                  <strong>Puppeteer:</strong> Called / handled for agent session lifecycle. The observer and the
+                  app-server driver resume with <code>excludeTurns: true</code> and read history through
+                  <code>thread/turns/list</code>; on an app-server that refuses <code>excludeTurns</code> without
+                  <code>experimentalApi</code> (0.150.x, 0.147.0) they fall back to the full resume.
+                </p>
               </div>
             </article>
             <article class="hook-card use-unused" id="cx-m-thread-fork">
@@ -1443,11 +1448,11 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <p class="muted-p">Official docs § Start or resume a thread</p>
               </div>
             </article>
-            <article class="hook-card use-used" id="cx-m-thread-read">
+            <article class="hook-card use-partial" id="cx-m-thread-read">
               <header class="hook-card-h">
                 <div class="hook-card-title">
                   <a class="hook-anchor" href="#cx-m-thread-read"><code>thread/read</code></a>
-                  <span class="tag t-used">Used</span>
+                  <span class="tag t-partial">Partial</span>
                 </div>
               </header>
               <div class="hook-card-body">
@@ -1541,7 +1546,11 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <h5>Source section</h5>
                 <p class="muted-p">Official docs § Start or resume a thread</p>
                 <h5>Puppeteer</h5>
-                <p class="hook-usage"><strong>Puppeteer:</strong> Called / handled for agent session lifecycle.</p>
+                <p class="hook-usage">
+                  <strong>Puppeteer:</strong> Fallback only: with <code>includeTurns: true</code>, the observer's
+                  history read on an app-server that predates paginated history (0.150.x, 0.147.0). From 0.158.0 on,
+                  that read is answered with a <code>deprecationNotice</code>.
+                </p>
               </div>
             </article>
             <article class="hook-card use-unused" id="cx-m-thread-list">
@@ -1595,11 +1604,11 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 <p class="muted-p">Official docs § List thread turns</p>
               </div>
             </article>
-            <article class="hook-card use-unused" id="cx-m-thread-turns-list">
+            <article class="hook-card use-used" id="cx-m-thread-turns-list">
               <header class="hook-card-h">
                 <div class="hook-card-title">
                   <a class="hook-anchor" href="#cx-m-thread-turns-list"><code>thread/turns/list</code></a>
-                  <span class="tag t-unused">Not used</span>
+                  <span class="tag t-used">Used</span>
                 </div>
               </header>
               <div class="hook-card-body">
@@ -1642,6 +1651,18 @@ codex app-server generate-json-schema --out ./schemas</code></pre>
                 </p>
                 <h5>Source section</h5>
                 <p class="muted-p">Official docs § List thread turns</p>
+                <h5>Puppeteer</h5>
+                <p class="hook-usage">
+                  <strong>Puppeteer:</strong> The observer's history read after <code>thread/resume</code> with
+                  <code>excludeTurns</code>: <code>itemsView: &quot;full&quot;</code> (the default summary is only a
+                  display summary, which left out a turn's file change in the 0.164.0 survey),
+                  <code>sortDirection: &quot;asc&quot;</code>, paged by <code>nextCursor</code>, each completed turn
+                  replayed once (<code>replay: true</code>). One read follows at most 1000 pages and keeps at most
+                  10000 turns; a longer history is replayed as far as it was read and reported as
+                  <code>codex-history-incomplete</code>. Persisted history caps a command's
+                  <code>aggregatedOutput</code> at 64 KiB (head and tail around a marker), so a replayed output can be
+                  shorter than the live one.
+                </p>
               </div>
             </article>
             <article class="hook-card use-unused" id="cx-m-thread-items-list">
@@ -7217,7 +7238,7 @@ flowchart LR
                   >kinds: commandExecution, localShellCall, fileChange, webSearch, mcpToolCall</span
                 >
               </td>
-              <td class="m">tool:started<br />tool:completed</td>
+              <td class="m">tool:started<br />tool:completed<br />tool:failed</td>
               <td>tools += <code>state:'running'</code> / −=; counters.toolsCompleted++</td>
               <td><span class="tag t-live">working</span></td>
               <td>detail becomes the tool title (“Running command”, “Searching the web”)</td>
@@ -7290,7 +7311,9 @@ flowchart LR
               <td>model label changes mid-session</td>
             </tr>
             <tr>
-              <td class="m">error</td>
+              <td class="m">
+                error<br /><span class="none">text from <code>error.message</code></span>
+              </td>
               <td class="m">notification:received</td>
               <td><strong>none</strong> — reducer is <code>case 'notification:received': break;</code></td>
               <td><span class="tag t-dead">none</span></td>
@@ -7374,9 +7397,16 @@ flowchart LR
 
       <h2>Gaps worth knowing</h2>
       <p>
-        <strong>Tool failure is explicit.</strong> Failed command executions and failed/declined file changes emit
-        <code>tool:failed</code>; file changes also close their <code>workspace:file-operation</code> lifecycle as
-        failed.
+        <strong>Tool failure is explicit.</strong> Failed or declined command executions and failed/declined file
+        changes emit <code>tool:failed</code>; file changes also close their
+        <code>workspace:file-operation</code> lifecycle as failed. A declined command never ran: Codex completes it with
+        <code>status: declined</code> and a null exit code.
+      </p>
+      <p>
+        <strong>Replayed history is persisted history.</strong> On attach the observer replays completed turns read
+        through <code>thread/turns/list</code> (<code>replay: true</code>). Codex caps a persisted command output at 64
+        KiB (the first and last 32 743 bytes around an in-band marker) and replaces an oversized MCP result with a text
+        preview, so a replayed <code>tool:completed</code> can carry less than the live one did.
       </p>
       <p>
         <strong>Tools are always <code>running</code>.</strong> Codex emits <code>tool:started</code> and never

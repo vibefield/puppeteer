@@ -7,13 +7,13 @@
  *   CODEX_NATIVE_TUI_LIVE=1 PUPPETEER_CODEX_BIN=/absolute/path/to/codex pnpm test
  */
 
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { AgentEventEnvelope } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { attestLiveAdapter } from '@vibefield/puppeteer-testing/live-attestation';
 import { describe, expect, it } from 'vitest';
-import { resolveCodexExecutable } from './detection.js';
 import { createCodexTuiSession } from './launch/tui-session.js';
 import type { AppServerTransportKind } from './transport/app-server-process.js';
 import {
@@ -23,9 +23,20 @@ import {
   startCodexLoopbackProvider,
   writeCodexLiveConfiguration,
 } from './test-support/live-model.js';
+import { removeCodexLiveRoot, requireCodexLiveExecutable } from './test-support/live-profile.js';
 import { CodexLivePtyHost, waitFor } from './test-support/live-pty-host.js';
 
 const live = process.env.CODEX_NATIVE_TUI_LIVE === '1';
+
+/**
+ * Native events about a deprecated call. 0.158.0 and later answer every full-history hydration with
+ * one (findings C8); the observer reads history the paginated way, and an older app-server sends none.
+ */
+function nativeDeprecations(envelopes: readonly AgentEventEnvelope[]): string[] {
+  return envelopes.flatMap(({ event }) =>
+    event.type === 'adapter:native-event' && /deprecat/iu.test(event.nativeType ?? '') ? [event.nativeType ?? ''] : [],
+  );
+}
 
 function requestedAppServerTransport(): AppServerTransportKind | undefined {
   const value = process.env.CODEX_NATIVE_TUI_TRANSPORT;
@@ -50,7 +61,9 @@ async function bounded<T>(operation: Promise<T>, label: string, timeoutMs = 20_0
 
 describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
   it('shares one exact thread across app-server, structured observation, TUI, and resume', async () => {
-    const root = realpathSync(mkdtempSync(join(realpathSync(tmpdir()), 'puppeteer-codex-live-')));
+    const executable = requireCodexLiveExecutable('CODEX_NATIVE_TUI_LIVE');
+    // The native spelling: Codex reports its rollout path without Windows 8.3 short names (RUNNER~1).
+    const root = realpathSync.native(mkdtempSync(join(realpathSync.native(tmpdir()), 'puppeteer-codex-live-')));
     const codexHome = join(root, 'codex-home');
     const cwd = join(root, 'workspace');
     mkdirSync(cwd, { recursive: true });
@@ -58,7 +71,6 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
     writeCodexLiveConfiguration(codexHome, cwd, provider.baseUrl);
     const environment = isolatedCodexLiveEnvironment(root, codexHome);
     const appServerTransport = requestedAppServerTransport();
-    const executable = resolveCodexExecutable();
     const host = new CodexLivePtyHost();
     let session: Awaited<ReturnType<typeof createCodexTuiSession>> | undefined;
     let projection: ReturnType<typeof projectAgentEvents> | undefined;
@@ -110,6 +122,7 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       }
       expect(projection.state.lastAssistantMessage).toContain(CODEX_LIVE_RESPONSE_MARKER);
       expect(session.threadPath()).toContain(codexHome);
+      expect(nativeDeprecations(projection.envelopes)).toEqual([]);
 
       const originalRuntimeSessionId = session.runtimeSessionId;
       projection.dispose();
@@ -142,6 +155,13 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
         () => host.output(resumed!.runtimeSessionId).includes(CODEX_LIVE_RESPONSE_MARKER),
         'resumed history in the real native TUI',
       );
+      // The resumed answer is history the observer read and replayed, not a live event.
+      const replayed = resumedProjection.envelopes.find(
+        ({ event }) =>
+          event.type === 'conversation:assistant-message' && event.text.includes(CODEX_LIVE_RESPONSE_MARKER),
+      );
+      expect(replayed?.replay).toBe(true);
+      expect(nativeDeprecations(resumedProjection.envelopes)).toEqual([]);
 
       const turnRequests = provider.requests.filter(({ kind }) => kind === 'turn');
       expect(turnRequests, `unexpected loopback requests: ${JSON.stringify(provider.requests)}`).toHaveLength(1);
@@ -155,7 +175,9 @@ describe.runIf(live)('Codex adapter through real native TUI (live)', () => {
       await session?.dispose();
       await host.dispose();
       await provider.close();
-      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+      // The app-server's plugin sync outlives it (findings C8): stop it before removing the root, and on
+      // Windows never let a leftover handle replace this test's own result.
+      await removeCodexLiveRoot(root);
     }
   }, 120_000);
 });

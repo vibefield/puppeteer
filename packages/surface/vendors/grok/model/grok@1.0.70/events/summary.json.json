@@ -1,0 +1,114 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "summary.json",
+  "channel": "session-state",
+  "channels": ["session-state"],
+  "transport": "json-file-replace",
+  "direction": "agent-local",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "agent_id": {
+        "type": "string"
+      },
+      "agent_name": {
+        "type": "string"
+      },
+      "attempt_id": {
+        "type": "string"
+      },
+      "chat_format_version": {
+        "type": "integer"
+      },
+      "created_at": {
+        "type": "string"
+      },
+      "current_model_id": {
+        "type": "string"
+      },
+      "generated_title": {
+        "type": "string"
+      },
+      "grok_home": {
+        "type": "string"
+      },
+      "info": {
+        "type": "object",
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["cwd", "id"]
+      },
+      "last_active_at": {
+        "type": "string"
+      },
+      "last_turn_summary": {
+        "type": "string"
+      },
+      "last_turn_summary_prompt_id": {
+        "type": "string"
+      },
+      "next_trace_turn": {
+        "type": "integer"
+      },
+      "num_chat_messages": {
+        "type": "integer"
+      },
+      "num_messages": {
+        "type": "integer"
+      },
+      "request_id": {
+        "type": "string"
+      },
+      "sandbox_profile": {
+        "type": "string"
+      },
+      "session_kind": {
+        "type": "string"
+      },
+      "session_summary": {
+        "type": "string"
+      },
+      "updated_at": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "agent_id",
+      "agent_name",
+      "attempt_id",
+      "chat_format_version",
+      "created_at",
+      "current_model_id",
+      "generated_title",
+      "grok_home",
+      "info",
+      "last_active_at",
+      "next_trace_turn",
+      "num_chat_messages",
+      "num_messages",
+      "sandbox_profile",
+      "session_summary",
+      "updated_at"
+    ]
+  },
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "limitations": [
+      "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/state.jsonl",
+  "notes": "Session summary; child (subagent) sessions add session_kind: \"subagent\" and share the cwd bucket. 1.0.70 adds agent_id (ag1.…) and attempt_id (at1.…)."
+}

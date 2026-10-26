@@ -1,0 +1,32 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "claude",
+  "vendorVersion": "2.1.308",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*/*.jsonl",
+    "ordering.json",
+    "transcript-shape.json",
+    "statusline-shape.json"
+  ],
+  "limitations": [
+    "Hook stdin JSON carriers are type-preserving: sensitive scalar values are replaced in place while JSON keys, containers, primitive types, and record ordering within each event file are retained.",
+    "Raw transcripts, status-line payloads, and process diagnostics stay in the gitignored captures-raw tree; only value-free projections of them are committed.",
+    "api-error-<status> modes are print turns against a loopback Messages API that returned that HTTP status to a placeholder token; the native error mapping is real, the failures are synthetic.",
+    "interactive and resume modes ran the native TUI in a harness-owned PTY against a scripted loopback model: hook payload shapes, transports, and ordering are native, while assistant text, tool choices, and compaction summaries are synthetic."
+  ],
+  "overrides": [
+    {
+      "paths": [
+        "ordering.json",
+        "transcript-shape.json",
+        "statusline-shape.json"
+      ],
+      "representation": "semantic-projection",
+      "limitations": [
+        "Projections keep only event names, enum discriminators, record types, key names, and counts; they prove occurrence, ordering, and record shape, never a value.",
+        "Arrival order is the order the census sink received each rail: a command-forwarded hook (SessionStart, Setup) can arrive after an HTTP hook Claude emitted later."
+      ]
+    }
+  ]
+}

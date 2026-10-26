@@ -103,7 +103,10 @@ async function fetchArtifact(spec, fetchImpl) {
         bytes = Buffer.from(await response.arrayBuffer());
       }
       if (bytes.length < 1 || bytes.length > spec.maxBytes) throw new Error(`artifact size ${bytes.length} is invalid`);
-      return { bytes, sourceUrl: finalUrl.href };
+      // Record the reviewed URL, never where it redirected: release hosts answer with
+      // short-lived signed URLs (`sig=`, `jwt=` bearer material), and this metadata is
+      // copied into tracked evidence by the assemble and evidence-update steps.
+      return { bytes, sourceUrl: url };
     } catch (error) {
       failures.push(`${url}: ${error.message}`);
     }
@@ -111,7 +114,16 @@ async function fetchArtifact(spec, fetchImpl) {
   throw new Error(`artifact download failed:\n${failures.join('\n')}`);
 }
 
-function safeArchiveEntry(entry) {
+/**
+ * Entries of an archive listing. Windows bsdtar ends listing lines with CRLF; splitting on LF alone
+ * left a trailing CR on every entry, which the control-character guard then rejected. A CR anywhere
+ * else in a name still makes the entry unsafe.
+ */
+export function archiveListingEntries(listing) {
+  return listing.split(/\r?\n/).filter(Boolean);
+}
+
+export function safeArchiveEntry(entry) {
   return (
     Boolean(entry) &&
     !entry.startsWith('/') &&
@@ -161,7 +173,7 @@ function extractExecutable(archiveBytes, spec, output) {
   writeFileSync(archive, archiveBytes);
   try {
     const listing = listArchive(archive, spec.format);
-    const entries = listing.entries.split('\n').filter(Boolean);
+    const entries = archiveListingEntries(listing.entries);
     if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
     const matches = entries.filter(
       (entry) => !entry.endsWith('/') && spec.executableBasenames.includes(basename(entry)),
@@ -201,7 +213,7 @@ function inspectSourceArchive(archiveBytes, spec, output) {
   writeFileSync(archive, archiveBytes);
   try {
     const listing = listArchive(archive, spec.format);
-    const entries = listing.entries.split('\n').filter(Boolean);
+    const entries = archiveListingEntries(listing.entries);
     if (entries.some((entry) => !safeArchiveEntry(entry))) throw new Error('archive contains an unsafe path');
     return resolveSourceArchiveRoot(entries, spec.rootFiles);
   } finally {

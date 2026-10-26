@@ -1,0 +1,216 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "evidencePolicy": {
+    "kind": "binary-only",
+    "statement": "Grok 1.0.70 has no public source: its binary-reported revision f50904eaee6c is absent from the public source mirror, whose newest commit is crate 1.0.45. Every verified claim therefore rests on runtime captures and binary probes of the exact artifact. Public mirror source and the ACP schema dependency are retained as unverified, separately attributed leads; an exact ACP schema is treated as verified only where every captured carrier validates against it. Binary serde-run names are low-confidence leads and never establish a shape."
+  },
+  "artifacts": [
+    {
+      "id": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-10-25T02:25:00.000Z",
+      "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-aarch64",
+      "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+      },
+      "artifactKind": "standalone-executable",
+      "acquisitionKey": "grok@1.0.70@darwin-arm64@sha256:5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec"
+    },
+    {
+      "id": "grok-1.0.70-darwin-x64",
+      "platform": "darwin-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T22:28:08.601Z",
+      "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+      "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-x86_64",
+      "acquisitionKey": "grok@1.0.70@darwin-x64@sha256:d9ecd462f1f3c3b40a7a131944987ee7ed1c38069b7009cc4107398ab767f484",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:d9ecd462f1f3c3b40a7a131944987ee7ed1c38069b7009cc4107398ab767f484"
+      }
+    },
+    {
+      "id": "grok-1.0.70-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T22:28:08.739Z",
+      "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+      "sourceUrl": "https://x.ai/cli/grok-1.0.70-linux-x86_64",
+      "acquisitionKey": "grok@1.0.70@linux-x64@sha256:22d281c5964c5444147328096ba2a221f3f0874c6858e27c825656a80f6e58e9",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:22d281c5964c5444147328096ba2a221f3f0874c6858e27c825656a80f6e58e9"
+      }
+    },
+    {
+      "id": "grok-1.0.70-windows-x64",
+      "platform": "windows-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T22:28:08.861Z",
+      "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+      "sourceUrl": "https://x.ai/cli/grok-1.0.70-windows-x86_64.exe",
+      "acquisitionKey": "grok@1.0.70@windows-x64@sha256:1e03c16cf2bd4626a79d6b1ea1430f88c38e0c8ec75edd283a60de11296ba326",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:1e03c16cf2bd4626a79d6b1ea1430f88c38e0c8ec75edd283a60de11296ba326"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "f50904eaee6c",
+      "relation": "binary-reported-revision-not-present-in-public-mirror"
+    },
+    {
+      "repository": "https://github.com/xai-org/grok-build",
+      "revision": "2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8",
+      "relation": "public-mirror-commit",
+      "sourceRevision": "559751fdcec02d413e4c57c8832ab275e4f44980",
+      "scope": "nearest-public-mirror-older-than-binary",
+      "crateVersion": "1.0.45",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.70/public-source-surface.json"
+    },
+    {
+      "repository": "https://github.com/agentclientprotocol/agent-client-protocol",
+      "revision": "e931357254ff44573294d5cee214a269e0cd6c54",
+      "relation": "exact-release",
+      "scope": "dependency-of-supplemental-public-mirror-only",
+      "tag": "v0.11.4",
+      "schemaVersion": "0.11.4",
+      "contract": "packages/surface/vendors/grok/references/grok@1.0.70/public-source-surface.json"
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/grok/captures/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "fcabeb3de3e1aa588b48f134366a48dd36833a6c19dcda810c7768bcedff160a"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/grok/probes/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "7effc36183e44f065f04582c5dba71bf5fee2e4bbd34e0e3b89775bdb3d0e94a"
+    },
+    {
+      "id": "supplemental-public-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/grok/references/grok@1.0.70",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "5cc880856b5f19a547a7829269a3b1c02d0e7b7d659f8d40643910769bc11888"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/grok/model/grok@1.0.70",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "a6e77e469f95f7c545b808ab37f7491be1162e697db772a43bb2160068f174e9"
+    }
+  ],
+  "claims": [
+    {
+      "id": "grok-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T05:00:02.273Z",
+      "notes": "Type-preserving native carriers from scenarios approvals-remembered-off, headless-compact, hooks, subagent, viewer-prompt, viewer-session: directional ACP frames, updates.jsonl, and signals/summary/usage.json. Facts that exist only because the native viewer attached cite grok-runtime-interactive instead."
+    },
+    {
+      "id": "grok-runtime-interactive",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T05:00:02.273Z",
+      "notes": "The same captures, for facts whose trigger is the native viewer attached to the leader session in a PTY (scenarios viewer-session, viewer-prompt): attach-time broadcasts to the already-attached controller (config_option_update; background_tasks after session/new) and the live user_message_chunk echo. The controller rail that records them is headless; the trigger is the native TUI."
+    },
+    {
+      "id": "grok-census-observations",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs (shared leader, ACP controllers, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T05:00:02.273Z",
+      "notes": "Harness-computed semantic projections (observations.json, topology.json, store-layout.json): timing, counts, literal permission option inventories, and process topology. Admissible for occurrence, ordering, timing, and retained literals only, never for a schema."
+    },
+    {
+      "id": "grok-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs --probes-only (disposable home, explicit environment)",
+      "capturedAt": "2026-10-25T09:20:29.161Z",
+      "notes": "`--version`, long/short help, subcommand help trees, and the `grok completions fish` grammar of the exact artifact."
+    },
+    {
+      "id": "grok-approval-probe",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "binary-probes",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/harness.mjs --approval-probe (deferring ACP controller, native viewer in a PTY, loopback model provider, disposable GROK_HOME)",
+      "capturedAt": "2026-10-25T09:20:45.252Z",
+      "notes": "Semantic digest viewer-approvals.json: who answers a leader-routed session/request_permission when the controller leaves it open, answered or interrupted with keystrokes in the native viewer (hence interactive evidence), including the allow_always choice and the rule it persists. Viewer keystrokes are control input only; outcomes come from controller ACP frames, the workspace, and the persisted-rule count and location. Admissible for occurrence, ordering, and outcomes only, never for a schema."
+    },
+    {
+      "id": "grok-binary-serde-lead",
+      "kind": "binary-probe",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "artifact": "installed-grok-1.0.70-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "packages/surface/vendors/grok/census/extract-public-reference.mjs (printable-run scan)",
+      "capturedAt": "2026-10-25T09:23:04.602Z",
+      "notes": "Low-confidence leads from a strings heuristic over the exact bytes: serde variant names absent from the public enum and xAI method literals. Rust string pooling makes absence meaningless and presence weak."
+    },
+    {
+      "id": "grok-public-mirror-lead",
+      "kind": "exact-source",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "sourceReference": 1,
+      "notes": "Digest-pinned nearest public mirror (crate 1.0.45), older than the binary. It cannot promote binary claims."
+    },
+    {
+      "id": "grok-public-acp-lead",
+      "kind": "generated-schema",
+      "confidence": "unverified",
+      "record": "supplemental-public-reference",
+      "sourceReference": 2,
+      "notes": "Exact generated ACP schema 0.11.4, the dependency of the nearest public mirror commit."
+    }
+  ],
+  "limitations": [
+    "The binary-reported source revision f50904eaee6c is absent from the public source mirror, so source-to-artifact equivalence is unverified; this model follows the binary-only evidence policy above.",
+    "Census evidence covers only darwin-arm64. darwin-x64, linux-x64, and windows-x64 (named-pipe leader) are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes; their census-level behavior is unverified for 1.0.70.",
+    "The hermetic census disables remote settings, announcements, the model catalog, MCP servers, memory, workflows, and the Responses-API model backend, so _x.ai/models|settings|announcements/update, _x.ai/mcp/init_progress, models_cache.json, _x.ai/billing, the memory socket, and response_completed signatures remain unverified.",
+    "subagent_progress, workflow_updated, goal_updated, plan_*, auto_compact_started/failed/cancelled, session_status, served_model, turn_usage, memory_*, and the binary-only login_refused/backend_responsive/session_ended leads were not exercised.",
+    "Captured values under id-shaped keys are aliases (permission optionIds, model ids, config option ids, auth method ids, xAI ag1./at1./aa1. ids); literal option ids are retained only in the census observations."
+  ]
+}

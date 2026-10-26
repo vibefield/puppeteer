@@ -1,0 +1,141 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "plugin/install",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "installAttemptId": {
+        "description": "Client-generated identifier used to correlate one installation attempt.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "marketplacePath": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/AbsolutePathBuf"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "pluginName": {
+        "type": "string"
+      },
+      "remoteMarketplaceName": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "pluginName"
+    ],
+    "type": "object",
+    "$defs": {
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "plugin/install"
+        ],
+        "title": "Plugin/installRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/PluginInstallParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Plugin/installRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "PluginInstallParams": {
+        "properties": {
+          "installAttemptId": {
+            "description": "Client-generated identifier used to correlate one installation attempt.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "marketplacePath": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/AbsolutePathBuf"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pluginName": {
+            "type": "string"
+          },
+          "remoteMarketplaceName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pluginName"
+        ],
+        "type": "object"
+      },
+      "AbsolutePathBuf": {
+        "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
+        "type": "string"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -1,0 +1,70 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/archived",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/archived"
+        ],
+        "title": "Thread/archivedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadArchivedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/archivedNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadArchivedNotification": {
+        "properties": {
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

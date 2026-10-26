@@ -15,7 +15,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./conformance": "./src/conformance.ts",
-    "./live-attestation": "./src/live-attestation.ts"
+    "./live-attestation": "./src/live-attestation.ts",
+    "./live-cleanup": "./src/live-cleanup.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -33,6 +34,10 @@
       "./live-attestation": {
         "types": "./dist/live-attestation.d.ts",
         "import": "./dist/live-attestation.js"
+      },
+      "./live-cleanup": {
+        "types": "./dist/live-cleanup.d.ts",
+        "import": "./dist/live-cleanup.js"
       }
     }
   },

@@ -1,0 +1,64 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/bedrock/discover",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "account/bedrock/discover"
+        ],
+        "title": "Account/bedrock/discoverRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/BedrockDiscoverParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Account/bedrock/discoverRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "BedrockDiscoverParams": {
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

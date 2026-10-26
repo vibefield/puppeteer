@@ -15,9 +15,15 @@
  *    the rollout without a model turn, so the panel can go `ready` immediately
  *    and the TUI joins via `codex resume <id> --remote`.
  *
- * Observe-from-attach replays the completed turns returned by `thread/resume`
- * before reducing live notifications. A resumed native TUI must therefore
- * project the conversation it resumed, not appear as an empty new session.
+ * Observe-from-attach replays the thread's completed turns before reducing live
+ * notifications. A resumed native TUI must therefore project the conversation it
+ * resumed, not appear as an empty new session. The history is read through
+ * `thread-history.ts`: `thread/resume` with `excludeTurns`, then paged
+ * `thread/turns/list`, and the deprecated full hydration only on an app-server that
+ * predates them (0.150.x, 0.147.0). A history that cannot be read in full is
+ * replayed as far as it was read and then reported as a `codex-history-incomplete`
+ * diagnostic. Replayed history is Codex's persisted copy, so a replayed command
+ * output can be capped at 64 KiB where the live one was not.
  */
 
 import {
@@ -35,6 +41,7 @@ import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
 import { CodexEventSource } from '../services/event-source.js';
 import { readLastCodexContextWindow } from './rollout-context.js';
+import { CodexThreadHistory, turnsOf } from './thread-history.js';
 import { CodexMonitorEvidence, type CodexConfiguredIntent } from '../normalization/monitor.js';
 
 const CLIENT_INFO = { name: 'puppeteer-observer', version: PUPPETEER_VERSION } as const;
@@ -104,6 +111,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   }
 
   const client = new AppServerClient(opts.transport);
+  const history = new CodexThreadHistory(client);
   const modelNames = new Map<string, string>();
   let currentModel: AgentModelIdentity | null = null;
   const normalizer = new CodexNotificationNormalizer((modelId) => modelNames.get(modelId));
@@ -228,18 +236,14 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     }
   }
 
-  function replayCompletedTurns(resumed: Record<string, unknown> | undefined): Set<string> {
+  function replayCompletedTurns(turns: readonly unknown[]): Set<string> {
     const replayedTurnIds = new Set<string>();
-    const thread = rec(resumed?.thread);
-    const legacyTurns = Array.isArray(thread?.turns) ? thread.turns : [];
-    const page = rec(resumed?.initialTurnsPage);
-    const paginatedTurns = Array.isArray(page?.data) ? page.data : [];
-    const turns = paginatedTurns.length > 0 ? paginatedTurns : legacyTurns;
     for (const value of turns) {
       const turn = rec(value);
       const turnId = str(turn?.id);
       const status = str(turn?.status);
-      if (!turn || !turnId || status === 'inProgress') continue;
+      // A turn still in progress is left to the live stream; one already replayed is not replayed twice.
+      if (!turn || !turnId || status === 'inProgress' || replayedTurnIds.has(turnId)) continue;
       replayedTurnIds.add(turnId);
       consumeNotification('turn/started', { threadId: sessionId, turn }, true);
       for (const value of Array.isArray(turn.items) ? turn.items : []) {
@@ -274,17 +278,17 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     let delay = 200;
     while (!attached && !disposed && !railClosed) {
       try {
-        const resumed = rec(await client.request('thread/resume', { threadId })); // opens the live stream
+        const resumed = await history.resume(threadId); // opens the live stream
         threadPath = str(rec(resumed?.thread)?.path) ?? threadPath;
-        let history = resumed;
         applyEnvironmentFromResponse(resumed);
+        let turns = turnsOf(resumed);
+        let incomplete: { readonly reason: string } | undefined;
         if (!fresh) {
-          try {
-            history = rec(await client.request('thread/read', { threadId, includeTurns: true })) ?? resumed;
-            threadPath = str(rec(history?.thread)?.path) ?? threadPath;
-          } catch {
-            // History enrichment must never prevent live resume attachment.
-          }
+          // Never throws: history enrichment must never prevent live resume attachment.
+          const read = await history.read(threadId, resumed);
+          turns = read.turns;
+          incomplete = read.incomplete;
+          threadPath = read.path ?? threadPath;
         }
         // A thread this connection just created has no prior turns or usage.
         // Existing and externally discovered threads retain the replay barrier.
@@ -295,7 +299,26 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         // Replay only once the runtime has subscribed, so history streams
         // directly to its consumer without dropping bootstrap metadata.
         pendingHistoryReplay = () => {
-          const replayedTurnIds = replayCompletedTurns(history);
+          const replayedTurnIds = replayCompletedTurns(turns);
+          if (incomplete) {
+            // The replay above is the oldest part of the thread, so the latest answer and turn the
+            // projection now shows may be older than the real ones. Say so rather than look complete.
+            apply(
+              {
+                type: 'adapter:native-event',
+                adapter: 'codex',
+                nativeType: 'thread.history.incomplete',
+                diagnostic: {
+                  code: 'codex-history-incomplete',
+                  message:
+                    `Codex thread history could not be read in full (${incomplete.reason}); ` +
+                    `${replayedTurnIds.size} earliest turn(s) were replayed and later ones are missing.`,
+                },
+              },
+              'runtime',
+              { reason: incomplete.reason, turnsReplayed: replayedTurnIds.size },
+            );
+          }
           if (contextWindow && !contextWindowObserved) {
             emitMonitorBatch(
               monitorEvidence.contextBootstrapBatch(contextWindow, new Date().toISOString(), 'rollout-token-count'),
@@ -305,7 +328,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
           historyReplayed = true;
           // Keep live traffic behind the replay barrier, including traffic
           // received between attachment and the first runtime subscription.
-          // A completed turn already in thread/read must not be reduced twice.
+          // A completed turn already in the history read must not be reduced twice.
           for (const notification of queuedLiveNotifications.splice(0)) {
             const turnId = notificationTurnId(notification.params);
             if (turnId && replayedTurnIds.has(turnId) && isTurnStreamNotification(notification.method)) continue;

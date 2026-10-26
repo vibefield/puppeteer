@@ -36,7 +36,12 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
-import { ClaudeHookNormalizer, type ClaudeHookDiagnostic, type ClaudeHookPayload } from './normalization/index.js';
+import {
+  ClaudeHookNormalizer,
+  ClaudeRootModelGate,
+  type ClaudeHookDiagnostic,
+  type ClaudeHookPayload,
+} from './normalization/index.js';
 import {
   prepareClaudeSession,
   cleanupClaudeSession,
@@ -469,6 +474,7 @@ function createClaudeObservation(
   let configuredIntentPublished = false;
   let observedStatusEnvironmentKey: string | undefined;
   let observedStatusContextKey: string | undefined;
+  const rootModel = new ClaudeRootModelGate();
   const observedOtelUsage = new Map<string, string>();
   const observedOtelModels = new Map<string, string>();
 
@@ -812,6 +818,14 @@ function createClaudeObservation(
       }
     }
     for (const event of normalized.events) {
+      if (
+        event.type === 'model:updated' &&
+        event.model &&
+        !normalized.agentId &&
+        !rootModel.admitHook(event.model, body)
+      ) {
+        continue;
+      }
       if (event.type === 'context-window:invalidated') {
         emitMonitorBatch(monitorEvidence.rootContextInvalidationBatch(hookEnvelope.receivedAt, hookEnvelope.requestId));
       }
@@ -867,17 +881,23 @@ function createClaudeObservation(
 
     const environmentEvents = claudeEnvironmentEvents(statusEnvelope.body);
     if (environmentEvents.length > 0) {
-      const environmentKey = JSON.stringify(environmentEvents);
-      if (environmentKey !== observedStatusEnvironmentKey) {
-        observedStatusEnvironmentKey = environmentKey;
-        for (const event of environmentEvents) {
-          apply(event, {
-            source: 'native-statusline',
-            timestamp: statusEnvelope.receivedAt,
-            providerVersion: payloadVersion(statusEnvelope.body),
-            native: statusEnvelope.body,
-          });
-        }
+      // The model card is news against the root model either rail last published (the hooks can
+      // move it between refreshes); the rest of the snapshot against the status line's own reading.
+      const environmentKey = JSON.stringify(environmentEvents.filter((event) => event.type !== 'model:updated'));
+      const environmentChanged = environmentKey !== observedStatusEnvironmentKey;
+      observedStatusEnvironmentKey = environmentKey;
+      for (const event of environmentEvents) {
+        const news =
+          event.type === 'model:updated'
+            ? event.model !== null && rootModel.admitStatusLine(event.model)
+            : environmentChanged;
+        if (!news) continue;
+        apply(event, {
+          source: 'native-statusline',
+          timestamp: statusEnvelope.receivedAt,
+          providerVersion: payloadVersion(statusEnvelope.body),
+          native: statusEnvelope.body,
+        });
       }
     }
 

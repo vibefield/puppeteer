@@ -92,6 +92,7 @@ export function auditEvidence({ write = false, root = repoRoot } = {}) {
   const issues = [];
   for (const path of evidencePaths(join(root, 'packages', 'surface'))) {
     const index = JSON.parse(readFileSync(path, 'utf8'));
+    const original = JSON.stringify(index);
     const label = relative(root, path);
     if (![1, 2].includes(index.evidenceVersion)) issues.push(`${label}: evidenceVersion must be 1 or 2`);
     if (!index.vendor || !index.vendorVersion) issues.push(`${label}: missing vendor identity`);
@@ -175,7 +176,10 @@ export function auditEvidence({ write = false, root = repoRoot } = {}) {
     if (manifest.asmVersion >= 2 && index.evidenceVersion !== 2) {
       issues.push(`${label}: ASM v2+ requires evidenceVersion 2`);
     }
-    if (write) writeFileSync(path, `${JSON.stringify(index, null, 2)}\n`);
+    // Rewrite only an index whose content changed. Rewriting an unchanged index replaced its
+    // Prettier formatting with JSON.stringify's, so an adaptation run touched every other vendor's
+    // evidence.json and failed its confinement check.
+    if (write && JSON.stringify(index) !== original) writeFileSync(path, `${JSON.stringify(index, null, 2)}\n`);
   }
   return issues.sort();
 }

@@ -8,63 +8,134 @@ import {
 } from '@vibefield/puppeteer-core/monitor-spi';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createCodexObserver } from './observer.js';
+import { CODEX_HISTORY_LIMITS } from './thread-history.js';
 import * as rolloutContext from './rollout-context.js';
 import type { Transport } from '../transport/app-server-client.js';
+
+/**
+ * Which app-server generation the fake answers as. `paginated` is rust-v0.151.0 and later
+ * (0.164.0 census `history-hydration`): `thread/resume` takes `excludeTurns` and history pages
+ * through `thread/turns/list`. `gated` is 0.150.x and 0.147.0: both are behind `experimentalApi`
+ * and refused with the exact -32600 answers of the 0.150.0 pagination probe, so history comes from
+ * the full `thread/resume` and `thread/read {includeTurns}`.
+ */
+type ServerGeneration = 'paginated' | 'gated';
+
+interface ControllableOptions {
+  deferRead?: boolean;
+  deferCatalog?: boolean;
+  server?: ServerGeneration;
+  /** Turns per `thread/turns/list` page. Default: every turn on one page. */
+  pageSize?: number;
+  /** Answer this `thread/turns/list` page (0-based) with an error instead. */
+  turnsListError?: { page: number; code: number; message: string };
+  /** Never answer this `thread/turns/list` page (0-based). */
+  turnsListUnanswered?: number;
+  /** Answer `thread/read` with this error instead. */
+  threadReadError?: { code: number; message: string };
+  /** Answer every `thread/turns/list` page with the same turns and the same cursor. */
+  repeatCursor?: boolean;
+  /** Serve this many `thread/turns/list` pages of one new turn each, every one with a new cursor. */
+  distinctPages?: number;
+}
+
+const GATED = {
+  excludeTurns: 'thread/resume.excludeTurns requires experimentalApi capability',
+  turnsList: 'thread/turns/list requires experimentalApi capability',
+};
 
 /**
  * A controllable in-memory app-server. Auto-answers `initialize` and lets a test
  * decide how many times `thread/resume` fails with "no rollout found" before it
  * succeeds — the shape of the real 0.144.4 behaviour (a thread has no rollout
- * until its first turn produces output).
+ * until its first turn produces output). `historyResult` is the thread as
+ * `thread/read {includeTurns: true}` returns it; the paginated server pages the
+ * same turns.
  */
 function controllable(
   resumeFailuresBeforeSuccess: number,
   historyResult: unknown = {},
-  options: { deferRead?: boolean; deferCatalog?: boolean } = {},
+  options: ControllableOptions = {},
 ) {
+  const server = options.server ?? 'paginated';
+  const storedThread = (historyResult as { thread?: Record<string, unknown> }).thread;
+  const storedTurns = Array.isArray(storedThread?.turns) ? (storedThread.turns as unknown[]) : [];
   let onMsg: ((m: unknown) => void) | undefined;
   let onCls: ((i: { code: number | null; signal: string | null }) => void) | undefined;
   let resumeFails = resumeFailuresBeforeSuccess;
   let resumeAttempts = 0;
+  let turnsListPages = 0;
   const calls: { method?: string; params?: unknown }[] = [];
   const sent: Record<string, unknown>[] = [];
-  let deferredReadId: number | undefined;
+  let deferredRead: { id: number; result: unknown } | undefined;
   let deferredCatalogId: number | undefined;
+  const reply = (id: number | undefined, result: unknown) => onMsg?.({ jsonrpc: '2.0', id, result });
+  const refuse = (id: number | undefined, code: number, message: string) =>
+    onMsg?.({ jsonrpc: '2.0', id, error: { code, message } });
+  const turnsPage = (params: Record<string, unknown>) => {
+    if (options.repeatCursor) return { data: storedTurns, nextCursor: 'same', backwardsCursor: null };
+    if (options.distinctPages !== undefined) {
+      const at = typeof params.cursor === 'string' ? Number(params.cursor) : 0;
+      const data = [
+        { id: `t${at}`, status: 'completed', items: [{ type: 'agentMessage', id: `a${at}`, text: `${at}` }] },
+      ];
+      return { data, nextCursor: at + 1 < options.distinctPages ? String(at + 1) : null, backwardsCursor: null };
+    }
+    const size = options.pageSize ?? Math.max(storedTurns.length, 1);
+    const from = typeof params.cursor === 'string' ? Number(params.cursor) : 0;
+    const data = storedTurns.slice(from, from + size);
+    const next = from + size < storedTurns.length ? String(from + size) : null;
+    return { data, nextCursor: next, backwardsCursor: null };
+  };
   const transport: Transport = {
     send: (m) => {
-      const msg = m as { id?: number; method?: string; params?: unknown };
+      const msg = m as { id?: number; method?: string; params?: Record<string, unknown> };
       sent.push(msg as Record<string, unknown>);
       if (msg.id === undefined) return; // client notification (e.g. initialized)
       if (msg.method === undefined) return; // response to a server request
       calls.push({ method: msg.method, params: msg.params });
+      const params = msg.params ?? {};
       queueMicrotask(() => {
         if (msg.method === 'thread/resume') {
+          // The gate is checked before the thread is looked up, as on 0.150.0.
+          if (server === 'gated' && params.excludeTurns !== undefined) {
+            refuse(msg.id, -32600, GATED.excludeTurns);
+            return;
+          }
           resumeAttempts++;
           if (resumeFails > 0) {
             resumeFails--;
-            onMsg?.({ jsonrpc: '2.0', id: msg.id, error: { code: -1, message: 'no rollout found for thread id' } });
+            refuse(msg.id, -1, 'no rollout found for thread id');
+          } else if (storedThread) {
+            reply(msg.id, { thread: { ...storedThread, turns: params.excludeTurns === true ? [] : storedTurns } });
           } else {
-            onMsg?.({ jsonrpc: '2.0', id: msg.id, result: {} });
+            reply(msg.id, {});
           }
         } else if (msg.method === 'model/list' && options.deferCatalog) {
           deferredCatalogId = msg.id;
+        } else if (msg.method === 'thread/turns/list') {
+          const page = turnsListPages++;
+          if (server === 'gated') refuse(msg.id, -32600, GATED.turnsList);
+          else if (options.turnsListError?.page === page) {
+            refuse(msg.id, options.turnsListError.code, options.turnsListError.message);
+          } else if (options.turnsListUnanswered === page) {
+            // Left pending until the transport closes.
+          } else if (options.deferRead && page === 0) deferredRead = { id: msg.id!, result: turnsPage(params) };
+          else reply(msg.id, turnsPage(params));
         } else if (msg.method === 'thread/read') {
-          if (options.deferRead) deferredReadId = msg.id;
-          else onMsg?.({ jsonrpc: '2.0', id: msg.id, result: historyResult });
+          if (options.threadReadError) refuse(msg.id, options.threadReadError.code, options.threadReadError.message);
+          else if (options.deferRead) deferredRead = { id: msg.id!, result: historyResult };
+          else reply(msg.id, historyResult);
         } else if (msg.method === 'thread/start') {
-          onMsg?.({
-            jsonrpc: '2.0',
-            id: msg.id,
-            result: {
-              thread: {
-                id: 'th-owned',
-                sessionId: 'th-owned',
-                path: '/tmp/rollout-th-owned.jsonl',
-              },
+          reply(msg.id, {
+            thread: {
+              id: 'th-owned',
+              sessionId: 'th-owned',
+              path: '/tmp/rollout-th-owned.jsonl',
             },
           });
         } else {
-          onMsg?.({ jsonrpc: '2.0', id: msg.id, result: {} }); // initialize, inject_items, …
+          reply(msg.id, {}); // initialize, inject_items, …
         }
       });
     },
@@ -79,15 +150,18 @@ function controllable(
     resumeAttempts: () => resumeAttempts,
     calls: () => calls,
     sent: () => sent,
+    /** The history read the observer makes on this generation of server. */
+    historyRequested: () =>
+      calls.some((call) => call.method === (server === 'gated' ? 'thread/read' : 'thread/turns/list')),
     releaseCatalog: (result: unknown = {}) => {
       if (deferredCatalogId === undefined) throw new Error('model/list is not pending');
       onMsg?.({ jsonrpc: '2.0', id: deferredCatalogId, result });
       deferredCatalogId = undefined;
     },
     releaseRead: () => {
-      if (deferredReadId === undefined) throw new Error('thread/read is not pending');
-      onMsg?.({ jsonrpc: '2.0', id: deferredReadId, result: historyResult });
-      deferredReadId = undefined;
+      if (deferredRead === undefined) throw new Error('the history read is not pending');
+      reply(deferredRead.id, deferredRead.result);
+      deferredRead = undefined;
     },
   };
 }
@@ -463,29 +537,49 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     await obs.dispose();
   });
 
+  it('rejects threadId + start together', async () => {
+    const t = controllable(0);
+    await expect(
+      createCodexObserver({
+        transport: t.transport,
+        threadId: 'x',
+        start: { cwd: '/tmp' },
+      }),
+    ).rejects.toThrow(/threadId OR start/);
+  });
+});
+
+describe.each(['paginated', 'gated'] as const)('createCodexObserver history from a %s app-server', (server) => {
+  const historyMethod = (method: string | undefined) =>
+    method === 'thread/resume' || method === 'thread/read' || method === 'thread/turns/list';
+
   it('replays completed resume history to the first subscriber', async () => {
-    const t = controllable(0, {
-      thread: {
-        id: 'th-history',
-        path: '/tmp/rollout-th-history.jsonl',
-        turns: [
-          {
-            id: 'turn-history',
-            status: 'completed',
-            error: null,
-            items: [
-              {
-                type: 'userMessage',
-                id: 'user-history',
-                clientId: null,
-                content: [{ type: 'text', text: 'What did we decide?', text_elements: [] }],
-              },
-              { type: 'agentMessage', id: 'assistant-history', text: 'Use the native resume path.' },
-            ],
-          },
-        ],
+    const t = controllable(
+      0,
+      {
+        thread: {
+          id: 'th-history',
+          path: '/tmp/rollout-th-history.jsonl',
+          turns: [
+            {
+              id: 'turn-history',
+              status: 'completed',
+              error: null,
+              items: [
+                {
+                  type: 'userMessage',
+                  id: 'user-history',
+                  clientId: null,
+                  content: [{ type: 'text', text: 'What did we decide?', text_elements: [] }],
+                },
+                { type: 'agentMessage', id: 'assistant-history', text: 'Use the native resume path.' },
+              ],
+            },
+          ],
+        },
       },
-    });
+      { server },
+    );
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
     const projection = projectAgentEvents(obs);
     const events: unknown[] = projection.envelopes
@@ -506,11 +600,24 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       { type: 'turn:completed', turnId: 'turn-history' },
     ]);
     expect(projection.state.lastAssistantMessage).toBe('Use the native resume path.');
-    expect(t.calls().find((call) => call.method === 'thread/resume')?.params).toEqual({ threadId: 'th-history' });
-    expect(t.calls().find((call) => call.method === 'thread/read')?.params).toEqual({
-      threadId: 'th-history',
-      includeTurns: true,
-    });
+    expect(projection.envelopes.find(({ event }) => event.type === 'turn:started')?.replay).toBe(true);
+    expect(
+      t
+        .calls()
+        .filter(({ method }) => historyMethod(method))
+        .map(({ method, params }) => [method, params]),
+    ).toEqual(
+      server === 'paginated'
+        ? [
+            ['thread/resume', { threadId: 'th-history', excludeTurns: true }],
+            ['thread/turns/list', { threadId: 'th-history', itemsView: 'full', sortDirection: 'asc' }],
+          ]
+        : [
+            ['thread/resume', { threadId: 'th-history', excludeTurns: true }],
+            ['thread/resume', { threadId: 'th-history' }],
+            ['thread/read', { threadId: 'th-history', includeTurns: true }],
+          ],
+    );
     projection.dispose();
     await obs.dispose();
   });
@@ -539,7 +646,7 @@ describe('createCodexObserver controller-owned bootstrap', () => {
         ],
       },
     };
-    const t = controllable(0, history);
+    const t = controllable(0, history, { server });
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-long-history' });
     if (liveTurn) {
       // The TUI can start work after attachment but before runtime subscribes.
@@ -575,30 +682,34 @@ describe('createCodexObserver controller-owned bootstrap', () => {
   it.each(['pendingInit', 'running', 'active', 'inProgress'])(
     'does not treat historical subagent status %s as live work',
     async (status) => {
-      const t = controllable(0, {
-        thread: {
-          id: 'th-history',
-          turns: [
-            {
-              id: 'turn-old',
-              status: 'completed',
-              items: [
-                {
-                  type: 'collabAgentToolCall',
-                  id: 'spawn-old',
-                  tool: 'spawnAgent',
-                  status: 'completed',
-                  senderThreadId: 'th-history',
-                  receiverThreadIds: ['child-old'],
-                  agentsStates: { 'child-old': { status } },
-                  model: 'gpt-5.6-sol',
-                  reasoningEffort: 'high',
-                },
-              ],
-            },
-          ],
+      const t = controllable(
+        0,
+        {
+          thread: {
+            id: 'th-history',
+            turns: [
+              {
+                id: 'turn-old',
+                status: 'completed',
+                items: [
+                  {
+                    type: 'collabAgentToolCall',
+                    id: 'spawn-old',
+                    tool: 'spawnAgent',
+                    status: 'completed',
+                    senderThreadId: 'th-history',
+                    receiverThreadIds: ['child-old'],
+                    agentsStates: { 'child-old': { status } },
+                    model: 'gpt-5.6-sol',
+                    reasoningEffort: 'high',
+                  },
+                ],
+              },
+            ],
+          },
         },
-      });
+        { server },
+      );
       const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
       const projection = projectAgentEvents(obs);
       const restored = monitorFromEvents(projection.envelopes);
@@ -624,13 +735,17 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       usedTokens: 42,
       capacityTokens: 100,
     });
-    const t = controllable(0, {
-      thread: {
-        id: 'th-history',
-        path: '/tmp/rollout-history.jsonl',
-        turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+    const t = controllable(
+      0,
+      {
+        thread: {
+          id: 'th-history',
+          path: '/tmp/rollout-history.jsonl',
+          turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+        },
       },
-    });
+      { server },
+    );
     try {
       const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
       const projection = projectAgentEvents(obs);
@@ -643,12 +758,16 @@ describe('createCodexObserver controller-owned bootstrap', () => {
   });
 
   it('keeps connection loss newer than deferred history evidence', async () => {
-    const t = controllable(0, {
-      thread: {
-        id: 'th-history',
-        turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+    const t = controllable(
+      0,
+      {
+        thread: {
+          id: 'th-history',
+          turns: [{ id: 'turn-old', status: 'completed', items: [{ type: 'contextCompaction', id: 'compact-old' }] }],
+        },
       },
-    });
+      { server },
+    );
     const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-history' });
     t.fireClose();
     const projection = projectAgentEvents(obs);
@@ -689,12 +808,12 @@ describe('createCodexObserver controller-owned bootstrap', () => {
         ],
       },
     };
-    const t = controllable(0, history, { deferRead: true });
+    const t = controllable(0, history, { deferRead: true, server });
     const creating = createCodexObserver({ transport: t.transport, threadId: 'th-history' });
 
-    await vi.waitFor(() => expect(t.calls().some((call) => call.method === 'thread/read')).toBe(true));
+    await vi.waitFor(() => expect(t.historyRequested()).toBe(true));
 
-    // This completed turn is already in the eventual read response and must
+    // This completed turn is already in the eventual history read and must
     // not be reduced a second time when the replay barrier drains.
     t.deliver({
       jsonrpc: '2.0',
@@ -781,15 +900,223 @@ describe('createCodexObserver controller-owned bootstrap', () => {
     expect(events.filter((envelope) => envelope.event.type === 'turn:completed')).toHaveLength(3);
     await obs.dispose();
   });
+});
 
-  it('rejects threadId + start together', async () => {
-    const t = controllable(0);
-    await expect(
-      createCodexObserver({
-        transport: t.transport,
-        threadId: 'x',
-        start: { cwd: '/tmp' },
-      }),
-    ).rejects.toThrow(/threadId OR start/);
+describe('createCodexObserver paginated history (0.151.0 and later) with a full-hydration fallback', () => {
+  const turn = (id: string, text: string) => ({
+    id,
+    status: 'completed',
+    items: [
+      { type: 'userMessage', id: `user-${id}`, content: [{ type: 'text', text: `prompt ${id}` }] },
+      { type: 'agentMessage', id: `assistant-${id}`, text },
+    ],
+  });
+  const stored = (...turns: unknown[]) => ({ thread: { id: 'th-paged', path: '/tmp/rollout-paged.jsonl', turns } });
+  const replayedAnswers = (projection: ReturnType<typeof projectAgentEvents>) =>
+    projection.envelopes
+      .filter(({ event }) => event.type === 'conversation:assistant-message')
+      .map(({ event, replay }) => [(event as { text?: string }).text, replay]);
+  const requests = (t: ReturnType<typeof controllable>, method: string) =>
+    t.calls().filter((call) => call.method === method);
+
+  it.each(['paginated', 'gated'] as const)(
+    'resumes a thread it just created without hydrating any history (%s server)',
+    async (server) => {
+      const t = controllable(0, {}, { server });
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+      const projection = projectAgentEvents(obs);
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(requests(t, 'thread/resume').map(({ params }) => params)).toEqual(
+        server === 'paginated'
+          ? [{ threadId: 'th-owned', excludeTurns: true }]
+          : [{ threadId: 'th-owned', excludeTurns: true }, { threadId: 'th-owned' }],
+      );
+      expect(requests(t, 'thread/turns/list')).toEqual([]);
+      expect(requests(t, 'thread/read')).toEqual([]);
+      projection.dispose();
+      await obs.dispose();
+    },
+  );
+
+  it('falls back once on a gated server and keeps retrying a thread that has no rollout yet', async () => {
+    const t = controllable(3, stored(turn('t1', 'first')), { server: 'gated' });
+    const obs = await createCodexObserver({ transport: t.transport });
+    const projection = projectAgentEvents(obs);
+    t.deliver(threadStarted);
+
+    await vi.waitFor(() => expect(projection.state.lifecycle).toBe('ready'), { timeout: 5000 });
+    const resumes = requests(t, 'thread/resume').map(({ params }) => params);
+    // One refused excludeTurns, then the deprecated resume until the rollout exists.
+    expect(resumes[0]).toEqual({ threadId: 'th-1', excludeTurns: true });
+    expect(resumes.slice(1)).toEqual(Array.from({ length: 4 }, () => ({ threadId: 'th-1' })));
+    expect(requests(t, 'thread/read').map(({ params }) => params)).toEqual([{ threadId: 'th-1', includeTurns: true }]);
+    expect(requests(t, 'thread/turns/list')).toEqual([]);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('pages oldest first by nextCursor and replays every page in order before live traffic', async () => {
+    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second'), turn('t3', 'third')), {
+      pageSize: 1,
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    t.deliver({
+      method: 'item/completed',
+      params: { threadId: 'th-paged', turnId: 't4', item: { type: 'agentMessage', id: 'live', text: 'live' } },
+    });
+    const projection = projectAgentEvents(obs);
+
+    expect(requests(t, 'thread/turns/list').map(({ params }) => params)).toEqual([
+      { threadId: 'th-paged', itemsView: 'full', sortDirection: 'asc' },
+      { threadId: 'th-paged', itemsView: 'full', sortDirection: 'asc', cursor: '1' },
+      { threadId: 'th-paged', itemsView: 'full', sortDirection: 'asc', cursor: '2' },
+    ]);
+    expect(replayedAnswers(projection)).toEqual([
+      ['first', true],
+      ['second', true],
+      ['third', true],
+      ['live', undefined],
+    ]);
+    expect(obs.threadPath()).toBe('/tmp/rollout-paged.jsonl');
+    expect(requests(t, 'thread/read')).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  const historyDiagnostics = (projection: ReturnType<typeof projectAgentEvents>) =>
+    projection.state.diagnostics
+      .filter(({ code }) => code === 'codex-history-incomplete')
+      .map(({ message }) => message);
+
+  it('reads the whole history once in full when the server answers a later page with an error', async () => {
+    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
+      pageSize: 1,
+      turnsListError: { page: 1, code: -32603, message: 'internal error' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(replayedAnswers(projection)).toEqual([
+      ['first', true],
+      ['second (latest)', true],
+    ]);
+    expect(projection.state.lastAssistantMessage).toBe('second (latest)');
+    expect(requests(t, 'thread/read').map(({ params }) => params)).toEqual([
+      { threadId: 'th-paged', includeTurns: true },
+    ]);
+    expect(historyDiagnostics(projection)).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it.each([1, 0])(
+    'replays the pages it has and reports the history incomplete when page %i and the full read both fail',
+    async (page) => {
+      const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
+        pageSize: 1,
+        turnsListError: { page, code: -32603, message: 'internal error' },
+        threadReadError: { code: -32603, message: 'internal error' },
+      });
+      const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+      const projection = projectAgentEvents(obs);
+      expect(projection.state.lifecycle).toBe('ready');
+      expect(replayedAnswers(projection)).toEqual(page === 1 ? [['first', true]] : []);
+      expect(historyDiagnostics(projection)).toEqual([
+        `Codex thread history could not be read in full (server error -32603); ${page} earliest turn(s) were replayed and later ones are missing.`,
+      ]);
+      const reported = projection.envelopes.find(({ event }) => event.type === 'adapter:native-event');
+      expect(reported?.replay).toBeUndefined();
+      expect(reported?.event).toMatchObject({ adapter: 'codex', nativeType: 'thread.history.incomplete' });
+      projection.dispose();
+      await obs.dispose();
+    },
+  );
+
+  it('asks nothing more of a server that never answered a page, and reports the history incomplete', async () => {
+    const t = controllable(0, stored(turn('t1', 'first'), turn('t2', 'second (latest)')), {
+      pageSize: 1,
+      turnsListUnanswered: 1,
+    });
+    const creating = createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    await vi.waitFor(() => expect(requests(t, 'thread/turns/list')).toHaveLength(2));
+    t.fireClose();
+    const obs = await creating;
+    const projection = projectAgentEvents(obs);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    expect(requests(t, 'thread/read')).toEqual([]);
+    expect(historyDiagnostics(projection)).toEqual([
+      'Codex thread history could not be read in full (connection lost); 1 earliest turn(s) were replayed and later ones are missing.',
+    ]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('stops at a cursor it has already followed and replays a repeated turn once', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), { repeatCursor: true });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(requests(t, 'thread/turns/list')).toHaveLength(2);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('stops paging a server whose cursors outlast the page limit, and reports the history incomplete', async () => {
+    const { pages } = CODEX_HISTORY_LIMITS;
+    const t = controllable(0, stored(), { distinctPages: pages * 5 });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(projection.state.lifecycle).toBe('ready');
+    expect(requests(t, 'thread/turns/list')).toHaveLength(pages);
+    expect(requests(t, 'thread/read')).toEqual([]);
+    expect(replayedAnswers(projection)).toHaveLength(pages);
+    expect(projection.state.lastAssistantMessage).toBe(String(pages - 1));
+    expect(historyDiagnostics(projection)).toEqual([
+      `Codex thread history could not be read in full (stopped after ${pages} pages); ${pages} earliest turn(s) were replayed and later ones are missing.`,
+    ]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('reads the full history when the server takes excludeTurns but does not know thread/turns/list', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), {
+      turnsListError: { page: 0, code: -32601, message: 'method not found' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(requests(t, 'thread/read').map(({ params }) => params)).toEqual([
+      { threadId: 'th-paged', includeTurns: true },
+    ]);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    expect(historyDiagnostics(projection)).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('reports the history incomplete when that full read fails, since the excluded resume carried no turns', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), {
+      turnsListError: { page: 0, code: -32601, message: 'method not found' },
+      threadReadError: { code: -32603, message: 'internal error' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(replayedAnswers(projection)).toEqual([]);
+    expect(historyDiagnostics(projection)).toHaveLength(1);
+    projection.dispose();
+    await obs.dispose();
+  });
+
+  it('keeps the hydrated resume as the whole history on a gated server whose full read fails', async () => {
+    const t = controllable(0, stored(turn('t1', 'first')), {
+      server: 'gated',
+      threadReadError: { code: -32603, message: 'internal error' },
+    });
+    const obs = await createCodexObserver({ transport: t.transport, threadId: 'th-paged' });
+    const projection = projectAgentEvents(obs);
+    expect(replayedAnswers(projection)).toEqual([['first', true]]);
+    expect(historyDiagnostics(projection)).toEqual([]);
+    projection.dispose();
+    await obs.dispose();
   });
 });

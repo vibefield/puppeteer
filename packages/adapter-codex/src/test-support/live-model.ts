@@ -56,6 +56,18 @@ export function writeCodexLiveConfiguration(home: string, cwd: string, baseUrl: 
   );
 }
 
+/**
+ * The Codex and OpenAI variables {@link isolatedCodexLiveEnvironment} sets, so that a caller's own values
+ * never reach the codex it spawns. 0.164.0 keeps its state, thread-history and log databases under
+ * `CODEX_SQLITE_HOME` when that is set, so it is pinned to the profile's CODEX_HOME with everything else.
+ */
+export const CODEX_LIVE_PINNED_VARIABLES: readonly string[] = [
+  'CODEX_HOME',
+  'CODEX_SQLITE_HOME',
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+];
+
 export function isolatedCodexLiveEnvironment(root: string, home: string): Record<string, string> {
   const isolatedHome = join(root, 'home');
   const isolatedTmp = join(root, 'tmp');
@@ -63,6 +75,7 @@ export function isolatedCodexLiveEnvironment(root: string, home: string): Record
   mkdirSync(isolatedTmp, { recursive: true });
   return {
     CODEX_HOME: home,
+    CODEX_SQLITE_HOME: home,
     FAKE_KEY: CODEX_LIVE_API_KEY,
     HOME: isolatedHome,
     USERPROFILE: isolatedHome,

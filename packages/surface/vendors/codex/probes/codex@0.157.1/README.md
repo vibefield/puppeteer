@@ -203,3 +203,11 @@ The follow-up: the person's own permissions. Home A's `config.toml` sets `sandbo
 | `-c default_permissions`, `-c permissions.*` | a permission profile: typed vs the recipe (both on the app-server's line), equal permission and filesystem digests |
 | `-c sandbox_permissions` | the same comparison for the legacy list |
 | `-c profile`, `-c projects.*` | a selected settings profile, and an untrusted working directory made trusted: typed vs managed. Every probe here ran in a trusted workspace; what an untrusted directory gives typed and managed is not measured |
+
+## Erratum (2026-10-24)
+
+The shared detector gained an absolute temp-root pattern for 0.164.0 (findings C8). Under it, one value here is
+reported as unsafe text: `parse-results.json` `probes[171].typed[7]`, the argument
+`sandbox_workspace_write.writable_roots=["/tmp/codex-extra"]` this probe typed. It is the probe's own synthetic
+path, not a host directory, and stays as it ran; the 0.164.0 replay (`probes/codex@0.164.0/`) types
+`/opt/codex-extra` in its place.

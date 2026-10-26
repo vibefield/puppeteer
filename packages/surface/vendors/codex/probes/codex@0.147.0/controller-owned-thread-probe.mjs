@@ -8,6 +8,11 @@ import { appendFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { isolatedCodex } from '../../census/harness.mjs';
+
+// The executable under review (PUPPETEER_CODEX_BIN), never `codex` on PATH, in a throwaway HOME and
+// CODEX_HOME with an allowlisted environment: not the caller's own, possibly signed-in, profile.
+const codex = isolatedCodex();
 
 const require = createRequire(import.meta.url);
 const pty = require('node-pty');
@@ -70,7 +75,7 @@ const PORT = 8950 + Math.floor(Math.random() * 40);
 const CWD = join(realpathSync(tmpdir()), `puppeteer-codex-p3-${process.pid}`);
 mkdirSync(CWD, { recursive: true });
 
-const server = spawn('codex', ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: 'ignore' });
+const server = spawn(codex.executable, ['app-server', '--listen', `ws://127.0.0.1:${PORT}`], { stdio: 'ignore', env: codex.env });
 await sleep(1800);
 const ctl = wsClient(PORT);
 await ctl.ready;
@@ -141,12 +146,12 @@ log('can emit session.started / ready without user typing?', canReady, materiali
 
 // TUI resume
 let tuiOut = '';
-const tui = pty.spawn('codex', ['resume', threadId, '--remote', `ws://127.0.0.1:${PORT}`], {
+const tui = pty.spawn(codex.executable, ['resume', threadId, '--remote', `ws://127.0.0.1:${PORT}`], {
   name: 'xterm-256color',
   cols: 100,
   rows: 30,
   cwd: CWD,
-  env: { ...process.env, TERM: 'xterm-256color' },
+  env: { ...codex.env, TERM: 'xterm-256color' },
 });
 tui.onData((d) => {
   tuiOut += d;

@@ -1,0 +1,102 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "item/commandExecution/terminalInteraction",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "itemId": {
+        "type": "string"
+      },
+      "processId": {
+        "type": "string"
+      },
+      "stdin": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "itemId",
+      "processId",
+      "stdin",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "item/commandExecution/terminalInteraction"
+        ],
+        "title": "Item/commandExecution/terminalInteractionNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/TerminalInteractionNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Item/commandExecution/terminalInteractionNotification",
+    "type": "object",
+    "$defs": {
+      "TerminalInteractionNotification": {
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "processId": {
+            "type": "string"
+          },
+          "stdin": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "processId",
+          "stdin",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

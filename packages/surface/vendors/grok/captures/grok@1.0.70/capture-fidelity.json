@@ -1,0 +1,36 @@
+{
+  "format": "puppeteer-capture-fidelity/1",
+  "vendor": "grok",
+  "vendorVersion": "1.0.70",
+  "defaultRepresentation": "type-preserving-redaction",
+  "nativeArtifacts": [
+    "*/acp-*.jsonl",
+    "*/updates.jsonl",
+    "*/updates-child-*.jsonl",
+    "*/state.jsonl",
+    "capture.json"
+  ],
+  "limitations": [
+    "Directional ACP frames, durable updates.jsonl records, and signals/summary/usage.json state retain every native key, container, primitive type, record order, and request/result correlation; sensitive scalars are replaced in place.",
+    "Durable Unix-seconds clocks pin to 1000000000, millisecond clocks to 1767225600000, and ISO-8601 strings to 2026-01-01T00:00:00 with their native precision and offset retained.",
+    "Values under id-shaped keys are value-keyed aliases, so joins survive but native literals do not: permission optionId values, model ids, config option ids, auth method ids, and xAI ag1./at1./aa1. identifiers are aliased. The census observations retain the literal permission option inventory.",
+    "The machine-derived initialize _meta.agentId is one fixed constant. Raw tool arguments and results (rawInput, rawOutput, x.ai/tool.input) keep only their variant/type/kind/status discriminators.",
+    "Disposable workspace, HOME, GROK_HOME, census root (which holds the leader socket), and executable paths are rewritten to /workspace, /home/user, /home/user/.grok, /home/user/grok-census, and /usr/local/bin/grok, including percent-encoded session buckets.",
+    "Values under the shared path keys are flattened by the repository-wide gate whatever their synthetic root: a cwd becomes /workspace and every other path-keyed value (for example summary.json grok_home, which is GROK_HOME) becomes /workspace/redacted-file. Their native literal is not retained."
+  ],
+  "overrides": [
+    {
+      "paths": [
+        "*/observations.json",
+        "*/topology.json",
+        "*/store-layout.json"
+      ],
+      "representation": "semantic-projection",
+      "limitations": [
+        "Harness-computed timings, counts, permission option inventories, process argv, and store file listings. They are occurrence, ordering, timing, and topology evidence only and cannot define a native payload schema.",
+        "observations.json providerRequests[].path holds the loopback provider's HTTP route, which the shared path rule flattens to /workspace/redacted-file; the route survives only as the harness classification kind (census/harness.mjs classifyProviderRequest: origin-probe is a GET of the origin root, models a GET under v1/models, responses a POST to v1/responses).",
+        "store-layout.json memtrace/<unix seconds>-<pid>.jsonl names pin to memtrace/1000000000-0.jsonl."
+      ]
+    }
+  ]
+}

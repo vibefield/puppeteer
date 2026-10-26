@@ -1,0 +1,85 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "account/login/cancel",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "properties": {
+      "loginId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "loginId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "account/login/cancel"
+        ],
+        "title": "Account/login/cancelRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/CancelLoginAccountParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Account/login/cancelRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "CancelLoginAccountParams": {
+        "properties": {
+          "loginId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loginId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

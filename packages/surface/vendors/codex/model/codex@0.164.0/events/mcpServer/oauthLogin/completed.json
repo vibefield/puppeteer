@@ -1,0 +1,116 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "mcpServer/oauthLogin/completed",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "error": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "loginId": {
+        "description": "Identifies the explicit login attempt. Older servers omit this field.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "name": {
+        "type": "string"
+      },
+      "success": {
+        "type": "boolean"
+      },
+      "threadId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "name",
+      "success"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "mcpServer/oauthLogin/completed"
+        ],
+        "title": "McpServer/oauthLogin/completedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/McpServerOauthLoginCompletedNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "McpServer/oauthLogin/completedNotification",
+    "type": "object",
+    "$defs": {
+      "McpServerOauthLoginCompletedNotification": {
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "loginId": {
+            "description": "Identifies the explicit login attempt. Older servers omit this field.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "success"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

@@ -335,9 +335,10 @@ export class ClaudeMonitorEvidence {
     const models: Array<{ key: string; value: MonitorFamilyValueMap['model'] }> = [];
     const efforts: Array<{ key: string; value: MonitorFamilyValueMap['effort'] }> = [];
     for (const task of tasks) {
+      const taskAgentType = task.agentType ?? task.type ?? task.name;
       const actor = this.nativeAgentTypes.has(task.id)
-        ? nativeAgentActor(nativeSessionId, task.id, this.nativeAgentTypes.get(task.id) ?? task.type ?? task.name)
-        : unverifiedStatusTaskActor(nativeSessionId, task.id, task.type ?? task.name);
+        ? nativeAgentActor(nativeSessionId, task.id, this.nativeAgentTypes.get(task.id) ?? taskAgentType)
+        : unverifiedStatusTaskActor(nativeSessionId, task.id, taskAgentType);
       const status = task.status?.toLowerCase();
       const stoppedByHook = this.stoppedNativeAgents.has(task.id);
       if (actor.nativeAgentId) {

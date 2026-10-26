@@ -4,11 +4,15 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import type { ChildProcess } from 'node:child_process';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ spawn: vi.fn() }));
+// A taskkill mock that never answers would hang dispose; the default answers at once.
+const mocks = vi.hoisted(() => ({
+  spawn: vi.fn(),
+  execFile: vi.fn((_file: string, _args: string[], _options: object, callback?: () => void) => callback?.()),
+}));
 
-vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
+vi.mock('node:child_process', () => ({ spawn: mocks.spawn, execFile: mocks.execFile }));
 
 import { spawnAppServer } from './app-server-process.js';
 
@@ -30,8 +34,19 @@ class FakeChildProcess extends EventEmitter {
   }
 }
 
+// Dispose ends a POSIX child with signals and a Windows tree with taskkill, so each test names the platform
+// it exercises and the suite behaves the same on every host (the Windows CI job included).
+const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+function runAs(platform: NodeJS.Platform): void {
+  Object.defineProperty(process, 'platform', { ...realPlatform, value: platform });
+}
+
 describe('spawnAppServer process contract', () => {
-  afterEach(() => vi.clearAllMocks());
+  beforeEach(() => runAs('linux'));
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', realPlatform);
+    vi.clearAllMocks();
+  });
 
   it('observes a bound Unix socket on a native wakeup without waiting for the poll', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -113,6 +128,29 @@ describe('spawnAppServer process contract', () => {
 
     await expect(ready).rejects.toThrow(/exited before ready.*configuration could not be loaded/s);
     await server.dispose();
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it('ends the whole process tree on Windows, where kill() would leave the app-server helpers running', async () => {
+    runAs('win32');
+    const child = new FakeChildProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    mocks.execFile.mockImplementationOnce((_file: string, _args: string[], _options: object, callback?: () => void) => {
+      queueMicrotask(() => {
+        child.exitCode = 1;
+        child.emit('exit', 1, null);
+        callback?.();
+      });
+    });
+    const server = spawnAppServer({ executable: 'codex-test', transport: 'websocket' });
+    await server.dispose();
+    expect(mocks.execFile).toHaveBeenCalledOnce();
+    expect(mocks.execFile).toHaveBeenCalledWith(
+      'taskkill',
+      ['/PID', '4242', '/T', '/F'],
+      { windowsHide: true },
+      expect.any(Function),
+    );
     expect(child.kill).not.toHaveBeenCalled();
   });
 });

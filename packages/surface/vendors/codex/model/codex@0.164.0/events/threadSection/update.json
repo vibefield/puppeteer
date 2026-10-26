@@ -1,0 +1,159 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "threadSection/update",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "description": "Parameters for updating an independently persisted thread section.",
+    "properties": {
+      "appearance": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ThreadSectionAppearance"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "Omit to preserve appearance, use `null` to clear it, or provide a replacement."
+      },
+      "name": {
+        "description": "The updated user-visible name of the section.",
+        "type": "string"
+      },
+      "sectionId": {
+        "description": "The stable, server-generated identity of the section to update.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "sectionId"
+    ],
+    "type": "object",
+    "$defs": {
+      "ThreadSectionAppearance": {
+        "description": "Extensible visual presentation for a custom thread section.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "threadSection/update"
+        ],
+        "title": "ThreadSection/updateRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadSectionUpdateParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "ThreadSection/updateRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSectionUpdateParams": {
+        "description": "Parameters for updating an independently persisted thread section.",
+        "properties": {
+          "appearance": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ThreadSectionAppearance"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to preserve appearance, use `null` to clear it, or provide a replacement."
+          },
+          "name": {
+            "description": "The updated user-visible name of the section.",
+            "type": "string"
+          },
+          "sectionId": {
+            "description": "The stable, server-generated identity of the section to update.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sectionId"
+        ],
+        "type": "object"
+      },
+      "ThreadSectionAppearance": {
+        "description": "Extensible visual presentation for a custom thread section.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

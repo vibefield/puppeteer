@@ -230,9 +230,74 @@ export function promoteLedgerAgent(ledger, vendor, groundTruth, vendorVersion, p
   agent.currentVersion = vendorVersion;
   delete agent.candidateVersion;
   delete agent.legacyEvidence;
+  // Blockers describe what keeps a baseline-pending candidate unpromoted; the ledger forbids them elsewhere.
+  delete agent.blockers;
   agent.status = 'verified';
   agent.verification = verification;
   agent.introducedInPuppeteer ??= puppeteerVersion;
+  return agent;
+}
+
+/** Set one `<meta name>` in an HTML head, inserting it after the viewport meta when absent. */
+function stampMeta(html, name, content) {
+  const tag = `<meta name="${name}" content="${content}" />`;
+  const existing = new RegExp(`<meta name="${name}" content="[^"]*" />`);
+  if (existing.test(html)) return html.replace(existing, tag);
+  const viewport = /^([ \t]*)<meta name="viewport"[^>]*\/>\n/m.exec(html);
+  if (!viewport) throw new Error(`event map has no viewport meta to place ${name} after`);
+  const end = viewport.index + viewport[0].length;
+  return `${html.slice(0, end)}${viewport[1]}${tag}\n${html.slice(end)}`;
+}
+
+/**
+ * The adapter event map names the promoted Surface ground truth and the version it was last verified
+ * against; packages:check holds both to the ledger for every verified agent.
+ */
+export function stampEventMap(html, groundTruth, vendorVersion) {
+  // Each absent meta goes directly after the viewport, so stamp in reverse to keep ground truth first.
+  return stampMeta(
+    stampMeta(html, 'puppeteer-last-verified', vendorVersion),
+    'puppeteer-surface-groundtruth',
+    groundTruth,
+  );
+}
+
+/**
+ * The promotion transaction after validation: the ledger entry, the README badges, and the adapter event
+ * map move together, or none of them do.
+ */
+export function applyPromotion({ vendor, groundTruthPath, verificationPath, repoRoot = root }) {
+  const ledgerPath = resolve(repoRoot, 'support/agents.json');
+  const readmePath = resolve(repoRoot, 'README.md');
+  const originals = new Map([ledgerPath, readmePath].map((path) => [path, readFileSync(path, 'utf8')]));
+  const ledger = JSON.parse(originals.get(ledgerPath));
+  const groundTruthAbsolute = resolve(repoRoot, groundTruthPath);
+  const agent = promoteLedgerAgent(
+    ledger,
+    vendor,
+    relative(repoRoot, groundTruthAbsolute).split(sep).join('/'),
+    json(groundTruthAbsolute).manifest.vendorVersion,
+    json(resolve(repoRoot, 'package.json')).version,
+    supportVerificationFromReport(json(resolve(repoRoot, verificationPath))),
+  );
+  const adapterDirectory = agent.adapterPackage?.replace(/^@vibefield\/puppeteer-/, '');
+  const eventMapPath = adapterDirectory
+    ? resolve(repoRoot, 'packages', adapterDirectory, 'docs', 'event-map.html')
+    : '';
+  if (eventMapPath && existsSync(eventMapPath)) originals.set(eventMapPath, readFileSync(eventMapPath, 'utf8'));
+
+  try {
+    writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
+    writeFileSync(readmePath, updateReadme(originals.get(readmePath), renderSupportBlock(repoRoot)));
+    if (originals.has(eventMapPath)) {
+      writeFileSync(eventMapPath, stampEventMap(originals.get(eventMapPath), agent.groundTruth, agent.currentVersion));
+    }
+    const after = validateSupportLedger(repoRoot).issues;
+    if (after.length > 0) throw new Error(after.join('\n'));
+  } catch (error) {
+    for (const [path, content] of originals) writeFileSync(path, content);
+    throw error;
+  }
   return agent;
 }
 
@@ -247,30 +312,10 @@ if (invokedDirectly) {
     for (const issue of issues) console.error(`  - ${issue}`);
     process.exit(1);
   }
-
-  const ledgerPath = resolve(root, 'support/agents.json');
-  const readmePath = resolve(root, 'README.md');
-  const oldLedger = readFileSync(ledgerPath, 'utf8');
-  const oldReadme = readFileSync(readmePath, 'utf8');
-  const ledger = JSON.parse(oldLedger);
-  const agent = promoteLedgerAgent(
-    ledger,
+  const agent = applyPromotion({
     vendor,
-    relative(root, insideRepo(groundTruth)).split(sep).join('/'),
-    json(insideRepo(groundTruth)).manifest.vendorVersion,
-    json(resolve(root, 'package.json')).version,
-    supportVerificationFromReport(json(insideRepo(verification))),
-  );
-
-  try {
-    writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
-    writeFileSync(readmePath, updateReadme(oldReadme, renderSupportBlock()));
-    const after = validateSupportLedger().issues;
-    if (after.length > 0) throw new Error(after.join('\n'));
-  } catch (error) {
-    writeFileSync(ledgerPath, oldLedger);
-    writeFileSync(readmePath, oldReadme);
-    throw error;
-  }
+    groundTruthPath: relative(root, insideRepo(groundTruth)),
+    verificationPath: relative(root, insideRepo(verification)),
+  });
   console.log(`promoted ${vendor}: ${agent.groundTruth} at ${agent.currentVersion}`);
 }

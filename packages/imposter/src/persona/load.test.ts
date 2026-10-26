@@ -11,7 +11,7 @@ describe('loadPersona', () => {
     expect(persona.vendor).toBe('claude');
     // Version comes from the ASM manifest, never from persona.json — the
     // captured model is the single source of vendor truth (§3.3).
-    expect(persona.version).toBe('2.1.226');
+    expect(persona.version).toBe('2.1.308');
     expect(persona.channels).toEqual(['argv', 'hook', 'transcript', 'statusline', 'subagentStatusLine', 'terminal']);
   });
 
@@ -70,7 +70,12 @@ describe('loadPersona', () => {
 
   it('declares boot ops that all exist in the ops document', () => {
     const persona = loadPersona('claude');
-    for (const invocation of persona.document.boot) {
+    expect(persona.document.resumeBoot?.map((invocation) => invocation.op)).toEqual([
+      'session.start',
+      'session.ready',
+      'usage.refresh',
+    ]);
+    for (const invocation of [...persona.document.boot, ...(persona.document.resumeBoot ?? [])]) {
       expect(persona.ops[invocation.op], `boot op ${invocation.op} is unmapped`).toBeDefined();
     }
   });
@@ -97,6 +102,8 @@ describe('loadPersona', () => {
     expect(loadPersona('grok').runflows.map((flow) => flow.intent)).toEqual([
       'session.compaction',
       'subagent.lifecycle',
+      'hooks.lifecycle',
+      'session.ambient',
     ]);
     expect(loadPersona('synthetic').runflows).toEqual([]);
   });
@@ -149,6 +156,28 @@ describe('loadPersona validation', () => {
     expect(() => loadPersona('broken', { directory })).toThrow(
       /binds Stop to transcript, but the ASM declares it on hook/,
     );
+  });
+
+  it('rejects a native-store clock or event id the method-params envelope cannot carry', () => {
+    const store = { sessionPath: ['sessions', '$sessionId'], updatesFile: 'updates.jsonl' };
+    const isoClock = write(
+      { ...validPersona, nativeStore: { ...store, recordTimestamp: { field: 'timestamp', format: 'iso' } } },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: isoClock })).toThrow(/must be a numeric "timestamp"/);
+    const otherField = write(
+      { ...validPersona, nativeStore: { ...store, recordTimestamp: { field: 'time', format: 'epoch-seconds' } } },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: otherField })).toThrow(/must be a numeric "timestamp"/);
+    const flatEventId = write(
+      {
+        ...validPersona,
+        nativeStore: { ...store, recordFormat: 'flat-record', recordEventId: { metaField: 'eventId' } },
+      },
+      {},
+    );
+    expect(() => loadPersona('broken', { directory: flatEventId })).toThrow(/only to the method-params envelope/);
   });
 
   it('rejects an unknown op name', () => {

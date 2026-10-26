@@ -1,0 +1,55 @@
+{
+  "probeVersion": 1,
+  "source": "static inspection of the exact digest-pinned executable",
+  "events": 33,
+  "arrays": [
+    {
+      "byteOffset": 217645226,
+      "bytes": 520,
+      "sha256": "a4b2b443e781384d5408270b5f5326ebedaa9ebe7bfb9c93bb2e123803dc84c9",
+      "count": 33
+    },
+    {
+      "byteOffset": 219451322,
+      "bytes": 520,
+      "sha256": "a4b2b443e781384d5408270b5f5326ebedaa9ebe7bfb9c93bb2e123803dc84c9",
+      "count": 33
+    }
+  ],
+  "note": "Every hook-event string array in the executable equals the census list; order is the first array's own order.",
+  "order": [
+    "PreToolUse",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PostToolBatch",
+    "Notification",
+    "UserPromptSubmit",
+    "UserPromptExpansion",
+    "SessionStart",
+    "SessionEnd",
+    "Stop",
+    "StopFailure",
+    "SubagentStart",
+    "SubagentStop",
+    "PreCompact",
+    "PostCompact",
+    "PreModelSwitch",
+    "PostModelSwitch",
+    "PermissionRequest",
+    "PermissionDenied",
+    "Setup",
+    "TeammateIdle",
+    "TaskCreated",
+    "TaskCompleted",
+    "Elicitation",
+    "ElicitationResult",
+    "ConfigChange",
+    "WorktreeCreate",
+    "WorktreeRemove",
+    "InstructionsLoaded",
+    "CwdChanged",
+    "FileChanged",
+    "DirectoryAdded",
+    "MessageDisplay"
+  ]
+}

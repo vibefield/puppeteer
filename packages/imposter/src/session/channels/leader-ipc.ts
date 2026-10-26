@@ -7,6 +7,15 @@
  * session and namespaces viewer request ids exactly as the upstream leader
  * does (`<client-id>|<JSON id>`), so a terminal and ACP controller operate the
  * same Imposter session without either process inventing a second one.
+ *
+ * A server request the controller process routes through the relay (Grok
+ * 1.0.70's permission request, which its viewer renders) reaches every viewer
+ * of the session unchanged, and a viewer's answer returns to the controller
+ * under that same id. Which answer wins is the controller process's business
+ * (`requestFirstAnswer`); the relay never answers or deduplicates. Like the
+ * upstream leader, it also shows a viewer that registers late every request
+ * still open for its session — until a viewer answers it, or the session's
+ * `interaction_resolved` broadcast says another client did.
  */
 
 import { createConnection, createServer, type Server, type Socket } from 'node:net';
@@ -140,6 +149,16 @@ export async function listenLeaderRelay(
 ): Promise<LeaderRelay> {
   let nextClientId = 1;
   const clients = new Map<number, RelayClient>();
+  /** Controller requests routed to viewers and not yet resolved, by session and controller id. */
+  const openRequests = new Map<string, { sessionId: string; payload: string; toolCallId?: string }>();
+  const openKey = (sessionId: string, id: unknown): string => `${sessionId}\u0000${JSON.stringify(id)}`;
+  const forgetResolved = (sessionId: string, toolCallId: unknown): void => {
+    for (const [key, open] of openRequests) {
+      if (open.sessionId === sessionId && open.toolCallId !== undefined && open.toolCallId === toolCallId) {
+        openRequests.delete(key);
+      }
+    }
+  };
 
   const controllerFor = (sessionId: string): RelayClient | undefined =>
     [...clients.values()].find(
@@ -172,7 +191,13 @@ export async function listenLeaderRelay(
         }
         return;
       }
-      if (message.id !== undefined) message.id = namespacedId(source.id, message.id);
+      // A viewer's reply to a controller-originated request keeps the
+      // controller's id; only the viewer's own requests are namespaced.
+      if (message.id !== undefined && typeof message.method === 'string') {
+        message.id = namespacedId(source.id, message.id);
+      } else if (message.id !== undefined) {
+        openRequests.delete(openKey(source.sessionId, message.id));
+      }
       writeFrame(controller.socket, { type: 'acp', payload: rpcPayload(message) });
       return;
     }
@@ -187,10 +212,22 @@ export async function listenLeaderRelay(
       return;
     }
 
-    // Controller notifications are session-scoped broadcasts. Requests without
-    // a namespaced id remain on the controller's direct ACP channel (approvals),
-    // so the leader never asks a terminal to decide twice.
-    if (message.id === undefined && typeof message.method === 'string') {
+    // Controller notifications are session-scoped broadcasts, and so is a
+    // server request the controller chose to route here: every viewer of the
+    // session is asked, under the controller's own id.
+    if (typeof message.method === 'string') {
+      const params = message.params as Record<string, unknown> | undefined;
+      if (message.id !== undefined) {
+        const toolCall = params?.toolCall as Record<string, unknown> | undefined;
+        openRequests.set(openKey(source.sessionId, message.id), {
+          sessionId: source.sessionId,
+          payload,
+          ...(typeof toolCall?.toolCallId === 'string' ? { toolCallId: toolCall.toolCallId } : {}),
+        });
+      } else {
+        const update = params?.update as Record<string, unknown> | undefined;
+        if (update?.sessionUpdate === 'interaction_resolved') forgetResolved(source.sessionId, update.tool_call_id);
+      }
       for (const target of clients.values()) {
         if (target.role === 'viewer' && target.sessionId === source.sessionId) {
           writeFrame(target.socket, { type: 'acp', payload });
@@ -202,7 +239,13 @@ export async function listenLeaderRelay(
   const server: Server = createServer((socket) => {
     const client: RelayClient = { id: nextClientId++, socket, registered: false };
     clients.set(client.id, client);
-    socket.once('close', () => clients.delete(client.id));
+    socket.once('close', () => {
+      clients.delete(client.id);
+      // A controller that leaves takes its open requests with it.
+      if (client.role === 'controller') {
+        for (const [key, open] of openRequests) if (open.sessionId === client.sessionId) openRequests.delete(key);
+      }
+    });
     socket.on('error', (error) => log(`leader client ${client.id} failed: ${error.message}`));
     installFrameReader(
       socket,
@@ -241,6 +284,11 @@ export async function listenLeaderRelay(
               relaunch_v1: false,
             },
           });
+          if (identity.role === 'viewer') {
+            for (const open of openRequests.values()) {
+              if (open.sessionId === identity.sessionId) writeFrame(socket, { type: 'acp', payload: open.payload });
+            }
+          }
           return;
         }
         if (message.type === 'acp') routeAcp(client, message.payload);

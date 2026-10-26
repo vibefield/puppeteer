@@ -267,6 +267,6 @@ describe.skipIf(process.platform === 'win32')('argv0 shim dispatch', () => {
       child.once('error', reject);
       child.once('close', () => resolve(stdout.trim()));
     });
-    expect(output).toBe('2.1.226 (Claude Code)');
+    expect(output).toBe('2.1.308 (Claude Code)');
   });
 });

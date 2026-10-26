@@ -29,7 +29,8 @@ async function reap(child: ChildProcess): Promise<void> {
 }
 
 afterEach(async () => {
-  for (const backend of backends) backend.dispose();
+  // The leader drains before its directory goes, so disposal is awaited.
+  await Promise.all([...backends].map((backend) => backend.dispose()));
   backends.clear();
   await Promise.all([...children].map(reap));
   children.clear();
@@ -109,7 +110,7 @@ async function createGrokHarness(
       ),
     ]);
   } catch (error) {
-    backend.dispose();
+    await backend.dispose();
     backends.delete(backend);
     await Promise.all(terminals.map(reap));
     throw error;
@@ -136,7 +137,7 @@ async function createGrokHarness(
       return createGrokHarness(context, nativeSessionId);
     },
     async assertNoOrphans() {
-      backend.dispose();
+      await backend.dispose();
       backends.delete(backend);
       await Promise.all(terminals.map(reap));
       expect(terminals.every((child) => child.exitCode !== null || child.signalCode !== null)).toBe(true);
@@ -221,7 +222,12 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
             params?: { update?: { sessionUpdate?: string; event_name?: string } };
           },
       );
-    expect(records.every(({ timestamp }) => typeof timestamp === 'number' && timestamp > 10_000_000_000)).toBe(true);
+    // Grok persists Unix seconds on the durable envelope.
+    expect(
+      records.every(
+        ({ timestamp }) => Number.isInteger(timestamp) && timestamp! >= 1_000_000_000 && timestamp! < 100_000_000_000,
+      ),
+    ).toBe(true);
     expect(
       records.some(
         ({ params }) =>
@@ -229,12 +235,8 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
           (params.update as { content?: { text?: string } }).content?.text === 'typed in the native terminal',
       ),
     ).toBe(true);
-    expect(
-      records.filter(
-        ({ params }) =>
-          params?.update?.sessionUpdate === 'hook_execution' && params.update.event_name === 'session_start',
-      ),
-    ).toHaveLength(1);
+    // Without configured hooks 1.0.70 records no hook_execution at all.
+    expect(records.filter(({ params }) => params?.update?.sessionUpdate === 'hook_execution')).toEqual([]);
     expect(JSON.parse(readFileSync(join(store, 'summary.json'), 'utf8'))).toMatchObject({
       info: { id: session.sessionId, cwd },
       num_messages: 4,

@@ -1,0 +1,99 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "turn/diff/updated",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "description": "Notification that the turn-level unified diff has changed. Contains the latest aggregated diff across all file changes in the turn.",
+    "properties": {
+      "diff": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "diff",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "turn/diff/updated"
+        ],
+        "title": "Turn/diff/updatedNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/TurnDiffUpdatedNotification"
+      },
+      "emittedAtMs": {
+        "type": "number",
+        "minimum": 1000000000000
+      }
+    },
+    "required": [
+      "method",
+      "params",
+      "emittedAtMs"
+    ],
+    "title": "Turn/diff/updatedNotification",
+    "type": "object",
+    "$defs": {
+      "TurnDiffUpdatedNotification": {
+        "description": "Notification that the turn-level unified diff has changed. Contains the latest aggregated diff across all file changes in the turn.",
+        "properties": {
+          "diff": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "semantic"
+  },
+  "evidence": {
+    "existence": [
+      "codex-runtime-headless",
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ],
+    "carrier": [
+      "codex-generated-schema",
+      "codex-runtime-headless"
+    ]
+  },
+  "confidence": "verified-headless",
+  "firstSeen": "0.164.0",
+  "lastVerified": "0.164.0",
+  "fixture": "captures/codex@0.164.0/file-change.jsonl"
+}

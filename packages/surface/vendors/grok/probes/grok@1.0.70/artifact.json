@@ -1,0 +1,228 @@
+{
+  "vendor": "grok",
+  "version": "1.0.70",
+  "platform": "darwin-arm64",
+  "artifactKind": "standalone-executable",
+  "sha256": "5c8a688251bf61e35370b828b6a353b0a20fcc3f64000de8a91d426039f29cec",
+  "bytes": 179063008,
+  "versionOutput": "grok 1.0.70 (f50904eaee6c)",
+  "sourceUrl": "https://x.ai/cli/grok-1.0.70-macos-aarch64",
+  "probedAt": "2026-10-25T09:20:29.161Z",
+  "environment": "disposable HOME/GROK_HOME, explicit environment, no network model",
+  "probes": [
+    {
+      "file": "help-long.txt",
+      "argv": [
+        "help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "help-short.txt",
+      "argv": [
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "agent-help.txt",
+      "argv": [
+        "help",
+        "agent"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "agent-leader-help.txt",
+      "argv": [
+        "help",
+        "agent",
+        "leader"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "agent-stdio-help.txt",
+      "argv": [
+        "help",
+        "agent",
+        "stdio"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "leader-help.txt",
+      "argv": [
+        "leader",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "sessions-help.txt",
+      "argv": [
+        "sessions",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "worktree-help.txt",
+      "argv": [
+        "worktree",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "worker-help.txt",
+      "argv": [
+        "worker",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "memory-help.txt",
+      "argv": [
+        "memory",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "update-help.txt",
+      "argv": [
+        "update",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "hidden-cursor-worker-help.txt",
+      "argv": [
+        "cursor-worker",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "hidden-workspace-help.txt",
+      "argv": [
+        "workspace",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "leader-worker-help.txt",
+      "argv": [
+        "leader",
+        "worker",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "removed-share-help.txt",
+      "argv": [
+        "share",
+        "--help"
+      ],
+      "exitCode": 0
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--print"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--effort"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--yolo=x"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--dangerously-skip-permissions=x"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--append-system-prompt"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--allowed-tools"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--allowedTools"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--disallowedTools"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--system-prompt"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--mode"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--mode",
+        "x"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "parse-probes.txt",
+      "argv": [
+        "--add-dir"
+      ],
+      "exitCode": 2
+    },
+    {
+      "file": "completions.fish",
+      "argv": [
+        "completions",
+        "fish"
+      ],
+      "exitCode": 0
+    }
+  ]
+}

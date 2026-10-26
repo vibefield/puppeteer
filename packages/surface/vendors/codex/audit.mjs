@@ -7,28 +7,32 @@
  *  1. **Model vs captures** — every schema marked `verified-*` must actually
  *     accept the capture it cites. This is the check that would have caught the
  *     adapter reading `item.output` when the wire says `aggregatedOutput`.
- *  2. **Privacy** — the committed fixtures must survive the sanitiser's
- *     detector. Runs on every invocation, because a leak is the one failure
- *     that cannot be undone after a push.
- *  3. **Model vs vendor schema** — drift. Needs the `codex` binary, so it is
- *     skipped (loudly, never silently) when the binary is absent; CI without
- *     codex still gets checks 1 and 2.
+ *  2. **Privacy** — the committed fixtures and probe records must survive the
+ *     sanitiser's detector. Runs on every invocation, because a leak is the one
+ *     failure that cannot be undone after a push.
+ *  3. **Model vs vendor schema** — drift. Needs the exact binary under review,
+ *     named by `PUPPETEER_CODEX_BIN` (or `--bin`). Never `codex` on PATH: that
+ *     is the operator's own install, usually signed in, and not the artifact
+ *     being audited. Without one the check is skipped loudly; a named binary
+ *     that cannot generate its schema fails the audit. CI without codex still
+ *     gets checks 1 and 2.
  *
  * Check 3 is the reconciliation lane: codex ships ~2 alpha tags a day and the
  * measured churn is additive (+6 methods, 0 removed over 9 days, C1b), so new
  * methods are expected and REMOVED ones are the alarm.
  *
- * usage: node audit.mjs [--schema <dir>]
+ * usage: node audit.mjs [--schema <dir> | --bin <codex>]
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadModel, validatePayload } from '@vibefield/puppeteer-surface';
 import { checkCaptureDirectory } from '@vibefield/puppeteer-surface/sanitize';
 import { resolveAgentModel } from '../../../../scripts/agent-model-selection.mjs';
-import { codexRules } from './census/sanitize.mjs';
+import { censusEnvironment, explicitCodexExecutable } from './census/harness.mjs';
+import { checkProbeRecords, codexRules } from './census/sanitize.mjs';
 
 const selected = resolveAgentModel({ vendor: 'codex' });
 const modelDir = selected.modelRoot;
@@ -111,30 +115,55 @@ notes.push(`model vs captures: ${checkedLines} payload(s) validated`);
 const leaks = checkCaptureDirectory(capturesDir, codexRules);
 for (const leak of leaks) problems.push(`privacy: ${leak}`);
 notes.push(`privacy: ${leaks.length === 0 ? 'clean' : `${leaks.length} issue(s)`}`);
+const probeLeaks = checkProbeRecords();
+for (const leak of probeLeaks) problems.push(`privacy: probes/${leak}`);
+notes.push(`privacy (probe records): ${probeLeaks.length === 0 ? 'clean' : `${probeLeaks.length} issue(s)`}`);
 
 // ---------------------------------------------------------------------------
 // 3. Model vs vendor schema
 // ---------------------------------------------------------------------------
 
 const argv = process.argv.slice(2);
-const schemaFlagIndex = argv.indexOf('--schema');
-let schemaDir = schemaFlagIndex >= 0 ? argv[schemaFlagIndex + 1] : undefined;
+const flag = (name) => {
+  const index = argv.indexOf(name);
+  return index >= 0 ? argv[index + 1] : undefined;
+};
+let schemaDir = flag('--schema');
 let temporary;
-if (!schemaDir) {
+const executable = schemaDir ? undefined : explicitCodexExecutable({ bin: flag('--bin') });
+if (executable) {
+  // A throwaway HOME and CODEX_HOME and an allowlisted environment: the drift
+  // check must not read or write the caller's own codex profile.
+  const scratchHome = mkdtempSync(join(tmpdir(), 'codex-audit-home-'));
   try {
     temporary = mkdtempSync(join(tmpdir(), 'codex-audit-schema-'));
-    execFileSync(process.env.PUPPETEER_CODEX_BIN ?? 'codex', ['app-server', 'generate-json-schema', '--experimental', '--out', temporary], {
+    const env = censusEnvironment(scratchHome, process.env, { executable });
+    mkdirSync(env.CODEX_HOME, { recursive: true });
+    execFileSync(executable, ['app-server', 'generate-json-schema', '--experimental', '--out', temporary], {
       stdio: 'ignore',
+      cwd: scratchHome,
+      env,
     });
     schemaDir = temporary;
-  } catch {
+  } catch (error) {
     rmSync(temporary ?? '', { recursive: true, force: true });
-    schemaDir = undefined;
+    temporary = undefined;
+    // The binary was named, so drift was asked for: failing to run it is not a skip.
+    problems.push(
+      `drift: the named codex executable could not generate its schema (${error.code ?? `exit ${error.status}`})`,
+    );
+  } finally {
+    rmSync(scratchHome, { recursive: true, force: true });
   }
 }
 
 if (!schemaDir) {
-  notes.push('model vs vendor schema: SKIPPED (no codex binary — drift is unchecked in this run)');
+  if (!executable) {
+    notes.push(
+      'model vs vendor schema: SKIPPED (no PUPPETEER_CODEX_BIN, --bin or --schema; codex on PATH is never run — ' +
+        'drift is unchecked in this run)',
+    );
+  }
 } else {
   const methodsOf = (file) =>
     new Set(

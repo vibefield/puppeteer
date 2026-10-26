@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { ActorRunRef } from '@vibefield/puppeteer-core';
 import type { MonitorFamilyUpdate } from '@vibefield/puppeteer-core/monitor-spi';
 
 interface Usage {
@@ -6,6 +7,15 @@ interface Usage {
   outputTokens?: number | undefined;
   deltaTokens: number;
 }
+
+/**
+ * How a live `response_completed` is told apart from its siblings. A native
+ * id (a signature or `_meta.eventId`) also deduplicates a repeated
+ * notification. Grok 1.0.70 sends neither, so the response is instead the next
+ * of its prompt's responses: the prompt is the session's running native prompt,
+ * and the ordinal counts that prompt's unsigned responses in arrival order.
+ */
+export type GrokResponseIdentity = { kind: 'native'; id: string } | { kind: 'ordinal' };
 
 const finite = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
@@ -28,42 +38,67 @@ function readUsage(value: unknown): Usage | undefined {
   return { inputTokens, outputTokens, deltaTokens: total ?? (inputTokens ?? 0) + (outputTokens ?? 0) };
 }
 
-function contribution(usageId: string, usage: Usage): MonitorFamilyUpdate {
+function contribution(usageId: string, usage: Usage, actor?: ActorRunRef): MonitorFamilyUpdate {
   return {
     family: 'usage',
     operation: 'upsert',
     key: usageId,
-    value: { kind: 'usage', origin: 'protocol', usageId, boundary: 'response', canonical: true, ...usage },
+    value: {
+      kind: 'usage',
+      origin: 'protocol',
+      usageId,
+      boundary: 'response',
+      canonical: true,
+      ...(actor ? { actor } : {}),
+      ...usage,
+    },
   };
 }
 
 /** Live protocol response and turn notifications; never called for journal records. */
 export class GrokUsageEvidence {
+  /** Per turn (session and native prompt): its response contributions. */
   private readonly responses = new Map<string, Map<string, Usage>>();
+  private readonly ordinals = new Map<string, number>();
   private readonly completed = new Set<string>();
 
+  /**
+   * `sessionId` is the session the notification names: the bound session, or
+   * a subagent child the leader forwards (then `actor` names that child).
+   */
   normalize(
     sessionId: string,
     promptId: string | undefined,
     update: Record<string, unknown>,
-    responseId?: string,
+    identity?: GrokResponseIdentity,
+    actor?: ActorRunRef,
   ): MonitorFamilyUpdate[] {
-    const usage = readUsage(update.usage);
-    if (!usage || !promptId) return [];
+    if (!promptId) return [];
     const turnKey = `grok-turn:${sessionId}:${promptId}`;
-    const responses = this.responses.get(promptId) ?? new Map<string, Usage>();
+    const usage = readUsage(update.usage);
+    const responses = this.responses.get(turnKey) ?? new Map<string, Usage>();
     if (update.sessionUpdate === 'response_completed') {
-      if (!responseId || this.completed.has(promptId)) return [];
-      // Signatures identify repeated notifications but never belong in public state.
-      const digest = createHash('sha256').update(responseId).digest('hex');
-      const key = `${turnKey}:response:${digest}`;
-      if (responses.has(key)) return [];
+      if (!usage || !identity || this.completed.has(turnKey)) return [];
+      let key: string;
+      if (identity.kind === 'native') {
+        // Signatures identify repeated notifications but never belong in public state.
+        key = `${turnKey}:response:${createHash('sha256').update(identity.id).digest('hex')}`;
+        if (responses.has(key)) return [];
+      } else {
+        const ordinal = (this.ordinals.get(turnKey) ?? 0) + 1;
+        this.ordinals.set(turnKey, ordinal);
+        key = `${turnKey}:response:${ordinal}`;
+      }
       responses.set(key, usage);
-      this.responses.set(promptId, responses);
-      return [contribution(key, usage)];
+      this.responses.set(turnKey, responses);
+      return [contribution(key, usage, actor)];
     }
     if (update.sessionUpdate !== 'turn_completed') return [];
-    this.completed.add(promptId);
+    // The turn is over whether or not it reports a usable total. Without one
+    // (a mid-turn abort, or a total Grok flags incomplete) its response
+    // contributions stand as the turn's usage.
+    this.completed.add(turnKey);
+    if (!usage) return [];
     const remainder = { ...usage };
     for (const response of responses.values()) {
       remainder.deltaTokens -= response.deltaTokens;
@@ -79,8 +114,8 @@ export class GrokUsageEvidence {
         key,
       }));
       responses.clear();
-      return [...removed, contribution(turnKey, usage)];
+      return [...removed, contribution(turnKey, usage, actor)];
     }
-    return [contribution(turnKey, remainder)];
+    return [contribution(turnKey, remainder, actor)];
   }
 }

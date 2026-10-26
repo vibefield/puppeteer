@@ -1,0 +1,82 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "turn/moderationMetadata",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "properties": {
+      "metadata": {},
+      "threadId": {
+        "type": "string"
+      },
+      "turnId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "metadata",
+      "threadId",
+      "turnId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "turn/moderationMetadata"
+        ],
+        "title": "Turn/moderationMetadataNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/TurnModerationMetadataNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Turn/moderationMetadataNotification",
+    "type": "object",
+    "$defs": {
+      "TurnModerationMetadataNotification": {
+        "properties": {
+          "metadata": {},
+          "threadId": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "metadata",
+          "threadId",
+          "turnId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

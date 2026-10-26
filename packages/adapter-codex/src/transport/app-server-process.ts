@@ -1,6 +1,6 @@
 /** Process ownership and platform endpoint selection for a private Codex app-server. */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,17 @@ import { resolveCodexExecutable } from '../detection.js';
 import type { AppServerEndpoint } from './ws-transport.js';
 
 let serverCounter = 0;
+
+/**
+ * On Windows kill() ends only the named process. The app-server starts helpers of its own (its
+ * curated-plugin sync runs git under CODEX_HOME) that would outlive it and keep that home locked, so
+ * end the whole tree while the parent still anchors it. The exit event stays the source of truth.
+ */
+function terminateWindowsTree(pid: number): Promise<void> {
+  return new Promise((resolve) => {
+    execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => resolve());
+  });
+}
 
 export type AppServerTransportKind = 'unix' | 'websocket';
 
@@ -189,10 +200,14 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
       disposal = (async () => {
         failReady(new Error('Codex app-server disposed before ready'));
         if (!hasExited()) {
-          try {
-            child.kill('SIGTERM');
-          } catch {
-            // The exit/error event remains the source of truth.
+          if (process.platform === 'win32' && child.pid !== undefined) {
+            await terminateWindowsTree(child.pid);
+          } else {
+            try {
+              child.kill('SIGTERM');
+            } catch {
+              // The exit/error event remains the source of truth.
+            }
           }
         }
         if (!(await exitedWithin(2_000))) {

@@ -12,8 +12,14 @@
  *   when a decision is needed. We correlate by prompt, tool name, and canonical
  *   tool input, while still tolerating the legacy reverse ordering. Execution
  *   completion proves allow; PermissionDenied or a turn boundary closes denial.
+ *   An Esc-interrupted turn has no boundary hook: the next accepted prompt
+ *   closes its main-thread request with an unknown outcome.
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
  *   only the first occurrence per agent_id normalizes to delegation:subagent-stopped.
+ *   `/compact` runs an internal agent whose SubagentStop has an empty agent_type and no
+ *   SubagentStart (2.1.308 TUI lane); it delegated nothing the session can see, so it stays native.
+ * - Compaction: PreCompact → SessionStart(compact) → PostCompact. The compact SessionStart is a
+ *   step inside the attempt, so it leaves the attempt open for PostCompact to complete.
  * - Unknown events are RETAINED (ADR-008) as adapter:native-event; the raw
  *   body always rides the envelope's nativeEvent upstream.
  *
@@ -37,7 +43,7 @@ import {
   parseClaudeStructuredQuestions,
 } from './interaction.js';
 import { normalizeClaudeNotification } from './notification.js';
-import { normalizeClaudeSessionModel } from './model.js';
+import { normalizeClaudeModelSwitched, normalizeClaudeSessionModel } from './model.js';
 import { ClaudeModeNormalizer } from './mode.js';
 import { normalizeClaudeSessionExited, normalizeClaudeSessionReady, normalizeClaudeSessionStarted } from './session.js';
 import {
@@ -54,7 +60,13 @@ import type {
   PendingQuestion,
   RecentToolRequest,
 } from './types.js';
-import { canonicalClaudeValue, claudeHookDiagnostic, claudeNumber, claudeString } from './wire.js';
+import {
+  canonicalClaudeValue,
+  claudeHookDiagnostic,
+  claudeNumber,
+  claudeString,
+  nonEmptyClaudeString,
+} from './wire.js';
 import { normalizeClaudeFileChanged, normalizeClaudeFileOperation } from './workspace.js';
 
 export type { ClaudeHookDiagnostic, ClaudeHookPayload, NormalizedHook } from './types.js';
@@ -67,6 +79,7 @@ export class ClaudeHookNormalizer {
   private pendingQuestions = new Map<string, PendingQuestion>();
   private recentToolRequests = new Map<string, RecentToolRequest>();
   private stoppedSubagents = new Set<string>();
+  private startedSubagents = new Set<string>();
   private permissionCounter = 0;
   private toolCounters = new Map<string, number>();
   private compactionCounter = 0;
@@ -176,6 +189,30 @@ export class ClaudeHookNormalizer {
     });
   }
 
+  /**
+   * Esc at a permission prompt interrupts the turn and fires no Stop (2.1.308 TUI lane: the
+   * PermissionRequest at seq 31 is followed by the next UserPromptSubmit at seq 34). The main
+   * thread asks one dialog at a time, so a newly accepted main-thread prompt proves an earlier
+   * turn's dialog is gone. Which answer closed it is not observable, so the outcome is unknown. A
+   * subagent's request is left to its own boundary: a background agent can still be waiting on one.
+   */
+  private resolveInterruptedPermissions(
+    result: NormalizedHook,
+    hookEventName: string,
+    promptId: string | undefined,
+  ): void {
+    const interrupted = (permission: PendingPermission) =>
+      permission.agentId === undefined && (permission.promptId === undefined || permission.promptId !== promptId);
+    const count = this.pendingPermissions.filter(interrupted).length;
+    if (count === 0) return;
+    result.diagnostics.push({
+      code: 'permission-outlived-turn',
+      hookEventName,
+      issues: [`${count} pending permission request(s) of an interrupted turn closed when the next prompt started`],
+    });
+    this.resolvePermission(result, 'unknown', interrupted);
+  }
+
   private findRecentTool(permission: PendingPermission): RecentToolRequest | undefined {
     const requests = [...this.recentToolRequests.values()];
     for (let index = requests.length - 1; index >= 0; index -= 1) {
@@ -192,6 +229,14 @@ export class ClaudeHookNormalizer {
     // request honestly before forgetting its correlation details.
     result.events.push(normalizeClaudePermissionResolved(permission.requestId, 'unknown'));
     if (permission.toolCallId) this.recentToolRequests.delete(permission.toolCallId);
+  }
+
+  private rememberStartedSubagent(agentId: string): void {
+    if (!this.startedSubagents.has(agentId) && this.startedSubagents.size >= MAX_TRACKED_ITEMS) {
+      const oldest = this.startedSubagents.values().next().value;
+      if (oldest !== undefined) this.startedSubagents.delete(oldest);
+    }
+    this.startedSubagents.add(agentId);
   }
 
   private rememberStoppedSubagent(agentId: string): void {
@@ -228,8 +273,9 @@ export class ClaudeHookNormalizer {
       sessionId: claudeString(body.session_id),
       transcriptPath: claudeString(body.transcript_path),
       promptId,
-      agentId: claudeString(body.agent_id),
-      agentType: claudeString(body.agent_type),
+      // Candidate actor metadata must be non-empty: the compaction agent's hooks carry `agent_type: ""`.
+      agentId: nonEmptyClaudeString(body.agent_id),
+      agentType: nonEmptyClaudeString(body.agent_type),
       providerVersion: claudeString(body.version) ?? claudeString(body.claude_version),
     };
     const isRebind = name === 'SessionStart' && claudeString(body.source) === 'clear';
@@ -248,8 +294,12 @@ export class ClaudeHookNormalizer {
 
     switch (name) {
       case 'SessionStart':
-        this.closeActiveCompaction(result, 'unknown');
-        this.lastClosedCompaction = undefined;
+        // Claude announces the compacted context as a new SessionStart between PreCompact and
+        // PostCompact; any other start ends an attempt that never reported its outcome.
+        if (claudeString(body.source) !== 'compact') {
+          this.closeActiveCompaction(result, 'unknown');
+          this.lastClosedCompaction = undefined;
+        }
         result.events.push(normalizeClaudeSessionStarted(body, isRebind));
         const environment = normalizeClaudeSessionEnvironment(body);
         if (environment) result.events.push(environment);
@@ -287,6 +337,7 @@ export class ClaudeHookNormalizer {
           'superseded',
           (question) => question.promptId === undefined || question.promptId !== promptId,
         );
+        if (!result.agentId) this.resolveInterruptedPermissions(result, name, promptId);
         result.events.push(normalizeClaudeTurnStarted(body, promptId));
         break;
 
@@ -324,6 +375,7 @@ export class ClaudeHookNormalizer {
         const pending: PendingPermission = {
           requestId,
           promptId,
+          agentId: result.agentId,
           toolName,
           inputKey: canonicalClaudeValue(body.tool_input),
         };
@@ -504,6 +556,7 @@ export class ClaudeHookNormalizer {
         this.messageBuffers.clear();
         this.recentToolRequests.clear();
         this.stoppedSubagents.clear();
+        this.startedSubagents.clear();
         this.toolCounters.clear();
         result.events.push(normalizeClaudeSessionExited(body));
         break;
@@ -511,14 +564,17 @@ export class ClaudeHookNormalizer {
       case 'SubagentStart': {
         const agentId = claudeString(body.agent_id) ?? 'unknown-agent';
         this.stoppedSubagents.delete(agentId);
-        result.events.push(normalizeClaudeSubagentStarted(agentId, claudeString(body.agent_type)));
+        this.rememberStartedSubagent(agentId);
+        result.events.push(normalizeClaudeSubagentStarted(agentId, nonEmptyClaudeString(body.agent_type)));
         break;
       }
 
       case 'SubagentStop': {
         const agentId = claudeString(body.agent_id) ?? 'unknown-agent';
+        // Claude's own internal agent (compaction): an empty type and never started.
+        const internalAgent = claudeString(body.agent_type) === '' && !this.startedSubagents.has(agentId);
         // Re-entrant stop-hook guard: only the first Stop per agent is real.
-        if (this.stoppedSubagents.has(agentId)) {
+        if (internalAgent || this.stoppedSubagents.has(agentId)) {
           result.events.push(normalizeClaudeNativeEvent(name));
         } else {
           this.rememberStoppedSubagent(agentId);
@@ -536,6 +592,12 @@ export class ClaudeHookNormalizer {
         result.events.push(workspace ?? normalizeClaudeNativeEvent(name));
         break;
       }
+
+      case 'PostModelSwitch':
+        // The switch has landed (requested, an automatic fallback, opusplan, or restored on
+        // resume). The cancellable request before it carries no settled model and stays native.
+        result.events.push(normalizeClaudeModelSwitched(body) ?? normalizeClaudeNativeEvent(name));
+        break;
 
       case 'DirectoryAdded':
       case 'ConfigChange':

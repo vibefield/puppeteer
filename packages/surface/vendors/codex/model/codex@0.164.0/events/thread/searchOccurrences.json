@@ -1,0 +1,129 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/searchOccurrences",
+  "channel": "appserver",
+  "transport": "jsonrpc-request",
+  "direction": "client-to-agent",
+  "payloadSchema": {
+    "description": "Parameters for searching visible message occurrences within one paginated thread.",
+    "properties": {
+      "cursor": {
+        "description": "Opaque cursor returned by a previous call for the same thread and search term.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "limit": {
+        "description": "Optional occurrence page size.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "searchTerm": {
+        "description": "Case-insensitive literal substring to find in visible user messages and both partial and final assistant answers.",
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "searchTerm",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "id": {
+        "$ref": "#/$defs/RequestId"
+      },
+      "method": {
+        "enum": [
+          "thread/searchOccurrences"
+        ],
+        "title": "Thread/searchOccurrencesRequestMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadSearchOccurrencesParams"
+      }
+    },
+    "required": [
+      "id",
+      "method",
+      "params"
+    ],
+    "title": "Thread/searchOccurrencesRequest",
+    "type": "object",
+    "$defs": {
+      "RequestId": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "format": "int64",
+            "type": "integer"
+          }
+        ]
+      },
+      "ThreadSearchOccurrencesParams": {
+        "description": "Parameters for searching visible message occurrences within one paginated thread.",
+        "properties": {
+          "cursor": {
+            "description": "Opaque cursor returned by a previous call for the same thread and search term.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "Optional occurrence page size.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "searchTerm": {
+            "description": "Case-insensitive literal substring to find in visible user messages and both partial and final assistant answers.",
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "searchTerm",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

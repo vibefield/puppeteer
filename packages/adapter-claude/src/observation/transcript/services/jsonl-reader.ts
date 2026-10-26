@@ -1,6 +1,6 @@
 import { open, stat } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
-import { decodeClaudeTranscript, type ClaudeTranscriptRecord } from '../wire.js';
+import { decodeClaudeTranscript, isClaudeTranscriptConversationRow, type ClaudeTranscriptRecord } from '../wire.js';
 import { createTranscriptYield } from './yield.js';
 
 const DEFAULT_MAX_TRANSCRIPT_BYTES = 64 * 1024 * 1024;
@@ -17,7 +17,11 @@ interface RetainedRecord {
   wireBytes: number;
 }
 
-/** Append-aware reader: unchanged polls do no I/O and partial final rows remain pending. */
+/**
+ * Append-aware reader: unchanged polls do no I/O and partial final rows remain pending. Only
+ * conversation rows are retained ({@link isClaudeTranscriptConversationRow}); a dropped row still
+ * consumes its physical line, so retained line ids do not move.
+ */
 export function createClaudeTranscriptReader(
   path: string,
   options: { maxBytes?: number; maxRecords?: number; sourceId?: string } = {},
@@ -41,6 +45,9 @@ export function createClaudeTranscriptReader(
   let cachedSnapshot: readonly ClaudeTranscriptRecord[] | undefined;
 
   const retain = (record: ClaudeTranscriptRecord, wireBytes: number): void => {
+    // Request bookkeeping never reaches the window: it would crowd conversation rows out of it and
+    // invalidate the snapshot (re-projecting everything) without changing anything projected.
+    if (!isClaudeTranscriptConversationRow(record)) return;
     cachedSnapshot = undefined;
     records.push({ value: record, wireBytes });
     retainedBytes += wireBytes;

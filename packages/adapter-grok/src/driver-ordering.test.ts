@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentAdapterBinding, AgentHost } from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createAcpSession: vi.fn(),
   createStdioAcpConnector: vi.fn(() => ({ connector: 'fake' })),
   socketReady: true,
+  removeFails: false,
 }));
 
 vi.mock('node:child_process', () => ({ spawn: mocks.spawn }));
@@ -16,6 +18,12 @@ vi.mock('node:fs', async (importOriginal) => {
     ...actual,
     existsSync: (path: Parameters<typeof actual.existsSync>[0]) =>
       (/leader\.(sock|lock)$/.test(String(path)) && mocks.socketReady) || actual.existsSync(path),
+    rmSync: (...args: Parameters<typeof actual.rmSync>) => {
+      if (mocks.removeFails && String(args[0]).includes('puppeteer-grok-imposter-home-')) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), { code: 'EBUSY' });
+      }
+      return actual.rmSync(...args);
+    },
   };
 });
 vi.mock('@vibefield/puppeteer-adapter-acp', async (importOriginal) => ({
@@ -25,6 +33,8 @@ vi.mock('@vibefield/puppeteer-adapter-acp', async (importOriginal) => ({
 }));
 
 import { createGrokBackend } from './driver.js';
+import { grokDeferredApprovalEvidence } from './normalization/interaction.js';
+import { openGrokControl } from './services/acp-control.js';
 
 function controlSession(sessionId: string): AgentAdapterBinding {
   return {
@@ -48,6 +58,7 @@ describe('Grok leader session materialization ordering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.socketReady = true;
+    mocks.removeFails = false;
     mocks.spawn.mockReturnValue({ exitCode: null, signalCode: null, killed: false, kill: vi.fn(), once: vi.fn() });
     mocks.createAcpSession.mockImplementation(async (options: { resume?: string }) =>
       controlSession(options.resume ?? 'materialized-session'),
@@ -92,6 +103,32 @@ describe('Grok leader session materialization ordering', () => {
     projection.dispose();
     await session.dispose();
     backend.dispose();
+  });
+
+  it('defers unhandled approvals to the native viewer every prepared session launches', async () => {
+    const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+    const prepared = await backend.prepareSession({ cwd: '/repo' });
+    const onApproval = vi.fn(() => 'approved' as const);
+    const handled = await backend.prepareSession({ cwd: '/repo', onApproval });
+
+    // The recipe always joins the controller's leader session with the viewer.
+    expect(prepared.launch.args).toEqual(expect.arrayContaining(['--leader', '--resume', prepared.sessionId]));
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toMatchObject({
+      unhandledApproval: 'defer',
+      deferredApprovalEvidence: grokDeferredApprovalEvidence,
+    });
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toHaveProperty('onApproval', undefined);
+    // A host handler still decides; adapter-acp applies the policy only without one.
+    expect(mocks.createAcpSession.mock.calls[1]![0]).toMatchObject({ onApproval, unhandledApproval: 'defer' });
+    await Promise.all([prepared.dispose(), handled.dispose()]);
+    backend.dispose();
+  });
+
+  it('keeps the immediate deny for a controller-only composition', async () => {
+    await openGrokControl('/real/grok', '/repo', '/tmp/leader.sock', undefined, {});
+    expect(mocks.createAcpSession.mock.calls[0]![0]).toMatchObject({ unhandledApproval: 'deny' });
+    await openGrokControl('/real/grok', '/repo', '/tmp/leader.sock', undefined, {}, undefined, { viewer: 'attached' });
+    expect(mocks.createAcpSession.mock.calls[1]![0]).toMatchObject({ unhandledApproval: 'defer' });
   });
 
   it('loads an explicit resume id before launching the matching TUI', async () => {
@@ -141,5 +178,16 @@ describe('Grok leader session materialization ordering', () => {
     await expect(preparing).rejects.toThrow('disposed while its leader was starting');
     expect(kill).toHaveBeenCalledWith('SIGTERM');
     expect(mocks.createAcpSession).not.toHaveBeenCalled();
+  });
+  it('never rejects disposal when the adapter-owned Imposter home cannot be removed', async () => {
+    // builtin-providers disposes backends without awaiting them, so a failed
+    // best-effort cleanup must not surface as an unhandled rejection.
+    const backend = createGrokBackend({ executable: '/real/grok', host: host(), appServerEnv: { AI_PERSONA: 'grok' } });
+    const home = (await backend.prepareSession({ cwd: '/repo' })).launch.env?.GROK_HOME;
+    expect(home).toContain('puppeteer-grok-imposter-home-');
+    mocks.removeFails = true;
+    await expect(backend.dispose()).resolves.toBeUndefined();
+    mocks.removeFails = false;
+    rmSync(home!, { recursive: true, force: true });
   });
 });

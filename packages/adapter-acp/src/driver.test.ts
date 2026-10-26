@@ -374,3 +374,187 @@ describe('createAcpSession', () => {
     await expect(session.dispose()).resolves.toBeUndefined();
   });
 });
+
+describe('createAcpSession with deferred approvals', () => {
+  const options = [
+    { optionId: 'allow', name: 'Allow once', kind: 'allow_once' as const },
+    { optionId: 'deny', name: 'Reject once', kind: 'reject_once' as const },
+  ];
+  const toolCall = {
+    toolCallId: 'tool-1',
+    title: 'Write file',
+    kind: 'edit' as const,
+    rawInput: { path: 'README.md' },
+  };
+
+  /** An agent whose permission request another attached client answers; `answer` scripts what it then emits. */
+  function deferringAgent(answer: (client: Client) => Promise<'end_turn' | 'cancelled' | 'hang'>) {
+    let client!: Client;
+    const responses: RequestPermissionResponse[] = [];
+    let closed: ((info: { code: number | null; signal: NodeJS.Signals | null }) => void) | undefined;
+    const connector: AcpConnector = (toClient) => {
+      const agent = {
+        async initialize() {
+          return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: {} };
+        },
+        async newSession() {
+          return { sessionId: SID };
+        },
+        async prompt() {
+          // The agent does not wait for this client: the first answer from any client wins.
+          void Promise.resolve(client.requestPermission({ sessionId: SID, toolCall, options })).then((response) => {
+            responses.push(response);
+          });
+          const stopReason = await answer(client);
+          if (stopReason === 'hang') return new Promise<never>(() => {});
+          return { stopReason };
+        },
+        async cancel() {},
+      };
+      client = toClient(agent as unknown as Agent);
+      return {
+        agent: agent as unknown as Agent,
+        onClose(handler) {
+          closed = handler;
+        },
+        close() {},
+      };
+    };
+    return { connector, responses, closeTransport: () => closed?.({ code: 0, signal: null }) };
+  }
+
+  const permissionEvents = (events: AdapterEventCandidate[]) =>
+    events.flatMap(({ event }) =>
+      event.type === 'interaction:permission-requested'
+        ? [`requested:${event.presentation}`]
+        : event.type === 'interaction:permission-resolved'
+          ? [`resolved:${event.outcome}`]
+          : [],
+    );
+
+  it('leaves the request to the native TUI and settles it from the tool progress that follows', async () => {
+    const agent = deferringAgent(async (client) => {
+      await client.sessionUpdate({
+        sessionId: SID,
+        update: { sessionUpdate: 'tool_call_update', toolCallId: 'tool-1', status: 'in_progress' },
+      });
+      await client.sessionUpdate({
+        sessionId: SID,
+        update: { sessionUpdate: 'tool_call_update', toolCallId: 'tool-1', status: 'completed' },
+      });
+      return 'end_turn';
+    });
+    const session = await createAcpSession({ cwd: '/x', connector: agent.connector, unhandledApproval: 'defer' });
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((candidate) => events.push(candidate));
+    try {
+      await driveTurn(session, 'write the file');
+      await vi.waitFor(() => expect(agent.responses).toHaveLength(1));
+      expect(permissionEvents(events)).toEqual(['requested:native-tui', 'resolved:allowed']);
+      expect(agent.responses).toEqual([{ outcome: { outcome: 'cancelled' } }]);
+      const resolved = events.findIndex(({ event }) => event.type === 'interaction:permission-resolved');
+      const started = events.findIndex(({ event }) => event.type === 'tool:started' || event.type === 'tool:completed');
+      expect(started === -1 || resolved < started).toBe(true);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
+  it('settles a request no evidence resolved as unknown when its prompt ends', async () => {
+    const agent = deferringAgent(async () => 'cancelled');
+    const session = await createAcpSession({ cwd: '/x', connector: agent.connector, unhandledApproval: 'defer' });
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((candidate) => events.push(candidate));
+    try {
+      await driveTurn(session, 'write the file');
+      await vi.waitFor(() => expect(agent.responses).toHaveLength(1));
+      expect(permissionEvents(events)).toEqual(['requested:native-tui', 'resolved:unknown']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
+  it('releases a request still pending on dispose and on transport close', async () => {
+    for (const end of ['dispose', 'close'] as const) {
+      const agent = deferringAgent(async () => 'hang');
+      const session = await createAcpSession({ cwd: '/x', connector: agent.connector, unhandledApproval: 'defer' });
+      const events: AdapterEventCandidate[] = [];
+      const off = session.events.onCandidate((candidate) => events.push(candidate));
+      await session.services.prompt.submit({ text: 'write the file' });
+      await vi.waitFor(() => expect(permissionEvents(events)).toEqual(['requested:native-tui']));
+      if (end === 'close') {
+        agent.closeTransport();
+        expect(permissionEvents(events)).toEqual(['requested:native-tui', 'resolved:unknown']);
+      }
+      off();
+      await session.dispose();
+      await vi.waitFor(() => expect(agent.responses).toEqual([{ outcome: { outcome: 'cancelled' } }]));
+    }
+  });
+
+  it('publishes the answer the agent acted on when the person answers before the host handler', async () => {
+    let asked!: () => void;
+    const hostAsked = new Promise<void>((resolve) => (asked = resolve));
+    let approve!: (decision: 'approved') => void;
+    const signals: (AbortSignal | undefined)[] = [];
+    const agent = deferringAgent(async (client) => {
+      await hostAsked;
+      // The person rejected in the agent's own terminal UI while the host dialog was open.
+      await client.sessionUpdate({
+        sessionId: SID,
+        update: { sessionUpdate: 'tool_call_update', toolCallId: 'tool-1', status: 'failed', _meta: { reason: 'no' } },
+      });
+      return 'cancelled';
+    });
+    const session = await createAcpSession({
+      cwd: '/x',
+      connector: agent.connector,
+      unhandledApproval: 'defer',
+      deferredApprovalEvidence: (method, params) => {
+        const update = params.update as { status?: string; toolCallId?: string } | undefined;
+        return method === 'session/update' && update?.status === 'failed'
+          ? [{ toolCallId: update.toolCallId, outcome: 'denied' }]
+          : [];
+      },
+      onApproval: (request) => {
+        signals.push(request.signal);
+        asked();
+        return new Promise((resolve) => (approve = resolve));
+      },
+    });
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((candidate) => events.push(candidate));
+    try {
+      await driveTurn(session, 'write the file');
+      await vi.waitFor(() => expect(agent.responses).toHaveLength(1));
+      expect(permissionEvents(events)).toEqual(['requested:host-ui', 'resolved:denied']);
+      // The agent already acted; this client's reply only releases the request.
+      expect(agent.responses).toEqual([{ outcome: { outcome: 'cancelled' } }]);
+      expect(signals[0]?.aborted).toBe(true);
+      approve('approved');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(permissionEvents(events)).toEqual(['requested:host-ui', 'resolved:denied']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+
+  it('keeps the immediate deny for compositions that do not defer', async () => {
+    const agent = deferringAgent(async () => 'end_turn');
+    const session = await createAcpSession({ cwd: '/x', connector: agent.connector });
+    const events: AdapterEventCandidate[] = [];
+    const off = session.events.onCandidate((candidate) => events.push(candidate));
+    try {
+      await driveTurn(session, 'write the file');
+      await vi.waitFor(() => expect(agent.responses).toHaveLength(1));
+      expect(agent.responses).toEqual([{ outcome: { outcome: 'selected', optionId: 'deny' } }]);
+      expect(permissionEvents(events)).toEqual(['requested:host-ui', 'resolved:denied']);
+    } finally {
+      off();
+      await session.dispose();
+    }
+  });
+});

@@ -1,0 +1,90 @@
+{
+  "surface": "codex",
+  "surfaceVersion": "0.164.0",
+  "event": "thread/realtime/transcript/delta",
+  "channel": "appserver",
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "description": "EXPERIMENTAL - flat transcript delta emitted whenever realtime transcript text changes.",
+    "properties": {
+      "delta": {
+        "description": "Live transcript delta from the realtime event.",
+        "type": "string"
+      },
+      "role": {
+        "type": "string"
+      },
+      "threadId": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "delta",
+      "role",
+      "threadId"
+    ],
+    "type": "object",
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "recordSchema": {
+    "properties": {
+      "method": {
+        "enum": [
+          "thread/realtime/transcript/delta"
+        ],
+        "title": "Thread/realtime/transcript/deltaNotificationMethod",
+        "type": "string"
+      },
+      "params": {
+        "$ref": "#/$defs/ThreadRealtimeTranscriptDeltaNotification"
+      }
+    },
+    "required": [
+      "method",
+      "params"
+    ],
+    "title": "Thread/realtime/transcript/deltaNotification",
+    "type": "object",
+    "$defs": {
+      "ThreadRealtimeTranscriptDeltaNotification": {
+        "description": "EXPERIMENTAL - flat transcript delta emitted whenever realtime transcript text changes.",
+        "properties": {
+          "delta": {
+            "description": "Live transcript delta from the realtime event.",
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta",
+          "role",
+          "threadId"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "schemaFidelity": {
+    "payload": "exact",
+    "carrier": "exact"
+  },
+  "evidence": {
+    "existence": [
+      "codex-generated-schema"
+    ],
+    "shape": [
+      "codex-generated-schema"
+    ],
+    "carrier": [
+      "codex-generated-schema"
+    ]
+  },
+  "confidence": "unverified"
+}

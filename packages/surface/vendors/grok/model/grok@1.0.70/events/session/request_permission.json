@@ -1,0 +1,1182 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "session/request_permission",
+  "channel": "acp",
+  "channels": ["acp"],
+  "transport": "jsonrpc-request",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+      "PermissionOption": {
+        "description": "An option presented to the user when requesting permission.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/PermissionOptionKind"
+              }
+            ],
+            "description": "Hint about the nature of this permission option."
+          },
+          "name": {
+            "description": "Human-readable label to display to the user.",
+            "type": "string"
+          },
+          "optionId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/PermissionOptionId"
+              }
+            ],
+            "description": "Unique identifier for this permission option."
+          }
+        },
+        "required": ["optionId", "name", "kind"],
+        "type": "object"
+      },
+      "SessionId": {
+        "description": "A unique identifier for a conversation session between a client and agent.\n\nSessions maintain their own context, conversation history, and state,\nallowing multiple independent interactions with the same agent.\n\nSee protocol docs: [Session ID](https://agentclientprotocol.com/protocol/session-setup#session-id)",
+        "type": "string"
+      },
+      "ToolCallUpdate": {
+        "description": "An update to an existing tool call.\n\nUsed to report progress and results as tools execute. All fields except\nthe tool call ID are optional - only changed fields need to be included.\n\nSee protocol docs: [Updating](https://agentclientprotocol.com/protocol/tool-calls#updating)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "content": {
+            "description": "Replace the content collection.",
+            "items": {
+              "$ref": "#/$defs/ToolCallContent"
+            },
+            "type": ["array", "null"]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ToolKind"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Update the tool kind."
+          },
+          "locations": {
+            "description": "Replace the locations collection.",
+            "items": {
+              "$ref": "#/$defs/ToolCallLocation"
+            },
+            "type": ["array", "null"]
+          },
+          "rawInput": {
+            "description": "Update the raw input."
+          },
+          "rawOutput": {
+            "description": "Update the raw output."
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ToolCallStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Update the execution status."
+          },
+          "title": {
+            "description": "Update the human-readable title.",
+            "type": ["string", "null"]
+          },
+          "toolCallId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ToolCallId"
+              }
+            ],
+            "description": "The ID of the tool call being updated."
+          }
+        },
+        "required": ["toolCallId"],
+        "type": "object"
+      },
+      "PermissionOptionKind": {
+        "description": "The type of permission option being presented to the user.\n\nHelps clients choose appropriate icons and UI treatment.",
+        "oneOf": [
+          {
+            "const": "allow_once",
+            "description": "Allow this operation only this time.",
+            "type": "string"
+          },
+          {
+            "const": "allow_always",
+            "description": "Allow this operation and remember the choice.",
+            "type": "string"
+          },
+          {
+            "const": "reject_once",
+            "description": "Reject this operation only this time.",
+            "type": "string"
+          },
+          {
+            "const": "reject_always",
+            "description": "Reject this operation and remember the choice.",
+            "type": "string"
+          }
+        ]
+      },
+      "PermissionOptionId": {
+        "description": "Unique identifier for a permission option.",
+        "type": "string"
+      },
+      "ToolCallContent": {
+        "description": "Content produced by a tool call.\n\nTool calls can produce different types of content including\nstandard content blocks (text, images) or file diffs.\n\nSee protocol docs: [Content](https://agentclientprotocol.com/protocol/tool-calls#content)",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Content"
+              }
+            ],
+            "description": "Standard content block (text, images, resources).",
+            "properties": {
+              "type": {
+                "const": "content",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Diff"
+              }
+            ],
+            "description": "File modification shown as a diff.",
+            "properties": {
+              "type": {
+                "const": "diff",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Terminal"
+              }
+            ],
+            "description": "Embed a terminal created with `terminal/create` by its id.\n\nThe terminal must be added before calling `terminal/release`.\n\nSee protocol docs: [Terminal](https://agentclientprotocol.com/protocol/terminals)",
+            "properties": {
+              "type": {
+                "const": "terminal",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          }
+        ]
+      },
+      "ToolKind": {
+        "description": "Categories of tools that can be invoked.\n\nTool kinds help clients choose appropriate icons and optimize how they\ndisplay tool execution progress.\n\nSee protocol docs: [Creating](https://agentclientprotocol.com/protocol/tool-calls#creating)",
+        "oneOf": [
+          {
+            "const": "read",
+            "description": "Reading files or data.",
+            "type": "string"
+          },
+          {
+            "const": "edit",
+            "description": "Modifying files or content.",
+            "type": "string"
+          },
+          {
+            "const": "delete",
+            "description": "Removing files or data.",
+            "type": "string"
+          },
+          {
+            "const": "move",
+            "description": "Moving or renaming files.",
+            "type": "string"
+          },
+          {
+            "const": "search",
+            "description": "Searching for information.",
+            "type": "string"
+          },
+          {
+            "const": "execute",
+            "description": "Running commands or code.",
+            "type": "string"
+          },
+          {
+            "const": "think",
+            "description": "Internal reasoning or planning.",
+            "type": "string"
+          },
+          {
+            "const": "fetch",
+            "description": "Retrieving external data.",
+            "type": "string"
+          },
+          {
+            "const": "switch_mode",
+            "description": "Switching the current session mode.",
+            "type": "string"
+          },
+          {
+            "const": "other",
+            "description": "Other tool types (default).",
+            "type": "string"
+          }
+        ]
+      },
+      "ToolCallLocation": {
+        "description": "A file location being accessed or modified by a tool.\n\nEnables clients to implement \"follow-along\" features that track\nwhich files the agent is working with in real-time.\n\nSee protocol docs: [Following the Agent](https://agentclientprotocol.com/protocol/tool-calls#following-the-agent)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "line": {
+            "description": "Optional line number within the file.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": ["integer", "null"]
+          },
+          "path": {
+            "description": "The file path being accessed or modified.",
+            "type": "string"
+          }
+        },
+        "required": ["path"],
+        "type": "object"
+      },
+      "ToolCallStatus": {
+        "description": "Execution status of a tool call.\n\nTool calls progress through different statuses during their lifecycle.\n\nSee protocol docs: [Status](https://agentclientprotocol.com/protocol/tool-calls#status)",
+        "oneOf": [
+          {
+            "const": "pending",
+            "description": "The tool call hasn't started running yet because the input is either\nstreaming or we're awaiting approval.",
+            "type": "string"
+          },
+          {
+            "const": "in_progress",
+            "description": "The tool call is currently running.",
+            "type": "string"
+          },
+          {
+            "const": "completed",
+            "description": "The tool call completed successfully.",
+            "type": "string"
+          },
+          {
+            "const": "failed",
+            "description": "The tool call failed with an error.",
+            "type": "string"
+          }
+        ]
+      },
+      "ToolCallId": {
+        "description": "Unique identifier for a tool call within a session.",
+        "type": "string"
+      },
+      "Content": {
+        "description": "Standard content block (text, images, resources).",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "content": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ContentBlock"
+              }
+            ],
+            "description": "The actual content block."
+          }
+        },
+        "required": ["content"],
+        "type": "object"
+      },
+      "Diff": {
+        "description": "A diff representing file modifications.\n\nShows changes to files in a format suitable for display in the client UI.\n\nSee protocol docs: [Content](https://agentclientprotocol.com/protocol/tool-calls#content)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "newText": {
+            "description": "The new content after modification.",
+            "type": "string"
+          },
+          "oldText": {
+            "description": "The original content (None for new files).",
+            "type": ["string", "null"]
+          },
+          "path": {
+            "description": "The file path being modified.",
+            "type": "string"
+          }
+        },
+        "required": ["path", "newText"],
+        "type": "object"
+      },
+      "Terminal": {
+        "description": "Embed a terminal created with `terminal/create` by its id.\n\nThe terminal must be added before calling `terminal/release`.\n\nSee protocol docs: [Terminal](https://agentclientprotocol.com/protocol/terminals)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "terminalId": {
+            "type": "string"
+          }
+        },
+        "required": ["terminalId"],
+        "type": "object"
+      },
+      "ContentBlock": {
+        "description": "Content blocks represent displayable information in the Agent Client Protocol.\n\nThey provide a structured way to handle various types of user-facing content—whether\nit's text from language models, images for analysis, or embedded resources for context.\n\nContent blocks appear in:\n- User prompts sent via `session/prompt`\n- Language model output streamed through `session/update` notifications\n- Progress updates and results from tool calls\n\nThis structure is compatible with the Model Context Protocol (MCP), enabling\nagents to seamlessly forward content from MCP tool outputs without transformation.\n\nSee protocol docs: [Content](https://agentclientprotocol.com/protocol/content)",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/TextContent"
+              }
+            ],
+            "description": "Text content. May be plain text or formatted with Markdown.\n\nAll agents MUST support text content blocks in prompts.\nClients SHOULD render this text as Markdown.",
+            "properties": {
+              "type": {
+                "const": "text",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ImageContent"
+              }
+            ],
+            "description": "Images for visual context or analysis.\n\nRequires the `image` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "image",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AudioContent"
+              }
+            ],
+            "description": "Audio data for transcription or analysis.\n\nRequires the `audio` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "audio",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ResourceLink"
+              }
+            ],
+            "description": "References to resources that the agent can access.\n\nAll agents MUST support resource links in prompts.",
+            "properties": {
+              "type": {
+                "const": "resource_link",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/EmbeddedResource"
+              }
+            ],
+            "description": "Complete resource contents embedded directly in the message.\n\nPreferred for including context as it avoids extra round-trips.\n\nRequires the `embeddedContext` prompt capability when included in prompts.",
+            "properties": {
+              "type": {
+                "const": "resource",
+                "type": "string"
+              }
+            },
+            "required": ["type"],
+            "type": "object"
+          }
+        ]
+      },
+      "TextContent": {
+        "description": "Text provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["text"],
+        "type": "object"
+      },
+      "ImageContent": {
+        "description": "An image provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "uri": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["data", "mimeType"],
+        "type": "object"
+      },
+      "AudioContent": {
+        "description": "Audio provided to or from an LLM.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          }
+        },
+        "required": ["data", "mimeType"],
+        "type": "object"
+      },
+      "ResourceLink": {
+        "description": "A resource that the server is capable of reading, included in a prompt or tool call result.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": ["integer", "null"]
+          },
+          "title": {
+            "type": ["string", "null"]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "uri"],
+        "type": "object"
+      },
+      "EmbeddedResource": {
+        "description": "The contents of a resource, embedded into a prompt or tool call result.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "annotations": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Annotations"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resource": {
+            "$ref": "#/$defs/EmbeddedResourceResource"
+          }
+        },
+        "required": ["resource"],
+        "type": "object"
+      },
+      "Annotations": {
+        "description": "Optional annotations for the client. The client can use annotations to inform how objects are used or displayed",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "audience": {
+            "items": {
+              "$ref": "#/$defs/Role"
+            },
+            "type": ["array", "null"]
+          },
+          "lastModified": {
+            "type": ["string", "null"]
+          },
+          "priority": {
+            "format": "double",
+            "type": ["number", "null"]
+          }
+        },
+        "type": "object"
+      },
+      "EmbeddedResourceResource": {
+        "anyOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/TextResourceContents"
+              }
+            ],
+            "title": "TextResourceContents"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/BlobResourceContents"
+              }
+            ],
+            "title": "BlobResourceContents"
+          }
+        ],
+        "description": "Resource content that can be embedded in a message."
+      },
+      "Role": {
+        "description": "The sender or recipient of messages and data in a conversation.",
+        "enum": ["assistant", "user"],
+        "type": "string"
+      },
+      "TextResourceContents": {
+        "description": "Text-based resource contents.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "text": {
+            "type": "string"
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["text", "uri"],
+        "type": "object"
+      },
+      "BlobResourceContents": {
+        "description": "Binary resource contents.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "blob": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": ["string", "null"]
+          },
+          "uri": {
+            "type": "string"
+          }
+        },
+        "required": ["blob", "uri"],
+        "type": "object"
+      }
+    },
+    "allOf": [
+      {
+        "description": "Request for user permission to execute a tool call.\n\nSent when the agent needs authorization before performing a sensitive operation.\n\nSee protocol docs: [Requesting Permission](https://agentclientprotocol.com/protocol/tool-calls#requesting-permission)",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "options": {
+            "description": "Available permission options for the user to choose from.",
+            "items": {
+              "$ref": "#/$defs/PermissionOption"
+            },
+            "type": "array"
+          },
+          "sessionId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SessionId"
+              }
+            ],
+            "description": "The session ID for this request."
+          },
+          "toolCall": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/ToolCallUpdate"
+              }
+            ],
+            "description": "Details about the tool call requiring permission."
+          }
+        },
+        "required": ["sessionId", "toolCall", "options"],
+        "type": "object",
+        "x-method": "session/request_permission",
+        "x-side": "client"
+      },
+      {
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "optionId": {
+                  "type": "string"
+                }
+              },
+              "required": ["kind", "name", "optionId"]
+            }
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "toolCall": {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "type": "object",
+                "properties": {
+                  "x.ai/requestingSessionId": {
+                    "type": "string"
+                  },
+                  "x.ai/tool": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["command", "description"]
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "namespace": {
+                        "type": "string"
+                      },
+                      "read_only": {
+                        "type": "boolean"
+                      },
+                      "version": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": ["kind", "label", "name", "namespace", "read_only", "version"]
+                  }
+                },
+                "required": ["x.ai/requestingSessionId", "x.ai/tool"]
+              },
+              "kind": {
+                "type": "string"
+              },
+              "rawInput": {
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_background": {
+                    "type": "boolean"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "run_in_background": {
+                    "type": "boolean"
+                  },
+                  "task_id": {
+                    "type": "null"
+                  },
+                  "variant": {
+                    "type": "string"
+                  }
+                },
+                "required": ["description", "variant"]
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolCallId": {
+                "type": "string"
+              }
+            },
+            "required": ["_meta", "kind", "rawInput", "title", "toolCallId"]
+          }
+        },
+        "required": ["options", "sessionId", "toolCall"]
+      }
+    ]
+  },
+  "resultSchema": {
+    "description": "Response to a permission request.",
+    "properties": {
+      "_meta": {
+        "additionalProperties": true,
+        "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        "type": ["object", "null"]
+      },
+      "outcome": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/RequestPermissionOutcome"
+          }
+        ],
+        "description": "The user's decision on the permission request."
+      }
+    },
+    "required": ["outcome"],
+    "type": "object",
+    "x-method": "session/request_permission",
+    "x-side": "client",
+    "$defs": {
+      "RequestPermissionOutcome": {
+        "description": "The outcome of a permission request.",
+        "discriminator": {
+          "propertyName": "outcome"
+        },
+        "oneOf": [
+          {
+            "description": "The prompt turn was cancelled before the user responded.\n\nWhen a client sends a `session/cancel` notification to cancel an ongoing\nprompt turn, it MUST respond to all pending `session/request_permission`\nrequests with this `Cancelled` outcome.\n\nSee protocol docs: [Cancellation](https://agentclientprotocol.com/protocol/prompt-turn#cancellation)",
+            "properties": {
+              "outcome": {
+                "const": "cancelled",
+                "type": "string"
+              }
+            },
+            "required": ["outcome"],
+            "type": "object"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/SelectedPermissionOutcome"
+              }
+            ],
+            "description": "The user selected one of the provided options.",
+            "properties": {
+              "outcome": {
+                "const": "selected",
+                "type": "string"
+              }
+            },
+            "required": ["outcome"],
+            "type": "object"
+          }
+        ]
+      },
+      "SelectedPermissionOutcome": {
+        "description": "The user selected one of the provided options.",
+        "properties": {
+          "_meta": {
+            "additionalProperties": true,
+            "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+            "type": ["object", "null"]
+          },
+          "optionId": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/PermissionOptionId"
+              }
+            ],
+            "description": "The ID of the option the user selected."
+          }
+        },
+        "required": ["optionId"],
+        "type": "object"
+      },
+      "PermissionOptionId": {
+        "description": "Unique identifier for a permission option.",
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "jsonrpc": {
+        "type": "string",
+        "enum": ["2.0"]
+      },
+      "id": {
+        "type": ["integer", "string"]
+      },
+      "method": {
+        "type": "string",
+        "enum": ["session/request_permission"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["jsonrpc", "id", "method", "params"]
+  },
+  "recordChannel": "acp",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-public-acp-lead", "grok-runtime-headless"],
+    "ordering": ["grok-runtime-headless", "grok-approval-probe"],
+    "result": ["grok-public-acp-lead", "grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "schemaFidelity": {
+    "payload": "sampled",
+    "result": "exact",
+    "carrier": "structural",
+    "limitations": [
+      "Exact ACP schema 0.11.4 (v0.11.4, e9313572), the dependency of the nearest public Grok mirror commit. The binary embeds agent-client-protocol-0.10.4 (binary probe), and every captured 1.0.70 carrier validates against it; the schema is not the binary's own source.",
+      "The payload schema is allOf(exact ACP, sampled Grok 1.0.70 instance): the sampled branch records Grok's observed extension fields. Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+      "The result is written by the ACP client (here the census controller); the exact ACP response schema is its contract.",
+      "The carrier fixes the JSON-RPC envelope and method; params are validated by the payload schema."
+    ]
+  },
+  "variants": [
+    {
+      "match": {
+        "toolCall.rawInput.variant": "Bash"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "toolCall.rawInput.variant": "Task"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "payloadRefinements": [
+    {
+      "match": {
+        "toolCall.rawInput.variant": "Bash"
+      },
+      "path": "options",
+      "schema": {
+        "anyOf": [
+          {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "prefixItems": [
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "allow_always"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "allow_once"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "reject_once"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "reject_always"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              }
+            ]
+          },
+          {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "allow_once"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "reject_once"
+                  }
+                },
+                "required": ["optionId", "name", "kind"]
+              }
+            ]
+          }
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless", "grok-census-observations"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "semantic",
+      "limitations": [
+        "Ordered option kinds for a shell command: four with remembered approvals (the default), two when GROK_REMEMBER_TOOL_APPROVALS=0 or [ui] remember_tool_approvals=false. Captured optionIds are aliased; the census observations retain the literal ids always-allow, allow-once, reject-once, reject-always."
+      ]
+    },
+    {
+      "match": {
+        "toolCall.rawInput.variant": "Task"
+      },
+      "path": "options",
+      "schema": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "prefixItems": [
+          {
+            "type": "object",
+            "properties": {
+              "optionId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "allow_once"
+              }
+            },
+            "required": ["optionId", "name", "kind"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "optionId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "const": "reject_once"
+              }
+            },
+            "required": ["optionId", "name", "kind"]
+          }
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless", "grok-census-observations"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "semantic",
+      "limitations": [
+        "spawn_subagent (1.0.70 asks before spawning; 1.0.0 did not) offers only allow-once/allow_once and reject-once/reject_once."
+      ]
+    }
+  ],
+  "fixture": "captures/grok@1.0.70/approvals-remembered-off/acp-controller.jsonl",
+  "notes": "Sent only for tools Grok classes as needing approval: a bare `echo` runs without a request (rawOutput.was_bare_echo), a redirecting command asks. The leader fans the request out to every attached client; the 1.0.70 native viewer renders it too (also one issued before the viewer attached) and the first answer wins. The other client receives only the broadcast interaction_resolved {tool_call_id} (no outcome) and the tool call’s own update: in_progress/completed when allowed, failed with `_meta.toolNotRun` rejected (reject) or cancelled (the viewer prompt cancelled); never a $/cancel_request. A later answer to the resolved request id, whatever its outcome, is ignored (the leader logs \"received response for unknown request id\"). With remembered approvals enabled (the default) the options are always-allow/allow_always, allow-once/allow_once, reject-once/reject_once, reject-always/reject_always in that order; choosing allow_always — in the viewer too — persists one GROK_HOME/sessions/<cwd>/permission__<controller argv>.toml rule that answers the next matching command without a request (approval probe viewer-answers-always). spawn_subagent requests, and every request with GROK_REMEMBER_TOOL_APPROVALS=0, offer only allow-once/allow_once and reject-once/reject_once."
+}

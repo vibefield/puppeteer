@@ -22,25 +22,63 @@ on:
         required: true
         type: string
       confirm:
-        description: Type promote; protected-environment review is also required
+        description: >-
+          rehearse runs every acquisition, live, verification, and transaction lane on read-only tokens; promote
+          also commits the transaction once the protected environment's reviewer approves it
         required: true
-        type: string
+        type: choice
+        options: [rehearse, promote]
+        default: rehearse
 
 permissions:
   contents: read
 
+# The guard job refuses any input that is not exactly the narrow form the lanes accept before another job
+# starts, so the inputs substituted into the cross-platform `run:` lines below (whose shell differs between
+# runners) can hold no shell syntax. Linux-only jobs read them from these variables instead.
 env:
   AGENT_VENDOR: ${{ inputs.vendor }}
   AGENT_VERSION: ${{ inputs.version }}
+  AGENT_SOURCE_REFERENCE: ${{ inputs.source_reference }}
   AGENT_GROUND_TRUTH: ${{ inputs.ground_truth }}
+  AGENT_CONFIRM: ${{ inputs.confirm }}
 
+# A queued run cancels the pending run of its group, so rehearsals never share a group with promotions: a
+# nightly rehearsal cannot cancel a promotion waiting its turn. Promotions of any vendor on one ref queue
+# behind each other, because each commits to that ref.
 concurrency:
-  group: agent-surface-promotion-${{ inputs.vendor }}
+  group: >-
+    ${{ inputs.confirm == 'promote' && format('agent-surface-promotion-{0}', github.ref)
+    || format('agent-surface-rehearsal-{0}-{1}', inputs.vendor, github.ref) }}
   cancel-in-progress: false
 
 jobs:
+  guard:
+    # A rehearsal proves every lane on the exact bytes; only promote reaches the protected job.
+    if: ${{ inputs.confirm == 'promote' || inputs.confirm == 'rehearse' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Refuse malformed inputs and unpromotable refs before any lane runs
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node scripts/validate-promotion-dispatch.mjs
+      - name: Refuse a promotion whose branch has already moved past this commit
+        if: ${{ inputs.confirm == 'promote' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${GITHUB_REF_NAME}" --jq .object.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::error::${GITHUB_REF_NAME} is at ${head}, not ${GITHUB_SHA}; dispatch the promotion again from its head"
+            exit 1
+          fi
+
   acquire:
-    if: ${{ inputs.confirm == 'promote' }}
+    needs: guard
     strategy:
       fail-fast: false
       matrix:
@@ -56,12 +94,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
+          package-manager-cache: false
 
       - name: Resolve declarative acquisition policy
         id: policy
@@ -72,7 +111,7 @@ jobs:
           --source-reference "${{ inputs.source_reference }}"
           --github-output
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
         with:
           python-version: ${{ steps.policy.outputs.pythonVersion }}
@@ -83,10 +122,11 @@ jobs:
           version: ${{ steps.policy.outputs.uvVersion }}
           enable-cache: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: ${{ steps.policy.outputs.nodeVersion != '' }}
         with:
           node-version: ${{ steps.policy.outputs.nodeVersion }}
+          package-manager-cache: false
 
       - name: Download reviewed standalone executable bytes
         if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
@@ -137,14 +177,14 @@ jobs:
           --node node
           --npm npm
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: promotion-artifact-${{ matrix.platform }}
           path: .agent-adaptation/artifacts
           include-hidden-files: true
           retention-days: 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
         with:
           name: promotion-source-${{ matrix.platform }}
@@ -156,27 +196,36 @@ jobs:
     needs: acquire
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v5
+      # Not merged: each lane's artifact lands in its own directory, and assembly takes each platform's bundle
+      # from that platform's artifact alone, refusing any other promotion-artifact-* name.
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: promotion-artifact-*
-          path: .agent-adaptation/artifacts
-          merge-multiple: true
+          path: .agent-adaptation/downloads
       - run: >-
           node scripts/assemble-agent-artifacts.mjs
-          --vendor "${{ inputs.vendor }}"
-          --version "${{ inputs.version }}"
+          --vendor "$AGENT_VENDOR"
+          --version "$AGENT_VERSION"
+          --downloads .agent-adaptation/downloads
           --directory .agent-adaptation/artifacts
           --output .agent-adaptation/acquisition.json
-      - uses: actions/upload-artifact@v4
+      # The protected promote job reads it after a human approval, so it outlives the live lanes.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: promotion-acquisition
           path: .agent-adaptation/acquisition.json
           include-hidden-files: true
-          retention-days: 1
+          retention-days: 7
 
+  # The live lanes run on fresh GitHub-hosted VMs, one per platform. The workflow references no secrets or
+  # repository variables, the job token is read-only (workflow-level contents: read), checkout persists no
+  # credentials, and each lane is configured to give the vendor binary only the tests' loopback model provider
+  # in a disposable home. That is configuration, not a sandbox: a hosted VM has open egress and passwordless
+  # sudo, so no cache is restored or saved, and each platform's bytes and report come only from that platform's
+  # own workflow artifact: downloaded by exact name, or collected one platform at a time beside no other.
   pinned-real:
     needs: assemble
     strategy:
@@ -184,13 +233,13 @@ jobs:
       matrix:
         include:
           - platform: darwin-arm64
-            runner: [self-hosted, puppeteer-agent-live, macOS, ARM64]
+            runner: macos-14
           - platform: darwin-x64
-            runner: [self-hosted, puppeteer-agent-live, macOS, X64]
+            runner: macos-15-intel
           - platform: linux-x64
-            runner: [self-hosted, puppeteer-agent-live, Linux, X64]
+            runner: ubuntu-24.04
           - platform: windows-x64
-            runner: [self-hosted, puppeteer-agent-live, Windows, X64]
+            runner: windows-2025
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     env:
@@ -198,16 +247,16 @@ jobs:
       PUPPETEER_LIVE_VENDOR: ${{ inputs.vendor }}
       PUPPETEER_LIVE_PLATFORM: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
-          cache: pnpm
+          package-manager-cache: false
 
       - name: Resolve declarative acquisition policy
         id: policy
@@ -220,7 +269,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile --filter './packages/**'
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
         with:
           python-version: ${{ steps.policy.outputs.pythonVersion }}
@@ -231,29 +280,47 @@ jobs:
           version: ${{ steps.policy.outputs.uvVersion }}
           enable-cache: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: ${{ steps.policy.outputs.nodeVersion != '' }}
         with:
           node-version: ${{ steps.policy.outputs.nodeVersion }}
+          package-manager-cache: false
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: promotion-artifact-*
+          name: promotion-artifact-${{ matrix.platform }}
           path: .agent-adaptation/artifacts
-          merge-multiple: true
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
         with:
           name: promotion-source-${{ matrix.platform }}
           path: .agent-adaptation/source/${{ matrix.platform }}
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: promotion-acquisition
           path: .agent-adaptation
 
-      - name: Reconstruct locked installed console on the protected runner
+      # Workflow artifacts do not keep file modes, so the downloaded executable loses its execute bit.
+      # Its bytes are unchanged; write-platform-verification.mjs re-hashes them against the acquisition.
+      - name: Restore the executable bit lost in artifact transfer
+        if: ${{ runner.os != 'Windows' && steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        run: chmod 755 ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+
+      # The version the platform report binds is the one these bytes print on this runner, not the acquisition
+      # lane's own record of itself.
+      - name: Probe the exact version again on the live runner
+        if: ${{ steps.policy.outputs.artifactKind == 'standalone-executable' }}
+        run: >-
+          node scripts/probe-agent-artifact.mjs
+          --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
+          --metadata ".agent-adaptation/artifacts/${{ matrix.platform }}/download.json"
+          --version "${{ inputs.version }}"
+          --output ".agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt"
+          --home ".agent-adaptation/live-home/${{ matrix.platform }}"
+
+      - name: Reconstruct locked installed console on the live runner
         if: ${{ steps.policy.outputs.artifactKind == 'installed-console' }}
         run: >-
           node scripts/materialize-installed-console.mjs
@@ -298,27 +365,29 @@ jobs:
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
         run: pnpm --filter @vibefield/puppeteer-surface run "surface:audit:${{ inputs.vendor }}"
+      # Each lane runs the adapter's whole suite with the per-test budget CI gives process-backed suites on
+      # hosted runners; the live proof sets its own, longer timeouts.
       - name: Claude pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'claude' }}
         env:
           CLAUDE_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CLAUDE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-claude test
+        run: pnpm --filter @vibefield/puppeteer-adapter-claude test --testTimeout=15000
       - name: Codex pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'codex' }}
         env:
           CODEX_NATIVE_TUI_LIVE: '1'
           PUPPETEER_CODEX_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-codex test
+        run: pnpm --filter @vibefield/puppeteer-adapter-codex test --testTimeout=15000
       - name: Grok pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'grok' }}
         env:
           GROK_LIVE: '1'
           PUPPETEER_GROK_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-grok test
+        run: pnpm --filter @vibefield/puppeteer-adapter-grok test --testTimeout=15000
       - name: Hermes pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'hermes' }}
         env:
@@ -327,31 +396,31 @@ jobs:
           HERMES_PYTHON: ${{ github.workspace }}/.agent-adaptation/live-work/${{ matrix.platform }}/python-environment/${{ steps.policy.outputs.pythonPath }}
           HERMES_TUI_DIR: ${{ github.workspace }}/.agent-adaptation/live-artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.runtimeRoot }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-hermes test
+        run: pnpm --filter @vibefield/puppeteer-adapter-hermes test --testTimeout=15000
       - name: OpenCode pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'opencode' }}
         env:
           OPENCODE_LIVE: '1'
           PUPPETEER_OPENCODE_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-opencode test
+        run: pnpm --filter @vibefield/puppeteer-adapter-opencode test --testTimeout=15000
       - name: Kimi pinned-real native-TUI/resume lane
         if: ${{ inputs.vendor == 'kimi' }}
         env:
           KIMI_LIVE: '1'
           PUPPETEER_KIMI_BIN: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
           PUPPETEER_LIVE_ARTIFACT: ${{ github.workspace }}/.agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}
-        run: pnpm --filter @vibefield/puppeteer-adapter-kimi test
+        run: pnpm --filter @vibefield/puppeteer-adapter-kimi test --testTimeout=15000
       - run: >-
           node scripts/write-platform-verification.mjs
           --artifacts .agent-adaptation/acquisition.json
           --artifact ".agent-adaptation/artifacts/${{ matrix.platform }}/${{ steps.policy.outputs.outputName }}"
-          --version-output-file ".agent-adaptation/artifacts/${{ matrix.platform }}/version.txt"
+          --version-output-file ".agent-adaptation/live-artifacts/${{ matrix.platform }}/version.txt"
           --adapter-receipt ".agent-adaptation/adapter-real-${{ matrix.platform }}.json"
           --platform "${{ matrix.platform }}"
           --surface-audit passed
           --output ".agent-adaptation/${{ matrix.platform }}.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: promotion-platform-${{ matrix.platform }}
           path: .agent-adaptation/${{ matrix.platform }}.json
@@ -363,26 +432,38 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
-          cache: pnpm
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-      - uses: actions/download-artifact@v5
+      # Each platform's report comes from that platform's own artifact, by exact name.
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: promotion-platform-*
-          path: .agent-adaptation/platforms
-          merge-multiple: true
-      - uses: actions/download-artifact@v5
+          name: promotion-platform-darwin-arm64
+          path: .agent-adaptation/platforms/darwin-arm64
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: promotion-platform-darwin-x64
+          path: .agent-adaptation/platforms/darwin-x64
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: promotion-platform-linux-x64
+          path: .agent-adaptation/platforms/linux-x64
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: promotion-platform-windows-x64
+          path: .agent-adaptation/platforms/windows-x64
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           name: promotion-acquisition
           path: .agent-adaptation
@@ -395,58 +476,159 @@ jobs:
           pnpm surface:verify
           --vendor "$AGENT_VENDOR"
           --ground-truth "$AGENT_GROUND_TRUTH"
-          --platform-report .agent-adaptation/platforms/darwin-arm64.json
-          --platform-report .agent-adaptation/platforms/darwin-x64.json
-          --platform-report .agent-adaptation/platforms/linux-x64.json
-          --platform-report .agent-adaptation/platforms/windows-x64.json
+          --platform-report .agent-adaptation/platforms/darwin-arm64/darwin-arm64.json
+          --platform-report .agent-adaptation/platforms/darwin-x64/darwin-x64.json
+          --platform-report .agent-adaptation/platforms/linux-x64/linux-x64.json
+          --platform-report .agent-adaptation/platforms/windows-x64/windows-x64.json
           --output .agent-adaptation/verification.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: promotion-verification
           path: .agent-adaptation/verification.json
           include-hidden-files: true
           retention-days: 7
 
-  promote:
+  # The promotion transaction, on a read-only token: it restores the attested evidence, runs the guarded
+  # promotion, re-locks the adapter, stages and boundary-checks the commit, and gates the exact tree. A
+  # rehearsal of a staged candidate runs it too, so the whole promotion is proven before anyone approves one;
+  # for a version the ledger already supports there is nothing to promote.
+  transaction:
     needs: verify
     runs-on: ubuntu-24.04
-    environment: agent-surface-promotion
-    permissions:
-      contents: write
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.34.5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22.18.0
+          package-manager-cache: false
+      - name: Select the transaction
+        id: select
+        run: |
+          staged=$(node -e "const agent = require('./support/agents.json').agents.find((entry) => entry.id === process.env.AGENT_VENDOR); process.stdout.write(String(agent?.candidateVersion === process.env.AGENT_VERSION))")
+          if [ "$AGENT_CONFIRM" = promote ] || [ "$staged" = true ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "The ledger already supports ${AGENT_VENDOR} ${AGENT_VERSION}: there is nothing to promote." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - run: pnpm install --frozen-lockfile --filter './packages/**'
-      - uses: actions/download-artifact@v5
+        if: ${{ steps.select.outputs.run == 'true' }}
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        if: ${{ steps.select.outputs.run == 'true' }}
         with:
           name: promotion-verification
           path: .agent-adaptation
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        if: ${{ steps.select.outputs.run == 'true' }}
         with:
           name: promotion-acquisition
           path: .agent-adaptation
       - name: Restore the attested artifact evidence
+        if: ${{ steps.select.outputs.run == 'true' }}
         run: >-
           pnpm surface:evidence:artifacts
           --ground-truth "$AGENT_GROUND_TRUTH"
           --artifacts .agent-adaptation/acquisition.json
       - name: Invoke the guarded promotion transaction
+        if: ${{ steps.select.outputs.run == 'true' }}
         run: >-
           pnpm surface:promote
           --vendor "$AGENT_VENDOR"
           --ground-truth "$AGENT_GROUND_TRUTH"
           --verification .agent-adaptation/verification.json
-      - name: Commit artifact evidence, ledger pointer, and generated badge together
+      # The restored artifact evidence changes the canonical ground truth, so the adapter's digest lock must
+      # follow it in the same commit; the transaction refuses any other change to the lock.
+      - name: Re-lock the adapter to the promoted ground truth
+        if: ${{ steps.select.outputs.run == 'true' }}
+        run: pnpm groundtruth:mapping:write
+      - name: Stage exactly the promotion's files as the transaction
+        if: ${{ steps.select.outputs.run == 'true' }}
         run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -- support/agents.json README.md "$AGENT_GROUND_TRUTH" "${AGENT_GROUND_TRUTH%.json}.html" "${AGENT_GROUND_TRUTH%/*}/model/${AGENT_VENDOR}@${AGENT_VERSION}/evidence.json"
-          git commit -m "chore(surface): promote ${AGENT_VENDOR} ${AGENT_VERSION}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git add --all
+          node scripts/promotion-transaction.mjs write \
+            --vendor "$AGENT_VENDOR" \
+            --version "$AGENT_VERSION" \
+            --base "$GITHUB_SHA" \
+            --directory .agent-adaptation/transaction
+          { echo '### Promotion transaction'; echo '```'; git diff --cached --stat "$GITHUB_SHA"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # A workflow-token push starts no CI, so these are the checks the promotion commit gets before it lands:
+      # the repository's structural gates and CI's own package suites, on the staged tree.
+      - name: Refuse a promotion commit that would leave the repository gates red
+        if: ${{ steps.select.outputs.run == 'true' }}
+        run: |
+          pnpm packages:check
+          pnpm support:check
+          pnpm groundtruth:mapping:check
+          pnpm surface:groundtruth:check
+          pnpm --filter @vibefield/puppeteer-surface surface:evidence:check
+          node --test scripts/*.test.mjs
+          pnpm -r --no-bail --workspace-concurrency=1 --filter './packages/**' test --testTimeout=15000
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ steps.select.outputs.run == 'true' }}
+        with:
+          name: promotion-transaction
+          path: .agent-adaptation/transaction
+          include-hidden-files: true
+          retention-days: 7
+
+  # The only job that can write, entered only after the protected environment's reviewer approves the
+  # transaction above (its patch and summary are on the run). It installs no packages and runs no tests: it
+  # re-checks the transaction's boundary with Node built-ins, commits with hooks disabled, re-checks the
+  # commit, and hands the token to the push alone.
+  promote:
+    needs: transaction
+    if: ${{ inputs.confirm == 'promote' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: agent-surface-promotion
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: promotion-transaction
+          path: .agent-adaptation/transaction
+      - name: Apply the transaction this run attempt prepared and gated
+        run: |
+          node scripts/promotion-transaction.mjs verify \
+            --vendor "$AGENT_VENDOR" --version "$AGENT_VERSION" --directory .agent-adaptation/transaction
+          git -c core.hooksPath=/dev/null apply --index .agent-adaptation/transaction/promotion.patch
+          node scripts/promotion-transaction.mjs check \
+            --vendor "$AGENT_VENDOR" --version "$AGENT_VERSION" --base "$GITHUB_SHA" --staged
+      - name: Commit exactly the promotion's files
+        run: |
+          git -c core.hooksPath=/dev/null \
+            -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --no-verify -m "chore(surface): promote ${AGENT_VENDOR} ${AGENT_VERSION}"
+          node scripts/promotion-transaction.mjs check \
+            --vendor "$AGENT_VENDOR" --version "$AGENT_VERSION" --base "$GITHUB_SHA" --commit HEAD
+      - name: Push the promotion commit to the dispatched branch
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          authorization=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::${authorization}"
+          GIT_CONFIG_COUNT=2 \
+            GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null \
+            GIT_CONFIG_KEY_1=http.https://github.com/.extraheader \
+            GIT_CONFIG_VALUE_1="AUTHORIZATION: basic ${authorization}" \
+            git push --no-verify origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
+          {
+            echo "Pushed $(git rev-parse HEAD) to ${GITHUB_REF_NAME}. A workflow-token push starts no CI, so run"
+            echo '```'
+            echo "gh workflow run ci.yml --ref ${GITHUB_REF_NAME}"
+            echo '```'
+            echo 'before merging, so the required checks report on the promotion commit.'
+          } >> "$GITHUB_STEP_SUMMARY"

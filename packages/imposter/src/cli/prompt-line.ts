@@ -22,6 +22,12 @@ export interface PromptLineOptions {
   interactive: boolean;
   staged(text: string): void;
   submit(text: string): void;
+  /**
+   * Input the screen consumes itself before it reaches the prompt line — a
+   * keypress answering a question the vendor's TUI is showing. Returns true
+   * when the chunk was consumed.
+   */
+  intercept?(chunk: string): boolean;
   /** ^C on a real terminal, and stdin EOF. */
   interrupt(): void;
   end(): void;
@@ -101,6 +107,7 @@ export function installPromptLine(options: PromptLineOptions): void {
     // most useful thing to know when a prompt does not turn into a turn, and
     // the text itself is none of the log's business.
     options.log(`stdin: ${chunk.length}b${chunk.includes('\x1b[200~') ? ' bracketed' : ''}`);
+    if (options.intercept?.(chunk)) return;
     if (options.interactive && chunk === '\x03') return options.interrupt();
     decoder.feed(chunk);
   });

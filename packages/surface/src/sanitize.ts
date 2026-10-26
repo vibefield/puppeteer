@@ -63,6 +63,20 @@ const BARE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[
  */
 const EMBEDDED_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
 
+/**
+ * An absolute path under the shared temp root, `/tmp/…` or `/private/tmp/…`.
+ *
+ * Harnesses run in throwaway directories, and on macOS `TMPDIR` is often moved
+ * under `/private/tmp/<per-user>/…` to keep Unix socket paths short — a root
+ * that names the uid and, slug-encoded, the operator's checkout. A committed
+ * codex capture carried exactly that under `runtimeWorkspaceRoots`, a key no
+ * path rule named, while the detector reported it clean. The look-behind keeps
+ * `/var/tmp/…` and URL paths such as `https://host/tmp/x` out of scope — except
+ * a local `file:///…` or `file://localhost/…` URL, whose path IS the local one;
+ * excluding its slash let `file:///private/tmp/<uid>/<slug>/…` pass as clean.
+ */
+const TEMP_ROOT_PATH = /(?:(?<=file:\/\/(?:localhost)?)|(?<![\w.~/-]))\/(?:private\/)?tmp\/[^\s"']*/;
+
 export const defaultRules: SanitizerRules = {
   // Epoch-ms/seconds clocks. `At`/`Ms` suffixes cover startedAtMs, completedAtMs,
   // createdAt, firstSeenAtUnixMs; `timestamp` covers the snake_case forms.
@@ -106,6 +120,8 @@ export const defaultRules: SanitizerRules = {
     /\b(?:sk|sess|pat|ghp|github_pat)-[A-Za-z0-9_-]{12,}\b/,
     // macOS per-user temp roots embed a user-specific hash.
     /\/(?:private\/)?var\/folders\/[^\s"']+/,
+    // The shared temp root, where a relocated TMPDIR names the uid and checkout.
+    TEMP_ROOT_PATH,
     // SLUG-ENCODED home paths. Claude derives project directory names by
     // replacing every non-alphanumeric character with `-`, so `/Users/alice`
     // becomes `-Users-alice-`. A real capture carried
@@ -273,6 +289,7 @@ function sanitizeString(value: string, key: string, inContainer: boolean, rules:
     .replace(EMBEDDED_UUID, (match) => alias(match))
     .replace(/-(?:Users|home)-[A-Za-z0-9_.]+-/g, '-Users-<redacted>-')
     .replace(/\/(?:private\/)?var\/folders\/[^\s"']+/g, '/workspace/redacted-path')
+    .replace(new RegExp(TEMP_ROOT_PATH.source, 'g'), '/workspace/redacted-path')
     .replace(/\/Users\/[^/\s"']+(?:\/[^\s"']*)?/g, '/workspace/redacted-path')
     .replace(/\/home\/(?!user(?:\/|\b))[^/\s"']+(?:\/[^\s"']*)?/g, '/workspace/redacted-path')
     .replace(/[A-Za-z]:\\Users\\[^\\\s"']+(?:\\[^\s"']*)?/g, 'C:\\workspace\\redacted-path')

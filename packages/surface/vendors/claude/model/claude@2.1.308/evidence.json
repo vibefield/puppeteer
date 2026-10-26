@@ -1,0 +1,149 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "claude",
+  "vendorVersion": "2.1.308",
+  "artifacts": [
+    {
+      "id": "installed-claude-2.1.308-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-10-25T04:38:36.000Z",
+      "versionOutput": "2.1.308 (Claude Code)",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+      },
+      "artifactKind": "standalone-executable",
+      "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-arm64/claude",
+      "acquisitionKey": "claude@2.1.308@darwin-arm64@sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
+    },
+    {
+      "id": "claude-2.1.308-darwin-x64",
+      "platform": "darwin-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T23:01:25.151Z",
+      "versionOutput": "2.1.308 (Claude Code)",
+      "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-x64/claude",
+      "acquisitionKey": "claude@2.1.308@darwin-x64@sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59"
+      }
+    },
+    {
+      "id": "claude-2.1.308-linux-x64",
+      "platform": "linux-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T23:01:25.355Z",
+      "versionOutput": "2.1.308 (Claude Code)",
+      "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/linux-x64/claude",
+      "acquisitionKey": "claude@2.1.308@linux-x64@sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58"
+      }
+    },
+    {
+      "id": "claude-2.1.308-windows-x64",
+      "platform": "windows-x64",
+      "channel": "stable",
+      "artifactKind": "standalone-executable",
+      "acquiredAt": "2026-10-25T23:01:25.559Z",
+      "versionOutput": "2.1.308 (Claude Code)",
+      "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/win32-x64/claude.exe",
+      "acquisitionKey": "claude@2.1.308@windows-x64@sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anthropics/claude-code",
+      "revision": "v2.1.308",
+      "relation": "release-tag"
+    }
+  ],
+  "claims": [
+    {
+      "id": "claude-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-claude-2.1.308-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
+      "capturedAt": "2026-10-25T04:38:36.000Z"
+    },
+    {
+      "id": "claude-runtime-interactive",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "sanitized-captures",
+      "artifact": "installed-claude-2.1.308-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs",
+      "capturedAt": "2026-10-25T04:38:36.000Z"
+    },
+    {
+      "id": "claude-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-claude-2.1.308-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Exact artifact --version and --help in a disposable environment, SHA-256, and bounded static probes of the subagent status channel and hook-event inventory in packages/surface/vendors/claude/census/generate-model.mjs; reviewed invocation-grammar and hook-switch probe records beside them",
+      "capturedAt": "2026-10-25T04:38:36.000Z"
+    },
+    {
+      "id": "claude-official-hooks",
+      "kind": "official-doc",
+      "confidence": "unverified",
+      "record": "official-hook-reference",
+      "sourceReference": 0,
+      "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.308 adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/claude/captures/claude@2.1.308",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "7a4adbc0e1b7d73aa206255ebbe08874916e3f76fb573c3afc02977aa7b97710"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/claude/probes/claude@2.1.308",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "249ab4ac527ec12b084cc1f9e127144a088b2569b0e4d1e1e43131bebdc73950"
+    },
+    {
+      "id": "official-hook-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/claude/references/claude@2.1.308",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "e718061d9f9ba191172b6fc0cdeae29ab8129dc55980f8f6258ed034dfd4b972"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/claude/model/claude@2.1.308",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba"
+    }
+  ],
+  "limitations": [
+    "Controlled runtime captures cover only darwin-arm64. The other configured platforms are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes, not by census claims.",
+    "No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
+    "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
+    "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
+  ]
+}

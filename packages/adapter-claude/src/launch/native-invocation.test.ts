@@ -137,6 +137,35 @@ describe('Claude native invocation normalization', () => {
     });
   });
 
+  it('passes through what 2.1.308 reads as no session here: purge, a background verb behind options, --desktop', () => {
+    // A wrapped `claude purge` would hand purge the managed launch's `--` operands.
+    for (const argv of [['purge'], ['--', 'purge'], ['purge', '--dry-run'], ['drop-worktree-registrations']]) {
+      expect(normalizeClaudeNativeInvocation(invocation(argv)), argv.join(' ')).toMatchObject({
+        status: 'passthrough',
+        kind: 'utility',
+      });
+    }
+    for (const argv of [
+      ['--verbose', 'attach', '1a2b3c4d'],
+      ['--desktop', '-c'],
+    ]) {
+      expect(normalizeClaudeNativeInvocation(invocation(argv)), argv.join(' ')).toMatchObject({
+        status: 'passthrough',
+        kind: 'elsewhere',
+      });
+    }
+    // `-- --bg` is a session only from 2.1.299; the reader passes it through on every release.
+    expect(normalizeClaudeNativeInvocation(invocation(['--', '--bg']))).toMatchObject({
+      status: 'passthrough',
+      kind: 'elsewhere',
+    });
+    // `-- attach <id>` is a session in 2.1.308 (R02) and 2.1.283: its operands ride after `--` as typed.
+    expect(normalizeClaudeNativeInvocation(invocation(['--', 'attach', '1a2b3c4d']))).toEqual({
+      status: 'accepted',
+      options: { typed: true, prompt: ['attach', '1a2b3c4d'] },
+    });
+  });
+
   it('rejects unsupported or malformed native arguments, naming the argument', () => {
     expect(normalizeClaudeNativeInvocation(invocation(['--model']))).toEqual({
       status: 'rejected',

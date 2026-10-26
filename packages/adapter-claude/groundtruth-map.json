@@ -3,7 +3,7 @@
   "provider": "claude",
   "adapterPackage": "@vibefield/puppeteer-adapter-claude",
   "groundTruth": "packages/surface/vendors/claude/groundtruth.json",
-  "groundTruthSha256": "632fb4fecbefa6c38ceceb2fe1702008ac449a8c9db37bc0f2b1d51b0f6d9542",
+  "groundTruthSha256": "8b2d02ef300f99e946e4f35a5fde49fa265ed26b8f314549b0a29347bf0f3591",
   "semanticEvents": [
     "ConfigChange",
     "CwdChanged",
@@ -15,6 +15,7 @@
     "PermissionDenied",
     "PermissionRequest",
     "PostCompact",
+    "PostModelSwitch",
     "PostToolUse",
     "PostToolUseFailure",
     "PreCompact",
@@ -31,6 +32,7 @@
     "Elicitation",
     "ElicitationResult",
     "PostToolBatch",
+    "PreModelSwitch",
     "Setup",
     "TaskCompleted",
     "TaskCreated",
@@ -45,8 +47,8 @@
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
-    "groundTruth": 31,
-    "semantic": 21,
-    "observedOrControlled": 10
+    "groundTruth": 33,
+    "semantic": 22,
+    "observedOrControlled": 11
   }
 }

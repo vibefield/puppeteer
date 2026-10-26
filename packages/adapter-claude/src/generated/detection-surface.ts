@@ -10,7 +10,7 @@ export const CLAUDE_DETECTION_SURFACE = {
   ],
   "envVar": "PUPPETEER_CLAUDE_BIN",
   "versionFlag": "--version",
-  "versionOutput": "2.1.226 (Claude Code)",
+  "versionOutput": "2.1.308 (Claude Code)",
   "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
   "helpFlag": "--help",
   "probedFlags": {
@@ -29,5 +29,5 @@ export const CLAUDE_DETECTION_SURFACE = {
     "model": "--model",
     "effort": "--effort"
   },
-  "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.226; missing flags still degrade observation with warnings."
+  "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.308; missing flags still degrade observation with warnings."
 } as const;

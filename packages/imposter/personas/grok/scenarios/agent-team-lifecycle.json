@@ -11,13 +11,19 @@
             "update": {
               "sessionUpdate": "subagent_spawned",
               "subagent_id": "$uuid:subagent",
+              "attempt_id": "$uuid:attempt",
               "parent_session_id": "$sessionId",
               "parent_prompt_id": "$uuid:prompt",
               "child_session_id": "$uuid:subagent",
-              "subagent_type": "explore",
+              "subagent_type": "general-purpose",
               "description": "research the requested topic",
-              "context_normalized": false,
-              "role": "researcher"
+              "effective_context_source": "new",
+              "model": "grok-imposter",
+              "agentAddress": "$uuid:agent-address"
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9101",
+              "agentTimestampMs": "$nowMs"
             }
           }
         }
@@ -58,13 +64,76 @@
             "update": {
               "sessionUpdate": "subagent_finished",
               "subagent_id": "$uuid:subagent",
+              "attempt_id": "$uuid:attempt",
               "child_session_id": "$uuid:subagent",
               "status": "completed",
               "tool_calls": 1,
               "turns": 1,
               "duration_ms": 80,
               "tokens_used": 1200,
-              "output": "research complete"
+              "output": "research complete",
+              "will_wake": true
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9103",
+              "agentTimestampMs": "$nowMs"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 80,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session/update",
+          "channel": "session-log",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "$uuid:subagent",
+              "attempt_id": "$uuid:attempt",
+              "parent_session_id": "$sessionId",
+              "parent_prompt_id": "$uuid:prompt",
+              "child_session_id": "$uuid:subagent",
+              "subagent_type": "general-purpose",
+              "description": "research the requested topic",
+              "effective_context_source": "new",
+              "model": "grok-imposter"
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9101",
+              "agentTimestampMs": "$nowMs"
+            }
+          }
+        }
+      }
+    },
+    {
+      "at": 80,
+      "do": {
+        "emit": {
+          "event": "_x.ai/session/update",
+          "channel": "session-log",
+          "with": {
+            "sessionId": "$sessionId",
+            "update": {
+              "sessionUpdate": "subagent_finished",
+              "subagent_id": "$uuid:subagent",
+              "attempt_id": "$uuid:attempt",
+              "child_session_id": "$uuid:subagent",
+              "status": "completed",
+              "tool_calls": 1,
+              "turns": 1,
+              "duration_ms": 80,
+              "tokens_used": 1200,
+              "output": "research complete",
+              "will_wake": true
+            },
+            "_meta": {
+              "eventId": "$concat:$sessionId:-:9103",
+              "agentTimestampMs": "$nowMs"
             }
           }
         }

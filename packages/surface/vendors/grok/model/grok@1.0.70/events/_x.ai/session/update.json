@@ -1,0 +1,930 @@
+{
+  "surface": "grok",
+  "surfaceVersion": "1.0.70",
+  "event": "_x.ai/session/update",
+  "channel": "acp",
+  "channels": ["acp", "session-log"],
+  "transport": "jsonrpc-notification",
+  "direction": "agent-to-client",
+  "payloadSchema": {
+    "type": "object",
+    "properties": {
+      "sessionId": {
+        "type": "string"
+      },
+      "update": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string"
+          }
+        },
+        "required": ["sessionUpdate"]
+      },
+      "_meta": {
+        "type": "object",
+        "properties": {
+          "agentTimestampMs": {
+            "type": "integer"
+          },
+          "cancellationCategory": {
+            "type": "string"
+          },
+          "cancellationContext": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "tool_name": {
+                "type": "string"
+              }
+            },
+            "required": ["reason", "tool_name"]
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "isReplay": {
+            "type": "boolean"
+          },
+          "x.ai/leaderClientId": {
+            "type": "integer"
+          }
+        },
+        "required": ["agentTimestampMs", "eventId"]
+      }
+    },
+    "required": ["sessionId", "update"]
+  },
+  "recordSchema": {
+    "type": "object",
+    "properties": {
+      "timestamp": {
+        "type": "integer",
+        "minimum": 1000000000,
+        "maximum": 99999999999,
+        "description": "Unix seconds; params._meta.agentTimestampMs carries the millisecond clock."
+      },
+      "method": {
+        "type": "string",
+        "enum": ["_x.ai/session/update"]
+      },
+      "params": {
+        "type": "object"
+      }
+    },
+    "required": ["timestamp", "method", "params"]
+  },
+  "recordChannel": "session-log",
+  "evidence": {
+    "existence": ["grok-runtime-headless"],
+    "shape": ["grok-runtime-headless"],
+    "carrier": ["grok-runtime-headless"]
+  },
+  "confidence": "verified-headless",
+  "variants": [
+    {
+      "match": {
+        "update.sessionUpdate": "auto_compact_completed"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "background_tasks"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "compaction_checkpoint"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "hook_execution"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_finished"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_spawned"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "turn_completed"
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless"
+    }
+  ],
+  "payloadRefinements": [
+    {
+      "match": {
+        "update.sessionUpdate": "auto_compact_completed"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "summary_preview": {
+            "type": "null"
+          },
+          "tokens_after": {
+            "type": "integer"
+          },
+          "tokens_before": {
+            "type": "integer"
+          }
+        },
+        "required": ["sessionUpdate", "summary_preview", "tokens_after", "tokens_before"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "background_tasks"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "tasks": {
+            "type": "array"
+          }
+        },
+        "required": ["sessionUpdate", "tasks"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+        "New in 1.0.70: sent when a client attaches to or loads the session, and at session end."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "compaction_checkpoint"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "checkpoint_file": {
+            "type": "string"
+          },
+          "checkpoint_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "prompt_index_at_compaction": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sessionUpdate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkpoint_file",
+          "checkpoint_id",
+          "created_at",
+          "prompt_index_at_compaction",
+          "schema_version",
+          "sessionUpdate"
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "hook_execution"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "event_name": {
+            "type": "string"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "object",
+                  "properties": {
+                    "elapsed_ms": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["elapsed_ms", "status"]
+                }
+              },
+              "required": ["name", "status"]
+            }
+          },
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          }
+        },
+        "required": ["event_name", "runs", "sessionUpdate"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+        "Only with configured hooks. runs[] carries {name, status {status, elapsed_ms, error?}}."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_finished"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "child_session_id": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "output": {
+            "type": "string"
+          },
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subagent_id": {
+            "type": "string"
+          },
+          "tokens_used": {
+            "type": "integer"
+          },
+          "tool_calls": {
+            "type": "integer"
+          },
+          "turns": {
+            "type": "integer"
+          },
+          "will_wake": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "child_session_id",
+          "duration_ms",
+          "output",
+          "sessionUpdate",
+          "status",
+          "subagent_id",
+          "tokens_used",
+          "tool_calls",
+          "turns",
+          "will_wake"
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_spawned"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string"
+          },
+          "child_session_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "effective_context_source": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "parent_prompt_id": {
+            "type": "string"
+          },
+          "parent_session_id": {
+            "type": "string"
+          },
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "subagent_id": {
+            "type": "string"
+          },
+          "subagent_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "child_session_id",
+          "description",
+          "effective_context_source",
+          "model",
+          "parent_prompt_id",
+          "parent_session_id",
+          "sessionUpdate",
+          "subagent_id",
+          "subagent_type"
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+        "agentAddress (aa1.…) is live-only and omitted from updates.jsonl; attempt_id (at1.…) is new in 1.0.70."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "turn_completed"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "sessionUpdate": {
+            "type": "string"
+          },
+          "stop_reason": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "apiDurationMs": {
+                "type": "integer"
+              },
+              "cacheCreationTokens": {
+                "type": "integer"
+              },
+              "cachedReadTokens": {
+                "type": "integer"
+              },
+              "inputTokens": {
+                "type": "integer"
+              },
+              "modelCalls": {
+                "type": "integer"
+              },
+              "modelUsage": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "apiDurationMs": {
+                      "type": "integer"
+                    },
+                    "cacheCreationTokens": {
+                      "type": "integer"
+                    },
+                    "cachedReadTokens": {
+                      "type": "integer"
+                    },
+                    "inputTokens": {
+                      "type": "integer"
+                    },
+                    "modelCalls": {
+                      "type": "integer"
+                    },
+                    "outputTokens": {
+                      "type": "integer"
+                    },
+                    "reasoningTokens": {
+                      "type": "integer"
+                    },
+                    "totalTokens": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "apiDurationMs",
+                    "cacheCreationTokens",
+                    "cachedReadTokens",
+                    "inputTokens",
+                    "modelCalls",
+                    "outputTokens",
+                    "reasoningTokens",
+                    "totalTokens"
+                  ]
+                }
+              },
+              "numTurns": {
+                "type": "integer"
+              },
+              "outputTokens": {
+                "type": "integer"
+              },
+              "reasoningTokens": {
+                "type": "integer"
+              },
+              "totalTokens": {
+                "type": "integer"
+              },
+              "usageIsIncomplete": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "apiDurationMs",
+              "cacheCreationTokens",
+              "cachedReadTokens",
+              "inputTokens",
+              "modelCalls",
+              "modelUsage",
+              "numTurns",
+              "outputTokens",
+              "reasoningTokens",
+              "totalTokens"
+            ]
+          }
+        },
+        "required": ["elapsed_ms", "prompt_id", "sessionUpdate", "stop_reason"]
+      },
+      "evidence": {
+        "existence": ["grok-runtime-headless"],
+        "shape": ["grok-runtime-headless"]
+      },
+      "confidence": "verified-headless",
+      "fidelity": "sampled",
+      "limitations": [
+        "Sampled from the Grok 1.0.70 darwin-arm64 census: observed JSON types per field, with required fields present in every captured instance. Sanitized strings keep their type but not their value, so enumerations and formats are not inferred.",
+        "usage (camelCase PromptUsage totals, including cache reads) is absent only on MidTurnAbort; PermissionRejected turns keep it. 1.0.70 adds elapsed_ms and `_meta.cancellationCategory` (MidTurnAbort | PermissionRejected | PermissionCancelled) / `_meta.cancellationContext`."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "auto_compact_completed"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["auto_compact_completed"]
+          },
+          "tokens_before": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "tokens_after": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "elapsed_ms": {
+            "type": ["integer", "null"]
+          },
+          "summary_preview": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["sessionUpdate", "tokens_after"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "background_tasks"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["background_tasks"]
+          },
+          "tasks": {
+            "type": "array",
+            "items": {}
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": ["sessionUpdate", "tasks"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "compaction_checkpoint"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["compaction_checkpoint"]
+          },
+          "checkpoint_id": {
+            "type": "string"
+          },
+          "prompt_index_at_compaction": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checkpoint_file": {
+            "type": "string"
+          },
+          "auto_continue": {},
+          "schema_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionUpdate",
+          "checkpoint_id",
+          "prompt_index_at_compaction",
+          "checkpoint_file",
+          "schema_version",
+          "created_at"
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "hook_execution"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["hook_execution"]
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": ["string", "null"]
+          },
+          "prompt_id": {
+            "type": ["string", "null"]
+          },
+          "runs": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": ["sessionUpdate", "event_name", "runs"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_finished"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["subagent_finished"]
+          },
+          "subagent_id": {
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": ["string", "null"]
+          },
+          "child_session_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "tool_calls": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "turns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokens_used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output": {
+            "type": ["string", "null"]
+          },
+          "will_wake": {
+            "type": "boolean"
+          }
+        },
+        "required": ["sessionUpdate", "subagent_id", "child_session_id", "status", "tool_calls", "turns", "duration_ms"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "subagent_spawned"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["subagent_spawned"]
+          },
+          "subagent_id": {
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": ["string", "null"]
+          },
+          "parent_session_id": {
+            "type": "string"
+          },
+          "parent_prompt_id": {
+            "type": ["string", "null"]
+          },
+          "child_session_id": {
+            "type": "string"
+          },
+          "subagent_type": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "effective_context_source": {
+            "type": ["string", "null"]
+          },
+          "context_normalized": {
+            "type": "boolean"
+          },
+          "capability_mode": {
+            "type": ["string", "null"]
+          },
+          "persona": {
+            "type": ["string", "null"]
+          },
+          "role": {
+            "type": ["string", "null"]
+          },
+          "model": {
+            "type": ["string", "null"]
+          },
+          "resumed_from": {
+            "type": ["string", "null"]
+          },
+          "workflow_run_id": {
+            "type": ["string", "null"]
+          },
+          "agentAddress": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "sessionUpdate",
+          "subagent_id",
+          "parent_session_id",
+          "child_session_id",
+          "subagent_type",
+          "description"
+        ]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    },
+    {
+      "match": {
+        "update.sessionUpdate": "turn_completed"
+      },
+      "path": "update",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "sessionUpdate": {
+            "type": "string",
+            "enum": ["turn_completed"]
+          },
+          "prompt_id": {
+            "type": "string"
+          },
+          "stop_reason": {
+            "type": "string"
+          },
+          "agent_result": {
+            "type": ["string", "null"]
+          },
+          "error_kind": {
+            "type": ["string", "null"]
+          },
+          "usage": {},
+          "elapsed_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          }
+        },
+        "required": ["sessionUpdate", "prompt_id", "stop_reason"]
+      },
+      "evidence": {
+        "existence": ["grok-public-mirror-lead"],
+        "shape": ["grok-public-mirror-lead"]
+      },
+      "confidence": "unverified",
+      "fidelity": "structural",
+      "limitations": [
+        "Field names, optionality, and primitive/container types come from the public crate 1.0.45 enum (mirror 2bdd1d6a), older than the 1.0.70 binary. Custom nested Rust types stay unconstrained."
+      ]
+    }
+  ],
+  "schemaFidelity": {
+    "payload": "structural",
+    "carrier": "sampled",
+    "limitations": [
+      "The base schema fixes the envelope; branch schemas are evidence-bound refinements.",
+      "Durable spelling of xAI updates in updates.jsonl. Over ACP it appears only while session/load replays history (_meta.isReplay). Only the 7 captured persisted branches are listed; other xAI kinds may also persist but were not observed."
+    ]
+  },
+  "fixture": "captures/grok@1.0.70/hooks/updates.jsonl",
+  "notes": "Distinct from the live `_x.ai/session_notification` spelling. hook_execution session_end then stop are written on every controller close; background_tasks is written on attach and at session end."
+}
