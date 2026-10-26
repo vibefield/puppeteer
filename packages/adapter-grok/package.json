@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-grok",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Grok adapter for Puppeteer: native TUI, shared leader lifecycle, and ACP control composition.",
   "license": "MIT",

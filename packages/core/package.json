@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Core contracts for the puppeteer agent runtime: events, session state reducer, adapter interfaces. Zero I/O.",
   "license": "MIT",
