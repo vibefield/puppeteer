@@ -118,15 +118,16 @@ describe('builtin agents and a resume that carries a model selection', () => {
     await mkdir(cwd);
     await mkdir(join(configDir, 'projects', 'work'), { recursive: true });
     await writeFile(join(configDir, 'projects', 'work', `${sessionId}.jsonl`), '');
-    // The launch preflight reads the real 2.1.283 help: --resume, --model and --effort all advertised.
+    // The launch preflight reads the real help of the Claude Code the adapter is pinned to (2.1.308 since #38):
+    // --resume, --model and --effort all advertised.
     const help = await readFile(
-      fileURLToPath(new URL('../../adapter-claude/src/launch/__fixtures__/claude-help-2.1.283.txt', import.meta.url)),
+      fileURLToPath(new URL('../../adapter-claude/src/launch/__fixtures__/claude-help-2.1.308.txt', import.meta.url)),
       'utf8',
     );
     const claude = join(root, 'claude.mjs');
     await writeFile(
       claude,
-      `process.stdout.write(process.argv[2] === '--version' ? '2.1.283 (Claude Code)\\n' : ${JSON.stringify(help)});\n`,
+      `process.stdout.write(process.argv[2] === '--version' ? '2.1.308 (Claude Code)\\n' : ${JSON.stringify(help)});\n`,
     );
     const { runtime, discover, launches } = compose(
       { claude },
