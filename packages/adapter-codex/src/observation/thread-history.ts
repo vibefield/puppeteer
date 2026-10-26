@@ -141,9 +141,7 @@ export class CodexThreadHistory {
     };
     if (this.current === 'paginated') {
       try {
-        const resumed = rec(
-          await this.client.request('thread/resume', { threadId, excludeTurns: true, ...selection }),
-        );
+        const resumed = rec(await this.client.request('thread/resume', { threadId, excludeTurns: true, ...selection }));
         this.resumeHydrated = false;
         return resumed;
       } catch (error) {
