@@ -489,6 +489,11 @@ function preparationFailure(
   };
 }
 
+/** A provider's private options as a record a resume's model choice can be laid over. */
+function isOptionRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * What an error a provider threw while preparing or creating a session says in
  * the failure a caller reads. Only the adapter's own refusal carries words: its
@@ -809,6 +814,13 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const defaultedSpawns = new WeakSet<CreateAgentSessionOptions>();
 
   /**
+   * Resume requests whose `agentOptions` the runtime restored from the
+   * continuation, marked by `resume`: a model selection lays its translation
+   * over those, where a caller's own native options refuse it.
+   */
+  const restoredResumes = new WeakSet<CreateAgentSessionOptions>();
+
+  /**
    * The account a creation runs under: a named profile, a named set's, the
    * default set's, or none. `setId` names the set when a named set resolved to
    * no account — the native set, the provider's own root.
@@ -924,12 +936,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     profile: AgentProfile | undefined,
   ): Promise<unknown> {
     if (request.modelSelection === undefined) return request.agentOptions;
-    if (request.resume !== undefined)
-      throw new AgentLaunchRefusedError('INVALID_MODEL_SELECTION', 'Model selections apply to new sessions only.');
-    if (request.agentOptions !== undefined)
+    const restored = restoredResumes.has(request) ? request.agentOptions : undefined;
+    if (request.agentOptions !== undefined && restored === undefined)
       throw new AgentLaunchRefusedError(
         'INVALID_MODEL_SELECTION',
         'Choose either a model selection or provider-native launch options.',
+      );
+    // A resume starts at a selection only where the adapter's resume takes the
+    // options it translates to; anywhere else it would resume without it.
+    if (request.resume !== undefined && provider.models && provider.models.provider.resumeSelection !== true)
+      throw new AgentLaunchRefusedError(
+        'INVALID_MODEL_SELECTION',
+        `${provider.descriptor.label} cannot start a resumed session at a model selection; resume without one.`,
       );
     const parsed = AgentModelSelectionSchema.safeParse(request.modelSelection);
     if (!parsed.success)
@@ -937,7 +955,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     const selection = parsed.data;
     const result = await readModelCatalog(provider, { cwd, ...(profile ? { profile } : {}) });
     if (result.status !== 'available') throw new AgentLaunchRefusedError('MODEL_DISCOVERY_UNAVAILABLE', result.message);
-    return provider.models!.toAgentOptions(validateModelSelection(result.catalog, selection), result.catalog);
+    const selected = provider.models!.toAgentOptions(validateModelSelection(result.catalog, selection), result.catalog);
+    if (restored === undefined) return selected;
+    // Both are the provider's own option records: the continuation's account
+    // root and implementation, then the model choice over them.
+    if (!isOptionRecord(restored) || !isOptionRecord(selected))
+      throw new AgentLaunchRefusedError(
+        'INVALID_MODEL_SELECTION',
+        `${provider.descriptor.label} cannot start a resumed session at a model selection; resume without one.`,
+      );
+    return { ...restored, ...selected };
   }
 
   /**
@@ -2566,6 +2593,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // AGENT_PROFILE_NOT_FOUND when the id is unknown or foreign.
         profile: request.profile,
         ingress: request.ingress,
+        // Discovered again and validated in createSession, in the account and
+        // workspace the resume resolves to, as a launch is.
+        ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
       };
       if (!provider) return spawnAgent(spawnRequest);
       if (descriptor && !descriptor.resume) {
@@ -2579,10 +2609,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
       const cwd = request.cwd ?? options.defaultCwd;
       const agentOptions = provider.launch?.continuation?.restore(continuation.state, { cwd });
-      const resumed = await spawnAgent({
+      const resumeRequest: CreateAgentSessionOptions = {
         ...spawnRequest,
         ...(agentOptions === undefined ? {} : { agentOptions }),
-      });
+      };
+      if (agentOptions !== undefined) restoredResumes.add(resumeRequest);
+      const resumed = await spawnAgent(resumeRequest);
       if ('error' in resumed) return resumed;
       const managed = sessionsByRunId.get(resumed.runtimeRunId);
       if (managed) {

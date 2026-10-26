@@ -56,7 +56,7 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   appServerTransport?: AppServerTransportKind | undefined;
   /** Choose which thread to attach to when several appear (passive observer only). */
   selectThread?: ((threadId: string) => boolean) | undefined;
-  /** Model id applied when starting a fresh thread. */
+  /** Model id applied when starting a fresh thread or resuming one by id. */
   model?: string | undefined;
   /** Model-specific reasoning effort; native configuration remains authoritative when omitted. */
   effort?: string | undefined;
@@ -152,7 +152,11 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
       ...(opts.resumeInvocation
         ? {}
         : opts.resume
-          ? { threadId: opts.resume }
+          ? {
+              threadId: opts.resume,
+              // The TUI's own `resume --remote` cannot set them on a held thread (C7).
+              ...(opts.model || opts.effort ? { resumeOverrides: { model: opts.model, effort: opts.effort } } : {}),
+            }
           : {
               start: {
                 cwd: opts.cwd,

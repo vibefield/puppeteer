@@ -34,7 +34,8 @@ export function decodeClaudeModels(value: unknown): AgentModelChoice[] {
 export function createClaudeModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createClaudeProfileService(options);
   return defineModelService({
-    provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch' },
+    // A resume is `--resume <id>` with the launch's --model and --effort ("for the current session", 2.1.283 help).
+    provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         { ...(options.env ?? process.env), ...(options.home ? { HOME: options.home } : {}) },

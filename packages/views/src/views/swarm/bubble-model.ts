@@ -153,6 +153,8 @@ export interface BubbleModelInput {
    * decides, so a host rebuilds this one model as the quiet runs out. A
    * terminal's row only: an agent's row ignores it. */
   opening?: { sinceMs: number; on?: string | undefined } | undefined;
+  /** The crowd's shared fit (`fit.ts`, SWF): the radius is the base size times this. 1, or absent, is the base. */
+  scale?: number | undefined;
 }
 
 const TERMINAL_NAME: TextStyle = { size: 11, weight: 800, letterSpacing: -0.035 };
@@ -171,6 +173,21 @@ const PROJECT_ABOVE: TextStyle = { size: 7.5, weight: 800, letterSpacing: 0.02 }
  * set lighter than a name and a size under it to hold as many of its words as
  * the chord allows. */
 const STATE_LINE: TextStyle = { size: 9, weight: 600, letterSpacing: -0.02 };
+
+/**
+ * The one line a body keeps beside its name on the copy ladder's middle rung
+ * (SWF, James 2026-10-13: "the words step down as bodies shrink: full → name +
+ * tool → name only"; `body-layout.ts`), the first of these the body has:
+ *
+ * - the state line, the "tool" of "name + tool": what a blocked body waits on
+ *   (Bash · …, ? Should …, ! rate limited), or the reply an unread one brought
+ *   (Done — …);
+ * - else the model line: an idle or working agent's model and effort;
+ * - else a terminal's word: running, or empty (opening, for a birth).
+ *
+ * The name is kept on every rung down to the floor: it is who the body is.
+ */
+export const COPY_ONE_LINE: readonly string[] = ['state', 'model', 'command', 'sub'];
 
 /**
  * The project's folder before its name, in the project's colour: the one place
@@ -292,8 +309,27 @@ function contextPercent(agent: AgentView): number | undefined {
   return usedPercent === undefined || !Number.isFinite(usedPercent) ? undefined : Math.floor(usedPercent);
 }
 
+/**
+ * A body's size with room to spare, before the crowd's fit scales it: a
+ * terminal at the idle size, a working agent from the working size for the
+ * least of the working sessions' estimated USD to the largest size for the
+ * most, the rest by status.
+ */
+export function baseRadius(
+  agent: AgentView,
+  parameters: Pick<SwarmParameters, 'radiusIdle' | 'radiusWorking' | 'radiusWorkingMax' | 'radiusBlocked'>,
+  workingShare = 0,
+): number {
+  if (agent.kind !== 'agent') return radiusForStatus(parameters, 'idle');
+  if (agent.status !== 'working') return radiusForStatus(parameters, agent.status);
+  const share = Math.max(0, Math.min(1, workingShare));
+  return parameters.radiusWorking + (parameters.radiusWorkingMax - parameters.radiusWorking) * share;
+}
+
 export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   const { agent, parameters, nowMs } = input;
+  /** The crowd's shared fit (`fit.ts`): every body is its base size times this. */
+  const scale = input.scale ?? 1;
   const project = projectName(agent);
   const percent = contextPercent(agent);
   const contextLabel = percent === undefined ? 'CTX:--%' : `CTX:${percent.toString().padStart(2, '0')}%`;
@@ -380,7 +416,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       ...base,
       state: running ? 'terminal-running' : 'terminal-empty',
       appearance: 'idle',
-      radius: radiusForStatus(parameters, 'idle'),
+      radius: baseRadius(agent, parameters) * scale,
       copy,
       copyMaxWidthRatio: 0.9,
       hollow: true,
@@ -399,13 +435,8 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   }
 
   const appearance: AgentStatus = agent.status;
-  // A working body grows with its share of the working sessions' estimated USD, from
-  // the working size for the least to the largest size for the most.
-  const share = Math.max(0, Math.min(1, input.workingShare ?? 0));
-  const radius =
-    appearance === 'working'
-      ? parameters.radiusWorking + (parameters.radiusWorkingMax - parameters.radiusWorking) * share
-      : radiusForStatus(parameters, appearance);
+  // A working body grows with its share of the working sessions' estimated USD, and the crowd's fit scales it.
+  const radius = baseRadius(agent, parameters, input.workingShare) * scale;
   const model = modelWord(agent);
   const effort = effortLines(agent);
   const ring = percent === undefined ? undefined : { percent: Math.max(0, Math.min(100, percent)), hot: percent >= 80 };

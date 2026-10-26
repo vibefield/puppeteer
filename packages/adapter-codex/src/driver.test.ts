@@ -221,6 +221,46 @@ describe('createCodexSession', () => {
     await session.dispose();
   });
 
+  it('resumes a thread at the chosen model and effort, and asks nothing of a resume without them', async () => {
+    const s = scriptedAppServer();
+    const session = await createCodexSession({
+      cwd: '/x',
+      transport: s.transport,
+      resume: THREAD,
+      model: 'gpt-5.6-sol',
+      effort: 'high',
+    });
+    // #38's resume asks for no turns (`excludeTurns`); the selection rides the same request
+    expect(s.sent.find((message) => message.method === 'thread/resume')?.params).toEqual({
+      threadId: THREAD,
+      excludeTurns: true,
+      model: 'gpt-5.6-sol',
+      config: { model_reasoning_effort: 'high' },
+    });
+    await session.dispose();
+    const plain = scriptedAppServer();
+    const inherited = await createCodexSession({ cwd: '/x', transport: plain.transport, resume: THREAD });
+    expect(plain.sent.find((message) => message.method === 'thread/resume')?.params).toEqual({
+      threadId: THREAD,
+      excludeTurns: true,
+    });
+    await inherited.dispose();
+    // a server that refuses `excludeTurns` gets the full resume, and the selection with it
+    const gated = scriptedAppServer({ gatedHistory: true });
+    const fallback = await createCodexSession({
+      cwd: '/x',
+      transport: gated.transport,
+      resume: THREAD,
+      model: 'gpt-5.6-sol',
+      effort: 'high',
+    });
+    expect(gated.sent.filter((message) => message.method === 'thread/resume').map((m) => m.params)).toEqual([
+      { threadId: THREAD, excludeTurns: true, model: 'gpt-5.6-sol', config: { model_reasoning_effort: 'high' } },
+      { threadId: THREAD, model: 'gpt-5.6-sol', config: { model_reasoning_effort: 'high' } },
+    ]);
+    await fallback.dispose();
+  });
+
   it('submitPrompt drives a turn and reduces to a coherent state', async () => {
     const s = scriptedAppServer();
     const session = await createCodexSession({ cwd: '/x', transport: s.transport });

@@ -43,7 +43,7 @@ export interface CreateCodexSessionOptions {
   /** Transport override (tests). Defaults to spawning `codex app-server`. */
   transport?: Transport | undefined;
   executable?: string | undefined;
-  /** Model id applied when starting a fresh thread. */
+  /** Model id applied when starting a fresh thread or resuming one. */
   model?: string | undefined;
   /** Per-thread reasoning effort; omission inherits the native configuration. */
   effort?: string | undefined;
@@ -187,7 +187,10 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
     // A resume here reads only the thread's settings, never its turns, so it asks for none: the
     // full hydration is deprecated, and observation/thread-history.ts keeps it for older servers.
     const startResult = options.resume
-      ? await new CodexThreadHistory(client).resume(options.resume)
+      ? await new CodexThreadHistory(client).resume(options.resume, {
+          model: options.model,
+          effort: options.effort,
+        })
       : await client.request('thread/start', {
           cwd: options.cwd,
           model: options.model,

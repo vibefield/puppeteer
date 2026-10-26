@@ -43,6 +43,11 @@ export type AgentModelChoice = z.infer<typeof AgentModelChoiceSchema>;
 export const AgentModelProviderSchema = z.strictObject({
   ...AgentProviderDescriptorSchema.shape,
   discovery: z.enum(['prelaunch', 'session']),
+  /**
+   * True when the agent's native resume takes the options a selection translates to, so a resumed session starts at
+   * it. Absent or false: a resume that carries a selection is refused, never resumed without it.
+   */
+  resumeSelection: z.boolean().optional(),
 });
 export type AgentModelProvider = z.infer<typeof AgentModelProviderSchema>;
 

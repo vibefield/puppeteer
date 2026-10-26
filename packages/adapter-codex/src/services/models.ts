@@ -46,7 +46,9 @@ export function decodeCodexModels(value: unknown): AgentModelChoice[] {
 export function createCodexModelService(options: NativeModelProbeOptions = {}): AgentModelService {
   const profiles = createCodexProfileService(options);
   return defineModelService({
-    provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch' },
+    // The observer's first `thread/resume` carries the model and effort, which the app-server applies to the thread it
+    // loads; the TUI that joins adopts them (draft/artifacts/resume-selection-2026-10-12, codex-cli 0.162.1).
+    provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch', resumeSelection: true },
     async discover(context) {
       const env = nativeModelEnvironment(
         { ...(options.env ?? process.env), ...(options.home ? { HOME: options.home } : {}) },

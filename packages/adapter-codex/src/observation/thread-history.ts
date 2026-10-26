@@ -52,6 +52,12 @@ export interface CodexThreadHistoryRead {
   readonly incomplete?: { readonly reason: string } | undefined;
 }
 
+/** The model and effort a resume starts at, in place of the thread's own. */
+export interface CodexResumeOverrides {
+  readonly model?: string | undefined;
+  readonly effort?: string | undefined;
+}
+
 const HISTORY_PAGE = { itemsView: 'full', sortDirection: 'asc' } as const;
 
 /** How far one history read walks before it reports the rest missing. */
@@ -119,11 +125,23 @@ export class CodexThreadHistory {
    * Open the thread's live stream without hydrating its history. A server that refuses
    * `excludeTurns` gets the deprecated full resume; every other error is thrown to the caller, whose
    * attach loop already retries a thread that has no rollout yet.
+   *
+   * `overrides` is the model and effort the resume starts at. Both requests carry them: the
+   * app-server applies a resume's overrides when it loads a thread it does not yet hold, and a TUI
+   * that joins it later adopts the thread's settings, never its own (C7). Omitted, the request is
+   * the thread id alone.
    */
-  async resume(threadId: string): Promise<Record<string, unknown> | undefined> {
+  async resume(
+    threadId: string,
+    overrides?: CodexResumeOverrides | undefined,
+  ): Promise<Record<string, unknown> | undefined> {
+    const selection = {
+      ...(overrides?.model ? { model: overrides.model } : {}),
+      ...(overrides?.effort ? { config: { model_reasoning_effort: overrides.effort } } : {}),
+    };
     if (this.current === 'paginated') {
       try {
-        const resumed = rec(await this.client.request('thread/resume', { threadId, excludeTurns: true }));
+        const resumed = rec(await this.client.request('thread/resume', { threadId, excludeTurns: true, ...selection }));
         this.resumeHydrated = false;
         return resumed;
       } catch (error) {
@@ -131,7 +149,7 @@ export class CodexThreadHistory {
         this.current = 'full-hydration';
       }
     }
-    const resumed = rec(await this.client.request('thread/resume', { threadId }));
+    const resumed = rec(await this.client.request('thread/resume', { threadId, ...selection }));
     this.resumeHydrated = true;
     return resumed;
   }

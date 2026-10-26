@@ -8,9 +8,9 @@
   "locale": "en-US",
   "animations": "per image",
   "environment": {
-    "electron": "43.1.0",
-    "chrome": "150.0.7871.47",
-    "node": "24.18.0",
+    "electron": "43.7.9",
+    "chrome": "150.0.7871.250",
+    "node": "24.21.0",
     "platform": "darwin",
     "arch": "arm64",
     "os": "25.5.0"
@@ -382,7 +382,7 @@
       "n": 20,
       "animations": "on",
       "stage": "680×170",
-      "sha256": "495ee001d8f48190a4f70523374362269c106c3131dc13eeab8246ed68b8d0f6"
+      "sha256": "5b5eef3f8265a9dc155d8a4b56493d69df8d42b196cb210754bc1baf5b11759a"
     },
     {
       "file": "swarm/dark-default-n1.png",
@@ -402,7 +402,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1180×252",
-      "sha256": "52aceffe9615a3b5239aa225106376875dfd1e05f0dcc59a959e33e5f7a2cbea"
+      "sha256": "837a97dafc0c6931f07f64d8039330a6581bc01a27ddb425863fb993c85321a9"
     },
     {
       "file": "swarm/dark-wide-n1.png",
@@ -442,7 +442,7 @@
       "n": 20,
       "animations": "on",
       "stage": "680×170",
-      "sha256": "fcf5001fce9574435f9b2298618d82c2880a91172928ab9a9acd1cdfb6acd093"
+      "sha256": "c113c6e9bb9f24158eb34de7cb5e4e04ea09fc3426747426fde9516e63b51639"
     },
     {
       "file": "swarm/light-default-n1.png",
@@ -462,7 +462,7 @@
       "n": 20,
       "animations": "on",
       "stage": "1180×252",
-      "sha256": "4a7859d65bb3c127a01ed603274319192c5692f9efd8c00b82a1965ff429cbe7"
+      "sha256": "ed4bfd8d600d8e8f58faa1c71cb169a8426b11ef9112900cdcc6b5bb5da63000"
     },
     {
       "file": "swarm/light-wide-n1.png",

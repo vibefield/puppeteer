@@ -11,6 +11,7 @@ import {
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { encodeKimiWorkDirKey, kimiMainWirePath } from './observation/session-store.js';
 import { buildKimiTuiArgs, createKimiTuiSession, prepareKimiTuiSession } from './driver.js';
+import { createKimiModelService } from './services/models.js';
 
 const roots: string[] = [];
 
@@ -41,6 +42,17 @@ describe('Kimi native TUI session', () => {
     ]);
     expect(() => buildKimiTuiArgs({ resume: 'session-1', agent: 'Explore' })).toThrow(/cannot combine/);
     expect(() => buildKimiTuiArgs({ agent: 'Explore', agentFile: 'agent.md' })).toThrow(/not both/);
+  });
+
+  it('resumes a session at a model selection: --model rides beside --session', () => {
+    // `kimi --help` 2.0.2: -m is "for this invocation"; only --agent/--agent-file refuse --session.
+    expect(createKimiModelService().provider.resumeSelection).toBe(true);
+    expect(buildKimiTuiArgs({ resume: 'session-1', model: 'alias' })).toEqual([
+      '--model',
+      'alias',
+      '--session',
+      'session-1',
+    ]);
   });
 
   it('binds a lazy native session and confirms injection from the durable echo', async () => {

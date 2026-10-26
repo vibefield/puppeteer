@@ -22,6 +22,7 @@
 import Matter from 'matter-js';
 import { describe, expect, it, vi } from 'vitest';
 import { SWARM_PARAMETER_GROUPS } from '../swarm-parameters.js';
+import { CHROME_OBSTACLE_PADDING, PHYSICAL_GAP } from './spawn-clamp.js';
 import {
   FRAME_COUNT_INDEX,
   FRAME_GENERATION_INDEX,
@@ -31,6 +32,8 @@ import {
   frameFloatsFor,
   PHYSICS_HZ_FLOOR,
   type SwarmAgentSpec,
+  type SwarmBounds,
+  type SwarmObstacleRect,
   SwarmPhysics,
   type SwarmPhysicsParameters,
 } from './world.js';
@@ -343,6 +346,115 @@ describe('membership and the id table', () => {
     expect(frame[2]).toBeCloseTo(640, 6);
     expect(frame[3]).toBeCloseTo(300, 6);
     physics.dispose();
+  });
+});
+
+describe('spawns keep clear of the chrome (SWF)', () => {
+  /** VibeField's default stage: its head is a full-width obstacle, 56 tall, which the physics pads by 7. */
+  const FIELD = { width: 1164, height: 288 };
+  const HEAD = { x: 0, y: 0, width: FIELD.width, height: 56 };
+
+  /** How far a body's collision disc stands clear of the padded head: negative is inside it. */
+  function clearOfHead(x: number, y: number, radius: number): number {
+    const dx = Math.max(0, Math.abs(x - FIELD.width / 2) - (HEAD.width / 2 + CHROME_OBSTACLE_PADDING));
+    const dy = Math.max(0, y - (HEAD.height + CHROME_OBSTACLE_PADDING));
+    return Math.hypot(dx, dy) - (radius + PHYSICAL_GAP);
+  }
+
+  it('lands no spawn in the head band while free space exists', () => {
+    // A crowd fitted to the stage (twenty bodies at 40 cover about half the free area), spawned one at a time into
+    // the bodies already standing, with no step between them: every placement is the spawn search's alone.
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds: FIELD,
+      obstacles: [HEAD],
+      random: sequence(11),
+    });
+    const agents: SwarmAgentSpec[] = [];
+    for (let index = 0; index < 20; index += 1) {
+      agents.push({ id: `b${index}`, radius: 40 });
+      physics.syncAgents(agents);
+      const frame = positions(physics);
+      const at = FRAME_HEADER_FLOATS + index * FRAME_STRIDE;
+      expect(clearOfHead(frame[at]!, frame[at + 1]!, frame[at + 2]!), `spawn ${index}`).toBeGreaterThanOrEqual(0);
+    }
+    physics.dispose();
+  });
+
+  it('moves the first body off the centre when an obstacle covers it', () => {
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds: { width: 800, height: 400 },
+      obstacles: [{ x: 350, y: 150, width: 100, height: 100 }],
+      agents: [{ id: 'a', radius: 40 }],
+      random: sequence(3),
+    });
+    const frame = positions(physics);
+    const x = frame[FRAME_HEADER_FLOATS]!;
+    const y = frame[FRAME_HEADER_FLOATS + 1]!;
+    const dx = Math.max(0, Math.abs(x - 400) - (50 + CHROME_OBSTACLE_PADDING));
+    const dy = Math.max(0, Math.abs(y - 200) - (50 + CHROME_OBSTACLE_PADDING));
+    expect(Math.hypot(dx, dy)).toBeGreaterThanOrEqual(40 + PHYSICAL_GAP);
+    physics.dispose();
+  });
+
+  it('still opens on the centre when nothing covers it, drawing no random number for it', () => {
+    const random = vi.fn(sequence(5));
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds: { width: 800, height: 400 },
+      obstacles: [{ x: 13, y: 11, width: 46, height: 383 }],
+      agents: [{ id: 'a', radius: 50 }],
+      random,
+    });
+    const frame = positions(physics);
+    expect(frame[FRAME_HEADER_FLOATS]).toBeCloseTo(400, 6);
+    expect(frame[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(200, 6);
+    expect(random).not.toHaveBeenCalled();
+    physics.dispose();
+  });
+});
+
+describe('the centre’s pull is radial, whatever the field’s shape', () => {
+  /** VibeField's stage with the deck up on a 1712-wide window: its head is a full-width obstacle, 56 tall. */
+  const WIDE = { width: 1712, height: 393 };
+  const HEAD = { x: 0, y: 0, width: WIDE.width, height: 56 };
+
+  /** A lone body set down `from` px off the centre along `axis`: its offset from the centre, frame by frame, for 1 s. */
+  function home(bounds: SwarmBounds, obstacles: SwarmObstacleRect[], axis: 'x' | 'y', from: number): number[] {
+    const centre = { x: bounds.width / 2, y: bounds.height / 2 };
+    const spawnHint = axis === 'x' ? { x: centre.x + from, y: centre.y } : { x: centre.x, y: centre.y + from };
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds,
+      obstacles,
+      agents: [{ id: 'a', radius: 50, spawnHint }],
+      random: sequence(1),
+    });
+    let now = 0;
+    physics.seed(now);
+    const offsets: number[] = [];
+    for (let index = 0; index < 60; index += 1) {
+      now += 1000 / 60;
+      physics.advance(now);
+      offsets.push(positions(physics)[FRAME_HEADER_FLOATS + (axis === 'x' ? 0 : 1)]! - centre[axis]);
+    }
+    physics.dispose();
+    return offsets;
+  }
+
+  it('brings a body home sideways in a short, wide field as fast as in a square one (James: "i\'ll go with A")', () => {
+    const wide = home(WIDE, [HEAD], 'x', 300);
+    const square = home({ width: 800, height: 800 }, [], 'x', 300);
+    wide.forEach((offset, index) => expect(offset, `frame ${index}`).toBeCloseTo(square[index]!, 3));
+    // The defaults' radial rate: 1/e of the way home in about 0.57 s.
+    expect(wide.at(-1)!).toBeLessThan(300 / Math.E);
+  });
+
+  it('pulls along the field’s short side exactly as hard as along its long side', () => {
+    const sideways = home(WIDE, [HEAD], 'x', 40);
+    const down = home(WIDE, [HEAD], 'y', 40);
+    sideways.forEach((offset, index) => expect(offset, `frame ${index}`).toBeCloseTo(down[index]!, 3));
   });
 });
 
