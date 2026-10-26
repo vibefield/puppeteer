@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-opencode",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "OpenCode adapter for Puppeteer: private serve backend, HTTP/SSE observation and control, and exact-session native TUI attach.",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-claude",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Claude Code native adapter: hook registry, loopback hook bridge, event normalizer, settings generation.",
   "license": "MIT",

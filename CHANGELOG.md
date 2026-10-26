@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.3](https://github.com/vibefield/puppeteer/compare/v0.2.2...v0.2.3) (2026-10-26)
+
+
+### Features
+
+* **adapter-codex:** a resumed thread starts at the chosen model and effort ([0e53080](https://github.com/vibefield/puppeteer/commit/0e530809418622eb084c07eb40ed435107b86bd1))
+* **adapters:** declare which native resumes take a model selection ([0e53080](https://github.com/vibefield/puppeteer/commit/0e530809418622eb084c07eb40ed435107b86bd1))
+* **runtime:** a resume starts at the session's own model selection ([0e53080](https://github.com/vibefield/puppeteer/commit/0e530809418622eb084c07eb40ed435107b86bd1))
+* the dev line's content on the public line — PJ-6, SWF and d3e82aa..fa0d6cf ([#43](https://github.com/vibefield/puppeteer/issues/43)) ([0e53080](https://github.com/vibefield/puppeteer/commit/0e530809418622eb084c07eb40ed435107b86bd1))
+* **views:** the swarm fits its field — spawns keep clear of the chrome, the words step down on three rungs, one shared scale fits the crowd, the centre's pull is radial, bodies shrink together (the SWF series, 10 commits) ([0e53080](https://github.com/vibefield/puppeteer/commit/0e530809418622eb084c07eb40ed435107b86bd1))
+
+
+### Bug Fixes
+
+* **deps:** zod 4.6.7 under the published packages for GHSA-mrhx-c7xc-m3w5, and the dev toolchain's 15 alerts ([#44](https://github.com/vibefield/puppeteer/issues/44)) ([7ec454d](https://github.com/vibefield/puppeteer/commit/7ec454d8a950ef379ee1415eccda62d01bd9163a))
+
 ## [0.2.2](https://github.com/vibefield/puppeteer/compare/v0.2.1...v0.2.2) (2026-10-26)
 
 
