@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "@vibefield/puppeteer-core": "workspace:*",
-    "zod": "^4.4.3",
+    "zod": "^4.6.6",
     "@vibefield/puppeteer-native-observation": "workspace:*"
   },
   "devDependencies": {
