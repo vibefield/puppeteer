@@ -1,3 +1,4 @@
+import type { TerminalKey } from '@vibefield/puppeteer-core';
 import type { AgentVisualStatus } from '../monitor/agent-status.js';
 import { folderName } from '../monitor/folder-name.js';
 
@@ -20,8 +21,11 @@ export interface PaneFrameModel {
   readout?: { model: string; effort?: string; configured: boolean };
   /** The share of the context window in use; absent while the provider says nothing. */
   context?: { percent: number; hot: boolean };
-  /** Stop while the agent runs, resume once its process has ended; a shell has no verb. */
-  verb?: { kind: 'stop'; elapsed?: string } | { kind: 'resume' };
+  /**
+   * Stop while the agent runs, resume once its process has ended; a shell has
+   * no verb. `key` is the stop's key as its title names it.
+   */
+  verb?: { kind: 'stop'; elapsed?: string; key?: string } | { kind: 'resume' };
 }
 
 /** The terminal facts the frame reads: Ghosttea's summary, narrowed. */
@@ -51,6 +55,20 @@ export interface PaneFrameAgent {
   model?: string | undefined;
   effort?: { value: string; configured: boolean } | undefined;
   contextPercent?: number | undefined;
+  /**
+   * The key the host's stop verb presses, in core's words (`TerminalKey`): the
+   * agent's own turn stop as its adapter names it, or the host's own choice
+   * while the adapter names none. Absent: the stop presses no key (the agent's
+   * own native control), and the title names none.
+   */
+  stopKey?: string | undefined;
+}
+
+const STOP_KEY_GLYPHS: Readonly<Record<TerminalKey, string>> = { escape: '⎋', 'ctrl-c': '⌃C' };
+
+/** A stop key as the title names it: its glyph, or a key this build has no glyph for by its own word. */
+export function stopKeyLabel(key: string): string {
+  return Object.hasOwn(STOP_KEY_GLYPHS, key) ? STOP_KEY_GLYPHS[key as TerminalKey] : key;
 }
 
 /** Past this share the meter and figure darken; the record keeps them grey, never orange. */
@@ -106,6 +124,7 @@ export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowM
     model.context = { percent, hot: percent >= CONTEXT_HOT_PERCENT };
   }
 
+  const key = agent.stopKey ? { key: stopKeyLabel(agent.stopKey) } : {};
   if (session.exited || !agent.alive) {
     model.verb = { kind: 'resume' };
   } else if (agent.status === 'working') {
@@ -113,9 +132,10 @@ export function paneFrameModel({ session, agent, remoteDevice, fallbackCwd, nowM
     model.verb = {
       kind: 'stop',
       ...(Number.isFinite(since) ? { elapsed: formatTurnElapsed(nowMs - since) } : {}),
+      ...key,
     };
   } else {
-    model.verb = { kind: 'stop' };
+    model.verb = { kind: 'stop', ...key };
   }
   return model;
 }

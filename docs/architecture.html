@@ -2386,6 +2386,7 @@ interface AgentProviderLaunchService {
   };
   readonly services: {
     readonly prompt: AgentPromptService;
+    readonly turnStop?: AgentTurnStopService;   <span class="comment">// absent until the adapter has an evidenced stop</span>
   };
   dispose(): Promise&lt;void&gt;;
 }</code></pre>
@@ -2411,6 +2412,14 @@ interface AgentProviderLaunchService {
                 <p>
                   <span class="mono">submit({ text, mode?, confirmationTimeoutMs? })</span> returns
                   <span class="mono">confirmed | rejected | uncertain</span>.
+                </p>
+              </article>
+              <article class="card">
+                <h3>AgentTurnStopService</h3>
+                <p>
+                  <span class="mono">stop</span> names what ends a turn in the agent's own TUI without quitting it (a
+                  key, or the agent's native control); <span class="mono">submit()</span> sends it and answers whether
+                  it was delivered.
                 </p>
               </article>
             </div>

@@ -12,11 +12,12 @@ import {
 /**
  * The verbs a host lends the frame. Each is optional: a host that cannot stop
  * a turn does not get a stop verb drawn for it, because a button that does
- * nothing is chrome that lies. `stop` answers whether the interrupt was
- * DELIVERED (the square goes hollow on the press and solid again on a refusal
- * or when the run leaves `working`); `resume` continues an exited run and the
- * host mounts what comes back where it likes; `zoom` toggles the pane's
- * fullscreen the way the host's own binding would.
+ * nothing is chrome that lies. `stop` sends the agent's own turn stop (the
+ * title names its key, `PaneFrameAgent.stopKey`, when it presses one) and
+ * answers whether it was DELIVERED (the square goes hollow on the press and
+ * solid again on a refusal or when the run leaves `working`); `resume`
+ * continues an exited run and the host mounts what comes back where it likes;
+ * `zoom` toggles the pane's fullscreen the way the host's own binding would.
  */
 export interface PaneFrameVerbs {
   stop?: ((sessionId: string) => Promise<{ accepted: boolean }> | { accepted: boolean } | void) | undefined;
@@ -50,6 +51,12 @@ function TetherMark() {
       <path d="M4.1 6h3.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
+}
+
+/** The stop verb's title: the turn's time when it has one, then the key the stop presses, if any. */
+function stopTitle(verb: { elapsed?: string; key?: string }): string {
+  const turn = verb.elapsed ? `Stop the turn, ${verb.elapsed} in` : 'Stop the turn';
+  return verb.key ? `${turn} ${verb.key}` : turn;
 }
 
 function ZoomMark({ zoomed }: { zoomed: boolean }) {
@@ -144,13 +151,7 @@ export function PaneFrameChrome({
               <button
                 type="button"
                 className="vf-pane-verb is-stop"
-                title={
-                  stopping
-                    ? 'Stopping the turn…'
-                    : model.verb.elapsed
-                      ? `Stop the turn, ${model.verb.elapsed} in ⌃C`
-                      : 'Stop the turn ⌃C'
-                }
+                title={stopping ? 'Stopping the turn…' : stopTitle(model.verb)}
                 aria-label={stopping ? 'Stopping the turn' : 'Stop the turn'}
                 onPointerDown={keepTerminalFocus}
                 onClick={onStop}
@@ -267,8 +268,9 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
     };
   }, [pane]);
 
-  // The square goes hollow only while there is a turn to stop; on an idle
-  // agent the interrupt still reaches its TUI, as ^C would.
+  // The square goes hollow only while there is a turn to stop. On an idle
+  // agent the stop still reaches its TUI, which is why a host sends the
+  // agent's own turn stop, the one that never quits it.
   const stop = (): void => {
     if (!verbs.stop || stopping) return;
     if (status === 'working') setStopping(true);

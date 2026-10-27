@@ -28,6 +28,10 @@ export interface TerminalSpec {
  * The capability surface an adapter needs from its host. Deliberately tiny:
  * spawn a terminal and write raw bytes to one. Everything else (transcripts,
  * app-servers, leaders, sockets) the adapter builds itself.
+ *
+ * `interrupt` is ⌃C's byte (Ghosttea encodes it `\x03`). It names no agent's
+ * stop: ⌃C clears one TUI's input and quits another. An adapter that knows the
+ * key that stops a turn in its TUI says so through its binding's `turnStop`.
  */
 export type TerminalAutomationOperation =
   { kind: 'paste'; text: string; submit: boolean } | { kind: 'text'; text: string } | { kind: 'interrupt' };

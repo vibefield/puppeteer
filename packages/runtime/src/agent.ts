@@ -7,6 +7,8 @@ import {
   type AgentMonitorHandle,
   type AgentMonitorState,
   type AgentMonitorStatus,
+  type AgentTurnStop,
+  type AgentTurnStopReceipt,
   type ObservationLevel,
   type PromptReceipt,
   type PromptSubmission,
@@ -139,6 +141,22 @@ export class Agent {
 
   submitPrompt(submission: PromptSubmission): Promise<PromptReceipt> {
     return internals(this).submitPrompt(submission);
+  }
+
+  /**
+   * The stop that ends a turn in this agent's own TUI without quitting it, as
+   * its adapter names it; undefined while the adapter names none, and then
+   * what a stop sends is the host's to decide and to say.
+   */
+  get turnStop(): AgentTurnStop | undefined {
+    return internals(this).adapter.services.turnStop?.stop;
+  }
+
+  /** Send the adapter's turn stop. An adapter that names none is refused, never given a guessed key. */
+  stopTurn(): Promise<AgentTurnStopReceipt> {
+    const service = internals(this).adapter.services.turnStop;
+    if (!service) return Promise.resolve({ accepted: false, reason: 'the adapter names no turn stop' });
+    return service.submit();
   }
 
   observeMonitor(): AgentMonitorHandle {

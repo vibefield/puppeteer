@@ -7,7 +7,7 @@
  */
 
 import type { ObservationLevel } from '../events/index.js';
-import type { AgentAdapterEventSource, AgentPromptService } from '../services/index.js';
+import type { AgentAdapterEventSource, AgentPromptService, AgentTurnStopService } from '../services/index.js';
 
 /**
  * The low-level handle every adapter returns for one live agent process/thread.
@@ -31,6 +31,12 @@ export interface AgentAdapterBinding {
   /** Explicit upper-level capabilities; commands never travel inside event payloads. */
   readonly services: {
     readonly prompt: AgentPromptService;
+    /**
+     * The stop that ends a turn in the agent's own TUI without quitting it.
+     * Absent while the adapter has no evidenced one: a host then decides what
+     * its stop sends, and names that honestly.
+     */
+    readonly turnStop?: AgentTurnStopService | undefined;
   };
   /**
    * Tear down observation/control. Process lifecycle stays with the host.

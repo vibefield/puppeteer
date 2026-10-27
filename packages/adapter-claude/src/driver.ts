@@ -51,6 +51,7 @@ import {
   type PreparedClaudeSession,
 } from './launch/prepare.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
+import { createClaudeTurnStop } from './services/turn-stop.js';
 import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './normalization/monitor.js';
@@ -982,6 +983,10 @@ function createClaudeObservation(
         },
         services: {
           prompt: { submit: (submission) => injector.submit(submission) },
+          turnStop: createClaudeTurnStop({
+            automate: (operation) => options.automate(runtimeSessionId, operation),
+            isDisposed: () => disposed,
+          }),
         },
         pollTranscript: async () => {
           const handle = await semanticAttachment;

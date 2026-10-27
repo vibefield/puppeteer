@@ -328,6 +328,25 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect((await receipt).status).toBe('confirmed');
   });
 
+  it("stops a turn with Claude's own Esc, never ⌃C, even at a permission prompt that gates injection", async () => {
+    const { session, automations, hook } = await startSession();
+    await hook('SessionStart', {});
+    await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-4' });
+    await hook('PermissionRequest', { prompt_id: 'p-4', tool_name: 'Bash', tool_input: { command: 'rm x' } });
+
+    expect(session.services.turnStop?.stop).toEqual({ kind: 'key', key: 'escape' });
+    expect(await session.services.turnStop?.submit()).toEqual({ accepted: true });
+    expect(automations).toEqual([{ kind: 'text', text: '\x1b' }]);
+
+    await session.dispose();
+    sessions = [];
+    expect(await session.services.turnStop?.submit()).toEqual({
+      accepted: false,
+      reason: 'the agent binding is disposed',
+    });
+    expect(automations).toHaveLength(1);
+  });
+
   it('publishes configured intent separately and preserves observed hook actor/version metadata', async () => {
     const { events, hook } = await startSession({
       model: 'configured-sonnet',

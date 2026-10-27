@@ -242,7 +242,7 @@ export interface PuppeteerBridge {
   onAgentSession(cb: (info: AgentSessionInfo) => void): () => void;
   onAgentRemoved(cb: (runtimeSessionId: string) => void): () => void;
   submitPrompt(opts: SubmitPromptOptions): Promise<PromptReceipt>;
-  /** Stop the agent's current turn with its own native interrupt (what ^C does in its TUI). */
+  /** Stop the agent's current turn with its adapter's turn stop (⌃C while the adapter names none). */
   interruptAgent(runtimeSessionId: string): Promise<AgentInterruptResult>;
   /** Resume an exited agent from its own continuation; the caller mounts the returned session. */
   resumeAgentSession(runtimeSessionId: string): Promise<CreateAgentSessionResult>;
