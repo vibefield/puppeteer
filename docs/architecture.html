@@ -2341,7 +2341,7 @@ interface AgentProvider {
   readonly profiles?: ProfileService;
   prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;
   attachSession?(options: AttachProviderSessionOptions): Promise&lt;AgentAdapterBinding&gt;;
-  dispose?(): void | Promise&lt;void&gt;;
+  dispose?(options?: { detach?: boolean }): void | Promise&lt;void&gt;; <span class="comment">// detach: keep what released runs use</span>
 }
 
 interface AgentProviderDescriptor {
@@ -2375,6 +2375,21 @@ interface AgentProviderLaunchService {
               <span class="mono">helperEnvironment(env)</span> composes the environment for a helper the adapter spawns
               itself (Codex's app-server, Grok's leader and controller, OpenCode's <span class="mono">serve</span>) by
               the same policy as the agent's terminal; without it a helper inherits the host process's own.
+            </div>
+
+            <div class="callout">
+              <strong>Re-attach.</strong> A host that outlives its own process re-binds a run with
+              <span class="mono">runtime.attach</span>. It hands back the continuation it kept: the provider's codec
+              restores the launch options from it, and the attached run keeps its state and implementation, so a typed
+              root or an imposter survives the restart. It also hands back the one opaque attach record the adapter
+              last reported (<span class="mono">{version, state, secret?}</span>, through
+              <span class="mono">HostIngress.onAttachRecord</span> before launch and the attach's own
+              <span class="mono">onAttachRecord</span> after), which the host keeps owner-only and never reads. An
+              adapter that cannot attach throws <span class="mono">AgentAttachRefusedError</span> with its next step
+              (<span class="mono">retry</span>, <span class="mono">respawn</span>, <span class="mono">native-log</span>
+              or <span class="mono">resume</span>), carried on the failure as <span class="mono">error.next</span>.
+              An attach's first reading of its process is replay, except a permission or question still open, which
+              it announces live once (<span class="mono">partitionAttachBootstrap</span>).
             </div>
 
             <h3>3. Adapter author: AgentAdapterBinding</h3>

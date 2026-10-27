@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  AgentAttachRefusedError,
   AgentLaunchRefusedError,
   agentEventCategory,
   agentEventType,
@@ -18,6 +19,7 @@ import {
   type AgentHost,
   type AgentProfile,
   type AgentAdapterBinding,
+  type AgentAttachRecord,
   type ObservationLevel,
   type ProfileService,
 } from '@vibefield/puppeteer-core';
@@ -28,7 +30,13 @@ import { createFileCreationRequestRegistry, type CreationRequestRegistry } from 
 import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
-import type { AgentProvider, LaunchEnvironmentRequest, ProfileRegistrySnapshot, ProfileStore } from './types.js';
+import type {
+  AgentProvider,
+  AgentProviderDisposeOptions,
+  LaunchEnvironmentRequest,
+  ProfileRegistrySnapshot,
+  ProfileStore,
+} from './types.js';
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -4229,9 +4237,204 @@ describe('stable ingress — re-attaching a run to a process that outlived the h
     expect(disposed).toBe(1);
     await runtime.dispose();
   });
+
+  it('hands an attach the continuation the host kept: the codec restores its launch options, and the attached run keeps its state and implementation', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-continuation-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-continuation-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const attachCalls: Array<Parameters<NonNullable<AgentProvider['attachSession']>>[0]> = [];
+    const restore = vi.fn((state: string | undefined) =>
+      state === undefined ? undefined : { profileRoot: (JSON.parse(state) as { profileRoot: string }).profileRoot },
+    );
+    const providerFor = (): AgentProvider => ({
+      ...fakeProvider('one', handles),
+      launch: {
+        provider: {
+          id: 'one',
+          label: 'one',
+          resume: true,
+          nativeInvocation: {
+            commands: [{ name: 'one', executable: '/opt/one' }],
+            environmentVariables: [],
+            imposter: { state: 'isolated-root' },
+          },
+        },
+        normalizeInvocation: () => ({ status: 'accepted' }),
+        continuation: {
+          capture: ({ agentOptions }) => {
+            const profileRoot = (agentOptions as { profileRoot?: string } | undefined)?.profileRoot;
+            return profileRoot === undefined ? undefined : JSON.stringify({ profileRoot });
+          },
+          restore,
+        },
+      },
+      async attachSession(options) {
+        attachCalls.push(options);
+        return standaloneSession(options.sessionId, options.runtimeSessionId);
+      },
+    });
+    const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
+    const first = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: registry(),
+    });
+    const typed = await first.createSession({
+      agent: 'one',
+      creationRequestId: 'typed-root',
+      cwd: root,
+      agentOptions: { profileRoot: '/profiles/typed' },
+    });
+    const hosted = await first.createSession({
+      agent: 'one',
+      creationRequestId: 'host-options',
+      cwd: root,
+      agentOptions: { profileRoot: '/profiles/launched' },
+    });
+    if ('error' in typed || 'error' in hosted) throw new Error('unexpected create failure');
+    expect(typed.continuation.state).toBe(JSON.stringify({ profileRoot: '/profiles/typed' }));
+    await first.dispose({ detach: true });
+
+    const second = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [providerFor()],
+      creationRegistry: registry(),
+    });
+    const request = (info: typeof typed, creationRequestId: string) => ({
+      agent: 'one',
+      creationRequestId,
+      runtimeRunId: info.runtimeRunId,
+      expectedRuntimeEpoch: info.runtimeEpoch,
+      sessionId: info.nativeSession.id,
+      terminalSessionId: info.terminalSessionId,
+      cwd: root,
+    });
+    // a continuation of another provider is refused before the provider is asked, and nothing advances
+    const foreign = await second.attach({
+      ...request(typed, 'typed-root'),
+      continuation: { ...typed.continuation, providerId: 'two' },
+    });
+    expect('error' in foreign && foreign.error.code).toBe('RUNTIME_RESTORE_FAILED');
+    expect(attachCalls).toHaveLength(0);
+
+    // the host kept the continuation (an imposter's, with a typed root): the provider is handed the launch options
+    // the codec restores, and the attached run reports the continuation it was launched with
+    const kept = { ...typed.continuation, implementation: 'imposter' as const };
+    const attached = await second.attach({ ...request(typed, 'typed-root'), continuation: kept });
+    if ('error' in attached) throw new Error(attached.error.message);
+    expect(restore).toHaveBeenCalledWith(kept.state, { cwd: root });
+    expect(attachCalls[0]?.agentOptions).toEqual({ profileRoot: '/profiles/typed' });
+    expect(attached.runtimeEpoch).toBe(2);
+    expect(attached.continuation).toEqual({
+      providerId: 'one',
+      nativeSessionId: typed.nativeSession.id,
+      implementation: 'imposter',
+      state: kept.state,
+    });
+
+    // launch options the host kept itself win over the codec's
+    restore.mockClear();
+    const withOptions = await second.attach({
+      ...request(hosted, 'host-options'),
+      agentOptions: { profileRoot: '/profiles/host' },
+      continuation: hosted.continuation,
+    });
+    if ('error' in withOptions) throw new Error(withOptions.error.message);
+    expect(restore).not.toHaveBeenCalled();
+    expect(attachCalls[1]?.agentOptions).toEqual({ profileRoot: '/profiles/host' });
+    expect(withOptions.continuation).toMatchObject({ implementation: 'native', state: hosted.continuation.state });
+    await second.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
+  });
+
+  it("hands the adapter its attach record and a channel to report a new one, and carries an attach refusal's next step", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-record-'));
+    const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-attach-record-registry-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const handed: Array<AgentAttachRecord | undefined> = [];
+    let answer: 'throw' | 'refuse' | 'attach' = 'throw';
+    const provider: AgentProvider = {
+      ...fakeProvider('one', handles),
+      async createSession(options) {
+        // reported BEFORE the process launches, through the host's ingress
+        options.ingress?.onAttachRecord?.({ version: 1, state: 'endpoint-a', secret: 'nonce-a' });
+        return standaloneSession('native-record', 'terminal-record');
+      },
+      async attachSession(options) {
+        handed.push(options.attachRecord);
+        if (answer === 'throw') throw new Error('the adapter does not say');
+        if (answer === 'refuse') throw new AgentAttachRefusedError('retry', 'the helper is still starting');
+        // the attached run's facts moved: the next restart must read these
+        options.onAttachRecord?.({ version: 1, state: 'endpoint-b', secret: 'nonce-b' });
+        return standaloneSession(options.sessionId, options.runtimeSessionId);
+      },
+    };
+    const registry = () => createFileCreationRequestRegistry({ directory: registryDirectory });
+    const first = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry() });
+    const launched: AgentAttachRecord[] = [];
+    const created = await first.createSession({
+      agent: 'one',
+      creationRequestId: 'attach-record',
+      cwd: root,
+      ingress: { onAttachRecord: (record) => launched.push(record) },
+    });
+    if ('error' in created) throw new Error(created.error.message);
+    expect(launched).toEqual([{ version: 1, state: 'endpoint-a', secret: 'nonce-a' }]);
+    await first.dispose({ detach: true });
+
+    const second = createAgentRuntime({ host, defaultCwd: root, providers: [provider], creationRegistry: registry() });
+    const reported: AgentAttachRecord[] = [];
+    const attach = () =>
+      second.attach({
+        agent: 'one',
+        creationRequestId: 'attach-record',
+        runtimeRunId: created.runtimeRunId,
+        expectedRuntimeEpoch: created.runtimeEpoch,
+        sessionId: created.nativeSession.id,
+        terminalSessionId: created.terminalSessionId,
+        cwd: root,
+        attachRecord: launched[0],
+        onAttachRecord: (record) => reported.push(record),
+      });
+    // an attach that fails without a word has no next step; one the adapter refuses carries the adapter's
+    const silent = await attach();
+    expect('error' in silent && silent.error).toMatchObject({ code: 'ATTACH_FAILED' });
+    expect('error' in silent && silent.error.next).toBeUndefined();
+    answer = 'refuse';
+    const refused = await attach();
+    expect('error' in refused && refused.error).toMatchObject({ code: 'ATTACH_FAILED', next: 'retry' });
+    expect('error' in refused && refused.error.message).toContain('the helper is still starting');
+    // neither failure advanced the claim: the retry attaches at the next epoch
+    answer = 'attach';
+    const attached = await attach();
+    if ('error' in attached) throw new Error(attached.error.message);
+    expect(attached.runtimeEpoch).toBe(2);
+    expect(handed).toEqual([launched[0], launched[0], launched[0]]);
+    expect(reported).toEqual([{ version: 1, state: 'endpoint-b', secret: 'nonce-b' }]);
+    await second.dispose();
+    await rm(root, { recursive: true, force: true });
+    await rm(registryDirectory, { recursive: true, force: true });
+  });
 });
 
 describe('dispose({ detach }) — the host leaves, the sessions stay', () => {
+  it('tells each provider whether the host leaves with its runs alive, so a provider keeps what released runs use', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-provider-detach-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const told: Array<AgentProviderDisposeOptions | undefined> = [];
+    const provider = (): AgentProvider => ({
+      ...fakeProvider('one', handles),
+      dispose: (options) => void told.push(options),
+    });
+    await createAgentRuntime({ host, defaultCwd: root, providers: [provider()] }).dispose({ detach: true });
+    await createAgentRuntime({ host, defaultCwd: root, providers: [provider()] }).dispose();
+    expect(told).toEqual([{ detach: true }, { detach: false }]);
+    await rm(root, { recursive: true, force: true });
+  });
+
   it('a plain dispose closes the run for good; a detach leaves its claim restorable', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-'));
     const registryDirectory = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-detach-registry-'));

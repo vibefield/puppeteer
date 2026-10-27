@@ -21,6 +21,7 @@ import {
   ProfileProviderSchema,
   agentEventCategory,
   agentEventType,
+  isAgentAttachRefusedError,
   isAgentEventType,
   isAgentLaunchRefusedError,
   safeParseAgentEvent,
@@ -3546,6 +3547,15 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         return sessionFailure(invalidRun, error.code, error.message);
       }
       const provisional: ManagedRun = current ?? { identity, operation: 'create', status: 'allocated' as const };
+      const continuation =
+        restore.continuation === undefined ? undefined : AgentContinuationSchema.safeParse(restore.continuation);
+      if (continuation !== undefined && (!continuation.success || continuation.data.providerId !== restore.agent)) {
+        return sessionFailure(
+          provisional,
+          'RUNTIME_RESTORE_FAILED',
+          `the continuation to restore is not a continuation of ${restore.agent}`,
+        );
+      }
       if (!options.creationRegistry) {
         return sessionFailure(
           provisional,
@@ -3581,11 +3591,16 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
 
       const provider = providers.get(restore.agent);
+      const kept = continuation !== undefined && continuation.success ? continuation.data : undefined;
       const run: ManagedRun = {
         identity: { ...identity, runtimeEpoch: restoredClaim.claim.runtimeEpoch },
         operation: restoredClaim.claim.operation,
         status: 'allocated',
         creationClaim: { ...restoredClaim.claim.ref },
+        // the run continues as it was launched: a typed root's state and an imposter's mark outlive the host that
+        // lost them, so the next continuation (and a resume of it) is the launch's, not `native` with no state
+        ...(kept?.state === undefined ? {} : { continuationState: kept.state }),
+        ...(kept === undefined ? {} : { launchImplementation: kept.implementation }),
       };
       if (current?.monitor) removeRunMonitor(current);
       runs.set(run.identity.runtimeRunId, run);
@@ -3673,6 +3688,30 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             `agent provider cannot attach to a running session: ${request.agent}`,
           );
         }
+        // The continuation the host kept is read as a resume reads it, before anything is bound: the same provider,
+        // an imposter only where the provider can launch one, and state only where it has a codec to restore it.
+        let continuation: AgentContinuation | undefined;
+        if (request.continuation !== undefined) {
+          const parsed = AgentContinuationSchema.safeParse(request.continuation);
+          if (!parsed.success) {
+            return sessionFailure(
+              provisional,
+              'RUNTIME_RESTORE_FAILED',
+              'the continuation the host kept does not parse',
+            );
+          }
+          const refusal =
+            parsed.data.providerId !== request.agent
+              ? `the continuation the host kept is not a continuation of ${request.agent}`
+              : parsed.data.implementation === 'imposter' &&
+                  !launchProvidersById.get(request.agent)?.nativeInvocation?.imposter
+                ? `agent provider cannot restore an imposter continuation: ${request.agent}`
+                : parsed.data.state !== undefined && !provider.launch?.continuation
+                  ? `agent provider cannot restore continuation state: ${request.agent}`
+                  : undefined;
+          if (refusal !== undefined) return sessionFailure(provisional, 'RUNTIME_RESTORE_FAILED', refusal);
+          continuation = parsed.data;
+        }
         let profile: AgentProfile | undefined;
         if (request.profile !== undefined) {
           // The process is already running under this account, signed out or not.
@@ -3743,6 +3782,20 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             `runtime epoch has already advanced to ${claim.runtimeEpoch}; restore from that state instead`,
           );
         }
+        // The host's own launch options win; else the codec restores them from the continuation, as a resume does.
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined && continuation !== undefined) {
+          try {
+            agentOptions = provider.launch?.continuation?.restore(continuation.state, { cwd: request.cwd });
+          } catch (error) {
+            report(error);
+            return sessionFailure(
+              provisional,
+              'RUNTIME_RESTORE_FAILED',
+              `agent provider could not restore the continuation's launch options: ${request.agent}`,
+            );
+          }
+        }
         let session: AgentAdapterBinding;
         try {
           session = await provider.attachSession({
@@ -3752,18 +3805,24 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             cwd: request.cwd,
             host: options.host,
             ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
-            agentOptions: request.agentOptions,
+            agentOptions,
             ...(profile === undefined ? {} : { profile }),
+            ...(request.attachRecord === undefined ? {} : { attachRecord: request.attachRecord }),
+            ...(request.onAttachRecord === undefined ? {} : { onAttachRecord: request.onAttachRecord }),
           });
         } catch (error) {
           report(error);
-          return sessionFailure(
+          const failure = sessionFailure(
             provisional,
             'ATTACH_FAILED',
             `agent provider could not attach to the running session: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );
+          // the adapter's word on what the host does instead, carried as it said it
+          return isAgentAttachRefusedError(error)
+            ? { ...failure, error: { ...failure.error, next: error.next } }
+            : failure;
         }
         if (session.sessionId !== request.sessionId || session.runtimeSessionId !== request.terminalSessionId) {
           await session.dispose({ release: true }).catch(report);
@@ -3800,6 +3859,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               workspace,
               attaching: true,
               ...(request.externalRefs === undefined ? {} : { externalRefs: request.externalRefs }),
+              ...(continuation === undefined ? {} : { continuation }),
             });
         if ('error' in restored) {
           // Bindings are idempotent to dispose; a failure inside the bind path
@@ -3944,7 +4004,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           report(error);
         }
       }
-      await Promise.all([...providers.values()].map((provider) => Promise.resolve(provider.dispose?.()).catch(report)));
+      // a detach released every binding: a provider keeps what the released processes still use
+      await Promise.all(
+        [...providers.values()].map((provider) => Promise.resolve(provider.dispose?.({ detach })).catch(report)),
+      );
       for (const run of runs.values()) removeRunMonitor(run);
       for (const runtimeRunId of [...terminalFailuresByRunId.keys()]) removeTerminalFailure(runtimeRunId, false);
       terminalRunInfos.clear();
