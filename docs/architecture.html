@@ -2227,7 +2227,9 @@ await runtime.dispose();</code></pre>
                   Resumes one opaque AgentContinuation. Runtime preserves only the generic native-versus-Imposter
                   identity; adapters restore their own executable, profile, store, and transport topology. A
                   modelSelection passed beside it starts the resumed session at that model, where the agent's resume
-                  can.
+                  can. A continuation marked <span class="mono">resumable: false</span> names a conversation the agent
+                  has not written yet (a provisional id, or an exact one before its first durable record): its resume
+                  cannot succeed, so a host must not end a live process for it.
                 </p>
               </article>
               <article class="api-card">
@@ -2384,6 +2386,7 @@ interface AgentProviderLaunchService {
   readonly sessionId: string;          <span class="comment">// provider-native identity</span>
   readonly runtimeSessionId: string;   <span class="comment">// host terminal routing identity</span>
   observationLevel(): ObservationLevel;
+  durableRecordSeen?(): boolean;       <span class="comment">// false: a resume by sessionId cannot succeed yet</span>
   readonly events: {
     onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
   };

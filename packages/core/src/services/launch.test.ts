@@ -31,6 +31,20 @@ describe('agent launch contracts', () => {
     ).toBe(false);
   });
 
+  it('carries a not-yet-resumable mark, and reads a continuation without one as before', () => {
+    expect(
+      AgentContinuationSchema.parse({ providerId: 'example', nativeSessionId: 'example-pending-1', resumable: false }),
+    ).toEqual({
+      providerId: 'example',
+      nativeSessionId: 'example-pending-1',
+      implementation: 'native',
+      resumable: false,
+    });
+    expect(AgentContinuationSchema.parse({ providerId: 'example', nativeSessionId: 'native-1' })).not.toHaveProperty(
+      'resumable',
+    );
+  });
+
   it('rejects duplicate descriptor routes and environment declarations', () => {
     const result = AgentLaunchProviderSchema.safeParse({
       id: 'example',

@@ -1047,6 +1047,104 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  describe('a continuation is resumable only once the adapter has seen its durable record (RA-D7)', () => {
+    /** A binding whose record the test writes: `seen` is what the adapter has read so far. */
+    function lateRecordProvider(kind: string, sessionId: string, seen: { value: boolean }) {
+      const listeners = new Set<(candidate: AdapterEventCandidate) => void>();
+      const provider: AgentProvider = {
+        descriptor: { id: kind, label: kind },
+        async createSession(): Promise<AgentAdapterBinding> {
+          return {
+            sessionId,
+            runtimeSessionId: `${kind}-runtime-1`,
+            observationLevel: () => 'native-log',
+            durableRecordSeen: () => seen.value,
+            events: {
+              onCandidate(listener) {
+                listeners.add(listener);
+                return () => listeners.delete(listener);
+              },
+            },
+            services: {
+              prompt: {
+                async submit() {
+                  return { status: 'confirmed', turnId: `${kind}-turn` };
+                },
+              },
+            },
+            async dispose() {},
+          };
+        },
+      };
+      const emit = (event: AgentEvent, fields: Partial<AgentEventEnvelope>) =>
+        listeners.forEach((listener) => listener(candidateFromEnvelope(testEnvelope(event, fields))));
+      return { provider, emit };
+    }
+
+    it('an exact id the agent has not written turns resumable with the first event read from its record', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resumable-exact-'));
+      const seen = { value: false };
+      const { provider, emit } = lateRecordProvider('late', 'late-exact-1', seen);
+      const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+      const created = await runtime.createSession({ agent: 'late' });
+      if ('error' in created) throw new Error('unexpected create failure');
+      expect(created.continuation).toEqual({
+        providerId: 'late',
+        nativeSessionId: 'late-exact-1',
+        implementation: 'native',
+        resumable: false,
+      });
+      // what the runtime knows of the run is not the record: still not resumable
+      emit({ type: 'environment:updated', currentCwd: root }, { sessionId: 'late-exact-1', source: 'runtime' });
+      expect(runtime.sessionInfo(created.terminalSessionId)?.continuation.resumable).toBe(false);
+
+      seen.value = true;
+      emit(
+        { type: 'turn:started', turnId: 'late-turn-1', prompt: 'hello' },
+        { eventId: 'late-record-1', sessionId: 'late-exact-1', nativeSessionId: 'late-exact-1' },
+      );
+      // the same id, now resumable: the mark is gone, as on a continuation written before it existed
+      expect(runtime.sessionInfo(created.terminalSessionId)?.continuation).toEqual({
+        providerId: 'late',
+        nativeSessionId: 'late-exact-1',
+        implementation: 'native',
+      });
+      expect(runtime.sessionInfo(created.terminalSessionId)?.nativeSessionRevision).toBe(1);
+      await runtime.dispose();
+    });
+
+    it('a provisional id is never resumable, and the bound id is', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resumable-provisional-'));
+      const seen = { value: false };
+      const { provider, emit } = lateRecordProvider('pending', 'pending-provisional-1', seen);
+      const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [provider] });
+      const created = await runtime.createSession({ agent: 'pending' });
+      if ('error' in created) throw new Error('unexpected create failure');
+      expect(created.continuation).toMatchObject({ nativeSessionId: 'pending-provisional-1', resumable: false });
+
+      seen.value = true;
+      emit(
+        { type: 'session:started', nativeSessionId: 'pending-native-1' },
+        { eventId: 'pending-bound', sessionId: 'pending-native-1', nativeSessionId: 'pending-native-1' },
+      );
+      expect(runtime.sessionInfo(created.terminalSessionId)?.continuation).toEqual({
+        providerId: 'pending',
+        nativeSessionId: 'pending-native-1',
+        implementation: 'native',
+      });
+      await runtime.dispose();
+    });
+
+    it('a binding that does not say carries no mark (every adapter before RA-D7)', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-resumable-silent-'));
+      const runtime = createAgentRuntime({ host, defaultCwd: root, providers: [fakeProvider('silent', new Map())] });
+      const created = await runtime.createSession({ agent: 'silent' });
+      if ('error' in created) throw new Error('unexpected create failure');
+      expect(created.continuation).not.toHaveProperty('resumable');
+      await runtime.dispose();
+    });
+  });
+
   it('drives different providers through one create/observe/control/exit surface', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-'));
     const one = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-one-'));

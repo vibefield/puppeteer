@@ -31,6 +31,7 @@ export interface CreateAntigravityTuiSessionOptions extends AgentTuiSessionOptio
 }
 export interface AntigravityTuiSession extends AgentAdapterBinding {
   sessionDirectory(): string | undefined;
+  durableRecordSeen(): boolean;
 }
 export interface PreparedAntigravityTuiSession {
   readonly sessionId: string;
@@ -199,6 +200,8 @@ export async function prepareAntigravityTuiSession(
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
+        // until it binds the id is provisional: no transcript holds it, and prepare refuses its resume
+        durableRecordSeen: () => observer.sessionId() !== undefined,
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
         services: { prompt: { submit: (submission) => prompts.submit(submission) } },
         async dispose() {

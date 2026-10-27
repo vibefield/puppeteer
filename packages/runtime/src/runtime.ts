@@ -231,6 +231,8 @@ interface ManagedRun {
   recordedNativeSessionRevision?: number | undefined;
   continuationState?: string | undefined;
   launchImplementation?: AgentContinuation['implementation'] | undefined;
+  /** The bound adapter's word on whether it has seen the conversation's durable record; absent = seen. */
+  durableRecordSeen?: (() => boolean) | undefined;
   /** Account profile this run is bound to, either selected by the caller or attributed from the launch environment. */
   profileId?: string | undefined;
   /** The profile set that account belongs to. */
@@ -1032,6 +1034,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       nativeSessionId,
       implementation: run.launchImplementation ?? 'native',
       ...(run.continuationState === undefined ? {} : { state: run.continuationState }),
+      // RA-D7: a resume of a conversation the agent has not written yet cannot succeed, and a
+      // host must not end the live process for it
+      ...(run.durableRecordSeen?.() === false ? { resumable: false } : {}),
     });
   }
 
@@ -2159,6 +2164,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     run.nativeSessionClaim = initialNativeClaim;
     run.terminalSessionId = session.runtimeSessionId;
     run.status = 'active';
+    run.durableRecordSeen = session.durableRecordSeen?.bind(session);
     const info: AgentSessionInfo = {
       provider: cloneProviderDescriptor(provider.descriptor),
       agent: provider.descriptor.id,
@@ -2288,6 +2294,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
                 ...(sourceEventRef.revisionKey === undefined ? {} : { revisionKey: sourceEventRef.revisionKey }),
               },
         );
+      }
+      // RA-D7: the adapter says it has seen the durable record before it publishes what it read
+      // there, so the continuation turns resumable with the first such event, under the same id
+      if (info.continuation.resumable === false && run.durableRecordSeen?.() !== false) {
+        info.continuation = continuationFor(provider, run.nativeSessionClaim!.value.id, run);
       }
       const previousCwd = agent.state.environment.currentCwd?.value;
       if (!isCanonicalApplicationEvent(session, envelope)) {
