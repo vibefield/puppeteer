@@ -677,6 +677,8 @@ describe('unread (L5)', () => {
         states: [idle('a', T0 + 2_000), idle('b', T0 + 4_000)],
         seenAt: seen,
       });
+      // a restart comes later than every stamp it is handed: its first fold, and any after it, find both turns ended
+      next.clock.advance(10_000);
       await next.backend.ready;
       expect(unreadIds(next)).toEqual(['a']);
       expect(Object.fromEntries(next.backend.seenAt())).toEqual({ a: T0, b: T0 + 5_000 });
@@ -690,7 +692,11 @@ describe('unread (L5)', () => {
         }),
         states: [idle('a', T0 + 2_000), idle('b', T0 + 4_000)],
       });
+      unseeded.clock.advance(10_000);
       await unseeded.backend.ready;
+      expect(unreadIds(unseeded)).toEqual([]);
+      // and keeps not marking them: first sight was after both turns ended
+      unseeded.clock.advance(10_000);
       expect(unreadIds(unseeded)).toEqual([]);
     });
 
