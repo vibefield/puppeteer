@@ -70,7 +70,11 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
    * the default unless it names its permissions.
    */
   permissionDefaults?: 'adapter' | 'configuration' | undefined;
-  /** Decide structured approval requests from the controller-owned app-server connection. Default: deny. */
+  /**
+   * Decide approval requests from the controller-owned connection, racing the
+   * person in the TUI. Without it, the TUI asks the person and the session
+   * reports the wait as a pending permission.
+   */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
   resumeInvocation?: string[] | undefined;

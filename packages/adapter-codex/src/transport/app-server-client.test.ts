@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AppServerClient, AppServerError, AppServerRequestTimeoutError, type Transport } from './app-server-client.js';
+import {
+  AppServerClient,
+  AppServerError,
+  AppServerRequestTimeoutError,
+  NO_REPLY,
+  type Transport,
+} from './app-server-client.js';
 
 interface Fake {
   transport: Transport;
@@ -93,6 +99,16 @@ describe('AppServerClient', () => {
     f.deliver({ jsonrpc: '2.0', id: 8, method: 'execApproval', params: {} });
     await tick();
     expect(f.sent.pop()).toMatchObject({ jsonrpc: '2.0', id: 8, error: { message: 'nope' } });
+  });
+
+  it('sends nothing for a server request its handler leaves to another client', async () => {
+    // Codex acts on the first reply from any connection, so an error would answer too.
+    const f = fake();
+    const c = new AppServerClient(f.transport);
+    c.onServerRequest(() => NO_REPLY);
+    f.deliver({ jsonrpc: '2.0', id: 9, method: 'item/commandExecution/requestApproval', params: {} });
+    await tick();
+    expect(f.sent).toEqual([]);
   });
 
   it('rejects pending requests when the transport closes', async () => {
