@@ -2727,7 +2727,7 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
-  it('keeps an adopted provider in starting state until provider readiness evidence arrives', async () => {
+  it('reads a started provider idle before its readiness evidence arrives, with no turn to be working on', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-starting-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
     const runtime = createAgentRuntime({
@@ -2738,12 +2738,10 @@ describe('createAgentRuntime', () => {
 
     const created = await runtime.createSession({ agent: 'monitor-starting' });
     if ('error' in created) throw new Error('unexpected create failure');
+    // The detailed lifecycle still waits on the provider; the headline does not.
     expect(runtime.sessionState(created.terminalSessionId)?.lifecycle).toBe('preparing');
-    expect(runtime.monitorState(created.runtimeRunId)).toMatchObject({
-      status: 'working',
-      activity: { kind: 'starting' },
-      alive: true,
-    });
+    expect(runtime.monitorState(created.runtimeRunId)).toMatchObject({ status: 'idle', alive: true });
+    expect(runtime.monitorState(created.runtimeRunId)?.activity).toBeUndefined();
 
     handles
       .get(created.terminalSessionId)!
@@ -2753,8 +2751,38 @@ describe('createAgentRuntime', () => {
           { eventId: 'provider-ready', sequence: 1, sessionId: created.sessionId },
         ),
       );
-    await vi.waitFor(() => expect(runtime.monitorState(created.runtimeRunId)?.status).toBe('idle'));
-    expect(runtime.sessionState(created.terminalSessionId)?.lifecycle).toBe('ready');
+    await vi.waitFor(() => expect(runtime.sessionState(created.terminalSessionId)?.lifecycle).toBe('ready'));
+    expect(runtime.monitorState(created.runtimeRunId)?.status).toBe('idle');
+    await runtime.dispose();
+  });
+
+  it('reads a prepared run as starting until the host adopts its process, then idle', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-monitor-prepared-'));
+    const hooks = { prepareCount: 0, adoptCount: 0, disposeCount: 0 };
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [preparableProvider('monitor-prepared', hooks)],
+    });
+
+    const prepared = await runtime.prepareSession({ agent: 'monitor-prepared' });
+    if ('error' in prepared) throw new Error('unexpected prepare failure');
+    expect(runtime.monitorState(prepared.runtimeRunId)).toMatchObject({
+      status: 'working',
+      activity: { kind: 'starting' },
+      alive: true,
+    });
+    expect(runtime.monitorState(prepared.runtimeRunId)?.session.startedAt).toBeUndefined();
+
+    const adopted = await runtime.adoptPrepared(prepared.preparationId, {
+      runtimeRunId: prepared.runtimeRunId,
+      terminalSessionId: 'prepared-pane',
+      processId: 4242,
+    });
+    if ('error' in adopted) throw new Error('unexpected adopt failure');
+    expect(runtime.monitorState(prepared.runtimeRunId)).toMatchObject({ status: 'idle', alive: true });
+    expect(runtime.monitorState(prepared.runtimeRunId)?.activity).toBeUndefined();
+    expect(runtime.monitorState(prepared.runtimeRunId)?.session.startedAt).toBeDefined();
     await runtime.dispose();
   });
 

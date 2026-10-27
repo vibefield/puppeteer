@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { agentEventCategory, agentEventType, type AgentEventEnvelope } from '../events/index.js';
-import type { MonitorFamilyUpdate, RuntimeMonitorObservationBatch } from './internal-types.js';
+import type {
+  MonitorFamilyUpdate,
+  MonitorRunLifecycle,
+  RuntimeMonitorInput,
+  RuntimeMonitorObservationBatch,
+} from './internal-types.js';
 import { createMonitorAccumulatorState, reduceMonitorAccumulator, translateAgentEventEnvelope } from './reduce.js';
 import { projectAgentMonitorState } from './project.js';
 
@@ -64,6 +69,25 @@ function runtimeEnvelope(
   });
 }
 
+/** The runtime's own lifecycle mirror, as its monitor hub writes it. */
+function runtimeLifecycle(lifecycle: MonitorRunLifecycle, sequence: number): RuntimeMonitorInput {
+  return {
+    kind: 'runtime',
+    schemaVersion: 1,
+    eventId: `lifecycle:${sequence}:${lifecycle}`,
+    runtimeRunId: 'run-1',
+    runtimeEpoch: 1,
+    phase: 'live',
+    observedAt: new Date(Date.parse(T0) + sequence * 1_000).toISOString(),
+    source: { id: 'runtime', kind: 'runtime-lifecycle' },
+    quality: 'exact',
+    completeness: 'complete',
+    provisional: false,
+    updates: [{ family: 'status', operation: 'upsert', key: 'run', value: { kind: 'run', lifecycle, alive: true } }],
+    evidence: [],
+  };
+}
+
 describe('projectAgentMonitorState', () => {
   it('increments revisions only when the public full state changes', () => {
     const accumulator = initial();
@@ -80,6 +104,35 @@ describe('projectAgentMonitorState', () => {
     expect(ready.revision).toBe(first.revision + 1);
     expect(ready.status).toBe('idle');
     expect(projectAgentMonitorState(readyAccumulator, { previous: ready })).toBe(ready);
+  });
+
+  it('reads a run as starting only until its process runs, and a started agent with no turn as idle', () => {
+    let state = initial();
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      status: 'working',
+      activity: { kind: 'starting', line: 'Starting' },
+    });
+    state = reduceMonitorAccumulator(state, runtimeLifecycle('preparing', 1)).state;
+    expect(projectAgentMonitorState(state)).toMatchObject({ status: 'working', activity: { kind: 'starting' } });
+
+    // The host runs the process; its adapter has not yet seen the session start.
+    state = reduceMonitorAccumulator(state, runtimeLifecycle('starting', 2)).state;
+    const started = projectAgentMonitorState(state);
+    expect(started).toMatchObject({ status: 'idle', alive: true });
+    expect(started.activity).toBeUndefined();
+
+    // The provider's readiness leaves the headline idle; its first turn makes it working.
+    state = reduceMonitorAccumulator(state, runtimeEnvelope({ type: 'session:ready' }, 3)).state;
+    expect(projectAgentMonitorState(state).status).toBe('idle');
+    state = reduceMonitorAccumulator(state, runtimeEnvelope({ type: 'turn:started', turnId: 'turn-1' }, 4)).state;
+    expect(projectAgentMonitorState(state)).toMatchObject({ status: 'working', activity: { line: 'Working' } });
+  });
+
+  it('reads a process-started event as a started agent, idle until its first turn', () => {
+    const state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'process:started', pid: 4242 }, 1)).state;
+    const projected = projectAgentMonitorState(state);
+    expect(projected).toMatchObject({ status: 'idle', alive: true });
+    expect(projected.activity).toBeUndefined();
   });
 
   it('does not leave a dead clean run working when a tool lacks a terminal event', () => {

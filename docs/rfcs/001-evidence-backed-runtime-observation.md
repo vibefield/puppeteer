@@ -2,7 +2,7 @@
 
 - **Status:** Accepted and implemented
 - **Created:** 2026-08-16
-- **Revised:** 2026-09-12
+- **Revised:** 2026-10-27
 - **Owners:** Core, Runtime, adapter, and monitor maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md), [`003-native-observation-sources.md`](./003-native-observation-sources.md), [`004-layered-agent-runtime.md`](./004-layered-agent-runtime.md), [`agent-api.html`](../agent-api.html)
 - **History:** The [original proposal and rollout design](../archive/RFC-001-EVIDENCE-BACKED-RUNTIME-OBSERVATION.md) is archived.
@@ -81,6 +81,8 @@ Status is projected in one place:
 - otherwise the Agent is `idle`.
 
 Blockers include permissions, questions, failures, and other explicitly modeled impediments. Session lifecycle remains a more detailed Runtime projection and is not collapsed into these three states.
+
+The one lifecycle fact that counts as activity is a run with no process yet (`allocated`, `preparing`, including a prepared run the host has not adopted): it is `working` with the `starting` activity. Once the host runs the process (`starting`), waiting for the provider's session evidence is readiness, not work, so an Agent with no turn yet is `idle`.
 
 Provider-native names and display strings never define headline status. Terminal contents are visually authoritative only; they are not semantic evidence.
 
