@@ -235,6 +235,25 @@ function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLin
   };
 }
 
+/**
+ * A peer's session wears its host on the body — the name and the host's write
+ * policy, in both directions — so it cannot be read as one of this machine's
+ * (the toolkit's `hostWriteWord`, M41). A terminal and an agent wear it alike
+ * (Q16, James 2026-10-27): the body's last line, in the terminal's label style,
+ * and drawn on the full rung only (`body-layout.ts`): it is not in
+ * `COPY_ONE_LINE`, so a stepped-down body lets it go, a terminal's as an agent's.
+ */
+function hostLine(agent: AgentView, remote: { readonly name: string }): CopyLine {
+  return {
+    key: 'host',
+    text: `${remote.name} · ${hostWriteWord(agent)}`,
+    style: LABEL_STACKED,
+    opacity: SWARM_WEIGHT.supporting,
+    tone: 'ink',
+    gapBefore: 3,
+  };
+}
+
 /** The views draw these waits; another word in the row's wait is none to them (the shim's rule, kept). */
 const DRAWN_WAITS: ReadonlySet<string> = new Set<SwarmBlockerKind>(['permission', 'question', 'failure']);
 
@@ -340,10 +359,11 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     active: agent.active,
     ...(agent.attachment?.colour ? { linked: agent.attachment.colour } : {}),
   };
+  // A row from another desktop wears its host on the body, terminal or agent (M41's write policy, said in both
+  // directions).
+  const remote = agent.device.self ? undefined : agent.device;
 
   if (agent.kind !== 'agent') {
-    // A row from another desktop wears its host on the body (M41's write policy, said in both directions).
-    const remote = agent.device.self ? undefined : agent.device;
     // A birth on its way is a terminal with no job yet, whatever its row says.
     const opening = input.opening;
     const running = !opening && agent.status === 'working';
@@ -396,21 +416,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           ]
         : []),
       ...(input.profile ? [profileLine(input.profile)] : []),
-      // A peer's session wears its host on the body — the name and the
-      // host's write policy, in both directions — so it cannot be read as
-      // one of this machine's terminals (the toolkit's `hostWriteWord`).
-      ...(remote
-        ? [
-            {
-              key: 'host',
-              text: `${remote.name} · ${hostWriteWord(agent)}`,
-              style: LABEL_STACKED,
-              opacity: SWARM_WEIGHT.supporting,
-              tone: 'ink' as const,
-              gapBefore: 3,
-            },
-          ]
-        : []),
+      ...(remote ? [hostLine(agent, remote)] : []),
     ];
     return {
       ...base,
@@ -454,6 +460,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   };
   const message = latestMessage(agent);
   const branch = agent.project.branch;
+  // A peer's agent wears the host line under its model line, and says the host's write policy last, as a peer's
+  // terminal does (M41, Q16). Its desktop's name is already in the line under its name, so the word is the policy.
+  const host = remote ? [hostLine(agent, remote)] : [];
+  const hostSpoken = remote ? `, ${hostWriteWord(agent)}` : '';
 
   if (appearance === 'working') {
     // The total is the backend's ledger: corrected USD across a bubble's runs,
@@ -487,6 +497,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         ...(branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
+      ...host,
     ];
     return {
       ...base,
@@ -516,7 +527,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
       watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
       // The flames are the glance; the exact rate is a word away, for a pointer
       // and for a screen reader.
-      ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(perHour)}`,
+      ariaLabel: `${ariaLabel}, burning ${formatRatePerHour(perHour)}${hostSpoken}`,
       title: `${title} · ${formatRatePerHour(perHour)}`,
     };
   }
@@ -525,9 +536,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   // What the body needs from the user takes the name's place, in its own words
   // behind its own mark: what a blocker is waiting on (the swarm body's order,
   // M14), or the reply that arrived unseen. The project's name moves above it,
-  // and nothing follows the model line (2026-09-16). The state's COLOUR is the
-  // body's ground rather than its words, so those words stay the theme's ink
-  // like every other body's (2026-09-18).
+  // and nothing follows the model line (2026-09-16) but a peer's host line
+  // (Q16, 2026-10-27). The state's COLOUR is the body's ground rather than its
+  // words, so those words stay the theme's ink like every other body's
+  // (2026-09-18).
   const state: { text: string; icon: string; spoken: string } | undefined = wait
     ? {
         text: waitBodyLine(wait, message),
@@ -574,6 +586,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         ]
       : []),
     modelLine,
+    ...host,
   ];
   return {
     ...base,
@@ -591,7 +604,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     unread: input.unread,
     watermark: { sprite: agent.provider?.id ?? '', opacity: SWARM_WEIGHT.watermark },
     ...(wait ? { blockerKind: wait.kind } : {}),
-    ariaLabel: state ? `${ariaLabel}, ${state.spoken}` : ariaLabel,
+    ariaLabel: `${state ? `${ariaLabel}, ${state.spoken}` : ariaLabel}${hostSpoken}`,
     title,
   };
 }

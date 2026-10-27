@@ -25,6 +25,7 @@ import {
   burnStages,
   clusterStages,
   lightStages,
+  peerStages,
   pendingStages,
   profileStages,
   stateStages,
@@ -390,6 +391,12 @@ async function main(): Promise<void> {
     'Born under a profile',
     'A terminal born under an Agent Profile names it on its body, where the desktop has more than one.',
     profileStages(nowMs),
+    'grid',
+  );
+  addPart(
+    'From another desktop',
+    'A peer’s body wears its host: the desktop’s name and its host’s write policy, terminal or agent alike, as the last line of a full body. A body stepped down to its name and one line lets it go with the other supporting lines.',
+    peerStages(nowMs),
     'grid',
   );
   addFieldPart(

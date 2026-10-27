@@ -430,9 +430,54 @@ describe("a peer's session (a row from another desktop)", () => {
     expect(peer.ring).toEqual({ percent: 42, hot: false });
     expect(peer.figures?.top?.text).toBe('42%');
     expect(peer.burn).toEqual({ lit: 2, priced: true });
-    expect(peer.copy.at(-1)?.text).toBe('Fable 5.1 · medium');
+    expect(peer.copy.find((line) => line.key === 'model')?.text).toBe('Fable 5.1 · medium');
     // the line under the name leads with the desktop's name (the toolkit's rule for a peer)
     expect(peer.title).toBe('puppeteer · Fable 5.1 · studio-mini · working · $12/hr');
+  });
+
+  describe('a peer’s agent wears the host line too (Q16, as M41 says)', () => {
+    const peerAgent = (partial: AgentViewFixturePartial) =>
+      bubbleModel({ agent: agent({ device: MINI, ...partial }), parameters, nowMs: NOW, unread: false });
+
+    it('as its last line, in both directions, drawn as a peer terminal’s is', () => {
+      const idle = peerAgent({ writable: true });
+      expect(idle.copy.map((line) => line.key)).toEqual(['name', 'model', 'host']);
+      // One host line, one look: the terminal's label style, at the supporting weight, after the same gap.
+      expect(idle.copy.at(-1)).toEqual(model(true).copy.find((line) => line.key === 'host'));
+      const working = peerAgent({
+        writable: false,
+        status: 'working',
+        project: { name: 'puppeteer', seq: 0, branch: 'main' },
+        cost: burning(0.2, 'complete', 2),
+      });
+      expect(working.copy.map((line) => line.key)).toEqual(['branch', 'name', 'model', 'host']);
+      expect(working.copy.at(-1)?.text).toBe('studio-mini · read-only host');
+      const blocked = peerAgent({ status: 'blocked', wait: { kind: 'permission', since: AT, tool: 'Bash' } });
+      expect(blocked.copy.map((line) => line.key)).toEqual(['name', 'state', 'model', 'host']);
+    });
+
+    it('says the host’s write policy last, as a peer terminal does; its desktop is already in its line', () => {
+      expect(peerAgent({ writable: false }).ariaLabel).toBe(
+        'puppeteer, Fable 5.1, idle: studio-mini · idle, CTX:--%, read-only host',
+      );
+      const working = peerAgent({ writable: true, status: 'working', context: { usedPercent: 42 }, cost: burning(0.2) });
+      expect(working.ariaLabel).toBe(
+        'puppeteer, Fable 5.1, working: studio-mini · working, CTX:42%, burning $12/hr, writable host',
+      );
+      const permission = { kind: 'permission', since: AT, tool: 'Bash' } as const;
+      const blocked = peerAgent({ writable: false, status: 'blocked', wait: permission });
+      expect(blocked.ariaLabel).toBe(
+        'puppeteer, Fable 5.1, blocked: studio-mini · permission · Bash, CTX:--%, permission: Bash, read-only host',
+      );
+      // The hover keeps its words: the project, the model, the desktop, its line.
+      expect(peerAgent({ writable: false }).title).toBe('puppeteer · Fable 5.1 · studio-mini · idle');
+    });
+
+    it('never on this desktop’s agents, which name no host', () => {
+      const local = bubbleModel({ agent: agent({ writable: false }), parameters, nowMs: NOW, unread: false });
+      expect(local.copy.some((line) => line.key === 'host')).toBe(false);
+      expect(local.ariaLabel).toBe('puppeteer, Fable 5.1, idle: idle, CTX:--%');
+    });
   });
 });
 
