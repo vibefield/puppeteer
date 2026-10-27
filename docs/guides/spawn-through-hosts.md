@@ -356,17 +356,25 @@ on the code, never on the reason's words:
 
 A person in the host's terminal reads the host's own words, under the host's own name.
 `SpawnThroughHost.refusal(refused)` receives `{code, reason, argument?, providerCode?, providerId, command}` — `command` is the name
-the person typed — and returns one or two lines, which the shim prints after `<label>: <command>: `, where `<label>`
-is the host's `hostLabel`, or `puppeteer` for a host that gave none. The kit keeps printable characters only, two
-lines at most and 400 characters at most (`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds what it prints to the
-same bound, the label inside it: the longer the label, the less room for the words. Absent, throwing, or left empty
-by the bound, the words are the kit's own (`spawnThroughRefusalMessage`, which a host can call for the codes it does
-not word itself).
+the person typed — and returns one or two lines that name the command themselves. The shim prints them after
+`<label>: ` alone, where `<label>` is the host's `hostLabel`, or `puppeteer` for a host that gave none:
+
+```text
+<label>: <command> was not started: a managed session cannot carry --bare. Run <command> without it.
+```
+
+The kit keeps printable characters only, two lines at most and 400 characters at most
+(`MAX_REFUSAL_MESSAGE_LENGTH`), and the shim holds what it prints to the same bound, the label inside it: the longer
+the label, the less room for the words. Absent, throwing, or left empty by the bound, the words are the kit's own
+(`spawnThroughRefusalMessage`), which do not name the command: the answer marks them `kitSentence`, and the shim prints
+them after `<label>: <command>: `, as it does its own sentences. Return `''` for a code you do not word and the kit's
+sentence says it; returned as your own words, the kit's sentence would read without the command.
 
 With `launch-refused`, `reason` is the adapter's own sentence, already one printable line within the bound, and
-`providerCode` is the adapter's code for it (Claude's `CLAUDE_HOOKS_OFF`). Word the codes you know and return
-`refused.reason` for the rest; with no words of the host's, the kit's sentence carries the adapter's: "not started,
-because it could not be run as a managed session: <the adapter's sentence>".
+`providerCode` is the adapter's code for it (Claude's `CLAUDE_HOOKS_OFF`). Word the codes you know, and say
+`refused.reason` inside a sentence of your own for the rest (`<command> was not started: <reason>`); with no words of
+the host's, the kit's sentence carries the adapter's: "<command>: not started, because it could not be run as a
+managed session: <the adapter's sentence>".
 
 The shim speaks for itself when the host cannot answer ("waiting for the host to start it as a managed session…",
 "the host did not answer within 8 s"). Give `writeRendezvous` and `materializeShims` the same `hostLabel` and every
@@ -469,7 +477,7 @@ const host: SpawnThroughHost = {
   strict,
   // The host's own shells ({pid, startedAt, terminalSessionId}), walked from the pid up.
   resolveTerminal: async ({ pid }) => findOwningProcess({ pid, owners: shells.all() }),
-  // One or two lines, printed after `<label>: <command>: `.
+  // One or two lines that name the command, printed after `<label>: `.
   refusal: ({ command, code, argument }) => wordsFor(command, code, argument),
   // The ingress the adapter binds, so a run can be re-attached after the host restarts.
   launchOptions: () => ({ ingress: { onBound: rememberIngress } }),

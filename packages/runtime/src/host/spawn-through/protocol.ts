@@ -89,7 +89,11 @@ export function isSpawnThroughHostLabel(value: unknown): value is string {
   return typeof value === 'string' && HOST_LABEL.test(value);
 }
 
-/** The kit's own sentence for a refusal: what a person reads when the host has no words of its own. */
+/**
+ * The kit's own sentence for a refusal: what a person reads when the host has
+ * no words of its own. It does not name the command, so the shim names it
+ * before the sentence (a `refuse` answer's `kitSentence`).
+ */
 export function spawnThroughRefusalMessage({ reason }: { reason: string }): string {
   return `not started, because it could not be run as a managed session: ${reason}`;
 }
@@ -134,8 +138,19 @@ export type SpawnThroughResponse =
    * shim obeys. An unplaced refusal (the gateway could not read or trust the
    * request) binds only where the shim finds itself in one of the host's
    * terminals, by its own ancestry (terminals.ts).
+   * `message` is the host's own words, which name the command themselves: the
+   * shim prints them after the host's label alone. `kitSentence`: the words
+   * are the kit's own ({@link spawnThroughRefusalMessage}), which do not, and
+   * the shim names the command before them.
    */
-  | { action: 'refuse'; code: SpawnThroughDeclineCode; reason: string; message: string; placed: boolean }
+  | {
+      action: 'refuse';
+      code: SpawnThroughDeclineCode;
+      reason: string;
+      message: string;
+      placed: boolean;
+      kitSentence?: true;
+    }
   | { action: 'ack' };
 
 /** Why a launch was declined: the stable code, and the reason for people and logs. */
@@ -147,9 +162,9 @@ export interface SpawnThroughDecline {
 /**
  * The answer to a launch the host will not manage: without `refusal`, the
  * real executable runs unmanaged; with it, nothing runs and the person reads
- * `refusal.message`, bounded here — or the kit's own sentence when no words
- * are given or none survive the bound. `placed` says whether the host
- * resolved the terminal that holds the process.
+ * `refusal.message`, bounded here — or the kit's own sentence, marked
+ * `kitSentence`, when no words are given or none survive the bound. `placed`
+ * says whether the host resolved the terminal that holds the process.
  */
 export function declineSpawnThrough(
   decline: SpawnThroughDecline,
@@ -157,9 +172,10 @@ export function declineSpawnThrough(
 ): SpawnThroughResponse {
   const { code, reason } = decline;
   if (refusal === undefined) return { action: 'fallback', code, reason };
-  const message =
-    boundSpawnThroughText(refusal.message ?? '') || boundSpawnThroughText(spawnThroughRefusalMessage(decline));
-  return { action: 'refuse', code, reason, message, placed: refusal.placed };
+  const words = boundSpawnThroughText(refusal.message ?? '');
+  if (words) return { action: 'refuse', code, reason, message: words, placed: refusal.placed };
+  const message = boundSpawnThroughText(spawnThroughRefusalMessage(decline));
+  return { action: 'refuse', code, reason, message, placed: refusal.placed, kitSentence: true };
 }
 
 /** Core's rule for a command name: what a launcher can be written for, and nothing a terminal would act on. */
@@ -275,11 +291,21 @@ export function parseSpawnThroughResponse(value: unknown): SpawnThroughResponse 
         ? { action: 'fallback', code: value.code, reason: value.reason }
         : undefined;
     case 'refuse':
+      // Without `kitSentence` the words are the host's. A gateway from before the mark sent its own sentence unmarked,
+      // so a shim reading one prints it without the command.
       return isDeclineCode(value.code) &&
         typeof value.reason === 'string' &&
         typeof value.message === 'string' &&
-        typeof value.placed === 'boolean'
-        ? { action: 'refuse', code: value.code, reason: value.reason, message: value.message, placed: value.placed }
+        typeof value.placed === 'boolean' &&
+        (value.kitSentence === undefined || typeof value.kitSentence === 'boolean')
+        ? {
+            action: 'refuse',
+            code: value.code,
+            reason: value.reason,
+            message: value.message,
+            placed: value.placed,
+            ...(value.kitSentence === true ? { kitSentence: true as const } : {}),
+          }
         : undefined;
     case 'ack':
       return { action: 'ack' };

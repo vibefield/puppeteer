@@ -12,7 +12,12 @@ import { startSpawnThroughGateway, type SpawnThroughGateway } from './gateway.js
 import { spawnThroughLayout } from './layout.js';
 import { materializeShims } from './materialize.js';
 import { processStartedAt } from './process-watch.js';
-import { MAX_REFUSAL_MESSAGE_LENGTH, type SpawnThroughRequest, type SpawnThroughResponse } from './protocol.js';
+import {
+  MAX_REFUSAL_MESSAGE_LENGTH,
+  declineSpawnThrough,
+  type SpawnThroughRequest,
+  type SpawnThroughResponse,
+} from './protocol.js';
 import { RENDEZVOUS_FILE, clearRendezvous, writeRendezvous } from './rendezvous.js';
 import { TERMINALS_FILE, writeTerminals, type SpawnThroughTerminal } from './terminals.js';
 
@@ -181,12 +186,12 @@ async function gatewayAnswering(
   return requests;
 }
 
-/** A placed refusal: printed and exit 75 at once, wherever the shim runs. */
+/** A placed refusal in the host's words, which name the command: printed and exit 75 at once, wherever the shim runs. */
 const refusing = (): SpawnThroughResponse => ({
   action: 'refuse',
   code: 'rejected-argument',
   reason: 'r',
-  message: 'refused as it stands',
+  message: 'example was not started as it stands',
   placed: true,
 });
 
@@ -387,14 +392,45 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       code: 'rejected-argument',
       reason: 'rejected',
       placed: true,
-      message: 'refused by the test\u001b[31m in red',
+      message: 'example was refused by the test\u001b[31m in red',
     }));
     const ran = await launch(home, 'example');
 
     expect(ran.code).toBe(75);
     expect(ran.stdout).toBe('');
-    expect(ran.stderr).toContain('puppeteer: example: refused by the test [31m in red');
+    expect(ran.stderr).toContain('puppeteer: example was refused by the test [31m in red');
     expect(ran.stderr).not.toContain('\u001b');
+  });
+
+  it("names the command once: the host's words after the label alone, the kit's sentence after the command", async () => {
+    const said = async (answer: SpawnThroughResponse): Promise<string> => {
+      await gatewayAnswering(home, () => answer, { hostLabel: 'Field Host' });
+      const ran = await launch(home, 'example');
+      expect(ran.code).toBe(75);
+      expect(ran.lines('REAL ')).toEqual([]);
+      for (const gateway of gateways.splice(0)) await gateway.close();
+      return ran.stderr;
+    };
+    const decline = { code: 'rejected-argument', reason: 'it moves the session to another directory (-C)' } as const;
+
+    // The host's words name the command themselves: a strict host's sentence for a rejected argument.
+    expect(
+      await said(
+        declineSpawnThrough(decline, {
+          message:
+            'example was not started: a managed session cannot carry -C (it moves the session to another directory). Run example without it.',
+          placed: true,
+        }),
+      ),
+    ).toBe(
+      'Field Host: example was not started: a managed session cannot carry -C (it moves the session to another directory). Run example without it.\n',
+    );
+    // With no words of the host's, the kit's sentence: it does not name the command, so the shim does.
+    for (const message of [undefined, '']) {
+      expect(await said(declineSpawnThrough(decline, { message, placed: true }))).toBe(
+        'Field Host: example: not started, because it could not be run as a managed session: it moves the session to another directory (-C)\n',
+      );
+    }
   });
 
   it("prints a refusal's words as at most two lines of a bounded length, whatever the gateway sent", async () => {
@@ -403,14 +439,14 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       code: 'rejected-argument',
       reason: 'rejected',
       placed: true,
-      message: `refused here\u2028\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
+      message: `example was refused here\u2028\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
     }));
     const ran = await launch(home, 'example');
 
     expect(ran.code).toBe(75);
     const lines = ran.stderr.trimEnd().split('\n');
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toBe('puppeteer: example: refused here');
+    expect(lines[0]).toBe('puppeteer: example was refused here');
     expect(lines[1]!.startsWith('run it in another terminal and a third line xxx')).toBe(true);
     expect(lines[1]!.endsWith('…')).toBe(true);
     expect(Array.from(ran.stderr.trimEnd().slice('puppeteer: '.length)).length).toBeLessThanOrEqual(
@@ -439,7 +475,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
         action: 'refuse',
         code: 'rejected-argument',
         reason: 'r',
-        message: 'refused as it stands',
+        message: 'example was not started as it stands',
         placed: true,
       }),
       { strict: true },
@@ -448,7 +484,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
 
     expect(ran.code).toBe(75);
     expect(ran.stdout).toBe('');
-    expect(ran.stderr).toBe('puppeteer: example: refused as it stands\n');
+    expect(ran.stderr).toBe('puppeteer: example was not started as it stands\n');
   });
 
   /** A person reads the name of the host whose terminal they typed in, not the kit's. */
@@ -459,7 +495,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
         const ran = await launch(shimHome, 'example');
 
         expect(ran.code, shimHome).toBe(75);
-        expect(ran.stderr, shimHome).toBe('Field Host: example: refused as it stands\n');
+        expect(ran.stderr, shimHome).toBe('Field Host: example was not started as it stands\n');
         for (const gateway of gateways.splice(0)) await gateway.close();
       }
     });
@@ -469,7 +505,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       const ran = await launch(labelledHome, 'example');
 
       expect(ran.code).toBe(75);
-      expect(ran.stderr).toBe("Launcher's Host: example: refused as it stands\n");
+      expect(ran.stderr).toBe("Launcher's Host: example was not started as it stands\n");
     });
 
     it('puppeteer, as it always did, when the host has no label', async () => {
@@ -477,7 +513,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       const ran = await launch(home, 'example');
 
       expect(ran.code).toBe(75);
-      expect(ran.stderr).toBe('puppeteer: example: refused as it stands\n');
+      expect(ran.stderr).toBe('puppeteer: example was not started as it stands\n');
     });
 
     it("never a label that fails validation: the launcher's, if it has one, else puppeteer", async () => {
@@ -492,17 +528,17 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
         await gatewayAnswering(home, refusing);
         await unsayableLabelIn(home, hostLabel);
         const fromRendezvous = await launch(home, 'example');
-        expect(fromRendezvous.stderr, said).toBe('puppeteer: example: refused as it stands\n');
+        expect(fromRendezvous.stderr, said).toBe('puppeteer: example was not started as it stands\n');
 
         // A launcher written without a label sets none, so the variable reaches the shim as the environment has it.
         const fromLauncher = await launch(home, 'example', [], { environment: { PUPPETEER_SHIM_LABEL: hostLabel } });
-        expect(fromLauncher.stderr, said).toBe('puppeteer: example: refused as it stands\n');
+        expect(fromLauncher.stderr, said).toBe('puppeteer: example was not started as it stands\n');
         for (const gateway of gateways.splice(0)) await gateway.close();
 
         await gatewayAnswering(labelledHome, refusing);
         await unsayableLabelIn(labelledHome, hostLabel);
         const overLauncher = await launch(labelledHome, 'example');
-        expect(overLauncher.stderr, said).toBe("Launcher's Host: example: refused as it stands\n");
+        expect(overLauncher.stderr, said).toBe("Launcher's Host: example was not started as it stands\n");
         for (const gateway of gateways.splice(0)) await gateway.close();
       }
     });
@@ -516,7 +552,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
           code: 'rejected-argument',
           reason: 'rejected',
           placed: true,
-          message: `refused here\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
+          message: `example was refused here\r\nrun it in another terminal\nand a third line\n${'x'.repeat(2_000)}`,
         }),
         { hostLabel },
       );
@@ -525,7 +561,7 @@ describePosix('the shim, end to end (bundled, run through its launcher)', { time
       expect(ran.code).toBe(75);
       const lines = ran.stderr.trimEnd().split('\n');
       expect(lines).toHaveLength(2);
-      expect(lines[0]).toBe(`${hostLabel}: example: refused here`);
+      expect(lines[0]).toBe(`${hostLabel}: example was refused here`);
       expect(lines[1]!.startsWith('run it in another terminal and a third line xxx')).toBe(true);
       expect(lines[1]!.endsWith('…')).toBe(true);
       // Label and all: without a label, what follows `puppeteer: ` is held to the same bound.

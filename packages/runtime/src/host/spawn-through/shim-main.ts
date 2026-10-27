@@ -254,7 +254,10 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
       );
     }
   };
+  // The kit's own sentences do not name the command, so the shim names it before them. The host's own words name it
+  // themselves: they follow the host's label alone.
   const refuse = (message: string): never => leave(`${name}: ${message}`, SPAWN_THROUGH_EXIT_REFUSED);
+  const refuseInHostWords = (message: string): never => leave(message, SPAWN_THROUGH_EXIT_REFUSED);
 
   // Not a launch a host could manage (`ai` without a persona flag is the imposter's own error to report).
   if (!provider?.nativeInvocation) return fallback();
@@ -340,7 +343,8 @@ async function run(name: string, home: string, execve: Execve): Promise<void> {
       return fallback();
     case 'refuse':
       // A placed refusal is the host's word on its own terminal. One it could not place binds only in one.
-      return response.placed || (await refusableHere()) ? refuse(response.message) : fallback();
+      if (!response.placed && !(await refusableHere())) return fallback();
+      return response.kitSentence ? refuse(response.message) : refuseInHostWords(response.message);
     case 'exec':
       try {
         return execInPlace(response.launch.command, response.launch.args, response.launch.cwd, response.launch.env);
