@@ -170,6 +170,8 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
   /** Unread (L5): the fold, and what each screen reports it shows in its active pane. */
   let unread: UnreadLedger = EMPTY_UNREAD_LEDGER;
   const shownByScreen = new Map<string, ReadonlySet<string>>();
+  /** Q05: the host's seeded last sights, each taken at the fold that first names its row, then the ledger's. */
+  const seededSeenAt = new Map(options.seenAt ?? []);
   /** The spawn menu as last emitted; a recompute carries a new one only when it differs. */
   let lastSpawn: MonitorSpawnMenu | undefined;
   let personasOf: { sets: readonly MonitorHostProfileSet[] | null; personas: ReadonlyMap<string, string> } | undefined;
@@ -280,6 +282,21 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     return union;
   };
 
+  /** The ledger with the seeded last sight of each row this fold names for the first time (Q05). */
+  const withSeeds = (ledger: UnreadLedger, candidates: readonly UnreadCandidate[]): UnreadLedger => {
+    if (seededSeenAt.size === 0) return ledger;
+    let seenAtById: Map<string, number> | undefined;
+    for (const { id } of candidates) {
+      const seenAt = seededSeenAt.get(id);
+      if (seenAt === undefined) continue;
+      // Taken once: from here the ledger carries the row, and drops it when the row leaves, as it drops any row.
+      seededSeenAt.delete(id);
+      seenAtById ??= new Map(ledger.seenAtById);
+      seenAtById.set(id, seenAt);
+    }
+    return seenAtById === undefined ? ledger : { seenAtById, unreadIds: ledger.unreadIds };
+  };
+
   /** Keeps the previous frozen row when the newly derived one says the same thing (MV-D21). */
   const settle = (previous: RowEntry | undefined, row: MonitorAgentRow, inputs: RowInputs): RowEntry => {
     if (previous && deepEqual(previous.row, row)) return { row: previous.row, inputs };
@@ -353,35 +370,31 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
     }
     for (const id of [...terminalStatus.keys()]) if (!liveTerminalIds.has(id)) terminalStatus.delete(id);
 
-    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown". Today the
-    //    ledger lives only while a screen is open (M20): with none, nothing accrues, and the first screen to open
-    //    sees every row for the first time.
+    // 4. Unread (L5): the single-window fold over every row, "active" being "some screen reports it shown". The
+    //    ledger lives as long as the backend (Q05, ruled by James 2026-10-27; it lived only while a screen was open,
+    //    M20): with no screen open nothing is shown, so a turn that ends meanwhile is marked, and the next screen to
+    //    open (a reload, Godview opened again) finds the mark. A row is seen for the first time at the fold that first
+    //    names it, or at the time the host seeded for it (`seenAt`).
     const shown = shownIds();
-    unread =
-      shownByScreen.size === 0
-        ? EMPTY_UNREAD_LEDGER
-        : reconcileUnread(
-            unread,
-            [
-              ...agents.map((agent): UnreadCandidate => {
-                const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
-                return {
-                  id: agent.id,
-                  status: agentStatus(agent.host, agent.state),
-                  active: shown.has(agent.id),
-                  hasAgent: true,
-                  ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
-                };
-              }),
-              ...terminals.map((terminal): UnreadCandidate => ({
-                id: terminal.id,
-                status: classifyTerminalStatus(terminal.host.activity),
-                active: shown.has(terminal.id),
-                hasAgent: false,
-              })),
-            ],
-            nowMs,
-          );
+    const candidates: UnreadCandidate[] = [
+      ...agents.map((agent): UnreadCandidate => {
+        const since = agent.state ? Date.parse(agent.state.statusSince) : Number.NaN;
+        return {
+          id: agent.id,
+          status: agentStatus(agent.host, agent.state),
+          active: shown.has(agent.id),
+          hasAgent: true,
+          ...(Number.isFinite(since) ? { statusSinceMs: since } : {}),
+        };
+      }),
+      ...terminals.map((terminal): UnreadCandidate => ({
+        id: terminal.id,
+        status: classifyTerminalStatus(terminal.host.activity),
+        active: shown.has(terminal.id),
+        hasAgent: false,
+      })),
+    ];
+    unread = reconcileUnread(withSeeds(unread, candidates), candidates, nowMs);
 
     // 5. Agent rows.
     for (const agent of agents) {
@@ -599,14 +612,19 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
       const next = new Set(ids);
       const previous = shownByScreen.get(screenId);
       if (previous && previous.size === next.size && [...next].every((id) => previous.has(id))) return;
-      // A first report opens the screen, an empty one too: an open screen whose pane shows nothing still sees marks.
+      // A first report opens the screen, an empty one too (its pane shows nothing).
       shownByScreen.set(screenId, next);
       // Looking at a row clears its mark now, not a tick later: the screen that reported is waiting on it.
       flush();
     },
     forgetScreen(screenId) {
+      // What it showed is shown no more, so from now those rows earn marks; the ledger stays (Q05).
       if (disposed || !shownByScreen.delete(screenId)) return;
       flush();
+    },
+    seenAt() {
+      // A copy: the ledger is the backend's, and the host keeps what it reads.
+      return new Map(unread.seenAtById);
     },
     idOf(runtimeRunId) {
       if (disposed) return undefined;
