@@ -147,3 +147,16 @@ host keeps), knowing which terminals are still alive after it returns, and the r
 attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would
 carry that; it is a different process and a different lifetime), and any vendor's own reconnection story beyond
 Claude's — Codex and Grok rebuild their app-server and leader sockets by id and are the next candidates.
+
+> **Erratum (2026-10-27, VibeField's re-attach study):** the last sentence was false when written and is false at
+> 0.2.3 (`ee785ec1`). Codex's app-server and Grok's leader are not sockets an adapter rebuilds by id: each is a helper
+> process the adapter spawns as the host's child, and the helper holds the agent's session itself (Codex runs the
+> thread in its app-server; Grok's leader owns the session). OpenCode's `serve` and Hermes's gateway host are the same
+> kind. On a host's detach only Claude's binding honours `release`: the Codex binding's dispose ends its app-server
+> (`adapter-codex/src/launch/tui-session.ts:220-226`), OpenCode's ends `serve` (`adapter-opencode/src/driver.ts:399-406`),
+> Hermes's closes its gateway host (`adapter-hermes/src/driver.ts:298-307`), and the runtime then calls every provider's
+> `dispose()` with no argument (`runtime/src/runtime.ts:3936`), which stops every Grok leader
+> (`builtin-providers/src/providers.ts:714-717`, `adapter-grok/src/driver.ts:106-123`). After a graceful host stop the
+> agent's process is gone and its TUI is a client with no backend, so there is nothing to reconnect to by id. A re-attach
+> for these four first needs the helper to outlive the host (VibeField ruled that its terminal floor keeps it, through a
+> process service), and only then an adapter that rebuilds its rail to it.
