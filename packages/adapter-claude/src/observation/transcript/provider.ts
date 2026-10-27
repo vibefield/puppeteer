@@ -1,3 +1,4 @@
+import { partitionAttachBootstrap } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch, ObservationCapability } from '@vibefield/puppeteer-core/monitor-spi';
 import type {
   SemanticObservationAttachRequest,
@@ -6,7 +7,11 @@ import type {
   SemanticObservationPollHint,
   SemanticObservationProvider,
 } from '../semantic-provider.js';
-import { claudeTranscriptConversationFingerprint, projectClaudeTranscriptAssistants } from './conversation.js';
+import {
+  claudeTranscriptConversationFingerprint,
+  projectClaudeTranscriptAssistants,
+  projectClaudeTranscriptOpenWork,
+} from './conversation.js';
 import { createClaudeTranscriptReader } from './services/jsonl-reader.js';
 import { createTranscriptYield } from './services/yield.js';
 import type { ClaudeTranscriptRecord } from './wire.js';
@@ -48,9 +53,8 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       if (disposed || records === lastTranscript) return;
       const yieldIfNeeded = createTranscriptYield();
       const pending: SemanticObservationEvent[] = [];
-      const assistants = projectClaudeTranscriptAssistants(
-        records.filter((record) => !record.sessionId || record.sessionId === request.nativeSessionId),
-      );
+      const session = records.filter((record) => !record.sessionId || record.sessionId === request.nativeSessionId);
+      const assistants = projectClaudeTranscriptAssistants(session);
 
       // Existing messages form a silent baseline on every attachment,
       // including picker rebinds. Only later changes are live observations.
@@ -64,6 +68,16 @@ export class ClaudeTranscriptObservationProvider implements SemanticObservationP
       }
       for (const key of assistantFingerprints.keys()) {
         if (!assistants.has(key)) assistantFingerprints.delete(key);
+      }
+      // An attached session's first read: what the transcript shows still open is where the agent stands now. It
+      // happened before this observer, so it is replay, except a question the agent waits on, which is announced
+      // live once after it, so the person is told (re-attach study, §3.3).
+      if (firstTranscriptPoll && request.attached === true) {
+        const open = projectClaudeTranscriptOpenWork(session);
+        const found = new Map(open.map((value) => [value.event, value]));
+        const { replay, announce } = partitionAttachBootstrap(open.map(({ event }) => event));
+        for (const event of replay) pending.push({ ...found.get(event)!, replay: true, openAtAttach: true });
+        for (const event of announce) pending.push({ ...found.get(event)!, openAtAttach: true });
       }
       for (const event of pending) {
         if (disposed) return;

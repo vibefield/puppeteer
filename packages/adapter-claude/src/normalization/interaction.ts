@@ -40,6 +40,14 @@ export function claudeQuestionOutcome(value: unknown): 'answered' | 'cancelled' 
   return body?.cancelled === true || body?.canceled === true ? 'cancelled' : 'answered';
 }
 
+/**
+ * The request an AskUserQuestion tool call raises is named by that call, so the hook rail (PreToolUse) and the
+ * transcript (an attach's bootstrap) name the same question alike.
+ */
+export function claudeQuestionRequestId(toolCallId: string): string {
+  return `question:${toolCallId}`;
+}
+
 export function normalizeClaudeQuestionRequested(requestId: string, questions: AgentStructuredQuestion[]) {
   return { type: 'interaction:question-requested' as const, requestId, questions };
 }
