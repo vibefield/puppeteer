@@ -160,3 +160,21 @@ Claude's — Codex and Grok rebuild their app-server and leader sockets by id an
 > agent's process is gone and its TUI is a client with no backend, so there is nothing to reconnect to by id. A re-attach
 > for these four first needs the helper to outlive the host (VibeField ruled that its terminal floor keeps it, through a
 > process service), and only then an adapter that rebuilds its rail to it.
+
+**Amended 2026-10-27 (VibeField's re-attach study, Step 1).** _An attach hands back what the launch knew._
+`AttachAgentOptions.continuation` carries the continuation the host kept: the provider's codec restores the launch
+options from it when the host keeps none (a typed `CLAUDE_CONFIG_DIR` root, an imposter's environment), and the
+attached run keeps its `state` and `implementation`, so the continuation it reports next, and a resume of it, is the
+launch's and not `native` with no state. _One opaque attach record per session._ An adapter with facts to find again
+beyond the continuation (a helper's endpoint, pid and start time, a provisional id's anchor) reports
+`{version, state, secret?}` through `HostIngress.onAttachRecord` before launch, and through the attach's own
+`onAttachRecord` whenever they change after, so a second restart reads fresh facts. The host keeps the latest
+owner-only and hands it back exactly; an unknown `version` is refused, never guessed. An adapter that adopts an endpoint
+its process did not just bind proves the process behind it (a per-run nonce in `secret`, or the host's word on the
+peer) before it trusts it. _A failed attach says what next._ `AgentAttachRefusedError` carries `retry`, `respawn`,
+`native-log` or `resume` to the failure's `error.next`. _A provider is told the host is detaching._ The runtime calls
+`dispose({ detach })`, so a provider can keep what released runs use. _An attach reads where the agent stands._ The
+existing records are no longer only a silent baseline for an attach: Claude's first transcript read publishes the turn
+and the tools still open as replay, and a question the agent waits on live, once (`partitionAttachBootstrap`), and the
+hook rail adopts those tools, so their PostToolUse closes them. A launch, a resume and a picker rebind keep the silent
+baseline: their process is not in the middle of what the record last shows.
