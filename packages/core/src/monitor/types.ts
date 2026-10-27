@@ -260,6 +260,11 @@ export interface MonitorFamilyFreshness {
 
 export interface MonitorFreshnessState {
   lastEvidenceAt?: string | undefined;
+  /**
+   * Set while a root tool call is open, whether or not it is the headline `activity` (a compaction outranks it there).
+   * A tool may run silent for minutes, so its quiet is not staleness: readers hold the evidence clock while it is open.
+   */
+  toolOpen?: boolean | undefined;
   level: ObservationLevel;
   families: Partial<Record<MonitorMetricFamily, MonitorFamilyFreshness>>;
 }

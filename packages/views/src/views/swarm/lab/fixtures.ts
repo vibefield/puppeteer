@@ -393,24 +393,6 @@ export function stateStages(nowMs: number): LabStage[] {
       ),
     },
     {
-      id: 'idle-stale',
-      title: 'Idle, stale evidence',
-      note: 'Dimmed and desaturated, never recoloured.',
-      agent: agentFixture(
-        {
-          id: 'a4',
-          project: 'ref',
-          status: 'idle',
-          model: 'Sonnet 5',
-          effort: 'medium',
-          contextPercent: 31,
-          stale: true,
-          accent: 3,
-        },
-        nowMs,
-      ),
-    },
-    {
       id: 'idle-mounted',
       title: 'Idle, mounted in a pane',
       note: 'The pane’s own colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the project’s colour stays the folder before the name. The gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
@@ -516,6 +498,27 @@ export function stateStages(nowMs: number): LabStage[] {
       note: 'No usage, no context, no price: one hollow flame — unread, which is not the same as calm — and both figures rest.',
       agent: agentFixture(
         { id: 'w4', project: 'study', status: 'working', model: 'Sonnet 5', accent: 8, unpriced: true },
+        nowMs,
+      ),
+    },
+    {
+      id: 'working-stale',
+      title: 'Working, stale evidence',
+      note: 'Mid-reply, no tool open, nothing heard for 30 s: dimmed and desaturated, never recoloured. An idle body never dims.',
+      agent: agentFixture(
+        {
+          id: 'w8',
+          project: 'ref',
+          status: 'working',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 31,
+          burn: 'ease',
+          ratePerMin: 0.08,
+          activity: { kind: 'responding', line: 'Writing the reply' },
+          stale: true,
+          accent: 3,
+        },
         nowMs,
       ),
     },

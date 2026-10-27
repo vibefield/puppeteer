@@ -58,7 +58,7 @@ host that breaks one.
 | `createdAt` | host `createdAt` (pu: `session.createdAtMs`; vf: pane summary's, else the fold's `createdAt`) | host `createdAt` |
 | `status` | host `alive === false` → keep the runtime's word; `pending` → `idle` (AR-4); no state yet → `working` ("starting", vf's `unknown`); else `state.status` | `classifyTerminalStatus(activity)`: `foreground-job` → working, else idle |
 | `statusSince` | `Date.parse(state.statusSince)`; no state → `createdAt` | when the backend saw the status flip (live state), else `createdAt` |
-| `stale` | `classifyMonitorRecency(freshness.lastEvidenceAt, now) === 'stale'`, re-read on the 10 s clock | false |
+| `stale` | only while the row's `status` is working or blocked and no root tool call is open (`activity.kind === 'tool'`, or `freshness.toolOpen` when a compaction outranks it): then `classifyMonitorRecency(freshness.lastEvidenceAt, now) === 'stale'`, re-read on the 10 s clock. An idle row never dims, and an open tool is evidence however long it runs silent | false |
 | `alive` | host `alive` when it says false (vf's witnessed exit outranks a lagging mirror), else `state.alive`, else true | true |
 | `observed` | a state has arrived and `pending` is unset (M10) | true |
 | `pending` | host `pending !== undefined` | — |

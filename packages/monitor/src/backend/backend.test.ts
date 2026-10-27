@@ -283,6 +283,7 @@ describe('order and recency', () => {
   });
 
   it('re-reads recency on the 10 s clock and rebuilds only the row whose staleness flipped', async () => {
+    const replying = { kind: 'responding' as const, line: 'Writing the reply', since: iso(T0) };
     const t = testBackend({
       facts: facts({
         runs: [
@@ -293,10 +294,12 @@ describe('order and recency', () => {
       states: [
         monitorState({
           runtimeRunId: 'fresh',
+          activity: replying,
           freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0) },
         }),
         monitorState({
           runtimeRunId: 'old',
+          activity: replying,
           freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0 - 25_000) },
         }),
       ],
@@ -314,6 +317,35 @@ describe('order and recency', () => {
     t.clock.advance(10_000);
     t.scheduler.flush();
     expect(t.backend.getSnapshot().revision).toBe(revision);
+  });
+
+  it('dims only a row that should be talking: never an idle one, a pending one, or one with a tool open', async () => {
+    const replying = { kind: 'responding' as const, line: 'Writing the reply', since: iso(T0) };
+    const quiet = { level: 'native-hooks' as const, families: {}, lastEvidenceAt: iso(T0 - 25_000) };
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'idle', terminalSessionId: 'p1' }),
+          hostRun({ runtimeRunId: 'held', terminalSessionId: 'p2', pending: 'resume-when-idle' }),
+          hostRun({ runtimeRunId: 'tool', terminalSessionId: 'p3' }),
+          hostRun({ runtimeRunId: 'replying', terminalSessionId: 'p4' }),
+        ],
+      }),
+      states: [
+        monitorState({ runtimeRunId: 'idle', status: 'idle', activity: undefined, freshness: quiet }),
+        monitorState({ runtimeRunId: 'held', activity: replying, freshness: quiet }),
+        monitorState({ runtimeRunId: 'tool', freshness: quiet }),
+        monitorState({ runtimeRunId: 'replying', activity: replying, freshness: quiet }),
+      ],
+    });
+    await t.backend.ready;
+    t.clock.advance(10_000);
+    expect(Object.fromEntries(t.rows().map((row) => [row.id, row.stale]))).toEqual({
+      idle: false,
+      held: false,
+      tool: false,
+      replying: true,
+    });
   });
 
   it('dates a terminal’s status from its birth and from the moment it flips', async () => {

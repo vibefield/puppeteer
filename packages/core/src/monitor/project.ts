@@ -375,6 +375,19 @@ function projectActivity(
   return activity;
 }
 
+/** Whether a root tool call is still open, whatever `projectActivity` ranks first (a compaction outranks a tool). */
+function rootToolOpen(
+  entries: readonly MonitorStoredEntry[],
+  run: { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined,
+): boolean {
+  if (run && !run.value.alive) return false;
+  return entries.some((entry) => {
+    const actor = actorOf(entry.value);
+    if (actor && actor.role !== 'root') return false;
+    return entry.value.kind === 'activity' && entry.value.active && entry.value.activityKind === 'tool';
+  });
+}
+
 function latestRun(
   entries: readonly MonitorStoredEntry[],
 ): { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined {
@@ -861,6 +874,7 @@ export function projectAgentMonitorState(
     },
     freshness: {
       ...(evidenceAsOf ? { lastEvidenceAt: evidenceAsOf } : {}),
+      ...(rootToolOpen(entries, run) ? { toolOpen: true } : {}),
       level: accumulator.observationLevel,
       families,
     },
