@@ -157,7 +157,7 @@ type OpenCodeProviderOptions = OpenCodeAgentOptions &
   Pick<CreateOpenCodeTuiSessionOptions, 'backendStartupTimeoutMs' | 'backendShutdownTimeoutMs' | 'reconnectDelayMs'>;
 type HermesProviderOptions = HermesAgentOptions &
   HermesNativeInvocationOptions &
-  Pick<CreateHermesTuiSessionOptions, 'executable' | 'python' | 'env' | 'gatewayUrl'>;
+  Pick<CreateHermesTuiSessionOptions, 'executable' | 'python' | 'env' | 'gatewayUrl' | 'gatewayToken'>;
 type AntigravityProviderOptions = AntigravityAgentOptions &
   AntigravityNativeInvocationOptions &
   Pick<CreateAntigravityTuiSessionOptions, 'pollIntervalMs' | 'maxReplayBytes' | 'promptConfirmationTimeoutMs'>;
@@ -1203,6 +1203,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           provider: launch?.provider,
           effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
+          gatewayToken: launch?.gatewayToken,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },
@@ -1228,6 +1229,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           provider: launch?.provider,
           effort: launch?.effort,
           gatewayUrl: launch?.gatewayUrl,
+          gatewayToken: launch?.gatewayToken,
           promptConfirmationTimeoutMs: launch?.promptConfirmationTimeoutMs,
         });
       },

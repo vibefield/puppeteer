@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { safeParseAgentEvent, type AdapterEventCandidate, type AgentHost } from '@vibefield/puppeteer-core';
+import {
+  safeParseAgentEvent,
+  type AdapterEventCandidate,
+  type AgentHost,
+  type TerminalSpec,
+} from '@vibefield/puppeteer-core';
 import { projectAgentEvents } from '@vibefield/puppeteer-testing';
 import { createHermesTuiSession } from './driver.js';
 import { FakeHermesGateway } from './test-support/fake-gateway.js';
@@ -71,6 +76,30 @@ describe('Hermes TUI session driver', () => {
       await session.dispose();
       await session.dispose();
       expect(gateway.closed).toBe(true);
+    }
+  });
+
+  it("hands the TUI a joined gateway's bearer and reports the bare URL", async () => {
+    const launches: TerminalSpec[] = [];
+    const session = await createHermesTuiSession({
+      cwd: '/work',
+      host: {
+        ...host(),
+        async spawnTerminal(spec) {
+          launches.push(spec);
+          return { runtimeSessionId: 'term-1' };
+        },
+      },
+      transport: new FakeHermesGateway(),
+      gatewayUrl: 'ws://127.0.0.1:41234/api/ws',
+      gatewayToken: 'joined-token',
+    });
+    try {
+      expect(launches).toHaveLength(1);
+      expect(launches[0]?.env?.HERMES_TUI_GATEWAY_URL).toBe('ws://127.0.0.1:41234/api/ws?token=joined-token');
+      expect(session.gatewayUrl()).toBe('ws://127.0.0.1:41234/api/ws');
+    } finally {
+      await session.dispose();
     }
   });
 

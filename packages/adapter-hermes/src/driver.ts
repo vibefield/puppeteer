@@ -35,6 +35,8 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   effort?: string | undefined;
   /** Connect to an already running owned gateway. Tests inject this. */
   gatewayUrl?: string | undefined;
+  /** That gateway's bearer, presented by the adapter and the TUI alike. A host this driver starts mints its own. */
+  gatewayToken?: string | undefined;
   transport?: HermesGatewayTransport | undefined;
   gatewayStartupTimeoutMs?: number | undefined;
   promptConfirmationTimeoutMs?: number | undefined;
@@ -68,6 +70,7 @@ export async function prepareHermesTuiSession(
   let host: HermesGatewayHost | undefined;
   let transport = options.transport;
   let gatewayUrl = options.gatewayUrl;
+  let gatewayToken = options.gatewayToken;
   let disposed = false;
 
   try {
@@ -81,8 +84,9 @@ export async function prepareHermesTuiSession(
           startupTimeoutMs: options.gatewayStartupTimeoutMs,
         });
         gatewayUrl = host.url;
+        gatewayToken = host.token;
       }
-      const client = new HermesJsonRpcClient(gatewayUrl);
+      const client = new HermesJsonRpcClient(gatewayUrl, { token: gatewayToken });
       await client.connect();
       transport = client;
     }
@@ -137,6 +141,7 @@ export async function prepareHermesTuiSession(
       cwd: options.cwd,
       hermesHome,
       gatewayUrl: gatewayUrl ?? 'ws://127.0.0.1/unused',
+      gatewayToken,
       resume: storedSessionId,
       yolo: options.yolo,
       env: options.env,
