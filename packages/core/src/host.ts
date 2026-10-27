@@ -44,6 +44,14 @@ export interface AgentHost {
    * focus, or claiming resize control.
    */
   automateTerminal(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
+  /**
+   * The complete environment for a helper process the adapter spawns itself (a private app-server, a leader, a
+   * `serve` backend): the host's agent-environment policy applied over the adapter's own variables, as
+   * {@link spawnTerminal} applies it to {@link TerminalSpec.env}. Such a helper runs the agent's model calls and
+   * tools, so it must run under the agent's environment, never the host process's own, which may carry the
+   * host's secrets. Absent = the adapter merges its variables over its own process environment.
+   */
+  helperEnvironment?(env: Record<string, string>): Record<string, string>;
 }
 
 /**

@@ -2369,7 +2369,10 @@ interface AgentProviderLaunchService {
               <strong>Host contract.</strong> <span class="mono">AgentHost</span> is deliberately tiny:
               <span class="mono">spawnTerminal(spec)</span> and
               <span class="mono">automateTerminal(id, operation)</span>. Ghosttea or another application terminal
-              service owns PTYs, focus, resize, accepted human input, and process lifecycle.
+              service owns PTYs, focus, resize, accepted human input, and process lifecycle. An optional
+              <span class="mono">helperEnvironment(env)</span> composes the environment for a helper the adapter spawns
+              itself (Codex's app-server, Grok's leader and controller, OpenCode's <span class="mono">serve</span>) by
+              the same policy as the agent's terminal; without it a helper inherits the host process's own.
             </div>
 
             <h3>3. Adapter author: AgentAdapterBinding</h3>

@@ -51,6 +51,8 @@ export interface SpawnAppServerOptions {
    * is how the puppeteer imposter is told which vendor to be (docs/archive/IMPOSTER.md §6).
    */
   env?: Record<string, string>;
+  /** False when `env` is already the child's complete environment (a host's helper environment). */
+  inheritEnvironment?: boolean;
   /**
    * Arguments for `codex app-server` itself, ahead of `--listen` — the settings a
    * typed invocation carries to the thread's server (`-c`, `--enable`, `--disable`).
@@ -81,7 +83,11 @@ export function spawnAppServer(opts: SpawnAppServerOptions = {}): AppServerHandl
     ['app-server', ...(opts.args ?? []), '--listen', requestedAddress],
     {
       stdio: ['ignore', 'ignore', 'pipe'],
-      ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
+      ...(opts.inheritEnvironment === false
+        ? { env: { ...opts.env } }
+        : opts.env
+          ? { env: { ...process.env, ...opts.env } }
+          : {}),
     },
   );
   let resolvedEndpoint: AppServerEndpoint | undefined;

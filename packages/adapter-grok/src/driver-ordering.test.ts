@@ -105,6 +105,28 @@ describe('Grok leader session materialization ordering', () => {
     backend.dispose();
   });
 
+  it("runs the leader and its ACP controller under the host's helper environment when the host composes one", async () => {
+    vi.stubEnv('PUPPETEER_HOST_ONLY_SECRET', 'host-secret');
+    const helperEnvironment = vi.fn((env: Record<string, string>) => ({ PATH: '/agent/bin', ...env }));
+    const backend = createGrokBackend({ executable: '/real/grok', host: { ...host(), helperEnvironment } });
+    try {
+      const prepared = await backend.prepareSession({ cwd: '/repo' });
+      expect(helperEnvironment).toHaveBeenCalledWith({});
+      // exactly the host's composition: nothing of this process's own is merged back
+      expect(mocks.spawn).toHaveBeenCalledWith('/real/grok', expect.arrayContaining(['agent', 'leader']), {
+        stdio: 'ignore',
+        env: { PATH: '/agent/bin' },
+      });
+      expect(mocks.createStdioAcpConnector).toHaveBeenCalledWith(
+        expect.objectContaining({ env: { PATH: '/agent/bin' } }),
+      );
+      await prepared.dispose();
+    } finally {
+      backend.dispose();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('defers unhandled approvals to the native viewer every prepared session launches', async () => {
     const backend = createGrokBackend({ executable: '/real/grok', host: host() });
     const prepared = await backend.prepareSession({ cwd: '/repo' });

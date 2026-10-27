@@ -116,6 +116,26 @@ describe('spawnAppServer process contract', () => {
     expect(child.kill).toHaveBeenCalledWith('SIGTERM');
   });
 
+  it('runs under exactly the environment it is handed when told not to inherit this process’s own', async () => {
+    vi.stubEnv('PUPPETEER_HOST_ONLY_SECRET', 'host-secret');
+    const child = new FakeChildProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const server = spawnAppServer({
+      executable: 'codex-test',
+      transport: 'websocket',
+      env: { PATH: '/agent/bin', CODEX_HOME: '/isolated-codex' },
+      inheritEnvironment: false,
+    });
+    try {
+      const spawnOptions = mocks.spawn.mock.calls[0]![2] as { env?: NodeJS.ProcessEnv };
+      expect(spawnOptions.env).toEqual({ PATH: '/agent/bin', CODEX_HOME: '/isolated-codex' });
+      expect(spawnOptions.env).not.toHaveProperty('PUPPETEER_HOST_ONLY_SECRET');
+    } finally {
+      await server.dispose();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('includes app-server diagnostics when the process exits before readiness', async () => {
     const child = new FakeChildProcess();
     mocks.spawn.mockReturnValue(child.asChildProcess());

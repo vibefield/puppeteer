@@ -1,5 +1,7 @@
-import { rmSync } from 'node:fs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   safeParseAgentEvent,
   type AdapterEventCandidate,
@@ -121,5 +123,52 @@ describe('OpenCode native-TUI session composition', () => {
     expect(projection.state.lastSequence).toBe(sequence);
     offCandidate();
     projection.dispose();
+  });
+
+  it("runs the private backend under the host's helper environment, never this process's own", async () => {
+    const fixture = createOpenCodeImposterFixture();
+    roots.add(fixture.root);
+    // The backend writes down the environment it was born with, then serves as the fixture does.
+    const record = join(fixture.root, 'backend-environment.json');
+    const executable = join(fixture.root, 'recording', 'opencode.mjs');
+    mkdirSync(dirname(executable));
+    writeFileSync(
+      executable,
+      `import { writeFileSync } from 'node:fs';\n` +
+        `writeFileSync(${JSON.stringify(record)}, JSON.stringify(process.env));\n` +
+        `await import(${JSON.stringify(pathToFileURL(fixture.executable).href)});\n`,
+      { mode: 0o700 },
+    );
+    vi.stubEnv('PUPPETEER_HOST_ONLY_SECRET', 'host-secret');
+    const composed: Record<string, string>[] = [];
+    const host: AgentHost = {
+      async spawnTerminal() {
+        return { runtimeSessionId: 'runtime-opencode-helper-environment' };
+      },
+      async automateTerminal() {
+        return { accepted: true };
+      },
+      // a host's policy: what it chooses to pass, beneath the adapter's own variables
+      helperEnvironment(env) {
+        composed.push(env);
+        return {
+          ...(process.env.PATH ? { PATH: process.env.PATH } : {}),
+          ...(process.env.HOME ? { HOME: process.env.HOME } : {}),
+          ...env,
+        };
+      },
+    };
+    try {
+      const session = await createOpenCodeTuiSession({ cwd: fixture.cwd, host, executable, env: fixture.env });
+      sessions.add(session);
+      expect(composed).toEqual([fixture.env]);
+      const environment = JSON.parse(readFileSync(record, 'utf8')) as Record<string, string>;
+      expect(environment).not.toHaveProperty('PUPPETEER_HOST_ONLY_SECRET');
+      expect(environment['PUPPETEER_IMPOSTER_HOME']).toBe(fixture.env['PUPPETEER_IMPOSTER_HOME']);
+      // the adapter's own credentials still ride over the host's composition
+      expect(environment['OPENCODE_SERVER_USERNAME']).toBe('opencode');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -245,6 +245,24 @@ describe('Codex TUI preparation', () => {
     await prepared.dispose();
   });
 
+  it("runs the private app-server under the host's helper environment when the host composes one", async () => {
+    const helperEnvironment = vi.fn((env: Record<string, string>) => ({ PATH: '/agent/bin', ...env }));
+    const prepared = await prepareCodexTuiSession({
+      cwd: '/work/repo',
+      executable: '/opt/codex',
+      host: { ...host(), helperEnvironment },
+      appServerEnv: { CODEX_HOME: '/profiles/work' },
+    });
+    // the adapter's own variables go through the host's policy, and nothing of this process's is merged back
+    expect(helperEnvironment).toHaveBeenCalledWith({ CODEX_HOME: '/profiles/work' });
+    expect(fakes.spawnServer).toHaveBeenCalledWith({
+      executable: '/opt/codex',
+      env: { PATH: '/agent/bin', CODEX_HOME: '/profiles/work' },
+      inheritEnvironment: false,
+    });
+    await prepared.dispose();
+  });
+
   it('refuses a recipe clap would misread before it starts anything', async () => {
     const base = { cwd: '/work/repo', executable: '/opt/codex', host: host() };
     await expect(
