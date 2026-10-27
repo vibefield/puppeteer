@@ -3,6 +3,7 @@ import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
   normalizeClaudeOtelModel,
+  normalizeClaudeOtelToolDecision,
   normalizeClaudeOtelUsage,
   supportsClaudeOtelLogs,
 } from './index.js';
@@ -182,5 +183,94 @@ describe('Claude OTLP log normalization', () => {
 
     expect(record).not.toHaveProperty('body');
     expect(JSON.stringify(record)).not.toContain('private@example.com');
+  });
+});
+
+describe('Claude OTLP permission decisions', () => {
+  // https://code.claude.com/docs/en/monitoring-usage#tool-decision-event
+  function decisionRecord(fields: Record<string, string | undefined>, body = 'claude_code.tool_decision') {
+    const values: Record<string, string | undefined> = {
+      'event.name': 'tool_decision',
+      'event.timestamp': '2026-08-25T16:30:14.402Z',
+      'session.id': 'session-1',
+      'prompt.id': 'prompt-1',
+      tool_name: 'Bash',
+      tool_use_id: 'toolu_decided',
+      ...fields,
+    };
+    const attributes = Object.entries(values).flatMap(([key, value]) => (value ? [attr(key, value)] : []));
+    const [record] = decodeClaudeOtelLogs(
+      {
+        resourceLogs: [
+          {
+            scopeLogs: [
+              {
+                logRecords: [
+                  {
+                    timeUnixNano: '1787675415000000000',
+                    body: { stringValue: body },
+                    attributes,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      '2026-08-25T16:30:16.000Z',
+    );
+    return record!;
+  }
+
+  const decide = (fields: Record<string, string | undefined>) =>
+    normalizeClaudeOtelToolDecision(decisionRecord(fields));
+
+  it('reads the person’s accept at the prompt as allowed, keyed by the hooks’ tool_use_id, at its own time', () => {
+    expect(decide({ decision: 'accept', source: 'user_temporary' })).toEqual({
+      toolUseId: 'toolu_decided',
+      outcome: 'allowed',
+      timestamp: '2026-08-25T16:30:14.402Z',
+    });
+    expect(decide({ decision: 'accept', source: 'user_permanent' })).toMatchObject({ outcome: 'allowed' });
+  });
+
+  it('reads a rejection as denied and a prompt dismissed without an answer as dismissed', () => {
+    expect(decide({ decision: 'reject', source: 'user_reject' })).toMatchObject({ outcome: 'denied' });
+    expect(decide({ decision: 'reject', source: 'config' })).toMatchObject({ outcome: 'denied' });
+    expect(decide({ decision: 'reject', source: 'user_abort' })).toMatchObject({ outcome: 'dismissed' });
+  });
+
+  it('keeps the decision’s key, verdict and origin, never the command it decided', () => {
+    const record = decisionRecord({
+      decision: 'reject',
+      source: 'user_reject',
+      tool_parameters: '{"bash_command":"rm -rf private-dir"}',
+      'user.email': 'private@example.com',
+    });
+
+    expect(record.body).toBe('claude_code.tool_decision');
+    expect(record.attributes).toMatchObject({
+      'event.name': 'tool_decision',
+      tool_use_id: 'toolu_decided',
+      decision: 'reject',
+      source: 'user_reject',
+    });
+    expect(record.attributes).not.toHaveProperty('tool_parameters');
+    expect(JSON.stringify(record)).not.toContain('private-dir');
+    expect(JSON.stringify(record)).not.toContain('private@example.com');
+  });
+
+  it('keeps decision attributes off other events, and reads no decision without its tool call or verdict', () => {
+    const request = decisionRecord(
+      { 'event.name': 'api_request', decision: 'accept', source: 'user_temporary' },
+      'claude_code.api_request',
+    );
+    expect(request.attributes).not.toHaveProperty('tool_use_id');
+    expect(request.attributes).not.toHaveProperty('decision');
+    expect(request.attributes).not.toHaveProperty('source');
+    expect(normalizeClaudeOtelToolDecision(request)).toBeUndefined();
+
+    expect(decide({ decision: 'accept', source: 'user_temporary', tool_use_id: undefined })).toBeUndefined();
+    expect(decide({ decision: 'ask', source: 'config' })).toBeUndefined();
   });
 });

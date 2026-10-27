@@ -12,7 +12,8 @@
  *     → category normalizers → candidate event source → runtime ingress
  *     → live transcript provider (lazy: attached at the
  *       first hook payload that hands us transcript_path)
- *     → authenticated OTLP logs (settled request usage, when available)
+ *     → authenticated OTLP logs (settled request usage and permission
+ *       decisions, when available)
  *     → prompt injector (uses ports.automate; confirmation and
  *       permission gating wired from the normalized event stream)
  *
@@ -58,6 +59,7 @@ import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
   normalizeClaudeOtelModel,
+  normalizeClaudeOtelToolDecision,
   normalizeClaudeOtelUsage,
   otelString,
   supportsClaudeOtelLogs,
@@ -626,6 +628,27 @@ function createClaudeObservation(
     if (!otelUsageEnabled || disposed) return;
     for (const record of decodeClaudeOtelLogs(otelEnvelope.body, otelEnvelope.receivedAt)) {
       if (otelString(record, 'session.id') !== nativeSessionId()) continue;
+      if (observation === 'terminal-only') observation = 'native-log';
+
+      // The person's answer to a permission prompt arrives here; no hook fires at it. A decision
+      // that closes no pending request (a rule's, or one its tool's hooks already settled) stays native.
+      const decision = normalizeClaudeOtelToolDecision(record);
+      const decided = decision ? normalizer.resolvePermissionDecision(decision.toolUseId, decision.outcome) : undefined;
+      if (decision && decided) {
+        for (const event of decided.events) {
+          apply(event, {
+            source: 'native-telemetry',
+            timestamp: decision.timestamp,
+            promptId: decided.promptId,
+            agentId: decided.agentId,
+            agentType: decided.agentType,
+            providerVersion: record.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: record,
+          });
+        }
+        continue;
+      }
 
       const usage = normalizeClaudeOtelUsage(record);
       const model = normalizeClaudeOtelModel(record);
@@ -645,10 +668,8 @@ function createClaudeObservation(
             native: record,
           },
         );
-        if (observation === 'terminal-only') observation = 'native-log';
         continue;
       }
-      if (observation === 'terminal-only') observation = 'native-log';
 
       if (usage) {
         const key = usage.event.usageId;
