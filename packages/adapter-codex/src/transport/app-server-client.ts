@@ -9,7 +9,7 @@
  *
  * Three inbound message shapes are distinguished the JSON-RPC way:
  * - response      = has `id`, no `method`      → resolves a pending request
- * - server request = has `id` AND `method`     → we must answer (approvals)
+ * - server request = has `id` AND `method`     → we answer it, or leave it to another client (approvals)
  * - notification  = has `method`, no `id`      → streamed session events
  */
 
@@ -64,6 +64,16 @@ export type ServerRequestHandler = (
   params: Record<string, unknown> | undefined,
   id: number | string,
 ) => Promise<unknown> | unknown;
+
+/**
+ * What a server-request handler returns to send no reply at all. The app-server
+ * sends a thread's requests to every connection subscribed to the thread and
+ * acts on the first reply from any of them (codex-rs/app-server
+ * `outgoing_message.rs`, rust-v0.164.0), so a connection that leaves a request
+ * to another client must stay silent: any reply it sent, an error included,
+ * would be the answer.
+ */
+export const NO_REPLY: unique symbol = Symbol('codex.app-server.no-reply');
 
 const rec = (v: unknown): Record<string, unknown> | undefined =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
@@ -182,12 +192,13 @@ export class AppServerClient {
     }
 
     if (hasId && method !== undefined) {
-      // Server → client request (approvals). Answer, or error back on throw.
+      // Server → client request (approvals). Answer, error back on throw, or
+      // leave it to another client of the same app-server (NO_REPLY).
       try {
         const result = this.serverRequestHandler
           ? await this.serverRequestHandler(method, rec(m.params), m.id as number | string)
           : null;
-        if (this.closed) return;
+        if (this.closed || result === NO_REPLY) return;
         this.transport.send({ jsonrpc: '2.0', id: m.id, result });
       } catch (err) {
         if (this.closed) return;
