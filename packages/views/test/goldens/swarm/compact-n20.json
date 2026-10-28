@@ -109,7 +109,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -291,7 +291,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -365,7 +365,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -474,7 +474,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -656,7 +656,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -730,7 +730,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -839,7 +839,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -1021,7 +1021,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -1095,7 +1095,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -1204,7 +1204,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -1386,7 +1386,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -1460,7 +1460,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -1569,7 +1569,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -1751,7 +1751,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -1825,7 +1825,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -1934,7 +1934,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -2116,7 +2116,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -2190,7 +2190,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -2299,7 +2299,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -2481,7 +2481,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -2555,7 +2555,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -2664,7 +2664,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -2846,7 +2846,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -2920,7 +2920,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   },
@@ -3029,7 +3029,7 @@
       0,
       0
      ],
-     "model": "3d6cc974110f"
+     "model": "4fe6be2ffac5"
     },
     {
      "id": "terminal-running",
@@ -3211,7 +3211,7 @@
       0,
       0
      ],
-     "model": "c92825880bb4"
+     "model": "05533404da46"
     },
     {
      "id": "blocked-permission",
@@ -3285,7 +3285,7 @@
       0,
       0
      ],
-     "model": "e06895a82a03"
+     "model": "81ca06758fcd"
     }
    ]
   }
@@ -3616,7 +3616,7 @@
    "ariaLabel": "swarm-lab, Opus 4.5, idle: Benchmarks are in: the new path is 3.1× faster at n = 60., CTX:52%, new message: Benchmarks are in: the new path is 3.1× faster at n = 60.",
    "title": "swarm-lab · Opus 4.5 · Benchmarks are in: the new path is 3.1× faster at n = 60."
   },
-  "3d6cc974110f": {
+  "4fe6be2ffac5": {
    "id": "peer-idle",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -3656,6 +3656,19 @@
      "opacity": 0.44,
      "tone": "ink",
      "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "tower · writable host",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
     }
    ],
    "copyMaxWidthRatio": 0.84,
@@ -3670,7 +3683,7 @@
     "sprite": "hermes",
     "opacity": 0.1
    },
-   "ariaLabel": "truffle, GPT-5, idle: tower · idle, CTX:25%",
+   "ariaLabel": "truffle, GPT-5, idle: tower · idle, CTX:25%, writable host",
    "title": "truffle · GPT-5 · tower · idle"
   },
   "4ac0af6a7b81": {
@@ -4400,7 +4413,7 @@
    "ariaLabel": "notes, Haiku 4.5, working: working, CTX:36%, burning $23/hr",
    "title": "notes · Haiku 4.5 · working · $23/hr"
   },
-  "c92825880bb4": {
+  "05533404da46": {
    "id": "peer-working",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -4457,6 +4470,19 @@
      "opacity": 0.44,
      "tone": "ink",
      "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "studio · writable host",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
     }
    ],
    "copyMaxWidthRatio": 0.8,
@@ -4488,7 +4514,7 @@
     "sprite": "copilot",
     "opacity": 0.1
    },
-   "ariaLabel": "ghosttea, GPT-5, working: studio · working, CTX:34%, burning $17/hr",
+   "ariaLabel": "ghosttea, GPT-5, working: studio · working, CTX:34%, burning $17/hr, writable host",
    "title": "ghosttea · GPT-5 · studio · working · $17/hr"
   },
   "90272bbef57a": {
@@ -4732,7 +4758,7 @@
    "ariaLabel": "notes, Sonnet 4.5, blocked: failure, CTX:38%, failed: rate limited · retrying",
    "title": "notes · Sonnet 4.5 · failure"
   },
-  "e06895a82a03": {
+  "81ca06758fcd": {
    "id": "peer-blocked",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -4793,6 +4819,19 @@
      "opacity": 0.44,
      "tone": "ink",
      "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "studio · read-only host",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
     }
    ],
    "copyMaxWidthRatio": 0.86,
@@ -4809,7 +4848,7 @@
     "opacity": 0.1
    },
    "blockerKind": "permission",
-   "ariaLabel": "rosetta, Sonnet 4.5, blocked: studio · permission · Bash, CTX:21%, permission: Bash · git push origin main",
+   "ariaLabel": "rosetta, Sonnet 4.5, blocked: studio · permission · Bash, CTX:21%, permission: Bash · git push origin main, read-only host",
    "title": "rosetta · Sonnet 4.5 · studio · permission · Bash"
   }
  }
