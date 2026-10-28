@@ -546,7 +546,16 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       const t = controllable(0);
       const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
       const projection = projectAgentEvents(obs);
+      // The person's prompt in the TUI: Codex starts the turn, then completes the user message that starts it here.
       t.deliver({ method: 'turn/started', params: { threadId: 'th-owned', turn: { id: 'turn-1' } } });
+      t.deliver({
+        method: 'item/completed',
+        params: {
+          threadId: 'th-owned',
+          turnId: 'turn-1',
+          item: { type: 'userMessage', id: 'user-1', content: [{ type: 'text', text: 'Remove the scratch file' }] },
+        },
+      });
       t.deliver(approval);
       await new Promise((resolve) => setTimeout(resolve, 0));
 

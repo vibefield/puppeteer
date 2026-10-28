@@ -563,7 +563,7 @@ describe('createAgentRuntime', () => {
     expect(stopped).toEqual([]);
     // mid-turn the adapter's own stop is sent
     handles.get(named.terminalSessionId)?.emit(testEnvelope({ type: 'turn:started', turnId: 'turn-1', prompt: 'go' }));
-    expect(named.status).toBe('working');
+    await vi.waitFor(() => expect(named.status).toBe('working'));
     await expect(named.stopTurn()).resolves.toEqual({ accepted: true });
     expect(stopped).toEqual([named.terminalSessionId]);
     // an adapter that cannot see turns reads idle for want of evidence: its stop is sent

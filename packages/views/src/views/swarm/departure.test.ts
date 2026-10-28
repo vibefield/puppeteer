@@ -70,7 +70,7 @@ describe('a leaving body', () => {
     }
     expect(fadingBack(length, reached)).toBeUndefined();
     // a body barely faded is whole again almost at once; one already whole has nothing to fade
-    expect(fadingBack(DEPARTURE_REDUCED_MS * 0.05, 0.95)).toBeUndefined();
+    expect(fadingBack(DEPARTURE_REDUCED_MS * (1 - 0.95), 0.95)).toBeUndefined();
     expect(fadingBack(0, 1)).toBeUndefined();
   });
 
