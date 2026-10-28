@@ -47,6 +47,36 @@ async function waitFor(predicate: () => boolean, label: string, timeoutMs = 15_0
   throw new Error(`timed out waiting for ${label}`);
 }
 
+// Grok rewrites its native state files (summary.json, signals.json) in place and after the turn result, and the
+// imposter does the same, so a read just after `turn:completed` can land on the previous turn's state or on a
+// truncated file. The session observer treats a partial rewrite as "not yet"; so does this read, until the file
+// parses and `settled` accepts it.
+async function settledJson(
+  path: string,
+  settled: (value: Record<string, unknown>) => boolean,
+  label: string,
+): Promise<Record<string, unknown>> {
+  let value: Record<string, unknown> | undefined;
+  let lastRead = 'nothing read';
+  try {
+    await waitFor(() => {
+      try {
+        const parsed = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+        lastRead = JSON.stringify(parsed);
+        if (!settled(parsed)) return false;
+        value = parsed;
+        return true;
+      } catch (error) {
+        lastRead = error instanceof Error ? error.message : String(error);
+        return false;
+      }
+    }, label);
+  } catch (error) {
+    throw new Error(`${(error as Error).message}; last read: ${lastRead}`);
+  }
+  return value!;
+}
+
 function spawningHost(launched: TerminalSpec[], terminals: ChildProcess[]): AgentHost {
   return {
     async spawnTerminal(spec) {
@@ -237,12 +267,20 @@ describe.skipIf(process.platform === 'win32')('the Grok native recipe against `a
     ).toBe(true);
     // Without configured hooks 1.0.70 records no hook_execution at all.
     expect(records.filter(({ params }) => params?.update?.sessionUpdate === 'hook_execution')).toEqual([]);
-    expect(JSON.parse(readFileSync(join(store, 'summary.json'), 'utf8'))).toMatchObject({
+    expect(
+      await settledJson(
+        join(store, 'summary.json'),
+        (summary) => summary.num_messages === 4,
+        'the two-turn summary.json',
+      ),
+    ).toMatchObject({
       info: { id: session.sessionId, cwd },
       num_messages: 4,
       num_chat_messages: 4,
     });
-    expect(JSON.parse(readFileSync(join(store, 'signals.json'), 'utf8'))).toMatchObject({
+    expect(
+      await settledJson(join(store, 'signals.json'), (signals) => signals.turnCount === 2, 'the two-turn signals.json'),
+    ).toMatchObject({
       contextTokensUsed: 32,
       compactionCount: 0,
       turnCount: 2,
