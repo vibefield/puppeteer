@@ -40,8 +40,8 @@ host that breaks one.
    reads as "starting" until the runtime speaks.
 3. **Open and close screens (M20).** A screen opens with its first `reportShown(screenId, ids)`, an empty list too
    (its active pane shows nothing), and closes with `forgetScreen(screenId)` when it goes away: fieldd when the
-   screen's door subscription closes, puppeteer's Godview when the window closes. A screen never forgotten keeps marks
-   accruing as if someone were looking.
+   screen's door subscription closes, puppeteer's Godview when the window closes. A screen never forgotten keeps
+   reporting its rows shown, so they never earn a mark.
 4. **One ordered channel (M23).** Deliver a snapshot and the changes after it on ONE ordered channel wherever the
    transport allows (puppeteer's Godview: the snapshot as a message on the change channel, not a separate invoke). The
    replica holds the changes it hears during a gap and replays those after the healing snapshot's revision
@@ -111,10 +111,16 @@ reports it shown". `reportShown(screenId, ids)` replaces that screen's set; the 
 one too (its pane shows nothing), and `forgetScreen(screenId)` closes it. One screen reporting its active pane's row is
 exactly today's fold — the parity tests prove it against the ported function. Terminals never earn the mark.
 
-**Lifetime (M20).** Today the ledger lives only while Godview is open, so a turn that finished while it was closed is
-never marked. The backend keeps that: while no screen is open nothing accrues and the ledger is empty, the first screen to
-open stamps first sight for every row, and forgetting the last screen drops every mark. The ledger is memory only
-(runtime only). Marking turns that finished while nobody looked would be a design event for James, not MV's.
+**Lifetime (Q05).** The ledger lives as long as the backend, whether a screen is open or not (ruled by James,
+2026-10-27). A row is seen for the first time at the fold that first names it; from then on, while no screen shows
+it, a turn that ends earns the mark. Forgetting a screen (a window closed or reloaded, a subscription ended) keeps
+every mark, and the next screen to open finds them. The ledger is memory only. A host that wants marks to survive its
+own restart reads the ledger with `seenAt()` and passes it to the next backend as the `seenAt` option: a seeded row's
+idle is then weighed against the seeded time at the fold that first names it, rather than seen for the first time.
+
+> **Erratum (2026-10-27, Q05):** this section said the ledger lived only while a screen was open (M20): with none,
+> nothing accrued and the ledger was empty, the first screen to open stamped first sight for every row, and forgetting
+> the last screen dropped every mark. That was the backend's behaviour through v0.2.3.
 
 ## Cost
 
