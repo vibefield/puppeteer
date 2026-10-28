@@ -30,7 +30,7 @@ export interface RenderBody {
   y: number;
   /** The eased visual radius, CSS px. */
   radius: number;
-  /** The arrival curve's scale and opacity; 1 once landed. */
+  /** The arrival curve's scale and opacity, times a departure's while it leaves; 1 once landed. */
   scale: number;
   opacity: number;
   focus: boolean;
