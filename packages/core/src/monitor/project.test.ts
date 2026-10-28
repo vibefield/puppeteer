@@ -97,6 +97,50 @@ describe('projectAgentMonitorState', () => {
     expect(projectAgentMonitorState(state)).toMatchObject({ status: 'idle', alive: false });
   });
 
+  it('says a root tool is open while a compaction outranks it as the activity, and not once it closes', () => {
+    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
+    expect(projectAgentMonitorState(state).freshness).not.toHaveProperty('toolOpen');
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'tool:started', toolCallId: 'long-tool', tool: 'Bash' }, 2),
+    ).state;
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      activity: { kind: 'tool' },
+      freshness: { toolOpen: true },
+    });
+
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'compaction:started', compactionId: 'compact-1' }, 3),
+    ).state;
+    expect(projectAgentMonitorState(state)).toMatchObject({
+      activity: { kind: 'compacting' },
+      freshness: { toolOpen: true },
+    });
+
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'tool:completed', toolCallId: 'long-tool', tool: 'Bash' }, 4),
+    ).state;
+    const closed = projectAgentMonitorState(state);
+    expect(closed.activity?.kind).toBe('compacting');
+    expect(closed.freshness).not.toHaveProperty('toolOpen');
+  });
+
+  it('closes an open root tool with the run that held it', () => {
+    let state = reduceMonitorAccumulator(initial(), runtimeEnvelope({ type: 'session:ready' }, 1)).state;
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'tool:requested', toolCallId: 'open-tool', tool: 'Bash' }, 2),
+    ).state;
+    expect(projectAgentMonitorState(state).freshness.toolOpen).toBe(true);
+    state = reduceMonitorAccumulator(
+      state,
+      runtimeEnvelope({ type: 'process:exited', reason: 'completed', exitCode: 0 }, 3),
+    ).state;
+    expect(projectAgentMonitorState(state).freshness).not.toHaveProperty('toolOpen');
+  });
+
   it('does not present retained evidence as fully available when its only producer is degraded', () => {
     const input = semantic(
       'degraded-usage',
@@ -578,6 +622,8 @@ describe('projectAgentMonitorState', () => {
         },
       ],
     });
+    // The child's tool is the child's: the root has none open.
+    expect(projectAgentMonitorState(state).freshness).not.toHaveProperty('toolOpen');
   });
 
   it('lets an authoritative child stop seal stale sampled activity', () => {

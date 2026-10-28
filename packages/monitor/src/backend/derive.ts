@@ -207,9 +207,20 @@ export function agentTokens(state: AgentMonitorState | undefined): MonitorTokens
   };
 }
 
-/** Evidence recency, presentation metadata only; a run with no evidence clock is never stale. */
-export function isStale(state: AgentMonitorState | undefined, nowMs: number, staleAfterMs: number): boolean {
-  if (!state) return false;
+/**
+ * Evidence recency, presentation metadata only, and only while the run should be talking: a working or blocked row
+ * with no root tool call open. An idle row sends nothing because it has nothing to say, and a tool may run silent for
+ * minutes, so neither quiet is staleness. A run with no evidence clock is never stale.
+ */
+export function isStale(
+  host: MonitorHostRun,
+  state: AgentMonitorState | undefined,
+  nowMs: number,
+  staleAfterMs: number,
+): boolean {
+  if (!state || agentStatus(host, state) === 'idle') return false;
+  // A compaction outranks a tool as the headline activity, so core also says whether a root tool is open.
+  if (state.activity?.kind === 'tool' || state.freshness.toolOpen === true) return false;
   return classifyMonitorRecency(state.freshness.lastEvidenceAt, nowMs, { staleAfterMs }).recency === 'stale';
 }
 

@@ -418,7 +418,7 @@ export function createMonitorBackend(options: CreateMonitorBackendOptions): Moni
         device,
         seq,
         profileSet: resolveProfileSet(agent.host, sets),
-        stale: isStale(agent.state, nowMs, staleAfterMs),
+        stale: isStale(agent.host, agent.state, nowMs, staleAfterMs),
         cost: costOf(runtimeRunId, ledger.history(runtimeRunId), agent.state?.usage.costRatePerMin),
         unread: unread.unreadIds.has(agent.id),
       };
