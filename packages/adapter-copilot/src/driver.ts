@@ -29,6 +29,7 @@ export interface CreateCopilotTuiSessionOptions extends AgentTuiSessionOptions {
 }
 export interface CopilotTuiSession extends AgentAdapterBinding {
   sessionDirectory(): string;
+  durableRecordSeen(): boolean;
 }
 export interface PreparedCopilotTuiSession {
   readonly sessionId: string;
@@ -169,6 +170,8 @@ export async function prepareCopilotTuiSession(
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionDirectory: () => location.sessionDir,
+        // a resume's events.jsonl was found at prepare; a fresh id has none until the tail reads its first record
+        durableRecordSeen: () => options.resume !== undefined || observer.recordSeen(),
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
         services: { prompt: { submit: (submission) => prompts.submit(submission) } },
         async dispose() {

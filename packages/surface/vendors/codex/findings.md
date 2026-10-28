@@ -922,6 +922,43 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
   page carries no cursor whether full or partial; the adapter's walk took 2 pages. Against real codex the turn limit
   therefore stops a long history first (at page 400); the page limit stops only a server that keeps minting cursors.
 
+## Who answers an approval beside the TUI (2026-10-27, source)
+
+The approval round-trip above was captured on one connection; a managed session has two on one app-server (the
+observer and the TUI), and which of them Codex asks was unrecorded. Read from `openai/codex` at `rust-v0.164.0`
+(`6aaac694`), not captured live:
+
+- **Every subscribed connection is asked.** Each thread event is handled with a `ThreadScopedOutgoingMessageSender`
+  built from the thread's subscribed connections at that moment (`request_processors/thread_lifecycle.rs`), and the
+  approval and prompt handlers send their request through it (`bespoke_event_handling.rs`: command, file-change and
+  permissions approvals, `request_user_input`, MCP elicitations, dynamic tool calls). `send_request_to_connections`
+  writes the same request id to each (`outgoing_message.rs`). The notifications the observer reads go out through the
+  same sender, so a connection that sees the thread's events is sent its requests. A connection that subscribes later
+  (`thread/resume` of a running thread) is sent the still-open ones (`replay_requests_to_connection_for_thread`).
+  MCP user-verification elicitations are the exception: one eligible owner connection only.
+- **The first reply wins, from any connection.** `notify_client_response` and `notify_client_error` take the pending
+  callback by request id (`take_connection_callback`); a later reply finds none and is logged. An error reply is a
+  refusal: a command approval answered with an error is denied ("approval request failed") and its item `failed`.
+- **Every connection is told.** Each handler, as the reply arrives and before acting on it, has the thread listener
+  send `serverRequest/resolved {threadId, requestId}` to the subscribed connections; it names no decision. A turn's
+  start, completion or interruption cancels the thread's open requests (`abort_pending_server_requests`), and the
+  handlers then send the same notification.
+- **The TUI asks the person and yields to another answer.** `codex-rs/tui` records each approval and prompt it is sent
+  (`app/app_server_requests.rs`) and drops the pending prompt on `serverRequest/resolved`
+  (`app/app_server_events.rs`).
+
+So the observer's immediate decline answered for the person: Codex acted on it, and the TUI's prompt closed before it
+could be answered, with at most a flash of a pending permission (VibeField's Q09/X04). The adapter now defers in the
+observer (`unhandled: 'defer'` in `services/approvals.ts`): it sends no reply to an approval or prompt, publishes the
+wait as a pending permission (`presentation: native-tui`), and settles it `unknown` on `serverRequest/resolved`, the
+transport's close, or disposal. A host `onApproval` races the person (Grok's shared rule); a host decision never
+answers a prompt that is not an approval, and a host that throws leaves the request to the person. Capability
+requests (`item/tool/call`, `attestation/generate`, `currentTime/read`, auth refresh) keep the error answer. The
+headless driver, the thread's only client, still denies by default.
+
+The live two-connection round trip (observer silent, the person answering in the TUI, `serverRequest/resolved`
+reaching the observer) is not captured; VibeField's QA wave censuses it.
+
 ## Known gaps / follow-ups
 
 - **Companion-file artifact identity.** The census needs `bin/codex-code-mode-host`, but `upstream.schema.json`
@@ -979,5 +1016,9 @@ experimentalApi` (0.150.x, 0.147.0). Keep the replay barrier and turn-id dedup; 
 - **A looping cursor ends the history walk as complete.** An empty page, or a `nextCursor` already followed, still
   ends the walk without `incomplete`. Whether a server that claims more history but loops should be reported is open;
   real codex has not been seen to do either.
+- **A prompt beside the TUI reads as a permission wait.** The observer leaves `request_user_input`, MCP elicitations
+  and `request_permissions` to the person as it does an approval, and publishes each as a pending permission named by
+  its method: Core's question events are not produced for them, and their resolution names no answer.
+  `request_user_input` is unavailable in Default mode (C1d above), so it arises only in a mode that offers it.
 - **Unverified branches:** `functionCallOutput`, `agentMessage.questions`, `partial_answer`, `TurnError.misalignment`,
   `modelProvider/authRecovery*`, `thread/readState/changed`, `thread/prediction/updated`, `item/fileChange/patchUpdated`.

@@ -27,7 +27,7 @@ provider hook / OTLP log / transcript / journal / status
 | Category     | Primary live source                                   | Durable or degraded source                                |
 | ------------ | ----------------------------------------------------- | --------------------------------------------------------- |
 | conversation | `MessageDisplay` and `Stop` hooks                     | live assistant transcript changes; no conversation replay |
-| interaction  | permission/question hooks                             | transcript is not lifecycle truth                         |
+| interaction  | permission/question hooks; OTLP log `tool_decision`   | transcript is not lifecycle truth                         |
 | tool         | tool hooks                                            | none required for lifecycle                               |
 | model        | session hooks, status channels and OTLP request model | configured launch intent; no transcript model import      |
 | effort       | hooks and status channel                              | configured launch intent                                  |
@@ -44,6 +44,8 @@ Claude's native TUI owns resumed conversation history. The adapter silently base
 The transcript provider reads only the root transcript and emits only live assistant changes. Unknown transcript metadata is not converted into diagnostic events or replayed on attachment. Native hook diagnostics and observer failures remain observable through their own paths.
 
 Transcript model projection and child transcript discovery, probes and reads were removed on 2026-09-12. `SessionStart` supplies the root model on launch/resume, root status supplies its current ID and display name, child status supplies visible task models, and OTLP supplies observed request models. Configured launch intent remains separate from observed models. Historical models are not imported; missing native evidence leaves the observed model unknown. Exact child attribution still requires matching native identity; OTLP keeps derived actor groups when exact IDs are absent. Model capabilities describe the available hook/status/OTLP sources, including unavailable or unverified OTLP.
+
+No hook fires when a person answers a permission prompt: `PostToolUse` arrives when the approved tool ends, and a rejection fires nothing until a turn boundary. Claude's OTLP log [`tool_decision`](https://code.claude.com/docs/en/monitoring-usage#tool-decision-event) is logged at the decision and carries the hooks' `tool_use_id`, so it closes the pending request it names: `accept` as allowed, `reject` as denied, and a `user_abort` source as dismissed. Only its `tool_use_id`, `decision` and `source` are kept, never its `tool_parameters`. A decision that names no pending request (a rule's, or one exported after a fast tool's hooks) stays native evidence. Without OTLP the hooks settle every request as before.
 
 Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. The public workflow and team models were also removed on 2026-09-12. OTLP workflow IDs/names and name-only teammate hints remain native evidence; proven child identities contribute only unified child metrics and activity.
 
@@ -147,3 +149,34 @@ host keeps), knowing which terminals are still alive after it returns, and the r
 attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would
 carry that; it is a different process and a different lifetime), and any vendor's own reconnection story beyond
 Claude's — Codex and Grok rebuild their app-server and leader sockets by id and are the next candidates.
+
+> **Erratum (2026-10-27, VibeField's re-attach study):** the last sentence was false when written and is false at
+> 0.2.3 (`ee785ec1`). Codex's app-server and Grok's leader are not sockets an adapter rebuilds by id: each is a helper
+> process the adapter spawns as the host's child, and the helper holds the agent's session itself (Codex runs the
+> thread in its app-server; Grok's leader owns the session). OpenCode's `serve` and Hermes's gateway host are the same
+> kind. On a host's detach only Claude's binding honours `release`: the Codex binding's dispose ends its app-server
+> (`adapter-codex/src/launch/tui-session.ts:220-226`), OpenCode's ends `serve` (`adapter-opencode/src/driver.ts:399-406`),
+> Hermes's closes its gateway host (`adapter-hermes/src/driver.ts:298-307`), and the runtime then calls every provider's
+> `dispose()` with no argument (`runtime/src/runtime.ts:3936`), which stops every Grok leader
+> (`builtin-providers/src/providers.ts:714-717`, `adapter-grok/src/driver.ts:106-123`). After a graceful host stop the
+> agent's process is gone and its TUI is a client with no backend, so there is nothing to reconnect to by id. A re-attach
+> for these four first needs the helper to outlive the host (VibeField ruled that its terminal floor keeps it, through a
+> process service), and only then an adapter that rebuilds its rail to it.
+
+**Amended 2026-10-27 (VibeField's re-attach study, Step 1).** _An attach hands back what the launch knew._
+`AttachAgentOptions.continuation` carries the continuation the host kept: the provider's codec restores the launch
+options from it when the host keeps none (a typed `CLAUDE_CONFIG_DIR` root, an imposter's environment), and the
+attached run keeps its `state` and `implementation`, so the continuation it reports next, and a resume of it, is the
+launch's and not `native` with no state. _One opaque attach record per session._ An adapter with facts to find again
+beyond the continuation (a helper's endpoint, pid and start time, a provisional id's anchor) reports
+`{version, state, secret?}` through `HostIngress.onAttachRecord` before launch, and through the attach's own
+`onAttachRecord` whenever they change after, so a second restart reads fresh facts. The host keeps the latest
+owner-only and hands it back exactly; an unknown `version` is refused, never guessed. An adapter that adopts an endpoint
+its process did not just bind proves the process behind it (a per-run nonce in `secret`, or the host's word on the
+peer) before it trusts it. _A failed attach says what next._ `AgentAttachRefusedError` carries `retry`, `respawn`,
+`native-log` or `resume` to the failure's `error.next`. _A provider is told the host is detaching._ The runtime calls
+`dispose({ detach })`, so a provider can keep what released runs use. _An attach reads where the agent stands._ The
+existing records are no longer only a silent baseline for an attach: Claude's first transcript read publishes the turn
+and the tools still open as replay, and a question the agent waits on live, once (`partitionAttachBootstrap`), and the
+hook rail adopts those tools, so their PostToolUse closes them. A launch, a resume and a picker rebind keep the silent
+baseline: their process is not in the middle of what the record last shows.

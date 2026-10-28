@@ -112,6 +112,21 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('aria-label="Restore the pane"');
   });
 
+  it("names the key the stop presses, the agent's own, and none for a stop that presses no key", () => {
+    const escape = agent({ stopKey: 'escape' });
+    expect(markup({ session: session(), agent: escape })).toContain('title="Stop the turn, 1:05 in ⎋"');
+    expect(markup({ session: session(), agent: { ...escape, status: 'idle' } })).toContain('title="Stop the turn ⎋"');
+    expect(markup({ session: session(), agent: agent({ status: 'idle', stopKey: 'ctrl-c' }) })).toContain(
+      'title="Stop the turn ⌃C"',
+    );
+    // a native stop (Hermes's gateway interrupt) presses no key, so the title invents none
+    const native = markup({ session: session(), agent: agent() });
+    expect(native).toContain('title="Stop the turn, 1:05 in"');
+    expect(native).not.toContain('⌃C');
+    const stopping = markup({ session: session(), agent: escape }, ALL_VERBS, { stopping: true });
+    expect(stopping).toContain('title="Stopping the turn…"');
+  });
+
   it('marks a remote session with the tether and names its device', () => {
     const html = markup({ session: session(), remote: 'studio' });
     expect(html).toContain('class="vf-pane-os"');

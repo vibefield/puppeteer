@@ -1399,6 +1399,18 @@ offAll();</code></pre>
                 <div class="signature">Promise&lt;PromptReceipt&gt;</div>
                 <p>Submit through the adapter’s structured or guarded native-TUI control channel.</p>
               </article>
+              <article class="card">
+                <span class="badge category-conversation">control</span>
+                <h3>agent.stopTurn()</h3>
+                <div class="signature">Promise&lt;AgentTurnStopReceipt&gt;</div>
+                <p>
+                  Send the stop that ends a turn in the agent’s own TUI without quitting it, as its adapter names it
+                  (<span class="mono">agent.turnStop</span>). An adapter that names none is refused; what a host
+                  sends then is its own to decide and to say. An idle agent has no turn to stop: it is refused with
+                  <span class="mono">idle</span> and nothing is pressed, since on an idle TUI the stop key is that
+                  TUI’s own verb.
+                </p>
+              </article>
             </div>
 
             <h3>Canonical declaration</h3>
@@ -1419,6 +1431,8 @@ offAll();</code></pre>
   ): () =&gt; void;
 
   submitPrompt(submission: PromptSubmission): Promise&lt;PromptReceipt&gt;;
+  get turnStop(): AgentTurnStop | undefined;
+  stopTurn(): Promise&lt;AgentTurnStopReceipt&gt;;
   observeMonitor(): AgentMonitorHandle;
   acknowledgeFailureBlocker(blockerId: string): boolean;
 }</code></pre>

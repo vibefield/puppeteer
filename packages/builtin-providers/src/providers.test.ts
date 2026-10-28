@@ -1117,6 +1117,7 @@ describe('createBuiltinProviders launch options', () => {
         hermesHome: '/tmp/hermes-home',
         python: '/opt/python',
         gatewayUrl: 'ws://127.0.0.1:9/api/ws',
+        gatewayToken: 'joined-token',
         promptConfirmationTimeoutMs: 250,
       },
     });
@@ -1131,6 +1132,7 @@ describe('createBuiltinProviders launch options', () => {
         hermesHome: '/tmp/hermes-home',
         python: '/opt/python',
         gatewayUrl: 'ws://127.0.0.1:9/api/ws',
+        gatewayToken: 'joined-token',
         promptConfirmationTimeoutMs: 250,
       }),
     );
@@ -1349,7 +1351,12 @@ describe('createBuiltinProviders launch options', () => {
     await hermes.prepareSession!({
       cwd: '/work/repo',
       host,
-      agentOptions: { hermesHome: '/tmp/hermes-home', yolo: true },
+      agentOptions: {
+        hermesHome: '/tmp/hermes-home',
+        yolo: true,
+        gatewayUrl: 'ws://127.0.0.1:9/api/ws',
+        gatewayToken: 'joined-token',
+      },
     });
     expect(adapters.prepareHermesTuiSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1357,6 +1364,8 @@ describe('createBuiltinProviders launch options', () => {
         executable: '/opt/hermes',
         hermesHome: '/tmp/hermes-home',
         yolo: true,
+        gatewayUrl: 'ws://127.0.0.1:9/api/ws',
+        gatewayToken: 'joined-token',
         host,
       }),
     );

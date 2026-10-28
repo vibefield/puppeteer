@@ -40,7 +40,10 @@ export { OpenCodePromptConfirmationGate } from './services/prompt.js';
 export interface CreateOpenCodeTuiSessionOptions extends AgentTuiSessionOptions {
   /** OpenCode executable (default `PUPPETEER_OPENCODE_BIN`, then `opencode`). */
   executable?: string | undefined;
-  /** Extra environment shared by the private backend and attached native TUI. */
+  /**
+   * Extra environment shared by the private backend and attached native TUI. The backend takes it over
+   * the host's helper environment when the host composes one (`AgentHost.helperEnvironment`).
+   */
   env?: Record<string, string> | undefined;
   title?: string | undefined;
   agent?: string | undefined;
@@ -130,10 +133,13 @@ export async function prepareOpenCodeTuiSession(
   let stream: OpenCodeEventStream | undefined;
   let disposed = false;
 
+  // `serve` runs the agent's turns and tools: under a host that composes a helper environment
+  // it gets the agent's, never this process's own.
+  const helperEnvironment = options.host.helperEnvironment?.(options.env ?? {});
   try {
     backend = await startOpenCodeBackend({
       executable,
-      env: options.env,
+      ...(helperEnvironment ? { env: helperEnvironment, inheritEnvironment: false } : { env: options.env }),
       startupTimeoutMs: options.backendStartupTimeoutMs,
       shutdownTimeoutMs: options.backendShutdownTimeoutMs,
     });

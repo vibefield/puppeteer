@@ -283,6 +283,7 @@ describe('order and recency', () => {
   });
 
   it('re-reads recency on the 10 s clock and rebuilds only the row whose staleness flipped', async () => {
+    const replying = { kind: 'responding' as const, line: 'Writing the reply', since: iso(T0) };
     const t = testBackend({
       facts: facts({
         runs: [
@@ -293,10 +294,12 @@ describe('order and recency', () => {
       states: [
         monitorState({
           runtimeRunId: 'fresh',
+          activity: replying,
           freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0) },
         }),
         monitorState({
           runtimeRunId: 'old',
+          activity: replying,
           freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0 - 25_000) },
         }),
       ],
@@ -314,6 +317,35 @@ describe('order and recency', () => {
     t.clock.advance(10_000);
     t.scheduler.flush();
     expect(t.backend.getSnapshot().revision).toBe(revision);
+  });
+
+  it('dims only a row that should be talking: never an idle one, a pending one, or one with a tool open', async () => {
+    const replying = { kind: 'responding' as const, line: 'Writing the reply', since: iso(T0) };
+    const quiet = { level: 'native-hooks' as const, families: {}, lastEvidenceAt: iso(T0 - 25_000) };
+    const t = testBackend({
+      facts: facts({
+        runs: [
+          hostRun({ runtimeRunId: 'idle', terminalSessionId: 'p1' }),
+          hostRun({ runtimeRunId: 'held', terminalSessionId: 'p2', pending: 'resume-when-idle' }),
+          hostRun({ runtimeRunId: 'tool', terminalSessionId: 'p3' }),
+          hostRun({ runtimeRunId: 'replying', terminalSessionId: 'p4' }),
+        ],
+      }),
+      states: [
+        monitorState({ runtimeRunId: 'idle', status: 'idle', activity: undefined, freshness: quiet }),
+        monitorState({ runtimeRunId: 'held', activity: replying, freshness: quiet }),
+        monitorState({ runtimeRunId: 'tool', freshness: quiet }),
+        monitorState({ runtimeRunId: 'replying', activity: replying, freshness: quiet }),
+      ],
+    });
+    await t.backend.ready;
+    t.clock.advance(10_000);
+    expect(Object.fromEntries(t.rows().map((row) => [row.id, row.stale]))).toEqual({
+      idle: false,
+      held: false,
+      tool: false,
+      replying: true,
+    });
   });
 
   it('dates a terminal’s status from its birth and from the moment it flips', async () => {
@@ -569,8 +601,8 @@ describe('unread (L5)', () => {
     expect([...expected.unreadIds]).toEqual(['b']);
   });
 
-  describe('lifetime: today the ledger lives only while a screen is open (M20, mv-review finding 2)', () => {
-    it('marks no turn that finished while no screen was open: a screen that opens later sees no mark', async () => {
+  describe('lifetime: the ledger outlives every screen (Q05, ruled by James 2026-10-27; M20 before it)', () => {
+    it('marks a turn that finished while no screen was open: the screen that opens later finds the mark', async () => {
       for (const opensShowing of [['something-else'], []]) {
         const t = testBackend({ facts: facts({ runs: [hostRun()] }), states: [monitorState()] });
         await t.backend.ready;
@@ -578,21 +610,33 @@ describe('unread (L5)', () => {
         // the turn finishes while Godview is closed
         t.clock.advance(5_000);
         t.source.push(monitorState({ revision: 2, status: 'idle', statusSince: iso(T0 + 5_000), activity: undefined }));
-        expect(t.rows()[0]).toMatchObject({ id: 'run-1', status: 'idle', unread: false });
-        // Godview opens, its active pane showing another row or nothing: first sight is now, so this turn is seen
+        expect(t.rows()[0]).toMatchObject({ id: 'run-1', status: 'idle', unread: true });
+        // Godview opens, its active pane showing another row or nothing: the mark is there
         t.clock.advance(1_000);
         t.backend.reportShown('win-1', opensShowing);
+        expect(t.backend.getSnapshot().rows[0]).toMatchObject({ id: 'run-1', unread: true });
+        // its pane shows the row: cleared
+        t.backend.reportShown('win-1', ['run-1']);
         expect(t.backend.getSnapshot().rows[0]).toMatchObject({ id: 'run-1', unread: false });
-        // the next turn that finishes while it is open is marked
-        t.clock.advance(1_000);
-        t.source.push(monitorState({ revision: 3, status: 'working', statusSince: iso(T0 + 7_000) }));
-        t.clock.advance(1_000);
-        t.source.push(monitorState({ revision: 4, status: 'idle', statusSince: iso(T0 + 8_000), activity: undefined }));
-        expect(t.rows()[0]).toMatchObject({ id: 'run-1', unread: true });
       }
     });
 
-    it('forgetting the last screen drops every mark and returns to no screen; forgetting one of two keeps the ledger', async () => {
+    it('sees a row first named while no screen is open at that fold: only a turn that ends after it is marked', async () => {
+      const t = testBackend({ facts: facts({ runs: [] }) });
+      await t.backend.ready;
+      t.rows();
+      t.clock.advance(10_000);
+      // the run's turn ended before any fold named it
+      t.source.push(monitorState({ revision: 1, status: 'idle', statusSince: iso(T0 + 2_000), activity: undefined }));
+      t.host.update({ runs: [hostRun()] });
+      expect(t.rows()[0]).toMatchObject({ id: 'run-1', status: 'idle', unread: false });
+      t.clock.advance(5_000);
+      t.source.push(monitorState({ revision: 2, status: 'working', statusSince: iso(T0 + 12_000) }));
+      t.source.push(monitorState({ revision: 3, status: 'idle', statusSince: iso(T0 + 14_000), activity: undefined }));
+      expect(t.rows()[0]).toMatchObject({ id: 'run-1', unread: true });
+    });
+
+    it('forgetting a screen keeps every mark: a reload and a closed Godview find them, and a turn that ends meanwhile is marked', async () => {
       const t = two();
       await t.backend.ready;
       t.backend.reportShown('window-1', ['b']);
@@ -600,34 +644,38 @@ describe('unread (L5)', () => {
       t.clock.advance(5_000);
       t.source.push(idle('a', T0 + 4_000));
       expect(unreadIds(t)).toEqual(['a']);
-      // one of two windows closes: the other is still open, the mark stays and keeps accruing
+      // one of two windows closes: the row it showed is shown no more, so its next turn's end is marked
       t.backend.forgetScreen('window-1');
       expect(unreadIds(t)).toEqual(['a']);
       t.clock.advance(1_000);
       t.source.push(idle('b', T0 + 5_500));
       expect(unreadIds(t)).toEqual(['a', 'b']);
-      // the last window closes: today its ledger goes with it
+      // the last window reloads: its screen is forgotten, the marks stay, and the reloaded window's screen finds them
+      const { revision } = t.backend.getSnapshot();
       t.backend.forgetScreen('window-2');
-      expect(unreadIds(t)).toEqual([]);
-      expect(t.changes.at(-1)?.upserts.map((row) => [row.id, row.unread])).toEqual([
-        ['a', false],
-        ['b', false],
-      ]);
-      // a turn that ends while no screen is open is not marked, also after a screen opens again
+      expect(unreadIds(t)).toEqual(['a', 'b']);
+      expect(t.backend.getSnapshot().revision).toBe(revision);
+      t.backend.reportShown('window-3', []);
+      expect(unreadIds(t)).toEqual(['a', 'b']);
+      // its pane shows a, which clears; then Godview closes, and a's next turn ends while no screen is open: marked
+      t.backend.reportShown('window-3', ['a']);
+      expect(unreadIds(t)).toEqual(['b']);
+      t.backend.forgetScreen('window-3');
       t.clock.advance(5_000);
       t.source.push(working('a', T0 + 9_000));
       t.source.push(idle('a', T0 + 9_500));
-      expect(unreadIds(t)).toEqual([]);
-      t.backend.reportShown('window-3', []);
-      expect(unreadIds(t)).toEqual([]);
+      expect(unreadIds(t)).toEqual(['a', 'b']);
+      // Godview opens again: the marks are there
+      t.backend.reportShown('window-4', []);
+      expect(unreadIds(t)).toEqual(['a', 'b']);
       // forgetting a screen nobody registered, twice, or after dispose changes nothing
-      const { revision } = t.backend.getSnapshot();
+      const after = t.backend.getSnapshot().revision;
       t.backend.forgetScreen('nobody');
       t.backend.forgetScreen('window-1');
-      expect(t.backend.getSnapshot().revision).toBe(revision);
+      expect(t.backend.getSnapshot().revision).toBe(after);
       t.backend.dispose();
-      t.backend.forgetScreen('window-3');
-      expect(t.backend.getSnapshot().revision).toBe(revision);
+      t.backend.forgetScreen('window-4');
+      expect(t.backend.getSnapshot().revision).toBe(after);
     });
 
     it('a screen that reports an empty list stays open: the single-window fold still runs while its pane shows nothing', async () => {
@@ -638,6 +686,79 @@ describe('unread (L5)', () => {
       t.clock.advance(5_000);
       t.source.push(idle('a', T0 + 4_000));
       expect(unreadIds(t)).toEqual(['a']);
+    });
+
+    it('reads the ledger as a copy, and a backend seeded with it keeps the marks across its host’s restart', async () => {
+      const first = two();
+      await first.backend.ready;
+      first.backend.reportShown('window-1', ['a']);
+      first.clock.advance(5_000);
+      first.backend.reportShown('window-1', ['b']);
+      const seen = first.backend.seenAt();
+      expect(Object.fromEntries(seen)).toEqual({ a: T0, b: T0 + 5_000 });
+      expect(first.backend.seenAt()).not.toBe(seen);
+      first.backend.dispose();
+      // the host restarts; meanwhile a's turn ended after it was last seen, b's before
+      const next = testBackend({
+        facts: facts({
+          runs: [
+            hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa' }),
+            hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb' }),
+          ],
+        }),
+        states: [idle('a', T0 + 2_000), idle('b', T0 + 4_000)],
+        seenAt: seen,
+      });
+      // a restart comes later than every stamp it is handed: its first fold, and any after it, find both turns ended
+      next.clock.advance(10_000);
+      await next.backend.ready;
+      expect(unreadIds(next)).toEqual(['a']);
+      expect(Object.fromEntries(next.backend.seenAt())).toEqual({ a: T0, b: T0 + 5_000 });
+      // unseeded, the same restart would see both rows for the first time and mark neither
+      const unseeded = testBackend({
+        facts: facts({
+          runs: [
+            hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa' }),
+            hostRun({ runtimeRunId: 'b', terminalSessionId: 'pb' }),
+          ],
+        }),
+        states: [idle('a', T0 + 2_000), idle('b', T0 + 4_000)],
+      });
+      unseeded.clock.advance(10_000);
+      await unseeded.backend.ready;
+      expect(unreadIds(unseeded)).toEqual([]);
+      // and keeps not marking them: first sight was after both turns ended
+      unseeded.clock.advance(10_000);
+      expect(unreadIds(unseeded)).toEqual([]);
+    });
+
+    it('takes a seed once, at the fold that first names its row; a row that leaves and returns is seen anew', async () => {
+      const a = hostRun({ runtimeRunId: 'a', terminalSessionId: 'pa' });
+      const late = hostRun({ runtimeRunId: 'late', terminalSessionId: 'pl' });
+      const t = testBackend({
+        facts: facts({ runs: [a] }),
+        states: [idle('a', T0 - 5_000)],
+        seenAt: new Map([
+          ['a', T0 - 10_000],
+          ['late', T0 - 10_000],
+        ]),
+      });
+      await t.backend.ready;
+      expect(unreadIds(t)).toEqual(['a']);
+      // a seed no fold has taken is not the ledger's yet
+      expect([...t.backend.seenAt().keys()]).toEqual(['a']);
+      // the row arrives later and takes its seed then: its turn ended after the seeded sight, so it is marked
+      t.clock.advance(5_000);
+      t.host.update({ runs: [a, late] });
+      t.source.push(idle('late', T0 - 1_000));
+      expect(unreadIds(t)).toEqual(['a', 'late']);
+      // it leaves, and the ledger drops it as it drops any row; named again, it is seen for the first time
+      t.host.update({ runs: [a] });
+      expect(t.rows().map((row) => row.id)).toEqual(['a']);
+      t.clock.advance(1_000);
+      t.host.update({ runs: [a, late] });
+      expect(unreadIds(t)).toEqual(['a']);
+      expect(t.backend.seenAt().get('late')).toBe(T0 + 6_000);
     });
   });
 });

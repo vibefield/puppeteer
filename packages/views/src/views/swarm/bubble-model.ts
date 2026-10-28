@@ -4,8 +4,6 @@ import {
   formatElapsed,
   formatEstimate,
   formatRatePerHour,
-  hostWriteTitle,
-  hostWriteWord,
   modelWord,
   openingWord,
   profileMarkName,
@@ -34,7 +32,7 @@ import { SWARM_WEIGHT } from './weight.js';
 // On the SDK (MV-5) a body reads `AgentView` and nothing else: the backend's
 // facts as the row carries them, and the toolkit's words for them — the line
 // under the name by its one rule (M4, reply-first), a wait in the swarm body's
-// own order (M14), a peer's host and write policy (M41). Every row's facts are
+// own order (M14), a peer's host by its desktop's name. Every row's facts are
 // drawn alike, a peer's included (M9).
 
 export type SwarmBodyState = 'terminal-empty' | 'terminal-running' | 'idle' | 'working' | 'blocked';
@@ -235,6 +233,27 @@ function profileLine(profile: NonNullable<BubbleModelInput['profile']>): CopyLin
   };
 }
 
+/**
+ * A peer's session wears its host on the body — the desktop's name alone — so it
+ * cannot be read as one of this machine's. It says nothing of who may type: every
+ * peer session is writable, the default and universal setting (James,
+ * 2026-10-28), and the row's `writable` stays as data (M41). A terminal and an
+ * agent wear it alike (Q16, James 2026-10-27): the body's last line, in the
+ * terminal's label style, and drawn on the full rung only (`body-layout.ts`): it
+ * is not in `COPY_ONE_LINE`, so a stepped-down body lets it go, a terminal's as
+ * an agent's.
+ */
+function hostLine(remote: { readonly name: string }): CopyLine {
+  return {
+    key: 'host',
+    text: remote.name,
+    style: LABEL_STACKED,
+    opacity: SWARM_WEIGHT.supporting,
+    tone: 'ink',
+    gapBefore: 3,
+  };
+}
+
 /** The views draw these waits; another word in the row's wait is none to them (the shim's rule, kept). */
 const DRAWN_WAITS: ReadonlySet<string> = new Set<SwarmBlockerKind>(['permission', 'question', 'failure']);
 
@@ -340,10 +359,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
     active: agent.active,
     ...(agent.attachment?.colour ? { linked: agent.attachment.colour } : {}),
   };
+  // A row from another desktop wears its host on the body, terminal or agent: the desktop's name alone.
+  const remote = agent.device.self ? undefined : agent.device;
 
   if (agent.kind !== 'agent') {
-    // A row from another desktop wears its host on the body (M41's write policy, said in both directions).
-    const remote = agent.device.self ? undefined : agent.device;
     // A birth on its way is a terminal with no job yet, whatever its row says.
     const opening = input.opening;
     const running = !opening && agent.status === 'working';
@@ -396,21 +415,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
           ]
         : []),
       ...(input.profile ? [profileLine(input.profile)] : []),
-      // A peer's session wears its host on the body — the name and the
-      // host's write policy, in both directions — so it cannot be read as
-      // one of this machine's terminals (the toolkit's `hostWriteWord`).
-      ...(remote
-        ? [
-            {
-              key: 'host',
-              text: `${remote.name} · ${hostWriteWord(agent)}`,
-              style: LABEL_STACKED,
-              opacity: SWARM_WEIGHT.supporting,
-              tone: 'ink' as const,
-              gapBefore: 3,
-            },
-          ]
-        : []),
+      ...(remote ? [hostLine(remote)] : []),
     ];
     return {
       ...base,
@@ -427,10 +432,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         (opening
           ? `${project}, new terminal, opening${opening.on ? ` on ${opening.on}` : ''}`
           : remote
-            ? `on ${remote.name}, ${project}, remote session, ${agent.status}, ${hostWriteWord(agent)}`
+            ? `on ${remote.name}, ${project}, remote session, ${agent.status}`
             : `${project}, unassigned terminal, ${agent.status}`) +
         (input.profile ? `, under ${input.profile.label}` : ''),
-      title: remote ? `${remote.name} · ${hostWriteTitle(agent)} · ${agent.detail}` : agent.detail,
+      title: remote ? `${remote.name} · ${agent.detail}` : agent.detail,
     };
   }
 
@@ -454,6 +459,9 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   };
   const message = latestMessage(agent);
   const branch = agent.project.branch;
+  // A peer's agent wears the host line under its model line, as a peer's terminal does (Q16). A screen reader hears
+  // its desktop's name in the line under its name already, so the accessible name adds nothing for it.
+  const host = remote ? [hostLine(remote)] : [];
 
   if (appearance === 'working') {
     // The total is the backend's ledger: corrected USD across a bubble's runs,
@@ -487,6 +495,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         ...(branch ? { gapBefore: 1 } : {}),
       },
       modelLine,
+      ...host,
     ];
     return {
       ...base,
@@ -525,9 +534,10 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
   // What the body needs from the user takes the name's place, in its own words
   // behind its own mark: what a blocker is waiting on (the swarm body's order,
   // M14), or the reply that arrived unseen. The project's name moves above it,
-  // and nothing follows the model line (2026-09-16). The state's COLOUR is the
-  // body's ground rather than its words, so those words stay the theme's ink
-  // like every other body's (2026-09-18).
+  // and nothing follows the model line (2026-09-16) but a peer's host line
+  // (Q16, 2026-10-27). The state's COLOUR is the body's ground rather than its
+  // words, so those words stay the theme's ink like every other body's
+  // (2026-09-18).
   const state: { text: string; icon: string; spoken: string } | undefined = wait
     ? {
         text: waitBodyLine(wait, message),
@@ -574,6 +584,7 @@ export function bubbleModel(input: BubbleModelInput): SwarmBubbleModel {
         ]
       : []),
     modelLine,
+    ...host,
   ];
   return {
     ...base,

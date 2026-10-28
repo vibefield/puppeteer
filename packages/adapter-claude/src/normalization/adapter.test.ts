@@ -728,6 +728,108 @@ describe('permission correlation (no native request id)', () => {
   });
 });
 
+describe('permission decisions (OTLP tool_decision, keyed by tool_use_id)', () => {
+  const tool = {
+    prompt_id: 'prompt-decided',
+    tool_name: 'Bash',
+    tool_input: { command: 'sleep 45' },
+    tool_use_id: 'toolu_decided',
+  };
+
+  function requestPermission(normalizer: ClaudeHookNormalizer, call: Record<string, unknown> = tool): string {
+    normalizer.normalize(fakeClaudeHookPayload('PreToolUse', call) as ClaudeHookPayload);
+    const requested = normalizer.normalize(fakeClaudeHookPayload('PermissionRequest', call) as ClaudeHookPayload);
+    return (requested.events[0] as { requestId: string }).requestId;
+  }
+
+  it('closes an accepted request at the decision; the approved tool’s completion closes only the tool', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const edit = {
+      prompt_id: 'prompt-decided',
+      tool_name: 'Edit',
+      tool_use_id: 'toolu_decided_edit',
+      tool_input: { file_path: '/workspace/a.ts', old_string: 'old', new_string: 'new' },
+    };
+    const requestId = requestPermission(normalizer, edit);
+
+    expect(normalizer.resolvePermissionDecision(edit.tool_use_id, 'allowed')).toMatchObject({
+      events: [{ type: 'interaction:permission-resolved', requestId, outcome: 'allowed' }],
+      diagnostics: [],
+      promptId: edit.prompt_id,
+    });
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+
+    // The tool runs after the answer: its completion still reads the call PreToolUse remembered.
+    const post = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', {
+        prompt_id: edit.prompt_id,
+        tool_name: edit.tool_name,
+        tool_use_id: edit.tool_use_id,
+        tool_response: { success: true },
+      }) as ClaudeHookPayload,
+    );
+    expect(post.events).toEqual([
+      expect.objectContaining({ type: 'tool:completed', toolCallId: edit.tool_use_id }),
+      expect.objectContaining({ type: 'workspace:file-operation', toolCallId: edit.tool_use_id, phase: 'applied' }),
+    ]);
+  });
+
+  it('closes a rejected request at the decision, so its turn boundary closes nothing twice', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const requestId = requestPermission(normalizer);
+
+    expect(normalizer.resolvePermissionDecision(tool.tool_use_id, 'denied')?.events).toEqual([
+      { type: 'interaction:permission-resolved', requestId, outcome: 'denied' },
+    ]);
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(0);
+
+    const stop = normalizer.normalize(
+      fakeClaudeHookPayload('Stop', {
+        prompt_id: tool.prompt_id,
+        last_assistant_message: 'Not run.',
+      }) as ClaudeHookPayload,
+    );
+    expect(stop.events).toEqual([expect.objectContaining({ type: 'turn:completed', turnId: tool.prompt_id })]);
+    expect(stop.diagnostics).toEqual([]);
+  });
+
+  it('closes a dismissed subagent request as the actor that asked', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const worker = {
+      ...tool,
+      agent_id: 'a1b2c3d4e5f6a7b8c',
+      agent_type: 'general-purpose',
+      tool_use_id: 'toolu_worker',
+    };
+    const requestId = requestPermission(normalizer, worker);
+
+    expect(normalizer.resolvePermissionDecision(worker.tool_use_id, 'dismissed')).toMatchObject({
+      events: [{ type: 'interaction:permission-resolved', requestId, outcome: 'dismissed' }],
+      promptId: worker.prompt_id,
+      agentId: worker.agent_id,
+      agentType: worker.agent_type,
+    });
+  });
+
+  it('leaves a request no decision names to its hooks, and a decision after them closes nothing', () => {
+    const normalizer = new ClaudeHookNormalizer();
+    const requestId = requestPermission(normalizer);
+
+    // A rule's decision about another call.
+    expect(normalizer.resolvePermissionDecision('toolu_ruled', 'allowed')).toBeUndefined();
+    expect(normalizer.pendingPermissionRequests()).toHaveLength(1);
+
+    // No decision arrived (OTLP off, or not exported yet): execution completion proves allow, as before.
+    const post = normalizer.normalize(
+      fakeClaudeHookPayload('PostToolUse', { ...tool, tool_response: { output: '' } }) as ClaudeHookPayload,
+    );
+    expect(post.events[0]).toEqual({ type: 'interaction:permission-resolved', requestId, outcome: 'allowed' });
+
+    // The batched decision lands after a fast tool ended.
+    expect(normalizer.resolvePermissionDecision(tool.tool_use_id, 'allowed')).toBeUndefined();
+  });
+});
+
 describe('SubagentStop re-entrancy', () => {
   it('normalizes only the first stop per agent; repeats stay native', () => {
     const normalizer = new ClaudeHookNormalizer();

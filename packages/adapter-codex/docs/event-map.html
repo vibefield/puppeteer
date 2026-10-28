@@ -7033,7 +7033,7 @@ codex app-server --listen unix://&lt;sock&gt;
   → thread/inject_items { items: [] }
   → host: codex resume &lt;id&gt; --remote …
   → notifications → CodexNotificationNormalizer
-  → approval ServerRequests → interaction:* (default deny)
+  → approval ServerRequests → interaction:* (observer: the TUI asks, serverRequest/resolved settles; driver: default deny)
   → submitPrompt → turn/start (+ clientUserMessageId when set)</pre>
           <div class="scroll">
             <table class="def-table">
@@ -7065,8 +7065,13 @@ codex app-server --listen unix://&lt;sock&gt;
                   <td>context-window:*</td>
                 </tr>
                 <tr>
-                  <td class="m">command/file requestApproval</td>
-                  <td>interaction:permission-requested / interaction:permission-resolved</td>
+                  <td class="m">command/file requestApproval · serverRequest/resolved</td>
+                  <td>
+                    interaction:permission-requested / interaction:permission-resolved. Codex sends a thread's requests
+                    to every subscribed connection and acts on the first reply, so the observer never answers one the
+                    person answers in the TUI; it holds the wait pending until <code>serverRequest/resolved</code>
+                    (outcome <code>unknown</code>: the notification names no decision).
+                  </td>
                 </tr>
                 <tr>
                   <td class="m">codex --remote</td>

@@ -36,7 +36,7 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
-import { approvalResponse } from '../services/approvals.js';
+import { CodexApprovalService } from '../services/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
 import { CodexEventSource } from '../services/event-source.js';
@@ -55,7 +55,15 @@ const rec = (v: unknown): Record<string, unknown> | undefined =>
 
 export interface CreateCodexObserverOptions {
   transport: Transport;
-  /** Decide structured approval requests. Default: deny. */
+  /**
+   * Decide approval requests beside the person. Without it, this connection
+   * answers none of the requests a person answers: every turn on the observed
+   * thread is another client's (the TUI's), Codex sends that client the same
+   * request, and its TUI asks the person (see `services/approvals.ts`). The
+   * wait is published as a pending permission until Codex resolves it. With
+   * it, the first answer wins, the host's or the person's in the TUI; a host
+   * decision that loses is dropped and its request's `signal` aborts.
+   */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Choose which thread to attach to when several appear. Default: the first. */
   selectThread?: ((threadId: string) => boolean) | undefined;
@@ -170,6 +178,16 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     events.publish(event, source, nativeEvent, 'authoritative', replay);
   }
 
+  // This connection never starts a turn, so a request it is sent is one Codex
+  // also sent the client that started the turn: in a managed session the TUI,
+  // which asks the person.
+  const approvals = new CodexApprovalService({
+    decide: opts.onApproval,
+    unhandled: 'defer',
+    publish: (event, nativeEvent) => apply(event, 'native-hook', nativeEvent),
+    isDisposed: () => disposed,
+  });
+
   function enrichCurrentModelName(): void {
     const model = currentModel;
     const displayName = model && modelNames.get(model.id);
@@ -179,6 +197,8 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
   }
 
   function consumeNotification(method: string, params: Record<string, unknown>, replayed = false): void {
+    // Request ids are the app-server's own, so a resolution settles whichever thread's request it names.
+    if (!replayed) approvals.observe(method, params);
     const observedAt = new Date().toISOString();
     emitMonitorBatch(
       monitorEvidence.notificationBatch({ method, params }, observedAt, replayed ? 'bootstrap' : 'live'),
@@ -394,25 +414,12 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     consumeNotification(method, params ?? {});
   });
 
-  client.onServerRequest(async (method, params, id) => {
-    const requestId = String(id);
-    apply(
-      { type: 'interaction:permission-requested', requestId, tool: method, input: params, presentation: 'host-ui' },
-      'native-hook',
-      { method, params, id },
-    );
-    const decision = opts.onApproval ? await opts.onApproval({ method, params, requestId: id }) : 'denied';
-    apply(
-      { type: 'interaction:permission-resolved', requestId, outcome: decision === 'approved' ? 'allowed' : 'denied' },
-      'native-hook',
-      { method, params, id },
-    );
-    // Per-method response shape; see approvals.ts.
-    return approvalResponse(method, decision);
-  });
+  client.onServerRequest((method, params, id) => approvals.handle(method, params, id));
 
   client.onClose(({ code, signal }) => {
     if (disposed) return;
+    // The TUI may still answer, but no resolution can reach this connection any more.
+    approvals.settleAll('unknown', { transport: 'closed', code, signal });
     railClosed = true; // let any in-flight attach retry loop exit without ending the host process
     observation = 'terminal-only';
     const observedAt = new Date().toISOString();
@@ -536,6 +543,7 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     },
     attachThread: (threadId) => attach(threadId, undefined),
     async dispose() {
+      approvals.settleAll('unknown', { lifecycle: 'dispose' });
       disposed = true; // stop the attach retry loop if it is still running
       pendingHistoryReplay = undefined;
       pendingRailClosure = undefined;

@@ -271,6 +271,21 @@ export function terminalFixture(id: string, project: string, running: boolean, n
   };
 }
 
+/** A fixture row as a peer's: on another desktop (`mini`), writable, as every peer session is (James, 2026-10-28). */
+function onPeer(agent: LabAgent): LabAgent {
+  return {
+    ...agent,
+    remote: {
+      deviceId: 'mini',
+      deviceName: 'mini',
+      remoteSessionId: agent.id,
+      attachable: true,
+      hostWritable: true,
+      cwdLabel: agent.project,
+    },
+  };
+}
+
 /** Part I: the states, one body each. */
 export function stateStages(nowMs: number): LabStage[] {
   return [
@@ -393,24 +408,6 @@ export function stateStages(nowMs: number): LabStage[] {
       ),
     },
     {
-      id: 'idle-stale',
-      title: 'Idle, stale evidence',
-      note: 'Dimmed and desaturated, never recoloured.',
-      agent: agentFixture(
-        {
-          id: 'a4',
-          project: 'ref',
-          status: 'idle',
-          model: 'Sonnet 5',
-          effort: 'medium',
-          contextPercent: 31,
-          stale: true,
-          accent: 3,
-        },
-        nowMs,
-      ),
-    },
-    {
       id: 'idle-mounted',
       title: 'Idle, mounted in a pane',
       note: 'The pane’s own colour as a band a thirtieth of the radius wide outside the rim, the gutter, and nothing beyond it; the project’s colour stays the folder before the name. The gauge a twelfth of the radius wide, in the ink. At 60 that is 2px and 5px.',
@@ -516,6 +513,27 @@ export function stateStages(nowMs: number): LabStage[] {
       note: 'No usage, no context, no price: one hollow flame — unread, which is not the same as calm — and both figures rest.',
       agent: agentFixture(
         { id: 'w4', project: 'study', status: 'working', model: 'Sonnet 5', accent: 8, unpriced: true },
+        nowMs,
+      ),
+    },
+    {
+      id: 'working-stale',
+      title: 'Working, stale evidence',
+      note: 'Mid-reply, no tool open, nothing heard for 30 s: dimmed and desaturated, never recoloured. An idle body never dims.',
+      agent: agentFixture(
+        {
+          id: 'w8',
+          project: 'ref',
+          status: 'working',
+          model: 'Sonnet 5',
+          effort: 'medium',
+          contextPercent: 31,
+          burn: 'ease',
+          ratePerMin: 0.08,
+          activity: { kind: 'responding', line: 'Writing the reply' },
+          stale: true,
+          accent: 3,
+        },
         nowMs,
       ),
     },
@@ -1021,17 +1039,7 @@ export function pendingStages(nowMs: number): LabStage[] {
 
 /** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
 export function profileStages(nowMs: number): LabStage[] {
-  const peer: MonitorAgent = {
-    ...terminalFixture('pr5', '~', false, nowMs),
-    remote: {
-      deviceId: 'mini',
-      deviceName: 'mini',
-      remoteSessionId: 'pr5',
-      attachable: true,
-      hostWritable: true,
-      cwdLabel: '~',
-    },
-  };
+  const peer = onPeer(terminalFixture('pr5', '~', false, nowMs));
   return [
     {
       id: 'profile-default',
@@ -1068,6 +1076,86 @@ export function profileStages(nowMs: number): LabStage[] {
       note: 'Before the host line, which a peer’s body always keeps.',
       agent: peer,
       profile: { label: 'Default', kind: 'native', isDefault: true },
+    },
+  ];
+}
+
+/**
+ * Part: a peer's bodies. A row from another desktop wears its host on the body, terminal or agent alike: the
+ * desktop's name alone (Q16, James 2026-10-27). No mark says who may type: every peer session is writable, the default
+ * and universal setting (James, 2026-10-28).
+ */
+export function peerStages(nowMs: number): LabStage[] {
+  return [
+    {
+      id: 'peer-terminal',
+      title: 'A peer’s terminal',
+      note: 'The host line closes the body: the desktop’s name, and nothing after it.',
+      agent: onPeer(terminalFixture('pe1', 'truffle', false, nowMs)),
+    },
+    {
+      id: 'peer-idle',
+      title: 'A peer’s agent, idle',
+      note: 'The same host line after model · effort, in the terminal’s label style. A screen reader hears the desktop’s name in the line under the name, so the accessible name adds nothing for it.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe2',
+            project: 'truffle',
+            status: 'idle',
+            model: 'GPT-5',
+            effort: 'medium',
+            contextPercent: 25,
+            accent: 4,
+          },
+          nowMs,
+        ),
+      ),
+    },
+    {
+      id: 'peer-working',
+      title: 'A peer’s agent, working',
+      note: 'The burn row stands clear of the host line, as it stands clear of the model line on this desktop’s bodies.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe3',
+            project: 'ghosttea',
+            status: 'working',
+            model: 'GPT-5',
+            effort: 'high',
+            branch: 'mv/mv0-pu',
+            contextPercent: 34,
+            burn: 'steady',
+            ratePerMin: 0.28,
+            activity: { kind: 'tool', line: 'Editing grid.rs' },
+            accent: 7,
+            tokens: 512_000,
+          },
+          nowMs,
+        ),
+      ),
+    },
+    {
+      id: 'peer-blocked',
+      title: 'A peer’s agent, blocked',
+      note: 'What it waits on takes the name’s place, and the host line still closes the body.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe4',
+            project: 'rosetta',
+            status: 'blocked',
+            model: 'Sonnet 4.5',
+            effort: 'medium',
+            contextPercent: 21,
+            blocker: 'permission',
+            blockerDetail: 'git push origin main',
+            accent: 3,
+          },
+          nowMs,
+        ),
+      ),
     },
   ];
 }

@@ -46,10 +46,12 @@ export interface SpawnThroughHost {
   strict?: boolean | undefined;
   /**
    * The words a person reads in their terminal when a launch is refused there,
-   * one or two lines; the shim prints them after `puppeteer: <command>: `. The
-   * kit bounds them (printable characters, two lines,
+   * one or two lines, naming the command themselves (`refused.command`): the
+   * shim prints them after the host's label alone (`puppeteer: ` for a host
+   * with none). The kit bounds them (printable characters, two lines,
    * `MAX_REFUSAL_MESSAGE_LENGTH`). Absent, throwing, or left empty by the
-   * bound: the kit's own sentence (`spawnThroughRefusalMessage`).
+   * bound: the kit's own sentence (`spawnThroughRefusalMessage`), which the
+   * shim prints after `<label>: <command>: `.
    */
   refusal?(refused: SpawnThroughRefusal): string;
   /** The host's record of the run, written before the shim is told to exec. */

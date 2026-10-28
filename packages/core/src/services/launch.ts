@@ -36,6 +36,12 @@ export const AgentContinuationSchema = z.strictObject({
   implementation: z.enum(['native', 'imposter']).default('native'),
   /** Adapter-versioned, credential-free state. Consumers persist but never inspect it. */
   state: z.string().max(8_192).optional(),
+  /**
+   * False while a resume by `nativeSessionId` cannot succeed yet: the adapter has not seen the conversation's
+   * durable record (the id is provisional, or the agent has not written it). A host must not end a live process
+   * for such a resume. Absent once it can, and on every continuation written before this field existed.
+   */
+  resumable: z.boolean().optional(),
 });
 export type AgentContinuation = z.infer<typeof AgentContinuationSchema>;
 

@@ -128,6 +128,86 @@ describe('ClaudeTranscriptObservationProvider', () => {
     expect(reboundEvents).toEqual([]);
   });
 
+  it("reads an attached session's open work once: its turn and tool as replay, the question it waits on live", async () => {
+    const sessionId = 'session-1';
+    const finished = claude2308TranscriptRows(
+      [{ promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true }],
+      { sessionId },
+    );
+    // the agent asked a question in its next turn, and the host restarted before anyone answered
+    const asking = [
+      {
+        type: 'user',
+        uuid: 'prompt-2',
+        parentUuid: 'prompt-1-duration',
+        promptId: 'prompt-prompt-2',
+        turnOrigin: 'human',
+        isSidechain: false,
+        sessionId,
+        timestamp: '2026-10-27T12:00:00.000Z',
+        message: { role: 'user', content: 'Pick a branch and ship' },
+      },
+      {
+        type: 'assistant',
+        uuid: 'prompt-2-ask',
+        parentUuid: 'prompt-2',
+        isSidechain: false,
+        sessionId,
+        timestamp: '2026-10-27T12:00:01.000Z',
+        message: {
+          role: 'assistant',
+          content: [
+            {
+              type: 'tool_use',
+              id: 'toolu-ask',
+              name: 'AskUserQuestion',
+              input: { questions: [{ question: 'Which branch?', options: [{ label: 'main' }] }] },
+            },
+          ],
+        },
+      },
+    ];
+    const root = mkdtempSync(join(tmpdir(), 'claude-transcript-attach-'));
+    roots.push(root);
+    const path = join(root, 'session-1.jsonl');
+    writeFileSync(path, [...finished, ...asking].map((row) => JSON.stringify(row)).join('\n') + '\n');
+    const read = async (attached: boolean) => {
+      const handle = await new ClaudeTranscriptObservationProvider().attach({
+        nativeSessionId: sessionId,
+        transcriptPath: path,
+        pollIntervalMs: 0,
+        ...(attached ? { attached: true } : {}),
+      });
+      handles.push(handle);
+      const events: SemanticObservationEvent[] = [];
+      handle.onEvent((event) => events.push(event));
+      await handle.poll();
+      return { handle, events };
+    };
+
+    const { handle, events } = await read(true);
+    expect(events.map(({ event, replay, openAtAttach }) => ({ type: event.type, replay, openAtAttach }))).toEqual([
+      { type: 'turn:started', replay: true, openAtAttach: true },
+      { type: 'tool:requested', replay: true, openAtAttach: true },
+      // replay notifies nobody: the question the agent waits on is announced live, after the state it belongs to
+      { type: 'interaction:question-requested', replay: undefined, openAtAttach: true },
+    ]);
+    expect(events[0]?.event).toEqual({
+      type: 'turn:started',
+      turnId: 'prompt-prompt-2',
+      prompt: 'Pick a branch and ship',
+    });
+    expect(events[1]?.event).toMatchObject({ toolCallId: 'toolu-ask', tool: 'AskUserQuestion' });
+    expect(events[2]?.event).toMatchObject({ requestId: 'question:toolu-ask' });
+    // once: a later read publishes only what changed, and the finished turn's reply stays the silent baseline
+    events.length = 0;
+    appendFileSync(path, JSON.stringify({ type: 'attachment', uuid: 'later' }) + '\n');
+    await handle.poll();
+    expect(events).toEqual([]);
+    // a launch, a resume or a rebind reads the same transcript as its silent baseline
+    expect((await read(false)).events).toEqual([]);
+  });
+
   it('publishes one live reply per 2.1.308 turn, keyed to its prompt, across request bookkeeping', async () => {
     const sessionId = 'session-1';
     const history = [{ promptUuid: 'prompt-1', prompt: 'List the files', answer: 'Two files.', tool: true }];

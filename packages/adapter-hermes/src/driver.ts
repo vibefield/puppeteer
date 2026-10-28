@@ -17,6 +17,7 @@ import { HermesMonitorEvidence } from './normalization/monitor.js';
 import { HermesGatewayNormalizer } from './normalization/pipeline.js';
 import { HermesEventSource, type HermesEventPublication } from './services/event-source.js';
 import { HermesPromptService } from './services/prompt.js';
+import { HermesTurnStopService } from './services/turn-stop.js';
 import {
   eventType,
   HermesJsonRpcClient,
@@ -35,6 +36,8 @@ export interface CreateHermesTuiSessionOptions extends AgentTuiSessionOptions {
   effort?: string | undefined;
   /** Connect to an already running owned gateway. Tests inject this. */
   gatewayUrl?: string | undefined;
+  /** That gateway's bearer, presented by the adapter and the TUI alike. A host this driver starts mints its own. */
+  gatewayToken?: string | undefined;
   transport?: HermesGatewayTransport | undefined;
   gatewayStartupTimeoutMs?: number | undefined;
   promptConfirmationTimeoutMs?: number | undefined;
@@ -68,6 +71,7 @@ export async function prepareHermesTuiSession(
   let host: HermesGatewayHost | undefined;
   let transport = options.transport;
   let gatewayUrl = options.gatewayUrl;
+  let gatewayToken = options.gatewayToken;
   let disposed = false;
 
   try {
@@ -78,11 +82,13 @@ export async function prepareHermesTuiSession(
           hermesHome,
           cwd: options.cwd,
           env: options.env,
+          host: options.host,
           startupTimeoutMs: options.gatewayStartupTimeoutMs,
         });
         gatewayUrl = host.url;
+        gatewayToken = host.token;
       }
-      const client = new HermesJsonRpcClient(gatewayUrl);
+      const client = new HermesJsonRpcClient(gatewayUrl, { token: gatewayToken });
       await client.connect();
       transport = client;
     }
@@ -137,6 +143,7 @@ export async function prepareHermesTuiSession(
       cwd: options.cwd,
       hermesHome,
       gatewayUrl: gatewayUrl ?? 'ws://127.0.0.1/unused',
+      gatewayToken,
       resume: storedSessionId,
       yolo: options.yolo,
       env: options.env,
@@ -159,6 +166,11 @@ export async function prepareHermesTuiSession(
           transport: transport!,
           liveSessionId,
           confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
+          isDisposed: () => sessionDisposed,
+        });
+        const turnStop = new HermesTurnStopService({
+          transport: transport!,
+          liveSessionId,
           isDisposed: () => sessionDisposed,
         });
         const monitorEvidence = new HermesMonitorEvidence({
@@ -294,6 +306,7 @@ export async function prepareHermesTuiSession(
                 return prompts.submit(submission);
               },
             },
+            turnStop,
           },
           async dispose() {
             if (sessionDisposed) return;

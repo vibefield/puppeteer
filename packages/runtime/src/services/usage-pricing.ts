@@ -58,7 +58,8 @@ export function priceUsage(value: MonitorUsageFamilyValue): MonitorUsageFamilyVa
   const cost: UsageCostEstimate = {
     basis: 'api-equivalent',
     source: 'catalog',
-    catalogVersion: USAGE_PRICE_SNAPSHOT.sha256,
+    // The card's version folds the models.dev snapshot with the vendor's own rows it lacks.
+    catalogVersion: USAGE_PRICE_SNAPSHOT.version,
     inputUsd,
     outputUsd,
   };

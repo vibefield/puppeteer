@@ -293,12 +293,34 @@ describe('tokens and recency', () => {
     expect(agentTokens(monitorState())).toBeUndefined();
     expect(agentTokens(undefined)).toBeUndefined();
   });
+  // A reply mid-stream: the run should be talking, and nothing it holds open explains a quiet.
+  const replying = (overrides: Partial<ReturnType<typeof monitorState>> = {}) =>
+    monitorState({ activity: { kind: 'responding', line: 'Writing the reply', since: iso(T0) }, ...overrides });
+  const compacting = { kind: 'compacting' as const, line: 'Compacting context', since: iso(T0) };
+  const toolOpen = { ...monitorState().freshness, toolOpen: true };
+
   it('is stale past the policy and never without an evidence clock', () => {
-    const state = monitorState({ freshness: { level: 'native-hooks', families: {}, lastEvidenceAt: iso(T0) } });
-    expect(isStale(state, T0 + 30_000, 30_000)).toBe(false);
-    expect(isStale(state, T0 + 30_001, 30_000)).toBe(true);
-    expect(isStale(monitorState({ freshness: { level: 'native-hooks', families: {} } }), T0 + 1e9, 30_000)).toBe(false);
-    expect(isStale(undefined, T0, 30_000)).toBe(false);
+    const state = replying();
+    expect(isStale(hostRun(), state, T0 + 30_000, 30_000)).toBe(false);
+    expect(isStale(hostRun(), state, T0 + 30_001, 30_000)).toBe(true);
+    const unclocked = replying({ freshness: { level: 'native-hooks', families: {} } });
+    expect(isStale(hostRun(), unclocked, T0 + 1e9, 30_000)).toBe(false);
+    expect(isStale(hostRun(), undefined, T0, 30_000)).toBe(false);
+  });
+  it('never dims an idle row, a pending one included, and keeps a blocked one eligible', () => {
+    const late = T0 + 60_000;
+    expect(isStale(hostRun(), replying({ status: 'idle', activity: undefined }), late, 30_000)).toBe(false);
+    expect(isStale(hostRun({ pending: 'resume-when-idle' }), replying(), late, 30_000)).toBe(false);
+    expect(isStale(hostRun(), replying({ status: 'blocked', activity: undefined }), late, 30_000)).toBe(true);
+  });
+  it('counts an open root tool as evidence, the headline one or one a compaction outranks', () => {
+    const late = T0 + 60_000;
+    expect(isStale(hostRun(), monitorState(), late, 30_000)).toBe(false);
+    expect(isStale(hostRun(), monitorState({ activity: compacting, freshness: toolOpen }), late, 30_000)).toBe(false);
+    expect(isStale(hostRun(), monitorState({ activity: compacting }), late, 30_000)).toBe(true);
+    // A permission wait holds its requested tool open, so that blocked row stays lit too.
+    const waiting = monitorState({ status: 'blocked', activity: undefined, freshness: toolOpen });
+    expect(isStale(hostRun(), waiting, late, 30_000)).toBe(false);
   });
 });
 

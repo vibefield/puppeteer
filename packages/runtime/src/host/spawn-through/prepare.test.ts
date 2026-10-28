@@ -115,12 +115,15 @@ function scripted(script: Script = {}) {
   return { calls, runtime, host };
 }
 
-/** Every refusal the kit answers is placed: the rule refuses only once the host resolved the terminal. */
-const refusal = (code: SpawnThroughDeclineCode, reason: string, message = defaultSentence(reason)) => ({
+/**
+ * Every refusal the kit answers is placed: the rule refuses only once the host resolved the terminal. Without the
+ * host's `message`, the words are the kit's sentence, marked as the kit's.
+ */
+const refusal = (code: SpawnThroughDeclineCode, reason: string, message?: string) => ({
   action: 'refuse',
   code,
   reason,
-  message,
+  ...(message === undefined ? { message: defaultSentence(reason), kitSentence: true } : { message }),
   placed: true,
 });
 const defaultSentence = (reason: string) => `not started, because it could not be run as a managed session: ${reason}`;

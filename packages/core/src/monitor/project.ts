@@ -358,7 +358,9 @@ function projectActivity(
   for (const [key, activity] of children) {
     candidates.push({ ...activity, kind: 'delegating', line: `Subagent: ${activity.line}`, priority: 5, key });
   }
-  if (run && ['allocated', 'preparing', 'starting'].includes(run.value.lifecycle)) {
+  // Only a run with no process yet is starting. Once the host runs the process (`starting`), waiting for the
+  // provider's session evidence is readiness, not work: an agent with no turn yet is idle (RFC 001).
+  if (run && ['allocated', 'preparing'].includes(run.value.lifecycle)) {
     candidates.push({
       kind: 'starting',
       line: 'Starting',
@@ -373,6 +375,19 @@ function projectActivity(
   if (!selected) return undefined;
   const { priority: _priority, key: _key, ...activity } = selected;
   return activity;
+}
+
+/** Whether a root tool call is still open, whatever `projectActivity` ranks first (a compaction outranks a tool). */
+function rootToolOpen(
+  entries: readonly MonitorStoredEntry[],
+  run: { entry: MonitorStoredEntry; value: MonitorRunStatusObservation } | undefined,
+): boolean {
+  if (run && !run.value.alive) return false;
+  return entries.some((entry) => {
+    const actor = actorOf(entry.value);
+    if (actor && actor.role !== 'root') return false;
+    return entry.value.kind === 'activity' && entry.value.active && entry.value.activityKind === 'tool';
+  });
 }
 
 function latestRun(
@@ -861,6 +876,7 @@ export function projectAgentMonitorState(
     },
     freshness: {
       ...(evidenceAsOf ? { lastEvidenceAt: evidenceAsOf } : {}),
+      ...(rootToolOpen(entries, run) ? { toolOpen: true } : {}),
       level: accumulator.observationLevel,
       families,
     },

@@ -17,7 +17,7 @@ export const CODEX_MONITOR_CAPABILITIES: readonly ObservationCapability[] = [
     source: 'codex-app-server',
     contractVersion: CODEX_CONTRACT,
     limitations: [
-      'The controller observes structured approvals; native-TUI user-input requests may remain on the TUI connection.',
+      'Approvals and prompts reach the controller as server requests. Beside the native Codex TUI, which is sent the same requests, the controller leaves the answer to the person there and holds the wait pending until Codex reports it resolved, which names no decision.',
     ],
   },
   {

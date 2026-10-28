@@ -2,12 +2,16 @@ import type { MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice, MonitorWait
 import { STATE_WORDS, statusWord, waitWord } from './state-words.js';
 
 // THE WORDS A ROW GOES BY (MV-D11): its name, what runs it, the line under its
-// name, the desktop it lives on and what that desktop lets a viewer do.
+// name and the desktop it lives on.
 //
 // Each is ported verbatim from what the hosts and the legacy shim said (the
 // shim went with MV-8; `test/toolkit-parity.test.ts` keeps its words), so a
 // view moved onto the SDK reads exactly as it did. The facts are the row's,
-// computed once by its home backend (`detail`, `writable`); these only say them.
+// computed once by its home backend (`detail`); these only say them.
+//
+// No word says who may type into a peer's session: every peer session is
+// writable, the default and universal setting (James, 2026-10-28), so a peer
+// is named by its desktop alone. The row's `writable` stays as data (M41).
 
 /** What a view calls the desktop it is read on (M34). */
 export const THIS_DESKTOP = 'This desktop';
@@ -43,23 +47,6 @@ export function projectName(row: Pick<MonitorAgentRow, 'kind' | 'project' | 'pro
 /** What runs an agent, where its model's name stands: the model, else its provider's label. */
 export function modelWord(row: Pick<MonitorAgentRow, 'model' | 'provider'>): string {
   return row.model || (row.provider?.label ?? '');
-}
-
-/**
- * A peer's write policy, said about its HOST and in both directions (GT-D7,
- * GT-D17): a mesh advertises one fact per host, and who may type is decided at
- * the attach, so a row cannot say more. Read only for a row from another
- * desktop (M41).
- */
-export function hostWriteWord(row: Pick<MonitorAgentRow, 'writable'>): string {
-  return row.writable ? 'writable host' : 'read-only host';
-}
-
-/** The same fact at length, for a hover that has room for it. */
-export function hostWriteTitle(row: Pick<MonitorAgentRow, 'writable'>): string {
-  return row.writable
-    ? 'this host allows writes — whether yours arrive is decided when you attach'
-    : 'this host shares read-only — no viewer may type here';
 }
 
 /** A wait as the line says it: its kind, and a permission's tool. */

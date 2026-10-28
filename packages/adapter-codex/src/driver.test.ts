@@ -363,9 +363,8 @@ describe('createCodexSession', () => {
     await session.services.prompt.submit({ text: 'run ls' });
     await flush();
 
-    expect(events.some((e) => e.type === 'interaction:permission-requested' && e.tool === 'execCommandApproval')).toBe(
-      true,
-    );
+    // The permission names the tool it gates, as the command item does, not the request method.
+    expect(events.some((e) => e.type === 'interaction:permission-requested' && e.tool === 'command')).toBe(true);
     expect(events.some((e) => e.type === 'interaction:permission-resolved' && e.outcome === 'allowed')).toBe(true);
     const resp = s.sent.find((m) => m.id === 999 && 'result' in m);
     expect(resp?.result).toEqual({ decision: 'approved' });

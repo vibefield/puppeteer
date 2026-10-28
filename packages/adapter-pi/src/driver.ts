@@ -11,6 +11,7 @@ import {
 } from './observation/session-store.js';
 import { PiEventSource } from './services/event-source.js';
 import { PiPromptService } from './services/prompt.js';
+import { createPiTurnStop } from './services/turn-stop.js';
 
 export interface CreatePiTuiSessionOptions extends AgentTuiSessionOptions {
   executable?: string | undefined;
@@ -26,6 +27,7 @@ export interface CreatePiTuiSessionOptions extends AgentTuiSessionOptions {
 }
 export interface PiTuiSession extends AgentAdapterBinding {
   sessionFile(): string | undefined;
+  durableRecordSeen(): boolean;
 }
 export interface PreparedPiTuiSession {
   readonly sessionId: string;
@@ -87,6 +89,7 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
       const events = new PiEventSource({ sessionId: () => sessionId });
       let sessionDisposed = false;
       const prompts = new PiPromptService({ host: options.host, runtimeSessionId, isDisposed: () => sessionDisposed });
+      const turnStop = createPiTurnStop({ host: options.host, runtimeSessionId, isDisposed: () => sessionDisposed });
       const publish = (event: AgentEvent, meta: Parameters<PiEventSource['publish']>[1]) => events.publish(event, meta);
       let monitorSequence = 0;
       const unsubscribeEvent = observer.onEvent((observed) => publish(observed.event, observed));
@@ -136,8 +139,10 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionFile: () => observer.sessionFile(),
+        // Pi writes the file only with its first assistant record; until then prepare refuses the id's resume
+        durableRecordSeen: () => observer.sessionFile() !== undefined,
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
-        services: { prompt: { submit: (submission) => prompts.submit(submission) } },
+        services: { prompt: { submit: (submission) => prompts.submit(submission) }, turnStop },
         async dispose() {
           if (sessionDisposed) return;
           await observer.stop();

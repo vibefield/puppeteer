@@ -282,6 +282,13 @@ export interface CreateMonitorBackendOptions {
    * Default `row`.
    */
   unobservedAgents?: 'row' | 'terminal' | undefined;
+  /**
+   * The unread ledger as the host kept it (Q05): when each row was last in front of the user, epoch ms, by row id, as
+   * `MonitorBackend.seenAt()` answered it. A seeded row is not seen for the first time when a fold first names it: its
+   * idle is weighed against the seeded time, so a turn that ended after it is marked at once. Absent: every row's first
+   * sight is the fold that first names it, and the backend keeps the ledger in memory alone.
+   */
+  seenAt?: ReadonlyMap<string, number> | undefined;
   clock?: MonitorClock | undefined;
   scheduler?: MonitorScheduler | undefined;
   /**
@@ -309,10 +316,17 @@ export interface MonitorBackend {
    */
   reportShown(screenId: string, ids: readonly string[]): void;
   /**
-   * The screen went away (M20): its window closed, its subscription ended. While no screen is open no mark accrues,
-   * so forgetting the last one drops every mark, and the next screen to open sees each row for the first time.
+   * The screen went away (M20): its window closed or reloaded, its subscription ended. The rows it showed are shown no
+   * more and earn marks from now. The ledger outlives every screen (Q05): forgetting the last one keeps every mark,
+   * turns that end while none is open are marked, and the next screen to open finds them.
    */
   forgetScreen(screenId: string): void;
+  /**
+   * The unread ledger now (Q05): when each row the backend holds was last in front of the user, epoch ms, by row id.
+   * A copy. A host that keeps marks across its own restarts reads it and seeds the next backend with it (`seenAt`); a
+   * seeded row no fold has named yet is not in it.
+   */
+  seenAt(): ReadonlyMap<string, number>;
   /**
    * The id of the row a run is in the current snapshot: the shell's id it carried at a promotion, else its
    * `runtimeRunId`. Undefined while the run has no row (not named, removed, or the backend disposed).

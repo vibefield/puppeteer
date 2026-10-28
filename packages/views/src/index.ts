@@ -21,7 +21,6 @@ export * from './monitor/registry.js';
 export * from './monitor/palette.js';
 export * from './monitor/recede.js';
 export * from './monitor/cost-format.js';
-export * from './monitor/remote-write.js';
 export * from './monitor/folder-name.js';
 export * from './colour/project-tint.js';
 export * from './colour/pane-colours.js';

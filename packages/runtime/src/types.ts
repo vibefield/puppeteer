@@ -37,6 +37,8 @@ import type {
   AgentEvent,
   AgentEventEnvelope,
   AgentEventSourceRef,
+  AgentAttachNext,
+  AgentAttachRecord,
   AgentHost,
   AgentLaunchProvider,
   BoundIngress,
@@ -127,10 +129,33 @@ export interface AttachProviderSessionOptions {
   host: AgentHost;
   /** The ingress the process was launched against, when the adapter has one. */
   ingress?: BoundIngress | undefined;
-  /** Provider-owned launch options the original launch carried, when the host kept them. */
+  /**
+   * Provider-owned launch options the original launch carried: the host's own, else what the provider's
+   * continuation codec restores from the continuation the host kept.
+   */
   agentOptions?: unknown;
   /** Registered account profile the run was bound to. */
   profile?: AgentProfile | undefined;
+  /**
+   * The attach record this adapter last reported for the run (RA-D3), exactly as reported. Absent for a run whose
+   * adapter reported none, or one launched before it did: an adapter that needs one refuses with
+   * `AgentAttachRefusedError` and its next step rather than guess.
+   */
+  attachRecord?: AgentAttachRecord | undefined;
+  /**
+   * Where an attached run reports a changed attach record (a helper reborn on a new endpoint), so the host's next
+   * restart reads the new facts and not the ones this attach was handed.
+   */
+  onAttachRecord?: ((record: AgentAttachRecord) => void) | undefined;
+}
+
+/** How the runtime is leaving when it disposes a provider. */
+export interface AgentProviderDisposeOptions {
+  /**
+   * The host leaves and the processes stay (`runtime.dispose({detach: true})`): every binding was RELEASED, so
+   * nothing a running process depends on may be stopped here. Absent or false: the runs are over.
+   */
+  detach?: boolean | undefined;
 }
 
 /** Provider-private continuation codec. Its state is opaque above the adapter boundary. */
@@ -174,7 +199,8 @@ export interface AgentProvider {
    * then resumes the continuation instead.
    */
   attachSession?(options: AttachProviderSessionOptions): Promise<AgentAdapterBinding>;
-  dispose?(): void | Promise<void>;
+  /** Stop what the provider holds beyond its bindings (shared helpers); with `detach`, keep what live runs use. */
+  dispose?(options?: AgentProviderDisposeOptions): void | Promise<void>;
 }
 
 export interface AgentWorkspaceRequest {
@@ -341,6 +367,11 @@ export interface AgentSessionFailure {
     message: string;
     /** With `AGENT_LAUNCH_REFUSED`: the adapter's own code for its refusal (`AgentLaunchRefusedError`). */
     refusal?: { code: string };
+    /**
+     * With `ATTACH_FAILED`: what the adapter says the host does instead (`AgentAttachRefusedError`). Absent when the
+     * adapter did not say, which a host reads as no step it can take.
+     */
+    next?: AgentAttachNext;
   };
 }
 
@@ -777,8 +808,20 @@ export interface AttachAgentOptions {
   ingress?: BoundIngress | undefined;
   /** Registered profile id the run was bound to. */
   profile?: string | undefined;
-  /** Provider-owned launch options the original launch carried, when the host kept them. */
+  /** Provider-owned launch options the original launch carried, when the host kept them. They win over the codec's. */
   agentOptions?: unknown;
+  /**
+   * The continuation the host persisted for the run, as the runtime last gave it. The provider's continuation codec
+   * restores the launch options from its `state` when the host passes no `agentOptions`, as a resume does, and the
+   * attached run keeps its `state` and `implementation`: the run's next continuation is the one it was launched with,
+   * so a later resume of a typed or imposter run starts in the same root and the same executable. Its provider must
+   * be `agent`. Absent: the run is attached with no launch options, and its continuation reads `native` with no state.
+   */
+  continuation?: AgentContinuation | undefined;
+  /** The attach record the run's adapter last reported, as the host kept it ({@link HostIngress.onAttachRecord}). */
+  attachRecord?: AgentAttachRecord | undefined;
+  /** Where the attached run reports a changed attach record, for as long as it lives. */
+  onAttachRecord?: ((record: AgentAttachRecord) => void) | undefined;
   /** The workspace the run was launched in; defaults to direct mode at `cwd`. */
   workspace?: AgentWorkspaceRequest | undefined;
   externalRefs?: readonly ExternalRef[] | undefined;
@@ -800,6 +843,12 @@ export interface RestoreAgentSessionOptions {
    * this runtime's provisional run is dropped.
    */
   attaching?: boolean | undefined;
+  /**
+   * The continuation the run carried before the host lost it. The restored run keeps its `state` and
+   * `implementation`, so the continuation it reports next is the one it was launched with, under the binding's
+   * native id. Absent: `native`, with no state.
+   */
+  continuation?: AgentContinuation | undefined;
 }
 
 /** What a monitor removal seals: the run's epoch at the time it was removed. */

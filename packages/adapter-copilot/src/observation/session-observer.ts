@@ -30,6 +30,8 @@ export interface CopilotPromptExpectation {
 export interface CopilotSessionObserver {
   sessionId(): string;
   sessionDirectory(): string;
+  /** Whether the tail has read a record of the session's events.jsonl, set before that record's events are emitted. */
+  recordSeen(): boolean;
   onEvent(listener: (event: CopilotObservedEvent) => void): () => void;
   onError(listener: (error: Error) => void): () => void;
   expectPrompt(text: string, timeoutMs: number): CopilotPromptExpectation;
@@ -55,6 +57,7 @@ export function createCopilotSessionObserver(options: {
   >();
   let waiterId = 0,
     stopped = false,
+    recordSeen = false,
     polling: Promise<void> | undefined;
   const report = (value: unknown) => {
     const error = value instanceof Error ? value : new Error(String(value));
@@ -79,6 +82,7 @@ export function createCopilotSessionObserver(options: {
     if (stopped) return;
     const result = await tail.poll();
     for (const diagnostic of result.diagnostics) report(new Error(diagnostic.message));
+    if (result.records.length > 0) recordSeen = true;
     for (const record of result.records) {
       observePrompt(record.value);
       const normalized = normalizer.normalize(record.value);
@@ -116,6 +120,7 @@ export function createCopilotSessionObserver(options: {
   return {
     sessionId: () => options.location.sessionId,
     sessionDirectory: () => options.location.sessionDir,
+    recordSeen: () => recordSeen,
     onEvent(listener) {
       events.add(listener);
       return () => events.delete(listener);

@@ -112,6 +112,15 @@ tokens: the least stays at the working size (60), the most takes the largest siz
 proportion, so the field shows where the tokens are going. A lone working session, or a tie, stays at 60. Reduced motion, and the stage's `animations=off` diagnostic,
 freeze the time uniform.
 
+A body whose row leaves departs rather than vanishing (the design record's motion law M4, "depart ≠ vanish";
+`departure.ts`). It shrinks where it stands to nothing over 280 ms, the pop's own length, on the retract curve
+`cubic-bezier(0.4, 0, 1, 1)`, at full opacity, from whatever scale its arrival had reached. Its physics body keeps
+its place until it has gone, so the field closes over the gap after it, and it is out of reach meanwhile: no hit,
+no hover, no focus ring. Its hidden button leaves with the row at once. Under reduced motion it fades at its size
+over 140 ms on `ease-out`, on frames it asks for only while it leaves. Under `animations=off` it is gone in the
+frame that draws the change. A row that comes back while its body is leaving puts the body back where it stands,
+growing from the size it had reached on the arrival curve, so no second body appears.
+
 ### Burn bars
 
 The bars are the decided burn instrument, and they have two sides. Core's canonical usage samples carry the

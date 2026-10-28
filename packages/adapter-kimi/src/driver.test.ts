@@ -136,11 +136,14 @@ describe('Kimi native TUI session', () => {
       { command: '/opt/kimi', args: ['--model', 'kimi-k2'], cwd, env: { KIMI_CODE_HOME: home } },
     ]);
     expect(session.sessionId).toMatch(/^kimi-pending-/);
+    // RA-D7: a provisional id names no journal, so nothing may be ended to resume it
+    expect(session.durableRecordSeen()).toBe(false);
     await expect(session.services.prompt.submit({ text: 'ping', confirmationTimeoutMs: 2_000 })).resolves.toEqual({
       status: 'confirmed',
     });
     expect(wroteTurn).toBe(true);
     expect(session.sessionId).toBe('session-native-1');
+    expect(session.durableRecordSeen()).toBe(true);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'pong', activeTurn: undefined });
     const assistant = candidates.find(({ type }) => type === 'conversation:assistant-message');
     expect(assistant).not.toHaveProperty('sequence');
@@ -207,6 +210,8 @@ describe('Kimi native TUI session', () => {
     expect(prepared.sessionId).toBe(sessionId);
     expect(prepared.launch.args).toEqual(['--session', sessionId]);
     const session = await prepared.adopt('runtime-resume');
+    // the journal was found at prepare
+    expect(session.durableRecordSeen()).toBe(true);
     const projection = projectAgentEvents(session);
     expect(projection.state).toMatchObject({ lifecycle: 'ready', lastAssistantMessage: 'old reply' });
     await expect(session.services.prompt.submit({ text: 'staged', mode: 'paste-only' })).resolves.toEqual({

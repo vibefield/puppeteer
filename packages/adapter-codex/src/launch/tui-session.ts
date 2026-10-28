@@ -45,7 +45,8 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
   /** Extra environment for the user-visible TUI process. */
   env?: Record<string, string> | undefined;
   /**
-   * Extra environment for the PRIVATE app-server, merged over this process's.
+   * Extra environment for the PRIVATE app-server, merged over this process's, or over
+   * the host's helper environment when the host composes one (`AgentHost.helperEnvironment`).
    *
    * This remains separate from `env` because tests and advanced hosts may need
    * to configure only the backing service. Native-invocation normalization
@@ -70,7 +71,11 @@ export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
    * the default unless it names its permissions.
    */
   permissionDefaults?: 'adapter' | 'configuration' | undefined;
-  /** Decide structured approval requests from the controller-owned app-server connection. Default: deny. */
+  /**
+   * Decide approval requests from the controller-owned connection, racing the
+   * person in the TUI. Without it, the TUI asks the person and the session
+   * reports the wait as a pending permission.
+   */
   onApproval?: ((req: CodexApprovalRequest) => CodexApprovalDecision | Promise<CodexApprovalDecision>) | undefined;
   /** Preserve a native `codex resume ...` selection flow on the private app-server. */
   resumeInvocation?: string[] | undefined;
@@ -126,10 +131,17 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
   const executable = resolveCodexExecutable(opts.executable);
   const host: AgentHost = opts.host;
 
+  // The app-server runs the agent's turns and tools: under a host that composes a helper
+  // environment it gets the agent's, never this process's own.
+  const helperEnvironment = host.helperEnvironment?.(opts.appServerEnv ?? {});
   const server = spawnAppServer({
     executable,
     ...(opts.appServerTransport ? { transport: opts.appServerTransport } : {}),
-    ...(opts.appServerEnv ? { env: opts.appServerEnv } : {}),
+    ...(helperEnvironment
+      ? { env: helperEnvironment, inheritEnvironment: false }
+      : opts.appServerEnv
+        ? { env: opts.appServerEnv }
+        : {}),
     ...(opts.appServerArguments?.length ? { args: opts.appServerArguments } : {}),
   });
   try {

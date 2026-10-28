@@ -31,16 +31,17 @@
   "observedOrControlledEvents": [
     "prompt.submit",
     "session.create",
+    "session.interrupt",
     "session.resume"
   ],
   "unmapped": {
-    "count": 188,
-    "sha256": "85aaacedf1276217c88a647978a5a3296e3c0a92f793848ea7b24e966cd5b96c",
+    "count": 187,
+    "sha256": "a14af07aae800ada6013d22292a86aeb03b5a8d10c10a471626d938d8bca5196",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 213,
     "semantic": 22,
-    "observedOrControlled": 3
+    "observedOrControlled": 4
   }
 }

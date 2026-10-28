@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { AgentAdapterBinding, TerminalSpec } from '@vibefield/puppeteer-core';
 import { resolveGrokExecutable } from './detection.js';
-import { grokUpdatesPath, latestGrokSessionId } from './observation/session-discovery.js';
+import { grokHomeIn, grokUpdatesPath, latestGrokSessionId } from './observation/session-discovery.js';
 import { createGrokSessionObserver } from './observation/session-observer.js';
 import { openGrokControl } from './services/acp-control.js';
 import { createGrokLeaderService } from './services/leader.js';
@@ -45,8 +45,12 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
     childExtras.PUPPETEER_IMPOSTER_HOME = imposterHome;
     childExtras.GROK_HOME = imposterHome;
   }
-  const childEnv: NodeJS.ProcessEnv | undefined = childExtras ? { ...process.env, ...childExtras } : undefined;
-  const grokHome = childExtras?.GROK_HOME ?? process.env.GROK_HOME;
+  // The leader runs the agent's turns and tools: under a host that composes a helper environment
+  // it and its ACP controller get the agent's, never this process's own. The observer reads the
+  // home they run under.
+  const childEnv: NodeJS.ProcessEnv | undefined =
+    host.helperEnvironment?.(childExtras ?? {}) ?? (childExtras ? { ...process.env, ...childExtras } : undefined);
+  const grokHome = grokHomeIn(childEnv ?? process.env);
   const leader = createGrokLeaderService({ executable, env: childEnv });
   let disposed = false;
   let disposal: Promise<void> | undefined;

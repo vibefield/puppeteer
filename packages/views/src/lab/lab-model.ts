@@ -20,11 +20,11 @@ import { labWorld, type LabWorldOptions } from './lab-world.js';
 // Each fact is the backend's word for what the world's row says: the line
 // under the name is Core's headline (M4), the cost is the fixture's total
 // (what the backend's ledger would hold) with its burn by the hour, a wait is
-// the first blocker's parts, and a peer's row is on its own desktop with its
-// host's write policy (M41). The order is the
-// world's own (agents, peers, bare terminals), because a view that places
-// columns by order (the rain) must meet the rows in the order its legacy lab
-// met them.
+// the first blocker's parts, and a peer's row is on its own desktop, its
+// host's `writable` carried as data no view draws (M41; James, 2026-10-28:
+// every peer session is writable). The order is the world's own (agents,
+// peers, bare terminals), because a view that places columns by order (the
+// rain) must meet the rows in the order its legacy lab met them.
 
 /** The desktop the lab's world is read on. */
 export const LAB_DEVICE: MonitorDeviceRef = Object.freeze({ id: 'lab', name: 'lab', os: 'mac', self: true });

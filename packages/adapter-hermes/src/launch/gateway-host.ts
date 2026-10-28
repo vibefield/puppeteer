@@ -3,10 +3,15 @@ import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { AgentHost } from '@vibefield/puppeteer-core';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
+import { createHermesGatewayToken } from '../transport/gateway-auth.js';
 
 export interface HermesGatewayHost {
+  /** The bare WebSocket URL; a client presents `token` with it (`authorizedGatewayUrl`). */
   url: string;
+  /** This launch's bearer. The host refuses every connection without it, and every browser Origin. */
+  token: string;
   pid: number | undefined;
   close(): Promise<void>;
 }
@@ -15,7 +20,13 @@ export interface StartHermesGatewayHostOptions {
   python?: string | undefined;
   hermesHome: string;
   cwd: string;
+  /** The gateway host's own variables, set over the Hermes home. */
   env?: Record<string, string> | undefined;
+  /**
+   * The session's host. The gateway host owns the agent and runs its tools, so it runs under the host's helper
+   * environment when the host composes one (`AgentHost.helperEnvironment`), never this process's own.
+   */
+  host?: Pick<AgentHost, 'helperEnvironment'> | undefined;
   startupTimeoutMs?: number | undefined;
 }
 
@@ -55,16 +66,26 @@ export function resolveHermesPython(explicit?: string): string {
 
 export async function startHermesGatewayHost(options: StartHermesGatewayHostOptions): Promise<HermesGatewayHost> {
   const python = resolveHermesPython(options.python);
+  const token = createHermesGatewayToken();
+  const own: Record<string, string> = {
+    [HERMES_HOME_ENV]: options.hermesHome,
+    HOME: options.hermesHome,
+    ...(options.env ?? {}),
+  };
+  // The agent's environment, as the host composes it for every helper that runs the agent's turns and tools. A host
+  // that composes none gets the minimal set it always had: this process's PATH, and nothing else of its own.
+  const env = options.host?.helperEnvironment?.(own) ?? { PATH: process.env.PATH, ...own };
   const child: ChildProcess = spawn(python, [hostScript()], {
     cwd: options.cwd,
-    env: {
-      PATH: process.env.PATH,
-      [HERMES_HOME_ENV]: options.hermesHome,
-      HOME: options.hermesHome,
-      ...(options.env ?? {}),
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
+  // The bearer rides stdin, never argv or the environment: any same-user
+  // process can read both with ps, and the host's environment reaches every
+  // tool the agent runs. A write to a host that has already gone fails with
+  // EPIPE; its exit reports that.
+  child.stdin?.on('error', () => undefined);
+  child.stdin?.end(`${token}\n`);
 
   // Importing the exact locked Hermes graph can take tens of seconds on a
   // cold machine even though gateway.ready is fast after import completes.
@@ -120,6 +141,7 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
 
   return {
     url,
+    token,
     pid: child.pid,
     async close() {
       await terminateChild(child);

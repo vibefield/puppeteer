@@ -32,6 +32,7 @@ export interface PendingPermission {
   promptId?: string | undefined;
   /** The subagent that asked; absent for the main thread. */
   agentId?: string | undefined;
+  agentType?: string | undefined;
   toolName: string;
   inputKey: string;
   toolCallId?: string | undefined;

@@ -2227,7 +2227,9 @@ await runtime.dispose();</code></pre>
                   Resumes one opaque AgentContinuation. Runtime preserves only the generic native-versus-Imposter
                   identity; adapters restore their own executable, profile, store, and transport topology. A
                   modelSelection passed beside it starts the resumed session at that model, where the agent's resume
-                  can.
+                  can. A continuation marked <span class="mono">resumable: false</span> names a conversation the agent
+                  has not written yet (a provisional id, or an exact one before its first durable record): its resume
+                  cannot succeed, so a host must not end a live process for it.
                 </p>
               </article>
               <article class="api-card">
@@ -2339,7 +2341,7 @@ interface AgentProvider {
   readonly profiles?: ProfileService;
   prewarm?(options: { profile?: AgentProfile; signal: AbortSignal }): Promise&lt;void&gt;;
   attachSession?(options: AttachProviderSessionOptions): Promise&lt;AgentAdapterBinding&gt;;
-  dispose?(): void | Promise&lt;void&gt;;
+  dispose?(options?: { detach?: boolean }): void | Promise&lt;void&gt;; <span class="comment">// detach: keep what released runs use</span>
 }
 
 interface AgentProviderDescriptor {
@@ -2369,7 +2371,25 @@ interface AgentProviderLaunchService {
               <strong>Host contract.</strong> <span class="mono">AgentHost</span> is deliberately tiny:
               <span class="mono">spawnTerminal(spec)</span> and
               <span class="mono">automateTerminal(id, operation)</span>. Ghosttea or another application terminal
-              service owns PTYs, focus, resize, accepted human input, and process lifecycle.
+              service owns PTYs, focus, resize, accepted human input, and process lifecycle. An optional
+              <span class="mono">helperEnvironment(env)</span> composes the environment for a helper the adapter spawns
+              itself (Codex's app-server, Grok's leader and controller, OpenCode's <span class="mono">serve</span>) by
+              the same policy as the agent's terminal; without it a helper inherits the host process's own.
+            </div>
+
+            <div class="callout">
+              <strong>Re-attach.</strong> A host that outlives its own process re-binds a run with
+              <span class="mono">runtime.attach</span>. It hands back the continuation it kept: the provider's codec
+              restores the launch options from it, and the attached run keeps its state and implementation, so a typed
+              root or an imposter survives the restart. It also hands back the one opaque attach record the adapter
+              last reported (<span class="mono">{version, state, secret?}</span>, through
+              <span class="mono">HostIngress.onAttachRecord</span> before launch and the attach's own
+              <span class="mono">onAttachRecord</span> after), which the host keeps owner-only and never reads. An
+              adapter that cannot attach throws <span class="mono">AgentAttachRefusedError</span> with its next step
+              (<span class="mono">retry</span>, <span class="mono">respawn</span>, <span class="mono">native-log</span>
+              or <span class="mono">resume</span>), carried on the failure as <span class="mono">error.next</span>.
+              An attach's first reading of its process is replay, except a permission or question still open, which
+              it announces live once (<span class="mono">partitionAttachBootstrap</span>).
             </div>
 
             <h3>3. Adapter author: AgentAdapterBinding</h3>
@@ -2381,11 +2401,13 @@ interface AgentProviderLaunchService {
   readonly sessionId: string;          <span class="comment">// provider-native identity</span>
   readonly runtimeSessionId: string;   <span class="comment">// host terminal routing identity</span>
   observationLevel(): ObservationLevel;
+  durableRecordSeen?(): boolean;       <span class="comment">// false: a resume by sessionId cannot succeed yet</span>
   readonly events: {
     onCandidate(listener: (candidate: AdapterEventCandidate) =&gt; void): () =&gt; void;
   };
   readonly services: {
     readonly prompt: AgentPromptService;
+    readonly turnStop?: AgentTurnStopService;   <span class="comment">// absent until the adapter has an evidenced stop</span>
   };
   dispose(): Promise&lt;void&gt;;
 }</code></pre>
@@ -2411,6 +2433,14 @@ interface AgentProviderLaunchService {
                 <p>
                   <span class="mono">submit({ text, mode?, confirmationTimeoutMs? })</span> returns
                   <span class="mono">confirmed | rejected | uncertain</span>.
+                </p>
+              </article>
+              <article class="card">
+                <h3>AgentTurnStopService</h3>
+                <p>
+                  <span class="mono">stop</span> names what ends a turn in the agent's own TUI without quitting it (a
+                  key, or the agent's native control); <span class="mono">submit()</span> sends it and answers whether
+                  it was delivered.
                 </p>
               </article>
             </div>

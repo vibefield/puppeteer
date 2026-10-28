@@ -10,8 +10,10 @@
  * - PermissionRequest carries NO tool_use_id or request id. As of 2.1.226,
  *   PreToolUse fires first for every call and PermissionRequest follows only
  *   when a decision is needed. We correlate by prompt, tool name, and canonical
- *   tool input, while still tolerating the legacy reverse ordering. Execution
- *   completion proves allow; PermissionDenied or a turn boundary closes denial.
+ *   tool input, while still tolerating the legacy reverse ordering. The person's
+ *   decision closes a request when Claude's OTLP `tool_decision` names its tool
+ *   call (`resolvePermissionDecision`); otherwise execution completion proves
+ *   allow, and PermissionDenied or a turn boundary closes denial.
  *   An Esc-interrupted turn has no boundary hook: the next accepted prompt
  *   closes its main-thread request with an unknown outcome.
  * - SubagentStop is re-entrant (1× stop_hook_active:false, then N× true):
@@ -36,6 +38,7 @@ import { ClaudeEffortNormalizer } from './effort.js';
 import { normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
 import {
   claudeQuestionOutcome,
+  claudeQuestionRequestId,
   normalizeClaudePermissionRequested,
   normalizeClaudePermissionResolved,
   normalizeClaudeQuestionRequested,
@@ -130,6 +133,37 @@ export class ClaudeHookNormalizer {
       if (oldest !== undefined) this.recentToolRequests.delete(oldest);
     }
     this.recentToolRequests.set(request.toolCallId, request);
+  }
+
+  /**
+   * A tool an attach found still open in the transcript (the re-attach study, §3.3), which no hook announced to this
+   * normalizer. It is remembered as PreToolUse remembers one, so its PostToolUse or failure closes it and resolves
+   * the question an AskUserQuestion call asks. Returns what remembering it superseded, for the caller to publish.
+   */
+  adoptOpenTool(tool: {
+    toolCallId: string;
+    toolName: string;
+    input: unknown;
+    promptId?: string | undefined;
+  }): NormalizedHook['events'] {
+    const request: RecentToolRequest = {
+      toolCallId: tool.toolCallId,
+      promptId: tool.promptId,
+      toolName: tool.toolName,
+      inputKey: canonicalClaudeValue(tool.input),
+      input: tool.input,
+    };
+    const superseded: NormalizedHook = { events: [], diagnostics: [] };
+    if (tool.toolName.toLowerCase() === 'askuserquestion' && parseClaudeStructuredQuestions(tool.input)) {
+      request.questionRequestId = claudeQuestionRequestId(tool.toolCallId);
+      this.rememberQuestion(superseded, {
+        requestId: request.questionRequestId,
+        promptId: tool.promptId,
+        toolCallId: tool.toolCallId,
+      });
+    }
+    this.rememberTool(request);
+    return superseded.events;
   }
 
   private rememberQuestion(result: NormalizedHook, question: PendingQuestion): void {
@@ -256,7 +290,8 @@ export class ClaudeHookNormalizer {
     for (const permission of this.pendingPermissions) {
       if (predicate(permission)) {
         result.events.push(normalizeClaudePermissionResolved(permission.requestId, outcome));
-        if (permission.toolCallId) this.recentToolRequests.delete(permission.toolCallId);
+        // An allowed tool still runs: its completion hook reads the request, then forgets it.
+        if (permission.toolCallId && outcome !== 'allowed') this.recentToolRequests.delete(permission.toolCallId);
       } else {
         remaining.push(permission);
       }
@@ -376,6 +411,7 @@ export class ClaudeHookNormalizer {
           requestId,
           promptId,
           agentId: result.agentId,
+          agentType: result.agentType,
           toolName,
           inputKey: canonicalClaudeValue(body.tool_input),
         };
@@ -416,7 +452,7 @@ export class ClaudeHookNormalizer {
         if (toolName.toLowerCase() === 'askuserquestion') {
           const questions = parseClaudeStructuredQuestions(body.tool_input);
           if (questions && !this.pendingQuestions.has(toolCallId)) {
-            const questionRequestId = `question:${toolCallId}`;
+            const questionRequestId = claudeQuestionRequestId(toolCallId);
             request.questionRequestId = questionRequestId;
             this.rememberQuestion(result, {
               requestId: questionRequestId,
@@ -642,6 +678,30 @@ export class ClaudeHookNormalizer {
       this.effort.reset();
       this.mode.reset();
     }
+    return result;
+  }
+
+  /**
+   * Close a request at its decision. No hook fires when the person answers: `PostToolUse` waits
+   * for the approved tool to end, and a rejection fires nothing until a boundary. Claude reports
+   * the decision on another rail (OTLP `tool_decision`) keyed by the hooks' `tool_use_id`, so
+   * only an exact tool call closes a request here; the hooks still settle any it never names.
+   * The result carries the asking actor and prompt for the resolution's envelope.
+   */
+  resolvePermissionDecision(
+    toolCallId: string,
+    outcome: 'allowed' | 'denied' | 'dismissed',
+  ): NormalizedHook | undefined {
+    const permission = this.pendingPermissions.find((pending) => pending.toolCallId === toolCallId);
+    if (!permission) return undefined;
+    const result: NormalizedHook = {
+      events: [],
+      diagnostics: [],
+      promptId: permission.promptId,
+      agentId: permission.agentId,
+      agentType: permission.agentType,
+    };
+    this.resolvePermission(result, outcome, (pending) => pending === permission);
     return result;
   }
 

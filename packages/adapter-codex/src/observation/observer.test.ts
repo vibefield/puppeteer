@@ -515,11 +515,130 @@ describe('createCodexObserver controller-owned bootstrap', () => {
       method: 'execCommandApproval',
       params: { command: 'git status' },
       requestId: 999,
+      // The TUI is sent the same request, so the host decision races the person.
+      signal: expect.any(AbortSignal),
     });
     expect(events).toEqual(
       expect.arrayContaining(['interaction:permission-requested', 'interaction:permission-resolved']),
     );
     await obs.dispose();
+  });
+
+  describe('an approval the person answers in the TUI (Q09)', () => {
+    // Codex 0.164.0 sends a thread's requests to every subscribed connection and acts on the
+    // first reply (codex-rs/app-server outgoing_message.rs), so the TUI is sent this one too.
+    const approval = {
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'item/commandExecution/requestApproval',
+      params: { threadId: 'th-owned', turnId: 'turn-1', itemId: 'call-1', command: 'curl https://example.com' },
+    };
+    const resolved = {
+      jsonrpc: '2.0',
+      method: 'serverRequest/resolved',
+      params: { threadId: 'th-owned', requestId: 7 },
+    };
+    const answered = (t: ReturnType<typeof controllable>) =>
+      t.sent().filter((message) => message.id === 7 && ('result' in message || 'error' in message));
+    const settledUnknown = { type: 'interaction:permission-resolved', requestId: '7', outcome: 'unknown' };
+
+    it('never answers it, and reports the wait as blocked until Codex resolves it', async () => {
+      const t = controllable(0);
+      const obs = await createCodexObserver({ transport: t.transport, start: { cwd: '/tmp/ws' } });
+      const projection = projectAgentEvents(obs);
+      // The person's prompt in the TUI: Codex starts the turn, then completes the user message that starts it here.
+      t.deliver({ method: 'turn/started', params: { threadId: 'th-owned', turn: { id: 'turn-1' } } });
+      t.deliver({
+        method: 'item/completed',
+        params: {
+          threadId: 'th-owned',
+          turnId: 'turn-1',
+          item: { type: 'userMessage', id: 'user-1', content: [{ type: 'text', text: 'Remove the scratch file' }] },
+        },
+      });
+      t.deliver(approval);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(answered(t)).toEqual([]);
+      expect(projection.envelopes.map(({ event }) => event)).toContainEqual({
+        type: 'interaction:permission-requested',
+        requestId: '7',
+        toolCallId: 'call-1',
+        tool: 'command',
+        input: approval.params,
+        presentation: 'native-tui',
+      });
+      const waiting = monitorFromEvents(projection.envelopes);
+      expect(waiting.status).toBe('blocked');
+      expect(waiting.blockers).toMatchObject([{ id: '7', kind: 'permission', permission: { tool: 'command' } }]);
+
+      // The person answered in the TUI: Codex tells every connection, naming no decision.
+      t.deliver(resolved);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(answered(t)).toEqual([]);
+      expect(projection.envelopes.map(({ event }) => event)).toContainEqual(settledUnknown);
+      const after = monitorFromEvents(projection.envelopes);
+      expect(after.blockers).toEqual([]);
+      expect(after.status).toBe('working');
+      projection.dispose();
+      await obs.dispose();
+    });
+
+    it('settles a held wait when the app-server rail closes, and on dispose', async () => {
+      const closing = controllable(0);
+      const closed = await createCodexObserver({ transport: closing.transport, start: { cwd: '/tmp/ws' } });
+      const closedProjection = projectAgentEvents(closed);
+      closing.deliver(approval);
+      closing.fireClose();
+
+      expect(closedProjection.envelopes.map(({ event }) => event)).toContainEqual(settledUnknown);
+      closedProjection.dispose();
+      await closed.dispose();
+
+      const disposing = controllable(0);
+      const disposed = await createCodexObserver({ transport: disposing.transport, start: { cwd: '/tmp/ws' } });
+      const outcomes: string[] = [];
+      disposed.events.onCandidate(({ event }) => {
+        if (event.type === 'interaction:permission-resolved') outcomes.push(event.outcome);
+      });
+      disposing.deliver(approval);
+      await disposed.dispose();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(outcomes).toEqual(['unknown']);
+      expect(answered(disposing)).toEqual([]);
+    });
+
+    it('drops a host decision the person beat in the TUI', async () => {
+      const t = controllable(0);
+      let decide!: (decision: 'approved') => void;
+      let signal: AbortSignal | undefined;
+      const obs = await createCodexObserver({
+        transport: t.transport,
+        start: { cwd: '/tmp/ws' },
+        onApproval: (request) => {
+          signal = request.signal;
+          return new Promise((resolve) => {
+            decide = resolve;
+          });
+        },
+      });
+      const outcomes: string[] = [];
+      obs.events.onCandidate(({ event }) => {
+        if (event.type === 'interaction:permission-resolved') outcomes.push(event.outcome);
+      });
+      t.deliver(approval);
+      t.deliver(resolved);
+
+      expect(signal?.aborted).toBe(true);
+      decide('approved');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(answered(t)).toEqual([]);
+      expect(outcomes).toEqual(['unknown']);
+      await obs.dispose();
+    });
   });
 
   it('threadId: resumes a known id and is ready immediately', async () => {

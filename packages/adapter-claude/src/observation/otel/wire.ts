@@ -36,7 +36,15 @@ const SAFE_ATTRIBUTE_NAMES = new Set([
   'workflow.name',
 ]);
 
-const SAFE_LOG_BODIES = new Set(['claude_code.api_request']);
+/**
+ * Attributes kept only on the event that defines them: `source` is a permission decision's
+ * origin on `tool_decision` alone. Its `tool_parameters` (the command) are never kept.
+ */
+const SAFE_EVENT_ATTRIBUTE_NAMES: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ['tool_decision', new Set(['tool_use_id', 'decision', 'source'])],
+]);
+
+const SAFE_LOG_BODIES = new Set(['claude_code.api_request', 'claude_code.tool_decision']);
 
 function record(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -77,10 +85,17 @@ function attributes(value: unknown): Record<string, unknown> {
   return result;
 }
 
-function safeAttributes(value: unknown): Record<string, ClaudeOtelScalar> {
+/** Claude names an event in `event.name`; a safe log body carries the same name as `claude_code.<name>`. */
+function eventName(decoded: Record<string, unknown>, body: string | undefined): string | undefined {
+  if (typeof decoded['event.name'] === 'string') return decoded['event.name'];
+  return body?.startsWith('claude_code.') ? body.slice('claude_code.'.length) : undefined;
+}
+
+function safeAttributes(decoded: Record<string, unknown>, name: string | undefined): Record<string, ClaudeOtelScalar> {
   const result: Record<string, ClaudeOtelScalar> = {};
-  for (const [key, candidate] of Object.entries(attributes(value))) {
-    if (!SAFE_ATTRIBUTE_NAMES.has(key)) continue;
+  const eventSafe = name === undefined ? undefined : SAFE_EVENT_ATTRIBUTE_NAMES.get(name);
+  for (const [key, candidate] of Object.entries(decoded)) {
+    if (!SAFE_ATTRIBUTE_NAMES.has(key) && !eventSafe?.has(key)) continue;
     if (typeof candidate === 'string' || typeof candidate === 'boolean') result[key] = candidate;
     else if (typeof candidate === 'number' && Number.isFinite(candidate)) result[key] = candidate;
   }
@@ -117,12 +132,13 @@ export function decodeClaudeOtelLogs(payload: unknown, receivedAt: string): Clau
         if (!logRecord) continue;
         const decodedBody = anyValue(logRecord.body);
         const body = typeof decodedBody === 'string' && SAFE_LOG_BODIES.has(decodedBody) ? decodedBody : undefined;
+        const decoded = attributes(logRecord.attributes);
         output.push({
           receivedAt,
           timestamp: nanosecondsTimestamp(logRecord.timeUnixNano ?? logRecord.observedTimeUnixNano, receivedAt),
           ...(typeof body === 'string' ? { body } : {}),
           ...(providerVersion ? { providerVersion } : {}),
-          attributes: safeAttributes(logRecord.attributes),
+          attributes: safeAttributes(decoded, eventName(decoded, body)),
         });
       }
     }

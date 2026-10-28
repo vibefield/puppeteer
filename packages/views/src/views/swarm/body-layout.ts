@@ -20,8 +20,9 @@ import {
 //    figure, the total and the burn row, the watermark at today's sizes.
 // 2. NAME + ONE LINE, from `RUNG_NAME_ONLY` up to it: the name and the line
 //    `COPY_ONE_LINE` picks (the state line, else the model line, else a
-//    terminal's word). The branch, a terminal's clock, profile and host, both
-//    figures and the burn row go; the watermark takes its small size.
+//    terminal's word). The branch, a terminal's clock and profile, a peer's
+//    host line (a terminal's or an agent's, Q16), both figures and the burn row
+//    go; the watermark takes its small size.
 // 3. NAME ONLY, below `RUNG_NAME_ONLY`.
 //
 // Within a rung each line is fitted to its chord, and a line cut below a
@@ -37,7 +38,8 @@ import {
 /** The context figure and the total: one size, the same margin in from the rim. */
 export const FIGURE_STYLE: TextStyle = { size: 10.5, weight: 800, letterSpacing: 0.02 };
 export const FIGURE_MARGIN = 7;
-/** The burn row keeps this much clear of the model line above and of the total below. */
+/** The burn row keeps this much clear of the copy's last line above (the model line, or a peer's host line) and of
+ * the total below. */
 export const BAND_MARGIN_TOP = 4;
 export const BAND_MARGIN_BOTTOM = 8;
 /** The burn ladder's own geometry: a flame's size and the gap between flames. */
@@ -97,11 +99,12 @@ export function burnFlamesDrawn(model: SwarmBubbleModel): number {
   return burn.priced ? burn.lit : 1;
 }
 
-/** The burn row's centre: midway between a margin under the model line and a margin above the total figure, so
- * the flames stand where the chart used to, whatever the radius. */
+/** The burn row's centre: midway between a margin under the copy's last line and a margin above the total figure,
+ * so the flames stand where the chart used to, whatever the radius. The last line is the model line, or a peer's
+ * host line under it (Q16), which the flames must clear as they clear the model line. */
 function burnRowAt(radius: number, copy: CopyLayout): number {
-  const modelLine = copy.lines.find((line) => line.key === 'model');
-  const under = modelLine ? modelLine.y + modelLine.height / 2 : copy.bottom;
+  const last = copy.lines.at(-1);
+  const under = last ? last.y + last.height / 2 : copy.bottom;
   const top = under + BAND_MARGIN_TOP;
   const floor = Math.max(top + 4, radius - FIGURE_MARGIN - FIGURE_STYLE.size - BAND_MARGIN_BOTTOM);
   return (top + floor) / 2;

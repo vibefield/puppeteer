@@ -109,7 +109,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -291,7 +291,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -365,7 +365,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -474,7 +474,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -656,7 +656,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -730,7 +730,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -839,7 +839,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -1021,7 +1021,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -1095,7 +1095,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -1204,7 +1204,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -1386,7 +1386,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -1460,7 +1460,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -1569,7 +1569,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -1751,7 +1751,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -1825,7 +1825,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -1934,7 +1934,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -2116,7 +2116,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -2190,7 +2190,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -2299,7 +2299,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -2481,7 +2481,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -2555,7 +2555,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -2664,7 +2664,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -2846,7 +2846,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -2920,7 +2920,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   },
@@ -3029,7 +3029,7 @@
       0,
       0
      ],
-     "model": "d0172c48a205"
+     "model": "98bbef979fa4"
     },
     {
      "id": "terminal-running",
@@ -3211,7 +3211,7 @@
       0,
       0
      ],
-     "model": "c42eafdf094b"
+     "model": "34ec340806b4"
     },
     {
      "id": "blocked-permission",
@@ -3285,7 +3285,7 @@
       0,
       0
      ],
-     "model": "12e017a12910"
+     "model": "3f16d43e20b9"
     }
    ]
   }
@@ -3616,7 +3616,7 @@
    "ariaLabel": "swarm-lab, Opus 4.5, idle: Benchmarks are in: the new path is 3.1× faster at n = 60., CTX:52%, new message: Benchmarks are in: the new path is 3.1× faster at n = 60.",
    "title": "swarm-lab · Opus 4.5 · Benchmarks are in: the new path is 3.1× faster at n = 60."
   },
-  "d0172c48a205": {
+  "98bbef979fa4": {
    "id": "peer-idle",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -3652,6 +3652,19 @@
       "weight": 800,
       "transform": "lowercase",
       "letterSpacing": 0.07
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "tower",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
      },
      "opacity": 0.44,
      "tone": "ink",
@@ -4400,7 +4413,7 @@
    "ariaLabel": "notes, Haiku 4.5, working: working, CTX:36%, burning $23/hr",
    "title": "notes · Haiku 4.5 · working · $23/hr"
   },
-  "c42eafdf094b": {
+  "34ec340806b4": {
    "id": "peer-working",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -4453,6 +4466,19 @@
       "weight": 800,
       "transform": "lowercase",
       "letterSpacing": 0.07
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "studio",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
      },
      "opacity": 0.44,
      "tone": "ink",
@@ -4732,7 +4758,7 @@
    "ariaLabel": "notes, Sonnet 4.5, blocked: failure, CTX:38%, failed: rate limited · retrying",
    "title": "notes · Sonnet 4.5 · failure"
   },
-  "12e017a12910": {
+  "3f16d43e20b9": {
    "id": "peer-blocked",
    "accent": "var(--text-faint)",
    "stale": false,
@@ -4789,6 +4815,19 @@
       "weight": 800,
       "transform": "lowercase",
       "letterSpacing": 0.07
+     },
+     "opacity": 0.44,
+     "tone": "ink",
+     "gapBefore": 3
+    },
+    {
+     "key": "host",
+     "text": "studio",
+     "style": {
+      "size": 7,
+      "weight": 800,
+      "transform": "uppercase",
+      "letterSpacing": 0.1
      },
      "opacity": 0.44,
      "tone": "ink",

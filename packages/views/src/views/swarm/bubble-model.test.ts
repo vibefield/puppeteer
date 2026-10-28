@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentView, MonitorCost } from '@vibefield/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
-import { OPENING_QUIET_MS, bubbleModel, workingShares } from './bubble-model.js';
+import { OPENING_QUIET_MS, bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { SWARM_WEIGHT } from './weight.js';
 
@@ -385,7 +385,7 @@ describe("a peer's session (a row from another desktop)", () => {
       createdAt: 0,
       status: 'idle',
       project: { name: 'mesh-console' },
-      detail: 'studio-mini · /Projects/mesh-console',
+      detail: '/Projects/mesh-console',
       colour: '#6366f1',
       device: MINI,
       writable,
@@ -398,20 +398,26 @@ describe("a peer's session (a row from another desktop)", () => {
       unread: false,
       workingShare: 0,
     });
+  // James, 2026-10-28: "all the peer session should be writable, which is the default and universal setting, so no
+  // need to mark things like writable or read only." The row's `writable` stays as data (M41); no body says it.
+  const WRITE_WORDS = /writ|read.only|may type/i;
+  const said = (body: SwarmBubbleModel): string =>
+    [...body.copy.map((line) => line.text), body.ariaLabel, body.title].join(' | ');
 
-  it('names the peer FIRST in the accessible name, then the host write policy (M41)', () => {
-    expect(model(false).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, read-only host');
-    expect(model(true).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle, writable host');
+  it('names the peer FIRST in the accessible name, and says nothing after its status', () => {
+    for (const writable of [false, true]) {
+      expect(model(writable).ariaLabel).toBe('on studio-mini, mesh-console, remote session, idle');
+    }
   });
 
-  it('wears the host on the body, in both directions, so it cannot read as a local terminal', () => {
-    const refusing = model(false).copy.find((line) => line.key === 'host');
-    const permitting = model(true).copy.find((line) => line.key === 'host');
-    expect(refusing?.text).toBe('studio-mini · read-only host');
-    expect(permitting?.text).toBe('studio-mini · writable host');
-    // …and a host property is never upgraded into a promise to the viewer.
-    expect(permitting?.text).not.toContain('you');
-    expect(model(true).title).toContain('decided when you attach');
+  it('wears its host on the body by the desktop’s name alone, so it cannot read as a local terminal', () => {
+    for (const writable of [false, true]) {
+      const body = model(writable);
+      expect(body.copy.find((line) => line.key === 'host')?.text).toBe('studio-mini');
+      expect(body.title).toBe('studio-mini · /Projects/mesh-console');
+      // No write word anywhere, whatever the row's `writable` says: not on the body, not in the hover, not spoken.
+      expect(said(body)).not.toMatch(WRITE_WORDS);
+    }
   });
 
   it('draws a peer’s agent from the facts its row carries, as it draws this desktop’s (M9)', () => {
@@ -430,9 +436,57 @@ describe("a peer's session (a row from another desktop)", () => {
     expect(peer.ring).toEqual({ percent: 42, hot: false });
     expect(peer.figures?.top?.text).toBe('42%');
     expect(peer.burn).toEqual({ lit: 2, priced: true });
-    expect(peer.copy.at(-1)?.text).toBe('Fable 5.1 · medium');
+    expect(peer.copy.find((line) => line.key === 'model')?.text).toBe('Fable 5.1 · medium');
     // the line under the name leads with the desktop's name (the toolkit's rule for a peer)
     expect(peer.title).toBe('puppeteer · Fable 5.1 · studio-mini · working · $12/hr');
+  });
+
+  describe('a peer’s agent wears the host line too (Q16)', () => {
+    const peerAgent = (partial: AgentViewFixturePartial) =>
+      bubbleModel({ agent: agent({ device: MINI, ...partial }), parameters, nowMs: NOW, unread: false });
+
+    it('as its last line, the desktop’s name alone, drawn as a peer terminal’s is', () => {
+      const idle = peerAgent({ writable: true });
+      expect(idle.copy.map((line) => line.key)).toEqual(['name', 'model', 'host']);
+      // One host line, one look: the terminal's label style, at the supporting weight, after the same gap.
+      expect(idle.copy.at(-1)).toEqual(model(true).copy.find((line) => line.key === 'host'));
+      const working = peerAgent({
+        writable: false,
+        status: 'working',
+        project: { name: 'puppeteer', seq: 0, branch: 'main' },
+        cost: burning(0.2, 'complete', 2),
+      });
+      expect(working.copy.map((line) => line.key)).toEqual(['branch', 'name', 'model', 'host']);
+      expect(working.copy.at(-1)?.text).toBe('studio-mini');
+      const blocked = peerAgent({ status: 'blocked', wait: { kind: 'permission', since: AT, tool: 'Bash' } });
+      expect(blocked.copy.map((line) => line.key)).toEqual(['name', 'state', 'model', 'host']);
+    });
+
+    it('says no write word: its accessible name and hover are a local agent’s, its line naming the desktop', () => {
+      const idle = peerAgent({ writable: false });
+      expect(idle.ariaLabel).toBe('puppeteer, Fable 5.1, idle: studio-mini · idle, CTX:--%');
+      const working = peerAgent({
+        writable: true,
+        status: 'working',
+        context: { usedPercent: 42 },
+        cost: burning(0.2),
+      });
+      expect(working.ariaLabel).toBe('puppeteer, Fable 5.1, working: studio-mini · working, CTX:42%, burning $12/hr');
+      const permission = { kind: 'permission', since: AT, tool: 'Bash' } as const;
+      const blocked = peerAgent({ writable: false, status: 'blocked', wait: permission });
+      expect(blocked.ariaLabel).toBe(
+        'puppeteer, Fable 5.1, blocked: studio-mini · permission · Bash, CTX:--%, permission: Bash',
+      );
+      // The hover keeps its words: the project, the model, the desktop, its line.
+      expect(idle.title).toBe('puppeteer · Fable 5.1 · studio-mini · idle');
+      for (const body of [idle, working, blocked]) expect(said(body)).not.toMatch(WRITE_WORDS);
+    });
+
+    it('never on this desktop’s agents, which name no host', () => {
+      const local = bubbleModel({ agent: agent({ writable: false }), parameters, nowMs: NOW, unread: false });
+      expect(local.copy.some((line) => line.key === 'host')).toBe(false);
+      expect(local.ariaLabel).toBe('puppeteer, Fable 5.1, idle: idle, CTX:--%');
+    });
   });
 });
 

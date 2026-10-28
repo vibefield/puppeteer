@@ -328,6 +328,25 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect((await receipt).status).toBe('confirmed');
   });
 
+  it("stops a turn with Claude's own Esc, never ⌃C, even at a permission prompt that gates injection", async () => {
+    const { session, automations, hook } = await startSession();
+    await hook('SessionStart', {});
+    await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-4' });
+    await hook('PermissionRequest', { prompt_id: 'p-4', tool_name: 'Bash', tool_input: { command: 'rm x' } });
+
+    expect(session.services.turnStop?.stop).toEqual({ kind: 'key', key: 'escape' });
+    expect(await session.services.turnStop?.submit()).toEqual({ accepted: true });
+    expect(automations).toEqual([{ kind: 'text', text: '\x1b' }]);
+
+    await session.dispose();
+    sessions = [];
+    expect(await session.services.turnStop?.submit()).toEqual({
+      accepted: false,
+      reason: 'the agent binding is disposed',
+    });
+    expect(automations).toHaveLength(1);
+  });
+
   it('publishes configured intent separately and preserves observed hook actor/version metadata', async () => {
     const { events, hook } = await startSession({
       model: 'configured-sonnet',
@@ -600,6 +619,133 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     });
     expect((await postOtlp(JSON.stringify(corrected))).status).toBe(200);
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
+  });
+
+  describe('permission decisions on the OTLP logs rail', () => {
+    // https://code.claude.com/docs/en/monitoring-usage#tool-decision-event
+    async function startDecidingSession() {
+      const started = await startSession({ providerVersion: '2.1.245' });
+      const { session, prepared, token, events } = started;
+      const decide = async (fields: Record<string, string>) => {
+        const response = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            resourceLogs: [
+              {
+                scopeLogs: [
+                  {
+                    logRecords: [
+                      {
+                        body: { stringValue: 'claude_code.tool_decision' },
+                        attributes: Object.entries({
+                          'event.name': 'tool_decision',
+                          'event.timestamp': '2026-10-27T12:00:05.000Z',
+                          'session.id': session.sessionId,
+                          tool_name: 'Bash',
+                          ...fields,
+                        }).map(([key, value]) => ({ key, value: { stringValue: value } })),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+        expect(response.status).toBe(200);
+      };
+      const resolved = () => events.filter(({ event }) => event.type === 'interaction:permission-resolved');
+      return { ...started, decide, resolved };
+    }
+
+    it('clears the wait at the person’s accept, before the approved tool ends', async () => {
+      const { session, projection, events, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'slow', prompt_id: 'p-slow' });
+      const call = { prompt_id: 'p-slow', tool_name: 'Bash', tool_input: { command: 'sleep 45' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_slow' });
+      await hook('PermissionRequest', call);
+      expect(projection.state.permissions.size).toBe(1);
+      expect((await session.services.prompt.submit({ text: 'blocked' })).status).toBe('rejected');
+
+      await decide({ tool_use_id: 'toolu_slow', decision: 'accept', source: 'user_temporary' });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-slow',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'allowed' },
+        }),
+      ]);
+      const receipt = session.services.prompt.submit({ text: 'queued while it runs' });
+
+      // The tool ends 45 s later: its completion closes the tool, never the request a second time.
+      await hook('PostToolUse', { ...call, tool_use_id: 'toolu_slow', tool_response: { output: '' } });
+      expect(resolved()).toHaveLength(1);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          event: expect.objectContaining({ type: 'tool:completed', toolCallId: 'toolu_slow' }),
+        }),
+      );
+
+      await hook('UserPromptSubmit', { prompt: 'queued while it runs', prompt_id: 'p-queued' });
+      expect((await receipt).status).toBe('confirmed');
+    });
+
+    it('closes the request at the person’s reject; a decision that closes nothing stays native', async () => {
+      const { projection, events, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-risky' });
+      const call = { prompt_id: 'p-risky', tool_name: 'Bash', tool_input: { command: 'rm x' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_risky' });
+      await hook('PermissionRequest', call);
+
+      // A rule decided another call without asking.
+      await decide({ tool_use_id: 'toolu_ruled', decision: 'accept', source: 'config' });
+      expect(projection.state.permissions.size).toBe(1);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          source: 'native-telemetry',
+          event: expect.objectContaining({ type: 'adapter:native-event', nativeType: 'otel:tool_decision' }),
+        }),
+      );
+
+      await decide({ tool_use_id: 'toolu_risky', decision: 'reject', source: 'user_reject' });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-risky',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'denied' },
+        }),
+      ]);
+
+      await hook('Stop', { prompt_id: 'p-risky', last_assistant_message: 'Not run.' });
+      expect(resolved()).toHaveLength(1);
+    });
+
+    it('settles at PostToolUse when no decision arrived, and a late decision closes nothing twice', async () => {
+      const { projection, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'quick', prompt_id: 'p-quick' });
+      const call = { prompt_id: 'p-quick', tool_name: 'Bash', tool_input: { command: 'echo hi' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_quick' });
+      await hook('PermissionRequest', call);
+
+      await hook('PostToolUse', { ...call, tool_use_id: 'toolu_quick', tool_response: { output: 'hi' } });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-hook',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'allowed' },
+        }),
+      ]);
+
+      // OTLP exports in batches: the decision can land after a fast tool already ended.
+      await decide({ tool_use_id: 'toolu_quick', decision: 'accept', source: 'user_temporary' });
+      expect(resolved()).toHaveLength(1);
+    });
   });
 
   it('ignores root and child transcript metadata and models while observing live root text', async () => {
@@ -1925,6 +2071,122 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     expect(automations.at(-1)).toMatchObject({ kind: 'paste', text: 'hello again' });
     rmSync(configDir, { recursive: true, force: true });
     // the released launch files are the close's to remove
+    await cleanupClaudeSession(prepared!);
+  });
+
+  it('an attach to a Claude mid-turn shows its turn, its open tool and, live, the question it waits on; its hook closes them', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-mid-turn' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const sessionId = launched.sessionId;
+    await launched.dispose({ release: true });
+    // the transcript as the host left it: a typed prompt, then a question the person has not answered
+    const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-mid-turn-'));
+    const project = join(configDir, 'projects', '-tmp');
+    mkdirSync(project, { recursive: true });
+    const transcript = join(project, `${sessionId}.jsonl`);
+    const input = { questions: [{ question: 'Which branch?', options: [{ label: 'main' }, { label: 'dev' }] }] };
+    writeFileSync(
+      transcript,
+      [
+        {
+          type: 'user',
+          uuid: 'u-prompt',
+          parentUuid: null,
+          promptId: 'p-asked',
+          turnOrigin: 'human',
+          isSidechain: false,
+          sessionId,
+          timestamp: '2026-10-27T12:00:00.000Z',
+          message: { role: 'user', content: 'ship it' },
+        },
+        {
+          type: 'assistant',
+          uuid: 'u-ask',
+          parentUuid: 'u-prompt',
+          isSidechain: false,
+          sessionId,
+          timestamp: '2026-10-27T12:00:01.000Z',
+          message: {
+            id: 'msg_ask',
+            role: 'assistant',
+            content: [{ type: 'tool_use', id: 'toolu-ask', name: 'AskUserQuestion', input }],
+            stop_reason: null,
+          },
+        },
+      ]
+        .map((row) => JSON.stringify(row))
+        .join('\n') + '\n',
+    );
+
+    const attached = await attachClaudeTuiSession({
+      sessionId,
+      runtimeSessionId: 'rt-mid-turn',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    await attached.pollTranscript();
+    const fromTranscript = () =>
+      projection.envelopes
+        .filter((e) => e.source === 'native-transcript')
+        .map(({ event, replay }) => ({ type: event.type, replay: replay === true }));
+    await vi.waitFor(() =>
+      expect(fromTranscript()).toEqual([
+        { type: 'turn:started', replay: true },
+        { type: 'tool:requested', replay: true },
+        { type: 'interaction:question-requested', replay: false },
+      ]),
+    );
+    // a prompt typed now would land in the question's answer: the injector holds it back, as for a hooked question
+    const held = await attached.services.prompt.submit({ text: 'meanwhile', mode: 'paste-only' });
+    expect(held.status).toBe('rejected');
+
+    // the person answers in the TUI: the running process posts PostToolUse to the ingress it was launched with, and
+    // the hook rail closes the question and the tool the bootstrap opened
+    const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+      body: JSON.stringify({
+        session_id: sessionId,
+        transcript_path: transcript,
+        cwd: '/tmp',
+        hook_event_name: 'PostToolUse',
+        prompt_id: 'p-asked',
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'toolu-ask',
+        tool_input: input,
+        tool_response: { answers: { 'Which branch?': 'main' } },
+      }),
+    });
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => {
+      const hooked = projection.envelopes.filter((e) => e.source === 'native-hook').map(({ event }) => event);
+      expect(hooked).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'interaction:question-resolved', requestId: 'question:toolu-ask' }),
+          expect.objectContaining({ type: 'tool:completed', toolCallId: 'toolu-ask' }),
+        ]),
+      );
+    });
+    rmSync(configDir, { recursive: true, force: true });
     await cleanupClaudeSession(prepared!);
   });
 

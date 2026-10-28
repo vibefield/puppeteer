@@ -68,6 +68,7 @@ describe('the lab model', () => {
     );
     expect(has((agent) => agent.kind === 'terminal' && agent.status === 'working')).toBe(true);
     expect(has((agent) => agent.kind === 'terminal' && agent.status === 'idle')).toBe(true);
+    // A peer's `writable` both ways: no view draws it (James, 2026-10-28), and the goldens witness that.
     expect(has((agent) => !agent.device.self && agent.writable)).toBe(true);
     expect(has((agent) => !agent.device.self && !agent.writable)).toBe(true);
     expect(has((agent) => !agent.device.self && !agent.attachable && agent.writable)).toBe(true);

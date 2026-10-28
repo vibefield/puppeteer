@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentView, MonitorCost } from '@vibefield/puppeteer-view-sdk';
 import { agentViewFixture, type AgentViewFixturePartial } from '@vibefield/puppeteer-view-sdk/testing';
-import { bodyLayout, bodyRung, RUNG_FULL, RUNG_NAME_ONLY, WATERMARK_SIZE, WATERMARK_SMALL } from './body-layout.js';
+import {
+  bodyLayout,
+  bodyRung,
+  FIGURE_STYLE,
+  FLAME_SIZE,
+  RUNG_FULL,
+  RUNG_NAME_ONLY,
+  WATERMARK_SIZE,
+  WATERMARK_SMALL,
+} from './body-layout.js';
 import { baseRadius, bubbleModel, type SwarmBubbleModel } from './bubble-model.js';
 import { DEFAULT_SWARM_PARAMETERS } from './swarm-parameters.js';
 import { layoutCopy, type TextMeasure } from './text-layout.js';
@@ -56,6 +65,14 @@ const BODIES = {
     status: 'working',
     activity: { kind: 'foreground', since: AT },
     device: { id: 'mini', name: 'studio-mini', self: false },
+  }),
+  /** A peer's working agent: its host line follows the model line, as a peer terminal's follows its own (Q16). */
+  peer: agent({
+    status: 'working',
+    activity: { kind: 'tool', line: 'Editing tokens.css', since: AT },
+    cost,
+    device: { id: 'mini', name: 'studio-mini', self: false },
+    writable: false,
   }),
 } as const;
 
@@ -145,6 +162,26 @@ describe('what a body draws at each radius band: three rungs (full → name + on
     expect(draws('blocked', 28)).toBe('name · mark 46');
     expect(draws('terminal', 28)).toBe('name · mark -');
     expect(words('idle', 28)).toEqual(['pup…']);
+  });
+});
+
+describe('a peer’s agent: its host line on the full rung, as a peer terminal’s (Q16)', () => {
+  it('follows the model line on the full rung, and goes with the parts below it', () => {
+    expect(draws('peer', 80)).toBe('branch+name+model+host · mark 58 · % · $ · burn');
+    expect(draws('peer', 60)).toBe('branch+name+model+host · mark 58 · % · $ · burn');
+    expect(draws('peer', 50)).toBe('branch+name+model+host · mark 58 · % · $ · burn');
+    expect(draws('peer', 44)).toBe('name+model · mark 46 · no % · no $ · no burn');
+    expect(draws('peer', 32)).toBe('name · mark 46 · no % · no $ · no burn');
+  });
+
+  it('keeps the burn row clear of the host line above and of the total below', () => {
+    for (const radius of [60, 80]) {
+      const layout = bodyLayout(at('peer', radius), { radius, measure });
+      const host = layout.copy.lines.at(-1)!;
+      expect(host.key).toBe('host');
+      expect(layout.burn! - FLAME_SIZE / 2, `r ${radius}`).toBeGreaterThanOrEqual(host.y + host.height / 2);
+      expect(layout.burn! + FLAME_SIZE / 2, `r ${radius}`).toBeLessThanOrEqual(layout.bottom! - FIGURE_STYLE.size / 2);
+    }
   });
 });
 

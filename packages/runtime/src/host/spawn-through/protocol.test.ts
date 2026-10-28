@@ -129,9 +129,34 @@ describe('spawn-through protocol', () => {
       { action: 'fallback', code: 'passthrough', reason: 'not managed' },
       { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused', placed: true },
       { action: 'refuse', code: 'unauthenticated', reason: 'unreadable', message: 'refused', placed: false },
+      {
+        action: 'refuse',
+        code: 'unauthenticated',
+        reason: 'unreadable',
+        message: 'not started',
+        placed: false,
+        kitSentence: true,
+      },
       { action: 'ack' },
     ];
     for (const answer of answers) expect(parseSpawnThroughResponse(JSON.parse(JSON.stringify(answer)))).toEqual(answer);
+    // Only the kit's sentence is marked: a mark that says no is the host's words, as an absent one is.
+    expect(
+      parseSpawnThroughResponse({
+        action: 'refuse',
+        code: 'rejected-argument',
+        reason: 'rejected',
+        message: 'example was not started',
+        placed: true,
+        kitSentence: false,
+      }),
+    ).toEqual({
+      action: 'refuse',
+      code: 'rejected-argument',
+      reason: 'rejected',
+      message: 'example was not started',
+      placed: true,
+    });
     // A newer gateway's extra keys are ignored; the recipe keeps only what the shim execs.
     expect(
       parseSpawnThroughResponse({
@@ -160,6 +185,15 @@ describe('spawn-through protocol', () => {
       // Whether the host placed it decides whether the shim obeys: a refusal that does not say is no answer.
       { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused' },
       { action: 'refuse', code: 'rejected-argument', reason: 'rejected', message: 'refused', placed: 'yes' },
+      // Whose words they are decides whether the shim names the command before them.
+      {
+        action: 'refuse',
+        code: 'rejected-argument',
+        reason: 'rejected',
+        message: 'refused',
+        placed: true,
+        kitSentence: 'yes',
+      },
     ]) {
       expect(parseSpawnThroughResponse(value), JSON.stringify(value)).toBeUndefined();
     }
@@ -168,20 +202,25 @@ describe('spawn-through protocol', () => {
   it('declines with a code: a fallback, or a refusal that says whether it was placed and whose words are never empty', () => {
     const decline = { code: 'rejected-argument', reason: 'cannot carry --bare' } as const;
     expect(declineSpawnThrough(decline)).toEqual({ action: 'fallback', ...decline });
+    // The host's words, unmarked: they name the command themselves.
     expect(declineSpawnThrough(decline, { message: 'refused here\nrun it elsewhere', placed: true })).toEqual({
       action: 'refuse',
       ...decline,
       message: 'refused here\nrun it elsewhere',
       placed: true,
     });
+    // The kit's sentence, marked: it does not, and the shim names the command before it.
     const kitSentence = 'not started, because it could not be run as a managed session: cannot carry --bare';
     for (const message of [undefined, '', ' \u001b\n\t ']) {
-      expect(declineSpawnThrough(decline, { message, placed: false })).toEqual({
-        action: 'refuse',
-        ...decline,
-        message: kitSentence,
-        placed: false,
-      });
+      for (const placed of [false, true]) {
+        expect(declineSpawnThrough(decline, { message, placed })).toEqual({
+          action: 'refuse',
+          ...decline,
+          message: kitSentence,
+          placed,
+          kitSentence: true,
+        });
+      }
     }
     expect(new Set(SPAWN_THROUGH_DECLINE_CODES).size).toBe(SPAWN_THROUGH_DECLINE_CODES.length);
   });

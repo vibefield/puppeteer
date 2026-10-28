@@ -12,7 +12,8 @@
  *     → category normalizers → candidate event source → runtime ingress
  *     → live transcript provider (lazy: attached at the
  *       first hook payload that hands us transcript_path)
- *     → authenticated OTLP logs (settled request usage, when available)
+ *     → authenticated OTLP logs (settled request usage and permission
+ *       decisions, when available)
  *     → prompt injector (uses ports.automate; confirmation and
  *       permission gating wired from the normalized event stream)
  *
@@ -51,6 +52,7 @@ import {
   type PreparedClaudeSession,
 } from './launch/prepare.js';
 import { createPromptInjector, type PromptInjector } from './services/prompt.js';
+import { createClaudeTurnStop } from './services/turn-stop.js';
 import { observeClaudeStatusLineAccountUsage } from './services/account-usage.js';
 import { claudeContextWindowEvent, claudeEnvironmentEvents } from './observation/status-channel.js';
 import { ClaudeMonitorEvidence } from './normalization/monitor.js';
@@ -58,6 +60,7 @@ import {
   decodeClaudeOtelLogs,
   isClaudeOtelLogsVerified,
   normalizeClaudeOtelModel,
+  normalizeClaudeOtelToolDecision,
   normalizeClaudeOtelUsage,
   otelString,
   supportsClaudeOtelLogs,
@@ -463,6 +466,9 @@ function createClaudeObservation(
   // ORDERS the baseline read after the intent and capability batches.
   let pendingTranscript: string | undefined;
   let subscribed = false;
+  // An attached process was running before this observer: the first transcript it tails is read for what is still
+  // open (the turn, its tools, a question), once. A later one (a `/clear` heard live, a picker rebind) starts idle.
+  let bootstrapOpenWork = options.attached === true;
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   let semanticCapabilitiesPublished = false;
   let hookRailAvailable = true;
@@ -626,6 +632,27 @@ function createClaudeObservation(
     if (!otelUsageEnabled || disposed) return;
     for (const record of decodeClaudeOtelLogs(otelEnvelope.body, otelEnvelope.receivedAt)) {
       if (otelString(record, 'session.id') !== nativeSessionId()) continue;
+      if (observation === 'terminal-only') observation = 'native-log';
+
+      // The person's answer to a permission prompt arrives here; no hook fires at it. A decision
+      // that closes no pending request (a rule's, or one its tool's hooks already settled) stays native.
+      const decision = normalizeClaudeOtelToolDecision(record);
+      const decided = decision ? normalizer.resolvePermissionDecision(decision.toolUseId, decision.outcome) : undefined;
+      if (decision && decided) {
+        for (const event of decided.events) {
+          apply(event, {
+            source: 'native-telemetry',
+            timestamp: decision.timestamp,
+            promptId: decided.promptId,
+            agentId: decided.agentId,
+            agentType: decided.agentType,
+            providerVersion: record.providerVersion ?? options.providerVersion,
+            confidence: 'authoritative',
+            native: record,
+          });
+        }
+        continue;
+      }
 
       const usage = normalizeClaudeOtelUsage(record);
       const model = normalizeClaudeOtelModel(record);
@@ -645,10 +672,8 @@ function createClaudeObservation(
             native: record,
           },
         );
-        if (observation === 'terminal-only') observation = 'native-log';
         continue;
       }
-      if (observation === 'terminal-only') observation = 'native-log';
 
       if (usage) {
         const key = usage.event.usageId;
@@ -704,6 +729,8 @@ function createClaudeObservation(
     semanticGeneration += 1;
     const generation = semanticGeneration;
     const priorAttachment = semanticAttachment;
+    const attached = bootstrapOpenWork;
+    bootstrapOpenWork = false;
     transcriptPath = path;
     const nextAttachment = (async (): Promise<SemanticObservationHandle | undefined> => {
       const prior = await priorAttachment?.catch(() => undefined);
@@ -714,6 +741,7 @@ function createClaudeObservation(
         nativeSessionId: nativeSessionId(),
         transcriptPath: path,
         pollIntervalMs: options.transcriptPollIntervalMs,
+        ...(attached ? { attached: true } : {}),
       });
       if (disposed || generation !== semanticGeneration) {
         await handle.dispose();
@@ -725,6 +753,23 @@ function createClaudeObservation(
       if (observation === 'terminal-only') observation = 'native-log';
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
+        // a tool the attach found open was announced by no hook: the hook rail adopts it, so its PostToolUse (and
+        // the answer to its question) closes what the bootstrap opened
+        if (semantic.openAtAttach && semantic.event.type === 'tool:requested') {
+          const superseded = normalizer.adoptOpenTool({
+            toolCallId: semantic.event.toolCallId,
+            toolName: semantic.event.tool,
+            input: semantic.event.input,
+            promptId: semantic.promptId,
+          });
+          for (const event of superseded) {
+            apply(event, {
+              source: 'runtime',
+              timestamp: semantic.timestamp,
+              providerVersion: options.providerVersion,
+            });
+          }
+        }
         apply(semantic.event, {
           source: 'native-transcript',
           timestamp: semantic.timestamp,
@@ -982,6 +1027,10 @@ function createClaudeObservation(
         },
         services: {
           prompt: { submit: (submission) => injector.submit(submission) },
+          turnStop: createClaudeTurnStop({
+            automate: (operation) => options.automate(runtimeSessionId, operation),
+            isDisposed: () => disposed,
+          }),
         },
         pollTranscript: async () => {
           const handle = await semanticAttachment;

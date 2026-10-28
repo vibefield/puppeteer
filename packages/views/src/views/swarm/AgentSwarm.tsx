@@ -13,6 +13,7 @@ import {
 import type { AgentView, StageGeometry } from '@vibefield/puppeteer-view-sdk';
 import type { ReactMonitorViewProps } from '@vibefield/puppeteer-view-sdk/react';
 import {
+  animationFrameScheduler,
   approachRecede,
   createMotionLoop,
   everyReceded,
@@ -36,6 +37,7 @@ import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom, type BloomFocusPlace } from './bloom/use-spawn-bloom.js';
 import { bodyIdOf } from './body-id.js';
 import { baseRadius, bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
+import { departureMotion, departuresAfter, fadingBack, leaving, type Departure } from './departure.js';
 import { fitScale } from './fit.js';
 import {
   createSwarmRenderer,
@@ -97,8 +99,12 @@ interface BodyVisual {
   arrival: number;
   /** The weight it is drawn at while the host shows another group: 1 when shown (the toolkit's recede steps). */
   recede: number;
-  /** Born from a bloom's bud: its arrival starts from the bud's size over its own (the spawn bloom, SB). */
+  /** Born from a bloom's bud (SB), or put back while it was leaving (`departure.ts`): its arrival starts from that
+   * size over its own. */
   from?: number;
+  /** Put back under reduced motion while it was fading (`departure.ts` `fadingBack`): the opacity its fade had reached,
+   * and when it began to come back. */
+  fadeBack?: { from: number; at: number };
   /** Drawn above the bloom's clearings until then: the body being born (record §2.8 (4)). */
   aboveUntil?: number;
 }
@@ -179,6 +185,14 @@ function arrival(elapsedMs: number): { scale: number; opacity: number } {
   return { scale: 1.035 + (1 - 1.035) * inOut((t - 0.88) / 0.12), opacity: 1 };
 }
 
+/** Where a body's arrival stands at `time`: from nothing, or on from the size it started at. Still, it has landed. */
+function landingOf(visual: BodyVisual, time: number, motion: boolean): { scale: number; opacity: number } {
+  if (!motion) return { scale: 1, opacity: 1 };
+  return visual.from
+    ? arrivalFrom(time - visual.spawnedAt, visual.from, SPAWN_DURATION_MS)
+    : arrival(time - visual.spawnedAt);
+}
+
 /**
  * One body per spatial identity, the seam's rule: when two rows wear the same
  * one (a launched agent's first state can arrive while the fresh shell it takes
@@ -229,6 +243,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   /** The last two solved positions per body: the two ends of the blend. */
   const statesRef = useRef(new Map<string, BubbleState>());
   const visualsRef = useRef(new Map<string, BodyVisual>());
+  /** Bodies whose rows have left, drawn leaving until they have gone (DESIGN §6, the departure; `departure.ts`). */
+  const departingRef = useRef(new Map<string, Departure<SwarmBubbleModel>>());
   /** When this terminal's foreground job was first seen, per body. */
   const runningSinceRef = useRef(new Map<string, number>());
   /** When the newest frame landed, in this thread's clock. */
@@ -522,9 +538,13 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     stillDrawRef.current?.();
   };
 
-  /** The agents as the physics needs them: a body, the size to grow toward, where a creation gesture happened. */
-  const agentSpecs = (): readonly SwarmAgentSpec[] =>
-    agentsRef.current.map((agent) => {
+  /**
+   * The agents as the physics needs them: a body, the size to grow toward, where a creation gesture happened. And
+   * every body still leaving, at the size it had: it keeps its place until it has gone, so the field closes over the
+   * gap after it, never under it (DESIGN §6, the departure).
+   */
+  const agentSpecs = (): readonly SwarmAgentSpec[] => [
+    ...agentsRef.current.map((agent) => {
       const id = bodyIdOf(agent);
       const model = modelsRef.current.byId.get(id);
       const spec: SwarmAgentSpec = {
@@ -533,7 +553,29 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       };
       if (agent.spawnHint) spec.spawnHint = agent.spawnHint;
       return spec;
-    });
+    }),
+    ...[...departingRef.current].map(([id, departure]): SwarmAgentSpec => ({ id, radius: departure.model.radius })),
+  ];
+
+  /**
+   * A row back while its body was leaving (a close refused; a hand-over's second row a frame late): the body pops
+   * back where it stands, from the size its shrink had reached, on the arrival's own curve (M4's spring pop), never a
+   * second body beside it. Under reduced motion it never shrank: it fades back up from the opacity its fade had
+   * reached, and nothing pops. Still, it is simply whole again.
+   */
+  const putBack = (id: string, departure: Departure<SwarmBubbleModel>, now: number): void => {
+    const visual = visualsRef.current.get(id);
+    if (!visual) return;
+    const mode = departureMotion(switchesRef.current);
+    const left = leaving(now - departure.at, mode);
+    if (mode === 'reduced') {
+      visual.fadeBack = { from: left?.opacity ?? 0, at: now };
+      return;
+    }
+    if (mode !== 'motion') return;
+    visual.from = landingOf(visual, now, true).scale * (left?.scale ?? 0);
+    visual.spawnedAt = now;
+  };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -654,6 +696,20 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         field.veil > 0 || fieldMemoryRef.current.lit.size > 0
           ? new Map(agentsRef.current.map((agent) => [bodyIdOf(agent), agent] as const))
           : undefined;
+      // A body whose row has left is drawn leaving (DESIGN §6, the departure) until it has gone; then the physics
+      // let it go, and its state and visual leave with their table (`applyTable`).
+      const departureMode = departureMotion(switchesRef.current);
+      const departing = departingRef.current;
+      let departed = false;
+      for (const [id, departure] of departing) {
+        if (leaving(time - departure.at, departureMode)) continue;
+        departing.delete(id);
+        departed = true;
+      }
+      if (departed) driver.post({ type: 'updateAgents', agents: agentSpecs() });
+      // Held still for reduced motion the loop draws nothing, so a fade (M6) asks for its own frames, only while a
+      // body is leaving: the field is still again the moment the last has gone (MV-W4).
+      if (departing.size > 0) fadeFrames();
       // A birth whose row has arrived: the row takes over where the birth stood.
       const takeovers = new Map<string, Birthing>();
       for (const record of birthsRef.current) {
@@ -661,9 +717,15 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         if (row) takeovers.set(bodyIdOf(row), record);
       }
       const bodies: RenderBody[] = [];
+      /** Leaving bodies: drawn under the field and out of reach (no hit, no hover, no focus; the bloom counts none). */
+      const leavingBodies: RenderBody[] = [];
+      /** A body put back under reduced motion is still fading up: its frames are asked for as a departure's are. */
+      let fadingUp = false;
       for (const [id, state] of statesRef.current) {
-        const model = models.byId.get(id);
+        const departure = departing.get(id);
+        const model = departure ? departure.model : models.byId.get(id);
         if (!model) continue;
+        const leave = departure ? leaving(time - departure.at, departureMode) : undefined;
         // A receded body stays in the physics and only fades: the host is
         // showing another group, and this one keeps its place for when it returns.
         const recedeTo = recedeTarget(recede.ids.has(id), recede.every);
@@ -684,7 +746,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           visualsRef.current.set(id, visual);
           if (born) birthsRef.current = birthsRef.current.filter((record) => record !== born);
         }
-        visual.recede = motion ? approachRecede(visual.recede, recedeTo, delta) : recedeTo;
+        // A leaving body keeps the weight it was drawn at: a receded one leaves faint, never brightening to go.
+        if (!departure) visual.recede = motion ? approachRecede(visual.recede, recedeTo, delta) : recedeTo;
         if (motion) {
           // The visual radius follows the model's on a critically damped spring;
           // the physics body already jumped (the frame carries its radius).
@@ -703,34 +766,36 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           visual.visualRadius = model.radius;
           visual.visualVelocity = 0;
         }
-        const landing = motion
-          ? visual.from
-            ? arrivalFrom(time - visual.spawnedAt, visual.from, SPAWN_DURATION_MS)
-            : arrival(time - visual.spawnedAt)
-          : { scale: 1, opacity: 1 };
+        const landing = landingOf(visual, time, motion);
         // Being born, it is drawn above the clearings and under no veil; the rest of the
         // field recedes under the veil but for what the bloom points at.
         const above = visual.aboveUntil !== undefined && time < visual.aboveUntil;
-        let opacity = landing.opacity * visual.recede;
+        const back = visual.fadeBack ? fadingBack(time - visual.fadeBack.at, visual.fadeBack.from) : undefined;
+        if (back === undefined) delete visual.fadeBack;
+        else fadingUp = true;
+        let opacity = landing.opacity * visual.recede * (back ?? 1);
         if (rows && !above) {
           const row = rows.get(id);
           const lit = stepLit(fieldMemoryRef.current, id, row ? field.lit(row) : false, delta, !motion);
           opacity = veiledOpacity(opacity, field.veil, lit);
         }
-        bodies.push({
+        const body: RenderBody = {
           model,
           x: state.previousX + (state.x - state.previousX) * alpha,
           y: state.previousY + (state.y - state.previousY) * alpha,
           radius: visual.visualRadius,
-          scale: landing.scale,
-          opacity,
-          focus: focused === id,
+          // Leaving, it shrinks (or, under reduced motion, fades) from whatever its arrival had reached: nothing snaps.
+          scale: landing.scale * (leave?.scale ?? 1),
+          opacity: opacity * (leave?.opacity ?? 1),
+          focus: !departure && focused === id,
           seed: visual.seed,
           accent: accentOf(model.accent),
           ...(model.linked ? { link: accentOf(model.linked) } : {}),
           ...(above ? { aboveClearings: true } : {}),
-        });
+        };
+        (departure ? leavingBodies : bodies).push(body);
       }
+      if (fadingUp) fadeFrames();
       bodies.sort((left, right) => {
         const rank = STATUS_RANK[left.model.appearance] - STATUS_RANK[right.model.appearance];
         if (rank !== 0) return rank;
@@ -803,7 +868,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
           depth: currentParameters.stateWaveDepth,
         },
         theme,
-        bodies: births.length > 0 ? [...bodies, ...births] : bodies,
+        bodies: leavingBodies.length > 0 || births.length > 0 ? [...leavingBodies, ...bodies, ...births] : bodies,
         ...(field.veil > 0 ? { veil: field.veil } : {}),
         ...(field.clearings.length > 0
           ? {
@@ -840,8 +905,20 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       still();
     };
     stillDrawRef.current = still;
+    // A departure's fade under reduced motion (M6) is drawn on frames of its own while the loop is stopped: one at a
+    // time, asked for by the render only while a body is leaving, so never a loop (MV-W4).
+    const fadeScheduler = animationFrameScheduler();
+    let fading: number | undefined;
+    const fadeFrames = (): void => {
+      if (fading !== undefined || loop.running) return;
+      fading = fadeScheduler.request((time) => {
+        fading = undefined;
+        if (!loop.running) render(time, 0);
+      });
+    };
 
     return () => {
+      if (fading !== undefined) fadeScheduler.cancel(fading);
       loop.dispose();
       loopRef.current = null;
       stillDrawRef.current = null;
@@ -850,6 +927,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       resizeObserver?.disconnect();
       statesRef.current.clear();
       visualsRef.current.clear();
+      departingRef.current = new Map();
       orderRef.current = [];
       // Both halves, in order: the host tears its engine down and stops its
       // timer, then the thread (if any) goes. A closed stage runs no physics.
@@ -888,6 +966,16 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         runningSinceRef.current.delete(id);
       }
     }
+    // A drawn body whose row has left begins to leave, with the model it was drawn from (DESIGN §6, the departure);
+    // one whose row is back while it leaves is put back where it stands. Before the physics hear the rows: a leaving
+    // body keeps its place until it has gone.
+    const now = performance.now();
+    const { departing, returned } = departuresAfter(departingRef.current, modelsRef.current.byId, ids, now, (id) =>
+      visualsRef.current.has(id),
+    );
+    departingRef.current = departing;
+    for (const [id, departure] of returned) putBack(id, departure, now);
+    if (dragRef.current && departing.has(dragRef.current.id)) endDrag();
     modelsRef.current.at = 0;
     refreshModels(performance.now(), true);
     driverRef.current?.post({ type: 'updateAgents', agents: agentSpecs() });

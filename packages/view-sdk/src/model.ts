@@ -165,8 +165,9 @@ export interface MonitorAgentRow {
   readonly attachable: boolean;
   /**
    * Whether a pane on another desktop may type into this run, by its home desktop's policy (M41). The home backend
-   * computes it once; today it equals `attachable`. A view reads it only for a row from another desktop
-   * (`device.self` false): the list's host chip and the swarm's host line. No view derives write policy itself.
+   * computes it once; today it equals `attachable`. It is tolerant data: no view derives write policy, and none draws
+   * it, since every peer session is writable, the default and universal setting (James, 2026-10-28). A peer's row is
+   * named by its desktop alone; what a viewer may do is decided at the attach, by the host.
    */
   readonly writable: boolean;
 }

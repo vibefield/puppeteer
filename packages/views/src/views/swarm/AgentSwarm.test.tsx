@@ -102,8 +102,9 @@ describe('the swarm as markup', () => {
     expect(html).toContain('data-agent-bubble-status="working"');
     expect(html).toContain('data-agent-bubble-visual="terminal-empty"');
     expect(html).toContain('data-agent-bubble-visual="working"');
-    // the peer named FIRST, the host's write policy last (M41)
-    expect(html).toContain('aria-label="on studio-mini, mesh-console, remote session, idle, read-only host"');
+    // the peer named FIRST, and no write word after its status, whatever its row's `writable` (James, 2026-10-28)
+    expect(html).toContain('aria-label="on studio-mini, mesh-console, remote session, idle"');
+    expect(html).not.toMatch(/writable|read-only/);
     expect(html.match(/<button /g)).toHaveLength(3);
   });
 
