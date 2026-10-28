@@ -602,6 +602,133 @@ describe('createClaudeSession (full loop, test-as-Claude)', () => {
     expect(events.filter(({ event }) => event.type === 'usage:tokens-used')).toHaveLength(2);
   });
 
+  describe('permission decisions on the OTLP logs rail', () => {
+    // https://code.claude.com/docs/en/monitoring-usage#tool-decision-event
+    async function startDecidingSession() {
+      const started = await startSession({ providerVersion: '2.1.245' });
+      const { session, prepared, token, events } = started;
+      const decide = async (fields: Record<string, string>) => {
+        const response = await fetch(prepared.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT!, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            resourceLogs: [
+              {
+                scopeLogs: [
+                  {
+                    logRecords: [
+                      {
+                        body: { stringValue: 'claude_code.tool_decision' },
+                        attributes: Object.entries({
+                          'event.name': 'tool_decision',
+                          'event.timestamp': '2026-10-27T12:00:05.000Z',
+                          'session.id': session.sessionId,
+                          tool_name: 'Bash',
+                          ...fields,
+                        }).map(([key, value]) => ({ key, value: { stringValue: value } })),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        });
+        expect(response.status).toBe(200);
+      };
+      const resolved = () => events.filter(({ event }) => event.type === 'interaction:permission-resolved');
+      return { ...started, decide, resolved };
+    }
+
+    it('clears the wait at the person’s accept, before the approved tool ends', async () => {
+      const { session, projection, events, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'slow', prompt_id: 'p-slow' });
+      const call = { prompt_id: 'p-slow', tool_name: 'Bash', tool_input: { command: 'sleep 45' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_slow' });
+      await hook('PermissionRequest', call);
+      expect(projection.state.permissions.size).toBe(1);
+      expect((await session.services.prompt.submit({ text: 'blocked' })).status).toBe('rejected');
+
+      await decide({ tool_use_id: 'toolu_slow', decision: 'accept', source: 'user_temporary' });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-slow',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'allowed' },
+        }),
+      ]);
+      const receipt = session.services.prompt.submit({ text: 'queued while it runs' });
+
+      // The tool ends 45 s later: its completion closes the tool, never the request a second time.
+      await hook('PostToolUse', { ...call, tool_use_id: 'toolu_slow', tool_response: { output: '' } });
+      expect(resolved()).toHaveLength(1);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          event: expect.objectContaining({ type: 'tool:completed', toolCallId: 'toolu_slow' }),
+        }),
+      );
+
+      await hook('UserPromptSubmit', { prompt: 'queued while it runs', prompt_id: 'p-queued' });
+      expect((await receipt).status).toBe('confirmed');
+    });
+
+    it('closes the request at the person’s reject; a decision that closes nothing stays native', async () => {
+      const { projection, events, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'risky', prompt_id: 'p-risky' });
+      const call = { prompt_id: 'p-risky', tool_name: 'Bash', tool_input: { command: 'rm x' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_risky' });
+      await hook('PermissionRequest', call);
+
+      // A rule decided another call without asking.
+      await decide({ tool_use_id: 'toolu_ruled', decision: 'accept', source: 'config' });
+      expect(projection.state.permissions.size).toBe(1);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          source: 'native-telemetry',
+          event: expect.objectContaining({ type: 'adapter:native-event', nativeType: 'otel:tool_decision' }),
+        }),
+      );
+
+      await decide({ tool_use_id: 'toolu_risky', decision: 'reject', source: 'user_reject' });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-telemetry',
+          promptId: 'p-risky',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'denied' },
+        }),
+      ]);
+
+      await hook('Stop', { prompt_id: 'p-risky', last_assistant_message: 'Not run.' });
+      expect(resolved()).toHaveLength(1);
+    });
+
+    it('settles at PostToolUse when no decision arrived, and a late decision closes nothing twice', async () => {
+      const { projection, hook, decide, resolved } = await startDecidingSession();
+      await hook('SessionStart', {});
+      await hook('UserPromptSubmit', { prompt: 'quick', prompt_id: 'p-quick' });
+      const call = { prompt_id: 'p-quick', tool_name: 'Bash', tool_input: { command: 'echo hi' } };
+      await hook('PreToolUse', { ...call, tool_use_id: 'toolu_quick' });
+      await hook('PermissionRequest', call);
+
+      await hook('PostToolUse', { ...call, tool_use_id: 'toolu_quick', tool_response: { output: 'hi' } });
+      expect(projection.state.permissions.size).toBe(0);
+      expect(resolved()).toEqual([
+        expect.objectContaining({
+          source: 'native-hook',
+          event: { type: 'interaction:permission-resolved', requestId: expect.any(String), outcome: 'allowed' },
+        }),
+      ]);
+
+      // OTLP exports in batches: the decision can land after a fast tool already ended.
+      await decide({ tool_use_id: 'toolu_quick', decision: 'accept', source: 'user_temporary' });
+      expect(resolved()).toHaveLength(1);
+    });
+  });
+
   it('ignores root and child transcript metadata and models while observing live root text', async () => {
     const { session, projection, events, hook } = await startSession();
     const dir = mkdtempSync(join(tmpdir(), 'driver-no-transcript-metadata-'));

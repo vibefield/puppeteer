@@ -27,7 +27,7 @@ provider hook / OTLP log / transcript / journal / status
 | Category     | Primary live source                                   | Durable or degraded source                                |
 | ------------ | ----------------------------------------------------- | --------------------------------------------------------- |
 | conversation | `MessageDisplay` and `Stop` hooks                     | live assistant transcript changes; no conversation replay |
-| interaction  | permission/question hooks                             | transcript is not lifecycle truth                         |
+| interaction  | permission/question hooks; OTLP log `tool_decision`   | transcript is not lifecycle truth                         |
 | tool         | tool hooks                                            | none required for lifecycle                               |
 | model        | session hooks, status channels and OTLP request model | configured launch intent; no transcript model import      |
 | effort       | hooks and status channel                              | configured launch intent                                  |
@@ -44,6 +44,8 @@ Claude's native TUI owns resumed conversation history. The adapter silently base
 The transcript provider reads only the root transcript and emits only live assistant changes. Unknown transcript metadata is not converted into diagnostic events or replayed on attachment. Native hook diagnostics and observer failures remain observable through their own paths.
 
 Transcript model projection and child transcript discovery, probes and reads were removed on 2026-09-12. `SessionStart` supplies the root model on launch/resume, root status supplies its current ID and display name, child status supplies visible task models, and OTLP supplies observed request models. Configured launch intent remains separate from observed models. Historical models are not imported; missing native evidence leaves the observed model unknown. Exact child attribution still requires matching native identity; OTLP keeps derived actor groups when exact IDs are absent. Model capabilities describe the available hook/status/OTLP sources, including unavailable or unverified OTLP.
+
+No hook fires when a person answers a permission prompt: `PostToolUse` arrives when the approved tool ends, and a rejection fires nothing until a turn boundary. Claude's OTLP log [`tool_decision`](https://code.claude.com/docs/en/monitoring-usage#tool-decision-event) is logged at the decision and carries the hooks' `tool_use_id`, so it closes the pending request it names: `accept` as allowed, `reject` as denied, and a `user_abort` source as dismissed. Only its `tool_use_id`, `decision` and `source` are kept, never its `tool_parameters`. A decision that names no pending request (a rule's, or one exported after a fast tool's hooks) stays native evidence. Without OTLP the hooks settle every request as before.
 
 Workflow journal observation was removed on 2026-09-11. The adapter does not discover or read workflow journals, reconstruct membership, or infer completion from idle time. The public workflow and team models were also removed on 2026-09-12. OTLP workflow IDs/names and name-only teammate hints remain native evidence; proven child identities contribute only unified child metrics and activity.
 
