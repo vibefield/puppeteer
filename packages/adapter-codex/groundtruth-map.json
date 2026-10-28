@@ -52,6 +52,7 @@
     "mcpServer/elicitation/request",
     "plugin/installed",
     "plugin/read",
+    "serverRequest/resolved",
     "skills/config/write",
     "skills/list",
     "thread/inject_items",
@@ -62,13 +63,13 @@
     "turn/start"
   ],
   "unmapped": {
-    "count": 219,
-    "sha256": "ebe79d6d72127f51490babc6f281d5e18bf53f9ce81875740bb64cd1588b821e",
+    "count": 218,
+    "sha256": "5a26e3cbe6f49aaec2e99b86ea6ad135f347f98ae7b5236f248bb573bcf652c6",
     "policy": "Not consumed by this adapter version. They remain provider-native ground truth and require explicit review when this lock changes."
   },
   "totals": {
     "groundTruth": 272,
     "semantic": 26,
-    "observedOrControlled": 27
+    "observedOrControlled": 28
   }
 }
