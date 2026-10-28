@@ -17,4 +17,19 @@ describe('Hermes attach launch recipe', () => {
     });
     expect(launch.args).not.toContain('acp');
   });
+
+  it("carries the gateway's bearer in the URL the TUI dials, and nowhere else", () => {
+    const launch = buildHermesAttachLaunch({
+      cwd: '/work',
+      hermesHome: '/tmp/hermes-home',
+      gatewayUrl: 'ws://127.0.0.1:9/api/ws',
+      gatewayToken: 'launch-token_0',
+      resume: '20260812_132919_ae981b',
+    });
+    expect(launch.env?.HERMES_TUI_GATEWAY_URL).toBe('ws://127.0.0.1:9/api/ws?token=launch-token_0');
+    expect(launch.args.join(' ')).not.toContain('launch-token_0');
+    expect(
+      Object.entries(launch.env ?? {}).filter(([, value]) => value.includes('launch-token_0')).map(([key]) => key),
+    ).toEqual(['HERMES_TUI_GATEWAY_URL']);
+  });
 });

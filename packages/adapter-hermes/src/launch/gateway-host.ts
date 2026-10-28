@@ -4,9 +4,13 @@ import { createInterface } from 'node:readline';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HERMES_HOME_ENV, HERMES_PYTHON_ENV } from '../generated/detection.js';
+import { createHermesGatewayToken } from '../transport/gateway-auth.js';
 
 export interface HermesGatewayHost {
+  /** The bare WebSocket URL; a client presents `token` with it (`authorizedGatewayUrl`). */
   url: string;
+  /** This launch's bearer. The host refuses every connection without it, and every browser Origin. */
+  token: string;
   pid: number | undefined;
   close(): Promise<void>;
 }
@@ -55,6 +59,7 @@ export function resolveHermesPython(explicit?: string): string {
 
 export async function startHermesGatewayHost(options: StartHermesGatewayHostOptions): Promise<HermesGatewayHost> {
   const python = resolveHermesPython(options.python);
+  const token = createHermesGatewayToken();
   const child: ChildProcess = spawn(python, [hostScript()], {
     cwd: options.cwd,
     env: {
@@ -63,8 +68,14 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
       HOME: options.hermesHome,
       ...(options.env ?? {}),
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
+  // The bearer rides stdin, never argv or the environment: any same-user
+  // process can read both with ps, and the host's environment reaches every
+  // tool the agent runs. A write to a host that has already gone fails with
+  // EPIPE; its exit reports that.
+  child.stdin?.on('error', () => undefined);
+  child.stdin?.end(`${token}\n`);
 
   // Importing the exact locked Hermes graph can take tens of seconds on a
   // cold machine even though gateway.ready is fast after import completes.
@@ -120,6 +131,7 @@ export async function startHermesGatewayHost(options: StartHermesGatewayHostOpti
 
   return {
     url,
+    token,
     pid: child.pid,
     async close() {
       await terminateChild(child);

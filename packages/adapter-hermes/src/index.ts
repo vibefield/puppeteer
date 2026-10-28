@@ -19,6 +19,7 @@ export {
   type HermesGatewayFrame,
   type HermesGatewayRailStatus,
   type HermesGatewayTransport,
+  type HermesJsonRpcClientOptions,
 } from './transport/jsonrpc.js';
 export { HermesStdioClient, spawnHermesStdioGateway } from './transport/stdio.js';
 export {

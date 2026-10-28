@@ -3,11 +3,54 @@
 
 The native TUI attaches with HERMES_TUI_GATEWAY_URL. This process owns the
 one AIAgent for the session; it is not a second agent beside hermes --tui.
+
+Whoever connects drives that agent and its tools, so the host admits only the
+two clients of the launch that started it: each presents the launch's bearer,
+and none sends an Origin.
 """
 
+import hmac
 import json
 import socket
 import sys
+from typing import Optional, TextIO
+
+# The bearer's query parameter, `?token=`: the form Hermes's own dashboard
+# hands the TUI in HERMES_TUI_GATEWAY_URL, which the TUI dials verbatim.
+# Mirrors HERMES_GATEWAY_TOKEN_PARAM in src/transport/gateway-auth.ts.
+TOKEN_PARAM = "token"
+# Hermes's own pre-accept close codes for a bad credential and a refused
+# Origin. Before the accept, uvicorn answers either with HTTP 403.
+CLOSE_BAD_CREDENTIAL = 4401
+CLOSE_REFUSED_ORIGIN = 4403
+
+
+def read_gateway_token(stream: TextIO) -> str:
+    """Read this launch's bearer, the first line of stdin.
+
+    The adapter mints a fresh token for each host and writes it here, never in
+    argv or the environment: any same-user process can read both with ps, and
+    the environment reaches every tool the agent runs. A host given no token
+    fails to start rather than serve anyone.
+    """
+    token = stream.readline().strip()
+    if not token:
+        raise RuntimeError("Hermes gateway host needs its token on stdin")
+    return token
+
+
+def refusal(origin: Optional[str], presented: Optional[str], token: str) -> Optional[int]:
+    """Return the close code that refuses a WebSocket upgrade, or None to admit it.
+
+    The bearer is compared in constant time. Any Origin is refused: the
+    adapter and the native TUI are Node WebSocket clients, which send none,
+    while a browser sends one on every WebSocket upgrade, ``null`` included.
+    """
+    if not presented or not hmac.compare_digest(presented.encode(), token.encode()):
+        return CLOSE_BAD_CREDENTIAL
+    if origin is not None:
+        return CLOSE_REFUSED_ORIGIN
+    return None
 
 
 def short_circuit_disabled_wake_start() -> None:
@@ -80,6 +123,8 @@ def enable_session_event_fanout() -> None:
 
 
 def main() -> None:
+    token = read_gateway_token(sys.stdin)
+
     from fastapi import FastAPI, WebSocket
     from tui_gateway.ws import handle_ws
     import uvicorn
@@ -91,6 +136,14 @@ def main() -> None:
 
     @app.websocket("/api/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
+        code = refusal(
+            websocket.headers.get("origin"),
+            websocket.query_params.get(TOKEN_PARAM),
+            token,
+        )
+        if code is not None:
+            await websocket.close(code=code)
+            return
         await handle_ws(websocket)
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

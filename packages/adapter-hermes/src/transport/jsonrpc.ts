@@ -1,5 +1,7 @@
 /** JSON-RPC client for a Puppeteer-owned Hermes tui_gateway WebSocket. */
 
+import { authorizedGatewayUrl } from './gateway-auth.js';
+
 export interface HermesGatewayFrame {
   jsonrpc?: string;
   id?: string | number;
@@ -24,6 +26,11 @@ export function eventType(frame: HermesGatewayFrame): string | undefined {
   return frame.method === 'event' ? String(frame.params?.type ?? '') || undefined : undefined;
 }
 
+export interface HermesJsonRpcClientOptions {
+  /** The gateway's bearer (`gateway-auth.ts`); absent only for a gateway that admits anyone. */
+  token?: string | undefined;
+}
+
 export class HermesJsonRpcClient implements HermesGatewayTransport {
   private readonly listeners = new Set<(frame: HermesGatewayFrame) => void>();
   private readonly statusListeners = new Set<(status: HermesGatewayRailStatus) => void>();
@@ -32,11 +39,15 @@ export class HermesJsonRpcClient implements HermesGatewayTransport {
   private socket: WebSocket | undefined;
   private railState: HermesGatewayRailStatus = { state: 'disconnected', reason: 'not connected' };
 
-  constructor(private readonly url: string) {}
+  /** `url` is the bare gateway URL, which errors name; the token rides only the handshake. */
+  constructor(
+    private readonly url: string,
+    private readonly options: HermesJsonRpcClientOptions = {},
+  ) {}
 
   async connect(timeoutMs = 10_000): Promise<void> {
     if (this.socket) return;
-    const socket = new WebSocket(this.url);
+    const socket = new WebSocket(authorizedGatewayUrl(this.url, this.options.token));
     this.socket = socket;
     socket.addEventListener('message', (event) => {
       const text = typeof event.data === 'string' ? event.data : String(event.data);
