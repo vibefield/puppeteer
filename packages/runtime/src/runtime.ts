@@ -198,6 +198,8 @@ interface RuntimeWorkspaceFinalization {
 }
 
 function activeMonitorLifecycle(lifecycle: SessionRuntimeState['lifecycle']): 'starting' | 'running' | 'stopping' {
+  // Read only for a managed run, whose process the host has spawned or adopted:
+  // an Agent still `preparing` is a live process its adapter has not yet seen start.
   if (lifecycle === 'preparing' || lifecycle === 'starting') return 'starting';
   if (lifecycle === 'terminating') return 'stopping';
   // Provider/control state cannot prove host process death. Until the host
@@ -3290,7 +3292,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         await recordNativeSessionCorrelation(run);
         run.preparationId = preparationId;
         run.status = 'prepared';
-        run.monitor?.updateRun('starting', { alive: true, nativeSession: nativeSessionClaim.value });
+        // Prepared is not started: no process runs until the host spawns and adopts it.
+        run.monitor?.updateRun('preparing', { alive: true, nativeSession: nativeSessionClaim.value });
         const publicInfo: PreparedAgentSessionInfo = {
           preparationId,
           agent: provider.descriptor.id,
