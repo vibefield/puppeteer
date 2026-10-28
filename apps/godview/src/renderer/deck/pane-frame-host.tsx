@@ -15,10 +15,10 @@ export function AppPaneFrame({ paneId: _paneId, session, ...props }: DeckFrameSl
 }
 
 /**
- * The verbs over this host's IPC. Stop is the agent's own native interrupt
- * (what ^C does in its TUI — there is no runtime interrupt service; the host
- * sends exactly that through Ghosttea's automation, which yields to a human
- * mid-keystroke). Resume continues an exited run from its own continuation and
+ * The verbs over this host's IPC. Stop is the agent's own turn stop, as its
+ * adapter names it, or ⌃C while the adapter names none: main presses a key
+ * through Ghosttea's automation, which yields to a human mid-keystroke, or calls
+ * the agent's own control. Resume continues an exited run from its own continuation and
  * mounts what comes back where the verb was pressed. Zoom uses the shared deck controller so the canvas survives the gesture.
  */
 export function useAppPaneFrameVerbs(

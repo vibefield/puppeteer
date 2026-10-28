@@ -17,6 +17,7 @@ import { HermesMonitorEvidence } from './normalization/monitor.js';
 import { HermesGatewayNormalizer } from './normalization/pipeline.js';
 import { HermesEventSource, type HermesEventPublication } from './services/event-source.js';
 import { HermesPromptService } from './services/prompt.js';
+import { HermesTurnStopService } from './services/turn-stop.js';
 import {
   eventType,
   HermesJsonRpcClient,
@@ -166,6 +167,11 @@ export async function prepareHermesTuiSession(
           confirmationTimeoutMs: options.promptConfirmationTimeoutMs,
           isDisposed: () => sessionDisposed,
         });
+        const turnStop = new HermesTurnStopService({
+          transport: transport!,
+          liveSessionId,
+          isDisposed: () => sessionDisposed,
+        });
         const monitorEvidence = new HermesMonitorEvidence({
           nativeSessionId: () => storedSessionId,
           liveSessionId: () => liveSessionId,
@@ -299,6 +305,7 @@ export async function prepareHermesTuiSession(
                 return prompts.submit(submission);
               },
             },
+            turnStop,
           },
           async dispose() {
             if (sessionDisposed) return;

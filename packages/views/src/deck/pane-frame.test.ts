@@ -3,6 +3,7 @@ import {
   formatTurnElapsed,
   paneBadgeName,
   paneFrameModel,
+  stopKeyLabel,
   type PaneFrameAgent,
   type PaneFrameSession,
 } from './pane-frame.js';
@@ -89,6 +90,27 @@ describe('paneFrameModel', () => {
     expect(model.verb).toEqual({ kind: 'stop' });
   });
 
+  it("carries the stop's key as the title names it, and none while the host names none", () => {
+    const working = agent({ status: 'working', statusSince: new Date(NOW - 65_000).toISOString() });
+    expect(paneFrameModel({ session: session(), agent: { ...working, stopKey: 'escape' }, nowMs: NOW }).verb).toEqual({
+      kind: 'stop',
+      elapsed: '1:05',
+      key: '⎋',
+    });
+    expect(paneFrameModel({ session: session(), agent: agent({ stopKey: 'ctrl-c' }), nowMs: NOW }).verb).toEqual({
+      kind: 'stop',
+      key: '⌃C',
+    });
+    expect(paneFrameModel({ session: session(), agent: working, nowMs: NOW }).verb).toEqual({
+      kind: 'stop',
+      elapsed: '1:05',
+    });
+    // an ended run offers resume, whatever its stop was
+    expect(
+      paneFrameModel({ session: session(), agent: agent({ alive: false, stopKey: 'escape' }), nowMs: NOW }).verb,
+    ).toEqual({ kind: 'resume' });
+  });
+
   it('shows no meter while the provider cannot say, and resume once the process has ended', () => {
     expect(
       paneFrameModel({ session: session(), agent: agent({ contextPercent: undefined }), nowMs: NOW }).context,
@@ -119,6 +141,15 @@ describe('paneFrameModel', () => {
 
   it('names the device a remote session lives on', () => {
     expect(paneFrameModel({ session: session(), remoteDevice: 'studio', nowMs: NOW }).remote).toBe('studio');
+  });
+});
+
+describe('stopKeyLabel', () => {
+  it('draws the keys core names as glyphs, and names a key it has no glyph for by its own word', () => {
+    expect(stopKeyLabel('escape')).toBe('⎋');
+    expect(stopKeyLabel('ctrl-c')).toBe('⌃C');
+    expect(stopKeyLabel('ctrl-g')).toBe('ctrl-g');
+    expect(stopKeyLabel('toString')).toBe('toString');
   });
 });
 

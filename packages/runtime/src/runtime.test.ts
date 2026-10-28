@@ -507,6 +507,52 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
+  it("exposes the adapter's own turn stop, and refuses a stop the adapter does not name", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-turn-stop-'));
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const keyed = fakeProvider('keyed', handles);
+    const stopped: string[] = [];
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        fakeProvider('plain', handles),
+        {
+          ...keyed,
+          async createSession(options) {
+            const binding = await keyed.createSession(options);
+            return {
+              ...binding,
+              services: {
+                ...binding.services,
+                turnStop: {
+                  stop: { kind: 'key', key: 'escape' },
+                  async submit() {
+                    stopped.push(binding.runtimeSessionId);
+                    return { accepted: true };
+                  },
+                },
+              },
+            };
+          },
+        },
+      ],
+    });
+
+    const plain = await runtime.spawn({ agent: 'plain', cwd: root });
+    const named = await runtime.spawn({ agent: 'keyed', cwd: root });
+    if ('error' in plain || 'error' in named) throw new Error('unexpected spawn failure');
+
+    // no guessed key: the host decides what its stop sends for this one, and says so
+    expect(plain.turnStop).toBeUndefined();
+    await expect(plain.stopTurn()).resolves.toEqual({ accepted: false, reason: 'the adapter names no turn stop' });
+    expect(named.turnStop).toEqual({ kind: 'key', key: 'escape' });
+    await expect(named.stopTurn()).resolves.toEqual({ accepted: true });
+    expect(stopped).toEqual([named.terminalSessionId]);
+
+    await runtime.dispose();
+  });
+
   it('validates adapter candidates before assigning runtime delivery order', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-candidates-'));
     const candidateListeners = new Set<(candidate: AdapterEventCandidate) => void>();

@@ -159,6 +159,42 @@ describe('Hermes TUI session driver', () => {
     }
   });
 
+  it("stops a turn through the gateway's own session.interrupt, pressing no key in the pane", async () => {
+    const gateway = new FakeHermesGateway();
+    const pressed: unknown[] = [];
+    const session = await createHermesTuiSession({
+      cwd: '/work',
+      host: {
+        ...host(),
+        async automateTerminal(_runtimeSessionId, operation) {
+          pressed.push(operation);
+          return { accepted: true };
+        },
+      },
+      transport: gateway,
+    });
+    const request = vi.spyOn(gateway, 'request');
+    try {
+      expect(session.services.turnStop?.stop).toEqual({ kind: 'native' });
+      expect(await session.services.turnStop?.submit()).toEqual({ accepted: true });
+      expect(request).toHaveBeenCalledWith('session.interrupt', { session_id: session.liveSessionId() });
+      expect(pressed).toEqual([]);
+
+      // an answer that is not `interrupted` is not a delivery
+      request.mockResolvedValueOnce({ status: 'not_interrupted' });
+      expect(await session.services.turnStop?.submit()).toEqual({
+        accepted: false,
+        reason: 'session.interrupt did not answer interrupted',
+      });
+    } finally {
+      await session.dispose();
+    }
+    expect(await session.services.turnStop?.submit()).toEqual({
+      accepted: false,
+      reason: 'Hermes session is disposed',
+    });
+  });
+
   it('publishes bootstrap and live monitor evidence and degrades only the side rail on disconnect', async () => {
     const gateway = new FakeHermesGateway();
     const session = await createHermesTuiSession({

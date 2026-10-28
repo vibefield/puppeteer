@@ -2018,9 +2018,10 @@ function registerIpc(): void {
       agentRuntime.agent(options.runtimeSessionId)?.submitPrompt({ text: options.text }) ??
       Promise.resolve({ status: 'rejected', reason: 'agent session not found' }),
   );
-  // The pane's stop verb. There is no runtime interrupt service; stopping a
-  // turn is what the agent's own TUI does on ^C, so the host sends exactly
-  // that through Ghosttea's automation, which yields to a human mid-keystroke.
+  // The pane's stop verb: the agent's own turn stop, as its adapter names it
+  // (Esc for Pi and Claude, Hermes's gateway interrupt). For an adapter that
+  // names none yet the host still sends ⌃C. A key travels through Ghosttea's
+  // automation, which yields to a human mid-keystroke.
   ipcMain.handle(
     'puppeteer:interrupt-agent',
     async (event, runtimeSessionId: unknown): Promise<AgentInterruptResult> => {
@@ -2030,6 +2031,8 @@ function registerIpc(): void {
       }
       const record = agentRecords.get(runtimeSessionId);
       if (!record || !record.agentProcessAlive) return { accepted: false, reason: 'agent-not-running' };
+      const agent = agentRuntime.agent(runtimeSessionId);
+      if (agent?.turnStop) return agent.stopTurn();
       await ensureBackend();
       const result = await backend!.automation.interrupt(runtimeSessionId);
       return result.accepted
