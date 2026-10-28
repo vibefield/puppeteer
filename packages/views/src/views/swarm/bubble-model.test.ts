@@ -460,7 +460,12 @@ describe("a peer's session (a row from another desktop)", () => {
       expect(peerAgent({ writable: false }).ariaLabel).toBe(
         'puppeteer, Fable 5.1, idle: studio-mini · idle, CTX:--%, read-only host',
       );
-      const working = peerAgent({ writable: true, status: 'working', context: { usedPercent: 42 }, cost: burning(0.2) });
+      const working = peerAgent({
+        writable: true,
+        status: 'working',
+        context: { usedPercent: 42 },
+        cost: burning(0.2),
+      });
       expect(working.ariaLabel).toBe(
         'puppeteer, Fable 5.1, working: studio-mini · working, CTX:42%, burning $12/hr, writable host',
       );

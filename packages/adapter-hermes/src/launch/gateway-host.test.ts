@@ -76,6 +76,47 @@ describe('Hermes gateway host launch', () => {
     }
   });
 
+  it("runs under the session host's helper environment when the host composes one", async () => {
+    const child = new FakeHostProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const helperEnvironment = vi.fn((env: Record<string, string>) => ({ PATH: '/agent/bin', ...env }));
+    const starting = startHermesGatewayHost({
+      hermesHome: '/tmp/hermes-home',
+      cwd: '/work',
+      env: { AI_PERSONA: 'hermes' },
+      host: { helperEnvironment },
+    });
+    await child.stdinText();
+    child.ready('ws://127.0.0.1:41234/api/ws');
+    const host = await starting;
+    try {
+      // the adapter's own variables go through the host's policy, and nothing of this process's is merged back
+      const own = { HERMES_HOME: '/tmp/hermes-home', HOME: '/tmp/hermes-home', AI_PERSONA: 'hermes' };
+      expect(helperEnvironment).toHaveBeenCalledWith(own);
+      expect(spawnCall(0).options.env).toEqual({ PATH: '/agent/bin', ...own });
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("keeps its minimal set, this process's PATH and the Hermes home, under a host that composes none", async () => {
+    const child = new FakeHostProcess();
+    mocks.spawn.mockReturnValue(child.asChildProcess());
+    const starting = startHermesGatewayHost({ hermesHome: '/tmp/hermes-home', cwd: '/work', host: {} });
+    await child.stdinText();
+    child.ready('ws://127.0.0.1:41234/api/ws');
+    const host = await starting;
+    try {
+      expect(spawnCall(0).options.env).toEqual({
+        PATH: process.env.PATH,
+        HERMES_HOME: '/tmp/hermes-home',
+        HOME: '/tmp/hermes-home',
+      });
+    } finally {
+      await host.close();
+    }
+  });
+
   it('mints a different bearer for every host', async () => {
     const tokens: string[] = [];
     for (const port of [41234, 41235]) {

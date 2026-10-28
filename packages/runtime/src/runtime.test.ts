@@ -515,48 +515,61 @@ describe('createAgentRuntime', () => {
     await runtime.dispose();
   });
 
-  it("exposes the adapter's own turn stop, and refuses a stop the adapter does not name", async () => {
+  it("exposes the adapter's own turn stop, and refuses a stop the adapter does not name or an idle agent has no turn for", async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-turn-stop-'));
     const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
-    const keyed = fakeProvider('keyed', handles);
     const stopped: string[] = [];
+    const escaping = (provider: AgentProvider): AgentProvider => ({
+      ...provider,
+      async createSession(options) {
+        const binding = await provider.createSession(options);
+        return {
+          ...binding,
+          services: {
+            ...binding.services,
+            turnStop: {
+              stop: { kind: 'key', key: 'escape' },
+              async submit() {
+                stopped.push(binding.runtimeSessionId);
+                return { accepted: true };
+              },
+            },
+          },
+        };
+      },
+    });
     const runtime = createAgentRuntime({
       host,
       defaultCwd: root,
       providers: [
         fakeProvider('plain', handles),
-        {
-          ...keyed,
-          async createSession(options) {
-            const binding = await keyed.createSession(options);
-            return {
-              ...binding,
-              services: {
-                ...binding.services,
-                turnStop: {
-                  stop: { kind: 'key', key: 'escape' },
-                  async submit() {
-                    stopped.push(binding.runtimeSessionId);
-                    return { accepted: true };
-                  },
-                },
-              },
-            };
-          },
-        },
+        escaping(fakeProvider('keyed', handles)),
+        escaping(fakeProvider('unseen', handles, 'terminal-only')),
       ],
     });
 
     const plain = await runtime.spawn({ agent: 'plain', cwd: root });
     const named = await runtime.spawn({ agent: 'keyed', cwd: root });
-    if ('error' in plain || 'error' in named) throw new Error('unexpected spawn failure');
+    const unseen = await runtime.spawn({ agent: 'unseen', cwd: root });
+    if ('error' in plain || 'error' in named || 'error' in unseen) throw new Error('unexpected spawn failure');
 
     // no guessed key: the host decides what its stop sends for this one, and says so
     expect(plain.turnStop).toBeUndefined();
     await expect(plain.stopTurn()).resolves.toEqual({ accepted: false, reason: 'the adapter names no turn stop' });
     expect(named.turnStop).toEqual({ kind: 'key', key: 'escape' });
+    // an idle agent has no turn to stop: refused, and nothing is pressed
+    expect(named.status).toBe('idle');
+    await expect(named.stopTurn()).resolves.toEqual({ accepted: false, reason: 'idle' });
+    expect(stopped).toEqual([]);
+    // mid-turn the adapter's own stop is sent
+    handles.get(named.terminalSessionId)?.emit(testEnvelope({ type: 'turn:started', turnId: 'turn-1', prompt: 'go' }));
+    expect(named.status).toBe('working');
     await expect(named.stopTurn()).resolves.toEqual({ accepted: true });
     expect(stopped).toEqual([named.terminalSessionId]);
+    // an adapter that cannot see turns reads idle for want of evidence: its stop is sent
+    expect(unseen.status).toBe('idle');
+    await expect(unseen.stopTurn()).resolves.toEqual({ accepted: true });
+    expect(stopped).toEqual([named.terminalSessionId, unseen.terminalSessionId]);
 
     await runtime.dispose();
   });

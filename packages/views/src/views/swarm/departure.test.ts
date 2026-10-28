@@ -6,6 +6,7 @@ import {
   departureMotion,
   departuresAfter,
   easeOut,
+  fadingBack,
   leaving,
   retractEase,
   type Departure,
@@ -54,6 +55,23 @@ describe('a leaving body', () => {
     expect(half?.opacity).toBeLessThan(0.5);
     expect(half?.opacity).toBeGreaterThan(0);
     expect(leaving(DEPARTURE_REDUCED_MS, 'reduced')).toBeUndefined();
+  });
+
+  it('put back under reduced motion, fades up from where its fade got to on ease-out, never snapping whole', () => {
+    const reached = leaving(DEPARTURE_REDUCED_MS / 2, 'reduced')?.opacity ?? 0;
+    expect(fadingBack(0, reached)).toBe(reached);
+    let previous = reached;
+    const length = DEPARTURE_REDUCED_MS * (1 - reached);
+    for (let elapsed = 8; elapsed < length; elapsed += 8) {
+      const step = fadingBack(elapsed, reached);
+      expect(step).toBeGreaterThan(previous);
+      expect(step).toBeLessThan(1);
+      previous = step ?? 1;
+    }
+    expect(fadingBack(length, reached)).toBeUndefined();
+    // a body barely faded is whole again almost at once; one already whole has nothing to fade
+    expect(fadingBack(DEPARTURE_REDUCED_MS * 0.05, 0.95)).toBeUndefined();
+    expect(fadingBack(0, 1)).toBeUndefined();
   });
 
   it('on a still stage is gone at once: nothing moves on it', () => {

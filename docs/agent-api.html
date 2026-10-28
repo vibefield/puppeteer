@@ -1406,7 +1406,9 @@ offAll();</code></pre>
                 <p>
                   Send the stop that ends a turn in the agent’s own TUI without quitting it, as its adapter names it
                   (<span class="mono">agent.turnStop</span>). An adapter that names none is refused; what a host
-                  sends then is its own to decide and to say.
+                  sends then is its own to decide and to say. An idle agent has no turn to stop: it is refused with
+                  <span class="mono">idle</span> and nothing is pressed, since on an idle TUI the stop key is that
+                  TUI’s own verb.
                 </p>
               </article>
             </div>

@@ -231,6 +231,34 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
     expect(drawn.frames.length).toBe(drawnThen);
   });
 
+  it('under reduced motion, put back while it fades, fades up from where its fade got to: one body, never snapping whole (M6)', async () => {
+    const { agents, show } = await mounted(undefined, fixtureTheme('light', { reducedMotion: true }));
+    const id = agents[2]!.id;
+    await show(agents.slice(0, 2));
+    await frames(3);
+    const faded = lastDrawn(id)?.opacity ?? 0;
+    expect(faded).toBeGreaterThan(0);
+    expect(faded).toBeLessThan(1);
+    await show(agents);
+    // Drawn where it stands, at its size, as faint as its fade had left it: never whole in one frame.
+    expect(lastDrawn(id)?.scale).toBe(1);
+    expect(lastDrawn(id)?.opacity).toBeLessThan(1);
+    expect(drawn.frames.at(-1)?.bodies.filter((body) => body.model.id === id)).toHaveLength(1);
+    // …then up on frames of its own, until it is whole and the field is still again (MV-W4).
+    let previous = lastDrawn(id)?.opacity ?? 0;
+    for (let frame = 0; frame < 2; frame += 1) {
+      await frames(1);
+      const opacity = lastDrawn(id)?.opacity ?? 0;
+      expect(opacity).toBeGreaterThanOrEqual(previous);
+      previous = opacity;
+    }
+    await frames(inside(DEPARTURE_REDUCED_MS) + 3);
+    expect(lastDrawn(id)?.opacity).toBe(1);
+    const drawnThen = drawn.frames.length;
+    await frames(10);
+    expect(drawn.frames.length).toBe(drawnThen);
+  });
+
   it('on a still stage (the host’s animations switch off) is gone at once, with no frame asked for', async () => {
     const { agents, show } = await mounted(undefined, fixtureTheme('light', { animations: false }));
     const before = drawn.frames.length;

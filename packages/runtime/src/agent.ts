@@ -36,6 +36,16 @@ export interface AgentIngestResult {
 
 const RUNTIME_AGENT_CONSTRUCTOR = Symbol('puppeteer.runtime-agent-constructor');
 
+/**
+ * The observation levels that witness an agent's turns: under them `idle` is the
+ * agent's own word, not an absence of evidence.
+ */
+const TURN_OBSERVING_LEVELS: ReadonlySet<ObservationLevel> = new Set<ObservationLevel>([
+  'structured',
+  'native-hooks',
+  'native-log',
+]);
+
 interface AgentInternals {
   adapter: AgentAdapterBinding;
   info: AgentSessionInfo;
@@ -152,10 +162,18 @@ export class Agent {
     return internals(this).adapter.services.turnStop?.stop;
   }
 
-  /** Send the adapter's turn stop. An adapter that names none is refused, never given a guessed key. */
+  /**
+   * Send the adapter's turn stop. An adapter that names none is refused, never given a guessed key. An idle agent
+   * has no turn to stop, so it is refused too and nothing is pressed: on an idle TUI the stop key is that TUI's own
+   * verb (Claude's second Esc opens its rewind menu, which then takes the next prompt's keys). Only an observed idle
+   * is refused: an adapter that cannot see turns reads idle for want of evidence, and its stop is sent.
+   */
   stopTurn(): Promise<AgentTurnStopReceipt> {
     const service = internals(this).adapter.services.turnStop;
     if (!service) return Promise.resolve({ accepted: false, reason: 'the adapter names no turn stop' });
+    if (this.status === 'idle' && TURN_OBSERVING_LEVELS.has(this.observationLevel)) {
+      return Promise.resolve({ accepted: false, reason: 'idle' });
+    }
     return service.submit();
   }
 

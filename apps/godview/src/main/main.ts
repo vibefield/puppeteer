@@ -2019,9 +2019,9 @@ function registerIpc(): void {
       Promise.resolve({ status: 'rejected', reason: 'agent session not found' }),
   );
   // The pane's stop verb: the agent's own turn stop, as its adapter names it
-  // (Esc for Pi and Claude, Hermes's gateway interrupt). For an adapter that
-  // names none yet the host still sends ⌃C. A key travels through Ghosttea's
-  // automation, which yields to a human mid-keystroke.
+  // (a key, or the agent's own control). For an adapter that names none yet
+  // the host still sends ⌃C. A key travels through Ghosttea's automation,
+  // which yields to a human mid-keystroke.
   ipcMain.handle(
     'puppeteer:interrupt-agent',
     async (event, runtimeSessionId: unknown): Promise<AgentInterruptResult> => {

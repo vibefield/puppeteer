@@ -82,6 +82,7 @@ export async function prepareHermesTuiSession(
           hermesHome,
           cwd: options.cwd,
           env: options.env,
+          host: options.host,
           startupTimeoutMs: options.gatewayStartupTimeoutMs,
         });
         gatewayUrl = host.url;

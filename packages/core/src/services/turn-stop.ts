@@ -25,7 +25,10 @@ export type AgentTurnStopReceipt = { accepted: true } | { accepted: false; reaso
 export interface AgentTurnStopService {
   /** What the stop is, so a host can name it before it is pressed. */
   readonly stop: AgentTurnStop;
-  /** Stop the current turn. On an idle agent the stop still reaches it and quits nothing. */
+  /**
+   * Stop the current turn. It sends the stop whatever the agent is doing; the runtime's `Agent.stopTurn` asks it only
+   * of an agent that is not idle, since on an idle TUI the stop key is that TUI's own verb.
+   */
   submit(): Promise<AgentTurnStopReceipt>;
 }
 

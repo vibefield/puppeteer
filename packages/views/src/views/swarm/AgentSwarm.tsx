@@ -37,7 +37,7 @@ import { SpawnBloom } from './bloom/SpawnBloom.js';
 import { useSpawnBloom, type BloomFocusPlace } from './bloom/use-spawn-bloom.js';
 import { bodyIdOf } from './body-id.js';
 import { baseRadius, bubbleModel, workingShares, type SwarmBubbleModel } from './bubble-model.js';
-import { departureMotion, departuresAfter, leaving, type Departure } from './departure.js';
+import { departureMotion, departuresAfter, fadingBack, leaving, type Departure } from './departure.js';
 import { fitScale } from './fit.js';
 import {
   createSwarmRenderer,
@@ -102,6 +102,9 @@ interface BodyVisual {
   /** Born from a bloom's bud (SB), or put back while it was leaving (`departure.ts`): its arrival starts from that
    * size over its own. */
   from?: number;
+  /** Put back under reduced motion while it was fading (`departure.ts` `fadingBack`): the opacity its fade had reached,
+   * and when it began to come back. */
+  fadeBack?: { from: number; at: number };
   /** Drawn above the bloom's clearings until then: the body being born (record §2.8 (4)). */
   aboveUntil?: number;
 }
@@ -557,13 +560,20 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
   /**
    * A row back while its body was leaving (a close refused; a hand-over's second row a frame late): the body pops
    * back where it stands, from the size its shrink had reached, on the arrival's own curve (M4's spring pop), never a
-   * second body beside it. Still, it is simply whole again.
+   * second body beside it. Under reduced motion it never shrank: it fades back up from the opacity its fade had
+   * reached, and nothing pops. Still, it is simply whole again.
    */
   const putBack = (id: string, departure: Departure<SwarmBubbleModel>, now: number): void => {
     const visual = visualsRef.current.get(id);
-    if (!visual || !motionRef.current) return;
-    const shrunk = leaving(now - departure.at, departureMotion(switchesRef.current))?.scale ?? 0;
-    visual.from = landingOf(visual, now, true).scale * shrunk;
+    if (!visual) return;
+    const mode = departureMotion(switchesRef.current);
+    const left = leaving(now - departure.at, mode);
+    if (mode === 'reduced') {
+      visual.fadeBack = { from: left?.opacity ?? 0, at: now };
+      return;
+    }
+    if (mode !== 'motion') return;
+    visual.from = landingOf(visual, now, true).scale * (left?.scale ?? 0);
     visual.spawnedAt = now;
   };
 
@@ -709,6 +719,8 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
       const bodies: RenderBody[] = [];
       /** Leaving bodies: drawn under the field and out of reach (no hit, no hover, no focus; the bloom counts none). */
       const leavingBodies: RenderBody[] = [];
+      /** A body put back under reduced motion is still fading up: its frames are asked for as a departure's are. */
+      let fadingUp = false;
       for (const [id, state] of statesRef.current) {
         const departure = departing.get(id);
         const model = departure ? departure.model : models.byId.get(id);
@@ -758,7 +770,10 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         // Being born, it is drawn above the clearings and under no veil; the rest of the
         // field recedes under the veil but for what the bloom points at.
         const above = visual.aboveUntil !== undefined && time < visual.aboveUntil;
-        let opacity = landing.opacity * visual.recede;
+        const back = visual.fadeBack ? fadingBack(time - visual.fadeBack.at, visual.fadeBack.from) : undefined;
+        if (back === undefined) delete visual.fadeBack;
+        else fadingUp = true;
+        let opacity = landing.opacity * visual.recede * (back ?? 1);
         if (rows && !above) {
           const row = rows.get(id);
           const lit = stepLit(fieldMemoryRef.current, id, row ? field.lit(row) : false, delta, !motion);
@@ -780,6 +795,7 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
         };
         (departure ? leavingBodies : bodies).push(body);
       }
+      if (fadingUp) fadeFrames();
       bodies.sort((left, right) => {
         const rank = STATUS_RANK[left.model.appearance] - STATUS_RANK[right.model.appearance];
         if (rank !== 0) return rank;

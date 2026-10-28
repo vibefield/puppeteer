@@ -4,7 +4,8 @@
 //
 // With motion a leaving body shrinks where it stands, about its own centre, over the pop's own length on DESIGN's
 // retract curve: it accelerates away, the arrival's pop run backwards, and it never fades (only cancelled ghosts
-// fade). Under reduced motion (M6) it fades where it stands, at its size, in half the time on plain ease-out. With
+// fade). Under reduced motion (M6) it fades where it stands, at its size, in half the time on plain ease-out, and one
+// whose row comes back fades up again from where its fade got to. With
 // the host's animations switch off the stage is held still and the body is gone at once: nothing moves on a still
 // stage.
 
@@ -66,6 +67,17 @@ export function leaving(elapsedMs: number, motion: DepartureMotion): { scale: nu
   if (elapsedMs >= length) return undefined;
   const t = Math.max(0, elapsedMs) / length;
   return motion === 'motion' ? { scale: 1 - retractEase(t), opacity: 1 } : { scale: 1, opacity: 1 - easeOut(t) };
+}
+
+/**
+ * A body put back under reduced motion while it was fading (DESIGN §6, the departure's put-back), `elapsedMs` after:
+ * what its opacity is multiplied by, up from the opacity its fade had reached (`from`) to whole, on plain ease-out over
+ * that opacity's share of the reduced departure. Nothing pops. Undefined once it is whole again.
+ */
+export function fadingBack(elapsedMs: number, from: number): number | undefined {
+  const length = DEPARTURE_REDUCED_MS * (1 - from);
+  if (elapsedMs >= length) return undefined;
+  return from + (1 - from) * easeOut(Math.max(0, elapsedMs) / length);
 }
 
 /** A body on its way out: when it began to leave, and the model it is drawn with until it has gone (its row has). */
