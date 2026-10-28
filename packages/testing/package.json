@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-testing",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "Vendor-neutral test harness and AgentAdapterBinding conformance suite for Puppeteer adapters.",
   "license": "MIT",
