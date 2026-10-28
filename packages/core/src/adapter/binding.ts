@@ -26,6 +26,13 @@ export interface AgentAdapterBinding {
   readonly runtimeSessionId: string;
   /** Honest, current observation level — never overstated (DESIGN §19.2). */
   observationLevel(): ObservationLevel;
+  /**
+   * Whether the adapter has seen the durable native record of the conversation `sessionId` names, so that a
+   * resume by that id can succeed. False while the id is provisional (no native id is known yet) or exact but not
+   * yet written by the agent; the adapter turns it true before it publishes what it read from that record.
+   * Runtime marks the run's continuation `resumable: false` while it is false. Absent = always seen.
+   */
+  durableRecordSeen?(): boolean;
   /** Unstamped normalized facts. Runtime is the only owner of validation and envelopes. */
   readonly events: AgentAdapterEventSource;
   /** Explicit upper-level capabilities; commands never travel inside event payloads. */

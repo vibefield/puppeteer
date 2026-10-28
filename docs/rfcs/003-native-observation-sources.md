@@ -149,3 +149,34 @@ host keeps), knowing which terminals are still alive after it returns, and the r
 attach path. What stays out of this RFC: buffering hooks posted while no host is listening (a native relay would
 carry that; it is a different process and a different lifetime), and any vendor's own reconnection story beyond
 Claude's — Codex and Grok rebuild their app-server and leader sockets by id and are the next candidates.
+
+> **Erratum (2026-10-27, VibeField's re-attach study):** the last sentence was false when written and is false at
+> 0.2.3 (`ee785ec1`). Codex's app-server and Grok's leader are not sockets an adapter rebuilds by id: each is a helper
+> process the adapter spawns as the host's child, and the helper holds the agent's session itself (Codex runs the
+> thread in its app-server; Grok's leader owns the session). OpenCode's `serve` and Hermes's gateway host are the same
+> kind. On a host's detach only Claude's binding honours `release`: the Codex binding's dispose ends its app-server
+> (`adapter-codex/src/launch/tui-session.ts:220-226`), OpenCode's ends `serve` (`adapter-opencode/src/driver.ts:399-406`),
+> Hermes's closes its gateway host (`adapter-hermes/src/driver.ts:298-307`), and the runtime then calls every provider's
+> `dispose()` with no argument (`runtime/src/runtime.ts:3936`), which stops every Grok leader
+> (`builtin-providers/src/providers.ts:714-717`, `adapter-grok/src/driver.ts:106-123`). After a graceful host stop the
+> agent's process is gone and its TUI is a client with no backend, so there is nothing to reconnect to by id. A re-attach
+> for these four first needs the helper to outlive the host (VibeField ruled that its terminal floor keeps it, through a
+> process service), and only then an adapter that rebuilds its rail to it.
+
+**Amended 2026-10-27 (VibeField's re-attach study, Step 1).** _An attach hands back what the launch knew._
+`AttachAgentOptions.continuation` carries the continuation the host kept: the provider's codec restores the launch
+options from it when the host keeps none (a typed `CLAUDE_CONFIG_DIR` root, an imposter's environment), and the
+attached run keeps its `state` and `implementation`, so the continuation it reports next, and a resume of it, is the
+launch's and not `native` with no state. _One opaque attach record per session._ An adapter with facts to find again
+beyond the continuation (a helper's endpoint, pid and start time, a provisional id's anchor) reports
+`{version, state, secret?}` through `HostIngress.onAttachRecord` before launch, and through the attach's own
+`onAttachRecord` whenever they change after, so a second restart reads fresh facts. The host keeps the latest
+owner-only and hands it back exactly; an unknown `version` is refused, never guessed. An adapter that adopts an endpoint
+its process did not just bind proves the process behind it (a per-run nonce in `secret`, or the host's word on the
+peer) before it trusts it. _A failed attach says what next._ `AgentAttachRefusedError` carries `retry`, `respawn`,
+`native-log` or `resume` to the failure's `error.next`. _A provider is told the host is detaching._ The runtime calls
+`dispose({ detach })`, so a provider can keep what released runs use. _An attach reads where the agent stands._ The
+existing records are no longer only a silent baseline for an attach: Claude's first transcript read publishes the turn
+and the tools still open as replay, and a question the agent waits on live, once (`partitionAttachBootstrap`), and the
+hook rail adopts those tools, so their PostToolUse closes them. A launch, a resume and a picker rebind keep the silent
+baseline: their process is not in the middle of what the record last shows.

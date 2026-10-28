@@ -51,6 +51,8 @@ export interface CreateKimiTuiSessionOptions extends AgentTuiSessionOptions {
 export interface KimiTuiSession extends AgentAdapterBinding {
   /** Absolute native session directory once Kimi lazily creates and binds it. */
   sessionDirectory(): string | undefined;
+  /** False while the id is provisional (`kimi-pending-…`): no journal holds it, and prepare refuses its resume. */
+  durableRecordSeen(): boolean;
 }
 
 export interface PreparedKimiTuiSession {
@@ -221,6 +223,7 @@ export async function prepareKimiTuiSession(options: CreateKimiTuiSessionOptions
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionDirectory: () => observer.sessionDirectory(),
+        durableRecordSeen: () => observer.sessionId() !== undefined,
         events: {
           onCandidate(listener) {
             if (sessionDisposed) return () => undefined;

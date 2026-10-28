@@ -466,6 +466,9 @@ function createClaudeObservation(
   // ORDERS the baseline read after the intent and capability batches.
   let pendingTranscript: string | undefined;
   let subscribed = false;
+  // An attached process was running before this observer: the first transcript it tails is read for what is still
+  // open (the turn, its tools, a question), once. A later one (a `/clear` heard live, a picker rebind) starts idle.
+  let bootstrapOpenWork = options.attached === true;
   let capabilitiesBatch = monitorEvidence.capabilitiesBatch(new Date().toISOString());
   let semanticCapabilitiesPublished = false;
   let hookRailAvailable = true;
@@ -726,6 +729,8 @@ function createClaudeObservation(
     semanticGeneration += 1;
     const generation = semanticGeneration;
     const priorAttachment = semanticAttachment;
+    const attached = bootstrapOpenWork;
+    bootstrapOpenWork = false;
     transcriptPath = path;
     const nextAttachment = (async (): Promise<SemanticObservationHandle | undefined> => {
       const prior = await priorAttachment?.catch(() => undefined);
@@ -736,6 +741,7 @@ function createClaudeObservation(
         nativeSessionId: nativeSessionId(),
         transcriptPath: path,
         pollIntervalMs: options.transcriptPollIntervalMs,
+        ...(attached ? { attached: true } : {}),
       });
       if (disposed || generation !== semanticGeneration) {
         await handle.dispose();
@@ -747,6 +753,23 @@ function createClaudeObservation(
       if (observation === 'terminal-only') observation = 'native-log';
       handle.onEvent((semantic) => {
         if (disposed || generation !== semanticGeneration) return;
+        // a tool the attach found open was announced by no hook: the hook rail adopts it, so its PostToolUse (and
+        // the answer to its question) closes what the bootstrap opened
+        if (semantic.openAtAttach && semantic.event.type === 'tool:requested') {
+          const superseded = normalizer.adoptOpenTool({
+            toolCallId: semantic.event.toolCallId,
+            toolName: semantic.event.tool,
+            input: semantic.event.input,
+            promptId: semantic.promptId,
+          });
+          for (const event of superseded) {
+            apply(event, {
+              source: 'runtime',
+              timestamp: semantic.timestamp,
+              providerVersion: options.providerVersion,
+            });
+          }
+        }
         apply(semantic.event, {
           source: 'native-transcript',
           timestamp: semantic.timestamp,

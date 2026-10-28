@@ -38,6 +38,7 @@ import { ClaudeEffortNormalizer } from './effort.js';
 import { normalizeClaudeCwd, normalizeClaudeSessionEnvironment } from './environment.js';
 import {
   claudeQuestionOutcome,
+  claudeQuestionRequestId,
   normalizeClaudePermissionRequested,
   normalizeClaudePermissionResolved,
   normalizeClaudeQuestionRequested,
@@ -132,6 +133,37 @@ export class ClaudeHookNormalizer {
       if (oldest !== undefined) this.recentToolRequests.delete(oldest);
     }
     this.recentToolRequests.set(request.toolCallId, request);
+  }
+
+  /**
+   * A tool an attach found still open in the transcript (the re-attach study, §3.3), which no hook announced to this
+   * normalizer. It is remembered as PreToolUse remembers one, so its PostToolUse or failure closes it and resolves
+   * the question an AskUserQuestion call asks. Returns what remembering it superseded, for the caller to publish.
+   */
+  adoptOpenTool(tool: {
+    toolCallId: string;
+    toolName: string;
+    input: unknown;
+    promptId?: string | undefined;
+  }): NormalizedHook['events'] {
+    const request: RecentToolRequest = {
+      toolCallId: tool.toolCallId,
+      promptId: tool.promptId,
+      toolName: tool.toolName,
+      inputKey: canonicalClaudeValue(tool.input),
+      input: tool.input,
+    };
+    const superseded: NormalizedHook = { events: [], diagnostics: [] };
+    if (tool.toolName.toLowerCase() === 'askuserquestion' && parseClaudeStructuredQuestions(tool.input)) {
+      request.questionRequestId = claudeQuestionRequestId(tool.toolCallId);
+      this.rememberQuestion(superseded, {
+        requestId: request.questionRequestId,
+        promptId: tool.promptId,
+        toolCallId: tool.toolCallId,
+      });
+    }
+    this.rememberTool(request);
+    return superseded.events;
   }
 
   private rememberQuestion(result: NormalizedHook, question: PendingQuestion): void {
@@ -420,7 +452,7 @@ export class ClaudeHookNormalizer {
         if (toolName.toLowerCase() === 'askuserquestion') {
           const questions = parseClaudeStructuredQuestions(body.tool_input);
           if (questions && !this.pendingQuestions.has(toolCallId)) {
-            const questionRequestId = `question:${toolCallId}`;
+            const questionRequestId = claudeQuestionRequestId(toolCallId);
             request.questionRequestId = questionRequestId;
             this.rememberQuestion(result, {
               requestId: questionRequestId,

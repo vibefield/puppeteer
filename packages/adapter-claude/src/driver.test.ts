@@ -2074,6 +2074,122 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     await cleanupClaudeSession(prepared!);
   });
 
+  it('an attach to a Claude mid-turn shows its turn, its open tool and, live, the question it waits on; its hook closes them', async () => {
+    let bound: { port: number; token: string } | undefined;
+    let prepared: PreparedClaudeSession | undefined;
+    const launched = await createClaudeSession({
+      cwd: '/tmp',
+      ingress: { onBound: (value) => void (bound = value) },
+      ports: {
+        spawn: async (p) => {
+          prepared = p;
+          return { runtimeSessionId: 'rt-mid-turn' };
+        },
+        automate: async () => ({ accepted: true }),
+      },
+    });
+    const sessionId = launched.sessionId;
+    await launched.dispose({ release: true });
+    // the transcript as the host left it: a typed prompt, then a question the person has not answered
+    const configDir = mkdtempSync(join(tmpdir(), 'driver-attach-mid-turn-'));
+    const project = join(configDir, 'projects', '-tmp');
+    mkdirSync(project, { recursive: true });
+    const transcript = join(project, `${sessionId}.jsonl`);
+    const input = { questions: [{ question: 'Which branch?', options: [{ label: 'main' }, { label: 'dev' }] }] };
+    writeFileSync(
+      transcript,
+      [
+        {
+          type: 'user',
+          uuid: 'u-prompt',
+          parentUuid: null,
+          promptId: 'p-asked',
+          turnOrigin: 'human',
+          isSidechain: false,
+          sessionId,
+          timestamp: '2026-10-27T12:00:00.000Z',
+          message: { role: 'user', content: 'ship it' },
+        },
+        {
+          type: 'assistant',
+          uuid: 'u-ask',
+          parentUuid: 'u-prompt',
+          isSidechain: false,
+          sessionId,
+          timestamp: '2026-10-27T12:00:01.000Z',
+          message: {
+            id: 'msg_ask',
+            role: 'assistant',
+            content: [{ type: 'tool_use', id: 'toolu-ask', name: 'AskUserQuestion', input }],
+            stop_reason: null,
+          },
+        },
+      ]
+        .map((row) => JSON.stringify(row))
+        .join('\n') + '\n',
+    );
+
+    const attached = await attachClaudeTuiSession({
+      sessionId,
+      runtimeSessionId: 'rt-mid-turn',
+      cwd: '/tmp',
+      ingress: bound!,
+      configDir,
+      automate: async () => ({ accepted: true }),
+    });
+    sessions.push(attached);
+    const projection = projectAgentEvents(attached);
+    await attached.pollTranscript();
+    const fromTranscript = () =>
+      projection.envelopes
+        .filter((e) => e.source === 'native-transcript')
+        .map(({ event, replay }) => ({ type: event.type, replay: replay === true }));
+    await vi.waitFor(() =>
+      expect(fromTranscript()).toEqual([
+        { type: 'turn:started', replay: true },
+        { type: 'tool:requested', replay: true },
+        { type: 'interaction:question-requested', replay: false },
+      ]),
+    );
+    // a prompt typed now would land in the question's answer: the injector holds it back, as for a hooked question
+    const held = await attached.services.prompt.submit({ text: 'meanwhile', mode: 'paste-only' });
+    expect(held.status).toBe('rejected');
+
+    // the person answers in the TUI: the running process posts PostToolUse to the ingress it was launched with, and
+    // the hook rail closes the question and the tool the bootstrap opened
+    const settings = JSON.parse(readFileSync(prepared!.settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ type: string; url?: string }> }>>;
+    };
+    const endpoint = settings.hooks.UserPromptSubmit![0]!.hooks[0]!.url!;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bound!.token}` },
+      body: JSON.stringify({
+        session_id: sessionId,
+        transcript_path: transcript,
+        cwd: '/tmp',
+        hook_event_name: 'PostToolUse',
+        prompt_id: 'p-asked',
+        tool_name: 'AskUserQuestion',
+        tool_use_id: 'toolu-ask',
+        tool_input: input,
+        tool_response: { answers: { 'Which branch?': 'main' } },
+      }),
+    });
+    expect(res.status).toBe(200);
+    await vi.waitFor(() => {
+      const hooked = projection.envelopes.filter((e) => e.source === 'native-hook').map(({ event }) => event);
+      expect(hooked).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: 'interaction:question-resolved', requestId: 'question:toolu-ask' }),
+          expect.objectContaining({ type: 'tool:completed', toolCallId: 'toolu-ask' }),
+        ]),
+      );
+    });
+    rmSync(configDir, { recursive: true, force: true });
+    await cleanupClaudeSession(prepared!);
+  });
+
   it('follows a /clear typed while no host listened: the first hook under a new id that has a transcript rotates the attached session, once', async () => {
     let bound: { port: number; token: string } | undefined;
     let prepared: PreparedClaudeSession | undefined;

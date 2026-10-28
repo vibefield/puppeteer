@@ -27,6 +27,7 @@ export interface CreatePiTuiSessionOptions extends AgentTuiSessionOptions {
 }
 export interface PiTuiSession extends AgentAdapterBinding {
   sessionFile(): string | undefined;
+  durableRecordSeen(): boolean;
 }
 export interface PreparedPiTuiSession {
   readonly sessionId: string;
@@ -138,6 +139,8 @@ export async function preparePiTuiSession(options: CreatePiTuiSessionOptions): P
         runtimeSessionId,
         observationLevel: () => 'native-log',
         sessionFile: () => observer.sessionFile(),
+        // Pi writes the file only with its first assistant record; until then prepare refuses the id's resume
+        durableRecordSeen: () => observer.sessionFile() !== undefined,
         events: { onCandidate: (listener) => (sessionDisposed ? () => undefined : events.onCandidate(listener)) },
         services: { prompt: { submit: (submission) => prompts.submit(submission) }, turnStop },
         async dispose() {

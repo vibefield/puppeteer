@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { claude2308TranscriptText } from '../../test-support/claude-transcript-fixtures.js';
-import { projectClaudeTranscriptAssistants } from './conversation.js';
+import { projectClaudeTranscriptAssistants, projectClaudeTranscriptOpenWork } from './conversation.js';
 import { decodeClaudeTranscript } from './wire.js';
 
 /** Each projected reply's message id, mapped to the turn it is keyed to. */
@@ -332,5 +332,125 @@ describe('Claude transcript assistant projection', () => {
     );
 
     expect([...projectClaudeTranscriptAssistants(records).values()]).toEqual([]);
+  });
+});
+
+describe('Claude transcript open work (an attach reads where the agent stands)', () => {
+  const at = (second: number) => new Date(Date.parse('2026-10-27T12:00:00.000Z') + second * 1_000).toISOString();
+  const prompt = (uuid: string, parentUuid: string | null, text: string, turnOrigin?: string) => ({
+    type: 'user',
+    uuid,
+    parentUuid,
+    timestamp: at(0),
+    sessionId: 'session-1',
+    promptId: `prompt-of-${uuid}`,
+    ...(turnOrigin === undefined ? {} : { turnOrigin }),
+    message: { role: 'user', content: text },
+  });
+  const toolCall = (uuid: string, parentUuid: string, id: string, name: string, input: unknown) => ({
+    type: 'assistant',
+    uuid,
+    parentUuid,
+    timestamp: at(1),
+    sessionId: 'session-1',
+    message: { role: 'assistant', content: [{ type: 'tool_use', id, name, input }] },
+  });
+  const toolResult = (uuid: string, parentUuid: string, id: string) => ({
+    type: 'user',
+    uuid,
+    parentUuid,
+    timestamp: at(2),
+    sessionId: 'session-1',
+    message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'done' }] },
+  });
+  const reply = (uuid: string, parentUuid: string, text: string) => ({
+    type: 'assistant',
+    uuid,
+    parentUuid,
+    timestamp: at(3),
+    sessionId: 'session-1',
+    message: { role: 'assistant', content: [{ type: 'text', text }] },
+  });
+  const open = (rows: readonly Record<string, unknown>[]) =>
+    projectClaudeTranscriptOpenWork(decodeClaudeTranscript(jsonl(rows))).map(({ event }) => event);
+
+  it('reads a tool requested and not yet answered as the open turn and its running tool, keyed as the hooks key them', () => {
+    expect(
+      open([
+        prompt('p-1', null, 'run the tests', 'human'),
+        toolCall('a-1', 'p-1', 'toolu_bash', 'Bash', { command: 'pnpm test' }),
+      ]),
+    ).toEqual([
+      { type: 'turn:started', turnId: 'prompt-of-p-1', prompt: 'run the tests' },
+      expect.objectContaining({ type: 'tool:requested', toolCallId: 'toolu_bash', tool: 'Bash' }),
+    ]);
+  });
+
+  it('reads an open AskUserQuestion call as its question too, named as PreToolUse names it', () => {
+    const input = { questions: [{ question: 'Which branch?', options: [{ label: 'main' }, { label: 'dev' }] }] };
+    const events = open([
+      prompt('p-1', null, 'ship it', 'human'),
+      toolCall('a-1', 'p-1', 'toolu_ask', 'AskUserQuestion', input),
+    ]);
+    expect(events.map((event) => event.type)).toEqual([
+      'turn:started',
+      'tool:requested',
+      'interaction:question-requested',
+    ]);
+    expect(events[2]).toMatchObject({
+      requestId: 'question:toolu_ask',
+      questions: [{ prompt: 'Which branch?', options: [{ label: 'main' }, { label: 'dev' }] }],
+    });
+  });
+
+  it('reads a turn whose tool was answered as still working: the model owes the next step', () => {
+    expect(
+      open([
+        prompt('p-1', null, 'run the tests', 'human'),
+        toolCall('a-1', 'p-1', 'toolu_bash', 'Bash', { command: 'pnpm test' }),
+        toolResult('r-1', 'a-1', 'toolu_bash'),
+      ]),
+    ).toEqual([{ type: 'turn:started', turnId: 'prompt-of-p-1', prompt: 'run the tests' }]);
+  });
+
+  it('reads a typed prompt with no reply yet as an open turn, only when the row carries its native turnOrigin', () => {
+    expect(open([prompt('p-1', null, 'think about it', 'human')])).toEqual([
+      { type: 'turn:started', turnId: 'prompt-of-p-1', prompt: 'think about it' },
+    ]);
+    // a transcript older than turnOrigin cannot tell a prompt from an interruption marker: read closed
+    expect(open([prompt('p-1', null, 'think about it')])).toEqual([]);
+  });
+
+  it('reads closed a finished turn, a turn interrupted by Esc, and a turn whose tool ran before the last prompt', () => {
+    // finished: the last root message is the reply
+    expect(open([prompt('p-1', null, 'hello', 'human'), reply('a-1', 'p-1', 'hi')])).toEqual([]);
+    // interrupted mid-tool: the tool is answered, then the marker (no turnOrigin) ends the turn
+    expect(
+      open([
+        prompt('p-1', null, 'run the tests', 'human'),
+        toolCall('a-1', 'p-1', 'toolu_bash', 'Bash', { command: 'pnpm test' }),
+        toolResult('r-1', 'a-1', 'toolu_bash'),
+        prompt('m-1', 'r-1', '[Request interrupted by user for tool use]'),
+      ]),
+    ).toEqual([]);
+    // a tool left open by an earlier turn is not this turn's: the next prompt opened a new one, since answered
+    expect(
+      open([
+        prompt('p-1', null, 'first', 'human'),
+        toolCall('a-1', 'p-1', 'toolu_old', 'Bash', { command: 'sleep 1' }),
+        prompt('p-2', 'a-1', 'second', 'human'),
+        reply('a-2', 'p-2', 'done'),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("ignores a subagent's sidechain: its tools are not the root turn's", () => {
+    expect(
+      open([
+        prompt('p-1', null, 'hello', 'human'),
+        reply('a-1', 'p-1', 'hi'),
+        { ...toolCall('s-1', 'a-1', 'toolu_side', 'Read', { file_path: '/tmp/x' }), isSidechain: true },
+      ]),
+    ).toEqual([]);
   });
 });

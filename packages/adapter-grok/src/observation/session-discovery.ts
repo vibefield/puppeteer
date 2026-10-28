@@ -2,6 +2,11 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+/** The Grok home a process running under `environment` reads: its GROK_HOME, else `~/.grok`. */
+export function grokHomeIn(environment: NodeJS.ProcessEnv): string {
+  return environment.GROK_HOME ?? join(homedir(), '.grok');
+}
+
 /** Location of Grok's durable structured update stream for one cwd/session. */
 export function grokUpdatesPath(cwd: string, sessionId: string, grokHome = process.env.GROK_HOME): string {
   return join(grokHome ?? join(homedir(), '.grok'), 'sessions', encodeURIComponent(cwd), sessionId, 'updates.jsonl');

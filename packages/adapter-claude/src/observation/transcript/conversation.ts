@@ -1,10 +1,17 @@
 import type { AgentEvent, AssistantMessageEvent } from '@vibefield/puppeteer-core';
+import {
+  claudeQuestionRequestId,
+  normalizeClaudeQuestionRequested,
+  parseClaudeStructuredQuestions,
+} from '../../normalization/interaction.js';
+import { normalizeClaudeToolRequested } from '../../normalization/tool.js';
 import type { SemanticObservationEvent } from '../semantic-provider.js';
 import {
   safeTranscriptEvidence,
   transcriptContent,
   transcriptObject,
   transcriptRecordId,
+  transcriptString,
   transcriptText,
   type ClaudeTranscriptRecord,
 } from './wire.js';
@@ -195,6 +202,84 @@ export function projectClaudeTranscriptAssistants(
     assistants.set(key, projected);
   }
   return assistants;
+}
+
+/** A `tool_use` block's id, name and input, when the content block is one. */
+function toolUse(value: unknown): { id: string; name: string; input: unknown } | undefined {
+  const block = transcriptObject(value);
+  if (block?.type !== 'tool_use') return undefined;
+  const id = transcriptString(block.id);
+  const name = transcriptString(block.name);
+  return id && name ? { id, name, input: block.input } : undefined;
+}
+
+/** The tool calls a `user` row answers: the ids its `tool_result` blocks name. */
+function answeredToolIds(record: ClaudeTranscriptRecord): string[] {
+  return transcriptContent(record).flatMap((value) => {
+    const block = transcriptObject(value);
+    const id = block?.type === 'tool_result' ? transcriptString(block.tool_use_id) : undefined;
+    return id ? [id] : [];
+  });
+}
+
+/**
+ * What the transcript shows still open at its end: the root turn the agent is in, and the tools it requested in that
+ * turn whose results it has not written. An attach reads it once (the re-attach study, §3.3), so a Claude that was
+ * mid-turn when its host restarted shows it, instead of nothing until its next hook.
+ *
+ * Only what the rows prove is read as open:
+ * - A `tool_use` block that no later `tool_result` names. The tool is running or waiting on a permission, and the
+ *   transcript does not say which, so it is read as a running tool. An AskUserQuestion call is also its question.
+ * - A turn whose last root message is a `tool_result` (the model owes the next step), or is the prompt itself when the
+ *   prompt carries a native user-started `turnOrigin` (2.1.283+). An interruption writes a marker row after either,
+ *   and the marker carries no `turnOrigin`, so a turn ended by Esc reads closed.
+ *
+ * Everything else reads closed: a turn whose last root message is assistant text (finished, or about to request a
+ * tool), and every prompt of a transcript older than `turnOrigin`. The next hook corrects a closed reading. A wrong
+ * open one would show a working agent that is not, so the rules lean closed.
+ */
+export function projectClaudeTranscriptOpenWork(
+  records: readonly ClaudeTranscriptRecord[],
+): SemanticObservationEvent[] {
+  let prompt: ClaudeTranscriptRecord | undefined;
+  let owed = false;
+  const tools = new Map<string, { record: ClaudeTranscriptRecord; name: string; input: unknown }>();
+  for (const record of causalOrder(records)) {
+    if (record.isSidechain) continue;
+    if (record.type === 'user') {
+      const answered = answeredToolIds(record);
+      if (answered.length > 0) {
+        for (const id of answered) tools.delete(id);
+        owed = true;
+      } else if (opensUserTurn(record)) {
+        prompt = record;
+        tools.clear();
+        owed = record.turnOrigin !== undefined;
+      } else {
+        owed = false;
+      }
+      continue;
+    }
+    if (record.type !== 'assistant') continue;
+    for (const value of transcriptContent(record)) {
+      const tool = toolUse(value);
+      if (tool) tools.set(tool.id, { record, name: tool.name, input: tool.input });
+    }
+    owed = false;
+  }
+  if (prompt === undefined || (tools.size === 0 && !owed)) return [];
+  const turnId = prompt.promptId ?? transcriptRecordId(prompt);
+  const open = [observation({ type: 'turn:started', turnId, prompt: transcriptText(prompt) }, prompt, { turnId })];
+  for (const [id, tool] of tools) {
+    open.push(observation(normalizeClaudeToolRequested(id, tool.name, tool.input), tool.record, { turnId }));
+    const questions =
+      tool.name.toLowerCase() === 'askuserquestion' ? parseClaudeStructuredQuestions(tool.input) : undefined;
+    if (questions) {
+      const asked = normalizeClaudeQuestionRequested(claudeQuestionRequestId(id), questions);
+      open.push(observation(asked, tool.record, { turnId }));
+    }
+  }
+  return open;
 }
 
 export function claudeTranscriptConversationFingerprint(value: SemanticObservationEvent): string {
