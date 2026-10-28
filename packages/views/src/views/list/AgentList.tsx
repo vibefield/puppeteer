@@ -6,8 +6,6 @@ import {
   deviceWord,
   everyReceded,
   formatPercent,
-  hostWriteTitle,
-  hostWriteWord,
   menuOf,
   modelWord,
   projectName,
@@ -165,11 +163,11 @@ const ListRow = memo(function ListRow({
         // attached, while the row is the thing being described.
         // A remote row names its peer FIRST: the machine is the fact
         // that changes what the row means, and a screen reader must not
-        // reach the end of the line to learn it. Its write policy is the
-        // HOST's, said in both directions (the row's `writable`, M41).
-        aria-label={`${remote ? `on ${deviceWord(agent.device)}, ` : ''}${project}, ${name}, ${agent.status}${
-          remote ? `, ${hostWriteWord(agent)}` : ''
-        }: ${detail}`}
+        // reach the end of the line to learn it. Nothing says who may type
+        // there: every peer session is writable (James, 2026-10-28).
+        aria-label={`${
+          remote ? `on ${deviceWord(agent.device)}, ` : ''
+        }${project}, ${name}, ${agent.status}: ${detail}`}
         onClick={() => commands.select(agent.id)}
       >
         <span className="vf-monitor-list-status" aria-hidden="true" />
@@ -189,11 +187,9 @@ const ListRow = memo(function ListRow({
           ) : remote ? (
             // THE HOST CHIP. It stands where the model name stands because
             // it answers the same question — what is running this row —
-            // and no local row has one, which is the distinction.
-            <span className="vf-monitor-list-host">
-              {deviceWord(agent.device)}
-              <em title={hostWriteTitle(agent)}>{hostWriteWord(agent)}</em>
-            </span>
+            // and no local row has one, which is the distinction. It names
+            // the desktop alone.
+            <span className="vf-monitor-list-host">{deviceWord(agent.device)}</span>
           ) : (
             <span className="vf-monitor-list-terminal">terminal</span>
           )}

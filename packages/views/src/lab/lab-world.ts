@@ -435,6 +435,8 @@ function buildRow(input: BuildInput): Row {
     case 'idle-stale':
       return agent({ ...idle(), stale: true }, ago(20 * MIN, 70 * MIN));
     case 'peer-blocked':
+      // A row that says its host refuses writes, kept as tolerant data: every peer session is writable and no view
+      // draws the fact (James, 2026-10-28), so the goldens witness this body reading exactly as a writable one.
       return peer(blocked('permission'), ago(MIN, 12 * MIN), { hostWritable: false });
     case 'terminal-idle':
       return terminal(false, '~', ago(5 * MIN, 40 * MIN));

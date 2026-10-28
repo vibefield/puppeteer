@@ -81,7 +81,7 @@ host that breaks one.
 | `tier` | host `tier` | — |
 | `profileSet` | host `profileSet` ?? the set whose persona is `profileId` ?? `native` (vf `agentProfileSet`) | host `profileSet` (the shell's) |
 | `attachable` | `terminalSessionId !== undefined` (a PTY here) | true |
-| `writable` | M41: the home desktop's policy for a pane on ANOTHER desktop typing into the run, computed once; today `attachable`'s rule (a view reads it only for a row from another desktop) | true |
+| `writable` | M41: the home desktop's policy for a pane on ANOTHER desktop typing into the run, computed once; today `attachable`'s rule. Tolerant data: no view draws it, since every peer session is writable (James, 2026-10-28) | true |
 
 ## Assembly
 

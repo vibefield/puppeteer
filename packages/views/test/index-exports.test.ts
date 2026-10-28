@@ -34,4 +34,10 @@ describe('the views package’s index', () => {
       expect([name, name in views]).toEqual([name, false]);
     }
   });
+
+  it('nor a word for who may type on a peer: every peer session is writable (James, 2026-10-28)', () => {
+    for (const name of ['remoteWriteLabel', 'remoteWriteTitle']) {
+      expect([name, name in views]).toEqual([name, false]);
+    }
+  });
 });

@@ -82,11 +82,9 @@ export function reconcileRainColumns(input: ReconcileRainColumnsInput): Map<numb
  * THE HOST IS IN THE STREAM. A terminal on another desktop has no agent to
  * name, and without this branch it fell into the `<project> terminal` text an
  * unclaimed LOCAL terminal takes — byte-identical on the canvas. The peer's
- * name comes FIRST, so the column cannot be misread; the read-only mark is a
- * HOST property and reads as one (nobody types into that peer's sessions, the
- * row's `writable`, M41). A host that does permit writes says nothing here:
- * whether this viewer gets them is decided at the attach, and a stream has no
- * room for the long form.
+ * name comes FIRST, so the column cannot be misread, and nothing follows its
+ * project: every peer session is writable, the default and universal setting
+ * (James, 2026-10-28), so the stream marks no write policy.
  */
 export function rainDataString(agent: AgentView): string {
   const usedPercent = agent.kind === 'agent' ? agent.context?.usedPercent : undefined;
@@ -99,7 +97,7 @@ export function rainDataString(agent: AgentView): string {
           usedPercent === undefined ? undefined : `CTX:${Math.round(usedPercent).toString().padStart(2, '0')}%`,
         ]
       : !agent.device.self
-        ? [agent.device.name, projectName(agent), agent.writable ? undefined : 'read only host']
+        ? [agent.device.name, projectName(agent)]
         : [projectName(agent), 'terminal'];
   return ` ${parts.filter(Boolean).join(' ')} `.replace(/[^a-zA-Z0-9\s%.]/g, ' ');
 }

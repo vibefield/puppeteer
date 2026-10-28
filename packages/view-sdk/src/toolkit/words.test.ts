@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { MonitorAgentRow, MonitorDeviceRef, MonitorSpawnDevice } from '../model.js';
 import { agentViewFixture } from '../testing/fixtures.js';
-import {
-  deviceWord,
-  detailLine,
-  hostWriteTitle,
-  hostWriteWord,
-  modelWord,
-  projectName,
-  THIS_DESKTOP,
-  waitBodyLine,
-} from './words.js';
+import * as toolkit from './index.js';
+import { deviceWord, detailLine, modelWord, projectName, THIS_DESKTOP, waitBodyLine } from './words.js';
 
 const PEER: MonitorDeviceRef = { id: 'desk-2', name: 'Laptop', os: 'linux', self: false };
 const rowDevice = (device: MonitorDeviceRef): MonitorDeviceRef => device;
@@ -52,14 +44,16 @@ describe('a row’s names', () => {
   });
 });
 
-describe('a host’s write policy', () => {
-  it('is said about the host, in both directions, from the row’s own fact (M41)', () => {
-    expect(hostWriteWord({ writable: true })).toBe('writable host');
-    expect(hostWriteWord({ writable: false })).toBe('read-only host');
-    expect(hostWriteTitle({ writable: true })).toBe(
-      'this host allows writes — whether yours arrive is decided when you attach',
-    );
-    expect(hostWriteTitle({ writable: false })).toBe('this host shares read-only — no viewer may type here');
+describe('a peer’s desktop', () => {
+  // James, 2026-10-28: "all the peer session should be writable, which is the default and universal setting, so no
+  // need to mark things like writable or read only." The row's `writable` stays as data (M41); no word says it.
+  it('is said by its name alone: no word in the toolkit says who may type on it', () => {
+    expect(Object.keys(toolkit).filter((name) => /write/i.test(name))).toEqual([]);
+    for (const writable of [true, false]) {
+      const peer = agentViewFixture({ device: PEER, status: 'idle', writable });
+      expect(deviceWord(peer.device)).toBe('Laptop');
+      expect(detailLine(peer)).toBe('Laptop · idle');
+    }
   });
 });
 

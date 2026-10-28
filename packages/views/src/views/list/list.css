@@ -168,22 +168,11 @@
   font-size: 11px;
 }
 
-/* A peer's session: the host's name where a model name would stand, and the
-   host's write policy beside it in both directions — a fact about the
-   machine, said before the attach decides what this viewer gets. */
+/* A peer's session: the host's name where a model name would stand, and
+   nothing beside it — every peer session is writable, the default and
+   universal setting (James, 2026-10-28), so no mark says who may type. */
 .mv-list .vf-monitor-list-host {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
   color: var(--text-main);
-}
-
-.mv-list .vf-monitor-list-host em {
-  color: var(--text-faint);
-  font-size: 8px;
-  font-style: normal;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* The account a run is bound to: an identity ground beside the agent's name,

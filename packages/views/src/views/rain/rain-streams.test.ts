@@ -37,11 +37,11 @@ describe('rainDataString', () => {
     expect(rainDataString(terminal({ device: PEER, writable: true }))).toBe(' studio mini vibe field ');
   });
 
-  it('says a read-only host in the stream from the row’s own policy (M41), and nothing when it permits writes', () => {
-    expect(rainDataString(terminal({ device: PEER, writable: false }))).toContain('read only host');
-    expect(rainDataString(terminal({ device: PEER, writable: true }))).not.toContain('host');
-    // `attachable` says nothing about writing.
-    expect(rainDataString(terminal({ device: PEER, writable: true, attachable: false }))).not.toContain('host');
+  it('says no write policy in the stream, whatever the row’s `writable` (James, 2026-10-28)', () => {
+    expect(rainDataString(terminal({ device: PEER, writable: false }))).toBe(' studio mini vibe field ');
+    expect(rainDataString(terminal({ device: PEER, writable: true, attachable: false }))).toBe(
+      ' studio mini vibe field ',
+    );
   });
 
   it('reads a peer’s agent like a local one, its context included (M9)', () => {

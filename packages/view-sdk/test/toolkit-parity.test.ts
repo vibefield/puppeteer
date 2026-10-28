@@ -1,11 +1,11 @@
 // THE TOOLKIT SAYS WHAT THE VIEWS SAID (MV-D11: identical wording, identical numbers).
 //
 // The toolkit ported helpers the views carried. Where the views package still
-// keeps its own copy (a project's colour, money, receding, a host's write
-// policy), this suite runs the original beside the port over the same inputs,
-// so an edit to either copy fails here instead of quietly forking what two
-// readers draw. It reads those originals by path, as a test only: the SDK itself
-// imports nothing from puppeteer (L3).
+// keeps its own copy (a project's colour, money, receding), this suite runs the
+// original beside the port over the same inputs, so an edit to either copy fails
+// here instead of quietly forking what two readers draw. It reads those
+// originals by path, as a test only: the SDK itself imports nothing from
+// puppeteer (L3).
 //
 // Where the original was a FROZEN legacy view or the legacy shim (the swarm's
 // and the timeline's words, the status ledger's wait words, the line under the
@@ -18,7 +18,6 @@ import * as originalTint from '../../views/src/colour/project-tint.js';
 import { formatUsd as originalFormatUsd } from '../../views/src/monitor/cost-format.js';
 import { hexToRgb255 as originalHexToRgb255 } from '../../views/src/monitor/palette.js';
 import * as originalRecede from '../../views/src/monitor/recede.js';
-import * as originalRemoteWrite from '../../views/src/monitor/remote-write.js';
 import type { AgentView } from '../src/model.js';
 import { agentViewFixture, type AgentViewFixturePartial } from '../src/testing/fixtures.js';
 import * as toolkit from '../src/toolkit/index.js';
@@ -273,17 +272,6 @@ describe('row words say what the shim said', () => {
       expect([name, toolkit.projectName(view)]).toEqual([name, project]);
       if (model !== null) expect([name, toolkit.modelWord(view)]).toEqual([name, model]);
       else expect(view.kind).toBe('terminal');
-    }
-  });
-
-  it('says a host’s write policy as the views say it', () => {
-    for (const writable of [true, false]) {
-      expect(toolkit.hostWriteWord({ writable })).toBe(
-        originalRemoteWrite.remoteWriteLabel({ hostWritable: writable }),
-      );
-      expect(toolkit.hostWriteTitle({ writable })).toBe(
-        originalRemoteWrite.remoteWriteTitle({ hostWritable: writable }),
-      );
     }
   });
 });

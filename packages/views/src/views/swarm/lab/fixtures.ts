@@ -271,8 +271,8 @@ export function terminalFixture(id: string, project: string, running: boolean, n
   };
 }
 
-/** A fixture row as a peer's: on another desktop (`mini`), with its host's write policy (M41). */
-function onPeer(agent: LabAgent, hostWritable: boolean): LabAgent {
+/** A fixture row as a peer's: on another desktop (`mini`), writable, as every peer session is (James, 2026-10-28). */
+function onPeer(agent: LabAgent): LabAgent {
   return {
     ...agent,
     remote: {
@@ -280,7 +280,7 @@ function onPeer(agent: LabAgent, hostWritable: boolean): LabAgent {
       deviceName: 'mini',
       remoteSessionId: agent.id,
       attachable: true,
-      hostWritable,
+      hostWritable: true,
       cwdLabel: agent.project,
     },
   };
@@ -1039,7 +1039,7 @@ export function pendingStages(nowMs: number): LabStage[] {
 
 /** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
 export function profileStages(nowMs: number): LabStage[] {
-  const peer = onPeer(terminalFixture('pr5', '~', false, nowMs), true);
+  const peer = onPeer(terminalFixture('pr5', '~', false, nowMs));
   return [
     {
       id: 'profile-default',
@@ -1082,20 +1082,21 @@ export function profileStages(nowMs: number): LabStage[] {
 
 /**
  * Part: a peer's bodies. A row from another desktop wears its host on the body, terminal or agent alike: the
- * desktop's name and the host's write policy, said in both directions (M41; Q16, James 2026-10-27).
+ * desktop's name alone (Q16, James 2026-10-27). No mark says who may type: every peer session is writable, the default
+ * and universal setting (James, 2026-10-28).
  */
 export function peerStages(nowMs: number): LabStage[] {
   return [
     {
       id: 'peer-terminal',
       title: 'A peer’s terminal',
-      note: 'The host line closes the body: the desktop’s name, then whether its host allows writes.',
-      agent: onPeer(terminalFixture('pe1', 'truffle', false, nowMs), true),
+      note: 'The host line closes the body: the desktop’s name, and nothing after it.',
+      agent: onPeer(terminalFixture('pe1', 'truffle', false, nowMs)),
     },
     {
       id: 'peer-idle',
       title: 'A peer’s agent, idle',
-      note: 'The same host line after model · effort, in the terminal’s label style, here a host that shares read-only. A screen reader hears the write policy last, as it does on a peer’s terminal.',
+      note: 'The same host line after model · effort, in the terminal’s label style. A screen reader hears the desktop’s name in the line under the name, so the accessible name adds nothing for it.',
       agent: onPeer(
         agentFixture(
           {
@@ -1109,7 +1110,6 @@ export function peerStages(nowMs: number): LabStage[] {
           },
           nowMs,
         ),
-        false,
       ),
     },
     {
@@ -1134,7 +1134,6 @@ export function peerStages(nowMs: number): LabStage[] {
           },
           nowMs,
         ),
-        true,
       ),
     },
     {
@@ -1156,7 +1155,6 @@ export function peerStages(nowMs: number): LabStage[] {
           },
           nowMs,
         ),
-        false,
       ),
     },
   ];

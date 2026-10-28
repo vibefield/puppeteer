@@ -170,7 +170,7 @@ describe('a row', () => {
     expect(row!.getAttribute('aria-label')).toBe('puppeteer, Opus 5.5, work, idle: idle');
   });
 
-  it('a peer’s row names its desktop first, its host’s write policy from the row’s own fact (M41)', async () => {
+  it('a peer’s row names its desktop first, and no write word, whatever its row’s `writable`', async () => {
     const { root } = await mount({
       agents: [
         agentViewFixture({
@@ -187,9 +187,7 @@ describe('a row', () => {
     });
     const [row] = rows(root);
     expect(row!.classList.contains('is-remote')).toBe(true);
-    expect(row!.getAttribute('aria-label')).toBe(
-      'on Laptop, project, fixture-model, team, blocked, read-only host: Laptop · Ship it?',
-    );
+    expect(row!.getAttribute('aria-label')).toBe('on Laptop, project, fixture-model, team, blocked: Laptop · Ship it?');
     // M9: a peer's row draws the facts the model carries, as a local one does.
     expect(row!.querySelector('.vf-monitor-list-context')?.textContent).toBe('10%');
   });
@@ -210,11 +208,11 @@ describe('a row', () => {
     });
     const [peer, local] = rows(root);
     const chip = peer!.querySelector('.vf-monitor-list-host');
-    expect(chip?.textContent).toBe('Laptopwritable host');
-    expect(chip?.querySelector('em')?.getAttribute('title')).toBe(
-      'this host allows writes — whether yours arrive is decided when you attach',
-    );
-    expect(peer!.getAttribute('aria-label')).toBe('on Laptop, notes, remote session, idle, writable host: ');
+    // The desktop's name alone: no mark, no hover, nothing spoken about who may type (James, 2026-10-28).
+    expect(chip?.textContent).toBe('Laptop');
+    expect(chip?.children).toHaveLength(0);
+    expect(chip?.getAttribute('title')).toBeNull();
+    expect(peer!.getAttribute('aria-label')).toBe('on Laptop, notes, remote session, idle: ');
     expect(local!.querySelector('.vf-monitor-list-terminal')?.textContent).toBe('terminal');
     expect(local!.getAttribute('aria-label')).toBe('terminal, terminal, idle: /Users/me');
     expect(local!.querySelector('.vf-monitor-list-context')?.textContent).toBe('—');
