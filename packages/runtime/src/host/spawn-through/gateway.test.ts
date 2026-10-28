@@ -98,6 +98,8 @@ describe('spawn-through gateway', () => {
       reason: 'spawn-through authentication failed',
       message: 'not started, because it could not be run as a managed session: spawn-through authentication failed',
       placed: false,
+      // The gateway's own refusals are the kit's sentence: the shim names the command before it.
+      kitSentence: true,
     });
     await expect(ask(gateway.port, `${'x'.repeat(64 * 1024 + 1)}`)).resolves.toMatchObject({
       action: 'refuse',

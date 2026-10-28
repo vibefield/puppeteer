@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { MonitorUsageFamilyValue } from '@vibefield/puppeteer-core/monitor-spi';
 import { priceUsage } from './usage-pricing.js';
@@ -27,7 +28,7 @@ describe('pinned USD pricing', () => {
     expect(result.cost).toMatchObject({
       basis: 'api-equivalent',
       source: 'catalog',
-      catalogVersion: USAGE_PRICE_SNAPSHOT.sha256,
+      catalogVersion: USAGE_PRICE_SNAPSHOT.version,
     });
   });
   it('prefers a provider estimate, including zero and cost-only reports', () => {
@@ -52,5 +53,32 @@ describe('pinned USD pricing', () => {
     expect(high.costUsd).toBeCloseTo((100 * 5 + 900 * 0.5 + 50 * 22.5) / 1_000_000);
     const { contextTokens: _, ...unknownContext } = value().pricing!;
     expect(priceUsage(value({ pricing: unknownContext })).costUsd).toBeUndefined();
+  });
+  it('prices Codex’s newer models at the vendor’s own rates, in both context tiers', () => {
+    // Standard rates per million tokens, [input, cached input, output], short (≤ 272K input tokens) then long:
+    // https://developers.openai.com/api/docs/pricing, read 2026-10-27.
+    const rates = [
+      ['gpt-6-luna', [0.1, 0.01, 0.5], [0.2, 0.02, 0.75]],
+      ['gpt-6-sol', [2, 0.2, 10], [4, 0.4, 15]],
+      ['gpt-6.1-sol', [2, 0.1, 10], [4, 0.2, 15]],
+      ['gpt-6.1-terra', [1, 0.05, 5], [2, 0.1, 7.5]],
+    ] as const;
+    const usd = ([input, cached, output]: readonly [number, number, number]) =>
+      (100 * input + 900 * cached + 50 * output) / 1_000_000;
+    for (const [modelId, short, long] of rates) {
+      for (const [contextTokens, expected] of [
+        [1000, short],
+        [300_000, long],
+      ] as const) {
+        const result = priceUsage(value({ pricing: { ...value().pricing!, modelId, contextTokens } }));
+        expect(result.costUsd, `${modelId} at ${contextTokens}`).toBeCloseTo(usd(expected), 12);
+        expect(result.cost).toMatchObject({ source: 'catalog', catalogVersion: USAGE_PRICE_SNAPSHOT.version });
+      }
+    }
+  });
+  it('versions the card by both its inputs: the models.dev snapshot and the vendor’s rows it lacks', () => {
+    const { sha256, supplement, version } = USAGE_PRICE_SNAPSHOT;
+    expect(supplement.source).toBe('https://developers.openai.com/api/docs/pricing');
+    expect(version).toBe(createHash('sha256').update(`${sha256}\n${supplement.sha256}`).digest('hex'));
   });
 });

@@ -271,6 +271,21 @@ export function terminalFixture(id: string, project: string, running: boolean, n
   };
 }
 
+/** A fixture row as a peer's: on another desktop (`mini`), with its host's write policy (M41). */
+function onPeer(agent: LabAgent, hostWritable: boolean): LabAgent {
+  return {
+    ...agent,
+    remote: {
+      deviceId: 'mini',
+      deviceName: 'mini',
+      remoteSessionId: agent.id,
+      attachable: true,
+      hostWritable,
+      cwdLabel: agent.project,
+    },
+  };
+}
+
 /** Part I: the states, one body each. */
 export function stateStages(nowMs: number): LabStage[] {
   return [
@@ -1021,17 +1036,7 @@ export function pendingStages(nowMs: number): LabStage[] {
 
 /** Part: terminals born under an Agent Profile — the profile line, its glyph from ProfileGlyph's own shapes. */
 export function profileStages(nowMs: number): LabStage[] {
-  const peer: MonitorAgent = {
-    ...terminalFixture('pr5', '~', false, nowMs),
-    remote: {
-      deviceId: 'mini',
-      deviceName: 'mini',
-      remoteSessionId: 'pr5',
-      attachable: true,
-      hostWritable: true,
-      cwdLabel: '~',
-    },
-  };
+  const peer = onPeer(terminalFixture('pr5', '~', false, nowMs), true);
   return [
     {
       id: 'profile-default',
@@ -1068,6 +1073,88 @@ export function profileStages(nowMs: number): LabStage[] {
       note: 'Before the host line, which a peer’s body always keeps.',
       agent: peer,
       profile: { label: 'Default', kind: 'native', isDefault: true },
+    },
+  ];
+}
+
+/**
+ * Part: a peer's bodies. A row from another desktop wears its host on the body, terminal or agent alike: the
+ * desktop's name and the host's write policy, said in both directions (M41; Q16, James 2026-10-27).
+ */
+export function peerStages(nowMs: number): LabStage[] {
+  return [
+    {
+      id: 'peer-terminal',
+      title: 'A peer’s terminal',
+      note: 'The host line closes the body: the desktop’s name, then whether its host allows writes.',
+      agent: onPeer(terminalFixture('pe1', 'truffle', false, nowMs), true),
+    },
+    {
+      id: 'peer-idle',
+      title: 'A peer’s agent, idle',
+      note: 'The same host line after model · effort, in the terminal’s label style, here a host that shares read-only. A screen reader hears the write policy last, as it does on a peer’s terminal.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe2',
+            project: 'truffle',
+            status: 'idle',
+            model: 'GPT-5',
+            effort: 'medium',
+            contextPercent: 25,
+            accent: 4,
+          },
+          nowMs,
+        ),
+        false,
+      ),
+    },
+    {
+      id: 'peer-working',
+      title: 'A peer’s agent, working',
+      note: 'The burn row stands clear of the host line, as it stands clear of the model line on this desktop’s bodies.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe3',
+            project: 'ghosttea',
+            status: 'working',
+            model: 'GPT-5',
+            effort: 'high',
+            branch: 'mv/mv0-pu',
+            contextPercent: 34,
+            burn: 'steady',
+            ratePerMin: 0.28,
+            activity: { kind: 'tool', line: 'Editing grid.rs' },
+            accent: 7,
+            tokens: 512_000,
+          },
+          nowMs,
+        ),
+        true,
+      ),
+    },
+    {
+      id: 'peer-blocked',
+      title: 'A peer’s agent, blocked',
+      note: 'What it waits on takes the name’s place, and the host line still closes the body.',
+      agent: onPeer(
+        agentFixture(
+          {
+            id: 'pe4',
+            project: 'rosetta',
+            status: 'blocked',
+            model: 'Sonnet 4.5',
+            effort: 'medium',
+            contextPercent: 21,
+            blocker: 'permission',
+            blockerDetail: 'git push origin main',
+            accent: 3,
+          },
+          nowMs,
+        ),
+        false,
+      ),
     },
   ];
 }

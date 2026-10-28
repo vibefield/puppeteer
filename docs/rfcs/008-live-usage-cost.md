@@ -21,9 +21,11 @@ Input includes cached input in Codex, and output includes reasoning: neither
 subset may be charged twice.
 
 Pricing uses a pinned, hashed subset of the MIT-licensed models.dev catalog and
-a small local TypeScript calculator. There is no network lookup on the usage
-path. Catalog estimates record their version; native estimates record their
-provider source. The reference catalog uses standard API rates when the service
+a small local TypeScript calculator. A model the snapshot lacks enters through a
+supplement copied from the vendor's own pricing page, which names that page and
+the date it was read. There is no network lookup on the usage path. Catalog
+estimates record their version, a hash of both inputs; native estimates record
+their provider source. The reference catalog uses standard API rates when the service
 tier is unspecified. A known non-standard tier is left unpriced. The catalog is data,
 not billing authority: unsupported service tiers or context pricing remain
 unpriced. Native provider estimates take precedence over catalog calculation.
@@ -69,6 +71,9 @@ To refresh prices, download `https://models.dev/api.json`, then run
 `node scripts/update-usage-prices.mjs /path/to/api.json`. Review the generated
 `packages/runtime/src/services/usage-prices.ts` diff, format it, and run the
 pricing tests before committing it. No runtime update silently reprices history.
+The rows models.dev lacks live in `scripts/usage-prices-supplement.json`, in its
+shape; the script merges them, and refuses one models.dev has since gained, so
+drop that row from the supplement and review models.dev's.
 
 References: https://models.dev, https://github.com/anomalyco/models.dev,
 https://code.claude.com/docs/en/monitoring-usage,

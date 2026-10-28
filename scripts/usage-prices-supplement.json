@@ -1,0 +1,81 @@
+{
+  "about": "Rows the models.dev snapshot lacks, in its shape, each copied from the vendor's own pricing page: Standard tier, USD per million tokens, cache_write the 30-minute write, the tier above 272000 the page's long context (more than 272K input tokens). scripts/update-usage-prices.mjs merges them and refuses one models.dev has since gained.",
+  "source": "https://developers.openai.com/api/docs/pricing",
+  "capturedAt": "2026-10-27",
+  "models": {
+    "openai": {
+      "gpt-6-luna": {
+        "modalities": { "output": ["text"] },
+        "cost": {
+          "input": 0.1,
+          "output": 0.5,
+          "cache_read": 0.01,
+          "cache_write": 0.125,
+          "tiers": [
+            {
+              "tier": { "type": "context", "size": 272000 },
+              "input": 0.2,
+              "output": 0.75,
+              "cache_read": 0.02,
+              "cache_write": 0.25
+            }
+          ]
+        }
+      },
+      "gpt-6-sol": {
+        "modalities": { "output": ["text"] },
+        "cost": {
+          "input": 2,
+          "output": 10,
+          "cache_read": 0.2,
+          "cache_write": 2.5,
+          "tiers": [
+            {
+              "tier": { "type": "context", "size": 272000 },
+              "input": 4,
+              "output": 15,
+              "cache_read": 0.4,
+              "cache_write": 5
+            }
+          ]
+        }
+      },
+      "gpt-6.1-sol": {
+        "modalities": { "output": ["text"] },
+        "cost": {
+          "input": 2,
+          "output": 10,
+          "cache_read": 0.1,
+          "cache_write": 2.5,
+          "tiers": [
+            {
+              "tier": { "type": "context", "size": 272000 },
+              "input": 4,
+              "output": 15,
+              "cache_read": 0.2,
+              "cache_write": 5
+            }
+          ]
+        }
+      },
+      "gpt-6.1-terra": {
+        "modalities": { "output": ["text"] },
+        "cost": {
+          "input": 1,
+          "output": 5,
+          "cache_read": 0.05,
+          "cache_write": 1.25,
+          "tiers": [
+            {
+              "tier": { "type": "context", "size": 272000 },
+              "input": 2,
+              "output": 7.5,
+              "cache_read": 0.1,
+              "cache_write": 2.5
+            }
+          ]
+        }
+      }
+    }
+  }
+}
