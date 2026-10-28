@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/vibefield/puppeteer/compare/v0.2.3...v0.3.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **views:** QA fix wave 1 — the Godview swarm rulings (Q01–Q21) and re-attach Steps 0–1, puppeteer half ([#48](https://github.com/vibefield/puppeteer/issues/48))
+
+### Features
+
+* **views:** QA fix wave 1 — the Godview swarm rulings (Q01–Q21) and re-attach Steps 0–1, puppeteer half ([#48](https://github.com/vibefield/puppeteer/issues/48)) ([e79fc53](https://github.com/vibefield/puppeteer/commit/e79fc53d1277a6fe98dbb495bd8f3e398d16515a))
+
 ## [0.2.3](https://github.com/vibefield/puppeteer/compare/v0.2.2...v0.2.3) (2026-10-26)
 
 

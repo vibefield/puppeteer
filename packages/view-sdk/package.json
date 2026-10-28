@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-view-sdk",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "description": "The monitor-view contract: the model a Godview view receives, the three commands it may call, and nothing else.",
   "license": "MIT",
