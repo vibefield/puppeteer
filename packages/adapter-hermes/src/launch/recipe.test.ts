@@ -29,7 +29,9 @@ describe('Hermes attach launch recipe', () => {
     expect(launch.env?.HERMES_TUI_GATEWAY_URL).toBe('ws://127.0.0.1:9/api/ws?token=launch-token_0');
     expect(launch.args.join(' ')).not.toContain('launch-token_0');
     expect(
-      Object.entries(launch.env ?? {}).filter(([, value]) => value.includes('launch-token_0')).map(([key]) => key),
+      Object.entries(launch.env ?? {})
+        .filter(([, value]) => value.includes('launch-token_0'))
+        .map(([key]) => key),
     ).toEqual(['HERMES_TUI_GATEWAY_URL']);
   });
 });
