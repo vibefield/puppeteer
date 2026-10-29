@@ -18,7 +18,8 @@ import { constants, accessSync, existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
-import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
+import { AgentLaunchRefusedError, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { CLAUDE_BRIEFING_CAPABILITIES, prepareClaudeBriefing } from './briefing.js';
 import { CLAUDE_HOOK_FORWARDER_SOURCE, generateHookSettings } from './settings.js';
 import { readClaudeHookSwitches, type ClaudeHookSwitches } from './hook-switches.js';
 import {
@@ -28,7 +29,7 @@ import {
   type ClaudeStatusLineConfig,
 } from '../observation/status-channel.js';
 
-export interface PrepareClaudeSessionOptions {
+export interface PrepareClaudeSessionOptions extends AgentRunBriefing {
   cwd: string;
   title?: string | undefined;
   /** Reuse a caller-chosen session UUID; otherwise one is generated. */
@@ -246,6 +247,35 @@ export function statusLineForwarderCommand(
 }
 
 export async function prepareClaudeSession(options: PrepareClaudeSessionOptions): Promise<PreparedClaudeSession> {
+  const briefing = validateAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude');
+  if (options.env?.AI_PERSONA === 'claude' || options.env?.PUPPETEER_IMPOSTER_HOME)
+    validateAgentBriefing(briefing, undefined, 'Claude imposter');
+  const briefingFlags = {
+    mcpServers: ['--mcp-config', '--strict-mcp-config'],
+    allowTools: ['--allowedTools', '--allowed-tools'],
+    instructions: [
+      '--system-prompt',
+      '--system-prompt-file',
+      '--append-system-prompt',
+      '--append-system-prompt-file',
+      '--system-prompt-snapshot',
+    ],
+  } as const;
+  for (const field of ['mcpServers', 'allowTools', 'instructions'] as const) {
+    if (
+      briefing[field] !== undefined &&
+      options.carriedArgs?.some(
+        (argument) =>
+          argument === '--restricted' ||
+          briefingFlags[field].some((flag) => argument === flag || argument.startsWith(`${flag}=`)),
+      )
+    ) {
+      throw new AgentLaunchRefusedError(
+        'CONFLICTING_LAUNCH_FIELD',
+        `Launch field ${field} conflicts with native Claude arguments.`,
+      );
+    }
+  }
   if (options.resume && options.resumeInvocation) {
     throw new Error('Claude preparation accepts resume or resumeInvocation, not both');
   }
@@ -276,149 +306,169 @@ export async function prepareClaudeSession(options: PrepareClaudeSessionOptions)
   // destroying state we didn't create).
   const ownsDir = options.settingsDir === undefined;
   const dir = options.settingsDir ?? (await mkdtemp(join(tmpdir(), 'puppeteer-claude-')));
-  const settingsPath = join(dir, `${sessionId}.settings.json`);
-  const hookForwarderPath = join(dir, `${sessionId}.hooks.mjs`);
-  const statusLineForwarderPath =
-    options.statusLineEndpoint || options.subagentStatusLineEndpoint
-      ? join(dir, `${sessionId}.statusline.mjs`)
+  const briefingFiles: string[] = [];
+  try {
+    const settingsPath = join(dir, `${sessionId}.settings.json`);
+    const hookForwarderPath = join(dir, `${sessionId}.hooks.mjs`);
+    const statusLineForwarderPath =
+      options.statusLineEndpoint || options.subagentStatusLineEndpoint
+        ? join(dir, `${sessionId}.statusline.mjs`)
+        : undefined;
+    const runningUnderElectron = process.versions.electron !== undefined;
+    const resolvedNode = runningUnderElectron ? resolveNodeBinary() : undefined;
+    const electronAsNodeFallback = runningUnderElectron && resolvedNode === undefined;
+    const nodeRunner = resolvedNode ?? process.execPath;
+    if (options.resume !== undefined) {
+      // `claude --resume <id>` for an id with no transcript exits at once with
+      // "No conversation found", which a host can only read as a crash. A
+      // provisional identity (a picker that was never answered, a session that
+      // never took a turn) is the usual way a persisted continuation gets here.
+      // Refuse before launch so the caller can fall back instead.
+      const root = options.env?.PUPPETEER_IMPOSTER_HOME ?? claudeConfigDir ?? join(homedir(), '.claude');
+      if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
+    }
+    const discoveredStatusChannels =
+      statusLineForwarderPath && !options.readsNoSettingsFiles
+        ? await resolveClaudeStatusChannels(options.cwd, personLayers)
+        : {};
+    const existingStatusLine = options.statusLineEndpoint
+      ? options.existingStatusLine === undefined
+        ? discoveredStatusChannels.statusLine
+        : (options.existingStatusLine ?? undefined)
       : undefined;
-  const runningUnderElectron = process.versions.electron !== undefined;
-  const resolvedNode = runningUnderElectron ? resolveNodeBinary() : undefined;
-  const electronAsNodeFallback = runningUnderElectron && resolvedNode === undefined;
-  const nodeRunner = resolvedNode ?? process.execPath;
-  if (options.resume !== undefined) {
-    // `claude --resume <id>` for an id with no transcript exits at once with
-    // "No conversation found", which a host can only read as a crash. A
-    // provisional identity (a picker that was never answered, a session that
-    // never took a turn) is the usual way a persisted continuation gets here.
-    // Refuse before launch so the caller can fall back instead.
-    const root = options.env?.PUPPETEER_IMPOSTER_HOME ?? claudeConfigDir ?? join(homedir(), '.claude');
-    if (!locateClaudeTranscript(sessionId, root)) throw new ClaudeConversationMissingError(sessionId, root);
-  }
-  const discoveredStatusChannels =
-    statusLineForwarderPath && !options.readsNoSettingsFiles
-      ? await resolveClaudeStatusChannels(options.cwd, personLayers)
-      : {};
-  const existingStatusLine = options.statusLineEndpoint
-    ? options.existingStatusLine === undefined
-      ? discoveredStatusChannels.statusLine
-      : (options.existingStatusLine ?? undefined)
-    : undefined;
-  const existingSubagentStatusLine = options.subagentStatusLineEndpoint
-    ? options.existingSubagentStatusLine === undefined
-      ? discoveredStatusChannels.subagentStatusLine
-      : (options.existingSubagentStatusLine ?? undefined)
-    : undefined;
-  const statusLine =
-    statusLineForwarderPath && options.statusLineEndpoint
-      ? {
-          type: 'command' as const,
-          command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath),
-          padding: existingStatusLine?.padding,
-          refreshInterval: existingStatusLine?.refreshInterval,
-          hideVimModeIndicator: existingStatusLine?.hideVimModeIndicator,
-        }
+    const existingSubagentStatusLine = options.subagentStatusLineEndpoint
+      ? options.existingSubagentStatusLine === undefined
+        ? discoveredStatusChannels.subagentStatusLine
+        : (options.existingSubagentStatusLine ?? undefined)
       : undefined;
-  const subagentStatusLine =
-    statusLineForwarderPath && options.subagentStatusLineEndpoint
-      ? {
-          type: 'command' as const,
-          command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath, process.platform, 'subagent'),
-          padding: existingSubagentStatusLine?.padding,
-          refreshInterval: existingSubagentStatusLine?.refreshInterval,
-          hideVimModeIndicator: existingSubagentStatusLine?.hideVimModeIndicator,
-        }
-      : undefined;
-  const settings = {
-    ...generateHookSettings({
-      endpoint: options.endpoint,
-      tokenEnvVar: options.tokenEnvVar,
-      commandForwarderPath: hookForwarderPath,
-      commandExecutable: nodeRunner,
-      ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
-      statusLine,
-      subagentStatusLine,
-    }),
-    // A person's allow-list would block the managed HTTP hooks, or strip their bearer (probed
-    // 2.1.283 and 2.1.308: F09, F10). These settings rank above the person's layers, so each list is restated
-    // with the bridge's entry added (F11): every HTTP hook of theirs is allowed and interpolated as before.
-    ...(hookSwitches.allowedHttpHookUrls
-      ? { allowedHttpHookUrls: [...hookSwitches.allowedHttpHookUrls, `${new URL(options.endpoint).origin}/*`] }
-      : {}),
-    ...(hookSwitches.httpHookAllowedEnvVars
-      ? { httpHookAllowedEnvVars: [...hookSwitches.httpHookAllowedEnvVars, options.tokenEnvVar] }
-      : {}),
-  };
-  await writeFile(hookForwarderPath, CLAUDE_HOOK_FORWARDER_SOURCE, 'utf8');
-  if (statusLineForwarderPath) {
-    await writeFile(statusLineForwarderPath, CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE, 'utf8');
+    const statusLine =
+      statusLineForwarderPath && options.statusLineEndpoint
+        ? {
+            type: 'command' as const,
+            command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath),
+            padding: existingStatusLine?.padding,
+            refreshInterval: existingStatusLine?.refreshInterval,
+            hideVimModeIndicator: existingStatusLine?.hideVimModeIndicator,
+          }
+        : undefined;
+    const subagentStatusLine =
+      statusLineForwarderPath && options.subagentStatusLineEndpoint
+        ? {
+            type: 'command' as const,
+            command: statusLineForwarderCommand(nodeRunner, statusLineForwarderPath, process.platform, 'subagent'),
+            padding: existingSubagentStatusLine?.padding,
+            refreshInterval: existingSubagentStatusLine?.refreshInterval,
+            hideVimModeIndicator: existingSubagentStatusLine?.hideVimModeIndicator,
+          }
+        : undefined;
+    const settings = {
+      ...generateHookSettings({
+        endpoint: options.endpoint,
+        tokenEnvVar: options.tokenEnvVar,
+        commandForwarderPath: hookForwarderPath,
+        commandExecutable: nodeRunner,
+        ...(options.fileChangeMatcher !== undefined ? { matchers: { FileChanged: options.fileChangeMatcher } } : {}),
+        statusLine,
+        subagentStatusLine,
+      }),
+      // A person's allow-list would block the managed HTTP hooks, or strip their bearer (probed
+      // 2.1.283 and 2.1.308: F09, F10). These settings rank above the person's layers, so each list is restated
+      // with the bridge's entry added (F11): every HTTP hook of theirs is allowed and interpolated as before.
+      ...(hookSwitches.allowedHttpHookUrls
+        ? { allowedHttpHookUrls: [...hookSwitches.allowedHttpHookUrls, `${new URL(options.endpoint).origin}/*`] }
+        : {}),
+      ...(hookSwitches.httpHookAllowedEnvVars
+        ? { httpHookAllowedEnvVars: [...hookSwitches.httpHookAllowedEnvVars, options.tokenEnvVar] }
+        : {}),
+    };
+    await writeFile(hookForwarderPath, CLAUDE_HOOK_FORWARDER_SOURCE, 'utf8');
+    if (statusLineForwarderPath) {
+      await writeFile(statusLineForwarderPath, CLAUDE_STATUS_CHANNEL_FORWARDER_SOURCE, 'utf8');
+    }
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+    const preparedBriefing = await prepareClaudeBriefing(briefing, dir, briefingFiles);
+
+    // --resume and --session-id are mutually exclusive: resume continues an
+    // existing id, so passing --session-id would fight it. --settings composes
+    // with both (the hook bridge attaches to resumed sessions too — probed §6).
+    const args = options.resumeInvocation
+      ? [...options.resumeInvocation]
+      : options.resume
+        ? ['--resume', sessionId]
+        : ['--session-id', sessionId];
+    if (options.title !== undefined) args.push('--name', options.title);
+    if (options.model !== undefined) args.push('--model', options.model);
+    if (options.effort !== undefined) args.push('--effort', options.effort);
+    if (options.settingSources !== undefined) {
+      args.push('--setting-sources', options.settingSources.join(','));
+    }
+    args.push('--settings', settingsPath);
+    if (options.permissionMode !== null) args.push('--permission-mode', options.permissionMode ?? 'default');
+    args.push(...(options.carriedArgs ?? []), ...preparedBriefing.args);
+    if (options.prompt !== undefined && options.prompt.length > 0) args.push('--', ...options.prompt);
+
+    const executable = options.executable ?? 'claude';
+    const isScript = SCRIPT_EXECUTABLE.test(executable);
+    const command = isScript ? nodeRunner : executable;
+
+    return {
+      sessionId,
+      command,
+      args: isScript ? [executable, ...args] : args,
+      cwd: options.cwd,
+      env: {
+        ...(options.env ?? {}),
+        ...preparedBriefing.env,
+        [options.tokenEnvVar]: options.token,
+        ...(options.otelLogsEndpoint
+          ? {
+              CLAUDE_CODE_ENABLE_TELEMETRY: '1',
+              OTEL_LOGS_EXPORTER: 'otlp',
+              OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+              OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: options.otelLogsEndpoint,
+              OTEL_EXPORTER_OTLP_LOGS_HEADERS: `Authorization=Bearer%20${encodeURIComponent(options.token)}`,
+              OTEL_LOGS_EXPORT_INTERVAL: '1000',
+            }
+          : {}),
+        ...(claudeConfigDir ? { CLAUDE_CONFIG_DIR: claudeConfigDir } : {}),
+        ...(electronAsNodeFallback ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
+        ...(options.statusLineEndpoint
+          ? {
+              PUPPETEER_STATUSLINE_ENDPOINT: options.statusLineEndpoint,
+              PUPPETEER_STATUSLINE_DELEGATE: existingStatusLine?.command ?? '',
+            }
+          : {}),
+        ...(options.subagentStatusLineEndpoint
+          ? {
+              PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT: options.subagentStatusLineEndpoint,
+              PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE: existingSubagentStatusLine?.command ?? '',
+            }
+          : {}),
+        ...(statusLineForwarderPath ? { PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
+      },
+      settingsPath,
+      hookForwarderPath,
+      statusLineForwarderPath,
+      filesToCleanup: ownsDir
+        ? [
+            settingsPath,
+            hookForwarderPath,
+            ...(statusLineForwarderPath ? [statusLineForwarderPath] : []),
+            ...briefingFiles,
+            dir,
+          ]
+        : [
+            settingsPath,
+            hookForwarderPath,
+            ...(statusLineForwarderPath ? [statusLineForwarderPath] : []),
+            ...briefingFiles,
+          ],
+    };
+  } catch (error) {
+    for (const path of ownsDir ? [dir] : briefingFiles)
+      await rm(path, { recursive: true, force: true }).catch(() => undefined);
+    throw error;
   }
-  await writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-
-  // --resume and --session-id are mutually exclusive: resume continues an
-  // existing id, so passing --session-id would fight it. --settings composes
-  // with both (the hook bridge attaches to resumed sessions too — probed §6).
-  const args = options.resumeInvocation
-    ? [...options.resumeInvocation]
-    : options.resume
-      ? ['--resume', sessionId]
-      : ['--session-id', sessionId];
-  if (options.title !== undefined) args.push('--name', options.title);
-  if (options.model !== undefined) args.push('--model', options.model);
-  if (options.effort !== undefined) args.push('--effort', options.effort);
-  if (options.settingSources !== undefined) {
-    args.push('--setting-sources', options.settingSources.join(','));
-  }
-  args.push('--settings', settingsPath);
-  if (options.permissionMode !== null) args.push('--permission-mode', options.permissionMode ?? 'default');
-  args.push(...(options.carriedArgs ?? []));
-  if (options.prompt !== undefined && options.prompt.length > 0) args.push('--', ...options.prompt);
-
-  const executable = options.executable ?? 'claude';
-  const isScript = SCRIPT_EXECUTABLE.test(executable);
-  const command = isScript ? nodeRunner : executable;
-
-  return {
-    sessionId,
-    command,
-    args: isScript ? [executable, ...args] : args,
-    cwd: options.cwd,
-    env: {
-      ...(options.env ?? {}),
-      [options.tokenEnvVar]: options.token,
-      ...(options.otelLogsEndpoint
-        ? {
-            CLAUDE_CODE_ENABLE_TELEMETRY: '1',
-            OTEL_LOGS_EXPORTER: 'otlp',
-            OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
-            OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: options.otelLogsEndpoint,
-            OTEL_EXPORTER_OTLP_LOGS_HEADERS: `Authorization=Bearer%20${encodeURIComponent(options.token)}`,
-            OTEL_LOGS_EXPORT_INTERVAL: '1000',
-          }
-        : {}),
-      ...(claudeConfigDir ? { CLAUDE_CONFIG_DIR: claudeConfigDir } : {}),
-      ...(electronAsNodeFallback ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
-      ...(options.statusLineEndpoint
-        ? {
-            PUPPETEER_STATUSLINE_ENDPOINT: options.statusLineEndpoint,
-            PUPPETEER_STATUSLINE_DELEGATE: existingStatusLine?.command ?? '',
-          }
-        : {}),
-      ...(options.subagentStatusLineEndpoint
-        ? {
-            PUPPETEER_SUBAGENT_STATUSLINE_ENDPOINT: options.subagentStatusLineEndpoint,
-            PUPPETEER_SUBAGENT_STATUSLINE_DELEGATE: existingSubagentStatusLine?.command ?? '',
-          }
-        : {}),
-      ...(statusLineForwarderPath ? { PUPPETEER_STATUSLINE_TOKEN_ENV_VAR: options.tokenEnvVar } : {}),
-    },
-    settingsPath,
-    hookForwarderPath,
-    statusLineForwarderPath,
-    filesToCleanup: ownsDir
-      ? [settingsPath, hookForwarderPath, ...(statusLineForwarderPath ? [statusLineForwarderPath] : []), dir]
-      : [settingsPath, hookForwarderPath, ...(statusLineForwarderPath ? [statusLineForwarderPath] : [])],
-  };
 }
 
 /** Remove the session's generated files; tolerant of already-gone paths. */

@@ -16,6 +16,8 @@ import {
   AgentNativeInvocationPassthroughKindSchema,
   AgentNativeInvocationSchema,
   AgentProviderDescriptorSchema,
+  pickAgentBriefing,
+  validateAgentBriefing,
   DistributionProviderSchema,
   NATIVE_PROFILE_SET_ID,
   ProfileProviderSchema,
@@ -417,6 +419,7 @@ function cloneLaunch(launch: TerminalSpec): TerminalSpec {
 function cloneLaunchProvider(provider: AgentLaunchProvider): AgentLaunchProvider {
   return {
     ...provider,
+    ...(provider.briefing ? { briefing: { ...provider.briefing } } : {}),
     ...(provider.historyKinds ? { historyKinds: [...provider.historyKinds] } : {}),
     ...(provider.nativeInvocation
       ? {
@@ -432,7 +435,7 @@ function cloneLaunchProvider(provider: AgentLaunchProvider): AgentLaunchProvider
 }
 
 function cloneProviderDescriptor(provider: AgentProviderDescriptor): AgentProviderDescriptor {
-  return { ...provider };
+  return { ...provider, ...(provider.briefing ? { briefing: { ...provider.briefing } } : {}) };
 }
 
 function cloneDistributionProvider(provider: DistributionProvider): DistributionProvider {
@@ -587,7 +590,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const providerCatalog = [...providers.values()].map((provider) => provider.descriptor);
   const launchProviders = [...providers.values()].flatMap((provider): AgentLaunchProvider[] => {
     if (!provider.launch) return [];
-    const descriptor = AgentLaunchProviderSchema.parse(provider.launch.provider);
+    // The agent descriptor is the authority for briefing support, including in the launch inventory.
+    const { briefing: _launchBriefing, ...launchDescriptor } = provider.launch.provider;
+    const descriptor = AgentLaunchProviderSchema.parse({
+      ...launchDescriptor,
+      ...(provider.descriptor.briefing ? { briefing: provider.descriptor.briefing } : {}),
+    });
     if (descriptor.id !== provider.descriptor.id || descriptor.label !== provider.descriptor.label) {
       throw new Error(
         `launch provider ${JSON.stringify({ id: descriptor.id, label: descriptor.label })} does not match agent provider ${JSON.stringify(provider.descriptor)}`,
@@ -1063,7 +1071,13 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     run: ManagedRun,
   ): void {
     // a host's launch values never reach what the host persists
-    const { environment: _values, ...captured } = providerOptions;
+    const {
+      environment: _values,
+      mcpServers: _servers,
+      allowTools: _tools,
+      instructions: _instructions,
+      ...captured
+    } = providerOptions;
     run.continuationState = provider.launch?.continuation?.capture(captured);
     // Validate before a provider allocates process/socket resources. The final
     // continuation is rebuilt with authoritative native identity afterward.
@@ -1543,6 +1557,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ...(request.title === undefined ? {} : { title: request.title }),
       ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
       ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
+      ...pickAgentBriefing(request),
       // Two requests that differ only by account are different runs.
       ...(request.profile === undefined ? {} : { profile: request.profile }),
       ...(request.profileSet === undefined ? {} : { profileSet: request.profileSet }),
@@ -1630,11 +1645,28 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   function beginCreation<T extends CreateAgentSessionResult | PrepareAgentSessionResult>(
     operation: RuntimeCreationOperation,
     request: CreateAgentSessionOptions,
-    execute: (run: ManagedRun) => Promise<T>,
+    execute: (run: ManagedRun, request: CreateAgentSessionOptions) => Promise<T>,
   ): Promise<T> {
+    let launchFailure: ReturnType<typeof providerError> | undefined;
+    const original = request;
+    try {
+      const provider = providers.get(request.agent);
+      // Snapshot the briefing synchronously: a caller cannot change it while allocation, model discovery or
+      // workspace acquisition is pending, nor can an adapter mutate the caller's server/environment records.
+      const briefing = provider
+        ? validateAgentBriefing(request, provider.descriptor.briefing, provider.descriptor.label)
+        : {};
+      request = { ...request, ...briefing };
+      if (defaultedSpawns.has(original)) defaultedSpawns.add(request);
+      if (restoredResumes.has(original)) restoredResumes.add(request);
+    } catch (error) {
+      launchFailure = providerError(error, request.agent, 'Invalid per-run briefing.');
+    }
     // Idempotency tracks only requests with creationRequestId. Shutdown must
     // also wait for anonymous requests, including workspace/provider awaits.
-    const promise = Promise.resolve().then(() => executeCreation(operation, request, execute));
+    const promise = Promise.resolve().then(() =>
+      executeCreation(operation, request, (run) => execute(run, request), launchFailure),
+    );
     pendingCreations.add(promise);
     const clear = () => pendingCreations.delete(promise);
     promise.then(clear, clear);
@@ -1645,6 +1677,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     operation: RuntimeCreationOperation,
     request: CreateAgentSessionOptions,
     execute: (run: ManagedRun) => Promise<T>,
+    launchFailure?: ReturnType<typeof providerError>,
   ): Promise<T> {
     const accepted = allocateRun(request, operation);
     const proposedRun = accepted.run;
@@ -1659,6 +1692,20 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         await markRunTerminal(proposedRun, { kind: 'failed', code: accepted.validationError!.code });
         await recordRunAllocated(proposedRun, 'partial');
         await recordRunStartFailure(proposedRun, 'validation', accepted.validationError!.code);
+        return failure;
+      })();
+    }
+
+    if (launchFailure) {
+      const failure = {
+        ...operationFailure(proposedRun, launchFailure.code, launchFailure.message),
+        error: launchFailure,
+      } as T;
+      proposedRun.result = failure;
+      return (async () => {
+        await markRunTerminal(proposedRun, { kind: 'failed', code: launchFailure.code });
+        await recordRunAllocated(proposedRun, 'partial');
+        await recordRunStartFailure(proposedRun, 'validation', launchFailure.code);
         return failure;
       })();
     }
@@ -2621,6 +2668,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         // AGENT_PROFILE_NOT_FOUND when the id is unknown or foreign.
         profile: request.profile,
         ingress: request.ingress,
+        ...pickAgentBriefing(request),
         // Discovered again and validated in createSession, in the account and
         // workspace the resume resolves to, as a launch is.
         ...(request.modelSelection === undefined ? {} : { modelSelection: request.modelSelection }),
@@ -3167,7 +3215,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     createSession(request: CreateAgentSessionOptions): Promise<CreateAgentSessionResult> {
       if (disposed) throw new Error('agent runtime is disposed');
-      return beginCreation('create', request, async (run) => {
+      return beginCreation('create', request, async (run, request) => {
         run.status = 'preparing';
         run.monitor?.updateRun('preparing', { alive: true });
         const provider = providers.get(request.agent);
@@ -3210,6 +3258,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           title: request.title,
           host: options.host,
           agentOptions: request.agentOptions,
+          ...pickAgentBriefing(request),
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
           ...(environment === undefined ? {} : { environment }),
@@ -3304,7 +3353,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     prepareSession(request: CreateAgentSessionOptions): Promise<PrepareAgentSessionResult> {
       if (disposed) throw new Error('agent runtime is disposed');
-      return beginCreation('prepare', request, async (run) => {
+      return beginCreation('prepare', request, async (run, request) => {
         run.status = 'preparing';
         run.monitor?.updateRun('preparing', { alive: true });
         const provider = providers.get(request.agent);
@@ -3355,6 +3404,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           title: request.title,
           host: options.host,
           agentOptions: request.agentOptions,
+          ...pickAgentBriefing(request),
           ...(profile === undefined ? {} : { profile }),
           ...(request.ingress === undefined ? {} : { ingress: request.ingress }),
         };

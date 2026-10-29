@@ -38,6 +38,8 @@
  * has no way to mark it yet (findings C8, Known gaps).
  */
 
+import type { AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { codexBriefingParams } from '../launch/briefing.js';
 import { AppServerError, AppServerRequestTimeoutError, type AppServerClient } from '../transport/app-server-client.js';
 
 /** Which history calls this connection's app-server accepts. */
@@ -53,7 +55,8 @@ export interface CodexThreadHistoryRead {
 }
 
 /** The model and effort a resume starts at, in place of the thread's own. */
-export interface CodexResumeOverrides {
+export interface CodexResumeOverrides extends AgentRunBriefing {
+  readonly cwd?: string | undefined;
   readonly model?: string | undefined;
   readonly effort?: string | undefined;
 }
@@ -136,8 +139,9 @@ export class CodexThreadHistory {
     overrides?: CodexResumeOverrides | undefined,
   ): Promise<Record<string, unknown> | undefined> {
     const selection = {
+      ...(overrides?.cwd === undefined ? {} : { cwd: overrides.cwd }),
       ...(overrides?.model ? { model: overrides.model } : {}),
-      ...(overrides?.effort ? { config: { model_reasoning_effort: overrides.effort } } : {}),
+      ...codexBriefingParams(overrides ?? {}, overrides?.effort),
     };
     if (this.current === 'paginated') {
       try {

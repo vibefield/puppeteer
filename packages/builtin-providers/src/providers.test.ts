@@ -148,7 +148,9 @@ const adapters = vi.hoisted(() => {
   };
 });
 
-vi.mock('@vibefield/puppeteer-adapter-acp', () => ({
+vi.mock('@vibefield/puppeteer-adapter-acp', async (importOriginal) => ({
+  ACP_BRIEFING_CAPABILITIES: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-acp')>())
+    .ACP_BRIEFING_CAPABILITIES,
   createAcpModelService: () => ({
     provider: { id: 'acp', label: 'Acp', discovery: 'session' },
     discover: vi.fn(),
@@ -175,6 +177,8 @@ vi.mock('@vibefield/puppeteer-adapter-antigravity', () => ({
 }));
 
 vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
+  CLAUDE_BRIEFING_CAPABILITIES: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-claude')>())
+    .CLAUDE_BRIEFING_CAPABILITIES,
   createClaudeModelService: () => ({
     provider: { id: 'claude', label: 'Claude', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -198,7 +202,9 @@ vi.mock('@vibefield/puppeteer-adapter-claude', async (importOriginal) => ({
   restoreClaudeContinuationState: adapters.restoreClaudeContinuationState,
 }));
 
-vi.mock('@vibefield/puppeteer-adapter-codex', () => ({
+vi.mock('@vibefield/puppeteer-adapter-codex', async (importOriginal) => ({
+  CODEX_BRIEFING_CAPABILITIES: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-codex')>())
+    .CODEX_BRIEFING_CAPABILITIES,
   createCodexModelService: () => ({
     provider: { id: 'codex', label: 'Codex', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -232,7 +238,9 @@ vi.mock('@vibefield/puppeteer-adapter-copilot', () => ({
   restoreCopilotContinuationState: adapters.restoreCopilotContinuationState,
 }));
 
-vi.mock('@vibefield/puppeteer-adapter-grok', () => ({
+vi.mock('@vibefield/puppeteer-adapter-grok', async (importOriginal) => ({
+  GROK_BRIEFING_CAPABILITIES: (await importOriginal<typeof import('@vibefield/puppeteer-adapter-grok')>())
+    .GROK_BRIEFING_CAPABILITIES,
   createGrokModelService: () => ({
     provider: { id: 'grok', label: 'Grok', discovery: 'prelaunch' },
     discover: vi.fn(),
@@ -457,6 +465,44 @@ describe('createBuiltinProviders launch options', () => {
     adapters.preparePiTuiSession.mockResolvedValue(fakePreparation('pi'));
   });
 
+  it.each(['claude', 'codex', 'acp', 'grok'] as const)(
+    'forwards typed MCP servers through %s without hiding them in agentOptions',
+    async (id) => {
+      const provider = createBuiltinProviders({ acpConnector: (() => {}) as never }).find(
+        (candidate) => candidate.descriptor.id === id,
+      )!;
+      const mcpServers = { field: { command: 'door', env: { TOKEN: 'secret' } } };
+      await provider.createSession({ cwd: '/work', host, mcpServers });
+      const create = {
+        claude: adapters.createClaudeSession,
+        codex: adapters.createCodexTuiSession,
+        acp: adapters.createAcpSession,
+        grok: adapters.createGrokBackend.mock.results.at(-1)?.value.createSession,
+      }[id];
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+      expect(provider.descriptor.briefing?.mcpServers).toBe(true);
+      if (provider.prepareSession) {
+        await provider.prepareSession({ cwd: '/work', host, mcpServers });
+        const prepare = {
+          claude: adapters.prepareClaudeTuiSession,
+          codex: adapters.prepareCodexTuiSession,
+          grok: adapters.createGrokBackend.mock.results.at(-1)?.value.prepareSession,
+        }[id as 'claude' | 'codex' | 'grok'];
+        expect(prepare).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+      }
+    },
+  );
+
+  it('refuses unsupported briefing fields even for direct builtin callers', async () => {
+    for (const provider of createBuiltinProviders()) {
+      if (provider.descriptor.briefing?.instructions) continue;
+      await expect(provider.createSession({ cwd: '/work', host, instructions: 'private role' })).rejects.toMatchObject({
+        code: 'UNSUPPORTED_LAUNCH_FIELD',
+        message: expect.stringContaining('instructions'),
+      });
+    }
+  });
+
   it('exposes distribution and profile capabilities on every executable provider', () => {
     for (const provider of createBuiltinProviders()) {
       if (provider.descriptor.id === 'acp') {
@@ -666,6 +712,9 @@ describe('createBuiltinProviders launch options', () => {
       model: true,
       effort: true,
       settingSources: true,
+      mcpServers: false,
+      allowTools: false,
+      instructions: false,
     });
     expect(adapters.createClaudeSession).toHaveBeenCalledWith(
       expect.objectContaining({

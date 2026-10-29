@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -682,3 +691,78 @@ describe('prepareClaudeSession', () => {
     statusLineTestTimeout,
   );
 });
+
+describe('Claude per-run briefing', () => {
+  it('writes private launch files, expands env only in the child, and cleans everything it owns', async () => {
+    const prepared = await prepareClaudeSession({
+      ...BASE,
+      mcpServers: {
+        field: { command: '/opt/door', args: ['a b'], env: { TOKEN: 'run-secret', LITERAL: '${DO_NOT_EXPAND}' } },
+      },
+      allowTools: ['field/read'],
+      instructions: 'role briefing',
+    });
+    const configPath = prepared.args[prepared.args.indexOf('--mcp-config') + 1]!;
+    const instructionsPath = prepared.args[prepared.args.indexOf('--append-system-prompt-file') + 1]!;
+    const configText = readFileSync(configPath, 'utf8');
+    const config = JSON.parse(configText);
+    expect(configText).not.toContain('run-secret');
+    expect(configText).not.toContain('DO_NOT_EXPAND');
+    expect(prepared.args).not.toContain('--strict-mcp-config');
+    expect(prepared.args).toContain('mcp__field__read');
+    expect(
+      prepared.args.slice(
+        prepared.args.indexOf('--system-prompt-snapshot'),
+        prepared.args.indexOf('--system-prompt-snapshot') + 2,
+      ),
+    ).toEqual(['--system-prompt-snapshot', 'off']);
+    const key = config.mcpServers.field.env.TOKEN.slice(2, -1);
+    expect(prepared.env[key]).toBe('run-secret');
+    expect(readFileSync(instructionsPath, 'utf8')).toBe('role briefing');
+    if (process.platform !== 'win32')
+      for (const path of [configPath, instructionsPath]) expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(prepared.args.join(' ')).not.toContain('run-secret');
+    await cleanupClaudeSession(prepared);
+    expect(existsSync(configPath)).toBe(false);
+    expect(existsSync(instructionsPath)).toBe(false);
+  });
+
+  it('rebriefs a resumed conversation using fresh instructions and disables its saved prompt snapshot', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'claude-brief-resume-'));
+    mkdirSync(join(root, 'projects', 'work'), { recursive: true });
+    writeFileSync(join(root, 'projects', 'work', 'old-session.jsonl'), '');
+    try {
+      const prepared = await prepareClaudeSession({
+        ...BASE,
+        configDir: root,
+        resume: 'old-session',
+        instructions: 'new role',
+      });
+      expect(prepared.args).toContain('--resume');
+      expect(prepared.args).not.toContain('--session-id');
+      expect(prepared.args).toContain('--system-prompt-snapshot');
+      expect(readFileSync(prepared.args[prepared.args.indexOf('--append-system-prompt-file') + 1]!, 'utf8')).toBe(
+        'new role',
+      );
+      await cleanupClaudeSession(prepared);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses fields the imposter would silently ignore', async () => {
+    await expect(
+      prepareClaudeSession({ ...BASE, env: { AI_PERSONA: 'claude' }, instructions: 'role' }),
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_LAUNCH_FIELD' });
+  });
+});
+
+it.each(['--append-system-prompt=old', '--system-prompt-snapshot=on', '--restricted'])(
+  'refuses briefing instructions that conflict with carried native flag %s',
+  async (flag) => {
+    await expect(prepareClaudeSession({ ...BASE, instructions: 'role', carriedArgs: [flag] })).rejects.toMatchObject({
+      code: 'CONFLICTING_LAUNCH_FIELD',
+      message: expect.stringContaining('instructions'),
+    });
+  },
+);

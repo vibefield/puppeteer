@@ -1,3 +1,4 @@
+import * as detection from './detection.js';
 /**
  * Full-loop driver test: the test acts as Claude Code. The fake spawn port
  * captures the PreparedClaudeSession exactly as the pty-host would receive
@@ -2294,3 +2295,52 @@ describe('stable ingress: the bridge a host can pin, learn, and rebind (AR-4 / P
     }
   });
 });
+
+it.each([false, true])(
+  'carries briefing through direct createSession and cleans files even when spawn fails (failure=%s)',
+  async (failure) => {
+    const preflight = vi.spyOn(detection, 'preflightClaudeLaunch').mockResolvedValue({
+      executable: 'claude',
+      flags: {
+        sessionId: true,
+        settings: true,
+        settingSources: true,
+        name: true,
+        permissionMode: true,
+        resume: true,
+        model: true,
+        effort: true,
+      },
+      warnings: [],
+    });
+    let launch: PreparedClaudeSession | undefined;
+    try {
+      const creating = createClaudeSession({
+        cwd: '/tmp',
+        mcpServers: { field: { command: 'door', env: { TOKEN: 'secret' } } },
+        allowTools: ['field/*'],
+        instructions: 'role briefing',
+        ports: {
+          async spawn(prepared) {
+            launch = prepared;
+            if (failure) throw new Error('spawn failed');
+            return { runtimeSessionId: 'briefed' };
+          },
+          async automate() {
+            return { accepted: true };
+          },
+        },
+      });
+      if (failure) await expect(creating).rejects.toThrow('spawn failed');
+      else await (await creating).dispose();
+      expect(preflight).toHaveBeenCalledWith(
+        expect.objectContaining({ mcpServers: true, allowTools: true, instructions: true }),
+      );
+      expect(launch!.args).toContain('--mcp-config');
+      expect(launch!.args).toContain('--append-system-prompt-file');
+      for (const path of launch!.filesToCleanup) expect(existsSync(path)).toBe(false);
+    } finally {
+      preflight.mockRestore();
+    }
+  },
+);

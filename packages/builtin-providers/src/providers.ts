@@ -1,3 +1,4 @@
+import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import type {
@@ -8,7 +9,12 @@ import type {
   ProfileService,
 } from '@vibefield/puppeteer-core';
 import type { AgentProvider } from '@vibefield/puppeteer-runtime';
-import { createAcpModelService, createAcpSession, type AcpConnector } from '@vibefield/puppeteer-adapter-acp';
+import {
+  ACP_BRIEFING_CAPABILITIES,
+  createAcpModelService,
+  createAcpSession,
+  type AcpConnector,
+} from '@vibefield/puppeteer-adapter-acp';
 import {
   captureAntigravityContinuationState,
   createAntigravityAccountUsageService,
@@ -24,6 +30,7 @@ import {
   type CreateAntigravityTuiSessionOptions,
 } from '@vibefield/puppeteer-adapter-antigravity';
 import {
+  CLAUDE_BRIEFING_CAPABILITIES,
   CLAUDE_INVOCATION_ENVIRONMENT,
   createClaudeAccountUsageService,
   createClaudeDistributionService,
@@ -40,6 +47,7 @@ import {
   type ClaudeNativeInvocationOptions,
 } from '@vibefield/puppeteer-adapter-claude';
 import {
+  CODEX_BRIEFING_CAPABILITIES,
   createCodexAccountUsageService,
   createCodexDistributionService,
   createCodexExtensionService,
@@ -66,6 +74,7 @@ import {
   type CreateCopilotTuiSessionOptions,
 } from '@vibefield/puppeteer-adapter-copilot';
 import {
+  GROK_BRIEFING_CAPABILITIES,
   captureGrokContinuationState,
   createGrokDistributionService,
   createGrokExtensionService,
@@ -184,10 +193,10 @@ export interface BuiltinProviderOptions {
 }
 
 const BUILTIN_PROVIDER_DESCRIPTORS = {
-  claude: { id: 'claude', label: 'Claude' },
-  codex: { id: 'codex', label: 'Codex' },
-  acp: { id: 'acp', label: 'ACP' },
-  grok: { id: 'grok', label: 'Grok' },
+  claude: { id: 'claude', label: 'Claude', briefing: CLAUDE_BRIEFING_CAPABILITIES },
+  codex: { id: 'codex', label: 'Codex', briefing: CODEX_BRIEFING_CAPABILITIES },
+  acp: { id: 'acp', label: 'ACP', briefing: ACP_BRIEFING_CAPABILITIES },
+  grok: { id: 'grok', label: 'Grok', briefing: GROK_BRIEFING_CAPABILITIES },
   kimi: { id: 'kimi', label: 'Kimi' },
   opencode: { id: 'opencode', label: 'OpenCode' },
   hermes: { id: 'hermes', label: 'Hermes' },
@@ -332,12 +341,16 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     resume: string | undefined,
     title: string | undefined,
     launch: ClaudeProviderOptions | undefined,
+    briefing: AgentRunBriefing,
   ): Promise<{ executable: string; providerVersion?: string }> => {
     const executable = launch?.executable ?? resolved.claude ?? 'claude';
     // The unified Imposter selects its vendor outside Claude's argv surface,
     // so probing an unselected `ai` entry point would fail before the owning
     // launcher can add that selection. Other custom paths still get probed.
-    if (/^ai(?:\.(?:mjs|cjs|js|ts|exe))?$/i.test(basename(executable))) return { executable };
+    if (/^ai(?:\.(?:mjs|cjs|js|ts|exe))?$/i.test(basename(executable))) {
+      validateAgentBriefing(briefing, undefined, 'Claude imposter');
+      return { executable };
+    }
     const detection = await preflightClaudeLaunch({
       executable,
       freshSession: resume === undefined && launch?.resumeInvocation === undefined,
@@ -346,6 +359,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       model: launch?.model !== undefined,
       effort: launch?.effort !== undefined,
       settingSources: launch?.settingSources !== undefined,
+      mcpServers: briefing.mcpServers !== undefined,
+      allowTools: briefing.allowTools !== undefined && briefing.allowTools.length > 0,
+      instructions: briefing.instructions !== undefined,
     });
     return {
       executable: detection.executable,
@@ -377,7 +393,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
     return backend;
   };
 
-  return [
+  const providers: AgentProvider[] = [
     {
       descriptor: BUILTIN_PROVIDER_DESCRIPTORS.claude,
       executionMode: 'native-tui',
@@ -407,7 +423,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreClaudeContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress, environment }) {
+      async createSession({ cwd, resume, title, host, agentOptions, profile, ingress, environment, ...briefing }) {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'claude',
@@ -420,8 +436,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           environment,
           ['env'],
         );
-        const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch);
+        const { executable, providerVersion } = await claudeLaunchFor(resume, title, launch, briefing);
         return createClaudeSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           title,
@@ -475,7 +492,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           automate: host.automateTerminal,
         });
       },
-      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress }) {
+      async prepareSession({ cwd, resume, title, host, agentOptions, profile, ingress, ...briefing }) {
         // A typed launch is prepared, never created. What the person typed is read from the
         // invocation's own options: the profile binding normalizes an empty argv of its own, which
         // binds the environment and says nothing of the argv.
@@ -489,8 +506,9 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           typed,
         );
         const sessionTitle = typed?.title ?? title;
-        const { executable, providerVersion } = await claudeLaunchFor(resume, sessionTitle, launch);
+        const { executable, providerVersion } = await claudeLaunchFor(resume, sessionTitle, launch, briefing);
         const prepared = await prepareClaudeTuiSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           title: sessionTitle,
@@ -554,7 +572,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreCodexContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ...briefing }) => {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'codex',
@@ -568,6 +586,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ['appServerEnv'],
         );
         return createCodexTuiSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           executable: launch?.executable ?? resolved.codex,
@@ -585,7 +604,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           prompt: launch?.prompt,
         });
       },
-      async prepareSession({ cwd, resume, host, agentOptions, profile }) {
+      async prepareSession({ cwd, resume, host, agentOptions, profile, ...briefing }) {
         const own = agentOptions as CodexProviderOptions | undefined;
         const launch = withProfileBinding(
           'codex',
@@ -596,6 +615,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           own,
         );
         return prepareCodexTuiSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           executable: launch?.executable ?? resolved.codex,
@@ -622,13 +642,14 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       models: createAcpModelService(),
       executionMode: 'acp',
       launch: { provider: { ...BUILTIN_PROVIDER_DESCRIPTORS.acp, resume: true } },
-      createSession: ({ cwd, resume, agentOptions }) => {
+      createSession: ({ cwd, resume, agentOptions, ...briefing }) => {
         const launch = agentOptions as AcpAgentOptions | undefined;
         const connector = launch?.connector ?? acpConnector;
         if (!connector) {
           throw new Error('ACP sessions require agentOptions.connector or BuiltinProviderOptions.acpConnector');
         }
         return createAcpSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           connector,
@@ -665,7 +686,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           restore: (state) => restoreGrokContinuationState(state, { imposterExecutable: options.imposterExecutable }),
         },
       },
-      createSession: ({ cwd, resume, host, agentOptions, profile, environment }) => {
+      createSession: ({ cwd, resume, host, agentOptions, profile, environment, ...briefing }) => {
         const launch = withLaunchEnvironment(
           withProfileBinding(
             'grok',
@@ -679,6 +700,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           ['appServerEnv'],
         );
         return grokBackendFor(launch, host).createSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           model: launch?.model,
@@ -690,7 +712,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           onElicitation: launch?.onElicitation,
         });
       },
-      prepareSession: ({ cwd, resume, host, agentOptions, profile }) => {
+      prepareSession: ({ cwd, resume, host, agentOptions, profile, ...briefing }) => {
         const launch = withProfileBinding(
           'grok',
           cwd,
@@ -700,6 +722,7 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
           agentOptions as GrokProviderOptions | undefined,
         );
         return grokBackendFor(launch, host).prepareSession({
+          ...pickAgentBriefing(briefing),
           cwd,
           resume,
           model: launch?.model,
@@ -1235,4 +1258,20 @@ export function createBuiltinProviders(options: BuiltinProviderOptions = {}): Ag
       },
     },
   ];
+  // Public built-ins also serve callers that bypass Runtime. Never silently drop a supplied field.
+  return providers.map((provider) => ({
+    ...provider,
+    async createSession(options) {
+      const briefing = validateAgentBriefing(options, provider.descriptor.briefing, provider.descriptor.label);
+      return provider.createSession({ ...options, ...briefing });
+    },
+    ...(provider.prepareSession
+      ? {
+          async prepareSession(options: Parameters<NonNullable<AgentProvider['prepareSession']>>[0]) {
+            const briefing = validateAgentBriefing(options, provider.descriptor.briefing, provider.descriptor.label);
+            return provider.prepareSession!({ ...options, ...briefing });
+          },
+        }
+      : {}),
+  }));
 }

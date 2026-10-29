@@ -3,7 +3,7 @@ import {
   createStdioAcpConnector,
   type CreateAcpSessionOptions,
 } from '@vibefield/puppeteer-adapter-acp';
-import type { AgentAdapterBinding } from '@vibefield/puppeteer-core';
+import { pickAgentBriefing, type AgentAdapterBinding } from '@vibefield/puppeteer-core';
 import { grokExtensionEvents } from '../normalization/adapter.js';
 import { grokDeferredApprovalEvidence } from '../normalization/interaction.js';
 import type { CreateGrokSessionOptions } from '../types.js';
@@ -28,10 +28,14 @@ export interface GrokControlComposition {
 
 /** The Grok-specific ACP session options, apart from the transport and the session to load. */
 export function grokControlOptions(
-  options: Pick<CreateGrokSessionOptions, 'clientCapabilities' | 'onApproval' | 'onElicitation'>,
+  options: Pick<
+    CreateGrokSessionOptions,
+    'clientCapabilities' | 'onApproval' | 'onElicitation' | 'mcpServers' | 'allowTools' | 'instructions'
+  >,
   composition: GrokControlComposition = { viewer: 'none' },
 ): Omit<CreateAcpSessionOptions, 'cwd' | 'connector' | 'resume'> {
   return {
+    ...pickAgentBriefing(options),
     clientCapabilities: options.clientCapabilities,
     onApproval: options.onApproval,
     unhandledApproval: composition.viewer === 'attached' ? 'defer' : 'deny',
@@ -47,7 +51,10 @@ export function openGrokControl(
   cwd: string,
   socketPath: string,
   sessionId: string | undefined,
-  options: Pick<CreateGrokSessionOptions, 'clientCapabilities' | 'onApproval' | 'onElicitation'>,
+  options: Pick<
+    CreateGrokSessionOptions,
+    'clientCapabilities' | 'onApproval' | 'onElicitation' | 'mcpServers' | 'allowTools' | 'instructions'
+  >,
   env?: NodeJS.ProcessEnv,
   composition: GrokControlComposition = { viewer: 'none' },
 ): Promise<AgentAdapterBinding> {

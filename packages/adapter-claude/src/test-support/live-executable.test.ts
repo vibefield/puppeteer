@@ -51,7 +51,7 @@ describe('isolatedClaudeExec', () => {
 printf '%s|%s|%s\\n' "$HOME" "$CLAUDE_CONFIG_DIR" "\${PUPPETEER_CLAUDE_LIVE_PARENT_PROBE-unset}" >> '${seen}'
 case "$1" in
   --version) echo '${CLAUDE_SURFACE_VERSION} (Claude Code)' ;;
-  *) echo '--session-id --settings --setting-sources -n, --name --permission-mode --resume --model --effort' ;;
+  *) echo '--session-id --settings --setting-sources -n, --name --permission-mode --resume --model --effort --mcp-config --allowedTools --append-system-prompt-file --system-prompt-snapshot' ;;
 esac
 `,
         { mode: 0o700 },

@@ -1,4 +1,5 @@
 import type {
+  AgentRunBriefing,
   AgentModelProvider,
   AgentModelService,
   AgentModelSelection,
@@ -90,7 +91,7 @@ export interface PreparedProviderSession {
   dispose(): void | Promise<void>;
 }
 
-export interface AgentProviderSessionOptions {
+export interface AgentProviderSessionOptions extends AgentRunBriefing {
   /** Runtime-owned join identity for private diagnostics; adapters must not reinterpret it. */
   runtimeRunId?: RuntimeRunId | undefined;
   cwd: string;
@@ -229,7 +230,7 @@ export interface AgentWorkspaceInfo {
   repositoryDigest?: WorkspaceKeyedFingerprint | undefined;
 }
 
-export interface CreateAgentSessionOptions {
+export interface CreateAgentSessionOptions extends AgentRunBriefing {
   agent: string;
   cwd?: string | undefined;
   /** @deprecated Consumer resume uses runtime.resume({ continuation }); retained for provider/compatibility calls. */
@@ -276,7 +277,7 @@ export interface DiscoverAgentModelsOptions {
 }
 
 /** Consumer-facing resume request: no provider argv, environment, or transport knobs. */
-export interface ResumeAgentOptions {
+export interface ResumeAgentOptions extends AgentRunBriefing {
   continuation: AgentContinuation;
   cwd?: string | undefined;
   title?: string | undefined;

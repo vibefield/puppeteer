@@ -16,3 +16,5 @@ export * from './services/profiles.js';
 export * from './transport/agent-client.js';
 export * from './launch/native-invocation.js';
 export * from './services/models.js';
+
+export * from './launch/briefing.js';

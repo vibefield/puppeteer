@@ -22,6 +22,7 @@ import type { Transport } from '../transport/app-server-client.js';
 type ServerGeneration = 'paginated' | 'gated';
 
 interface ControllableOptions {
+  config?: Record<string, unknown>;
   deferRead?: boolean;
   deferCatalog?: boolean;
   server?: ServerGeneration;
@@ -134,8 +135,12 @@ function controllable(
               path: '/tmp/rollout-th-owned.jsonl',
             },
           });
+        } else if (msg.method === 'initialize') {
+          reply(msg.id, { userAgent: 'puppeteer/0.147.0' });
+        } else if (msg.method === 'config/read') {
+          reply(msg.id, { config: options.config ?? {} });
         } else {
-          reply(msg.id, {}); // initialize, inject_items, …
+          reply(msg.id, {}); // inject_items, …
         }
       });
     },
@@ -1289,5 +1294,64 @@ describe('createCodexObserver paginated history (0.151.0 and later) with a full-
     expect(historyDiagnostics(projection)).toEqual([]);
     projection.dispose();
     await obs.dispose();
+  });
+});
+
+describe('observer run briefing', () => {
+  it('closes a failed bootstrap before a conflicting MCP server can load', async () => {
+    const server = controllable(0, {}, { config: { mcp_servers: { field: { url: 'private native config' } } } });
+    const close = vi.spyOn(server.transport, 'close');
+    await expect(
+      createCodexObserver({
+        transport: server.transport,
+        start: { cwd: '/x', mcpServers: { field: { command: 'door' } } },
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICTING_LAUNCH_FIELD' });
+    expect(close).toHaveBeenCalledOnce();
+    expect(server.calls().some((call) => call.method === 'thread/start')).toBe(false);
+  });
+
+  it('surfaces an explicit briefing resume failure instead of retrying rejected config forever', async () => {
+    const server = controllable(1);
+    const close = vi.spyOn(server.transport, 'close');
+    await expect(
+      createCodexObserver({
+        transport: server.transport,
+        threadId: 'missing',
+        resumeOverrides: { instructions: 'new role' },
+      }),
+    ).rejects.toThrow();
+    expect(server.resumeAttempts()).toBe(1);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it.each([false, true])('briefs the owned thread before the TUI can join (resume=%s)', async (resume) => {
+    const server = controllable(0, {}, { server: 'gated' });
+    const briefing = {
+      mcpServers: { field: { command: 'door' } },
+      allowTools: ['field/*'],
+      instructions: 'new role',
+      effort: 'high',
+    };
+    const observer = await createCodexObserver({
+      transport: server.transport,
+      ...(resume
+        ? { threadId: 'existing', resumeOverrides: { cwd: '/x', ...briefing } }
+        : { start: { cwd: '/x', ...briefing } }),
+    });
+    try {
+      const requests = server.calls().filter((call) => call.method === (resume ? 'thread/resume' : 'thread/start'));
+      expect(requests.length).toBeGreaterThan(0);
+      for (const call of requests)
+        expect(call.params).toMatchObject({
+          developerInstructions: 'new role',
+          config: {
+            model_reasoning_effort: 'high',
+            'mcp_servers.field': { command: 'door', default_tools_approval_mode: 'approve' },
+          },
+        });
+    } finally {
+      await observer.dispose();
+    }
   });
 });

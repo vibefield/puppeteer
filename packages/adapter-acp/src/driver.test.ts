@@ -558,3 +558,49 @@ describe('createAcpSession with deferred approvals', () => {
     }
   });
 });
+
+describe('ACP per-run MCP servers', () => {
+  it.each([false, true])('delivers server declarations on new/load (resume=%s)', async (resume) => {
+    const base = scriptedAcpConnector({ sessionId: SID, reply: 'pong' });
+    const newSession = vi.fn(),
+      loadSession = vi.fn();
+    const connector: AcpConnector = (client) => {
+      const connection = base(client);
+      newSession.mockImplementation(connection.agent.newSession.bind(connection.agent));
+      loadSession.mockImplementation(connection.agent.loadSession!.bind(connection.agent));
+      connection.agent.newSession = newSession;
+      connection.agent.loadSession = loadSession;
+      return connection;
+    };
+    const session = await createAcpSession({
+      cwd: '/x',
+      connector,
+      ...(resume ? { resume: SID } : {}),
+      mcpServers: { field: { command: 'door', args: ['--stdio'], env: { TOKEN: 'secret' } } },
+    });
+    try {
+      expect(resume ? loadSession : newSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cwd: '/x',
+          mcpServers: [
+            { name: 'field', command: 'door', args: ['--stdio'], env: [{ name: 'TOKEN', value: 'secret' }] },
+          ],
+        }),
+      );
+    } finally {
+      await session.dispose();
+    }
+  });
+
+  it.each([{ instructions: '' }, { allowTools: [] }])(
+    'refuses unsupported fields before connecting',
+    async (fields) => {
+      const connector = vi.fn();
+      await expect(createAcpSession({ cwd: '/x', connector, ...fields })).rejects.toMatchObject({
+        code: 'UNSUPPORTED_LAUNCH_FIELD',
+        message: expect.stringContaining(Object.keys(fields)[0]!),
+      });
+      expect(connector).not.toHaveBeenCalled();
+    },
+  );
+});

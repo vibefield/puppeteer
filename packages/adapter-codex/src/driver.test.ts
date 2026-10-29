@@ -101,7 +101,10 @@ function scriptedAppServer(opts?: {
       if (typeof m.method !== 'string' || m.id === undefined) return; // client response/notification
       switch (m.method) {
         case 'initialize':
-          emit({ jsonrpc: '2.0', id: m.id, result: {} });
+          emit({ jsonrpc: '2.0', id: m.id, result: { userAgent: 'puppeteer/0.147.0' } });
+          break;
+        case 'config/read':
+          emit({ jsonrpc: '2.0', id: m.id, result: { config: {} } });
           break;
         case 'model/list':
           emit({
@@ -475,4 +478,48 @@ describe('createCodexSession', () => {
     projection.dispose();
     await session.dispose();
   });
+});
+
+describe('structured Codex run briefing', () => {
+  it.each([false, true])(
+    'sends the briefing before turns, including legacy resume fallback (resume=%s)',
+    async (resume) => {
+      const server = scriptedAppServer({ gatedHistory: true });
+      const briefing = {
+        mcpServers: { field: { command: 'door', env: { TOKEN: 'secret' } } },
+        allowTools: ['field/read'],
+        instructions: 'role briefing',
+      };
+      const session = await createCodexSession({
+        cwd: '/x',
+        transport: server.transport,
+        model: 'chosen',
+        effort: 'high',
+        ...(resume ? { resume: THREAD } : {}),
+        ...briefing,
+      });
+      try {
+        const calls = server.sent.filter((message) => message.method === (resume ? 'thread/resume' : 'thread/start'));
+        expect(calls).toHaveLength(resume ? 2 : 1);
+        for (const call of calls)
+          expect(call.params).toMatchObject({
+            model: 'chosen',
+            developerInstructions: 'role briefing',
+            config: {
+              model_reasoning_effort: 'high',
+              'mcp_servers.field': {
+                command: 'door',
+                env: { TOKEN: 'secret' },
+                tools: { read: { approval_mode: 'approve' } },
+              },
+            },
+          });
+        expect(
+          server.sent.some((message) => message.method === 'config/value/write' || message.method === 'turn/start'),
+        ).toBe(false);
+      } finally {
+        await session.dispose();
+      }
+    },
+  );
 });
