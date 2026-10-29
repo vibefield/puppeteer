@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/vibefield/puppeteer/compare/v0.3.1...v0.3.2) (2026-10-29)
+
+
+### Features
+
+* add typed per-run agent briefings ([#53](https://github.com/vibefield/puppeteer/issues/53)) ([5f75a24](https://github.com/vibefield/puppeteer/commit/5f75a249fe24c4f3945d9fcad672a6ce49406988))
+
 ## [0.3.1](https://github.com/vibefield/puppeteer/compare/v0.3.0...v0.3.1) (2026-10-29)
 
 
