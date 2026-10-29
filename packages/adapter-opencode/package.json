@@ -48,6 +48,6 @@
     "@vibefield/puppeteer-surface": "workspace:*",
     "@vibefield/puppeteer-testing": "workspace:*",
     "node-pty": "1.2.0-beta.15",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.3"
   }
 }
