@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-acp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "type": "module",
   "description": "Generic Agent Client Protocol (ACP) adapter: transport connectors, session/update normalization, lifecycle, permissions, and deterministic prompt injection.",
   "license": "MIT",
