@@ -53,7 +53,7 @@
     "@types/react-dom": "^19.2.3",
     "@vibecook/truffle": "0.7.12",
     "@webgpu/types": "0.1.72",
-    "electron": "^43.5.0",
+    "electron": "^44.7.0",
     "esbuild": "^0.28.2",
     "happy-dom": "21.0.4",
     "typescript": "^5.6.0"
