@@ -25,6 +25,10 @@ Options:
   --model <model>             Model for the current session
   --effort <level>            Effort level for the current session
   -p, --print                 Print response and exit (structured mode)
+  --mcp-config <configs...>   Run MCP servers
+  --allowedTools <tools...>   Allow tools
+  --append-system-prompt-file <file> Append instructions
+  --system-prompt-snapshot <on|off> Snapshot policy
   -h, --help                  Display help`;
 
 /** Fake exec: routes on the probed subcommand, with per-call failure hooks. */
@@ -54,6 +58,10 @@ describe('detectClaude', () => {
       resume: true,
       model: true,
       effort: true,
+      mcpServers: true,
+      allowTools: true,
+      appendSystemPromptFile: true,
+      systemPromptSnapshot: true,
     });
     expect(result.warnings).toEqual([]);
   });
@@ -93,6 +101,10 @@ describe('detectClaude', () => {
       resume: false,
       model: false,
       effort: false,
+      mcpServers: false,
+      allowTools: false,
+      appendSystemPromptFile: false,
+      systemPromptSnapshot: false,
     });
     // one --version failure + one --help failure + missing-flag warnings
     expect(result.warnings.length).toBeGreaterThanOrEqual(2);
@@ -185,7 +197,22 @@ describe.skipIf(!realClaude)('detectClaude against the real binary', () => {
       resume: true,
       model: true,
       effort: true,
+      mcpServers: true,
+      allowTools: true,
+      appendSystemPromptFile: true,
+      systemPromptSnapshot: true,
     });
     expect(result.warnings).toEqual([]);
   }, 30_000);
+});
+
+it('refuses instructions on a Claude version that would reuse its saved prompt, but permits ordinary launches', async () => {
+  const preflight = createClaudeLaunchPreflight(
+    fakeExec({ help: FULL_HELP.replace(/^.*--system-prompt-snapshot.*$/m, '') }),
+  );
+  await expect(preflight({ freshSession: false, resume: true, instructions: true })).rejects.toMatchObject({
+    code: 'UNSUPPORTED_LAUNCH_FIELD',
+    message: expect.stringContaining('instructions'),
+  });
+  await expect(preflight({ freshSession: false, resume: true })).resolves.toBeDefined();
 });

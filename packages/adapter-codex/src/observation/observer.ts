@@ -26,6 +26,9 @@
  * output can be capped at 64 KiB where the live one was not.
  */
 
+import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefing } from '../launch/briefing.js';
+import type { CodexResumeOverrides } from './thread-history.js';
 import {
   PUPPETEER_VERSION,
   type AgentAdapterEventSource,
@@ -80,13 +83,13 @@ export interface CreateCodexObserverOptions {
    * that joins it later adopts the thread's settings, never its own (C7). Omit
    * to keep the thread's own.
    */
-  resumeOverrides?: { model?: string | undefined; effort?: string | undefined } | undefined;
+  resumeOverrides?: CodexResumeOverrides | undefined;
   /**
    * Create + materialize a fresh thread on this connection so the session is
    * ready before any TUI attaches. Mutually exclusive with {@link threadId}.
    */
   start?:
-    | {
+    | (AgentRunBriefing & {
         cwd: string;
         model?: string | undefined;
         effort?: string | undefined;
@@ -99,7 +102,7 @@ export interface CreateCodexObserverOptions {
          * configuration, as it does for a typed `codex`.
          */
         permissionDefaults?: 'adapter' | 'configuration' | undefined;
-      }
+      })
     | undefined;
 }
 
@@ -126,6 +129,20 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     throw new Error('createCodexObserver: pass threadId OR start, not both');
   }
 
+  opts = {
+    ...opts,
+    ...(opts.start
+      ? { start: { ...opts.start, ...validateAgentBriefing(opts.start, CODEX_BRIEFING_CAPABILITIES, 'Codex') } }
+      : {}),
+    ...(opts.resumeOverrides
+      ? {
+          resumeOverrides: {
+            ...opts.resumeOverrides,
+            ...validateAgentBriefing(opts.resumeOverrides, CODEX_BRIEFING_CAPABILITIES, 'Codex'),
+          },
+        }
+      : {}),
+  };
   const client = new AppServerClient(opts.transport);
   const history = new CodexThreadHistory(client);
   const modelNames = new Map<string, string>();
@@ -377,7 +394,12 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         attached = true;
         attaching = false;
         flushHistoryReplay();
-      } catch {
+      } catch (error) {
+        // An explicit briefing resume must surface rejected native config instead of retrying it forever.
+        if (Object.keys(pickAgentBriefing(overrides ?? {})).length) {
+          attaching = false;
+          throw error;
+        }
         if (disposed || railClosed) break;
         await new Promise((r) => setTimeout(r, delay));
         delay = Math.min(Math.floor(delay * 1.5), 2000);
@@ -441,86 +463,101 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
     else publishClosure();
   });
 
-  await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
-  client.notify('initialized');
-  // Display names are optional metadata. Neither a slow catalog nor its request
-  // timeout belongs on the native thread's ready path.
-  void (async () => {
-    try {
-      const catalog = rec(await client.request('model/list', {}));
-      const models = Array.isArray(catalog?.data) ? catalog.data : Array.isArray(catalog?.models) ? catalog.models : [];
-      for (const value of models) {
-        const model = rec(value);
-        const displayName = str(model?.displayName);
-        if (!displayName) continue;
-        const id = str(model?.id);
-        const wireModel = str(model?.model);
-        if (id) modelNames.set(id, displayName);
-        if (wireModel) modelNames.set(wireModel, displayName);
-      }
-    } catch {
-      // A missing/older model-list method must not prevent session attachment.
-    }
-    // Release retained claims even when the transport closed during lookup.
-    const catalogBatch = monitorEvidence.modelCatalogBatch(new Date().toISOString());
-    if (disposed || railClosed) return;
-    emitMonitorBatch(catalogBatch);
-    enrichCurrentModelName();
-  })();
-
-  // Controller-owned bootstrap: create + materialize, or resume a known id,
-  // before returning so callers can spawn `codex resume <id> --remote` with a
-  // ready join key and the panel can leave `preparing` immediately.
-  if (opts.start) {
-    // The one place a managed thread's unset permissions are decided. Left out of
-    // thread/start, they come from the app-server's own configuration, and the model is
-    // told exactly what a typed `codex` tells it (0.157.1 probes S24/S25 and S27/S28:
-    // identical permission text). The explicit defaults override a config.toml (S26
-    // measured it), so they stay only for a caller that is not a typed launch.
-    const fromConfiguration = opts.start.permissionDefaults === 'configuration';
-    const sandbox = opts.start.sandbox ?? (fromConfiguration ? undefined : 'workspace-write');
-    const approvalPolicy = opts.start.approvalPolicy ?? (fromConfiguration ? undefined : 'on-request');
-    const startResult = await client.request('thread/start', {
-      cwd: opts.start.cwd,
-      model: opts.start.model,
-      ...(opts.start.effort === undefined ? {} : { config: { model_reasoning_effort: opts.start.effort } }),
-      ...(sandbox ? { sandbox } : {}),
-      ...(approvalPolicy ? { approvalPolicy } : {}),
-    });
-    const thread = rec(rec(startResult)?.thread);
-    const tid = str(thread?.id) ?? str(thread?.sessionId);
-    if (!tid) {
-      await client.close();
-      throw new Error('codex thread/start returned no thread id');
-    }
-    threadPath = str(thread?.path);
-    // Empty text item materializes the rollout without a model turn (probe 3).
-    // Without this, thread/resume and `codex resume --remote` fail with
-    // "no rollout found" until the user types.
-    await client.request('thread/inject_items', { threadId: tid, items: [...MATERIALIZE_ITEMS] });
-    await attach(tid, thread, true);
-    if (!attached) {
-      await client.close();
-      throw new Error(`codex observer failed to attach to owned thread ${tid}`);
-    }
-    applyEnvironmentFromResponse(
-      rec(startResult),
-      opts.start.cwd,
-      opts.start.model,
-      {
-        ...(opts.start.model ? { model: opts.start.model } : {}),
-        ...(opts.start.effort ? { effort: opts.start.effort } : {}),
-        ...(approvalPolicy ? { approvalPolicy } : {}),
-        ...(sandbox ? { sandboxPolicy: sandbox } : {}),
-      },
-      true,
+  try {
+    const initialized = await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
+    client.notify('initialized');
+    await preflightCodexBriefing(
+      opts.start ?? opts.resumeOverrides ?? {},
+      initialized,
+      opts.start?.cwd ?? opts.resumeOverrides?.cwd,
+      (method, params) => client.request(method, params),
     );
-  } else if (opts.threadId) {
-    await attach(opts.threadId, undefined, false, opts.resumeOverrides);
-    if (!attached) {
-      await client.close();
-      throw new Error(`codex observer failed to attach to thread ${opts.threadId}`);
+    // Display names are optional metadata. Neither a slow catalog nor its request
+    // timeout belongs on the native thread's ready path.
+    void (async () => {
+      try {
+        const catalog = rec(await client.request('model/list', {}));
+        const models = Array.isArray(catalog?.data)
+          ? catalog.data
+          : Array.isArray(catalog?.models)
+            ? catalog.models
+            : [];
+        for (const value of models) {
+          const model = rec(value);
+          const displayName = str(model?.displayName);
+          if (!displayName) continue;
+          const id = str(model?.id);
+          const wireModel = str(model?.model);
+          if (id) modelNames.set(id, displayName);
+          if (wireModel) modelNames.set(wireModel, displayName);
+        }
+      } catch {
+        // A missing/older model-list method must not prevent session attachment.
+      }
+      // Release retained claims even when the transport closed during lookup.
+      const catalogBatch = monitorEvidence.modelCatalogBatch(new Date().toISOString());
+      if (disposed || railClosed) return;
+      emitMonitorBatch(catalogBatch);
+      enrichCurrentModelName();
+    })();
+
+    // Controller-owned bootstrap: create + materialize, or resume a known id,
+    // before returning so callers can spawn `codex resume <id> --remote` with a
+    // ready join key and the panel can leave `preparing` immediately.
+    if (opts.start) {
+      // The one place a managed thread's unset permissions are decided. Left out of
+      // thread/start, they come from the app-server's own configuration, and the model is
+      // told exactly what a typed `codex` tells it (0.157.1 probes S24/S25 and S27/S28:
+      // identical permission text). The explicit defaults override a config.toml (S26
+      // measured it), so they stay only for a caller that is not a typed launch.
+      const fromConfiguration = opts.start.permissionDefaults === 'configuration';
+      const sandbox = opts.start.sandbox ?? (fromConfiguration ? undefined : 'workspace-write');
+      const approvalPolicy = opts.start.approvalPolicy ?? (fromConfiguration ? undefined : 'on-request');
+      const startResult = await client.request('thread/start', {
+        cwd: opts.start.cwd,
+        model: opts.start.model,
+        ...codexBriefingParams(opts.start, opts.start.effort),
+        ...(sandbox ? { sandbox } : {}),
+        ...(approvalPolicy ? { approvalPolicy } : {}),
+      });
+      const thread = rec(rec(startResult)?.thread);
+      const tid = str(thread?.id) ?? str(thread?.sessionId);
+      if (!tid) {
+        await client.close();
+        throw new Error('codex thread/start returned no thread id');
+      }
+      threadPath = str(thread?.path);
+      // Empty text item materializes the rollout without a model turn (probe 3).
+      // Without this, thread/resume and `codex resume --remote` fail with
+      // "no rollout found" until the user types.
+      await client.request('thread/inject_items', { threadId: tid, items: [...MATERIALIZE_ITEMS] });
+      await attach(tid, thread, true);
+      if (!attached) {
+        await client.close();
+        throw new Error(`codex observer failed to attach to owned thread ${tid}`);
+      }
+      applyEnvironmentFromResponse(
+        rec(startResult),
+        opts.start.cwd,
+        opts.start.model,
+        {
+          ...(opts.start.model ? { model: opts.start.model } : {}),
+          ...(opts.start.effort ? { effort: opts.start.effort } : {}),
+          ...(approvalPolicy ? { approvalPolicy } : {}),
+          ...(sandbox ? { sandboxPolicy: sandbox } : {}),
+        },
+        true,
+      );
+    } else if (opts.threadId) {
+      await attach(opts.threadId, undefined, false, opts.resumeOverrides);
+      if (!attached) {
+        await client.close();
+        throw new Error(`codex observer failed to attach to thread ${opts.threadId}`);
+      }
     }
+  } catch (error) {
+    await client.close();
+    throw error;
   }
 
   return {

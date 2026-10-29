@@ -71,6 +71,33 @@ describe('Codex TUI preparation', () => {
     });
   });
 
+  it.each([false, true])('forwards briefing into the observer, never TUI argv (resume=%s)', async (resume) => {
+    const briefing = {
+      mcpServers: { field: { command: 'door', env: { TOKEN: 'secret' } } },
+      allowTools: ['field/*'],
+      instructions: 'role',
+    };
+    const prepared = await prepareCodexTuiSession({
+      cwd: '/work',
+      host: host(),
+      ...(resume ? { resume: 'thread-old' } : {}),
+      ...briefing,
+    });
+    expect(fakes.createObserver).toHaveBeenCalledWith(
+      expect.objectContaining({ [resume ? 'resumeOverrides' : 'start']: expect.objectContaining(briefing) }),
+    );
+    expect(JSON.stringify(prepared.launch)).not.toContain('secret');
+    expect(JSON.stringify(prepared.launch)).not.toContain('role');
+    await prepared.dispose();
+  });
+
+  it('refuses a briefed resume picker before starting a helper', async () => {
+    await expect(
+      prepareCodexTuiSession({ cwd: '/work', host: host(), resumeInvocation: ['resume'], instructions: 'role' }),
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_LAUNCH_FIELD' });
+    expect(fakes.spawnServer).not.toHaveBeenCalled();
+  });
+
   it('owns the thread before launch and adopts one existing terminal idempotently', async () => {
     const terminalHost = host();
     const onApproval = vi.fn(() => 'approved' as const);

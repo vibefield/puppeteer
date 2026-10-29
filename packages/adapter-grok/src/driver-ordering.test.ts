@@ -65,6 +65,39 @@ describe('Grok leader session materialization ordering', () => {
     );
   });
 
+  it.each([false, true])(
+    'carries per-run MCP declarations into ACP before the viewer joins (resume=%s)',
+    async (resume) => {
+      const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+      const mcpServers = { field: { command: 'door', env: { TOKEN: 'secret' } } };
+      try {
+        const prepared = await backend.prepareSession({
+          cwd: '/repo',
+          mcpServers,
+          ...(resume ? { resume: 'existing' } : {}),
+        });
+        expect(mocks.createAcpSession).toHaveBeenCalledWith(expect.objectContaining({ mcpServers }));
+        expect(JSON.stringify(prepared.launch)).not.toContain('secret');
+        await prepared.dispose();
+      } finally {
+        backend.dispose();
+      }
+    },
+  );
+
+  it('refuses instructions before starting the shared leader', async () => {
+    const backend = createGrokBackend({ executable: '/real/grok', host: host() });
+    try {
+      await expect(backend.prepareSession({ cwd: '/repo', instructions: 'role' })).rejects.toMatchObject({
+        code: 'UNSUPPORTED_LAUNCH_FIELD',
+      });
+      expect(mocks.spawn).not.toHaveBeenCalled();
+      expect(mocks.createAcpSession).not.toHaveBeenCalled();
+    } finally {
+      backend.dispose();
+    }
+  });
+
   it('materializes a fresh ACP session before returning a TUI recipe that resumes it', async () => {
     const backend = createGrokBackend({ executable: '/real/grok', host: host() });
     const prepared = await backend.prepareSession({ cwd: '/repo' });

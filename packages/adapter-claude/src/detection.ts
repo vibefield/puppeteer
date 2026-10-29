@@ -1,3 +1,4 @@
+import { AgentLaunchRefusedError } from '@vibefield/puppeteer-core';
 /**
  * Claude executable detection and capability probe (DESIGN §10, §16.2 steps
  * 1–3). Capability-probe, don't assume: we read `claude --version` and
@@ -12,6 +13,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { CLAUDE_BRIEFING_FLAGS } from './launch/briefing.js';
 import { CLAUDE_DETECTION_SURFACE } from './generated/detection-surface.js';
 
 interface DetectionSurface {
@@ -38,6 +40,7 @@ const advertisedFlags: Record<keyof ClaudeFlagSupport, string> = {
   resume: surface.launchFlags.resume,
   model: surface.launchFlags.model,
   effort: surface.launchFlags.effort,
+  ...CLAUDE_BRIEFING_FLAGS,
 };
 const flags = Object.fromEntries(
   Object.entries(advertisedFlags).map(([key, value]) => [
@@ -64,6 +67,10 @@ export interface ClaudeFlagSupport {
   resume: boolean;
   model: boolean;
   effort: boolean;
+  mcpServers?: boolean;
+  allowTools?: boolean;
+  appendSystemPromptFile?: boolean;
+  systemPromptSnapshot?: boolean;
 }
 
 export interface ClaudeDetection {
@@ -90,6 +97,9 @@ export interface ClaudeLaunchRequirements {
   model?: boolean | undefined;
   effort?: boolean | undefined;
   settingSources?: boolean | undefined;
+  mcpServers?: boolean | undefined;
+  allowTools?: boolean | undefined;
+  instructions?: boolean | undefined;
 }
 
 export interface PreflightClaudeLaunchOptions extends ClaudeLaunchRequirements {
@@ -187,6 +197,13 @@ export async function detectClaude(options: DetectClaudeOptions = {}): Promise<C
     resume: flags.resume.some((flag) => helpHasFlag(help, flag)),
     model: flags.model.some((flag) => helpHasFlag(help, flag)),
     effort: flags.effort.some((flag) => helpHasFlag(help, flag)),
+    mcpServers: flags.mcpServers.some((flag) => helpHasFlag(help, flag)),
+    allowTools: flags.allowTools.some((flag) => helpHasFlag(help, flag)),
+    // Claude documents this hidden flag in the restricted-mode help as --append-system-prompt[-file].
+    appendSystemPromptFile:
+      help.includes('--append-system-prompt[-file]') ||
+      flags.appendSystemPromptFile.some((flag) => helpHasFlag(help, flag)),
+    systemPromptSnapshot: flags.systemPromptSnapshot.some((flag) => helpHasFlag(help, flag)),
   };
 
   for (const key of Object.keys(supported) as Array<keyof ClaudeFlagSupport>) {
@@ -209,6 +226,9 @@ export function requiredClaudeLaunchCapabilities(requirements: ClaudeLaunchRequi
   if (requirements.model) required.push('model');
   if (requirements.effort) required.push('effort');
   if (requirements.settingSources) required.push('settingSources');
+  if (requirements.mcpServers) required.push('mcpServers');
+  if (requirements.allowTools) required.push('allowTools');
+  if (requirements.instructions) required.push('appendSystemPromptFile', 'systemPromptSnapshot');
   return required;
 }
 
@@ -217,6 +237,18 @@ export function assertClaudeLaunchCapabilities(
   requirements: ClaudeLaunchRequirements,
 ): void {
   const missing = requiredClaudeLaunchCapabilities(requirements).filter((flag) => !detection.flags[flag]);
+  const field = missing.includes('mcpServers')
+    ? 'mcpServers'
+    : missing.includes('allowTools')
+      ? 'allowTools'
+      : missing.some((flag) => flag === 'appendSystemPromptFile' || flag === 'systemPromptSnapshot')
+        ? 'instructions'
+        : undefined;
+  if (field)
+    throw new AgentLaunchRefusedError(
+      'UNSUPPORTED_LAUNCH_FIELD',
+      `This Claude executable does not support launch field: ${field}.`,
+    );
   if (missing.length > 0) throw new ClaudeCapabilityError(detection, missing);
 }
 

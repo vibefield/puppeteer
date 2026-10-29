@@ -247,6 +247,7 @@ describe('the opt-in live tests', () => {
   it('are all checked here', () => {
     expect(files.sort()).toEqual([
       'driver.live.test.ts',
+      'launch/briefing.live.test.ts',
       'launch/invocation-probe.live.test.ts',
       'launch/models.live.test.ts',
       'native-tui.live.test.ts',

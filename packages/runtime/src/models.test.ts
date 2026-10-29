@@ -1,3 +1,4 @@
+import { createFileCreationRequestRegistry } from './identity/creation-registry.js';
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -35,7 +36,7 @@ function catalog(context: AgentModelDiscoveryContext): AgentModelCatalog {
     ],
   };
 }
-async function setup(options: { resumeSelection?: boolean } = {}) {
+async function setup(options: { resumeSelection?: boolean; creationRegistry?: boolean } = {}) {
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'runtime-models-')));
   cleanups.push(() => rm(cwd, { recursive: true, force: true }));
   let count = 0,
@@ -90,7 +91,11 @@ async function setup(options: { resumeSelection?: boolean } = {}) {
     },
   };
   const provider: AgentProvider = {
-    descriptor: { id: 'example', label: 'Example' },
+    descriptor: {
+      id: 'example',
+      label: 'Example',
+      briefing: { mcpServers: true, allowTools: true, instructions: true, mcpServerProcess: 'terminal' },
+    },
     profiles,
     createSession: create,
     prepareSession: prepare,
@@ -119,6 +124,9 @@ async function setup(options: { resumeSelection?: boolean } = {}) {
   };
   const runtime = createAgentRuntime({
     defaultCwd: cwd,
+    ...(options.creationRegistry
+      ? { creationRegistry: createFileCreationRequestRegistry({ directory: join(cwd, 'creation-registry') }) }
+      : {}),
     providers: [provider, { descriptor: { id: 'bare', label: 'Bare' }, createSession: create }],
     profiles: {
       rootsDirectory: join(cwd, 'profiles'),
@@ -426,5 +434,95 @@ describe('resume starts at the session’s own launch selection', () => {
       expect(discover).not.toHaveBeenCalled();
       expect(create).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe('run briefings alongside model selection', () => {
+  const briefing = () => ({
+    mcpServers: { field: { command: 'door', args: ['--stdio'], env: { TOKEN: 'run-secret' } } },
+    allowTools: ['field/*'],
+    instructions: 'role briefing',
+  });
+  const modelSelection = { modelId: 'native-choice', controls: { effort: 'high' } };
+  it('carries an immutable snapshot through spawn and preparation without capturing secrets', async () => {
+    const { runtime, create, prepare, provider } = await setup();
+    const capture = vi.spyOn(provider.launch!.continuation!, 'capture');
+    const input = briefing();
+    const spawning = runtime.spawn({ agent: 'example', modelSelection, ...input });
+    input.mcpServers.field.env.TOKEN = 'changed';
+    const agent = await spawning;
+    expect(agent).not.toHaveProperty('error');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...briefing(),
+        agentOptions: { privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    for (const field of ['mcpServers', 'allowTools', 'instructions'])
+      expect(capture.mock.calls[0]![0]).not.toHaveProperty(field);
+    expect(JSON.stringify(agent)).not.toContain('run-secret');
+    expect(JSON.stringify(agent)).not.toContain('role briefing');
+    await runtime.prepareSession({ agent: 'example', modelSelection, ...briefing() });
+    expect(prepare).toHaveBeenCalledWith(expect.objectContaining(briefing()));
+  });
+
+  it('accepts fresh briefing data on resume beside a new model and opaque continuation state', async () => {
+    const { runtime, create } = await setup({ resumeSelection: true });
+    const continuation = {
+      providerId: 'example',
+      nativeSessionId: 'old',
+      implementation: 'native' as const,
+      state: JSON.stringify({ root: '/work/profile' }),
+    };
+    const resumed = await runtime.resume({ continuation, modelSelection, ...briefing() });
+    if ('error' in resumed) throw new Error(resumed.error.message);
+    expect(create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        ...briefing(),
+        resume: 'old',
+        agentOptions: { privateRoot: '/work/profile', privateModel: 'native-choice', privateEffort: 'high' },
+      }),
+    );
+    expect(resumed.info.continuation!.state).toBe(continuation.state);
+    await runtime.resume({ continuation });
+    expect(create.mock.calls.at(-1)![0]).not.toHaveProperty('mcpServers');
+  });
+
+  it('rejects unsupported fields before provider launch or model discovery', async () => {
+    const { runtime, create, discover } = await setup();
+    for (const field of ['mcpServers', 'allowTools', 'instructions'] as const) {
+      const result = await runtime.spawn({ agent: 'bare', [field]: briefing()[field] });
+      expect(result).toMatchObject({
+        error: {
+          code: 'AGENT_LAUNCH_REFUSED',
+          refusal: { code: 'UNSUPPORTED_LAUNCH_FIELD' },
+          message: expect.stringContaining(field),
+        },
+      });
+    }
+    expect(create).not.toHaveBeenCalled();
+    expect(discover).not.toHaveBeenCalled();
+  });
+
+  it('includes all briefing fields in creation identity and protects advertised capabilities from mutation', async () => {
+    const { runtime, create } = await setup({ creationRegistry: true });
+    const input = { agent: 'example', creationRequestId: 'briefing-retry', ...briefing() };
+    expect(await runtime.spawn(input)).not.toHaveProperty('error');
+    expect(await runtime.spawn(input)).not.toHaveProperty('error');
+    expect(create).toHaveBeenCalledTimes(1);
+    for (const change of [
+      { instructions: 'different' },
+      { allowTools: [] },
+      { mcpServers: { field: { command: 'other' } } },
+    ]) {
+      expect(await runtime.spawn({ ...input, ...change })).toHaveProperty('error.code', 'CREATION_REQUEST_CONFLICT');
+    }
+    const catalog = runtime.providers();
+    catalog.find((provider) => provider.id === 'example')!.briefing!.instructions = false;
+    expect(runtime.providers().find((provider) => provider.id === 'example')!.briefing!.instructions).toBe(true);
+    const launches = runtime.launchProviders();
+    expect(launches[0]!.briefing!.mcpServerProcess).toBe('terminal');
+    launches[0]!.briefing!.instructions = false;
+    expect(runtime.launchProviders()[0]!.briefing!.instructions).toBe(true);
   });
 });

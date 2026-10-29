@@ -1,3 +1,4 @@
+import type { AgentRunBriefing } from '@vibefield/puppeteer-core';
 import type { CreateAcpSessionOptions } from '@vibefield/puppeteer-adapter-acp';
 import type { CreateAntigravityTuiSessionOptions } from '@vibefield/puppeteer-adapter-antigravity';
 import type { ClaudeHookDiagnostic, ClaudeSettingSource } from '@vibefield/puppeteer-adapter-claude';
@@ -35,7 +36,7 @@ export type CodexAgentOptions = Pick<
   'model' | 'effort' | 'sandbox' | 'approvalPolicy' | 'onApproval'
 >;
 
-export type AcpAgentOptions = Omit<CreateAcpSessionOptions, 'cwd' | 'resume' | 'connector'> & {
+export type AcpAgentOptions = Omit<CreateAcpSessionOptions, 'cwd' | 'resume' | 'connector' | keyof AgentRunBriefing> & {
   connector?: CreateAcpSessionOptions['connector'];
 };
 

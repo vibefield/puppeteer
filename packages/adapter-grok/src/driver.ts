@@ -3,6 +3,8 @@
  * launch, observer, and ACP-control services.
  */
 
+import { validateAgentBriefing } from '@vibefield/puppeteer-core';
+import { GROK_BRIEFING_CAPABILITIES } from './launch/briefing.js';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -57,6 +59,9 @@ export function createGrokBackend(options: CreateGrokBackendOptions): GrokBacken
 
   async function prepareSession(opts: CreateGrokSessionOptions): Promise<PreparedGrokSession> {
     if (disposed) throw new Error('Grok backend is disposed');
+    opts = { ...opts, ...validateAgentBriefing(opts, GROK_BRIEFING_CAPABILITIES, 'Grok') };
+    if (childExtras?.AI_PERSONA === 'grok' || childExtras?.PUPPETEER_IMPOSTER_HOME)
+      validateAgentBriefing(opts, undefined, 'Grok imposter');
     const { cwd } = opts;
     const socketPath = await leader.ensure();
     // Materialize the leader-owned session before returning the launch recipe.

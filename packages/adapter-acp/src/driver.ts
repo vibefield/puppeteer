@@ -6,6 +6,8 @@
  * file wires those pieces to one ACP connection and owns bootstrap/teardown.
  */
 
+import type { AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { acpBriefingServers } from './services/briefing.js';
 import {
   type AgentAdapterBinding,
   type AgentEvent,
@@ -51,7 +53,7 @@ export type {
 export { acpPermissionOutcome } from './services/approvals.js';
 export type { AcpElicitationRequest } from './services/elicitation.js';
 
-export interface CreateAcpSessionOptions {
+export interface CreateAcpSessionOptions extends AgentRunBriefing {
   cwd: string;
   /** Agent-specific transport. ACP itself does not define a command to spawn. */
   connector: AcpConnector;
@@ -85,6 +87,7 @@ export interface CreateAcpSessionOptions {
 export type AcpSession = AgentAdapterBinding;
 
 export async function createAcpSession(options: CreateAcpSessionOptions): Promise<AcpSession> {
+  const mcpServers = acpBriefingServers(options);
   const normalizer = new AcpNotificationNormalizer();
   let sessionId = options.resume ?? '';
   let disposed = false;
@@ -216,13 +219,13 @@ export async function createAcpSession(options: CreateAcpSessionOptions): Promis
       const response = await connection.agent.loadSession({
         sessionId: options.resume,
         cwd: options.cwd,
-        mcpServers: [],
+        mcpServers,
       });
       configOptions = response?.configOptions;
       modes = response?.modes;
       prompts.sealReplayedAssistant({ method: 'session/load' });
     } else {
-      const response = await connection.agent.newSession({ cwd: options.cwd, mcpServers: [] });
+      const response = await connection.agent.newSession({ cwd: options.cwd, mcpServers });
       sessionId = response.sessionId;
       configOptions = response.configOptions;
       modes = response.modes;

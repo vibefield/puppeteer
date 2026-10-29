@@ -177,6 +177,11 @@ safety options apply when creating a fresh thread; resumed threads retain their
 existing configuration. Approval callbacks are process-lifetime policy seams;
 when absent, structured adapters deny approval requests by default.
 
+Launches and resumes also accept typed `mcpServers`, `allowTools`, and `instructions`
+beside `modelSelection`. See [per-run briefings](docs/guides/run-briefings.md) for
+provider capabilities, refusal behavior, credential lifetime, and the VibeField
+sparks-door integration requirements.
+
 ## Caller-owned terminal adoption
 
 Terminal hosts discover adapter-declared commands with `launchProviders()`, then

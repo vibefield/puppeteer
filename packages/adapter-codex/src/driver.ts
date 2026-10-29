@@ -17,6 +17,8 @@
  * Native-TUI automation is owned by the host's ordered semantic input path.
  */
 
+import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { CODEX_BRIEFING_CAPABILITIES, codexBriefingParams, preflightCodexBriefing } from './launch/briefing.js';
 import {
   PUPPETEER_VERSION,
   type AgentEvent,
@@ -38,7 +40,7 @@ export type { CodexApprovalDecision, CodexApprovalRequest } from './services/app
 
 const CLIENT_INFO = { name: 'puppeteer', version: PUPPETEER_VERSION } as const;
 
-export interface CreateCodexSessionOptions {
+export interface CreateCodexSessionOptions extends AgentRunBriefing {
   cwd: string;
   /** Transport override (tests). Defaults to spawning `codex app-server`. */
   transport?: Transport | undefined;
@@ -68,6 +70,7 @@ const rec = (v: unknown): Record<string, unknown> | undefined =>
   v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
 
 export async function createCodexSession(options: CreateCodexSessionOptions): Promise<CodexSession> {
+  options = { ...options, ...validateAgentBriefing(options, CODEX_BRIEFING_CAPABILITIES, 'Codex') };
   const transport = options.transport ?? spawnAppServerTransport({ executable: options.executable });
   const client = new AppServerClient(transport);
   const modelNames = new Map<string, string>();
@@ -166,8 +169,9 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
   });
 
   try {
-    await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
+    const initialized = await client.request('initialize', { clientInfo: CLIENT_INFO, capabilities: {} });
     client.notify('initialized');
+    await preflightCodexBriefing(options, initialized, options.cwd, (method, params) => client.request(method, params));
     try {
       const catalog = rec(await client.request('model/list', {}));
       const models = Array.isArray(catalog?.data) ? catalog.data : Array.isArray(catalog?.models) ? catalog.models : [];
@@ -190,11 +194,13 @@ export async function createCodexSession(options: CreateCodexSessionOptions): Pr
       ? await new CodexThreadHistory(client).resume(options.resume, {
           model: options.model,
           effort: options.effort,
+          ...pickAgentBriefing(options),
+          ...(Object.keys(pickAgentBriefing(options)).length ? { cwd: options.cwd } : {}),
         })
       : await client.request('thread/start', {
           cwd: options.cwd,
           model: options.model,
-          ...(options.effort ? { config: { model_reasoning_effort: options.effort } } : {}),
+          ...codexBriefingParams(options, options.effort),
           sandbox: options.sandbox ?? 'workspace-write',
           approvalPolicy: options.approvalPolicy ?? 'on-request',
         });

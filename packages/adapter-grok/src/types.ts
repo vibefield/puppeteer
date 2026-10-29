@@ -1,5 +1,5 @@
 import type { CreateAcpSessionOptions } from '@vibefield/puppeteer-adapter-acp';
-import type { AgentAdapterBinding, AgentHost, TerminalSpec } from '@vibefield/puppeteer-core';
+import type { AgentAdapterBinding, AgentHost, AgentRunBriefing, TerminalSpec } from '@vibefield/puppeteer-core';
 
 export interface CreateGrokBackendOptions {
   /** Grok executable (default `grok`). */
@@ -17,7 +17,7 @@ export interface GrokBackend {
   dispose(): Promise<void>;
 }
 
-export interface CreateGrokSessionOptions {
+export interface CreateGrokSessionOptions extends AgentRunBriefing {
   cwd: string;
   resume?: string | undefined;
   resumeLatest?: boolean | undefined;

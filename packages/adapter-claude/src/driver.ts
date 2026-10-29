@@ -1,3 +1,4 @@
+import { preflightClaudeLaunch } from './detection.js';
 /**
  * Claude session driver — the composition layer (DESIGN §11, §16).
  *
@@ -34,6 +35,9 @@ import {
   type TerminalAutomationOperation,
   type TerminalAutomationResult,
   type AdapterDisposeOptions,
+  type AgentRunBriefing,
+  pickAgentBriefing,
+  validateAgentBriefing,
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { createHookBridge, type HookBridge, type HookBridgeOptions } from './observation/hook-bridge.js';
@@ -67,6 +71,7 @@ import {
 } from './observation/otel/index.js';
 import { ClaudeTranscriptObservationProvider } from './observation/transcript/provider.js';
 import { claudePermissionMode } from './normalization/mode.js';
+import { CLAUDE_BRIEFING_CAPABILITIES } from './launch/briefing.js';
 import { ClaudeEventSource, type ClaudeEventPublication } from './services/event-source.js';
 import type {
   SemanticObservationHandle,
@@ -130,7 +135,7 @@ export interface ClaudeSessionPorts {
   automate(runtimeSessionId: string, operation: TerminalAutomationOperation): Promise<TerminalAutomationResult>;
 }
 
-export interface CreateClaudeSessionOptions {
+export interface CreateClaudeSessionOptions extends AgentRunBriefing {
   cwd: string;
   ports: ClaudeSessionPorts;
   title?: string | undefined;
@@ -259,6 +264,19 @@ export interface PreparedClaudeTuiSession {
 export async function prepareClaudeTuiSession(
   options: PrepareClaudeTuiSessionOptions,
 ): Promise<PreparedClaudeTuiSession> {
+  const briefing = validateAgentBriefing(options, CLAUDE_BRIEFING_CAPABILITIES, 'Claude');
+  options = { ...options, ...briefing };
+  if (options.env?.AI_PERSONA === 'claude' || options.env?.PUPPETEER_IMPOSTER_HOME)
+    validateAgentBriefing(briefing, undefined, 'Claude imposter');
+  if (Object.keys(briefing).length)
+    await preflightClaudeLaunch({
+      ...(options.executable === undefined ? {} : { executable: options.executable }),
+      freshSession: options.resume === undefined && options.resumeInvocation === undefined,
+      resume: options.resume !== undefined,
+      mcpServers: briefing.mcpServers !== undefined,
+      allowTools: (briefing.allowTools?.length ?? 0) > 0,
+      instructions: briefing.instructions !== undefined,
+    });
   if (options.resume && options.resumeInvocation) {
     throw new Error('Claude preparation accepts resume or resumeInvocation, not both');
   }
@@ -323,6 +341,7 @@ export async function prepareClaudeTuiSession(
   try {
     reportBound(bridge, options.ingress);
     const prepared = await prepareClaudeSession({
+      ...pickAgentBriefing(options),
       cwd: options.cwd,
       sessionId,
       resume: options.resume,
@@ -1122,6 +1141,7 @@ export async function attachClaudeTuiSession(options: AttachClaudeTuiSessionOpti
 
 export async function createClaudeSession(options: CreateClaudeSessionOptions): Promise<ClaudeSession> {
   const prepared = await prepareClaudeTuiSession({
+    ...pickAgentBriefing(options),
     cwd: options.cwd,
     title: options.title,
     executable: options.executable,

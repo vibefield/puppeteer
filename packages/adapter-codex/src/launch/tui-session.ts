@@ -19,6 +19,8 @@
  * best-effort `confirmed` (the structured driver has deterministic receipts).
  */
 
+import { pickAgentBriefing, validateAgentBriefing, type AgentRunBriefing } from '@vibefield/puppeteer-core';
+import { CODEX_BRIEFING_CAPABILITIES } from './briefing.js';
 import { randomUUID } from 'node:crypto';
 import type {
   AgentHost,
@@ -39,7 +41,7 @@ import {
   type WebSocketTapProxy,
 } from '../transport/ws-transport.js';
 
-export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions {
+export interface CreateCodexTuiSessionOptions extends AgentTuiSessionOptions, AgentRunBriefing {
   /** Codex executable (default `codex`). */
   executable?: string | undefined;
   /** Extra environment for the user-visible TUI process. */
@@ -115,6 +117,12 @@ export interface PreparedCodexTuiSession {
 
 /** Prepare the private app-server, owned thread, and native TUI recipe without spawning the TUI. */
 export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions): Promise<PreparedCodexTuiSession> {
+  const briefing = validateAgentBriefing(opts, CODEX_BRIEFING_CAPABILITIES, 'Codex');
+  opts = { ...opts, ...briefing };
+  // A picker loads its thread before the controller can apply thread overrides.
+  if (opts.resumeInvocation) validateAgentBriefing(briefing, undefined, 'Codex resume picker');
+  if (opts.appServerEnv?.AI_PERSONA === 'codex' || opts.appServerEnv?.PUPPETEER_IMPOSTER_HOME)
+    validateAgentBriefing(briefing, undefined, 'Codex imposter');
   if (opts.resume && opts.resumeInvocation) {
     throw new Error('Codex preparation accepts resume or resumeInvocation, not both');
   }
@@ -167,10 +175,20 @@ export async function prepareCodexTuiSession(opts: CreateCodexTuiSessionOptions)
           ? {
               threadId: opts.resume,
               // The TUI's own `resume --remote` cannot set them on a held thread (C7).
-              ...(opts.model || opts.effort ? { resumeOverrides: { model: opts.model, effort: opts.effort } } : {}),
+              ...(opts.model || opts.effort || Object.keys(briefing).length
+                ? {
+                    resumeOverrides: {
+                      model: opts.model,
+                      effort: opts.effort,
+                      ...briefing,
+                      ...(Object.keys(briefing).length ? { cwd: opts.cwd } : {}),
+                    },
+                  }
+                : {}),
             }
           : {
               start: {
+                ...pickAgentBriefing(opts),
                 cwd: opts.cwd,
                 model: opts.model,
                 effort: opts.effort,
