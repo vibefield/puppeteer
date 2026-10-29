@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/vibefield/puppeteer/compare/v0.3.0...v0.3.1) (2026-10-29)
+
+
+### Features
+
+* **distribution:** an agent's first install through the vendor's own installer ([#50](https://github.com/vibefield/puppeteer/issues/50)) ([f1db4fc](https://github.com/vibefield/puppeteer/commit/f1db4fc67507e52981ad3361e7c039b74851f7b1))
+
 ## [0.3.0](https://github.com/vibefield/puppeteer/compare/v0.2.3...v0.3.0) (2026-10-28)
 
 

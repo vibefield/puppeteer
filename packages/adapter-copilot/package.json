@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-adapter-copilot",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "GitHub Copilot CLI adapter for Puppeteer: native TUI launch and durable session-event normalization.",
   "license": "MIT",

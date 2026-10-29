@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-runtime",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Unified Puppeteer agent runtime: provider registry, session lifecycle, workspace isolation, events, and action recording.",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@vibefield/puppeteer-views",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Godview's monitor views for Puppeteer agents: the swarm on WebGPU, the list, the rain, the timeline, the instrument bar, the usage column and the find sheet, host-agnostic behind injected ports.",
   "license": "MIT",
