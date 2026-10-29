@@ -26,6 +26,7 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { parseKimiVersion } from '../detection.js';
@@ -56,6 +57,8 @@ export const KIMI_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...KIMI_COMMANDS],
   npmPackages: [],
   brewNames: [],
+  // The bin of the install script's KIMI_INSTALL_DIR when it is unset (read 2026-10-29).
+  installDirectories: ['.kimi-code/bin'],
   // Mirrors packages/surface/vendors/kimi/upstream.json.
   detectors: [
     {
@@ -138,6 +141,13 @@ export function createKimiDistributionService(options: KimiDistributionServiceOp
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    // The vendor's documented first install is the same script (MoonshotAI/kimi-code README, read 2026-10-29),
+    // run as a person runs it: it asks nothing, places `~/.kimi-code/bin/kimi`, and adds that directory to the
+    // shell rc unless told not to — which only an update says.
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: KIMI_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

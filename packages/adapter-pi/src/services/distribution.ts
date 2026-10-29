@@ -14,11 +14,19 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { parsePiVersion } from '../detection.js';
 
 const PI_NPM_PACKAGE = '@earendil-works/pi-coding-agent';
+/**
+ * The install the vendor marks recommended (earendil-works/pi README, read
+ * 2026-10-29): `curl -fsSL … | sh`, a POSIX script that installs Pi with npm, so
+ * it needs Node (22.19 or later) and npm — without a terminal it will not offer
+ * to install Node, it stops. Its PATH change waits for a yes on /dev/tty.
+ */
+const PI_INSTALL_SCRIPT_URL = 'https://pi.dev/install.sh';
 const PI_NPM_PATTERN = /^(.*[/\\]node_modules[/\\]@earendil-works[/\\]pi-coding-agent)(?:[/\\]|$)/u;
 const PI_COMMANDS = ['pi'];
 const PI_VERSION_FLAG = '--version';
@@ -37,6 +45,8 @@ export const PI_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...PI_COMMANDS],
   npmPackages: [PI_NPM_PACKAGE],
   brewNames: [],
+  // The managed install's launcher when PI_CODING_AGENT_DIR is unset (install script read 2026-10-29).
+  installDirectories: ['.pi/agent/bin'],
   // Mirrors packages/surface/vendors/pi/upstream.json plus the npm registry the
   // vendor publishes the installable package to.
   detectors: [
@@ -122,6 +132,10 @@ export function createPiDistributionService(options: PiDistributionServiceOption
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: PI_INSTALL_SCRIPT_URL, shell: 'sh', needs: ['node', 'npm'] };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

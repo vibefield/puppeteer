@@ -18,12 +18,20 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   ReleaseSnapshot,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { GROK_VERSION_FLAG, parseGrokVersion, resolveGrokExecutable } from '../detection.js';
 
 const GROK_NPM_PACKAGE = '@xai-official/grok';
+/**
+ * The vendor's documented install (docs.x.ai/build/overview, read 2026-10-29).
+ * It asks nothing, downloads into `~/.grok/downloads/`, links `~/.grok/bin/grok`
+ * (and `~/.local/bin/grok` when that is on PATH and writable), and adds
+ * `~/.grok/bin` to the rc file of the shell SHELL names.
+ */
+const GROK_INSTALL_SCRIPT_URL = 'https://x.ai/cli/install.sh';
 /** `~/.grok/downloads/grok-<version>-<platform>`; the capture is the Grok home that owns the download. */
 const GROK_DOWNLOAD_PATTERN = /^(.*[/\\]\.grok)[/\\]downloads[/\\]/u;
 const GROK_NPM_PATTERN = /^(.*[/\\]node_modules[/\\]@xai-official[/\\]grok)(?:[/\\]|$)/u;
@@ -68,6 +76,8 @@ export const GROK_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...GROK_COMMANDS],
   npmPackages: [GROK_NPM_PACKAGE],
   brewNames: [],
+  // The install script's BIN_DIR when GROK_BIN_DIR is unset (read 2026-10-29).
+  installDirectories: ['.grok/bin'],
   // Mirrors packages/surface/vendors/grok/upstream.json plus the npm registry,
   // which carries the same builds the vendor endpoints announce.
   detectors: [
@@ -172,6 +182,10 @@ export function createGrokDistributionService(options: GrokDistributionServiceOp
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: GROK_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

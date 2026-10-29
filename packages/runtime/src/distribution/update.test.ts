@@ -198,6 +198,8 @@ describe('runInstallationUpdate', () => {
       PYTHONUNBUFFERED: '1',
     });
     expect(seen[0]?.timeoutMs).toBe(15 * 60_000);
+    // An update leaves the shell rc alone: no login shell for an installer script to choose a file by.
+    expect(seen[0]?.env).not.toHaveProperty('SHELL');
     expect(seen[1]?.env).not.toHaveProperty('EXAMPLE_INSTALL_DIR');
     expect(seen[1]?.timeoutMs).toBe(2_700_000);
   });

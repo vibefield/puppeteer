@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import { classifyPiCandidate, createPiDistributionService, PI_DISTRIBUTION_PROVIDER } from './distribution.js';
 
@@ -131,6 +136,19 @@ describe('Pi update recipes', () => {
     expect(service.recipeFor(installed({ method: 'unknown', executable: '/usr/local/bin/pi' }))).toEqual({
       kind: 'native-self-update',
       argv: ['/usr/local/bin/pi', 'update'],
+    });
+  });
+});
+
+describe('Pi first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(PI_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.pi/agent/bin']);
+    expect(InstallRecipeSchema.parse(createPiDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://pi.dev/install.sh',
+      shell: 'sh',
+      // The script installs Pi with npm; without a terminal it cannot offer to install Node first.
+      needs: ['node', 'npm'],
     });
   });
 });

@@ -1266,6 +1266,8 @@ await runtime.dispose();</code></pre>
   checkReleases(options: CheckReleasesOptions): Promise&lt;ReleaseCheckResult&gt;;
   updateInstallation(options: UpdateInstallationOptions): Promise&lt;UpdateReceipt&gt;;
   planUpdate(options: UpdatePlanOptions): Promise&lt;UpdatePlan | DistributionFailure&gt;;
+  planInstall(options: InstallPlanOptions): Promise&lt;InstallPlan | DistributionFailure&gt;;
+  installAgent(options: InstallAgentOptions): Promise&lt;InstallReceipt&gt;;
 }</code></pre>
             <div class="table-wrap">
               <table class="reference-table">
@@ -1323,10 +1325,35 @@ await runtime.dispose();</code></pre>
                       matching installation answers <code>unavailable</code>.
                     </td>
                   </tr>
+                  <tr>
+                    <td><code id="runtime-planInstall">planInstall()</code></td>
+                    <td>
+                      What <code>installAgent()</code> would run for an agent the machine does not have, without
+                      running it: the adapter's <code>installRecipe()</code> resolved to the argv the runner would
+                      execute, the commands that argv runs from the search path (<code>requires</code>), and which of
+                      them the search path does not hold now (<code>missing</code>), so a host can name the installer
+                      and a missing tool before anyone presses Install. A manual recipe carries no argv. An unknown
+                      provider, an adapter that declares no install, and an install script on Windows answer
+                      <code>unsupported</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code id="runtime-installAgent">installAgent()</code></td>
+                    <td>
+                      Inspects the provider first and runs nothing when an install is already there
+                      (<code>present</code>). Otherwise runs the vendor's documented first install through the update
+                      runner — unattended, its own process group, a 0600 transcript, <code>onOutput</code> and
+                      <code>signal</code> as for an update — with the search path the inventory reads, then inspects
+                      again. The receipt is <code>installed</code> when that inspection finds the agent,
+                      <code>not-found</code> when the installer exited 0 and nothing is on the search path,
+                      <code>failed</code> when it did not finish or a command it needs is <code>missing</code> (it
+                      never ran), and <code>unsupported</code> for a manual recipe or none.
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-            <pre><code data-source="packages/runtime/src/types.ts" data-types="InspectInstallationsOptions,CheckReleasesOptions,ReleaseCheckResult,UpdateInstallationOptions,UpdatePlanOptions,UpdatePlan">interface InspectInstallationsOptions {
+            <pre><code data-source="packages/runtime/src/types.ts" data-types="InspectInstallationsOptions,CheckReleasesOptions,ReleaseCheckResult,UpdateInstallationOptions,UpdatePlanOptions,UpdatePlan,InstallPlanOptions,InstallPlan,InstallAgentOptions">interface InspectInstallationsOptions {
   providerId?: string;
   /** Discard the cached inventory before inspecting. */
   refresh?: boolean;
@@ -1373,10 +1400,35 @@ interface UpdatePlan {
   recipe: UpdateRecipe;
   /** The command the runner would execute; absent when the recipe is manual. */
   argv?: string[];
+}
+
+interface InstallPlanOptions {
+  providerId: string;
+}
+
+interface InstallPlan {
+  provider: string;
+  recipe: InstallRecipe;
+  /** The command the runner would execute; absent when the recipe is manual. */
+  argv?: string[];
+  /** The commands argv runs from the search path. */
+  requires: string[];
+  /** Of those, the ones the search path does not hold now: the install would not run. */
+  missing: string[];
+}
+
+interface InstallAgentOptions {
+  providerId: string;
+  /** Opaque observer beside the transcript; never parsed, a throw is contained. */
+  onOutput?: (chunk: string) =&gt; void;
+  /** Aborting stops the installer and everything it started; the receipt says so. */
+  signal?: AbortSignal;
 }</code></pre>
             <pre><code data-source="packages/core/src/services/distribution.ts" data-types="InstallMethod,InstallCandidateOrigin,AutoUpdateState,InstalledAgent,AgentInstallation">type InstallMethod = 'native-installer' | 'vendor-downloader' | 'npm-global'
   | 'brew' | 'standalone-binary' | 'source-checkout' | 'unknown';
-type InstallCandidateOrigin = 'configured' | 'path' | 'npm-global' | 'brew';
+type InstallCandidateOrigin = 'configured' | 'path' | 'npm-global' | 'brew'
+  // found in a provider's install directory though the search path lacks it; never the active install
+  | 'install-directory';
 type AutoUpdateState = 'enabled' | 'disabled' | 'unknown';
 
 interface InstalledAgent {
@@ -1404,7 +1456,7 @@ interface AgentInstallation extends InstalledAgent {
               inventory can contain no active entry. Missing versions and <code>autoUpdate: "unknown"</code> preserve
               unavailable native facts; callers should display that uncertainty.
             </p>
-            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="ReleaseChannel,ReleaseSourceKind,ReleaseSnapshot,DistributionFailure,UpdateRecipe,UpdateReceipt">type ReleaseChannel = 'stable' | 'preview';
+            <pre><code data-source="packages/core/src/services/distribution.ts" data-types="ReleaseChannel,ReleaseSourceKind,ReleaseSnapshot,DistributionFailure,UpdateRecipe,UpdateReceipt,InstallRecipe,InstallReceipt">type ReleaseChannel = 'stable' | 'preview';
 type ReleaseSourceKind = 'native-oracle' | 'text' | 'github-release' | 'npm-registry';
 
 interface ReleaseSnapshot {
@@ -1428,8 +1480,10 @@ type UpdateRecipe =
   | { kind: 'native-self-update'; argv: string[]; timeoutMs?: number }
   | { kind: 'npm-global'; package: string; version?: string }
   | { kind: 'brew'; name: string; cask: boolean }
-  // the vendor's documented `curl -fsSL &lt;url&gt; | bash`, https only, with the variables it documents
-  | { kind: 'installer-script'; url: string; env?: Record&lt;string, string&gt;; timeoutMs?: number }
+  // the vendor's documented `curl -fsSL &lt;url&gt; | bash` (or `| sh`), https only, with the variables it documents
+  // and the commands the script itself needs
+  | { kind: 'installer-script'; url: string; shell?: 'bash' | 'sh'; env?: Record&lt;string, string&gt;;
+      needs?: string[]; timeoutMs?: number }
   | { kind: 'manual'; instructions: string };
 
 interface UpdateReceipt {
@@ -1438,6 +1492,24 @@ interface UpdateReceipt {
   recipe?: UpdateRecipe;
   before?: InstalledAgent;
   after?: InstalledAgent;
+  startedAt: string;
+  finishedAt: string;
+  exitCode?: number;
+  transcriptPath?: string;
+  message?: string;
+}
+
+// The update recipe's own members; a native command is not one, since there is no executable yet.
+type InstallRecipe = Exclude&lt;UpdateRecipe, { kind: 'native-self-update' }&gt;;
+
+interface InstallReceipt {
+  provider: string;
+  status: 'installed' | 'present' | 'not-found' | 'failed' | 'unsupported';
+  recipe?: InstallRecipe;
+  /** Fresh inspection after the command finished, or the install already present. */
+  after?: InstalledAgent;
+  /** Commands the recipe runs from the search path that it does not hold; the installer did not run. */
+  missing?: string[];
   startedAt: string;
   finishedAt: string;
   exitCode?: number;
@@ -2450,8 +2522,12 @@ interface DistributionRuntimeOptions {
   transcriptsDirectory?: string;
   /** Injectable fetch for release detectors; defaults to globalThis.fetch. */
   fetch?: typeof fetch;
-  /** PATH-style list searched for candidates; defaults to process.env.PATH. */
+  /** PATH-style list searched for candidates, and the one an install runs with; defaults to process.env.PATH. */
   searchPath?: string;
+  /** The home the providers' install directories are read under; defaults to the user's home. */
+  home?: string;
+  /** Runs an update's or an install's command; injected so a host's tests never run a vendor's. */
+  run?: UpdateCommandRunner;
 }</code></pre>
             <pre><code>import type { AgentRuntimeOptions } from '@vibefield/puppeteer-runtime';
 
@@ -2538,6 +2614,8 @@ interface AgentProvider {
   /** Classify one host-discovered candidate and read its version; undefined when it is not this agent. */
   inspect(candidate: InstallCandidate): Promise&lt;InstalledAgent | undefined&gt;;
   recipeFor(install: InstalledAgent): UpdateRecipe;
+  /** The vendor's documented first install, for an agent this machine does not have. */
+  installRecipe?(): InstallRecipe;
   /** The agent's own update oracle, such as a `--check --json` subcommand. */
   checkUpdate?(install: InstalledAgent): Promise&lt;ReleaseSnapshot | DistributionFailure&gt;;
 }</code></pre>
@@ -2562,6 +2640,8 @@ interface DistributionProvider {
   commands: string[];
   npmPackages: string[];
   brewNames: string[];
+  /** Under the home, where the vendor's installer leaves the executable (`.local/bin`); searched after PATH. */
+  installDirectories?: string[];
   detectors: ReleaseDetector[];
   nativeUpdateCheck: boolean;
 }</code></pre>

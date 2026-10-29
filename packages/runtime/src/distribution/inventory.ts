@@ -1,5 +1,6 @@
 import { readFile as readFileNative, readdir as readdirNative, realpath as realpathNative } from 'node:fs/promises';
-import { delimiter, isAbsolute, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
 import {
   InstallCandidateSchema,
   InstalledAgentSchema,
@@ -14,7 +15,9 @@ import {
  * Host-owned discovery of candidate agent executables.
  *
  * Finding executables is provider-neutral machinery (PATH order, npm global
- * roots, Homebrew prefixes, symlink resolution), so the runtime owns it.
+ * roots, Homebrew prefixes, symlink resolution), so the runtime owns it; where
+ * a vendor's installer leaves its executable is a provider fact the provider
+ * declares (`installDirectories`) and the runtime searches.
  * Deciding whether a candidate is one particular agent, reading its version,
  * and classifying its install method are provider facts, so every candidate is
  * handed to the adapter's `inspect`. The runtime never guesses a version and
@@ -50,6 +53,8 @@ export interface InstallInventoryOptions {
   searchPath?: string;
   files?: Partial<InventoryFileAccess>;
   brewPrefixes?: readonly string[];
+  /** The home each provider's install directories are read under; defaults to the user's home. */
+  home?: string;
   onError?: (error: Error) => void;
 }
 
@@ -114,6 +119,7 @@ function npmPackageExecutable(packageRoot: string, manifest: unknown, commands: 
 export function createInstallationInventory(options: InstallInventoryOptions): InstallInventory {
   const files: InventoryFileAccess = { ...defaultFileAccess, ...options.files };
   const brewPrefixes = options.brewPrefixes ?? DEFAULT_BREW_PREFIXES;
+  const home = options.home ?? homedir();
   const providers = new Map(options.providers.map((provider) => [provider.providerId, provider]));
   const cache = new Map<string, Promise<AgentInstallation[]>>();
   const report = (error: unknown): void => options.onError?.(error instanceof Error ? error : new Error(String(error)));
@@ -187,6 +193,14 @@ export function createInstallationInventory(options: InstallInventoryOptions): I
       }
     }
 
+    // 5. Where the vendor's own installer leaves the executable, last: an
+    //    install the search path also reaches keeps its PATH origin.
+    for (const directory of descriptor.installDirectories ?? []) {
+      for (const command of descriptor.commands) {
+        discovered.push({ executable: join(home, directory, command), origin: 'install-directory' });
+      }
+    }
+
     const byRealPath = new Map<string, InstallCandidate>();
     for (const entry of discovered) {
       let realPath: string;
@@ -252,7 +266,11 @@ export function createInstallationInventory(options: InstallInventoryOptions): I
     for (const candidate of candidates) {
       const installed = await classify(provider, candidate);
       if (!installed) continue;
-      installations.push({ ...installed, origin: candidate.origin, active: false });
+      const warnings =
+        candidate.origin === 'install-directory'
+          ? [...installed.warnings, `${dirname(candidate.executable)} is not on the search path`]
+          : installed.warnings;
+      installations.push({ ...installed, warnings, origin: candidate.origin, active: false });
     }
     // The runtime launches the configured executable when it named a file, and
     // otherwise whatever the shell would resolve first on PATH.

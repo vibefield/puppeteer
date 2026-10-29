@@ -21,6 +21,7 @@ import type {
   InstallCandidate,
   InstallMethod,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import {
@@ -34,6 +35,15 @@ import {
 export const CODEX_NPM_PACKAGE = '@openai/codex';
 /** Homebrew cask the vendor publishes. */
 export const CODEX_BREW_NAMES = ['codex'] as const;
+/**
+ * The first install the vendor lists (github.com/openai/codex README, read
+ * 2026-10-29): `curl -fsSL … | sh`, a POSIX script that redirects to
+ * `releases.openai.com`. It asks two questions on /dev/tty — remove another
+ * install, start Codex now — which `CODEX_NON_INTERACTIVE` skips; it leaves
+ * `~/.local/bin/codex` and adds that directory to the shell profile when it is
+ * not on PATH already.
+ */
+export const CODEX_INSTALL_SCRIPT_URL = 'https://chatgpt.com/codex/install.sh';
 
 const execFileAsync = promisify(execFile);
 const SCRIPT_EXECUTABLE = /\.(mjs|cjs|js|ts)$/;
@@ -78,6 +88,8 @@ export const CODEX_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: ['codex'],
   npmPackages: [CODEX_NPM_PACKAGE],
   brewNames: [...CODEX_BREW_NAMES],
+  // The install script's BIN_DIR when CODEX_INSTALL_DIR is unset (read 2026-10-29).
+  installDirectories: ['.local/bin'],
   detectors: [
     {
       kind: 'github-release',
@@ -203,6 +215,15 @@ export function createCodexDistributionService(options: CodexDistributionOptions
         autoUpdate: 'unknown',
         detectedAt: now().toISOString(),
         warnings,
+      };
+    },
+
+    installRecipe(): InstallRecipe {
+      return {
+        kind: 'installer-script',
+        url: CODEX_INSTALL_SCRIPT_URL,
+        shell: 'sh',
+        env: { CODEX_NON_INTERACTIVE: '1' },
       };
     },
 

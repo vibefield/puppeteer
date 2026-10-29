@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, ReleaseSnapshotSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  ReleaseSnapshotSchema,
+  type InstallCandidate,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import { classifyGrokCandidate, createGrokDistributionService, GROK_DISTRIBUTION_PROVIDER } from './distribution.js';
 
@@ -202,5 +207,15 @@ describe('Grok native update oracle', () => {
   it('reports an unreadable document as a non-retryable failure', async () => {
     const service = createGrokDistributionService({ exec: async () => ({ stdout: 'not json', stderr: '' }) });
     expect(await service.checkUpdate!(install)).toMatchObject({ status: 'unavailable', retryable: true });
+  });
+});
+
+describe('Grok first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(GROK_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.grok/bin']);
+    expect(InstallRecipeSchema.parse(createGrokDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://x.ai/cli/install.sh',
+    });
   });
 });

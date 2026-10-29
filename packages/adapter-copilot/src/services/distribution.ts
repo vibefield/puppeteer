@@ -16,11 +16,19 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { parseCopilotVersion } from '../detection.js';
 
 const COPILOT_NPM_PACKAGE = '@github/copilot';
+/**
+ * The first install the vendor lists (github.com/github/copilot-cli README,
+ * read 2026-10-29). It redirects to the repository's own `install.sh`, which
+ * downloads a GitHub release into `~/.local/bin/copilot`; its one question (add
+ * that directory to the shell rc) reads /dev/tty, so nothing is edited without one.
+ */
+const COPILOT_INSTALL_SCRIPT_URL = 'https://gh.io/copilot-install';
 const COPILOT_NPM_PATTERN = /^(.*[/\\]node_modules[/\\]@github[/\\]copilot)(?:[/\\]|$)/u;
 const COPILOT_COMMANDS = ['copilot'];
 const COPILOT_VERSION_FLAG = '--version';
@@ -46,6 +54,8 @@ export const COPILOT_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...COPILOT_COMMANDS],
   npmPackages: [COPILOT_NPM_PACKAGE],
   brewNames: [],
+  // The install script's $PREFIX/bin for an install that is not root's (read 2026-10-29).
+  installDirectories: ['.local/bin'],
   // Mirrors packages/surface/vendors/copilot/upstream.json plus the npm registry
   // the vendor publishes its platform tarballs to.
   detectors: [
@@ -139,6 +149,10 @@ export function createCopilotDistributionService(options: CopilotDistributionSer
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: COPILOT_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

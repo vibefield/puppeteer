@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   ANTIGRAVITY_DISTRIBUTION_PROVIDER,
@@ -132,6 +137,16 @@ describe('Antigravity update recipes', () => {
     expect(service.recipeFor(installed())).toEqual({
       kind: 'native-self-update',
       argv: ['/home/tester/.local/bin/agy', 'update'],
+    });
+  });
+});
+
+describe('Antigravity first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(ANTIGRAVITY_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.local/bin']);
+    expect(InstallRecipeSchema.parse(createAntigravityDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://antigravity.google/cli/install.sh',
     });
   });
 });

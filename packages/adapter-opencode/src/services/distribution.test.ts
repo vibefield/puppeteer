@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   autoUpdateFromConfig,
@@ -200,6 +205,16 @@ describe('OpenCode update recipes', () => {
     expect(service().recipeFor(installed({ method: 'npm-global', packageName: 'opencode-ai' }))).toEqual({
       kind: 'npm-global',
       package: 'opencode-ai',
+    });
+  });
+});
+
+describe('OpenCode first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(OPENCODE_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.opencode/bin']);
+    expect(InstallRecipeSchema.parse(createOpenCodeDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://opencode.ai/install',
     });
   });
 });

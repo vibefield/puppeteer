@@ -2,7 +2,12 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
+import {
+  DistributionProviderSchema,
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+} from '@vibefield/puppeteer-core';
 import {
   CLAUDE_DISTRIBUTION_PROVIDER,
   claudeReleaseChannel,
@@ -263,6 +268,16 @@ describe('Claude update recipes', () => {
       kind: 'brew',
       name: 'claude-code',
       cask: true,
+    });
+  });
+});
+
+describe('Claude first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(CLAUDE_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.local/bin']);
+    expect(InstallRecipeSchema.parse(createClaudeDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://claude.ai/install.sh',
     });
   });
 });
