@@ -4,14 +4,15 @@ import { AgentProviderDescriptorSchema, AgentProviderIdSchema } from './provider
 /**
  * Provider-neutral distribution contracts: where an agent executable is
  * installed, how it got there, which releases exist upstream, and how the
- * agent's own updater is invoked.
+ * agent's own updater — or, for an agent not yet here, the vendor's own
+ * installer — is invoked.
  *
  * Puppeteer never reimplements an installer or updater. The host discovers
  * candidate executables (PATH, the configured executable, package roots)
  * because that machinery is provider-neutral; the adapter classifies one
  * candidate and reads its version because install fingerprints and version
- * grammar are provider facts. An update runs the native command and the
- * outcome is a fresh inspection, never parsed updater output.
+ * grammar are provider facts. An update or an install runs the vendor's
+ * command and the outcome is a fresh inspection, never parsed output.
  */
 
 const NonEmptyStringSchema = z.string().trim().min(1).max(8_192);
@@ -32,6 +33,14 @@ const CommandNameSchema = z
   .min(1)
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/u);
+/** A directory under the home, written relative to it (`.local/bin`): never absolute, never climbing out. */
+const HomeDirectorySchema = z
+  .string()
+  .max(256)
+  .regex(/^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u)
+  .refine((value) => value.split('/').every((segment) => segment !== '.' && segment !== '..'), {
+    message: 'an install directory stays under the home',
+  });
 
 export const InstallMethodSchema = z.enum([
   /** The vendor's own installer manages versions and a launcher. */
@@ -48,7 +57,14 @@ export const InstallMethodSchema = z.enum([
 ]);
 export type InstallMethod = z.infer<typeof InstallMethodSchema>;
 
-export const InstallCandidateOriginSchema = z.enum(['configured', 'path', 'npm-global', 'brew']);
+export const InstallCandidateOriginSchema = z.enum([
+  'configured',
+  'path',
+  'npm-global',
+  'brew',
+  /** A directory the provider's own installer leaves the executable in, found though it is not on the search path. */
+  'install-directory',
+]);
 export type InstallCandidateOrigin = z.infer<typeof InstallCandidateOriginSchema>;
 
 /** One executable the host found; adapters decide whether it is theirs. */
@@ -168,43 +184,68 @@ const EnvironmentNameSchema = z
   .max(128)
   .regex(/^[A-Z_][A-Z0-9_]*$/u);
 
+const NativeSelfUpdateRecipeSchema = z.strictObject({
+  kind: z.literal('native-self-update'),
+  /** Complete argv; the first entry is the executable to run. */
+  argv: z.array(z.string().max(8_192)).min(1).max(32),
+  timeoutMs: UpdateTimeoutSchema.optional(),
+});
+const NpmGlobalRecipeSchema = z.strictObject({
+  kind: z.literal('npm-global'),
+  package: NonEmptyStringSchema,
+  /** Explicit target; defaults to the `latest` dist-tag. */
+  version: NonEmptyStringSchema.optional(),
+});
+const BrewRecipeSchema = z.strictObject({
+  kind: z.literal('brew'),
+  name: NonEmptyStringSchema,
+  cask: z.boolean(),
+});
+const InstallerScriptRecipeSchema = z.strictObject({
+  /**
+   * The vendor's documented install script: a first install, or run again to
+   * update an install its own updater will not move (a native installer whose
+   * upgrade command answers with these very instructions). Unix only: the
+   * runner fetches it over https and pipes it to the vendor's shell, exactly
+   * as the vendor tells a person to.
+   */
+  kind: z.literal('installer-script'),
+  url: HttpsUrlSchema,
+  /** The shell the vendor pipes the script to: bash unless the vendor documents `| sh`. */
+  shell: z.enum(['bash', 'sh']).optional(),
+  /** Variables the script itself documents: its install directory, leaving the shell rc alone. */
+  env: z.record(EnvironmentNameSchema, z.string().max(8_192)).optional(),
+  /** Commands the script itself runs that a person must already have (Node for one that installs with npm). */
+  needs: z.array(CommandNameSchema).max(8).optional(),
+  timeoutMs: UpdateTimeoutSchema.optional(),
+});
+const ManualRecipeSchema = z.strictObject({
+  kind: z.literal('manual'),
+  instructions: NonEmptyStringSchema,
+});
+
 export const UpdateRecipeSchema = z.discriminatedUnion('kind', [
-  z.strictObject({
-    kind: z.literal('native-self-update'),
-    /** Complete argv; the first entry is the executable to run. */
-    argv: z.array(z.string().max(8_192)).min(1).max(32),
-    timeoutMs: UpdateTimeoutSchema.optional(),
-  }),
-  z.strictObject({
-    kind: z.literal('npm-global'),
-    package: NonEmptyStringSchema,
-    /** Explicit target; defaults to the `latest` dist-tag. */
-    version: NonEmptyStringSchema.optional(),
-  }),
-  z.strictObject({
-    kind: z.literal('brew'),
-    name: NonEmptyStringSchema,
-    cask: z.boolean(),
-  }),
-  z.strictObject({
-    /**
-     * The vendor's documented install script, run again to update an install
-     * its own updater will not move (a native installer whose upgrade command
-     * answers with these very instructions). Unix only: the runner fetches it
-     * over https and pipes it to bash, exactly as the vendor tells a person to.
-     */
-    kind: z.literal('installer-script'),
-    url: HttpsUrlSchema,
-    /** Variables the script itself documents: its install directory, leaving the shell rc alone. */
-    env: z.record(EnvironmentNameSchema, z.string().max(8_192)).optional(),
-    timeoutMs: UpdateTimeoutSchema.optional(),
-  }),
-  z.strictObject({
-    kind: z.literal('manual'),
-    instructions: NonEmptyStringSchema,
-  }),
+  NativeSelfUpdateRecipeSchema,
+  NpmGlobalRecipeSchema,
+  BrewRecipeSchema,
+  InstallerScriptRecipeSchema,
+  ManualRecipeSchema,
 ]);
 export type UpdateRecipe = z.infer<typeof UpdateRecipeSchema>;
+
+/**
+ * How to install an agent that is not installed: the vendor's documented first
+ * install, through the same runner as an update. The members are the update
+ * recipe's own; a native command is not one, since there is no executable yet
+ * to run it.
+ */
+export const InstallRecipeSchema = z.discriminatedUnion('kind', [
+  NpmGlobalRecipeSchema,
+  BrewRecipeSchema,
+  InstallerScriptRecipeSchema,
+  ManualRecipeSchema,
+]);
+export type InstallRecipe = z.infer<typeof InstallRecipeSchema>;
 
 export const UpdateReceiptSchema = z.strictObject({
   provider: AgentProviderIdSchema,
@@ -231,6 +272,34 @@ export const UpdateReceiptSchema = z.strictObject({
 });
 export type UpdateReceipt = z.infer<typeof UpdateReceiptSchema>;
 
+export const InstallReceiptSchema = z.strictObject({
+  provider: AgentProviderIdSchema,
+  /**
+   * `installed`: a fresh inspection found the agent after the installer ran —
+   * the only evidence, whatever the exit code said. `present`: an install was
+   * already there, so nothing ran; `after` is that install. `not-found`: the
+   * installer exited 0 and no inspection found the agent, on the search path
+   * the host gave the runtime or in the provider's install directories. `failed`: the installer did not finish (a
+   * non-zero exit, a signal, a timeout, a stop), or a command it needs is not
+   * on the search path (`missing`) and it never ran. `unsupported`: the
+   * adapter declares no install, the recipe is manual, or the recipe cannot
+   * run on this platform.
+   */
+  status: z.enum(['installed', 'present', 'not-found', 'failed', 'unsupported']),
+  recipe: InstallRecipeSchema.optional(),
+  /** Fresh inspection after the command finished, or the install already present. */
+  after: InstalledAgentSchema.optional(),
+  /** Commands the recipe runs from the search path that it does not hold; the installer did not run. */
+  missing: z.array(CommandNameSchema).max(8).optional(),
+  startedAt: TimestampSchema,
+  finishedAt: TimestampSchema,
+  exitCode: z.number().int().optional(),
+  /** Opaque command output kept 0600 by the host; never parsed for semantics. */
+  transcriptPath: NonEmptyStringSchema.optional(),
+  message: z.string().max(4_000).optional(),
+});
+export type InstallReceipt = z.infer<typeof InstallReceiptSchema>;
+
 export const DistributionFailureSchema = z.strictObject({
   status: z.enum(['unsupported', 'unavailable']),
   provider: AgentProviderIdSchema,
@@ -248,6 +317,13 @@ export const DistributionProviderSchema = z.strictObject({
   npmPackages: z.array(NonEmptyStringSchema).max(8),
   /** Homebrew casks or formulae that may provide the executable. */
   brewNames: z.array(NonEmptyStringSchema).max(8),
+  /**
+   * Directories under the home where the vendor's own installer leaves the
+   * executable (`.local/bin`). The host searches them after the search path,
+   * so an install a person's shell finds is found where PATH is short: an app
+   * launched from the Finder has launchd's PATH, which names none of them.
+   */
+  installDirectories: z.array(HomeDirectorySchema).max(8).optional(),
   detectors: z.array(ReleaseDetectorSchema).max(8),
   /** True when checkUpdate() is implemented with the agent's own oracle. */
   nativeUpdateCheck: z.boolean(),
@@ -260,6 +336,11 @@ export interface DistributionService {
   /** Classify one host-discovered candidate and read its version; undefined when it is not this agent. */
   inspect(candidate: InstallCandidate): Promise<InstalledAgent | undefined>;
   recipeFor(install: InstalledAgent): UpdateRecipe;
+  /**
+   * The vendor's documented first install, for an agent this machine does not
+   * have. Absent when the vendor documents none a runner can follow.
+   */
+  installRecipe?(): InstallRecipe;
   /** The agent's own update oracle, such as a `--check --json` subcommand. */
   checkUpdate?(install: InstalledAgent): Promise<ReleaseSnapshot | DistributionFailure>;
 }

@@ -20,6 +20,8 @@ import {
   type AgentProfile,
   type AgentAdapterBinding,
   type AgentAttachRecord,
+  type DistributionService,
+  type InstallRecipe,
   type ObservationLevel,
   type ProfileService,
 } from '@vibefield/puppeteer-core';
@@ -30,6 +32,8 @@ import { createFileCreationRequestRegistry, type CreationRequestRegistry } from 
 import { MAX_REFUSAL_MESSAGE_LENGTH } from './host/spawn-through/protocol.js';
 import { parseProfileRegistrySnapshot } from './profiles/registry.js';
 import { createAgentRuntime } from './runtime.js';
+import { installArgv } from './distribution/install.js';
+import type { UpdateCommandRunner } from './distribution/update.js';
 import type {
   AgentProvider,
   AgentProviderDisposeOptions,
@@ -37,6 +41,8 @@ import type {
   ProfileRegistrySnapshot,
   ProfileStore,
 } from './types.js';
+
+const itPosix = it.skipIf(process.platform === 'win32');
 
 const host: AgentHost = {
   async spawnTerminal() {
@@ -3550,6 +3556,202 @@ describe('createAgentRuntime', () => {
       status: 'unsupported',
     });
     await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  // The runtime reads the host's own platform, and a Windows host refuses an install script before anything runs
+  // (install.test.ts holds that row), so the runtime's install rows run on macOS and Linux.
+  itPosix('plans and runs a first install through the host runner, then finds the agent where it looks', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-install-'));
+    const binDirectory = join(root, 'bin');
+    await mkdir(binDirectory, { recursive: true });
+    await writeFile(join(binDirectory, 'curl'), '#!/bin/sh\n', { mode: 0o755 });
+    await writeFile(join(binDirectory, 'bash'), '#!/bin/sh\n', { mode: 0o755 });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const distributionProvider = {
+      id: 'example',
+      label: 'Example',
+      commands: ['example'],
+      npmPackages: [],
+      brewNames: [],
+      detectors: [],
+      nativeUpdateCheck: false,
+    };
+    const recipe = { kind: 'installer-script' as const, url: 'https://example.com/install.sh' };
+    const provider: AgentProvider = {
+      ...fakeProvider('example', handles),
+      descriptor: { id: 'example', label: 'Example' },
+      distribution: {
+        provider: distributionProvider,
+        async inspect(candidate) {
+          return {
+            provider: 'example',
+            executable: candidate.executable,
+            realPath: candidate.realPath,
+            version: '1.2.3',
+            method: 'native-installer',
+            autoUpdate: 'unknown',
+            detectedAt: '2026-10-29T12:00:00.000Z',
+            warnings: [],
+          };
+        },
+        recipeFor: () => ({ kind: 'manual', instructions: 'unused' }),
+        installRecipe: () => recipe,
+      },
+    };
+    const bare: AgentProvider = {
+      ...fakeProvider('bare', handles),
+      descriptor: { id: 'bare', label: 'Bare' },
+      distribution: {
+        provider: { ...distributionProvider, id: 'bare', label: 'Bare', commands: ['bare'] },
+        async inspect() {
+          return undefined;
+        },
+        recipeFor: () => ({ kind: 'manual', instructions: 'unused' }),
+      },
+    };
+    // The vendor's installer, played by the host's runner: it leaves the agent on the search path.
+    const run = vi.fn<UpdateCommandRunner>(async (request) => {
+      await writeFile(join(binDirectory, 'example'), '#!/bin/sh\n', { mode: 0o755 });
+      request.onOutput('installed\n');
+      return { exitCode: 0 };
+    });
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [provider, bare],
+      distribution: { searchPath: binDirectory, transcriptsDirectory: join(root, 'updates'), run },
+    });
+
+    await expect(runtime.inspectInstallations({ providerId: 'example' })).resolves.toEqual([]);
+    await expect(runtime.planInstall({ providerId: 'example' })).resolves.toEqual({
+      provider: 'example',
+      recipe,
+      argv: installArgv(recipe),
+      requires: ['curl', 'bash'],
+      missing: [],
+    });
+    await expect(runtime.planInstall({ providerId: 'bare' })).resolves.toMatchObject({
+      status: 'unsupported',
+      message: 'Bare declares no install',
+    });
+    await expect(runtime.planInstall({ providerId: 'missing' })).resolves.toMatchObject({ status: 'unsupported' });
+
+    const output: string[] = [];
+    await expect(
+      runtime.installAgent({ providerId: 'example', onOutput: (chunk) => output.push(chunk) }),
+    ).resolves.toMatchObject({
+      status: 'installed',
+      after: { executable: join(binDirectory, 'example'), version: '1.2.3' },
+      exitCode: 0,
+    });
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0]![0].env.PATH).toBe(binDirectory);
+    expect(output).toEqual(['installed\n']);
+    // The inventory was refreshed by the install's own inspection.
+    await expect(runtime.inspectInstallations({ providerId: 'example' })).resolves.toMatchObject([
+      { executable: join(binDirectory, 'example'), active: true },
+    ]);
+    // Asked again, nothing runs.
+    await expect(runtime.installAgent({ providerId: 'example' })).resolves.toMatchObject({ status: 'present' });
+    expect(run).toHaveBeenCalledTimes(1);
+    await expect(runtime.installAgent({ providerId: 'bare' })).resolves.toMatchObject({ status: 'unsupported' });
+    await expect(runtime.installAgent({ providerId: 'missing' })).resolves.toMatchObject({ status: 'unsupported' });
+    await runtime.dispose();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  itPosix('finds an install left off a short search path, and refuses a recipe out of schema', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-install-home-'));
+    const binDirectory = join(root, 'bin');
+    const home = join(root, 'home');
+    await mkdir(binDirectory, { recursive: true });
+    await writeFile(join(binDirectory, 'curl'), '#!/bin/sh\n', { mode: 0o755 });
+    await writeFile(join(binDirectory, 'bash'), '#!/bin/sh\n', { mode: 0o755 });
+    const handles = new Map<string, { emit: (event: AgentEventEnvelope) => void }>();
+    const distributionProvider = {
+      id: 'example',
+      label: 'Example',
+      commands: ['example'],
+      npmPackages: [],
+      brewNames: [],
+      installDirectories: ['.example/bin'],
+      detectors: [],
+      nativeUpdateCheck: false,
+    };
+    const service = (installRecipe: () => InstallRecipe): DistributionService => ({
+      provider: distributionProvider,
+      async inspect(candidate) {
+        return {
+          provider: 'example',
+          executable: candidate.executable,
+          realPath: candidate.realPath,
+          version: '1.2.3',
+          method: 'native-installer',
+          autoUpdate: 'unknown',
+          detectedAt: '2026-10-29T12:00:00.000Z',
+          warnings: [],
+        };
+      },
+      recipeFor: () => ({ kind: 'manual', instructions: 'unused' }),
+      installRecipe,
+    });
+    // The vendor's installer leaves the agent in its own directory, which the search path (launchd's, say) lacks.
+    const run = vi.fn<UpdateCommandRunner>(async () => {
+      await mkdir(join(home, '.example', 'bin'), { recursive: true });
+      await writeFile(join(home, '.example', 'bin', 'example'), '#!/bin/sh\n', { mode: 0o755 });
+      return { exitCode: 0 };
+    });
+    const runtime = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        {
+          ...fakeProvider('example', handles),
+          descriptor: { id: 'example', label: 'Example' },
+          distribution: service(() => ({ kind: 'installer-script', url: 'https://example.com/install.sh' })),
+        },
+      ],
+      distribution: { searchPath: binDirectory, home, transcriptsDirectory: join(root, 'updates'), run },
+    });
+
+    await expect(runtime.installAgent({ providerId: 'example' })).resolves.toMatchObject({
+      status: 'installed',
+      after: {
+        executable: join(home, '.example', 'bin', 'example'),
+        warnings: [`${join(home, '.example', 'bin')} is not on the search path`],
+      },
+    });
+    // Found, but never the launch: the runtime launches by command name, which does not reach it.
+    await expect(runtime.inspectInstallations({ providerId: 'example' })).resolves.toMatchObject([
+      { origin: 'install-directory', active: false },
+    ]);
+    await runtime.dispose();
+
+    // An adapter's recipe is held to the schema before anything is planned or run.
+    const strayRun = vi.fn<UpdateCommandRunner>(async () => ({ exitCode: 0 }));
+    const stray = createAgentRuntime({
+      host,
+      defaultCwd: root,
+      providers: [
+        {
+          ...fakeProvider('example', handles),
+          descriptor: { id: 'example', label: 'Example' },
+          distribution: service(() => ({ kind: 'installer-script', url: 'http://example.com/install.sh' })),
+        },
+      ],
+      distribution: { searchPath: binDirectory, home: join(root, 'empty-home'), run: strayRun },
+    });
+    await expect(stray.planInstall({ providerId: 'example' })).resolves.toMatchObject({
+      status: 'unavailable',
+      message: 'adapter produced an invalid install recipe',
+    });
+    await expect(stray.installAgent({ providerId: 'example' })).resolves.toMatchObject({
+      status: 'failed',
+      message: 'adapter produced an invalid install recipe',
+    });
+    expect(strayRun).not.toHaveBeenCalled();
+    await stray.dispose();
     await rm(root, { recursive: true, force: true });
   });
 

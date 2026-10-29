@@ -18,11 +18,20 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { OPENCODE_VERSION_FLAG, parseOpenCodeVersion } from '../detection.js';
 
 const OPENCODE_NPM_PACKAGE = 'opencode-ai';
+/**
+ * The install opencode.ai/docs lists first (read 2026-10-29): the 1.x line this
+ * adapter covers. (The repository's README now leads with `opencode.ai/v2/install`,
+ * a 2.x line the 1.x script refuses and that cannot sit beside it.) It asks
+ * nothing, places `~/.opencode/bin/opencode`, adds that directory to the shell
+ * rc, and reads SHELL under `set -u`, so it needs one.
+ */
+const OPENCODE_INSTALL_SCRIPT_URL = 'https://opencode.ai/install';
 const OPENCODE_BREW_NAME = 'opencode';
 /** `~/.opencode/bin/opencode`; the capture is the vendor home that owns the install. */
 const OPENCODE_HOME_PATTERN = /^(.*[/\\]\.opencode)[/\\]bin[/\\]/u;
@@ -56,6 +65,8 @@ export const OPENCODE_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...OPENCODE_COMMANDS],
   npmPackages: [OPENCODE_NPM_PACKAGE],
   brewNames: [OPENCODE_BREW_NAME],
+  // The install script's fixed INSTALL_DIR (read 2026-10-29).
+  installDirectories: ['.opencode/bin'],
   // Mirrors packages/surface/vendors/opencode/upstream.json plus the npm
   // registry the vendor publishes its platform tarballs to.
   detectors: [
@@ -178,6 +189,10 @@ export function createOpenCodeDistributionService(
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: OPENCODE_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

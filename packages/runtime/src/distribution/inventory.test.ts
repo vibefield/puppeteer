@@ -149,6 +149,40 @@ describe('createInstallationInventory', () => {
     expect(installations.find((installation) => installation.active)?.executable).toBe(box.pathExecutable);
   });
 
+  it("searches the provider's install directories under the home, after the search path, never as the launch", async () => {
+    const box = await machine();
+    const home = join(box.root, 'home');
+    await mkdir(join(home, '.example', 'bin'), { recursive: true });
+    await mkdir(join(home, '.local', 'bin'), { recursive: true });
+    await writeFile(join(home, '.example', 'bin', 'example'), '#!/bin/sh\n');
+    await writeFile(join(home, '.local', 'bin', 'example'), '#!/bin/sh\n');
+    const provider: DistributionProvider = { ...descriptor, installDirectories: ['.example/bin', '.local/bin'] };
+    const inventoryOn = (searchPath: string) =>
+      createInstallationInventory({
+        providers: [{ providerId: 'example', service: fakeService(provider, []), launchExecutables: [] }],
+        searchPath,
+        brewPrefixes: [],
+        home,
+      });
+
+    // A directory the search path also reaches keeps its PATH origin, and stays the launch.
+    const installations = await inventoryOn(join(home, '.local', 'bin')).inspect();
+    expect(installations.map(({ executable, origin, active }) => ({ executable, origin, active }))).toEqual([
+      { executable: join(home, '.local', 'bin', 'example'), origin: 'path', active: true },
+      { executable: join(home, '.example', 'bin', 'example'), origin: 'install-directory', active: false },
+    ]);
+    expect(installations[0]?.warnings).toEqual([]);
+    // Found, and said to be off the search path: a launch by command name does not reach it.
+    expect(installations[1]?.warnings).toEqual([`${join(home, '.example', 'bin')} is not on the search path`]);
+
+    // A search path that names none of them, as launchd's does: both are found, neither is the launch.
+    const short = await inventoryOn(join(box.root, 'missing')).inspect();
+    expect(short.map(({ origin, active }) => ({ origin, active }))).toEqual([
+      { origin: 'install-directory', active: false },
+      { origin: 'install-directory', active: false },
+    ]);
+  });
+
   it('caches per provider until refresh and clears on invalidate', async () => {
     const box = await machine();
     const seen: InstallCandidate[] = [];

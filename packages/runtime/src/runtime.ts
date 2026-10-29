@@ -45,6 +45,7 @@ import {
   type DistributionFailure,
   type DistributionProvider,
   type ExternalRef,
+  type InstallReceipt,
   type ProfileFailure,
   type ProfileIdentity,
   type ProfileProvider,
@@ -97,6 +98,9 @@ import type {
   CreateProfileOptions,
   CreateProfileSetOptions,
   InspectInstallationsOptions,
+  InstallAgentOptions,
+  InstallPlan,
+  InstallPlanOptions,
   PreparationFailure,
   PreparedAgentSessionInfo,
   PreparedProviderSession,
@@ -122,6 +126,12 @@ import {
   type InstallInventory,
   type InventoryProvider,
 } from './distribution/inventory.js';
+import {
+  installUnsupportedHere,
+  planAgentInstall,
+  readInstallRecipe,
+  runAgentInstall,
+} from './distribution/install.js';
 import { checkProviderReleases, createReleaseEtagCache } from './distribution/releases.js';
 import {
   defaultUpdateTranscriptsDirectory,
@@ -431,6 +441,7 @@ function cloneDistributionProvider(provider: DistributionProvider): Distribution
     commands: [...provider.commands],
     npmPackages: [...provider.npmPackages],
     brewNames: [...provider.brewNames],
+    ...(provider.installDirectories === undefined ? {} : { installDirectories: [...provider.installDirectories] }),
     detectors: provider.detectors.map((detector) => ({ ...detector })),
   };
 }
@@ -741,9 +752,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       ];
     }),
     ...(options.distribution?.searchPath === undefined ? {} : { searchPath: options.distribution.searchPath }),
+    ...(options.distribution?.home === undefined ? {} : { home: options.distribution.home }),
     onError: report,
   });
   const releaseCache = createReleaseEtagCache();
+  /** An install runs with the list the inventory searches, so the agent it leaves is found where it looks. */
+  const installSearchPath = (): string | undefined => options.distribution?.searchPath ?? process.env.PATH;
 
   /**
    * The profile registry reads a file, so it is built on first use rather than
@@ -2893,6 +2907,68 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
           );
         },
         transcriptsDirectory: options.distribution?.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
+        ...(options.distribution?.run === undefined ? {} : { run: options.distribution.run }),
+        onError: report,
+        ...(request.onOutput === undefined ? {} : { onOutput: request.onOutput }),
+        ...(request.signal === undefined ? {} : { signal: request.signal }),
+      });
+    },
+
+    async planInstall(request: InstallPlanOptions): Promise<InstallPlan | DistributionFailure> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const descriptor = distributionProvidersById.get(request.providerId);
+      const service = providers.get(request.providerId)?.distribution;
+      if (!descriptor || !service) {
+        return {
+          status: 'unsupported',
+          provider: request.providerId,
+          message: `agent provider does not expose distribution: ${request.providerId}`,
+          retryable: false,
+        };
+      }
+      const read = readInstallRecipe(service, report);
+      if (!read.ok) {
+        return { status: 'unavailable', provider: request.providerId, message: read.message, retryable: false };
+      }
+      const { recipe } = read;
+      const unsupported =
+        recipe === undefined ? `${descriptor.label} declares no install` : installUnsupportedHere(descriptor, recipe);
+      if (recipe === undefined || unsupported !== undefined) {
+        return {
+          status: 'unsupported',
+          provider: request.providerId,
+          message: unsupported ?? `${descriptor.label} declares no install`,
+          retryable: false,
+        };
+      }
+      const plan = await planAgentInstall(recipe, { searchPath: installSearchPath() });
+      return { provider: request.providerId, ...plan };
+    },
+
+    async installAgent(request: InstallAgentOptions): Promise<InstallReceipt> {
+      if (disposed) throw new Error('agent runtime is disposed');
+      const descriptor = distributionProvidersById.get(request.providerId);
+      const service = providers.get(request.providerId)?.distribution;
+      if (!descriptor || !service) {
+        const at = new Date().toISOString();
+        return {
+          provider: request.providerId,
+          status: 'unsupported',
+          startedAt: at,
+          finishedAt: at,
+          message: `agent provider does not expose distribution: ${request.providerId}`,
+        };
+      }
+      return runAgentInstall({
+        provider: descriptor,
+        service,
+        inspect: async () => {
+          const found = await inventory.inspect({ providerId: request.providerId, refresh: true });
+          return found.find((entry) => entry.active) ?? found[0];
+        },
+        searchPath: installSearchPath(),
+        transcriptsDirectory: options.distribution?.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
+        ...(options.distribution?.run === undefined ? {} : { run: options.distribution.run }),
         onError: report,
         ...(request.onOutput === undefined ? {} : { onOutput: request.onOutput }),
         ...(request.signal === undefined ? {} : { signal: request.signal }),

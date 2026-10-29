@@ -31,6 +31,8 @@ import type {
   ProfileSet,
   ReleaseChannel,
   ReleaseSnapshot,
+  InstallReceipt,
+  InstallRecipe,
   UpdateReceipt,
   UpdateRecipe,
   AgentExecutionMode,
@@ -601,8 +603,15 @@ export interface DistributionRuntimeOptions {
   transcriptsDirectory?: string;
   /** Injectable fetch for release detectors; defaults to globalThis.fetch. */
   fetch?: typeof fetch;
-  /** PATH-style list searched for candidates; defaults to process.env.PATH. */
+  /** PATH-style list searched for candidates, and the one an install runs with; defaults to process.env.PATH. */
   searchPath?: string;
+  /** The home the providers' install directories are read under; defaults to the user's home. */
+  home?: string;
+  /**
+   * Runs an update's or an install's command; injected so a host's tests never
+   * run a vendor's. Defaults to the update runner.
+   */
+  run?: UpdateCommandRunner;
 }
 
 export interface ExtensionRuntimeOptions {
@@ -707,6 +716,40 @@ export interface UpdatePlan {
   recipe: UpdateRecipe;
   /** The command the runner would execute; absent when the recipe is manual. */
   argv?: string[];
+}
+
+export interface InstallPlanOptions {
+  providerId: string;
+}
+
+/**
+ * What an install would run for an agent this machine does not have,
+ * answered before anyone runs it, so a host can say which installer a button
+ * runs and which command it lacks. Computed the way
+ * {@link AgentRuntime.installAgent} computes it.
+ */
+export interface InstallPlan {
+  provider: string;
+  recipe: InstallRecipe;
+  /** The command the runner would execute; absent when the recipe is manual. */
+  argv?: string[];
+  /** The commands {@link argv} runs from the search path. */
+  requires: string[];
+  /** Of those, the ones the search path does not hold now: the install would not run. */
+  missing: string[];
+}
+
+export interface InstallAgentOptions {
+  providerId: string;
+  /**
+   * Opaque observer for the installer's output as it arrives, beside the 0600
+   * transcript. A host may show it to the person who asked for the install;
+   * nothing may parse it — the outcome is the re-inspection, never this text.
+   * An observer that throws is contained and never fails the install.
+   */
+  onOutput?: (chunk: string) => void;
+  /** Aborting stops the installer and everything it started (its process group); the receipt says it was stopped. */
+  signal?: AbortSignal;
 }
 
 export interface CreateProfileOptions {
@@ -889,6 +932,13 @@ export interface AgentRuntime {
   updateInstallation(options: UpdateInstallationOptions): Promise<UpdateReceipt>;
   /** What {@link updateInstallation} would run for an install, without running it. */
   planUpdate(options: UpdatePlanOptions): Promise<UpdatePlan | DistributionFailure>;
+  /** What {@link installAgent} would run for an agent not installed, without running it. */
+  planInstall(options: InstallPlanOptions): Promise<InstallPlan | DistributionFailure>;
+  /**
+   * Run the vendor's documented first install and inspect again; the receipt
+   * is evidence, not parsed output. An agent already installed runs nothing.
+   */
+  installAgent(options: InstallAgentOptions): Promise<InstallReceipt>;
   /** Enumerate every adapter that advertises account profiles. */
   profileProviders(): readonly ProfileProvider[];
   /** Registered profiles plus one synthetic native-default profile per supporting provider. */

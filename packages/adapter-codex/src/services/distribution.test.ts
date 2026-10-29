@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DistributionProviderSchema, InstalledAgentSchema, type InstallCandidate } from '@vibefield/puppeteer-core';
+import {
+  DistributionProviderSchema,
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+} from '@vibefield/puppeteer-core';
 import { CODEX_DISTRIBUTION_PROVIDER, createCodexDistributionService } from './distribution.js';
 
 const BANNER = 'codex-cli 0.153.4\n';
@@ -162,5 +167,17 @@ describe('Codex update recipe', () => {
     expect(distribution.recipeFor(install)).toEqual(expected);
     expect(distribution.recipeFor({ ...install, method: 'brew', packageName: 'codex' })).toEqual(expected);
     expect(distribution.recipeFor({ ...install, method: 'standalone-binary' })).toEqual(expected);
+  });
+});
+
+describe('Codex first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(CODEX_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.local/bin']);
+    expect(InstallRecipeSchema.parse(createCodexDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://chatgpt.com/codex/install.sh',
+      shell: 'sh',
+      env: { CODEX_NON_INTERACTIVE: '1' },
+    });
   });
 });

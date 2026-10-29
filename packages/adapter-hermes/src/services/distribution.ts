@@ -19,6 +19,7 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { parseHermesVersion } from '../detection.js';
@@ -53,6 +54,8 @@ export const HERMES_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...HERMES_COMMANDS],
   npmPackages: [],
   brewNames: [],
+  // Where the probed install's wrapper lives (2026-09-22); the install script puts this directory on PATH.
+  installDirectories: ['.local/bin'],
   // Mirrors packages/surface/vendors/hermes/upstream.json: the tag carries the
   // calendar release and the title carries the semantic version.
   detectors: [
@@ -144,6 +147,17 @@ export function hermesPythonFromWrapper(wrapper: string): string | undefined {
  */
 const HERMES_UPDATE_TIMEOUT_MS = 45 * 60_000;
 
+/**
+ * The vendor's one documented install (NousResearch/hermes-agent README, read
+ * 2026-10-29). It clones the checkout into `~/.hermes/hermes-agent` and fetches
+ * uv, Python and Node — a first install is at least as long as an update, so it
+ * takes the update's budget. Its setup and gateway stages read /dev/tty and are
+ * skipped without one; it adds `~/.local/bin` to the shell rc. Read from the
+ * script only: the launcher it leaves is written by the checkout's own
+ * completion step, not yet observed on a fresh install.
+ */
+const HERMES_INSTALL_SCRIPT_URL = 'https://hermes-agent.nousresearch.com/install.sh';
+
 export function createHermesDistributionService(options: HermesDistributionServiceOptions = {}): DistributionService {
   const exec = options.exec ?? defaultExec;
   const readHead = options.readHead ?? readHermesWrapperHead;
@@ -190,6 +204,10 @@ export function createHermesDistributionService(options: HermesDistributionServi
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: HERMES_INSTALL_SCRIPT_URL, timeoutMs: HERMES_UPDATE_TIMEOUT_MS };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

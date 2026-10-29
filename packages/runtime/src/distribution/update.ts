@@ -1,6 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { access, mkdir, open } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, sep } from 'node:path';
 import {
@@ -12,7 +11,7 @@ import {
   type UpdateReceipt,
   type UpdateRecipe,
 } from '@vibefield/puppeteer-core';
-import { buildAgentEnvironment } from '../host/environment.js';
+import { OPERATION_TIMEOUT_MS, installerScriptArgv, operationEnvironment, runOperation } from './operation.js';
 
 /**
  * Run one adapter-declared update recipe.
@@ -28,16 +27,8 @@ import { buildAgentEnvironment } from '../host/environment.js';
  * GROUP is what a timeout or a stop ends — a git or a curl it started goes too.
  */
 
-/** Vendor updaters download and verify archives; a short timeout would abort healthy runs. */
-const UPDATE_TIMEOUT_MS = 15 * 60_000;
 /** A stopped updater's grace to exit on SIGTERM before SIGKILL. */
 const STOP_GRACE_MS = 5_000;
-const TRANSCRIPT_DIRECTORY_MODE = 0o700;
-const TRANSCRIPT_FILE_MODE = 0o600;
-
-/** The vendor's documented `curl … | bash`, with the URL as a positional parameter (never spliced into the
- * script), https only, and pipefail so a failed download fails the run. */
-const INSTALLER_SCRIPT = 'set -o pipefail; curl --proto =https --tlsv1.2 -fsSL "$1" | bash';
 
 export interface UpdateCommandRequest {
   argv: readonly string[];
@@ -172,7 +163,7 @@ export async function recipeArgv(
     case 'brew':
       return ['brew', 'upgrade', ...(recipe.cask ? ['--cask'] : []), recipe.name];
     case 'installer-script':
-      return ['/bin/bash', '-c', INSTALLER_SCRIPT, 'puppeteer-update', recipe.url];
+      return installerScriptArgv(recipe.url, 'puppeteer-update', recipe.shell);
     case 'manual':
       return undefined;
   }
@@ -223,30 +214,6 @@ export interface InstallationUpdateOptions {
   signal?: AbortSignal;
 }
 
-interface TranscriptSink {
-  path?: string;
-  write(chunk: string): void;
-  close(): Promise<void>;
-}
-
-async function openTranscript(directory: string, providerId: string): Promise<TranscriptSink> {
-  await mkdir(directory, { recursive: true, mode: TRANSCRIPT_DIRECTORY_MODE });
-  const path = join(directory, `${providerId}-${Date.now()}-${randomUUID()}.log`);
-  // 'ax' fails rather than truncating; the mode applies because the file is new.
-  const handle = await open(path, 'ax', TRANSCRIPT_FILE_MODE);
-  let chain: Promise<unknown> = Promise.resolve();
-  return {
-    path,
-    write(chunk) {
-      chain = chain.then(() => handle.write(chunk)).catch(() => undefined);
-    },
-    async close() {
-      await chain;
-      await handle.close().catch(() => undefined);
-    },
-  };
-}
-
 export async function runInstallationUpdate(options: InstallationUpdateOptions): Promise<UpdateReceipt> {
   const now = options.now ?? (() => new Date());
   const startedAt = now().toISOString();
@@ -285,54 +252,22 @@ export async function runInstallationUpdate(options: InstallationUpdateOptions):
     return receipt({ status: 'failed', recipe, before, message: 'update recipe produced no command' });
   }
 
-  const environment: Record<string, string> = {
-    ...buildAgentEnvironment({
-      ...(process.env.PATH === undefined ? {} : { path: process.env.PATH }),
-      ...(process.env.HOME === undefined ? {} : { home: process.env.HOME }),
+  const { result, transcriptPath } = await runOperation({
+    providerId,
+    argv,
+    env: operationEnvironment({
+      path: process.env.PATH,
+      scriptEnv: recipe.kind === 'installer-script' ? recipe.env : undefined,
     }),
-    // Output reaches the observer as it is printed: a Python updater's own lines
-    // would otherwise wait in a pipe's buffer until it exits.
-    PYTHONUNBUFFERED: '1',
-    ...(recipe.kind === 'installer-script' ? (recipe.env ?? {}) : {}),
-  };
-  const timeoutMs =
-    (recipe.kind === 'native-self-update' || recipe.kind === 'installer-script' ? recipe.timeoutMs : undefined) ??
-    UPDATE_TIMEOUT_MS;
-  const transcriptsDirectory = options.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory();
-  let transcript: TranscriptSink;
-  try {
-    transcript = await openTranscript(transcriptsDirectory, providerId);
-  } catch (error) {
-    // A missing transcript must not block an update the user asked for.
-    report(error);
-    transcript = { write: () => undefined, close: async () => undefined };
-  }
-
-  let result: UpdateCommandResult;
-  try {
-    result = await (options.run ?? runUpdateCommand)({
-      argv,
-      env: environment,
-      cwd: environment.HOME ?? process.cwd(),
-      timeoutMs,
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-      onOutput: (chunk) => {
-        transcript.write(chunk);
-        if (options.onOutput === undefined) return;
-        try {
-          options.onOutput(chunk);
-        } catch (error) {
-          // The person asked for the update; a host's display failing must not stop it.
-          report(error);
-        }
-      },
-    });
-  } catch (error) {
-    report(error);
-    result = { exitCode: null, error: 'could not be started' };
-  } finally {
-    await transcript.close();
-  }
+    timeoutMs:
+      (recipe.kind === 'native-self-update' || recipe.kind === 'installer-script' ? recipe.timeoutMs : undefined) ??
+      OPERATION_TIMEOUT_MS,
+    transcriptsDirectory: options.transcriptsDirectory ?? defaultUpdateTranscriptsDirectory(),
+    run: options.run ?? runUpdateCommand,
+    signal: options.signal,
+    onOutput: options.onOutput,
+    report,
+  });
 
   let after: InstalledAgent | undefined;
   try {
@@ -342,7 +277,7 @@ export async function runInstallationUpdate(options: InstallationUpdateOptions):
     report(error);
   }
 
-  const transcriptFields = transcript.path === undefined ? {} : { transcriptPath: transcript.path };
+  const transcriptFields = transcriptPath === undefined ? {} : { transcriptPath };
   const exitFields = result.exitCode === null ? {} : { exitCode: result.exitCode };
   // A clean exit is one the runner did not end: a stop or a timeout is never success.
   const succeeded = result.exitCode === 0 && result.error === undefined;

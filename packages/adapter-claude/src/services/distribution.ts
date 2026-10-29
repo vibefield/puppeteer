@@ -26,6 +26,7 @@ import type {
   InstallCandidate,
   InstallMethod,
   InstalledAgent,
+  InstallRecipe,
   ReleaseChannel,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
@@ -42,6 +43,14 @@ import { CLAUDE_DETECTION_SURFACE } from '../generated/detection-surface.js';
 export const CLAUDE_NPM_PACKAGE = '@anthropic-ai/claude-code';
 /** Homebrew casks the vendor publishes. */
 export const CLAUDE_BREW_NAMES = ['claude-code', 'claude-code@latest'] as const;
+/**
+ * The vendor's documented first install (code.claude.com/docs/en/setup, read
+ * 2026-10-29): the native installer. It redirects to
+ * `downloads.claude.ai/claude-code-releases/bootstrap.sh`, asks nothing, leaves
+ * `~/.local/bin/claude` → `~/.local/share/claude/versions/<v>`, and changes no
+ * PATH itself.
+ */
+export const CLAUDE_INSTALL_SCRIPT_URL = 'https://claude.ai/install.sh';
 
 /**
  * The version banner minus the version, taken from the generated detection
@@ -91,6 +100,8 @@ export const CLAUDE_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: ['claude'],
   npmPackages: [CLAUDE_NPM_PACKAGE],
   brewNames: [...CLAUDE_BREW_NAMES],
+  // Where the native installer leaves its launcher (claude.ai/install.sh, read 2026-10-29).
+  installDirectories: ['.local/bin'],
   detectors: [
     {
       kind: 'text',
@@ -311,6 +322,10 @@ export function createClaudeDistributionService(options: ClaudeDistributionOptio
         detectedAt: now().toISOString(),
         warnings: [...warnings, ...update.warnings],
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: CLAUDE_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

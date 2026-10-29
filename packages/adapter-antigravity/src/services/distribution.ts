@@ -16,12 +16,19 @@ import type {
   DistributionService,
   InstallCandidate,
   InstalledAgent,
+  InstallRecipe,
   UpdateRecipe,
 } from '@vibefield/puppeteer-core';
 import { parseAntigravityVersion } from '../detection.js';
 
 const ANTIGRAVITY_COMMANDS = ['agy', 'antigravity'];
 const ANTIGRAVITY_VERSION_FLAG = '--version';
+/**
+ * The vendor's documented install (google-antigravity/antigravity-cli README,
+ * read 2026-10-29). It asks nothing, unpacks the CLI archive into
+ * `~/.local/bin/agy` (clearing the quarantine flag), then runs `agy install`.
+ */
+const ANTIGRAVITY_INSTALL_SCRIPT_URL = 'https://antigravity.google/cli/install.sh';
 /** Documented kill switch for the CLI's own update check. */
 const ANTIGRAVITY_DISABLE_AUTO_UPDATE_VARIABLE = 'AGY_CLI_DISABLE_AUTO_UPDATE';
 
@@ -44,6 +51,8 @@ export const ANTIGRAVITY_DISTRIBUTION_PROVIDER: DistributionProvider = {
   commands: [...ANTIGRAVITY_COMMANDS],
   npmPackages: [],
   brewNames: [],
+  // The install script's TARGET_DIR (read 2026-10-29).
+  installDirectories: ['.local/bin'],
   // Mirrors packages/surface/vendors/antigravity/upstream.json.
   detectors: [
     {
@@ -84,7 +93,9 @@ export function classifyAntigravityCandidate(candidate: InstallCandidate): Class
   if (!isAntigravityCommandName(candidate.realPath) && !isAntigravityCommandName(candidate.executable)) {
     return undefined;
   }
-  // The vendor ships one unpacked binary; there is no installer, package, or cask.
+  // The vendor ships one unpacked binary. (Corrected 2026-10-29: "there is no installer, package, or cask" was
+  // false by then — the vendor documents an install script, and an undocumented `antigravity-cli` cask exists —
+  // but the script only unpacks that binary, so the classification stands.)
   return { method: 'standalone-binary', location: dirname(candidate.realPath) };
 }
 
@@ -133,6 +144,10 @@ export function createAntigravityDistributionService(
         detectedAt: new Date().toISOString(),
         warnings,
       };
+    },
+
+    installRecipe(): InstallRecipe {
+      return { kind: 'installer-script', url: ANTIGRAVITY_INSTALL_SCRIPT_URL };
     },
 
     recipeFor(install: InstalledAgent): UpdateRecipe {

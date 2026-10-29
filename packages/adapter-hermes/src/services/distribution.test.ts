@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   createHermesDistributionService,
@@ -149,6 +154,18 @@ describe('Hermes update recipes', () => {
     expect(service.recipeFor(installed())).toEqual({
       kind: 'native-self-update',
       argv: ['/home/tester/.local/bin/hermes', 'update', '--yes'],
+      timeoutMs: 45 * 60_000,
+    });
+  });
+});
+
+describe('Hermes first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(HERMES_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.local/bin']);
+    expect(InstallRecipeSchema.parse(createHermesDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://hermes-agent.nousresearch.com/install.sh',
+      // A first install clones and builds what an update fetches, so it takes the update's budget.
       timeoutMs: 45 * 60_000,
     });
   });

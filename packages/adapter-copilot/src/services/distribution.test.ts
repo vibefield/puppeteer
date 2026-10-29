@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import {
   classifyCopilotCandidate,
@@ -154,6 +159,16 @@ describe('Copilot update recipes', () => {
     expect(service.recipeFor(installed({ method: 'npm-global', packageName: '@github/copilot' }))).toEqual({
       kind: 'npm-global',
       package: '@github/copilot',
+    });
+  });
+});
+
+describe('Copilot first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(COPILOT_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.local/bin']);
+    expect(InstallRecipeSchema.parse(createCopilotDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://gh.io/copilot-install',
     });
   });
 });

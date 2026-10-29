@@ -1,6 +1,6 @@
 # RFC 006: Agent Distribution and Account Profiles
 
-- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day, its sixth (an agent's catalogs read, a plugin installed, a marketplace added, fetched again or removed) the same day; C3 and B4's second half open
+- **Status:** Accepted; phase 1 implemented on 2026-09-06 (tracks A1–A3 and B1–B3); C1 built 2026-09-25 for eight agents (Copilot's open); C2's first slice (turning a held server or skill on, off or out) built 2026-09-25, its second (a remote server's sign-in and sign-out) 2026-09-26, its third (a server added to an agent that holds none of it, and a host's launch values) 2026-09-27, its fourth (a skill a host keeps, placed where each agent looks) the same day, its fifth (a plugin an agent holds: turned on or off, updated, removed with or without its data) the same day, its sixth (an agent's catalogs read, a plugin installed, a marketplace added, fetched again or removed) the same day; installs (an agent's first install through the vendor's own installer) built 2026-10-29; C3 and B4's second half open
 - **Date:** 2026-09-06
 - **Owners:** Core, adapter, runtime, and Godview maintainers
 - **Related:** [`002-modular-agent-events-and-services.md`](./002-modular-agent-events-and-services.md),
@@ -516,6 +516,69 @@ every set at once (so it can say where else an account is used) and answers, per
   the two ("Claude Max"; a label that already names the product, such as "SuperGrok Heavy", stands alone; the product
   alone when no plan was reported). Never select behaviour on them.
 
+### Installs (2026-10-29)
+
+A host that offers agents a person does not have yet — VibeField's Get — needs the vendor's own first install, run
+the way an update runs. Nothing about the rule changes: Puppeteer still reimplements no installer, never downloads an
+agent itself (the non-goal stands), and judges the outcome only by inspecting again.
+
+- **The recipe.** `DistributionService.installRecipe?()` answers an `InstallRecipe`: the update recipe's own
+  `installer-script`, `npm-global`, `brew` and `manual` members, shared rather than copied. A `native-self-update` is
+  not one, since there is no executable yet to run it. The adapter declares the command the vendor documents for a
+  first install, beside `recipeFor`, citing the page it was read from; an adapter whose vendor documents nothing a
+  runner can follow declares `manual`, or no recipe at all. The runtime holds the recipe to the schema before it
+  plans or runs anything.
+- **What a script recipe says.** `shell` is the shell the vendor pipes to (`bash` unless the vendor documents
+  `| sh`); `needs` names the commands the script itself runs that a person must already have (Pi's installs with
+  npm, and without a terminal it cannot offer to install Node); `env` and `timeoutMs` are the update recipe's.
+- **The plan.** `AgentRuntime.planInstall({ providerId })` answers `{ recipe, argv?, requires, missing }` before
+  anything runs: the command the runner would execute (the `curl … | bash` of an install script, `npm install -g
+  <package>@latest`, `brew install [--cask] <name>`), the commands it runs from the search path (`curl` and the
+  shell, plus the script's `needs`; `npm`; `brew`), and which of them the search path does not hold now, so a host
+  names a missing tool instead of running an installer that cannot work. A script install on Windows, and an adapter
+  that declares none, answer `unsupported`.
+- **The run.** `AgentRuntime.installAgent({ providerId, onOutput?, signal? })` inspects the provider first — an
+  install already there runs nothing (`present`), and one nobody could inspect runs nothing either — then runs the
+  recipe through the update runner: unattended, in the clean agent environment, its own process group, a 0600
+  transcript beside the update transcripts. A first install is the vendor's whole install, as a person running its
+  command gets it, so it also carries the person's `SHELL` (an installer chooses the rc file it puts its directory in
+  by it); an update carries none and leaves the rc alone. It runs with the search path the inventory reads
+  (`distribution.searchPath`), so the commands it needs are looked for where they run. The receipt is `installed`
+  when a fresh inspection finds the agent (whatever the exit code said, which the message keeps), `not-found` when
+  the installer exited 0 and nothing was found — an installer that put the agent where the host does not look says
+  so instead of claiming success — `failed` when it did not finish or a command it needs is `missing`, and
+  `unsupported` for a manual recipe.
+- **Where an installer leaves the agent.** `DistributionProvider.installDirectories` names, under the home, the
+  directories the vendor's installer leaves its executable in (`.local/bin`), read from the script. The inventory
+  searches them after the search path, as origin `install-directory`, so an agent a person's shell finds is found by
+  a host whose PATH is short: an app launched from the Finder has launchd's `/usr/bin:/bin:/usr/sbin:/sbin`, which
+  names none of them (measured 2026-10-29 by VibeField on its production app: no install found while
+  `~/.local/bin/claude` was there). An install found only there is never the active one, since the runtime launches
+  by command name, and it carries the warning that its directory is not on the search path. A host that isolates the
+  search path (a test harness) isolates the home too: `distribution.home`.
+- **Shared, not copied.** `distribution/operation.ts` holds the one command path both operations use (the clean
+  environment, the transcript, the observer); `update.ts` and `install.ts` differ only in what they run and how they
+  judge it. `DistributionRuntimeOptions.run` injects the runner for both, so a host's tests never run a vendor's.
+
+Per agent, each read from the vendor's page and its script on 2026-10-29:
+
+| Agent | First install | Leaves the agent in | Asks nothing because |
+|-|-|-|-|
+| Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.local/bin` (launcher into `~/.local/share/claude`) | it asks nothing; it edits no rc |
+| Codex | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` | `~/.local/bin` | `CODEX_NON_INTERACTIVE=1`; it adds the directory to the profile when PATH lacks it |
+| Copilot | `curl -fsSL https://gh.io/copilot-install \| bash` | `~/.local/bin` | its one question (the rc) reads `/dev/tty`, so nothing is edited without one |
+| Grok | `curl -fsSL https://x.ai/cli/install.sh \| bash` | `~/.grok/bin` | it asks nothing; it adds `~/.grok/bin` to the rc of `SHELL` |
+| Hermes | `curl -fsSL https://hermes-agent.nousresearch.com/install.sh \| bash` | `~/.local/bin` (the 2026-09-22 probe's wrapper) | its setup and gateway stages read `/dev/tty` and are skipped; 45 minutes, as its update |
+| Kimi Code | `curl -fsSL https://code.kimi.com/kimi-code/install.sh \| bash` | `~/.kimi-code/bin` | it asks nothing; an install keeps its rc edit, an update says `KIMI_NO_MODIFY_PATH` |
+| OpenCode | `curl -fsSL https://opencode.ai/install \| bash` (the 1.x line this adapter covers) | `~/.opencode/bin` | it asks nothing; it reads `SHELL` under `set -u` |
+| Pi | `curl -fsSL https://pi.dev/install.sh \| sh`, needs `node` and `npm` | `~/.pi/agent/bin` (and a link in a writable PATH directory) | its menu takes its default (install) and its rc question reads `/dev/tty`; it does not start Pi without a terminal |
+| Antigravity | `curl -fsSL https://antigravity.google/cli/install.sh \| bash` | `~/.local/bin` | it asks nothing, then runs `agy install` |
+
+Unverified until a fresh install is observed: Hermes's launcher on a first install (written by its checkout's own
+completion step), and Pi's managed install, which the adapter classifies `unknown` (its launcher is a script) and
+updates with `pi update`. Antigravity's adapter comment ("there is no installer, package, or cask") was corrected
+at its source the same day.
+
 ### Host and Godview
 
 - Composition: `createBuiltinProviders` wires the three services beside `accountUsage`. A persisted per-provider
@@ -960,6 +1023,13 @@ Found in live use the same evening, when a person ran every update from VibeFiel
   `~/.kimi-code/bin/kimi` as `native-installer`, as Kimi itself does.
 - **A recipe may carry its own budget** (`timeoutMs`). Hermes's updater fetched a shallow checkout (~650 MB in five
   minutes) and then drains its gateway "up to 1815s" before restarting it; its adapter declares 45 minutes.
+
+Added 2026-10-29 for VibeField's Get (its AO-7; see "Installs"): `InstallRecipe`, `InstallReceipt` and
+`DistributionService.installRecipe?()` in Core, with the script recipe's `shell` and `needs`, and
+`DistributionProvider.installDirectories` with the candidate origin `install-directory`; the runtime's
+`planInstall` and `installAgent`, `distribution/install.ts` and the shared `distribution/operation.ts` (the update
+runner moved onto it unchanged), `DistributionRuntimeOptions.run` and `home`; and every built-in adapter's first
+install and install directories, read from its vendor's script.
 
 ## Non-goals
 

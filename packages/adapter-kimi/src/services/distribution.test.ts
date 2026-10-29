@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { InstalledAgentSchema, type InstallCandidate, type InstalledAgent } from '@vibefield/puppeteer-core';
+import {
+  InstalledAgentSchema,
+  InstallRecipeSchema,
+  type InstallCandidate,
+  type InstalledAgent,
+} from '@vibefield/puppeteer-core';
 import { describe, expect, it } from 'vitest';
 import { classifyKimiCandidate, createKimiDistributionService, KIMI_DISTRIBUTION_PROVIDER } from './distribution.js';
 
@@ -133,6 +138,16 @@ describe('Kimi update recipes', () => {
     expect(windows.recipeFor(installed())).toEqual({
       kind: 'native-self-update',
       argv: ['/home/tester/.kimi-code/bin/kimi', 'upgrade'],
+    });
+  });
+});
+
+describe('Kimi first install', () => {
+  it("runs the vendor's documented installer and looks where it leaves the agent", () => {
+    expect(KIMI_DISTRIBUTION_PROVIDER.installDirectories).toEqual(['.kimi-code/bin']);
+    expect(InstallRecipeSchema.parse(createKimiDistributionService().installRecipe?.())).toEqual({
+      kind: 'installer-script',
+      url: 'https://code.kimi.com/kimi-code/install.sh',
     });
   });
 });

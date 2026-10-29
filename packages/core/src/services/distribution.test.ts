@@ -5,6 +5,8 @@ import {
   DistributionProviderSchema,
   InstallCandidateSchema,
   InstalledAgentSchema,
+  InstallReceiptSchema,
+  InstallRecipeSchema,
   ReleaseDetectorSchema,
   ReleaseSnapshotSchema,
   UpdateReceiptSchema,
@@ -121,6 +123,67 @@ describe('distribution contracts', () => {
     ).toBe(true);
   });
 
+  it('validates install recipes and receipts: a first install runs no native command, since nothing is installed', () => {
+    const script = {
+      kind: 'installer-script',
+      url: 'https://example.com/install.sh',
+    } as const;
+    expect(InstallRecipeSchema.parse(script).kind).toBe('installer-script');
+    expect(InstallRecipeSchema.safeParse({ kind: 'npm-global', package: '@example/cli' }).success).toBe(true);
+    expect(InstallRecipeSchema.safeParse({ kind: 'brew', name: 'example', cask: false }).success).toBe(true);
+    expect(InstallRecipeSchema.safeParse({ kind: 'manual', instructions: 'Download the app.' }).success).toBe(true);
+    // There is no executable yet for a native command to name.
+    expect(InstallRecipeSchema.safeParse({ kind: 'native-self-update', argv: ['example', 'install'] }).success).toBe(
+      false,
+    );
+    expect(InstallRecipeSchema.safeParse({ ...script, url: 'http://example.com/install.sh' }).success).toBe(false);
+    // The shell the vendor pipes to, and the commands its script says it needs.
+    expect(InstallRecipeSchema.safeParse({ ...script, shell: 'sh', needs: ['node', 'npm'] }).success).toBe(true);
+    expect(InstallRecipeSchema.safeParse({ ...script, shell: 'zsh' }).success).toBe(false);
+    expect(InstallRecipeSchema.safeParse({ ...script, needs: ['node; rm -rf'] }).success).toBe(false);
+    // The members are the update recipe's own: one shape for one command.
+    expect(UpdateRecipeSchema.parse(script)).toEqual(InstallRecipeSchema.parse(script));
+
+    const after = {
+      provider: 'example',
+      executable: '/home/user/.local/bin/example',
+      realPath: '/home/user/.local/share/example/versions/1.2.3',
+      version: '1.2.3',
+      method: 'native-installer',
+      autoUpdate: 'unknown',
+      detectedAt: '2026-10-29T12:00:09.000Z',
+      warnings: [],
+    } as const;
+    const times = { startedAt: '2026-10-29T12:00:00.000Z', finishedAt: '2026-10-29T12:00:09.000Z' };
+    expect(
+      InstallReceiptSchema.parse({
+        provider: 'example',
+        status: 'installed',
+        recipe: script,
+        after,
+        ...times,
+        exitCode: 0,
+      }).after?.version,
+    ).toBe('1.2.3');
+    expect(
+      InstallReceiptSchema.parse({
+        provider: 'example',
+        status: 'failed',
+        recipe: { kind: 'npm-global', package: '@example/cli' },
+        missing: ['npm'],
+        ...times,
+        message: 'needs npm, which is not on the search path',
+      }).missing,
+    ).toEqual(['npm']);
+    for (const status of ['present', 'not-found', 'unsupported']) {
+      expect(InstallReceiptSchema.safeParse({ provider: 'example', status, ...times }).success).toBe(true);
+    }
+    expect(InstallReceiptSchema.safeParse({ provider: 'example', status: 'updated', ...times }).success).toBe(false);
+    expect(InstallReceiptSchema.safeParse({ provider: 'example', status: 'installed', ...times, pid: 1 }).success).toBe(
+      false,
+    );
+  });
+
   it('binds a distribution provider to its discovery inputs', () => {
     const provider = DistributionProviderSchema.parse({
       id: 'example',
@@ -142,6 +205,16 @@ describe('distribution contracts', () => {
     expect(provider.commands).toEqual(['example']);
     // At least one command name: without one there is nothing to search PATH for.
     expect(DistributionProviderSchema.safeParse({ ...provider, commands: [] }).success).toBe(false);
+    expect(
+      DistributionProviderSchema.safeParse({ ...provider, installDirectories: ['.local/bin', '.kimi-code/bin'] })
+        .success,
+    ).toBe(true);
+    // Install directories stay under the home: never absolute, never written from the shell, never climbing out.
+    for (const directory of ['/usr/local/bin', '~/.local/bin', '../bin', '.local/../../bin', '.local//bin', '.', '']) {
+      expect(DistributionProviderSchema.safeParse({ ...provider, installDirectories: [directory] }).success).toBe(
+        false,
+      );
+    }
   });
 
   it('keeps release snapshots attributable to the source that produced them', () => {
