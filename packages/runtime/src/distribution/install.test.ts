@@ -23,6 +23,13 @@ const provider: DistributionProvider = {
 
 const script: InstallRecipe = { kind: 'installer-script', url: 'https://example.com/install.sh' };
 
+/**
+ * The rows that run an install script run it as on macOS or Linux, whatever the host: a Windows host refuses a
+ * script before anything runs (its own row below), and the runner is injected, so the platform is the one host fact
+ * they would otherwise read.
+ */
+const posix = { platform: 'linux' } as const;
+
 function installation(overrides: Partial<AgentInstallation> = {}): AgentInstallation {
   return {
     provider: 'example',
@@ -134,10 +141,13 @@ describe('planAgentInstall', () => {
       requires: ['npm'],
       missing: ['npm'],
     });
-    // A file that is not executable is not a command.
-    const notExecutable = await mkdtemp(join(tmpdir(), 'puppeteer-install-bin-'));
-    await writeFile(join(notExecutable, 'npm'), '');
-    await expect(planAgentInstall(npm, { searchPath: notExecutable })).resolves.toMatchObject({ missing: ['npm'] });
+    // A file that is not executable is not a command. Windows has no execute bit: X_OK there asks only that the file
+    // exists.
+    if (process.platform !== 'win32') {
+      const notExecutable = await mkdtemp(join(tmpdir(), 'puppeteer-install-bin-'));
+      await writeFile(join(notExecutable, 'npm'), '');
+      await expect(planAgentInstall(npm, { searchPath: notExecutable })).resolves.toMatchObject({ missing: ['npm'] });
+    }
   });
 
   it('plans a manual recipe without a command', async () => {
@@ -266,6 +276,7 @@ describe('runAgentInstall', () => {
     });
     const seen: string[] = [];
     const receipt = await runAgentInstall({
+      ...posix,
       provider,
       service: service(() => recipe),
       inspect,
@@ -299,7 +310,7 @@ describe('runAgentInstall', () => {
     const [file] = await readdir(directory);
     expect(receipt.transcriptPath).toBe(join(directory, file!));
     await expect(readFile(receipt.transcriptPath!, 'utf8')).resolves.toBe('Installing Example 1.2.3…\n');
-    expect((await stat(receipt.transcriptPath!)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect((await stat(receipt.transcriptPath!)).mode & 0o777).toBe(0o600);
   });
 
   it('counts an install found after a non-zero exit, and says how the installer ended', async () => {
@@ -308,6 +319,7 @@ describe('runAgentInstall', () => {
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(installation());
     const receipt = await runAgentInstall({
+      ...posix,
       provider,
       service: service(() => script),
       inspect,
@@ -324,6 +336,7 @@ describe('runAgentInstall', () => {
 
   it('says not-found when the installer finished but nothing is where the host looks', async () => {
     const receipt = await runAgentInstall({
+      ...posix,
       provider,
       service: service(() => script),
       inspect: async () => undefined,
@@ -341,6 +354,7 @@ describe('runAgentInstall', () => {
 
   it('fails an installer that did not finish, naming how it ended', async () => {
     const common = {
+      ...posix,
       provider,
       service: service(() => script),
       inspect: async () => undefined,
@@ -372,6 +386,7 @@ describe('runAgentInstall', () => {
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(installation());
     const receipt = await runAgentInstall({
+      ...posix,
       provider,
       service: service(() => script),
       inspect,
@@ -395,6 +410,7 @@ describe('runAgentInstall', () => {
     await mkdir(join(root, 'nested'));
     const directory = join(root, 'nested', 'updates');
     await runAgentInstall({
+      ...posix,
       provider,
       service: service(() => script),
       inspect: async () => undefined,
@@ -402,6 +418,6 @@ describe('runAgentInstall', () => {
       transcriptsDirectory: directory,
       run: async () => ({ exitCode: 0 }),
     });
-    expect((await stat(directory)).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect((await stat(directory)).mode & 0o777).toBe(0o700);
   });
 });

@@ -42,6 +42,8 @@ import type {
   ProfileStore,
 } from './types.js';
 
+const itPosix = it.skipIf(process.platform === 'win32');
+
 const host: AgentHost = {
   async spawnTerminal() {
     throw new Error('fake providers do not spawn');
@@ -3557,7 +3559,9 @@ describe('createAgentRuntime', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('plans and runs a first install through the host runner, then finds the agent where it looks', async () => {
+  // The runtime reads the host's own platform, and a Windows host refuses an install script before anything runs
+  // (install.test.ts holds that row), so the runtime's install rows run on macOS and Linux.
+  itPosix('plans and runs a first install through the host runner, then finds the agent where it looks', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-install-'));
     const binDirectory = join(root, 'bin');
     await mkdir(binDirectory, { recursive: true });
@@ -3657,7 +3661,7 @@ describe('createAgentRuntime', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it('finds an install its installer left off a short search path, and refuses a recipe out of schema', async () => {
+  itPosix('finds an install left off a short search path, and refuses a recipe out of schema', async () => {
     const root = await mkdtemp(join(tmpdir(), 'puppeteer-runtime-install-home-'));
     const binDirectory = join(root, 'bin');
     const home = join(root, 'home');
