@@ -75,7 +75,7 @@
       "kind": "probe-set",
       "path": "packages/surface/vendors/claude/probes/claude@2.1.309",
       "digestAlgorithm": "sha256-path-content-v1",
-      "sha256": "0f333e205ba1e1b2ee203aeb1eb6da802d0a42fb09e12c12ff17ffb658b4d700"
+      "sha256": "b43fdc6e26bb4c4ea70a42e04a31991d0db7b7aea8ebab9aea355cb55b37741b"
     },
     {
       "id": "official-hook-reference",
