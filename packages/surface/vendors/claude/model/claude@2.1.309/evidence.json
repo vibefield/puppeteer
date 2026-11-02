@@ -1,0 +1,104 @@
+{
+  "evidenceVersion": 2,
+  "vendor": "claude",
+  "vendorVersion": "2.1.309",
+  "artifacts": [
+    {
+      "id": "installed-claude-2.1.309-darwin-arm64",
+      "platform": "darwin-arm64",
+      "channel": "stable",
+      "acquiredAt": "2026-11-02T21:59:36.569Z",
+      "versionOutput": "2.1.309 (Claude Code)",
+      "integrity": {
+        "status": "verified",
+        "sha256": "sha256:5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c"
+      }
+    }
+  ],
+  "sourceReferences": [
+    {
+      "repository": "https://github.com/anthropics/claude-code",
+      "revision": "v2.1.309",
+      "relation": "release-tag"
+    }
+  ],
+  "claims": [
+    {
+      "id": "claude-runtime-headless",
+      "kind": "runtime-capture",
+      "confidence": "verified-headless",
+      "record": "sanitized-captures",
+      "artifact": "installed-claude-2.1.309-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
+      "capturedAt": "2026-11-02T21:59:36.569Z"
+    },
+    {
+      "id": "claude-runtime-interactive",
+      "kind": "runtime-capture",
+      "confidence": "verified-interactive",
+      "record": "sanitized-captures",
+      "artifact": "installed-claude-2.1.309-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs",
+      "capturedAt": "2026-11-02T21:59:36.569Z"
+    },
+    {
+      "id": "claude-binary-probe",
+      "kind": "binary-probe",
+      "confidence": "verified-headless",
+      "record": "binary-probes",
+      "artifact": "installed-claude-2.1.309-darwin-arm64",
+      "platform": "darwin-arm64",
+      "harness": "Exact artifact --version and --help in a disposable environment, SHA-256, and bounded static probes of the subagent status channel and hook-event inventory in packages/surface/vendors/claude/census/generate-model.mjs; reviewed invocation-grammar and hook-switch probe records beside them",
+      "capturedAt": "2026-11-02T21:59:36.569Z"
+    },
+    {
+      "id": "claude-official-hooks",
+      "kind": "official-doc",
+      "confidence": "unverified",
+      "record": "official-hook-reference",
+      "sourceReference": 0,
+      "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.309 adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact."
+    }
+  ],
+  "records": [
+    {
+      "id": "sanitized-captures",
+      "kind": "capture-set",
+      "path": "packages/surface/vendors/claude/captures/claude@2.1.309",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "9e140ab4bafc4032287fb415c6d2c46a7174d7d79e748cb306c9a67506e4d134"
+    },
+    {
+      "id": "binary-probes",
+      "kind": "probe-set",
+      "path": "packages/surface/vendors/claude/probes/claude@2.1.309",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "0f333e205ba1e1b2ee203aeb1eb6da802d0a42fb09e12c12ff17ffb658b4d700"
+    },
+    {
+      "id": "official-hook-reference",
+      "kind": "reference-snapshot",
+      "path": "packages/surface/vendors/claude/references/claude@2.1.309",
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "8835ea34346c645e24c86ab944b58747b4331782456cacdc0e371da0852246cb"
+    },
+    {
+      "id": "agent-surface-model",
+      "kind": "model-tree",
+      "path": "packages/surface/vendors/claude/model/claude@2.1.309",
+      "exclude": [
+        "evidence.json"
+      ],
+      "digestAlgorithm": "sha256-path-content-v1",
+      "sha256": "9e9b818ac20ce3e5fb944fecb58d285f887f1aa43f120488e2f247fe3ccff4b7"
+    }
+  ],
+  "limitations": [
+    "Artifact integrity and controlled runtime captures currently cover only darwin-arm64; protected promotion still requires every configured platform.",
+    "No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
+    "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
+    "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
+  ]
+}

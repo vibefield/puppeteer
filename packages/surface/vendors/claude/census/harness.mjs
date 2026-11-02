@@ -31,9 +31,9 @@ import { LOOPBACK_AUTH_TOKEN, LOOPBACK_MODEL, startLoopbackModel } from './loopb
 
 const vendorRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-// The 33 hook events of Claude Code 2.1.308: the binary's own event array and
-// the official hook reference retrieved 2026-10-24 agree on this set (the
-// model generator re-checks the array in the pinned artifact). Unknown names are
+// The 33 hook events of Claude Code 2.1.308, re-checked in the 2.1.309 executable
+// and against the hook reference re-fetched 2026-11-02. The model generator
+// re-checks the array in the pinned artifact. Unknown names are
 // harmless in Claude settings, but keeping the census list explicit makes an
 // upstream addition a reviewed Surface change rather than a silent wildcard.
 export const CLAUDE_HOOK_EVENTS = [

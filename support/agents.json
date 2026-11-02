@@ -54,7 +54,8 @@
             "artifactSha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
           }
         ]
-      }
+      },
+      "candidateVersion": "2.1.309"
     },
     {
       "id": "codex",

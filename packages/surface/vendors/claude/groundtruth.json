@@ -3,9 +3,9 @@
   "manifest": {
     "asmVersion": 3,
     "vendor": "claude",
-    "vendorVersion": "2.1.308",
-    "generatedAt": "2026-10-25T04:38:36.000Z",
-    "source": "Pinned darwin-arm64 Claude Code 2.1.308 census plus a reviewed snapshot of Anthropic's official hook reference.",
+    "vendorVersion": "2.1.309",
+    "generatedAt": "2026-11-02T21:59:36.569Z",
+    "source": "Pinned darwin-arm64 Claude Code 2.1.309 census plus a reviewed snapshot of Anthropic's official hook reference.",
     "evidence": "evidence.json"
   },
   "detection": {
@@ -14,7 +14,7 @@
     ],
     "envVar": "PUPPETEER_CLAUDE_BIN",
     "versionFlag": "--version",
-    "versionOutput": "2.1.308 (Claude Code)",
+    "versionOutput": "2.1.309 (Claude Code)",
     "versionPattern": "(\\d+\\.\\d+\\.\\d+(?:[-.][0-9A-Za-z]+)*)",
     "helpFlag": "--help",
     "probedFlags": {
@@ -33,7 +33,7 @@
       "model": "--model",
       "effort": "--effort"
     },
-    "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.308; missing flags still degrade observation with warnings."
+    "notes": "Pinned binary probes are digest-bound under packages/surface/vendors/claude/probes/claude@2.1.309; missing flags still degrade observation with warnings."
   },
   "channels": {
     "channels": {
@@ -44,11 +44,11 @@
       "hook": {
         "kind": "hook-http",
         "fallback": "hook-command",
-        "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.308 does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP."
+        "notes": "Loopback HTTP bridge with bearer interpolation; SessionStart and Setup use the command forwarder because Claude 2.1.309 does not support HTTP for them. A print-mode process was seen during adaptation to exit before a StopFailure command hook completed (not a recorded probe), so StopFailure stays on HTTP."
       },
       "transcript": {
         "kind": "transcript",
-        "notes": "Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 records per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp."
+        "notes": "Durable JSONL is authoritative for message content; hook events remain authoritative for lifecycle. Besides user/assistant/system/attachment rows, 2.1.308 and 2.1.309 record per-request bookkeeping rows (api-request, api-request-shape, api-request-blob, atis-latch, cost-state) that are not conversation messages; api-request-blob rows carry message.role user or assistant without uuid or timestamp."
       },
       "statusline": {
         "kind": "statusline",
@@ -98,69 +98,24 @@
   "evidenceIndex": {
     "evidenceVersion": 2,
     "vendor": "claude",
-    "vendorVersion": "2.1.308",
+    "vendorVersion": "2.1.309",
     "artifacts": [
       {
-        "id": "installed-claude-2.1.308-darwin-arm64",
+        "id": "installed-claude-2.1.309-darwin-arm64",
         "platform": "darwin-arm64",
         "channel": "stable",
-        "acquiredAt": "2026-10-25T04:38:36.000Z",
-        "versionOutput": "2.1.308 (Claude Code)",
+        "acquiredAt": "2026-11-02T21:59:36.569Z",
+        "versionOutput": "2.1.309 (Claude Code)",
         "integrity": {
           "status": "verified",
-          "sha256": "sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
-        },
-        "artifactKind": "standalone-executable",
-        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-arm64/claude",
-        "acquisitionKey": "claude@2.1.308@darwin-arm64@sha256:ca923c86ac84b30574a82331a05b6e066c27477a926ceaffe46a845a33e4dd37"
-      },
-      {
-        "id": "claude-2.1.308-darwin-x64",
-        "platform": "darwin-x64",
-        "channel": "stable",
-        "artifactKind": "standalone-executable",
-        "acquiredAt": "2026-10-25T23:01:25.151Z",
-        "versionOutput": "2.1.308 (Claude Code)",
-        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/darwin-x64/claude",
-        "acquisitionKey": "claude@2.1.308@darwin-x64@sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59",
-        "integrity": {
-          "status": "verified",
-          "sha256": "sha256:9a0bc140f5fb06e6366624d770371ef290e6731d1e84c4def5daf4df946d1b59"
-        }
-      },
-      {
-        "id": "claude-2.1.308-linux-x64",
-        "platform": "linux-x64",
-        "channel": "stable",
-        "artifactKind": "standalone-executable",
-        "acquiredAt": "2026-10-25T23:01:25.355Z",
-        "versionOutput": "2.1.308 (Claude Code)",
-        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/linux-x64/claude",
-        "acquisitionKey": "claude@2.1.308@linux-x64@sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58",
-        "integrity": {
-          "status": "verified",
-          "sha256": "sha256:356733f185fa988e6bf3aa9a555269fdd167982a2e2a80d3c8a78037bb92ad58"
-        }
-      },
-      {
-        "id": "claude-2.1.308-windows-x64",
-        "platform": "windows-x64",
-        "channel": "stable",
-        "artifactKind": "standalone-executable",
-        "acquiredAt": "2026-10-25T23:01:25.559Z",
-        "versionOutput": "2.1.308 (Claude Code)",
-        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.308/win32-x64/claude.exe",
-        "acquisitionKey": "claude@2.1.308@windows-x64@sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53",
-        "integrity": {
-          "status": "verified",
-          "sha256": "sha256:c9796ba22a9221586b36371b36f5b66198d66eb4badf6a4cf4a5f7b07becea53"
+          "sha256": "sha256:5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c"
         }
       }
     ],
     "sourceReferences": [
       {
         "repository": "https://github.com/anthropics/claude-code",
-        "revision": "v2.1.308",
+        "revision": "v2.1.309",
         "relation": "release-tag"
       }
     ],
@@ -170,30 +125,30 @@
         "kind": "runtime-capture",
         "confidence": "verified-headless",
         "record": "sanitized-captures",
-        "artifact": "installed-claude-2.1.308-darwin-arm64",
+        "artifact": "installed-claude-2.1.309-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "Isolated --init-only, credential-less print, and loopback API-error print lanes (init, headless, api-error-<status>) recorded by an HTTP hook sink in the adapter hook shape, in packages/surface/vendors/claude/census/harness.mjs",
-        "capturedAt": "2026-10-25T04:38:36.000Z"
+        "capturedAt": "2026-11-02T21:59:36.569Z"
       },
       {
         "id": "claude-runtime-interactive",
         "kind": "runtime-capture",
         "confidence": "verified-interactive",
         "record": "sanitized-captures",
-        "artifact": "installed-claude-2.1.308-darwin-arm64",
+        "artifact": "installed-claude-2.1.309-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "Native TUI in a harness-owned PTY against a scripted loopback Messages API, then --resume by id (interactive, resume), in packages/surface/vendors/claude/census/interactive-lane.mjs",
-        "capturedAt": "2026-10-25T04:38:36.000Z"
+        "capturedAt": "2026-11-02T21:59:36.569Z"
       },
       {
         "id": "claude-binary-probe",
         "kind": "binary-probe",
         "confidence": "verified-headless",
         "record": "binary-probes",
-        "artifact": "installed-claude-2.1.308-darwin-arm64",
+        "artifact": "installed-claude-2.1.309-darwin-arm64",
         "platform": "darwin-arm64",
         "harness": "Exact artifact --version and --help in a disposable environment, SHA-256, and bounded static probes of the subagent status channel and hook-event inventory in packages/surface/vendors/claude/census/generate-model.mjs; reviewed invocation-grammar and hook-switch probe records beside them",
-        "capturedAt": "2026-10-25T04:38:36.000Z"
+        "capturedAt": "2026-11-02T21:59:36.569Z"
       },
       {
         "id": "claude-official-hooks",
@@ -201,44 +156,44 @@
         "confidence": "unverified",
         "record": "official-hook-reference",
         "sourceReference": 0,
-        "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.308 adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact."
+        "notes": "Digest-pinned review of https://code.claude.com/docs/en/hooks retrieved for the v2.1.309 adaptation and reconciled with the executable's bundled hook schemas. Documentation proves declared support, not execution on the pinned artifact."
       }
     ],
     "records": [
       {
         "id": "sanitized-captures",
         "kind": "capture-set",
-        "path": "packages/surface/vendors/claude/captures/claude@2.1.308",
+        "path": "packages/surface/vendors/claude/captures/claude@2.1.309",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "7a4adbc0e1b7d73aa206255ebbe08874916e3f76fb573c3afc02977aa7b97710"
+        "sha256": "9e140ab4bafc4032287fb415c6d2c46a7174d7d79e748cb306c9a67506e4d134"
       },
       {
         "id": "binary-probes",
         "kind": "probe-set",
-        "path": "packages/surface/vendors/claude/probes/claude@2.1.308",
+        "path": "packages/surface/vendors/claude/probes/claude@2.1.309",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "249ab4ac527ec12b084cc1f9e127144a088b2569b0e4d1e1e43131bebdc73950"
+        "sha256": "0f333e205ba1e1b2ee203aeb1eb6da802d0a42fb09e12c12ff17ffb658b4d700"
       },
       {
         "id": "official-hook-reference",
         "kind": "reference-snapshot",
-        "path": "packages/surface/vendors/claude/references/claude@2.1.308",
+        "path": "packages/surface/vendors/claude/references/claude@2.1.309",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "e718061d9f9ba191172b6fc0cdeae29ab8129dc55980f8f6258ed034dfd4b972"
+        "sha256": "8835ea34346c645e24c86ab944b58747b4331782456cacdc0e371da0852246cb"
       },
       {
         "id": "agent-surface-model",
         "kind": "model-tree",
-        "path": "packages/surface/vendors/claude/model/claude@2.1.308",
+        "path": "packages/surface/vendors/claude/model/claude@2.1.309",
         "exclude": [
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "f63a5adec5e7965e7267858054bc232a888240deb702de7aa790df8b83417aba"
+        "sha256": "9e9b818ac20ce3e5fb944fecb58d285f887f1aa43f120488e2f247fe3ccff4b7"
       }
     ],
     "limitations": [
-      "Controlled runtime captures cover only darwin-arm64. The other configured platforms are bound by the protected promotion's acquired artifact digests and exercised only by its pinned-real native-TUI lanes, not by census claims.",
+      "Artifact integrity and controlled runtime captures currently cover only darwin-arm64; protected promotion still requires every configured platform.",
       "No lane uses an account or credential. Print lanes reach the API-error path through a loopback Messages API; the interactive lane drives the native TUI against a scripted loopback model, so assistant text, tool choices, compaction summaries, and model-switch pricing inputs are synthetic while hook shapes, transports, and order are native.",
       "Not reached by any lane: Setup outside --init-only, UserPromptExpansion, PermissionDenied (auto mode), TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, Elicitation, ElicitationResult, PostModelSwitch outside a /model switch, mcp_server on MCP tool events, scratchpad_dir, and PostToolUse(Bash) tool_response.bashEditDiff.",
       "The official hook reference is mutable. Its reviewed summary is digest-pinned here, and a future candidate must repeat the review and census rather than inheriting this claim."
@@ -247,7 +202,7 @@
   "events": [
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "ConfigChange",
       "channel": "hook",
       "channels": [
@@ -480,14 +435,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "A settings, policy, or skill configuration source changed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "CwdChanged",
       "channel": "hook",
       "channels": [
@@ -722,14 +677,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The active working directory changed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "DirectoryAdded",
       "channel": "hook",
       "channels": [
@@ -958,14 +913,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "An additional working directory was registered; the hook runs asynchronously."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "Elicitation",
       "channel": "hook",
       "channels": [
@@ -1238,7 +1193,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "ElicitationResult",
       "channel": "hook",
       "channels": [
@@ -1515,7 +1470,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "FileChanged",
       "channel": "hook",
       "channels": [
@@ -1760,14 +1715,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "A configured matcher watch filename in the current working directory changed on disk; registration without a matcher observes nothing."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "InstructionsLoaded",
       "channel": "hook",
       "channels": [
@@ -2049,14 +2004,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "A CLAUDE.md or .claude/rules file entered context."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "MessageDisplay",
       "channel": "hook",
       "channels": [
@@ -2315,14 +2270,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 2,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Streaming display delta; display-only and distinct from durable transcript content."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "Notification",
       "channel": "hook",
       "channels": [
@@ -2590,14 +2545,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Native Claude Code notification; permission_prompt follows a permission dialog after about six idle seconds."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PermissionDenied",
       "channel": "hook",
       "channels": [
@@ -3308,7 +3263,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PermissionRequest",
       "channel": "hook",
       "channels": [
@@ -4008,14 +3963,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Carries no tool_use_id; correlate to the preceding PreToolUse by prompt, tool name, and input."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PostCompact",
       "channel": "hook",
       "channels": [
@@ -4244,14 +4199,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Context compaction completed, after the compact SessionStart."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PostModelSwitch",
       "channel": "hook",
       "channels": [
@@ -4577,14 +4532,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The session's model changed: a requested switch, an automatic fallback, an opusplan transition, or the model restored on resume. Asynchronous; requested_model is null for auto."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PostToolBatch",
       "channel": "hook",
       "channels": [
@@ -4848,14 +4803,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Runs once after every call in a parallel tool batch resolves."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PostToolUse",
       "channel": "hook",
       "channels": [
@@ -5572,14 +5527,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "One completion event per successful tool call."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PostToolUseFailure",
       "channel": "hook",
       "channels": [
@@ -6301,14 +6256,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "One failure event per approved tool call that fails."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PreCompact",
       "channel": "hook",
       "channels": [
@@ -6543,14 +6498,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Context compaction is about to run and can still be blocked."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PreModelSwitch",
       "channel": "hook",
       "channels": [
@@ -6880,14 +6835,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 30,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Runs before a requested model switch (/model, a picker, /config, fast mode, SDK set_model) and can cancel it. A hook still running at its timeout (native default 30 s) blocks the switch, so registration is never a passive default."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "PreToolUse",
       "channel": "hook",
       "channels": [
@@ -7607,14 +7562,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Runs before every tool call, before PermissionRequest when a decision is needed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "SessionEnd",
       "channel": "hook",
       "channels": [
@@ -7844,14 +7799,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The native session terminated; prompt_id is absent before the first prompt."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "SessionStart",
       "channel": "hook",
       "channels": [
@@ -8143,14 +8098,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "Starts or resumes a session; source may be startup, resume, clear, compact, or fork. Resume and fork carry four optional prompt-cache staleness fields when the transcript has a response."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "Setup",
       "channel": "hook",
       "channels": [
@@ -8382,14 +8337,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "One-time initialization hook for --init-only, -p --init, and maintenance mode."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "Stop",
       "channel": "hook",
       "channels": [
@@ -8631,14 +8586,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The assistant finished its turn."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "StopFailure",
       "channel": "hook",
       "channels": [
@@ -8893,14 +8848,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The turn ended because of an API error, or before any request when no credential exists; hook output is observational only. Recorded over HTTP: during adaptation a print-mode process was seen to exit before a StopFailure command hook completed."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "SubagentStart",
       "channel": "hook",
       "channels": [
@@ -9120,14 +9075,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "A subagent was spawned."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "SubagentStop",
       "channel": "hook",
       "channels": [
@@ -9381,14 +9336,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "A subagent finished; stop-hook re-entry must be deduplicated by agent_id. Compaction runs an internal agent that emits SubagentStop with an empty agent_type and no SubagentStart."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "TaskCompleted",
       "channel": "hook",
       "channels": [
@@ -9628,7 +9583,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "TaskCreated",
       "channel": "hook",
       "channels": [
@@ -9868,7 +9823,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "TeammateIdle",
       "channel": "hook",
       "channels": [
@@ -10090,7 +10045,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "UserPromptExpansion",
       "channel": "hook",
       "channels": [
@@ -10356,7 +10311,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "UserPromptSubmit",
       "channel": "hook",
       "channels": [
@@ -10617,14 +10572,14 @@
       },
       "confidence": "unverified",
       "timeoutSec": 5,
-      "firstSeen": "2.1.308",
-      "lastVerified": "2.1.308",
-      "fixture": "captures/claude@2.1.308",
+      "firstSeen": "2.1.309",
+      "lastVerified": "2.1.309",
+      "fixture": "captures/claude@2.1.309",
       "notes": "The submitted prompt as typed, before any skill or command expansion; also fires for turns Claude starts itself, such as a background-agent task notification. prompt_id is the native user-turn correlation when present; the bundled source field is compiled out of the runtime payload."
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "WorktreeCreate",
       "channel": "hook",
       "channels": [
@@ -10832,7 +10787,7 @@
     },
     {
       "surface": "claude",
-      "surfaceVersion": "2.1.308",
+      "surfaceVersion": "2.1.309",
       "event": "WorktreeRemove",
       "channel": "hook",
       "channels": [
@@ -11047,9 +11002,9 @@
   ],
   "behavior": {
     "behaviorVersion": 1,
-    "title": "Claude Code native hook lifecycle (2.1.308)",
+    "title": "Claude Code native hook lifecycle (2.1.309)",
     "description": "A partial order of native hook observations. Runtime-captured nodes are distinguished from official-document-only nodes and all ordering claims remain explicitly unverified; the capture set keeps a value-free arrival-order projection for review.",
-    "source": "Census packages/surface/vendors/claude/captures/claude@2.1.308 and reviewed official reference packages/surface/vendors/claude/references/claude@2.1.308.",
+    "source": "Census packages/surface/vendors/claude/captures/claude@2.1.309 and reviewed official reference packages/surface/vendors/claude/references/claude@2.1.309.",
     "lanes": [
       {
         "id": "session",

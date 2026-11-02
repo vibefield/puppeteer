@@ -11,7 +11,7 @@ describe('loadPersona', () => {
     expect(persona.vendor).toBe('claude');
     // Version comes from the ASM manifest, never from persona.json — the
     // captured model is the single source of vendor truth (§3.3).
-    expect(persona.version).toBe('2.1.308');
+    expect(persona.version).toBe('2.1.309');
     expect(persona.channels).toEqual(['argv', 'hook', 'transcript', 'statusline', 'subagentStatusLine', 'terminal']);
   });
 

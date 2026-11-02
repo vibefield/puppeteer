@@ -446,9 +446,13 @@ export async function runInteractiveLanes({ artifact, outputRoot, auxRoot, event
     await delay(1000);
     // FileChanged watches literal names in the current working directory, so the
     // watched file and the project settings change before the lane moves cwd.
+    // Two 2.1.309 runs that abandoned this gate at 10s never recorded
+    // FileChanged: the following cd drops that cwd-scoped watch. A run that
+    // waited recorded both hooks at 4s, so the gate stays open long enough
+    // that a late delivery is not discarded.
     writeFileSync(join(workspace, 'watched.txt'), 'changed\n');
     writeFileSync(join(workspace, '.claude', 'settings.json'), '{}\n');
-    await until(() => hookCount('ConfigChange') >= 1 && hookCount('FileChanged') >= 1, 10_000, 'config/file change');
+    await until(() => hookCount('ConfigChange') >= 1 && hookCount('FileChanged') >= 1, 30_000, 'config/file change');
     mkdirSync(join(workspace, 'sub'), { recursive: true });
     const beforeCd = stops();
     await type(s1.terminal, 'MARK_CD please');
