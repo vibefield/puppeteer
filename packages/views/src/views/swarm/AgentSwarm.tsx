@@ -987,8 +987,16 @@ export function AgentSwarm({ input, commands }: ReactMonitorViewProps): ReactEle
     // one whose row is back while it leaves is put back where it stands. Before the physics hear the rows: a leaving
     // body keeps its place until it has gone.
     const now = performance.now();
-    const { departing, returned } = departuresAfter(departingRef.current, modelsRef.current.byId, ids, now, (id) =>
-      visualsRef.current.has(id),
+    const rowIds = new Set(agents.map((agent) => agent.id));
+    const { departing, returned } = departuresAfter(
+      departingRef.current,
+      modelsRef.current.byId,
+      ids,
+      now,
+      (id) => visualsRef.current.has(id),
+      // A board row can beat its launch or exit handoff. Its final visual id
+      // takes the existing body; the provisional body must not depart beside it.
+      (model) => rowIds.has(model.rowId),
     );
     departingRef.current = departing;
     for (const [id, departure] of returned) putBack(id, departure, now);

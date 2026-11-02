@@ -252,6 +252,7 @@ export function deriveAgentRow(input: DeriveAgentRowInput): MonitorAgentRow {
   return {
     id: input.id,
     kind: 'agent',
+    ...(host.creationId === undefined ? {} : { creationId: host.creationId }),
     createdAt: host.createdAt,
     status: agentStatus(host, state),
     statusSince,
@@ -300,6 +301,8 @@ export function deriveTerminalRow(input: DeriveTerminalRowInput): MonitorAgentRo
   return {
     id: input.id,
     kind: 'terminal',
+    ...(host.inputUsed === undefined ? {} : { inputUsed: host.inputUsed }),
+    ...(host.creationId === undefined ? {} : { creationId: host.creationId }),
     createdAt: host.createdAt,
     status: classifyTerminalStatus(host.activity),
     statusSince: input.statusSince,

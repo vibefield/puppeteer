@@ -162,6 +162,66 @@ describe('a body leaving the field (DESIGN §6, the departure; M4: depart is not
   /** The body the renderer was last asked to draw for this id, if it was. */
   const lastDrawn = (id: string) => drawn.frames.at(-1)?.bodies.find((body) => body.model.id === id);
 
+  it.each([
+    ['spawn', 'motion'],
+    ['stop', 'motion'],
+    ['spawn', 'reduced'],
+    ['stop', 'reduced'],
+    ['spawn', 'still'],
+    ['stop', 'still'],
+  ] as const)(
+    '%s merges a late identity into its existing body without a stale departure (%s)',
+    async (action, motion) => {
+      const { agents, show } = await mounted(
+        undefined,
+        fixtureTheme('light', { animations: motion !== 'still', reducedMotion: motion === 'reduced' }),
+      );
+      const [first, second, other] = agents as [AgentView, AgentView, AgentView];
+      const incoming = { ...first, kind: action === 'spawn' ? 'agent' : 'terminal', status: 'idle' } as const;
+      const previous = { ...second, kind: action === 'spawn' ? 'terminal' : 'agent', status: 'idle' } as const;
+      await show([incoming, previous, other]);
+      await frames(LANDED);
+      const held = lastDrawn(previous.id)!;
+      const start = drawn.frames.length;
+      // The board can beat the launch/exit handoff. Once it names the body the
+      // incoming row continues, no provisional body may linger beside it.
+      await show([{ ...incoming, visualId: previous.id }, other]);
+      await frames(inside(DEPARTURE_MS));
+      const handoffFrames = drawn.frames.slice(start);
+      expect(handoffFrames.length).toBeGreaterThan(0);
+      for (const frame of handoffFrames) {
+        expect(frame.bodies.map((body) => body.model.id).sort()).toEqual([previous.id, other.id].sort());
+        const continued = frame.bodies.find((body) => body.model.id === previous.id)!;
+        expect(continued.seed).toBe(held.seed);
+        expect(continued.scale).toBe(1);
+        expect(continued.model.rowId).toBe(incoming.id);
+        expect(continued.model.state).toBe(action === 'spawn' ? 'idle' : 'terminal-empty');
+      }
+      const continued = handoffFrames[0]!.bodies.find((body) => body.model.id === previous.id)!;
+      expect(Math.hypot(continued.x - held.x, continued.y - held.y)).toBeLessThan(2);
+    },
+  );
+
+  it.each(['incoming', 'previous'] as const)(
+    'keeps one body when the %s row briefly left before the identity handoff arrived',
+    async (absent) => {
+      const { agents, show } = await mounted();
+      await frames(LANDED);
+      const [incoming, previous, other] = agents as [AgentView, AgentView, AgentView];
+      const seed = lastDrawn(previous.id)!.seed;
+      await show([absent === 'incoming' ? previous : incoming, other]);
+      await frames(3);
+      expect(lastDrawn(absent === 'incoming' ? incoming.id : previous.id)?.scale).toBeLessThan(1);
+      const start = drawn.frames.length;
+      await show([{ ...incoming, visualId: previous.id }, other]);
+      await frames(inside(DEPARTURE_MS));
+      for (const frame of drawn.frames.slice(start)) {
+        expect(frame.bodies.map((body) => body.model.id).sort()).toEqual([previous.id, other.id].sort());
+        expect(frame.bodies.find((body) => body.model.id === previous.id)?.seed).toBe(seed);
+      }
+    },
+  );
+
   it('shrinks where it stands for the departure’s length, out of reach, then the field lets it go', async () => {
     const { root, agents, show } = await mounted();
     await frames(LANDED);
