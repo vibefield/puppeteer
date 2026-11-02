@@ -249,14 +249,17 @@ describe('the drag spring', () => {
     physics.seed(0);
     expect(physics.isDragging('a')).toBe(false);
 
-    const [startX, startY] = [positions(physics)[2] as number, positions(physics)[3] as number];
+    const [startX, startY] = [
+      positions(physics)[FRAME_HEADER_FLOATS] as number,
+      positions(physics)[FRAME_HEADER_FLOATS + 1] as number,
+    ];
     physics.dragStart('a', { x: startX, y: startY });
     expect(physics.isDragging('a')).toBe(true);
 
     // Pull it a long way to one side and let the spring work.
     physics.dragMove('a', { x: startX + 200, y: startY });
     settle(physics, 30);
-    const draggedX = positions(physics)[2] as number;
+    const draggedX = positions(physics)[FRAME_HEADER_FLOATS] as number;
     expect(draggedX).toBeGreaterThan(startX + 50);
 
     physics.dragEnd('a');
@@ -271,15 +274,15 @@ describe('the drag spring', () => {
     physics.seed(0);
     const grabbed = { x: 700, y: 350 };
     physics.dragStart('a', {
-      x: positions(physics)[2] as number,
-      y: positions(physics)[3] as number,
+      x: positions(physics)[FRAME_HEADER_FLOATS] as number,
+      y: positions(physics)[FRAME_HEADER_FLOATS + 1] as number,
     });
     physics.dragMove('a', grabbed);
     settle(physics, 90);
 
     const held = positions(physics);
-    expect(held[2]).toBeCloseTo(grabbed.x, -1);
-    expect(held[3]).toBeCloseTo(grabbed.y, -1);
+    expect(held[FRAME_HEADER_FLOATS]).toBeCloseTo(grabbed.x, -1);
+    expect(held[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(grabbed.y, -1);
     physics.dispose();
   });
 
@@ -326,12 +329,12 @@ describe('membership and the id table', () => {
 
   it('grows a body toward its new radius rather than snapping it', () => {
     const physics = build({ gravityPull: 0 }, [{ id: 'a', radius: 40 }]);
-    expect(positions(physics)[4]).toBeCloseTo(40, 6);
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 2]).toBeCloseTo(40, 6);
     physics.syncAgents([{ id: 'a', radius: 70 }]);
     // The scale is applied inside a step, so it takes one to land.
-    expect(positions(physics)[4]).toBeCloseTo(40, 6);
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 2]).toBeCloseTo(40, 6);
     drive(physics, 1, 1000 / 30);
-    expect(positions(physics)[4]).toBeCloseTo(70, 6);
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 2]).toBeCloseTo(70, 6);
     physics.dispose();
   });
 
@@ -343,8 +346,8 @@ describe('membership and the id table', () => {
       random: sequence(1),
     });
     const frame = positions(physics);
-    expect(frame[2]).toBeCloseTo(640, 6);
-    expect(frame[3]).toBeCloseTo(300, 6);
+    expect(frame[FRAME_HEADER_FLOATS]).toBeCloseTo(640, 6);
+    expect(frame[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(300, 6);
     physics.dispose();
   });
 });
@@ -455,6 +458,93 @@ describe('the centre’s pull is radial, whatever the field’s shape', () => {
     const sideways = home(WIDE, [HEAD], 'x', 40);
     const down = home(WIDE, [HEAD], 'y', 40);
     sideways.forEach((offset, index) => expect(offset, `frame ${index}`).toBeCloseTo(down[index]!, 3));
+  });
+});
+
+describe('a fixed world with an eased terminal wall', () => {
+  for (const physicsHz of [15, 30, 120]) {
+    it(`moves continuously through repeated minimize/restore at ${physicsHz} Hz`, () => {
+      const physics = new SwarmPhysics({
+        parameters: { ...PARAMETERS, physicsHz },
+        bounds: { width: 1000, height: 900 },
+        floor: 280,
+        agents: [{ id: 'a', radius: 50 }],
+      });
+      const y = () => positions(physics)[FRAME_HEADER_FLOATS + 1]!;
+      expect(y()).toBe(140);
+      for (const floor of [900, 280, 900, 280]) {
+        let previous = y();
+        physics.setFloor(floor);
+        expect(y()).toBe(previous); // the command must not relocate a body
+        const samples: number[] = [];
+        for (let frame = 0; frame < physicsHz * 4; frame += 1) {
+          drive(physics, 1, 1000 / physicsHz);
+          const next = y();
+          expect(Math.abs(next - previous)).toBeLessThan(1800 / physicsHz);
+          expect(next).toBeGreaterThan(130);
+          expect(next).toBeLessThan(460);
+          samples.push(next);
+          previous = next;
+        }
+        expect(samples.filter((at) => at > 170 && at < 400).length).toBeGreaterThan(physicsHz / 5);
+        expect(y()).toBeCloseTo(floor / 2, 0);
+      }
+      physics.dispose();
+    });
+  }
+
+  it('can reverse a moving wall without moving bodies at the command boundary', () => {
+    const physics = new SwarmPhysics({
+      parameters: PARAMETERS,
+      bounds: { width: 1000, height: 900 },
+      agents: [{ id: 'a', radius: 50 }],
+    });
+    for (const floor of [280, 900, 220, 700, 280]) {
+      const before = positions(physics);
+      physics.setFloor(floor);
+      expect(positions(physics)).toEqual(before);
+      for (let frame = 0; frame < 7; frame += 1) {
+        const y = positions(physics)[FRAME_HEADER_FLOATS + 1]!;
+        drive(physics, 1, 1000 / 30);
+        expect(Math.abs(positions(physics)[FRAME_HEADER_FLOATS + 1]! - y)).toBeLessThan(60);
+      }
+    }
+    drive(physics, 120, 1000 / 30);
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(140, 0);
+    physics.dispose();
+  });
+
+  it('pushes through contacts without tunnelling or launching a body away from the wall', () => {
+    const physics = new SwarmPhysics({
+      parameters: { ...PARAMETERS, gravityPull: 0, restitution: 1, physicsHz: 15 },
+      bounds: { width: 800, height: 900 },
+      agents: [{ id: 'a', radius: 40, spawnHint: { x: 400, y: 800 } }],
+    });
+    drive(physics, 2, 1000 / 15);
+    physics.setFloor(280);
+    drive(physics, 45, 1000 / 15);
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 1]).toBeCloseTo(280 - 40 - PHYSICAL_GAP, 0);
+    physics.dispose();
+  });
+
+  it('keeps collisions after an actual viewport resize without translating bodies', () => {
+    const physics = new SwarmPhysics({
+      parameters: { ...PARAMETERS, gravityPull: 0, frictionAir: 0 },
+      bounds: { width: 800, height: 400 },
+      agents: [{ id: 'a', radius: 40 }],
+      random: () => 1,
+    });
+    drive(physics, 2, 1000 / 30);
+    const before = positions(physics);
+    physics.setBounds({ width: 600, height: 300 });
+    expect(positions(physics)).toEqual(before);
+    for (let frame = 0; frame < 90; frame += 1) {
+      physics.nudge('a');
+      drive(physics, 1, 1000 / 30);
+      expect(positions(physics)[FRAME_HEADER_FLOATS]).toBeLessThan(565);
+    }
+    expect(positions(physics)[FRAME_HEADER_FLOATS + 1]).toBeLessThan(265);
+    physics.dispose();
   });
 });
 

@@ -4,27 +4,35 @@ export interface CompletedPaneSession {
   id: string;
   exited: boolean;
   exitOutcome: string | null;
+  /** The terminal owner accepted the host's end-session request, even if exit
+   * metadata or the agent row was withdrawn before the pane heard it. */
+  endedByHost?: boolean | undefined;
 }
 
 export interface CompletedAgentPanePorts<Session extends CompletedPaneSession> {
   createShell: (ended: Session) => Promise<Session>;
   /** Compare with the workspace's current attachments, never the active pane. */
   replaceSession: (expectedId: string, shell: Session) => boolean;
-  releaseSession: (sessionId: string) => void | Promise<unknown>;
+  /** Resolves only once the host owns the conditional cleanup obligation. */
+  releaseSession: (sessionId: string, condition: 'unused' | 'exited') => void | Promise<unknown>;
   onError: (cause: unknown) => void;
 }
 
-/** A clean native agent exit returns its attached panes to one fresh shell.
+/** A clean native agent exit or accepted host termination returns its panes to one fresh shell.
  * The host supplies local managed sessions; monitor liveness is NOT exit evidence.
- * Failed exits keep their diagnostic surface. History is independent of PTY custody. */
+ * Failed exits without an explicit end keep their diagnostic surface. History is independent of PTY custody. */
 export class CompletedAgentPanes<Session extends CompletedPaneSession> {
   private readonly attempts = new Map<string, { cancelled: boolean }>();
   private disposed = false;
+  private readonly cleanup = new Map<string, { condition: 'unused' | 'exited'; active: boolean }>();
 
   update(sessions: readonly Session[], ports: CompletedAgentPanePorts<Session>): void {
     if (this.disposed) return;
+    this.retryCleanup(ports);
     const completed = new Map(
-      sessions.filter((session) => session.exited && session.exitOutcome === 'completed').map((s) => [s.id, s]),
+      sessions
+        .filter((session) => session.endedByHost === true || (session.exited && session.exitOutcome === 'completed'))
+        .map((s) => [s.id, s]),
     );
     for (const [id, attempt] of this.attempts) {
       if (completed.has(id)) continue;
@@ -45,19 +53,43 @@ export class CompletedAgentPanes<Session extends CompletedPaneSession> {
         } catch (cause) {
           // A stale host API or throwing mounter must not orphan the successful birth.
           try {
-            await ports.releaseSession(shell.id);
+            await this.release(shell.id, 'unused', ports);
           } catch (releaseCause) {
             throw new AggregateError([cause, releaseCause], 'Pane replacement and shell cleanup failed');
           }
           throw cause;
         }
         if (!placed) {
-          await ports.releaseSession(shell.id);
+          await this.release(shell.id, 'unused', ports);
           return;
         }
         // Only release the ended PTY after the replacement has a pane. No history deletion.
-        await ports.releaseSession(id);
+        await this.release(id, 'exited', ports);
       })().catch(ports.onError);
+    }
+  }
+
+  private async release(
+    id: string,
+    condition: 'unused' | 'exited',
+    ports: CompletedAgentPanePorts<Session>,
+  ): Promise<void> {
+    const receipt = this.cleanup.get(id) ?? { condition, active: false };
+    this.cleanup.set(id, receipt);
+    if (receipt.active) return;
+    receipt.active = true;
+    try {
+      await ports.releaseSession(id, receipt.condition);
+      this.cleanup.delete(id);
+    } finally {
+      receipt.active = false;
+    }
+  }
+
+  /** Failed cleanup retries its own obligation, never placement or creation. */
+  retryCleanup(ports: CompletedAgentPanePorts<Session>): void {
+    for (const [id, receipt] of this.cleanup) {
+      if (!receipt.active) void this.release(id, receipt.condition, ports).catch(ports.onError);
     }
   }
 

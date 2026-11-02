@@ -25,6 +25,7 @@ export interface MonitorRunSource extends AgentMonitorSource {
 
 /** What only the host knows about one run it manages. */
 export interface MonitorHostRun {
+  readonly creationId?: string | undefined;
   readonly runtimeRunId: string;
   /** When the run was born as the host knows it, epoch ms. */
   readonly createdAt: number;
@@ -72,6 +73,8 @@ export interface MonitorHostRun {
 
 /** A terminal on this desktop no agent has claimed, as the host lists it. */
 export interface MonitorHostTerminal {
+  readonly inputUsed?: boolean | undefined;
+  readonly creationId?: string | undefined;
   readonly sessionId: string;
   /** The stable identity across PTY handoffs, when the host keeps one. */
   readonly identity?: string | undefined;

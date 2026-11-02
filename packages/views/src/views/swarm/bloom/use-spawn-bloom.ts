@@ -55,6 +55,8 @@ export interface SpawnBloomHost {
   readonly container: RefObject<HTMLElement | null>;
   /** The chrome over the field (the stage's obstacles, MV-D19: what the physics already keeps off). */
   readonly readChrome: () => readonly BloomRect[];
+  /** Visible room within a full canvas, excluding an overlapping terminal pane. */
+  readonly readField?: () => BloomSize;
   /** The bodies drawn now, for where the words go. */
   readonly bodies: () => readonly BloomBody[];
   /** An idle body's radius: a chosen bud grows to it. */
@@ -284,7 +286,7 @@ export function createSpawnBloomEngine(
   /** A bloom at `P`: true when it opened, false when the menu had nothing to choose (created at once). */
   const bloomAt = (P: BloomPoint, mode: BloomMode, menu: MonitorSpawnMenu): boolean => {
     const element = host.current.container.current;
-    m.field = { w: element?.clientWidth ?? 0, h: element?.clientHeight ?? 0 };
+    m.field = host.current.readField?.() ?? { w: element?.clientWidth ?? 0, h: element?.clientHeight ?? 0 };
     m.chrome = host.current.readChrome();
     m.reduced = !host.current.motion();
     const opened = openBloom(env(), P, mode, menu);
@@ -366,7 +368,9 @@ export function createSpawnBloomEngine(
       const menu = menuOfHost.current;
       if (!menu || open()) return;
       const element = host.current.container.current;
-      const origin = keysOrigin({ w: element?.clientWidth ?? 0, h: element?.clientHeight ?? 0 });
+      const origin = keysOrigin(
+        host.current.readField?.() ?? { w: element?.clientWidth ?? 0, h: element?.clientHeight ?? 0 },
+      );
       m.returnFocus = returnTo;
       if (!bloomAt(origin, 'keys', menu)) m.returnFocus = null;
     },

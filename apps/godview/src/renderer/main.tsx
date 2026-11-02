@@ -269,6 +269,8 @@ function Godview() {
     // Main owns PTY disposal from the tab attachment ledger. A renderer
     // terminate races that owner and used to report "unknown session" twice.
     setClosingSessionIds((current) => (current.has(id) ? current : new Set([...current, id])));
+    // The tab ledger already owns disposal; this is only its renderer hint.
+    unusedPanes.current.release(id);
   }, []);
   const [closingSessionIds, setClosingSessionIds] = useState<ReadonlySet<string>>(() => new Set());
   const zoom = useDeckZoom(deckRef, workspace?.activePaneId, undefined, active);

@@ -91,7 +91,8 @@ export interface Departure<Model> {
  * whose id the rows no longer ask for begins to leave at `now`, drawn with the model it had (`models`, the models
  * the field drew from until now); one already leaving keeps its start; one the rows ask for again is no longer
  * leaving, and is `returned` with the departure it was in, for the swarm to put back where it stands. A body never
- * drawn just goes.
+ * drawn just goes. A row that now speaks through another body (`continues`) did not leave: discard its provisional
+ * body without a departure, including one already leaving when the handoff arrived.
  */
 export function departuresAfter<Model>(
   before: ReadonlyMap<string, Departure<Model>>,
@@ -99,15 +100,16 @@ export function departuresAfter<Model>(
   rows: ReadonlySet<string>,
   now: number,
   drawn: (id: string) => boolean,
+  continues: (model: Model) => boolean = () => false,
 ): { readonly departing: Map<string, Departure<Model>>; readonly returned: ReadonlyMap<string, Departure<Model>> } {
   const departing = new Map<string, Departure<Model>>();
   const returned = new Map<string, Departure<Model>>();
   for (const [id, departure] of before) {
     if (rows.has(id)) returned.set(id, departure);
-    else departing.set(id, departure);
+    else if (!continues(departure.model)) departing.set(id, departure);
   }
   for (const [id, model] of models) {
-    if (rows.has(id) || departing.has(id) || !drawn(id)) continue;
+    if (rows.has(id) || departing.has(id) || !drawn(id) || continues(model)) continue;
     departing.set(id, { at: now, model });
   }
   return { departing, returned };

@@ -38,7 +38,7 @@ function agent(overrides: Partial<PaneFrameAgent> = {}): PaneFrameAgent {
 function markup(
   input: { session: PaneFrameSession; agent?: PaneFrameAgent; remote?: string },
   verbs: PaneFrameVerbs = ALL_VERBS,
-  options: { zoomed?: boolean; stopping?: boolean; color?: string } = {},
+  options: { zoomed?: boolean; stopping?: boolean; pausing?: boolean; color?: string } = {},
 ): string {
   const model = paneFrameModel({
     session: input.session,
@@ -53,8 +53,10 @@ function markup(
       {...(options.color ? { color: options.color } : {})}
       zoomed={options.zoomed ?? false}
       stopping={options.stopping ?? false}
+      pausing={options.pausing ?? false}
       verbs={verbs}
       onStop={NOOP}
+      onPause={NOOP}
       onResume={NOOP}
       onZoom={NOOP}
     />,
@@ -110,6 +112,41 @@ describe('PaneFrameChrome', () => {
     expect(html).toContain('class="vf-pane-frame is-hot is-stopping"');
     expect(html).toContain('aria-label="Stopping the turn"');
     expect(html).toContain('aria-label="Restore the pane"');
+  });
+
+  it('names a host end-session control accurately without a turn-interrupt key', () => {
+    const input = { session: session(), agent: agent({ status: 'idle', stopKey: 'escape' }) };
+    const verbs = { ...ALL_VERBS, stopKind: 'session' as const };
+    const html = markup(input, verbs);
+    expect(html).toContain('aria-label="Stop agent"');
+    expect(html).toContain('title="Stop agent"');
+    expect(html).not.toContain('⎋');
+    const stopping = markup(input, verbs, { stopping: true });
+    expect(stopping).toContain('aria-label="Stopping agent"');
+    expect(stopping).toContain('title="Stopping agent…"');
+  });
+
+  it('separates Pause with the turn time and cancel key from Stop agent', () => {
+    const verbs = { ...ALL_VERBS, stopKind: 'session' as const, pause: () => ({ accepted: true }) };
+    const input = { session: session(), agent: agent({ stopKey: 'escape' }) };
+    const html = markup(input, verbs);
+    expect(html).toContain('aria-label="Pause current turn"');
+    expect(html).toContain('title="Pause current turn, 1:05 in ⎋"');
+    expect(html).toContain('aria-label="Stop agent"');
+    expect(html.match(/>1:05</g)).toHaveLength(1);
+    const pausing = markup(input, verbs, { pausing: true });
+    expect(pausing).toContain('is-pausing');
+    expect(pausing).toContain('title="Pausing current turn…"');
+    expect(pausing).toMatch(/is-pause[^>]+disabled=""/);
+    expect(pausing).not.toMatch(/is-stop[^>]+disabled=""/);
+    const idle = markup({ session: session(), agent: agent({ status: 'idle' }) }, verbs);
+    expect(idle).toMatch(/is-pause[^>]+disabled=""/);
+    expect(idle).not.toMatch(/is-stop[^>]+disabled=""/);
+    const shell = markup({ session: session() }, verbs);
+    expect(shell).not.toContain('is-pause');
+    expect(markup({ session: session({ exited: true }), agent: agent({ alive: false }) }, verbs)).not.toContain(
+      'is-pause',
+    );
   });
 
   it("names the key the stop presses, the agent's own, and none for a stop that presses no key", () => {

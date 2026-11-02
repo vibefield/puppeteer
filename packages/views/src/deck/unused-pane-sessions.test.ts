@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { UnusedPaneSessions } from './unused-pane-sessions.js';
 describe('fresh pane session ownership', () => {
-  it('reaps a fresh unused session exactly once', () => {
+  it('holds cleanup until the host acknowledges adoption', () => {
     const sessions = new UnusedPaneSessions();
     sessions.created('new');
     expect(sessions.closed('new', [], false)).toBe(true);
+    expect(sessions.closed('new', [], false)).toBe(true);
+    sessions.release('new');
     expect(sessions.closed('new', [], false)).toBe(false);
   });
   it('says whether it still holds a receipt: born here, never seen used, not yet reaped', () => {
@@ -19,6 +21,8 @@ describe('fresh pane session ownership', () => {
     expect(sessions.holds('busy')).toBe(false);
     expect(sessions.holds('fresh')).toBe(true);
     sessions.update([{ id: 'busy' }], () => false);
+    expect(sessions.holds('fresh')).toBe(true);
+    sessions.release('fresh');
     expect(sessions.holds('fresh')).toBe(false);
   });
   it('retains restored sessions, used sessions, and a remaining mirror', () => {
@@ -26,7 +30,6 @@ describe('fresh pane session ownership', () => {
     expect(sessions.closed('restored', [], false)).toBe(false);
     sessions.created('used');
     expect(sessions.closed('used', [], true)).toBe(false);
-    sessions.created('used');
     expect(sessions.closed('used', [], false)).toBe(false);
     sessions.created('mirrored');
     expect(sessions.closed('mirrored', ['mirrored'], false)).toBe(false);
@@ -35,11 +38,34 @@ describe('fresh pane session ownership', () => {
 });
 
 describe('attachment changes', () => {
+  it('reaps a placed replacement even when its attachment render is batched with the close', () => {
+    const sessions = new UnusedPaneSessions();
+    const shell = { id: 'replacement' };
+    sessions.update([{ id: 'ended-agent' }, { id: 'other-pane' }], () => true);
+    sessions.created(shell.id);
+    sessions.placed(shell);
+    expect(sessions.update([{ id: 'other-pane' }], () => false)).toEqual([shell]);
+    sessions.release(shell.id);
+    sessions.placed(shell);
+    expect(sessions.update([{ id: 'other-pane' }], () => false)).toEqual([]);
+  });
+
+  it('placement does not make a restored or used session disposable', () => {
+    const sessions = new UnusedPaneSessions();
+    sessions.created('used');
+    sessions.update([{ id: 'used' }], () => true);
+    sessions.placed({ id: 'restored' });
+    sessions.placed({ id: 'used' });
+    expect(sessions.update([], () => false)).toEqual([]);
+  });
+
   it('reaps a replaced empty shell exactly once, retaining the new attachment', () => {
     const sessions = new UnusedPaneSessions();
     sessions.created('empty');
     expect(sessions.update([{ id: 'empty' }], () => false)).toEqual([]);
     expect(sessions.update([{ id: 'agent' }], () => false)).toEqual([{ id: 'empty' }]);
+    expect(sessions.update([{ id: 'agent' }], () => false)).toEqual([{ id: 'empty' }]);
+    sessions.release('empty');
     expect(sessions.update([{ id: 'agent' }], () => false)).toEqual([]);
     expect(sessions.update([], () => false)).toEqual([]);
   });
@@ -95,13 +121,14 @@ describe('startup is transient, input is lifetime evidence', () => {
     receipts.update([idle], used, busy);
     expect(receipts.update([], used, busy)).toEqual([idle]);
   });
-  it('reaps once when a detached startup job returns to idle', () => {
+  it('delegates startup safety to the owner and holds the request through retries', () => {
     const receipts = new UnusedPaneSessions<typeof starting>();
     receipts.created('shell');
     receipts.update([starting], used, busy);
-    expect(receipts.update([], used, busy)).toEqual([]);
+    expect(receipts.update([], used, busy)).toEqual([starting]);
     expect(receipts.holds('shell')).toBe(true);
     expect(receipts.observe(idle, false, false)).toEqual([idle]);
+    receipts.release('shell');
     expect(receipts.observe(idle, false, false)).toEqual([]);
   });
   it.each(['input', 'reattach', 'handoff'])('cancels pending cleanup on %s', (cause) => {

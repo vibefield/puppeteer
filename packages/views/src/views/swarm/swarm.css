@@ -96,7 +96,7 @@
 
 .mv-swarm .vf-monitor-swarm-new-echo {
   left: 50%;
-  top: 62%;
+  top: calc((100% - var(--mv-swarm-bottom-inset, 0px)) * 0.62);
   padding: 5px 8px;
   border: 1px solid var(--text-main, #111111);
   border-radius: 5px;
@@ -110,7 +110,7 @@
    class (W5). */
 .mv-swarm .vf-monitor-swarm-empty {
   position: absolute;
-  inset: 0;
+  inset: 0 0 var(--mv-swarm-bottom-inset, 0px);
   display: grid;
   place-content: center;
   gap: 7px;

@@ -57,6 +57,9 @@ export const FRICTION_AIR_CEILING = 0.2;
 
 const DRAG_STIFFNESS = 0.2;
 const WALL_THICKNESS = 5000;
+/** RFC 005: a critically damped wall, retargetable without resetting its velocity. */
+const FLOOR_OMEGA = 12;
+const MOVING_WALL_STEP_MS = 1000 / 120;
 const SPAWN_CLEARANCE = 12;
 const SPAWN_CANDIDATES = 40;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -134,6 +137,8 @@ interface PhysicsBody {
 export interface SwarmPhysicsInit {
   parameters: SwarmPhysicsParameters;
   bounds: SwarmBounds;
+  /** Initial bottom wall in the full world; absent, the viewport foot. */
+  floor?: number;
   obstacles?: readonly SwarmObstacleRect[];
   agents?: readonly SwarmAgentSpec[];
   /** Injected so a fixture can place spawns and nudges deterministically. */
@@ -169,6 +174,10 @@ export class SwarmPhysics {
   private parameters: SwarmPhysicsParameters;
   private width: number;
   private height: number;
+  private floor: number;
+  private floorTarget: number;
+  private floorVelocity = 0;
+  private bottomInset: number;
   private accumulator = 0;
   private previousTime: number | null = null;
   private readonly random: () => number;
@@ -177,6 +186,8 @@ export class SwarmPhysics {
     this.parameters = guardParameters(init.parameters);
     this.width = init.bounds.width;
     this.height = init.bounds.height;
+    this.floor = this.floorTarget = this.clampFloor(init.floor ?? this.height);
+    this.bottomInset = this.height - this.floorTarget;
     this.random = init.random ?? Math.random;
 
     this.engine = Matter.Engine.create();
@@ -234,14 +245,39 @@ export class SwarmPhysics {
   setBounds(bounds: SwarmBounds): void {
     this.width = bounds.width;
     this.height = bounds.height;
+    // Window resizing changes the viewport, never a body's coordinates.
+    this.floorTarget = this.clampFloor(this.height - this.bottomInset);
     this.placeWalls();
+  }
+
+  /** A pane moves over the world. Retarget its wall without touching bodies or spring velocity. */
+  setFloor(floor: number): void {
+    this.floorTarget = this.clampFloor(floor);
+    this.bottomInset = this.height - this.floorTarget;
+  }
+
+  private clampFloor(floor: number): number {
+    return Number.isFinite(floor) ? Math.max(0, Math.min(this.height, floor)) : this.height;
+  }
+
+  private moveFloor(dt: number): void {
+    const offset = this.floor - this.floorTarget;
+    const decay = Math.exp(-FLOOR_OMEGA * dt);
+    const slope = this.floorVelocity + FLOOR_OMEGA * offset;
+    this.floor = this.floorTarget + (offset + slope * dt) * decay;
+    this.floorVelocity = (this.floorVelocity - FLOOR_OMEGA * slope * dt) * decay;
+    if (Math.abs(this.floor - this.floorTarget) < 0.01 && Math.abs(this.floorVelocity) < 0.1) {
+      this.floor = this.floorTarget;
+      this.floorVelocity = 0;
+    }
+    Matter.Body.setPosition(this.walls[0], { x: this.width / 2, y: this.floor + WALL_THICKNESS / 2 });
   }
 
   private placeWalls(): void {
     const [bottom, top, left, right] = this.walls;
     Matter.Body.setPosition(bottom, {
       x: this.width / 2,
-      y: this.height + WALL_THICKNESS / 2,
+      y: this.floor + WALL_THICKNESS / 2,
     });
     Matter.Body.setPosition(top, { x: this.width / 2, y: -WALL_THICKNESS / 2 });
     Matter.Body.setPosition(left, { x: -WALL_THICKNESS / 2, y: this.height / 2 });
@@ -317,7 +353,7 @@ export class SwarmPhysics {
       // mid-layout can report nothing and a spawn search in a zero-sized box
       // returns the same point for every bubble.
       const width = Math.max(this.width, 320);
-      const height = Math.max(this.height, 180);
+      const height = Math.max(Math.min(this.floor, this.floorTarget), 180);
       const position = spec.spawnHint
         ? clampSpawnPosition(width, height, spec.radius, spec.spawnHint)
         : this.findSpawnPosition(width, height, spec.radius);
@@ -430,13 +466,24 @@ export class SwarmPhysics {
   }
 
   private step(stepMs: number): void {
+    // A moving static wall needs small contact solves even at the 15 Hz setting.
+    // Preserve the original fixed step at rest (including the user's physics tuning).
+    const moving = this.floor !== this.floorTarget || this.floorVelocity !== 0;
+    const count = moving ? Math.ceil(stepMs / MOVING_WALL_STEP_MS) : 1;
+    for (let index = 0; index < count; index += 1) {
+      if (moving) this.moveFloor(stepMs / count / 1000);
+      this.solve(stepMs / count);
+    }
+  }
+
+  private solve(stepMs: number): void {
     const { gravityPull } = this.parameters;
     for (const wrapper of this.bodies.values()) {
       const { body } = wrapper;
       if (!wrapper.dragConstraint) {
         Matter.Body.applyForce(body, body.position, {
           x: (this.width / 2 - body.position.x) * gravityPull,
-          y: (this.height / 2 - body.position.y) * gravityPull,
+          y: (this.floor / 2 - body.position.y) * gravityPull,
         });
       }
       if (Math.abs(wrapper.targetRadius - wrapper.currentRadius) > 0.5) {

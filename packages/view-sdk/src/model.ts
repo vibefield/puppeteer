@@ -120,6 +120,10 @@ export interface MonitorProject {
  * `AgentView`.
  */
 export interface MonitorAgentRow {
+  /** Lifetime input evidence for a host-owned interactive shell. */
+  readonly inputUsed?: boolean | undefined;
+  /** Opaque host birth correlation. Never an action or runtime identity. */
+  readonly creationId?: string | undefined;
   /** Stable identity. It survives a terminal being promoted to an agent and a
    * run resuming in a new terminal, so a view keys by this and nothing else. */
   readonly id: string;

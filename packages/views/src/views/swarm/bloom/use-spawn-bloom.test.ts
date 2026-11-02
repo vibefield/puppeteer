@@ -38,7 +38,11 @@ interface Harness {
 
 type CreateAt = (...args: [BloomPoint?, MonitorSpawnTarget?]) => void | Promise<void>;
 
-function harness(menu: MonitorSpawnMenu | undefined, answer?: CreateAt): Harness {
+function harness(
+  menu: MonitorSpawnMenu | undefined,
+  answer?: CreateAt,
+  readField?: SpawnBloomHost['readField'],
+): Harness {
   const created: Harness['created'] = [];
   const renders: Harness['renders'] = [];
   const births: Harness['births'] = [];
@@ -46,6 +50,7 @@ function harness(menu: MonitorSpawnMenu | undefined, answer?: CreateAt): Harness
   const host: SpawnBloomHost = {
     container: { current: { clientWidth: 1000, clientHeight: 600 } as HTMLElement },
     readChrome: () => [],
+    ...(readField ? { readField } : {}),
     bodies: () => [],
     idleRadius: () => 50,
     motion: () => true,
@@ -465,4 +470,12 @@ describe('the keyboard, with no document to read (MV-W2, MV-D8)', () => {
     h.engine.held(P, 1);
     expect(h.engine.current()?.say?.m.w).toBeGreaterThan(0);
   });
+});
+
+it('opens the keyboard bloom in the visible room of a full canvas', () => {
+  const h = harness(BLOOM_SCENARIOS['one-one'], undefined, () => ({ w: 1000, h: 280 }));
+  h.engine.openKeys(null);
+  // An instant menu still creates at the same keyboard origin as a full bloom.
+  expect(h.created[0]?.[0] ?? h.engine.current()?.P).toEqual({ x: 500, y: 280 * 0.62 });
+  h.engine.dispose();
 });

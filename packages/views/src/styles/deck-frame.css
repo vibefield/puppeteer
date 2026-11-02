@@ -171,7 +171,7 @@
   font-style: italic;
 }
 
-/* the verbs: stop with the turn's time, resume in green after an exit,
+/* the verbs: pause with the turn's time, stop, resume in green after an exit,
    fullscreen; bare glyphs in the pane colour, only under the pointer. They
    appear at once and leave 120ms after it. */
 .vf-pane-verbs {
@@ -187,7 +187,9 @@
 }
 
 .vf-deck-framed .ghostty-pane:hover .vf-pane-verbs,
-.vf-pane-frame.is-stopping .vf-pane-verbs {
+.vf-deck-framed .ghostty-pane:focus-within .vf-pane-verbs,
+.vf-pane-frame.is-stopping .vf-pane-verbs,
+.vf-pane-frame.is-pausing .vf-pane-verbs {
   display: inline-flex;
   opacity: 1;
   transition: none;
@@ -219,6 +221,11 @@
   outline-offset: 2px;
 }
 
+.vf-pane-verb:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 .vf-pane-verb > i {
   display: inline-block;
   width: 7px;
@@ -231,6 +238,22 @@
   --verb-color: var(--vf-green);
 }
 
+.vf-pane-verb.is-pause > i {
+  box-sizing: border-box;
+  border-right: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+}
+
+.vf-pane-frame.is-pausing .vf-pane-verb.is-pause {
+  opacity: 1;
+}
+
+.vf-pane-frame.is-pausing .vf-pane-verb.is-pause > i {
+  animation: vf-pane-blink 1s steps(1, end) infinite;
+}
+
 .vf-pane-verb.is-resume > i {
   width: 0;
   height: 0;
@@ -241,7 +264,11 @@
   background: transparent;
 }
 
-/* stopping: the square hollow and blinking until the run leaves `working` */
+/* stopping: hollow and blinking while the requested stop is pending */
+.vf-pane-frame.is-stopping .vf-pane-verb.is-stop {
+  opacity: 1;
+}
+
 .vf-pane-frame.is-stopping .vf-pane-verb.is-stop > i {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px currentColor;
@@ -407,7 +434,8 @@
     display: none;
   }
 
-  .vf-pane-verb.is-stop .vf-pane-verb-text {
+  .vf-pane-verb.is-stop .vf-pane-verb-text,
+  .vf-pane-verb.is-pause .vf-pane-verb-text {
     display: none;
   }
 
@@ -433,7 +461,8 @@
     transition: none;
   }
 
-  .vf-pane-frame.is-stopping .vf-pane-verb.is-stop > i {
+  .vf-pane-frame.is-stopping .vf-pane-verb.is-stop > i,
+  .vf-pane-frame.is-pausing .vf-pane-verb.is-pause > i {
     animation: none;
   }
 }

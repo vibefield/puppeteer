@@ -14,7 +14,8 @@ import { DEFAULT_SWARM_PARAMETERS } from '../src/views/swarm/swarm-parameters.js
 // The swarm's frame parity (MV-0, on the SDK since MV-5): the frames the shipping
 // swarm hands its renderer, for the seeded world at a fixed timestep, against
 // goldens recorded on the ported view (re-recorded for M4: a body's title and
-// accessible name are reply-first now, and the models carry them). Only GPU
+// accessible name are reply-first now, and the models carry them; GV lifecycle
+// adds rowId to each model without changing frame geometry). Only GPU
 // submission is replaced: a paint spy records each frame, while the view, its
 // bubble models and the inline physics (the same host the worker runs; there is
 // no Worker in happy-dom, so the driver runs inline from the start and says so)

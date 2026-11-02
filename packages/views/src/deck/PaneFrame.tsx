@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AgentIcon } from '@vibefield/puppeteer-view-sdk/react';
 import {
@@ -10,17 +10,17 @@ import {
 } from './pane-frame.js';
 
 /**
- * The verbs a host lends the frame. Each is optional: a host that cannot stop
- * a turn does not get a stop verb drawn for it, because a button that does
- * nothing is chrome that lies. `stop` sends the agent's own turn stop (the
- * title names its key, `PaneFrameAgent.stopKey`, when it presses one) and
- * answers whether it was DELIVERED (the square goes hollow on the press and
- * solid again on a refusal or when the run leaves `working`); `resume`
- * continues an exited run and the host mounts what comes back where it likes;
- * `zoom` toggles the pane's fullscreen the way the host's own binding would.
+ * Optional host controls. A session stop ends the agent; pause cancels only
+ * the current turn. Older hosts can still lend a turn stop. Acceptance means
+ * delivery, not an observed exit or idle state. Resume continues an exited
+ * run; zoom uses the host's pane controller.
  */
 export interface PaneFrameVerbs {
   stop?: ((sessionId: string) => Promise<{ accepted: boolean }> | { accepted: boolean } | void) | undefined;
+  /** A session stop ends the agent, including when idle; turn cancellation
+   * remains the default for hosts that lend an interrupt control. */
+  stopKind?: 'turn' | 'session' | undefined;
+  pause?: ((sessionId: string) => Promise<{ accepted: boolean }> | { accepted: boolean } | void) | undefined;
   resume?: ((sessionId: string) => Promise<void> | void) | undefined;
   zoom?: ((pane: HTMLElement) => void) | undefined;
   /** The zoom binding's label for the tooltip, e.g. `⌘⇧↵`; absent = no label. */
@@ -54,8 +54,8 @@ function TetherMark() {
 }
 
 /** The stop verb's title: the turn's time when it has one, then the key the stop presses, if any. */
-function stopTitle(verb: { elapsed?: string; key?: string }): string {
-  const turn = verb.elapsed ? `Stop the turn, ${verb.elapsed} in` : 'Stop the turn';
+function stopTitle(verb: { elapsed?: string; key?: string }, label = 'Stop the turn'): string {
+  const turn = verb.elapsed ? `${label}, ${verb.elapsed} in` : label;
   return verb.key ? `${turn} ${verb.key}` : turn;
 }
 
@@ -78,10 +78,12 @@ export interface PaneFrameChromeProps {
   /** The pane colour the host dealt this pane. */
   color?: string | undefined;
   zoomed: boolean;
-  /** A stop was pressed and the run has not left `working` yet. */
+  /** The host has not yet observed the requested stop. */
   stopping: boolean;
+  pausing?: boolean | undefined;
   verbs: PaneFrameVerbs;
   onStop(): void;
+  onPause?: (() => void) | undefined;
   onResume(): void;
   onZoom(): void;
 }
@@ -102,19 +104,28 @@ export function PaneFrameChrome({
   color,
   zoomed,
   stopping,
+  pausing = false,
   verbs,
   onStop,
+  onPause,
   onResume,
   onZoom,
 }: PaneFrameChromeProps) {
+  const stoppingWord = verbs.stopKind === 'session' ? 'Stopping agent' : 'Stopping the turn';
   const style = { ...(color ? { '--pane-color': color } : {}) } as CSSProperties;
-  const className = ['vf-pane-frame', model.context?.hot ? 'is-hot' : '', stopping ? 'is-stopping' : '']
+  const className = [
+    'vf-pane-frame',
+    model.context?.hot ? 'is-hot' : '',
+    stopping ? 'is-stopping' : '',
+    pausing ? 'is-pausing' : '',
+  ]
     .filter(Boolean)
     .join(' ');
   const showStop = model.verb?.kind === 'stop' && verbs.stop !== undefined;
+  const showPause = model.verb?.kind === 'stop' && verbs.pause !== undefined;
   const showResume = model.verb?.kind === 'resume' && verbs.resume !== undefined;
   const showZoom = verbs.zoom !== undefined;
-  const showVerbs = showStop || showResume || showZoom;
+  const showVerbs = showStop || showPause || showResume || showZoom;
   const zoomLabel = zoomed ? 'Restore' : 'Fullscreen';
   return (
     <div className={className} style={style} data-vf-pane-frame={sessionId}>
@@ -147,17 +158,36 @@ export function PaneFrameChrome({
                 <span className="vf-pane-verb-text">resume</span>
               </button>
             ) : null}
+            {showPause && model.verb?.kind === 'stop' ? (
+              <button
+                type="button"
+                className="vf-pane-verb is-pause"
+                title={pausing ? 'Pausing current turn…' : stopTitle(model.verb, 'Pause current turn')}
+                aria-label={pausing ? 'Pausing current turn' : 'Pause current turn'}
+                disabled={!model.turnActive || pausing || stopping}
+                onPointerDown={keepTerminalFocus}
+                onClick={onPause}
+              >
+                <i aria-hidden="true" />
+                {model.verb.elapsed ? <span className="vf-pane-verb-text">{model.verb.elapsed}</span> : null}
+              </button>
+            ) : null}
             {showStop && model.verb?.kind === 'stop' ? (
               <button
                 type="button"
                 className="vf-pane-verb is-stop"
-                title={stopping ? 'Stopping the turn…' : stopTitle(model.verb)}
-                aria-label={stopping ? 'Stopping the turn' : 'Stop the turn'}
+                title={
+                  stopping ? `${stoppingWord}…` : verbs.stopKind === 'session' ? 'Stop agent' : stopTitle(model.verb)
+                }
+                aria-label={stopping ? stoppingWord : verbs.stopKind === 'session' ? 'Stop agent' : 'Stop the turn'}
+                disabled={stopping}
                 onPointerDown={keepTerminalFocus}
                 onClick={onStop}
               >
                 <i aria-hidden="true" />
-                {model.verb.elapsed ? <span className="vf-pane-verb-text">{model.verb.elapsed}</span> : null}
+                {verbs.stopKind !== 'session' && model.verb.elapsed ? (
+                  <span className="vf-pane-verb-text">{model.verb.elapsed}</span>
+                ) : null}
               </button>
             ) : null}
             {showZoom ? (
@@ -238,18 +268,33 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
     nowMs,
   });
   const status = agent?.status;
+  const endsSession = verbs.stopKind === 'session';
   const [stopping, setStopping] = useState(false);
-
-  // The square goes hollow the moment stop is pressed, and solid again when
-  // the run leaves `working`; a stop that never lands times out.
+  const [pausing, setPausing] = useState(false);
+  const control = useRef({ sessionId: session.id, stop: false, pause: false });
+  if (control.current.sessionId !== session.id) control.current = { sessionId: session.id, stop: false, pause: false };
   useEffect(() => {
-    if (status !== 'working') setStopping(false);
-  }, [status]);
+    setStopping(false);
+    setPausing(false);
+  }, [session.id]);
+
+  // Session termination stays pending even when the turn becomes idle.
+  useEffect(() => {
+    if (endsSession ? session.exited || agent?.alive === false : status !== 'working') setStopping(false);
+  }, [status, endsSession, session.exited, agent?.alive]);
   useEffect(() => {
     if (!stopping) return;
     const timer = window.setTimeout(() => setStopping(false), STOPPING_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
   }, [stopping]);
+  useEffect(() => {
+    if (status !== 'working' || session.exited || agent?.alive === false) setPausing(false);
+  }, [status, session.exited, agent?.alive]);
+  useEffect(() => {
+    if (!pausing) return;
+    const timer = window.setTimeout(() => setPausing(false), STOPPING_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [pausing]);
 
   // Measured once at mount as well, because an occluded window delivers no
   // resize notifications until it is drawn again.
@@ -268,15 +313,47 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
     };
   }, [pane]);
 
-  // The square goes hollow only while there is a turn to stop. On an idle
-  // agent the stop still reaches its TUI, which is why a host sends the
-  // agent's own turn stop, the one that never quits it.
+  // Fence synchronous repeated presses and late replies after a pane changes
+  // sessions. The host coalesces requests from mirrored panes as well.
   const stop = (): void => {
-    if (!verbs.stop || stopping) return;
-    if (status === 'working') setStopping(true);
-    void Promise.resolve(verbs.stop(session.id)).then((result) => {
-      if (result && !result.accepted) setStopping(false);
-    });
+    if (!verbs.stop || stopping || control.current.stop) return;
+    const request = control.current;
+    request.stop = true;
+    if (endsSession) setPausing(false);
+    if (endsSession || status === 'working') setStopping(true);
+    void Promise.resolve()
+      .then(() => verbs.stop?.(session.id))
+      .then(
+        (result) => {
+          if (control.current === request && result && !result.accepted) setStopping(false);
+        },
+        () => {
+          if (control.current === request) setStopping(false);
+        },
+      )
+      .finally(() => {
+        request.stop = false;
+      });
+  };
+  const pause = (): void => {
+    if (!verbs.pause || !model.turnActive || stopping || pausing || control.current.stop || control.current.pause)
+      return;
+    const request = control.current;
+    request.pause = true;
+    setPausing(true);
+    void Promise.resolve()
+      .then(() => verbs.pause?.(session.id))
+      .then(
+        (result) => {
+          if (control.current === request && result && !result.accepted) setPausing(false);
+        },
+        () => {
+          if (control.current === request) setPausing(false);
+        },
+      )
+      .finally(() => {
+        request.pause = false;
+      });
   };
   const resume = (): void => {
     if (!verbs.resume) return;
@@ -293,8 +370,10 @@ export function PaneFrame({ pane, session, agent, remote, color, fallbackCwd, zo
       {...(color ? { color } : {})}
       zoomed={zoomed}
       stopping={stopping}
+      pausing={pausing}
       verbs={verbs}
       onStop={stop}
+      onPause={pause}
       onResume={resume}
       onZoom={zoom}
     />,
