@@ -109,6 +109,51 @@
         "integrity": {
           "status": "verified",
           "sha256": "sha256:5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c"
+        },
+        "artifactKind": "standalone-executable",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.309/darwin-arm64/claude",
+        "acquisitionKey": "claude@2.1.309@darwin-arm64@sha256:5eadc0009cdcdbc0d06e58110d7b2baf88ced6088b1c33a60a21217fe410619c"
+      },
+      {
+        "id": "claude-2.1.309-darwin-x64",
+        "platform": "darwin-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-02T22:30:54.399Z",
+        "versionOutput": "2.1.309 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.309/darwin-x64/claude",
+        "acquisitionKey": "claude@2.1.309@darwin-x64@sha256:200e0d775ae55c040db3bb8db8de3e22efcddbd7e0abff5ab50dd10f6853425d",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:200e0d775ae55c040db3bb8db8de3e22efcddbd7e0abff5ab50dd10f6853425d"
+        }
+      },
+      {
+        "id": "claude-2.1.309-linux-x64",
+        "platform": "linux-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-02T22:30:54.727Z",
+        "versionOutput": "2.1.309 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.309/linux-x64/claude",
+        "acquisitionKey": "claude@2.1.309@linux-x64@sha256:4d704a8aecbe038affa3000f498ae17c1b4f753add8facb8764120affc99b658",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:4d704a8aecbe038affa3000f498ae17c1b4f753add8facb8764120affc99b658"
+        }
+      },
+      {
+        "id": "claude-2.1.309-windows-x64",
+        "platform": "windows-x64",
+        "channel": "stable",
+        "artifactKind": "standalone-executable",
+        "acquiredAt": "2026-11-02T22:30:55.047Z",
+        "versionOutput": "2.1.309 (Claude Code)",
+        "sourceUrl": "https://downloads.claude.ai/claude-code-releases/2.1.309/win32-x64/claude.exe",
+        "acquisitionKey": "claude@2.1.309@windows-x64@sha256:5441781f2b6bbd07354b4a74560ee88c68c9bf05d6db3c7e24c452c91673dc53",
+        "integrity": {
+          "status": "verified",
+          "sha256": "sha256:5441781f2b6bbd07354b4a74560ee88c68c9bf05d6db3c7e24c452c91673dc53"
         }
       }
     ],
