@@ -14,6 +14,7 @@ export const SWARM_MANIFEST: MonitorViewManifest = {
   sdk: MONITOR_VIEW_SDK_MAJOR,
   id: 'swarm',
   label: 'SWARM',
+  stageAllocation: 'full',
   // Three bodies: the rings the bar's 1.6 strokes drew, as filled outlines, since the bar fills a mark (MV-D6).
   mark: {
     viewBox: MARK_VIEW_BOX,

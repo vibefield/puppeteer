@@ -90,6 +90,7 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
         const init: SwarmPhysicsInit = {
           parameters: command.parameters,
           bounds: command.bounds,
+          ...(command.floor !== undefined ? { floor: command.floor } : {}),
           obstacles: command.obstacles,
           agents: command.agents,
         };
@@ -116,6 +117,9 @@ export function createSwarmPhysicsHost(options: SwarmPhysicsHostOptions): SwarmP
         return;
       case 'updateBounds':
         physics?.setBounds(command.bounds);
+        return;
+      case 'updateFloor':
+        physics?.setFloor(command.floor);
         return;
       case 'updateObstacles':
         physics?.setObstacles(command.obstacles);

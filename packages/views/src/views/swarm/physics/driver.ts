@@ -32,6 +32,7 @@ const REPLAYED: Readonly<Partial<Record<SwarmPhysicsCommand['type'], string>>> =
   updateAgents: 'agents',
   updateParameters: 'parameters',
   updateBounds: 'bounds',
+  updateFloor: 'floor',
   updateObstacles: 'obstacles',
   pause: 'motion',
   resume: 'motion',

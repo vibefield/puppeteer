@@ -45,7 +45,9 @@ export interface Insets {
  *
  * `insets` are advisory: each view keeps its own treatment of the host's
  * chrome. `obstacles` are the chrome's real rectangles, for views that steer
- * around it (the swarm's bodies, the bloom's words).
+ * around it (the swarm's bodies, the bloom's words). For a full-stage view,
+ * `insets.bottom` may name an overlapping pane's target edge: the view keeps
+ * its full viewport and eases its own collision wall toward `height - bottom`.
  */
 export interface StageGeometry {
   readonly width: number;
@@ -240,6 +242,8 @@ export interface MonitorViewManifest {
   readonly parameters: readonly MonitorParameterGroup[];
   /** Set when the defaults were re-decided, so every installation lands on the new ones. */
   readonly parametersRevision?: string | undefined;
+  /** Prefer a stable, full viewport behind overlapping host panes. Optional: hosts may retain their allocation. */
+  readonly stageAllocation?: 'full' | undefined;
   readonly capabilities?: { readonly optional?: readonly MonitorCapabilityName[] | undefined } | undefined;
   readonly keys?: readonly MonitorViewKey[] | undefined;
   /** Read by the ambient-motion audit (GT-D15.1): does the view run a loop at rest? */
