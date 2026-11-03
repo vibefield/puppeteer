@@ -38,8 +38,9 @@ The merged tree passes `support:check`, `groundtruth:mapping:check`, `upstream:c
 ### 1. Land the Rosetta dependency (Copilot, Pi)
 
 The Copilot and Pi imports read Rosetta commits on the `vibefield/rosetta` branch
-`groundtruth/upstream-rosetta-trio`, based on `main` at `972d090`. The branch is pushed but not merged. Merge it in
-Rosetta, open a PR there if none exists, and confirm a clean re-import before this PR is ready. To work on it, clone
+`groundtruth/upstream-rosetta-trio`, based on `main` at `972d090`. The branch is pushed but not merged; its draft PR is
+[vibefield/rosetta#39](https://github.com/vibefield/rosetta/pull/39). Merge it, then confirm a clean re-import before
+this PR is ready. To work on it, clone
 it as the sibling `../rosetta` and check out that branch.
 
 - `8ebdd48d2cd52586ee7c524b6a36261295ce4ead` — capture Copilot CLI 1.0.105, with farm fixes for single-executable
