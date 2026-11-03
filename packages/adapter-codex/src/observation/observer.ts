@@ -39,6 +39,7 @@ import {
 } from '@vibefield/puppeteer-core';
 import type { AdapterMonitorObservationBatch } from '@vibefield/puppeteer-core/monitor-spi';
 import { AppServerClient, type Transport } from '../transport/app-server-client.js';
+import { CodexModelProviderRefusedError } from '../transport/model-provider-error.js';
 import { CodexApprovalService } from '../services/approvals.js';
 import type { CodexApprovalDecision, CodexApprovalRequest } from '../driver.js';
 import { CodexNotificationNormalizer } from '../normalization/pipeline.js';
@@ -395,8 +396,9 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
         attaching = false;
         flushHistoryReplay();
       } catch (error) {
-        // An explicit briefing resume must surface rejected native config instead of retrying it forever.
-        if (Object.keys(pickAgentBriefing(overrides ?? {})).length) {
+        // An explicit briefing resume must surface rejected native config instead of retrying it forever,
+        // and so must a provider admission refusal (0.166.0): it lasts until the configuration changes.
+        if (Object.keys(pickAgentBriefing(overrides ?? {})).length || error instanceof CodexModelProviderRefusedError) {
           attaching = false;
           throw error;
         }
@@ -424,7 +426,22 @@ export async function createCodexObserver(opts: CreateCodexObserverOptions): Pro
       if (!opts.threadId && !opts.start && method === 'thread/started') {
         const thread = rec(params?.thread);
         const tid = str(thread?.id);
-        if (tid && (!opts.selectThread || opts.selectThread(tid))) void attach(tid, thread);
+        if (tid && (!opts.selectThread || opts.selectThread(tid))) {
+          void attach(tid, thread).catch((error: unknown) => {
+            if (!(error instanceof CodexModelProviderRefusedError)) throw error;
+            // No caller awaits a passive attach, so the refusal is published rather than thrown.
+            apply(
+              {
+                type: 'adapter:native-event',
+                adapter: 'codex',
+                nativeType: 'thread.resume.refused',
+                diagnostic: { code: 'codex-model-provider-refused', message: error.message },
+              },
+              'runtime',
+              { threadId: tid, refusal: error.refusal },
+            );
+          });
+        }
       }
       return; // ignore everything until we've attached to a thread
     }

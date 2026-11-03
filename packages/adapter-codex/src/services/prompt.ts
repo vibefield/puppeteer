@@ -1,5 +1,6 @@
 import type { PromptReceipt, PromptSubmission } from '@vibefield/puppeteer-core';
 import { AppServerRequestTimeoutError } from '../transport/app-server-client.js';
+import { asCodexModelProviderRefusal } from '../transport/model-provider-error.js';
 
 interface PendingPrompt {
   resolve: (receipt: PromptReceipt) => void;
@@ -59,10 +60,12 @@ export class CodexPromptService {
       }
       return await receipt;
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
+      // A provider admission refusal (0.166.0) is read from its structured data and says what to change.
+      const refused = asCodexModelProviderRefusal(error);
+      const reason = refused instanceof Error ? refused.message : String(refused);
       this.settle(
         clientUserMessageId,
-        error instanceof AppServerRequestTimeoutError
+        refused instanceof AppServerRequestTimeoutError
           ? { status: 'uncertain', reason }
           : { status: 'rejected', reason },
       );

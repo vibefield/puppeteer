@@ -73,6 +73,27 @@ Live `aggregatedOutput` carries all 100 000 bytes; `thread/turns/list` (`full`) 
 `probes/codex@0.164.0/ema-auth-probe.mjs` denies the network with macOS `sandbox-exec`, which linux-x64 does not have.
 Not re-run; the 0.164.0 record stands.
 
+## Method 6 — model-provider admission (new at 0.166.0)
+
+`provider-mismatch-probe.mjs`, `provider-mismatch-results.json`. Two loopback providers, `fake` and `other`, both
+pointing at the probe's own Responses endpoint; each case in its own throwaway home:
+
+- **mismatch:** app-server A (`model_provider = "fake"`) starts a thread and runs one turn; app-server B on the same
+  home selects `other` and sends `thread/resume {excludeTurns: true}`. 0.166.0: -32600 with `data`
+  `{type: modelProviderMismatch, modelProvider: fake, currentModelProvider: other}`. 0.164.0: the resume succeeds
+  (the saved provider is adopted).
+- **notConfigured:** the same, but B configures only `other`. 0.166.0: -32600 with `data`
+  `{type: modelProviderNotConfigured, modelProvider: fake}`. 0.164.0: -32600 too, but with `data: null` and only a
+  "failed to load configuration" message.
+- **inputMismatch:** one app-server reads `model_provider` from `config.toml`; after one turn the file selects `other`
+  and the same connection sends `turn/start` and then `thread/resume` of the still-loaded thread. 0.166.0: both -32600
+  with `modelProviderMismatch` data. 0.164.0: both succeed.
+
+The error message is a display string (the source's `Display` for `ModelProviderError`); the record keeps a digest of
+it, since the privacy rules treat `message` as free text. The 0.164.0 answers are under `baseline` (the same script
+run against the 0.164.0 linux-x64 package). `modelProviderPolicyConflict` needs a managed requirements layer and is
+source-read only.
+
 ## Files
 
 | File | What |
@@ -82,3 +103,4 @@ Not re-run; the 0.164.0 record stands.
 | `parse-probe.mjs`, `config-probe.mjs`, `parse-cases.json`, `config-cases.json`, `parse-results.json` | Method 1 |
 | `file-change-probe.mjs`, `file-change-results.json` | Method 3 |
 | `history-truncation-probe.mjs`, `history-truncation-results.json` | Method 4 |
+| `provider-mismatch-probe.mjs`, `provider-mismatch-results.json` | Method 6 |

@@ -1083,15 +1083,38 @@ requests, 1 client notification, 179 client requests).
   `NetworkRequirements.reviewDomains`. `services/profiles.ts` reports `account.type` as the sign-in method label as it
   comes, so a Vertex sign-in reads `gcp`; no billing rule keys on it (`profile-plans.ts` keys only on `api-key`).
 - `HookRunSummary.sourcePath` names `LegacyAppPathString` instead of `AbsolutePathBuf` (both strings).
+- **New JSON-RPC error data: `ModelProviderError`** (`v2/ModelProviderError.json`, absent at rust-v0.164.0 and
+  rust-v0.165.0): `modelProviderMismatch {modelProvider, currentModelProvider}`, `modelProviderNotConfigured
+  {modelProvider}`, `modelProviderPolicyConflict {modelProvider, requiredModelProvider}`. No method's params or result
+  references it, so the method-name audit and the shape diff above cannot see it; it is the `data` of the refusals in
+  the next section. The ASM has no error-schema field, so `generate-model.mjs` names the definition in the `notes` of
+  the seven gated client requests (`thread/resume`, `turn/start`, `turn/steer`, `review/start`,
+  `thread/compact/start`, `thread/queue/start`, `thread/goal/set`). Carrying error shapes structurally needs a reviewed
+  ASM field (Known gaps).
 
 Reconciliation (`candidates/codex@0.166.0/reconciliation.json`, local, linux-x64 only): 4 added, 0 removed, 21 changed
 documents, behavior, channels and detection unchanged, replay passed. It classifies `unsafe-or-unknown` only because
 three platforms are unacquired; with the artifacts complete the same diff classifies `adaptation-required` (changed
-shapes), which the review below answers with no semantic change.
+shapes), which the review below answers with one semantic change: the model-provider admission refusals.
 
 ## Behaviour read from source and release notes
 
 The tag commits carry the release notes; the source was read at both tags (`git clone --depth 1`).
+
+- **Model-provider admission: resume and input are refused on a provider change** (rust-v0.166.0; not in the release
+  notes; found in review). `ConfigManager::load_for_resume` (`app-server/src/config_manager.rs`) checks the saved and the
+  requested provider of a `thread/resume` before resume overrides or policy can replace them, and refuses
+  `modelProviderPolicyConflict`, `modelProviderNotConfigured` or `modelProviderMismatch`; 0.164.0's
+  `merge_persisted_resume_metadata` adopted the saved provider instead. `check_thread_model_provider_for_input` gates a
+  loaded thread's `thread/resume` and its input — `turn/start`, `turn/steer`, `review/start`, `thread/compact/start`,
+  `thread/queue/start`, and `thread/goal/set` when the goal ends active — against the provider the configuration selects
+  now. `config_load_error` (`request_processors/config_errors.rs`) answers each as `invalid_request` (-32600) with the
+  serialized error as `data`. **Measured** (`probes/codex@0.166.0` Method 6, `provider-mismatch-results.json`): a cold
+  resume after the configured provider changed is refused `modelProviderMismatch` (0.164.0: resumes); one whose saved
+  provider is no longer configured is refused `modelProviderNotConfigured` (0.164.0: -32600 too, but `data: null`);
+  after `config.toml` switches provider under a loaded thread, `turn/start` and `thread/resume` on the same connection
+  are refused `modelProviderMismatch` (0.164.0: both succeed). `modelProviderPolicyConflict` needs a managed requirements
+  layer and is source-read only. None of these clears by retrying: each lasts until the configuration changes.
 
 - **Guardian reviews forward to the parent's subscribers** (0.165.0 #56124): a private reviewer session's raw response
   items and its turn abort reach connections subscribed to the parent thread as `rawResponseItem/completed` (a method
@@ -1158,8 +1181,23 @@ deprecation event reaching consumers. The other opt-in live tests were not run h
 
 ## Adapter stage (2026-11-03)
 
-- **No semantic change.** Nothing the normalizers, observer, services or transport consume changed shape or meaning;
-  the additions are optional and unread, and unknown native events are still retained.
+- **One semantic change: model-provider refusals are permanent and typed.** Before it, the observer's attach loop
+  treated every `thread/resume` failure without briefing overrides as transient and retried it every ≤ 2 s until
+  disposed, so a provider refusal left a managed session in `preparing` with nothing said. Now
+  `transport/model-provider-error.ts` decodes the refusal from the error's `data` alone (never its text) into
+  `CodexModelProviderRefusedError`, the adapter's `AgentLaunchRefusedError` with codes
+  `CODEX_MODEL_PROVIDER_MISMATCH`, `CODEX_MODEL_PROVIDER_NOT_CONFIGURED` and `CODEX_MODEL_PROVIDER_POLICY_CONFLICT` and
+  a sentence built from the provider ids. `observation/thread-history.ts` throws it from either resume request; the
+  observer's attach stops on it — a known thread's attach (the TUI composition) and the driver's resume reject with it,
+  so the runtime carries code and words to the failure — and a passive attach, which nobody awaits, publishes
+  `adapter:native-event` `thread.resume.refused` with the diagnostic `codex-model-provider-refused`.
+  `services/prompt.ts` already answered a refused `turn/start` with `rejected`; its reason now comes from the same
+  decoding. The adapter sends no `turn/steer`, `review/start`, compaction, queue or goal requests. Every other failure is
+  handled as before (0.164.0's unconfigured-provider answer, with `data: null`, still retries). Tests:
+  `transport/model-provider-error.test.ts`, two observer and two driver cases built on the probe's `data`; each fails
+  with its half of the change removed.
+- Otherwise nothing the normalizers, observer, services or transport consume changed shape or meaning; the additions
+  are optional and unread, and unknown native events are still retained.
 - **A pin for the Guardian forwarding.** `observation/observer.test.ts` now proves that a `turn/completed`
   (`interrupted`) under a thread id no `thread/started` announced reaches no consumer and leaves the root turn running;
   with the observer's thread filter removed it fails.
@@ -1180,5 +1218,10 @@ deprecation event reaching consumers. The other opt-in live tests were not run h
 - **Imposter items lack the 0.166.0 timestamps.** Valid but less faithful; adding them belongs with the persona's
   shared item builders, not scenario by scenario.
 - **Guardian forwarding is source-read only**, as is the backfilled exec history (#57800).
-- **Unverified branches** added at 0.166.0: the four new client requests, `attachToSource` forks,
+- **Error shapes are not structural in Surface.** `ModelProviderError` is named in event notes only; an ASM field for
+  JSON-RPC error data (and the Imposter serving it) would let conformance hold the refusals to the schema.
+- **A refusal mid-session is a rejected prompt, not a state.** After the provider configuration changes under a running
+  session, each `turn/start` is rejected with the provider sentence; Core has no field marking the session as unable
+  to take input until the configuration changes.
+- **Unverified branches** added at 0.166.0: `modelProviderPolicyConflict`, the four new client requests, `attachToSource` forks,
   `policyCapacityUnavailable`, `modelNotFound`, `outputDrainTimedOut`.

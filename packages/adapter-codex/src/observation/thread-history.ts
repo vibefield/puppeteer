@@ -40,6 +40,7 @@
 
 import type { AgentRunBriefing } from '@vibefield/puppeteer-core';
 import { codexBriefingParams } from '../launch/briefing.js';
+import { asCodexModelProviderRefusal } from '../transport/model-provider-error.js';
 import { AppServerError, AppServerRequestTimeoutError, type AppServerClient } from '../transport/app-server-client.js';
 
 /** Which history calls this connection's app-server accepts. */
@@ -127,7 +128,9 @@ export class CodexThreadHistory {
   /**
    * Open the thread's live stream without hydrating its history. A server that refuses
    * `excludeTurns` gets the deprecated full resume; every other error is thrown to the caller, whose
-   * attach loop already retries a thread that has no rollout yet.
+   * attach loop already retries a thread that has no rollout yet. A provider admission refusal
+   * (0.166.0, `ModelProviderError` data) is thrown as `CodexModelProviderRefusedError`, which no
+   * retry can clear.
    *
    * `overrides` is the model and effort the resume starts at. Both requests carry them: the
    * app-server applies a resume's overrides when it loads a thread it does not yet hold, and a TUI
@@ -149,11 +152,16 @@ export class CodexThreadHistory {
         this.resumeHydrated = false;
         return resumed;
       } catch (error) {
-        if (!refusesPaginatedHistory(error)) throw error;
+        if (!refusesPaginatedHistory(error)) throw asCodexModelProviderRefusal(error);
         this.current = 'full-hydration';
       }
     }
-    const resumed = rec(await this.client.request('thread/resume', { threadId, ...selection }));
+    let resumed: Record<string, unknown> | undefined;
+    try {
+      resumed = rec(await this.client.request('thread/resume', { threadId, ...selection }));
+    } catch (error) {
+      throw asCodexModelProviderRefusal(error);
+    }
     this.resumeHydrated = true;
     return resumed;
   }

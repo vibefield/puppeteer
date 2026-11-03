@@ -108,9 +108,9 @@
         "record": "binary-probes",
         "artifact": "codex-0.166.0-linux-x64",
         "platform": "linux-x64",
-        "harness": "probes/codex@0.166.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs",
+        "harness": "probes/codex@0.166.0: parse-probe.mjs, config-probe.mjs, file-change-probe.mjs, history-truncation-probe.mjs, provider-mismatch-probe.mjs",
         "capturedAt": "2026-11-03T19:18:10.000Z",
-        "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, and the 64 KiB command-output cap in replayed history, in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9)."
+        "notes": "Session-free parse and config-loader probes, root and resume help, the runtime meaning of FileUpdateChange.diff per kind, the 64 KiB command-output cap in replayed history, and the model-provider admission refusals (ModelProviderError data on thread/resume and turn/start), in isolated homes against a loopback model. The S1-S35 invocation landing and the ema_auth probe were not re-run at 0.166.0 (findings C9)."
       },
       {
         "id": "codex-file-change-source",
@@ -137,14 +137,14 @@
           "evidence.json"
         ],
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "31852f6afdaa1392d0c3e0a80da260410944177fc3d68aab711432f9f6fc5bdb"
+        "sha256": "1b0f0c45599a199fc8456c587c0163994fa3a26ad5edd064436037b44ef0b50f"
       },
       {
         "id": "binary-probes",
         "kind": "probe-set",
         "path": "packages/surface/vendors/codex/probes/codex@0.166.0",
         "digestAlgorithm": "sha256-path-content-v1",
-        "sha256": "14ed600ef9d1ec2d76f1f2832280f8c8dfa6a3d685fde4bfbc4c9102f73e8532"
+        "sha256": "eb7627ec0604b224478dc92d3947990e8b2c414d5118cf3387d4876203102aa2"
       },
       {
         "id": "source-file-changes",
@@ -39338,6 +39338,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -41298,6 +41299,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -42830,6 +42832,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -46221,6 +46224,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -60353,6 +60357,7 @@
       "firstSeen": "0.166.0",
       "lastVerified": "0.166.0",
       "fixture": "captures/codex@0.166.0/protocol-history-hydration.jsonl",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -87732,6 +87737,7 @@
       "firstSeen": "0.166.0",
       "lastVerified": "0.166.0",
       "fixture": "captures/codex@0.166.0/protocol-approval-accept.jsonl",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]
@@ -93358,6 +93364,7 @@
         ]
       },
       "confidence": "unverified",
+      "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes.",
       "channels": [
         "appserver"
       ]

@@ -6914,5 +6914,6 @@
   "confidence": "verified-headless",
   "firstSeen": "0.166.0",
   "lastVerified": "0.166.0",
-  "fixture": "captures/codex@0.166.0/protocol-history-hydration.jsonl"
+  "fixture": "captures/codex@0.166.0/protocol-history-hydration.jsonl",
+  "notes": "Exact-release source: a model-provider admission refusal is JSON-RPC -32600 whose `data` is `ModelProviderError` (generated v2/ModelProviderError.json: modelProviderMismatch | modelProviderNotConfigured | modelProviderPolicyConflict); it lasts until the provider configuration changes."
 }
